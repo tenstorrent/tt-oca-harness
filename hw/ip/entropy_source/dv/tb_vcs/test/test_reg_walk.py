@@ -87,7 +87,6 @@ async def test_reg_walk(dut):
         'APT_PATTERN_COUNT_3BIT',
         'APT_PATTERN_COUNT_4BIT',
         'MARKOV_TEST_COUNTS_0',
-        'MARKOV_TEST_COUNTS_1',
         'MARKOV_TEST_PROBABILITIES',
     ]
 

@@ -49,8 +49,6 @@ module entropy_health_test #(
     output      logic [9:0]            apt_samples_processed_4bit_o,
     output      logic [15:0]           count_01_o,
     output      logic [15:0]           count_10_o,
-    output      logic [15:0]           count_00_o,
-    output      logic [15:0]           count_11_o,
     output      logic [7:0]            prob_01_o,
     output      logic [7:0]            prob_10_o,
     output      logic [7:0]            prob_00_o,
@@ -131,8 +129,6 @@ module entropy_health_test #(
 
     assign count_01_o = markov_test_cnt_hi;
     assign count_10_o = markov_test_cnt_lo;
-    assign count_00_o = 16'd0;
-    assign count_11_o = 16'd0;
 
     assign prob_01_o = 8'd0;
     assign prob_10_o = 8'd0;

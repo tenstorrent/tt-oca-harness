@@ -157,23 +157,25 @@ async def read_health_test_status(apb, log=None):
 async def read_markov_counters(apb):
     """Read and parse Markov counter registers.
 
-    OpenTitan Design:
-        - count_01 and count_10: Actual transition counts (0->1 and 1->0)
-        - count_00 and count_11: Always 0 (non-transitions not counted in OpenTitan)
-        - Only transitions (XOR detects bit changes) increment counters
-        - Thresholds check transition counts, not probabilities
+    Each noise lane counts bit alternations, so a 0-to-1 and a 1-to-0 change
+    increment the same counter. The two register fields are the maximum and
+    minimum of those per-lane counters over the window, not per-direction
+    transition counts; the COUNT_01 / COUNT_10 field names are retained only for
+    software compatibility.
 
     Returns:
         Dict with keys: count_01, count_10, count_00, count_11
-        Note: count_00 and count_11 always return 0 (legacy compatibility)
+        Note: count_00 and count_11 always return 0; no such counter exists.
     """
     markov_counts_0 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_0')
-    count_01 = (markov_counts_0 >> 0) & 0xFFFF    # 0->1 transitions [15:0]
-    count_10 = (markov_counts_0 >> 16) & 0xFFFF   # 1->0 transitions [31:16]
+    count_01 = (markov_counts_0 >> 0) & 0xFFFF    # highest per-lane count [15:0]
+    count_10 = (markov_counts_0 >> 16) & 0xFFFF   # lowest per-lane count [31:16]
 
-    # OpenTitan design doesn't count non-transitions (always 0)
-    count_00 = 0  # Not counted in OpenTitan (XOR-based transition detection)
-    count_11 = 0  # Not counted in OpenTitan (XOR-based transition detection)
+    # Placeholders only: the hardware has never counted non-transitions, and the
+    # MARKOV_TEST_COUNTS_1 register that once exposed these was removed. Kept so
+    # the legacy callers below still resolve.
+    count_00 = 0
+    count_11 = 0
 
     return {
         'count_01': count_01,

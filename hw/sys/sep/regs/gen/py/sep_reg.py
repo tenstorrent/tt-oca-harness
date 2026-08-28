@@ -694,8 +694,6 @@ ENTROPY_SOURCE_APT_PROPORTION_LO_REG_OFFSET = 0x00000070
 ENTROPY_SOURCE_APT_PROPORTION_LO_REG_ADDR = 0x10916070
 ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_OFFSET = 0x00000080
 ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_ADDR = 0x10916080
-ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_OFFSET = 0x00000084
-ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_ADDR = 0x10916084
 ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_OFFSET = 0x00000088
 ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_ADDR = 0x10916088
 ENTROPY_SOURCE_RING_OSC_ENABLE_REG_OFFSET = 0x00000090
@@ -3755,7 +3753,7 @@ class SEP_SCRATCH_SCRATCH_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000001E
+SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000003E
 class SEP_RESET_CTRL_SW_RESET_N_reg_t(Structure):
     _fields_ = [
         ('km_sw_rst_n', c_uint8, 1),
@@ -3763,9 +3761,10 @@ class SEP_RESET_CTRL_SW_RESET_N_reg_t(Structure):
         ('aes_sw_rst_n', c_uint8, 1),
         ('hmac_sw_rst_n', c_uint8, 1),
         ('kmac_sw_rst_n', c_uint8, 1),
+        ('trng_sw_rst_n', c_uint8, 1),
     ]
 
-SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000001E
+SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000003E
 
 class SEP_RESET_CTRL_SW_RESET_N_reg_u(Union):
     _fields_ = [
@@ -6649,7 +6648,7 @@ class ENTROPY_SOURCE_COMPONENT_ID_reg_u(Union):
 ENTROPY_SOURCE_CTRL_REG_DEFAULT = 0x10000002
 class ENTROPY_SOURCE_CTRL_reg_t(Structure):
     _fields_ = [
-        ('reset', c_uint32, 1),
+        ('rsvd0', c_uint32, 1),
         ('module_enable', c_uint32, 1),
         ('rsvd_0', c_uint32, 2),
         ('autotune_enable', c_uint32, 1),
@@ -7409,35 +7408,6 @@ class ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_reg_u, self).__init__(*args, **kwargs)
         self.val = ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT = 0x00000000
-class ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_reg_t(Structure):
-    _fields_ = [
-        ('count_00', c_uint32, 16),
-        ('count_11', c_uint32, 16),
-    ]
-
-ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT = 0x00000000
-
-class ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_reg_u, self).__init__(*args, **kwargs)
-        self.val = ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

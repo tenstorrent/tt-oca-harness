@@ -1355,6 +1355,18 @@ Cleared automatically by the hardware when starting the transfer of a new chunk.
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>trng_sw_rst_n</ipxact:name>
+              <ipxact:description>Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
@@ -5547,8 +5559,8 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:addressOffset>'h4</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>RESET</ipxact:name>
-              <ipxact:description>Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, decorrelator shift registers, and the downsample phase counter. Ring oscillators continue running. Level-sensitive: the reset holds while this bit is 1, so software must write 0 to release it.</ipxact:description>
+              <ipxact:name>RSVD0</ipxact:name>
+              <ipxact:description>Reserved, reads as zero and ignores writes.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -5556,7 +5568,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
+              <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>MODULE_ENABLE</ipxact:name>
@@ -5640,7 +5652,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>DEBUG_CTRL</ipxact:name>
-            <ipxact:description>Debug control to monitor internal entropy noise source signals.</ipxact:description>
+            <ipxact:description>Debug control to monitor internal entropy noise source signals. Both fields stay software-writable after FIPS_LOCK.LOCK is set, and that is deliberate: the lock freezes how entropy is health-checked, not what is routed to the observation pin. Because several selections expose entropy ahead of conditioning, gating the observation pin is an integration-time decision. An integration that routes the pin off-chip owns restricting this register to the lifecycle or debug-enable states where that observation is permitted; an integration that leaves the pin unconnected needs nothing further.</ipxact:description>
             <ipxact:addressOffset>'hc</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -6527,12 +6539,12 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>MARKOV_TEST_COUNTS_0</ipxact:name>
-            <ipxact:description>Markov Test Counts 0</ipxact:description>
+            <ipxact:description>Markov Test Counts. Reports the spread of the Markov alternation count across the parallel noise lanes for the current health-test window. Each lane counts bit alternations, so a 0-to-1 and a 1-to-0 transition increment the same counter; the two fields are the maximum and minimum of those per-lane counters, not per-direction transition counts. The field names are retained for software compatibility.</ipxact:description>
             <ipxact:addressOffset>'h80</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>COUNT_01</ipxact:name>
-              <ipxact:description>Count of 0-&gt;1 transitions.</ipxact:description>
+              <ipxact:description>Highest per-lane alternation count in the current window. Despite the name, this is not a count of 0-to-1 transitions alone.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6545,39 +6557,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>COUNT_10</ipxact:name>
-              <ipxact:description>Count of 1-&gt;0 transitions.</ipxact:description>
-              <ipxact:bitOffset>16</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>16</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>MARKOV_TEST_COUNTS_1</ipxact:name>
-            <ipxact:description>Markov Test Counts 1</ipxact:description>
-            <ipxact:addressOffset>'h84</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>COUNT_00</ipxact:name>
-              <ipxact:description>Count of 0-&gt;0 transitions.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>16</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>COUNT_11</ipxact:name>
-              <ipxact:description>Count of 1-&gt;1 transitions.</ipxact:description>
+              <ipxact:description>Lowest per-lane alternation count in the current window, the counterpart minimum to COUNT_01. Despite the name, this is not a count of 1-to-0 transitions alone.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6596,7 +6576,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>PROB_01</ipxact:name>
-              <ipxact:description>Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_01 for raw transition count.</ipxact:description>
+              <ipxact:description>Unused - probability calculation not implemented. Always reads 0. MARKOV_TEST_COUNTS_0.COUNT_01 reports the highest per-lane alternation count instead.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6609,7 +6589,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>PROB_10</ipxact:name>
-              <ipxact:description>Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_10 for raw transition count.</ipxact:description>
+              <ipxact:description>Unused - probability calculation not implemented. Always reads 0. MARKOV_TEST_COUNTS_0.COUNT_10 reports the lowest per-lane alternation count instead.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6806,7 +6786,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ALERT</ipxact:name>
-              <ipxact:description>main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset; the FSM leaves AlertHang on rst_ni, CTRL.RESET, or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.</ipxact:description>
+              <ipxact:description>main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by the entropy-source rst_ni reset; the FSM leaves AlertHang on rst_ni or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.</ipxact:description>
               <ipxact:bitOffset>10</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6820,7 +6800,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ERR</ipxact:name>
-              <ipxact:description>main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset.</ipxact:description>
+              <ipxact:description>main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by the entropy-source rst_ni reset.</ipxact:description>
               <ipxact:bitOffset>11</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7317,7 +7297,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HT_WATERMARK_NUM</ipxact:name>
-            <ipxact:description>Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode's documented baseline, write HT_WATERMARK_NUM first and then pulse CTRL.RESET or toggle CTRL.MODULE_ENABLE from 0 to 1.</ipxact:description>
+            <ipxact:description>Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode's documented baseline, write HT_WATERMARK_NUM first and then toggle CTRL.MODULE_ENABLE from 0 to 1.</ipxact:description>
             <ipxact:addressOffset>'h130</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -7363,7 +7343,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HT_WATERMARK</ipxact:name>
-            <ipxact:description>Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. HT_WATERMARK_NUM persists across CTRL.RESET so the clear uses the selected mode. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode's value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw power-on default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.</ipxact:description>
+            <ipxact:description>Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1), including the enable pulse that follows rst_ni release: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode's value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw reset default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.</ipxact:description>
             <ipxact:addressOffset>'h134</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>

@@ -91,7 +91,12 @@ OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
 # JSON register models are opt-in for the same reason as RAL: only a testbench
 # that walks the register space generically needs one (the SMC/SMU cocotb
 # register_test). Listed by block id, like the RAL leaves.
-OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
+#
+# entropy_source is here because the JSON exporter is the only one that emits
+# per-field software access, which the SEP cocotb env needs to tell a
+# software-writable register from a status one; see hw/sys/sep/dv/cocotb/env/
+# sep_reg_meta.py, whose committed copy is refreshed from this output.
+OCAH_REG_JSON_BLOCKS ?= hw/sys/smc hw/ip/entropy_source
 OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
 # Blocks whose regblock RTL answers a bad address or a write to a read-only

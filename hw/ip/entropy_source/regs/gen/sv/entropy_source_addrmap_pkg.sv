@@ -34,7 +34,6 @@ localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_BASE_ADDR = 64'h6
 localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_BASE_ADDR = 64'h6C;
 localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_BASE_ADDR = 64'h70;
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_BASE_ADDR = 64'h80;
-localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_BASE_ADDR = 64'h84;
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_BASE_ADDR = 64'h88;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR = 64'h90;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_TUNE_BASE_ADDR = 64'h94;

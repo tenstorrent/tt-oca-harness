@@ -39,7 +39,6 @@ from entropy_source_reg import (
     ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT,
     ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT,
-    ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT,
     ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
@@ -101,8 +100,7 @@ REG_MAP = {
     'APT_PROPORTION_3BIT':            (0x68,    'RW',   'APT 3-bit Proportion Limit',                       ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT, 0x000003FF),  # LIMIT[9:0]
     'APT_PROPORTION_4BIT':            (0x6C,    'RW',   'APT 4-bit Proportion Limit',                       ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT, 0x000003FF),  # LIMIT[9:0]
     # 0x70-0x7C RESERVED
-    'MARKOV_TEST_COUNTS_0':           (0x80,    'RO',   'Markov Test Counts - 0->1, 1->0 transitions',       ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT, 0x00000000),
-    'MARKOV_TEST_COUNTS_1':           (0x84,    'RO',   'Markov Test Counts - 0->0, 1->1 transitions',       ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT, 0x00000000),
+    'MARKOV_TEST_COUNTS_0':           (0x80,    'RO',   'Markov Test Counts - per-lane max, min alternation', ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT, 0x00000000),
     'MARKOV_TEST_PROBABILITIES':      (0x88,    'RO',   'Markov Test Probabilities',                        ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_DEFAULT, 0x00000000),
     'RING_OSC_ENABLE':                (0x90,    'RW',   'Ring Oscillator Enables',                          ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,  0x00FFFFFF),
     'RING_OSC_TUNE':                  (0x94,    'RW',   'Ring Oscillator Tune Control',                     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,    0x00FFFFFF),
@@ -193,7 +191,6 @@ __all__ = [
     "clear_and_verify_interrupt",
     "health_test_isr_recovery",
     "drain_fifo_to_level",
-    "verify_markov_transition_balance",
     "read_intr_status",
     "read_irq_output",
     "read_repetition_counter",
@@ -2843,7 +2840,7 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
                         Example: {
                             'repetition': (0, 50),
                             'apt_1bit': (400, 600),
-                            'markov_total': (1000, None)
+                            'markov_01': (1000, None)
                         }
         log_verbose: If True, log all counter values; if False, log summary only
         dut_log: Logger instance for output (optional)
@@ -2865,15 +2862,12 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
     counters['apt_3bit'] = await reg_rd(apb, 'APT_PATTERN_COUNT_3BIT')
     counters['apt_4bit'] = await reg_rd(apb, 'APT_PATTERN_COUNT_4BIT')
 
-    # Read Markov counters
+    # Read Markov counters. The two fields are the per-lane maximum and minimum
+    # alternation count, not per-direction transition counts, so they do not sum
+    # to a transition total.
     markov_counts_0 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_0')
-    markov_counts_1 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_1')
     counters['markov_01'] = markov_counts_0 & 0xFFFF          # Lower 16 bits
     counters['markov_10'] = (markov_counts_0 >> 16) & 0xFFFF  # Upper 16 bits
-    counters['markov_00'] = markov_counts_1 & 0xFFFF          # Lower 16 bits
-    counters['markov_11'] = (markov_counts_1 >> 16) & 0xFFFF  # Upper 16 bits
-    counters['markov_total'] = (counters['markov_01'] + counters['markov_10'] +
-                                counters['markov_00'] + counters['markov_11'])
 
     # Logging
     if log_verbose and dut_log:
@@ -2881,9 +2875,8 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
         dut_log.info(f"    REP={counters['repetition']}")
         dut_log.info(f"    APT=[{counters['apt_1bit']}, {counters['apt_2bit']}, "
                      f"{counters['apt_3bit']}, {counters['apt_4bit']}]")
-        dut_log.info(f"    MARKOV: 01={counters['markov_01']}, 10={counters['markov_10']}, "
-                     f"00={counters['markov_00']}, 11={counters['markov_11']} "
-                     f"(total={counters['markov_total']})")
+        dut_log.info(f"    MARKOV: max={counters['markov_01']}, "
+                     f"min={counters['markov_10']}")
 
     # Verification against expected ranges
     if expected_ranges:
@@ -3079,97 +3072,6 @@ async def verify_autotune_detune_pattern(apb, dut, expected_lanes, min_count=Non
         'detune_bits': detune_bits,
         'detuned_lanes': detuned_lanes,
         'per_lane_status': per_lane_status,
-        'errors': errors
-    }
-
-
-async def verify_markov_transition_balance(apb, expected_pct=25.0, tolerance_pct=10.0,
-                                           min_total=1000, dut_log=None):
-    """Verify Markov transition distribution is balanced (good entropy).
-
-    Reads MARKOV_TEST_COUNTS_0 and MARKOV_TEST_COUNTS_1 registers and verifies
-    that all 4 transition types (0->0, 0->1, 1->0, 1->1) are approximately 25% each.
-
-    Args:
-        apb: APB master instance
-        expected_pct: Expected percentage for each transition (default: 25.0)
-        tolerance_pct: Allowed deviation in percentage points (default: ±10.0)
-        min_total: Minimum total transitions required (default: 1000)
-        dut_log: Optional logger for detailed output
-
-    Returns:
-        Dict with:
-            - 'counts': Dict with count_00, count_01, count_10, count_11
-            - 'percentages': Dict with pct_00, pct_01, pct_10, pct_11
-            - 'total': Total number of transitions
-            - 'balanced': Boolean - True if all transitions within tolerance
-            - 'errors': List of error strings
-    """
-    errors = []
-
-    # Read Markov counter registers
-    markov_counts_0 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_0')
-    markov_counts_1 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_1')
-
-    counts = {
-        'count_01': markov_counts_0 & 0xFFFF,
-        'count_10': (markov_counts_0 >> 16) & 0xFFFF,
-        'count_00': markov_counts_1 & 0xFFFF,
-        'count_11': (markov_counts_1 >> 16) & 0xFFFF,
-    }
-
-    total = sum(counts.values())
-
-    # Check minimum transitions
-    if total < min_total:
-        errors.append(f"Insufficient transitions: {total} < {min_total}")
-        if dut_log:
-            dut_log.error(f"  [ERROR] Insufficient Markov transitions: {total} < {min_total}")
-
-    # Calculate percentages
-    percentages = {}
-    if total > 0:
-        percentages = {
-            'pct_00': (counts['count_00'] * 100.0) / total,
-            'pct_01': (counts['count_01'] * 100.0) / total,
-            'pct_10': (counts['count_10'] * 100.0) / total,
-            'pct_11': (counts['count_11'] * 100.0) / total,
-        }
-    else:
-        percentages = {'pct_00': 0, 'pct_01': 0, 'pct_10': 0, 'pct_11': 0}
-
-    # Check if balanced (all transitions within tolerance)
-    min_pct = expected_pct - tolerance_pct
-    max_pct = expected_pct + tolerance_pct
-    balanced = True
-
-    for name, pct in percentages.items():
-        if pct < min_pct or pct > max_pct:
-            errors.append(f"{name}: {pct:.1f}% out of range ({min_pct:.1f}%-{max_pct:.1f}%)")
-            balanced = False
-
-    # Logging
-    if dut_log:
-        dut_log.info(f"Markov Transition Balance Check:")
-        dut_log.info(f"  Total transitions: {total}")
-        dut_log.info(f"  0->0: {counts['count_00']:5d} ({percentages['pct_00']:5.1f}%)")
-        dut_log.info(f"  0->1: {counts['count_01']:5d} ({percentages['pct_01']:5.1f}%)")
-        dut_log.info(f"  1->0: {counts['count_10']:5d} ({percentages['pct_10']:5.1f}%)")
-        dut_log.info(f"  1->1: {counts['count_11']:5d} ({percentages['pct_11']:5.1f}%)")
-        dut_log.info(f"  Expected: {expected_pct:.1f}% ± {tolerance_pct:.1f}% per transition")
-
-        if balanced and len(errors) == 0:
-            dut_log.info(f"  [OK] All transitions balanced")
-        else:
-            dut_log.error(f"  [ERROR] Transitions not balanced:")
-            for err in errors:
-                dut_log.error(f"    - {err}")
-
-    return {
-        'counts': counts,
-        'percentages': percentages,
-        'total': total,
-        'balanced': balanced,
         'errors': errors
     }
 

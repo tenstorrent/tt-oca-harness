@@ -8,7 +8,7 @@
 | 0x0 | COMPONENT_ID | R a| Component Identification
 | 0x4 | CTRL | RW a| Entropy Source Control
 | 0x8 | STATUS | R a| Entropy Source Status (currently unused, reserved for future expansion)
-| 0xC | DEBUG_CTRL | RW a| Debug control to monitor internal entropy noise source signals.
+| 0xC | DEBUG_CTRL | RW a| Debug control to monitor internal entropy noise source signals. Both fields stay software-writable after FIPS_LOCK.LOCK is set, and that is deliberate: the lock freezes how entropy is health-checked, not what is routed to the observation pin. Because several selections expose entropy ahead of conditioning, gating the observation pin is an integration-time decision. An integration that routes the pin off-chip owns restricting this register to the lifecycle or debug-enable states where that observation is permitted; an integration that leaves the pin unconnected needs nothing further.
 | 0x10 | INTR_STATUS | RW a| Interrupt Status (write 1 to clear)
 | 0x14 | INTR_ENABLE | RW a| Interrupt Enable (individual enable bits for each interrupt source)
 | 0x18 | INTR_TEST | W a| Interrupt Test (write 1 to manually trigger interrupt for testing)
@@ -30,8 +30,7 @@
 | 0x68 | APT_PROPORTION_3BIT | RW a| Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.
 | 0x6C | APT_PROPORTION_4BIT | RW a| Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.
 | 0x70 | APT_PROPORTION_LO | RW a| Adaptive Proportion Test Low Threshold (two-sided NIST SP 800-90B compliance). Detects low-bias noise where too few 1s are observed per bit lane. The APT counts 1s per bit lane over a health test window; if the minimum count across all lanes falls below this threshold, the test fails (apt_test_fail_lo). For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=848 (41.4% of 2048, symmetric 5-sigma margin below mean, matching the high threshold at 1200=58.6%).
-| 0x80 | MARKOV_TEST_COUNTS_0 | R a| Markov Test Counts 0
-| 0x84 | MARKOV_TEST_COUNTS_1 | R a| Markov Test Counts 1
+| 0x80 | MARKOV_TEST_COUNTS_0 | R a| Markov Test Counts. Reports the spread of the Markov alternation count across the parallel noise lanes for the current health-test window. Each lane counts bit alternations, so a 0-to-1 and a 1-to-0 transition increment the same counter; the two fields are the maximum and minimum of those per-lane counters, not per-direction transition counts. The field names are retained for software compatibility.
 | 0x88 | MARKOV_TEST_PROBABILITIES | R a| Markov Test Probabilities (legacy register - values are always 0, not implemented in current RTL)
 | 0x90 | RING_OSC_ENABLE | RW a| Ring Oscillator Enables (independent on/off control for all 12 generators)
 | 0x94 | RING_OSC_TUNE | RW a| Ring Oscillator Tune Control (frequency adjustment via tap point selection)
@@ -63,8 +62,8 @@
 | 0x124 | GENERATOR_9_SAMPLE_CLK_CONFIG | RW a| Generator 9 Sample Clock Configuration
 | 0x128 | GENERATOR_10_SAMPLE_CLK_CONFIG | RW a| Generator 10 Sample Clock Configuration
 | 0x12C | GENERATOR_11_SAMPLE_CLK_CONFIG | RW a| Generator 11 Sample Clock Configuration
-| 0x130 | HT_WATERMARK_NUM | RW a| Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode's documented baseline, write HT_WATERMARK_NUM first and then pulse CTRL.RESET or toggle CTRL.MODULE_ENABLE from 0 to 1.
-| 0x134 | HT_WATERMARK | R a| Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. HT_WATERMARK_NUM persists across CTRL.RESET so the clear uses the selected mode. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode's value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw power-on default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.
+| 0x130 | HT_WATERMARK_NUM | RW a| Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode's documented baseline, write HT_WATERMARK_NUM first and then toggle CTRL.MODULE_ENABLE from 0 to 1.
+| 0x134 | HT_WATERMARK | R a| Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1), including the enable pulse that follows rst_ni release: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode's value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw reset default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.
 | 0x138 | REPCNT_TOTAL_FAILS | R a| Repetition Count Test Total Failures. Counts the total number of test failures since module enable. Increments at health_test_done_pulse when threshold is exceeded. Cleared on health_test_clr.
 | 0x13C | APT_HI_TOTAL_FAILS | R a| Adaptive Proportion Test High Threshold Total Failures. Counts the total number of APT high test failures since module enable.
 | 0x140 | APT_LO_TOTAL_FAILS | R a| Adaptive Proportion Test Low Threshold Total Failures. Counts the total number of APT low test failures since module enable.
@@ -108,7 +107,7 @@
 | 4 | `AUTOTUNE_ENABLE` | RW | 0x0 a| Enable automatic detuning of individual ring oscillator noise generators when corresponding per-generator health tests fail. When enabled, a failing health test causes the generator's noise RO to switch to its detuned (higher frequency) tap point. The shared sampling RO also detunes if ANY generator requests it. Automatic detuning is disabled by default (manual tuning via RING_OSC_TUNE required). Locked by FIPS_LOCK.LOCK: the lock freezes this field at whatever value it holds when FIPS_LOCK is set (swwel is value-agnostic). The certified flow writes 0 and then locks, so the entropy-source noise geometry cannot silently self-adjust mid-operation (SP 800-90B validated configuration).
 | 3:2 | `Reserved` | - | - a| Reserved
 | 1 | `MODULE_ENABLE` | RW | 0x1 a| Master enable for the OpenTitan entropy_src_main_sm boot/startup gate. Drives main_sm's enable_i. When 0, main_sm stays in Idle and MAIN_SM_STATUS.BOOT_PHASE_DONE never asserts, so no entropy reaches the whitener/FIFO. When 1 (default), main_sm runs the boot health-test window and asserts BOOT_PHASE_DONE once it passes. Locked by FIPS_LOCK.LOCK. See doc/main_sm_boot_gate_functional_compat.md.
-| 0 | `RESET` | RW | 0x0 a| Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, decorrelator shift registers, and the downsample phase counter. Ring oscillators continue running. Level-sensitive: the reset holds while this bit is 1, so software must write 0 to release it.
+| 0 | `RSVD0` | R | 0x0 a| Reserved, reads as zero and ignores writes.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -361,16 +360,8 @@
 .MARKOV_TEST_COUNTS_0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `COUNT_10` | R | 0x0 a| Count of 1->0 transitions.
-| 15:0 | `COUNT_01` | R | 0x0 a| Count of 0->1 transitions.
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.MARKOV_TEST_COUNTS_1 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:16 | `COUNT_11` | R | 0x0 a| Count of 1->1 transitions.
-| 15:0 | `COUNT_00` | R | 0x0 a| Count of 0->0 transitions.
+| 31:16 | `COUNT_10` | R | 0x0 a| Lowest per-lane alternation count in the current window, the counterpart minimum to COUNT_01. Despite the name, this is not a count of 1-to-0 transitions alone.
+| 15:0 | `COUNT_01` | R | 0x0 a| Highest per-lane alternation count in the current window. Despite the name, this is not a count of 0-to-1 transitions alone.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -379,8 +370,8 @@
 | Bits | Field | Access | Reset | Description
 | 31:24 | `PROB_11` | R | 0x0 a| Unused - not tracked by OpenTitan Markov test. Always reads 0.
 | 23:16 | `PROB_00` | R | 0x0 a| Unused - not tracked by OpenTitan Markov test. Always reads 0.
-| 15:8 | `PROB_10` | R | 0x0 a| Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_10 for raw transition count.
-| 7:0 | `PROB_01` | R | 0x0 a| Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_01 for raw transition count.
+| 15:8 | `PROB_10` | R | 0x0 a| Unused - probability calculation not implemented. Always reads 0. MARKOV_TEST_COUNTS_0.COUNT_10 reports the lowest per-lane alternation count instead.
+| 7:0 | `PROB_01` | R | 0x0 a| Unused - probability calculation not implemented. Always reads 0. MARKOV_TEST_COUNTS_0.COUNT_01 reports the highest per-lane alternation count instead.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -432,8 +423,8 @@
 | 31:14 | `Reserved` | - | - a| Reserved
 | 13 | `ALERT_CNTR_CLR_OK` | R | 0x0 a| alert_cntr_clr_ok_o. Set when main_sm allows the per-window alert fail counters (ALERT_SUMMARY_FAIL_COUNTS, ALERT_FAIL_COUNTS) to clear on a passing window (replaces the legacy hardcoded alert_cntr_clr_ok=1).
 | 12 | `BOOT_PHASE_DONE` | R | 0x0 a| boot_phase_done_o. Set once the boot-time health test window has passed; gates entropy_stream_valid_gated. Deasserts on disable, reset, or escalation to Error/AlertHang.
-| 11 | `ERR` | RW | 0x0 a| main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset.
-| 10 | `ALERT` | RW | 0x0 a| main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset; the FSM leaves AlertHang on rst_ni, CTRL.RESET, or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.
+| 11 | `ERR` | RW | 0x0 a| main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by the entropy-source rst_ni reset.
+| 10 | `ALERT` | RW | 0x0 a| main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by the entropy-source rst_ni reset; the FSM leaves AlertHang on rst_ni or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.
 | 9 | `IDLE` | R | 0x0 a| main_sm_idle_o. Set while the FSM is in the Idle state (module disabled or not yet enabled).
 | 8:0 | `STATE` | R | 0x0 a| Current entropy_src_main_sm state (sparse FSM encoding from entropy_src_main_sm_pkg::state_e). Useful values while bypass_mode_i=1: Idle, BootHTRunning, BootPostHTChk, BootPhaseDone, AlertState, AlertHang, Error.
 |===

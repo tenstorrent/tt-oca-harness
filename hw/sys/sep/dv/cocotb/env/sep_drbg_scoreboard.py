@@ -368,12 +368,13 @@ class SepDrbgScoreboard:
         leaves a rotating difference that matches the sampled byte ff[28:21] only
         while it sits outside bits[28:21] and mismatches when it rotates in --
         exactly the intermittent CHK1 pattern seen when syncing on decor alone.
-        And ff_stage resets ONLY on rst_ni (CTRL.RESET zeroes the SAMPLE, not the
-        SR), with decor_bytes lagging the true SR reset by a full divider period,
-        so the reset phase is not recoverable from decor_bytes.
+        The full TRNG reset resets ff_stage through the entropy-source rst_ni.
+        Detect that reset from the explicit gated-reset probe; decor_bytes can
+        already be zero before an initial reset pulse, so a zero-transition
+        detector can miss the reset entirely.
 
-        So: drive noise from the start, wait for the CTRL.RESET decor->0 and let
-        the SR refill a few samples, then SNAPSHOT the real 12x29 ff_stage
+        So: drive noise from the start, wait for the TRNG reset and let the SR
+        refill a few samples, then SNAPSHOT the real 12x29 ff_stage
         (esrc_decor_sr_o) and seed the golden from it. From there the golden
         free-runs the whole CHK1..CHK5 chain on the read-back esrc_noise_o."""
         d = self.dut
@@ -390,10 +391,10 @@ class SepDrbgScoreboard:
                        and dut_decor != prev_decor)
 
             if state == "wait_reset":
-                # CTRL.RESET (rst_n = rst_ni & ~CTRL.RESET) soft-resets the WHOLE
-                # entropy_source: decorrelator SR, SHA, FIFO. decor->0 marks it.
+                # The coordinated TRNG reset resets the complete entropy_source:
+                # decorrelator SR, SHA, FIFO, and CSRs.
                 # Restart the decor-sample chain so its SHA starts at sample 0.
-                if changed and dut_decor == 0:
+                if _safe_int(d.trng_gated_rst_n_probe_o) == 0:
                     state, changes = "wait_fill", 0
                     self.chain = SepEntropyGolden(**self._gk)
                     self._reset_results()
@@ -440,7 +441,7 @@ class SepDrbgScoreboard:
         self.golden.seed_decor_sr(sr_packed, clk_divider=8)
 
     def _reset_results(self):
-        """Clear per-stream stats (called at the CTRL.RESET that begins the run)."""
+        """Clear per-stream stats (called at the TRNG reset that begins the run)."""
         self.results = {k: _StreamResult(k, w)
                         for k, (_, w) in self._STREAMS.items()}
         self._skip = dict(self._warmup)

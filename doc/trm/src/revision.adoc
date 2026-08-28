@@ -160,4 +160,11 @@ enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse -- high watermarks to
 migration audit. Restored the shared reference-counter description and UART
 software flow-control guidance; aligned DFX status, repository path, and
 cross-document link descriptions with the current implementation.
+
+|0.5.27 |2026-08-28 |Alessandro Ottaviano |Replaced the entropy source local
+CTRL.RESET with the SEP Reset Controller's active-low TRNG reset request.
+The shared reset drains and isolates the ESRC, CSRNG, and EDN AXI ports before
+resetting the full entropy complex, scrubs post-mux adapters and the fabric
+entropy pool, and requires ordered consumer quiesce and full TRNG
+reinitialization. SW_RESET_N now resets to 0x3E; CTRL[0] is reserved RAZ/WI.
 |=======================================================================

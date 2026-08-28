@@ -318,19 +318,6 @@ package entropy_source_reg_pkg;
     } entropy_source__MARKOV_TEST_COUNTS_0__in_t;
 
     typedef struct {
-        logic [15:0] next;
-    } entropy_source__MARKOV_TEST_COUNTS_1__COUNT_00__in_t;
-
-    typedef struct {
-        logic [15:0] next;
-    } entropy_source__MARKOV_TEST_COUNTS_1__COUNT_11__in_t;
-
-    typedef struct {
-        entropy_source__MARKOV_TEST_COUNTS_1__COUNT_00__in_t COUNT_00;
-        entropy_source__MARKOV_TEST_COUNTS_1__COUNT_11__in_t COUNT_11;
-    } entropy_source__MARKOV_TEST_COUNTS_1__in_t;
-
-    typedef struct {
         logic [7:0] next;
     } entropy_source__MARKOV_TEST_PROBABILITIES__PROB_01__in_t;
 
@@ -418,12 +405,10 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic next;
-        logic hwclr;
     } entropy_source__MAIN_SM_STATUS__ALERT__in_t;
 
     typedef struct {
         logic next;
-        logic hwclr;
     } entropy_source__MAIN_SM_STATUS__ERR__in_t;
 
     typedef struct {
@@ -833,7 +818,6 @@ package entropy_source_reg_pkg;
         entropy_source__APT_PROPORTION_4BIT__in_t APT_PROPORTION_4BIT;
         entropy_source__APT_PROPORTION_LO__in_t APT_PROPORTION_LO;
         entropy_source__MARKOV_TEST_COUNTS_0__in_t MARKOV_TEST_COUNTS_0;
-        entropy_source__MARKOV_TEST_COUNTS_1__in_t MARKOV_TEST_COUNTS_1;
         entropy_source__MARKOV_TEST_PROBABILITIES__in_t MARKOV_TEST_PROBABILITIES;
         entropy_source__RING_OSC_ENABLE__in_t RING_OSC_ENABLE;
         entropy_source__RING_OSC_TUNE__in_t RING_OSC_TUNE;
@@ -885,10 +869,6 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic value;
-    } entropy_source__CTRL__RESET__out_t;
-
-    typedef struct {
-        logic value;
     } entropy_source__CTRL__MODULE_ENABLE__out_t;
 
     typedef struct {
@@ -908,7 +888,6 @@ package entropy_source_reg_pkg;
     } entropy_source__CTRL__SHA256_WHITENING_ENABLE__out_t;
 
     typedef struct {
-        entropy_source__CTRL__RESET__out_t RESET;
         entropy_source__CTRL__MODULE_ENABLE__out_t MODULE_ENABLE;
         entropy_source__CTRL__AUTOTUNE_ENABLE__out_t AUTOTUNE_ENABLE;
         entropy_source__CTRL__BYPASS_ENTROPY_COMPRESSOR__out_t BYPASS_ENTROPY_COMPRESSOR;

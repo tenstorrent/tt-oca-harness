@@ -429,7 +429,7 @@ register map is reported in <<sep-detailed-register-map>>.
 [[sep-reset-controller]]
 ==== SEP Reset Controller
 
-The SEP Reset Controller provides software-controllable resets for the Key Manager and crypto accelerators. It is accessible via AXI4-Lite at base address `0x10A5_0000` within the System Peripherals crossbar.
+The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
@@ -441,11 +441,12 @@ The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` wi
 |2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
+|5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
 |=======================================================================
 
-On power-up, `SW_RESET_N` resets to `0x1E`: KM is held in reset, while OTBN,
-AES, HMAC, and KMAC are released. The SEP host firmware writes `1` to release an
-IP from reset and writes `0` to assert its software reset.
+On power-up, `SW_RESET_N` resets to `0x3E`: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes `1` to
+release an IP from reset and writes `0` to request its software reset.
 
 Inside `sep_reset_ctrl`, each bit is ANDed with `sep_reset_n` and then passed
 through a per-IP JTAG override mux (`jtag_sep_reset_ctrl_i`). The `sep_reset_n`
@@ -459,6 +460,29 @@ requests: `sep_crypto_axi_isolate` first isolates the accelerator's AXI port,
 draining outstanding transactions and terminating new ones with DECERR, and only
 then asserts the reset. The isolation is held for the duration of the reset and
 released when the software bit deasserts.
+
+[[sep-trng-reset]]
+===== Resetting the TRNG
+
+The TRNG reset bit controls one reset domain containing the entropy source,
+CSRNG, EDN, their AXI converters, the DRBG endpoint state, and both post-mux EDN
+adapters. Because ESRC, CSRNG, and EDN occupy three independent demux ports, a
+shared coordinator requests isolation on all three and does not assert the TRNG
+reset until all three report isolated. On release, reset is removed while the
+ports remain isolated for one cycle, then all three ports reopen together.
+
+The fabric entropy-pool AXI responder is not reset, so accesses remain
+responsive. While the TRNG reset is active, its pending EDN request, half-packed
+word, FIFO contents, and fill-stall state are synchronously cleared.
+
+Software must quiesce AES, KMAC, and OTBN before requesting a TRNG reset. If
+internal DRBG endpoint 0 feeds KM, KM must also be idle or held in reset. The
+reset does not answer EDN requests that were already outstanding: those are
+carried on AXI-Stream rather than the AXI ports the coordinator drains, so a
+consumer still waiting on entropy when the reset asserts waits indefinitely.
+Following TRNG reset release, software reprograms ESRC, waits for startup health
+testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
+Consumers are released only after fresh endpoint/pool progress is observed.
 
 // Additive cross-reference: canonical OTP/eFuse IP documentation
 // is maintained by SMC and can be found at:

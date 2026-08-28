@@ -163,7 +163,10 @@ FABRIC_BLOCKS = [
     ("WDT_TIMER", 0x1080_1000, None),
     ("SEP_SCRATCH_COLD", 0x1080_2000, None),        # SCRATCH[0] (RW)
     ("SEP_SCRATCH_WARM", 0x1080_2080, None),        # SCRATCH[0] (RW)
-    # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC[4:1]=1 released.
+    # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC/TRNG[5:1]=1
+    # released. The reference suite's ext_axi reg-walk delegates this register
+    # (it cannot reach it); the CPU LSU path reads it safely, since a read has no
+    # side effect and only a write clears reset.
     (
         "SEP_RESET_CTRL",
         SEP_RESET_CTRL.addr("SW_RESET_N"),

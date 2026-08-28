@@ -43,7 +43,9 @@ sideload structures expected by the OpenTitan cores.
 Alerts from all crypto components are collected by 11 `prim_alert_receiver`
 instances within `sep_crypto` and aggregated into a single `crypto_alert_o`
 output. Each accelerator has its own independent software-controllable reset,
-gated with the system reset through the SEP Reset Controller.
+gated with the system reset through the SEP Reset Controller; the entropy
+source, CSRNG, and EDN share a single one. See <<sep-trng-reset>> for the
+constraints that apply to that shared reset.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state
@@ -342,9 +344,10 @@ one per sink domain:
   fan-out;
 * endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
   `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates two
-  dedicated interrupts: PIC source 37 (`entropy_pool_low`, pool level below
-  watermark) and source 38 (`entropy_pool_fill_stall`, fill path not making
-  progress). See <<sep-cpu-interrupt-vector-map>>.
+  dedicated interrupts: SEP IRQ 37 (`entropy_pool_low`, pool level below
+  watermark) and IRQ 38 (`entropy_pool_fill_stall`, fill path not making
+  progress). PIC source ids are assigned in <<sep-cpu-interrupt-vector-map>>,
+  which is authoritative; quote it rather than restating the numbers here.
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so
@@ -352,11 +355,28 @@ that FIPS-aware consumers such as OTBN RND — which latches the bit and
 raises `rnd_fips_chk_fail` on a non-FIPS ack — observe the correct
 provenance of the bits they are receiving.
 
+The internal entropy complex uses one software-reset request,
+`SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N`. It covers ESRC, CSRNG, EDN, all
+three CSR conversion paths, DRBG endpoint queues, and the two post-mux EDN
+adapters. A coordinator drains and isolates the independent ESRC, CSRNG, and
+EDN AXI ports before asserting the shared reset. The fabric entropy pool
+remains AXI-accessible but synchronously scrubs pending requests, partially
+packed data, FIFO contents, and stall state.
+
+There is no atomic reset boundary across the entropy consumers. Alarm recovery
+therefore stops TRNG CSR traffic; quiesces or resets AES, KMAC, and OTBN; and,
+when endpoint 0 selects the internal DRBG, idles or resets KM before asserting
+the TRNG reset. After release, firmware fully reinitializes ESRC, CSRNG, and
+EDN and waits for fresh entropy progress before releasing consumers. The
+post-mux adapters reset even when an external source is selected, so an
+external stream is interrupted and cleanly restarted; the external TRNG CSR
+passthrough itself is unaffected.
+
 The Class 2 entropy boundary starts at
 `u_trng_wrapper_s3c_scan`, whose sequencer, 128-bit release stage, and stream
 FIFOs retain seed material. Its vendor core remains covered by its delivered
-DFT view. In `sep_crypto`, `u_entropy_source_s3c_scan` covers the entropy FIFO
-and SHA-256 whitener, `u_drbg_s3c_scan` covers CSRNG/EDN and endpoint state,
+DFT view. In `sep_crypto.u_sep_trng`, `u_entropy_source_s3c_scan` covers the
+entropy FIFO and SHA-256 whitener, `u_drbg_s3c_scan` covers CSRNG/EDN and endpoint state,
 and `u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root. The
 combinational source-selection muxes are not scan assets.
 

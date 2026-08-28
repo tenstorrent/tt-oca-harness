@@ -81,8 +81,6 @@ localparam int unsigned APT_PROPORTION_LO_REG_OFFSET                            
 localparam int unsigned APT_PROPORTION_LO_REG_ADDR                                                                = 32'h00000070;
 localparam int unsigned MARKOV_TEST_COUNTS_0_REG_OFFSET                                                           = 32'h00000080;
 localparam int unsigned MARKOV_TEST_COUNTS_0_REG_ADDR                                                             = 32'h00000080;
-localparam int unsigned MARKOV_TEST_COUNTS_1_REG_OFFSET                                                           = 32'h00000084;
-localparam int unsigned MARKOV_TEST_COUNTS_1_REG_ADDR                                                             = 32'h00000084;
 localparam int unsigned MARKOV_TEST_PROBABILITIES_REG_OFFSET                                                      = 32'h00000088;
 localparam int unsigned MARKOV_TEST_PROBABILITIES_REG_ADDR                                                        = 32'h00000088;
 localparam int unsigned RING_OSC_ENABLE_REG_OFFSET                                                                = 32'h00000090;
@@ -215,7 +213,6 @@ localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT      
 localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT                                        = 32'h00000020;
 localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT                                          = 32'h00000350;
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT                                            = 32'h00FFFFFF;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT                                              = 32'h00000000;
@@ -282,8 +279,8 @@ localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MINOR_VERSION_SHIFT         
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_MASK                                            = 32'hF0000000;
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_SHIFT                                           = 28;
 
-localparam int unsigned ENTROPY_SOURCE_CTRL_RESET_MASK                                                            = 32'h1;
-localparam int unsigned ENTROPY_SOURCE_CTRL_RESET_SHIFT                                                           = 0;
+localparam int unsigned ENTROPY_SOURCE_CTRL_RSVD0_MASK                                                            = 32'h1;
+localparam int unsigned ENTROPY_SOURCE_CTRL_RSVD0_SHIFT                                                           = 0;
 
 localparam int unsigned ENTROPY_SOURCE_CTRL_MODULE_ENABLE_MASK                                                    = 32'h2;
 localparam int unsigned ENTROPY_SOURCE_CTRL_MODULE_ENABLE_SHIFT                                                   = 1;
@@ -485,12 +482,6 @@ localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_COUNT_01_SHIFT      
 
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_COUNT_10_MASK                                         = 32'hFFFF0000;
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_COUNT_10_SHIFT                                        = 16;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_00_MASK                                         = 32'hFFFF;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_00_SHIFT                                        = 0;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_11_MASK                                         = 32'hFFFF0000;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_11_SHIFT                                        = 16;
 
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_01_MASK                                     = 32'hFF;
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_01_SHIFT                                    = 0;
@@ -731,7 +722,7 @@ typedef struct packed {
     logic [0:0]   autotune_enable ;
     logic [1:0]   rsvd_0 ;
     logic [0:0]   module_enable ;
-    logic [0:0]   reset ;
+    logic [0:0]   rsvd0 ;
 } entropy_source_ctrl_reg_t;
 
 
@@ -942,13 +933,6 @@ typedef struct packed {
     logic [15:0]   count_10 ;
     logic [15:0]   count_01 ;
 } entropy_source_markov_test_counts_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [15:0]   count_11 ;
-    logic [15:0]   count_00 ;
-} entropy_source_markov_test_counts_1_reg_t;
 
 
 

@@ -72,7 +72,7 @@ module entropy_generator #(
     logic [3:0]  open_apt_target_pattern_3bit,  open_apt_target_pattern_4bit;
     logic [9:0]  open_apt_samples_processed_1bit,  open_apt_samples_processed_2bit;
     logic [9:0]  open_apt_samples_processed_3bit,  open_apt_samples_processed_4bit;
-    logic [15:0] open_count_01, open_count_10, open_count_00, open_count_11;
+    logic [15:0] open_count_01, open_count_10;
     logic [7:0]  open_prob_01, open_prob_10, open_prob_00, open_prob_11;
 
     /////////////////
@@ -147,8 +147,6 @@ module entropy_generator #(
         .apt_samples_processed_4bit_o (open_apt_samples_processed_4bit),
         .count_01_o                   (open_count_01),
         .count_10_o                   (open_count_10),
-        .count_00_o                   (open_count_00),
-        .count_11_o                   (open_count_11),
         .prob_01_o                    (open_prob_01),
         .prob_10_o                    (open_prob_10),
         .prob_00_o                    (open_prob_00),

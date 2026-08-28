@@ -49,7 +49,7 @@ module tb_health_test();
     wire [9:0] apt_samples_processed_3bit_o; // Samples processed for 3-bit
     wire [9:0] apt_samples_processed_4bit_o; // Samples processed for 4-bit
     // Markov test counters and probabilities
-    wire [15:0] count_01_o, count_10_o, count_00_o, count_11_o;
+    wire [15:0] count_01_o, count_10_o;
     wire [7:0] prob_01_o, prob_10_o, prob_00_o, prob_11_o;
 
     // Testbench variables
@@ -105,8 +105,6 @@ module tb_health_test();
         // Counter outputs - Markov test counters and probabilities
         .count_01_o(count_01_o),
         .count_10_o(count_10_o),
-        .count_00_o(count_00_o),
-        .count_11_o(count_11_o),
         .prob_01_o(prob_01_o),
         .prob_10_o(prob_10_o),
         .prob_00_o(prob_00_o),
@@ -627,7 +625,7 @@ module tb_health_test();
         $dumpvars(1, u_health_test.status_markov_test);
         // Add counter monitoring to VCD
         $dumpvars(1, ctr_repetition_o);
-        $dumpvars(1, count_01_o, count_10_o, count_00_o, count_11_o);
+        $dumpvars(1, count_01_o, count_10_o);
         $dumpvars(1, prob_01_o, prob_10_o, prob_00_o, prob_11_o);
     end
 
@@ -637,8 +635,8 @@ module tb_health_test();
         if (inject_failure && (cycle_count % 50 == 0)) begin
             case (test_select)
                 2'd1: $display("Time=%0t: Repetition counter: %d", $time, ctr_repetition_o);
-                2'd3: $display("Time=%0t: Markov counters - 01:%d 10:%d 00:%d 11:%d",
-                              $time, count_01_o, count_10_o, count_00_o, count_11_o);
+                2'd3: $display("Time=%0t: Markov counters - max:%d min:%d",
+                              $time, count_01_o, count_10_o);
                 default: ; // No display for other cases to avoid clutter
             endcase
         end

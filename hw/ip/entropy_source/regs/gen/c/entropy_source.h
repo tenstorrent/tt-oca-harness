@@ -37,10 +37,10 @@ typedef union {
 } entropy_source__COMPONENT_ID_t;
 
 // reg - entropy_source::CTRL
-#define ENTROPY_SOURCE__CTRL__RESET_bm 0x1
-#define ENTROPY_SOURCE__CTRL__RESET_bp 0
-#define ENTROPY_SOURCE__CTRL__RESET_bw 1
-#define ENTROPY_SOURCE__CTRL__RESET_reset 0x0
+#define ENTROPY_SOURCE__CTRL__RSVD0_bm 0x1
+#define ENTROPY_SOURCE__CTRL__RSVD0_bp 0
+#define ENTROPY_SOURCE__CTRL__RSVD0_bw 1
+#define ENTROPY_SOURCE__CTRL__RSVD0_reset 0x0
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm 0x2
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bp 1
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bw 1
@@ -63,7 +63,7 @@ typedef union {
 #define ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t RESET :1;
+        uint32_t RSVD0 :1;
         uint32_t MODULE_ENABLE :1;
         uint32_t :2;
         uint32_t AUTOTUNE_ENABLE :1;
@@ -603,23 +603,6 @@ typedef union {
     } f;
     uint32_t w;
 } entropy_source__MARKOV_TEST_COUNTS_0_t;
-
-// reg - entropy_source::MARKOV_TEST_COUNTS_1
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_bm 0xffff
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_bp 0
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_bw 16
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_reset 0x0
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_bm 0xffff0000
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_bp 16
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_bw 16
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t COUNT_00 :16;
-        uint32_t COUNT_11 :16;
-    } f;
-    uint32_t w;
-} entropy_source__MARKOV_TEST_COUNTS_1_t;
 
 // reg - entropy_source::MARKOV_TEST_PROBABILITIES
 #define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_01_bm 0xff
@@ -1408,7 +1391,7 @@ typedef struct __attribute__ ((__packed__)) {
     entropy_source__APT_PROPORTION_LO_t APT_PROPORTION_LO;
     uint8_t RESERVED_74_7f[0xc];
     entropy_source__MARKOV_TEST_COUNTS_0_t MARKOV_TEST_COUNTS_0;
-    entropy_source__MARKOV_TEST_COUNTS_1_t MARKOV_TEST_COUNTS_1;
+    uint8_t RESERVED_84_87[0x4];
     entropy_source__MARKOV_TEST_PROBABILITIES_t MARKOV_TEST_PROBABILITIES;
     uint8_t RESERVED_8c_8f[0x4];
     entropy_source__RING_OSC_ENABLE_t RING_OSC_ENABLE;

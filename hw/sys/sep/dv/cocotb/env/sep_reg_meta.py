@@ -190,6 +190,21 @@ class RegBlock:
             bits |= int(view.val)
         return bits
 
+    def field_mask(self, name: str, field_name: str) -> int:
+        """Bit mask for one named generated bitfield."""
+        struct = self._sym(name, "reg_t", alias_ok=True)
+        union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
+        fields = {field: width for field, _ctype, width in struct._fields_}
+        if field_name not in fields:
+            raise KeyError(
+                f"{self.block}.{name}.{field_name} not found; "
+                f"known fields: {sorted(fields)}"
+            )
+        view = union()
+        view.val = 0
+        setattr(view.f, field_name, (1 << fields[field_name]) - 1)
+        return int(view.val)
+
     def mask_all(self, name: str) -> int:
         """Union of EVERY field bit, reserved included -- the storage mask.
 
@@ -784,7 +799,7 @@ def _selftest() -> int:
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_001E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_003E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
@@ -796,6 +811,21 @@ def _selftest() -> int:
                 f"{block.block}.{name}: got {tuple(hex(v) for v in got)} "
                 f"want {(hex(addr), hex(reset))}"
             )
+
+    # Exercise the generic field-mask accessor across the complete reset map;
+    # this catches a shifted field as well as a broken single-field probe.
+    sw_reset_field_masks = {
+        "km_sw_rst_n": 0x01,
+        "otbn_sw_rst_n": 0x02,
+        "aes_sw_rst_n": 0x04,
+        "hmac_sw_rst_n": 0x08,
+        "kmac_sw_rst_n": 0x10,
+        "trng_sw_rst_n": 0x20,
+    }
+    for field, expected in sw_reset_field_masks.items():
+        got = SEP_RESET_CTRL.field_mask("SW_RESET_N", field)
+        if got != expected:
+            failures.append(f"SW_RESET_N.{field} mask {hex(got)} != {hex(expected)}")
 
     # An unknown register must raise, never silently return a wrong value.
     try:
@@ -855,7 +885,7 @@ def _selftest() -> int:
         for line in failures:
             print(f"FAIL {line}")
         return 1
-    total = len(checks) + len(_TYPE_ALIAS) + len(block_checks)
+    total = len(checks) + len(_TYPE_ALIAS) + len(block_checks) + len(sw_reset_field_masks)
     print(
         f"sep_reg_meta: {total} register(s) match the generated RDL header; "
         f"export={walk.export} inventory={walk.inventory} nometa={walk.nometa}"

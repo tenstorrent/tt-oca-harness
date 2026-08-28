@@ -17,7 +17,7 @@
 /* verilator lint_off UNUSED */
 logic [31:0] debug_component_id;
 logic [31:0] debug_ctrl;
-logic        debug_ctrl_reset;           // CTRL.RESET bit
+logic        debug_ctrl_reserved_0;      // Reserved bit 0, reads zero
 logic        debug_ctrl_autotune_enable; // CTRL.AUTOTUNE_ENABLE bit
 logic [9:0]  debug_ctrl_downsample_rate; // CTRL.DOWNSAMPLE_RATE field
 logic [31:0] debug_status;
@@ -64,7 +64,7 @@ logic [7:0]  debug_decorr_refmodel_bytes_11;
 assign debug_component_id = 32'h0;  // Not accessible in reg_out interface
 
 // Flatten CTRL register
-assign debug_ctrl[0]      = dut.reg_out.CTRL.RESET.value;
+assign debug_ctrl[0]      = 1'b0;
 assign debug_ctrl[3:1]    = 3'h0;
 assign debug_ctrl[4]      = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
 assign debug_ctrl[15:5]   = 11'h0;
@@ -72,7 +72,7 @@ assign debug_ctrl[25:16]  = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
 assign debug_ctrl[31:26]  = 6'h0;
 
 // CTRL register individual fields (for easier Verdi visualization)
-assign debug_ctrl_reset           = dut.reg_out.CTRL.RESET.value;
+assign debug_ctrl_reserved_0      = 1'b0;
 assign debug_ctrl_autotune_enable = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
 assign debug_ctrl_downsample_rate = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
 

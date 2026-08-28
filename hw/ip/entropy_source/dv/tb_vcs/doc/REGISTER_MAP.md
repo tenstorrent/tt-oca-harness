@@ -75,10 +75,8 @@
 | 0x064   | APT_PROPORTION_2BIT         | [9:0] LIMIT           | RW       | 600        | APT proportion threshold for 2-bit samples                              |
 | 0x068   | APT_PROPORTION_3BIT         | [9:0] LIMIT           | RW       | 600        | APT proportion threshold for 3-bit samples                              |
 | 0x06C   | APT_PROPORTION_4BIT         | [9:0] LIMIT           | RW       | 600        | APT proportion threshold for 4-bit samples                              |
-| 0x080   | MARKOV_TEST_COUNTS_0        | [15:0] COUNT_01       | RO       | 0x0000     | 0->1 transition count                                                   |
-| 0x080   | MARKOV_TEST_COUNTS_0        | [31:16] COUNT_10      | RO       | 0x0000     | 1->0 transition count                                                   |
-| 0x084   | MARKOV_TEST_COUNTS_1        | [15:0] COUNT_00       | RO       | 0x0000     | 0->0 transition count                                                   |
-| 0x084   | MARKOV_TEST_COUNTS_1        | [31:16] COUNT_11      | RO       | 0x0000     | 1->1 transition count                                                   |
+| 0x080   | MARKOV_TEST_COUNTS_0        | [15:0] COUNT_01       | RO       | 0x0000     | Highest per-lane alternation count                                      |
+| 0x080   | MARKOV_TEST_COUNTS_0        | [31:16] COUNT_10      | RO       | 0x0000     | Lowest per-lane alternation count                                       |
 | 0x088   | MARKOV_TEST_PROBABILITIES   | [7:0] PROB_01         | RO       | 0x00       | Calculated 0->1 probability                                             |
 | 0x088   | MARKOV_TEST_PROBABILITIES   | [15:8] PROB_10        | RO       | 0x00       | Calculated 1->0 probability                                             |
 | 0x088   | MARKOV_TEST_PROBABILITIES   | [23:16] PROB_00       | RO       | 0x00       | Calculated 0->0 probability                                             |

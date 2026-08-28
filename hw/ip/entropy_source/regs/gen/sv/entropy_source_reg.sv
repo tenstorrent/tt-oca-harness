@@ -247,7 +247,6 @@ module entropy_source_reg (
         logic APT_PROPORTION_4BIT;
         logic APT_PROPORTION_LO;
         logic MARKOV_TEST_COUNTS_0;
-        logic MARKOV_TEST_COUNTS_1;
         logic MARKOV_TEST_PROBABILITIES;
         logic RING_OSC_ENABLE;
         logic RING_OSC_TUNE;
@@ -343,7 +342,6 @@ module entropy_source_reg (
         decoded_reg_strb.APT_PROPORTION_4BIT = cpuif_req_masked & (cpuif_addr == 9'h6c);
         decoded_reg_strb.APT_PROPORTION_LO = cpuif_req_masked & (cpuif_addr == 9'h70);
         decoded_reg_strb.MARKOV_TEST_COUNTS_0 = cpuif_req_masked & (cpuif_addr == 9'h80) & !cpuif_req_is_wr;
-        decoded_reg_strb.MARKOV_TEST_COUNTS_1 = cpuif_req_masked & (cpuif_addr == 9'h84) & !cpuif_req_is_wr;
         decoded_reg_strb.MARKOV_TEST_PROBABILITIES = cpuif_req_masked & (cpuif_addr == 9'h88) & !cpuif_req_is_wr;
         decoded_reg_strb.RING_OSC_ENABLE = cpuif_req_masked & (cpuif_addr == 9'h90);
         decoded_reg_strb.RING_OSC_TUNE = cpuif_req_masked & (cpuif_addr == 9'h94);
@@ -428,10 +426,6 @@ module entropy_source_reg (
     //--------------------------------------------------------------------------
     typedef struct {
         struct {
-            struct {
-                logic next;
-                logic load_next;
-            } RESET;
             struct {
                 logic next;
                 logic load_next;
@@ -884,9 +878,6 @@ module entropy_source_reg (
         struct {
             struct {
                 logic value;
-            } RESET;
-            struct {
-                logic value;
             } MODULE_ENABLE;
             struct {
                 logic value;
@@ -1247,29 +1238,6 @@ module entropy_source_reg (
     } field_storage_t;
     field_storage_t field_storage;
 
-    // Field: entropy_source.CTRL.RESET
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CTRL.RESET.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CTRL.RESET.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end
-        field_combo.CTRL.RESET.next = next_c;
-        field_combo.CTRL.RESET.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CTRL.RESET.value <= 1'h0;
-        end else begin
-            if(field_combo.CTRL.RESET.load_next) begin
-                field_storage.CTRL.RESET.value <= field_combo.CTRL.RESET.next;
-            end
-        end
-    end
-    assign hwif_out.CTRL.RESET.value = field_storage.CTRL.RESET.value;
     // Field: entropy_source.CTRL.MODULE_ENABLE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -2533,9 +2501,6 @@ module entropy_source_reg (
         end else if(hwif_in.MAIN_SM_STATUS.ALERT.next) begin // stickybit
             next_c = '1;
             load_next_c = '1;
-        end else if(hwif_in.MAIN_SM_STATUS.ALERT.hwclr) begin // HW Clear
-            next_c = '0;
-            load_next_c = '1;
         end
         field_combo.MAIN_SM_STATUS.ALERT.next = next_c;
         field_combo.MAIN_SM_STATUS.ALERT.load_next = load_next_c;
@@ -2560,9 +2525,6 @@ module entropy_source_reg (
             load_next_c = '1;
         end else if(hwif_in.MAIN_SM_STATUS.ERR.next) begin // stickybit
             next_c = '1;
-            load_next_c = '1;
-        end else if(hwif_in.MAIN_SM_STATUS.ERR.hwclr) begin // HW Clear
-            next_c = '0;
             load_next_c = '1;
         end
         field_combo.MAIN_SM_STATUS.ERR.next = next_c;
@@ -3406,7 +3368,7 @@ module entropy_source_reg (
             readback_data_var[31:28] = 4'h0;
         end
         if(rd_mux_addr == 9'h4) begin
-            readback_data_var[0] = field_storage.CTRL.RESET.value;
+            readback_data_var[0] = 1'h0;
             readback_data_var[1] = field_storage.CTRL.MODULE_ENABLE.value;
             readback_data_var[4] = field_storage.CTRL.AUTOTUNE_ENABLE.value;
             readback_data_var[8] = field_storage.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
@@ -3512,10 +3474,6 @@ module entropy_source_reg (
         if(rd_mux_addr == 9'h80) begin
             readback_data_var[15:0] = hwif_in.MARKOV_TEST_COUNTS_0.COUNT_01.next;
             readback_data_var[31:16] = hwif_in.MARKOV_TEST_COUNTS_0.COUNT_10.next;
-        end
-        if(rd_mux_addr == 9'h84) begin
-            readback_data_var[15:0] = hwif_in.MARKOV_TEST_COUNTS_1.COUNT_00.next;
-            readback_data_var[31:16] = hwif_in.MARKOV_TEST_COUNTS_1.COUNT_11.next;
         end
         if(rd_mux_addr == 9'h88) begin
             readback_data_var[7:0] = hwif_in.MARKOV_TEST_PROBABILITIES.PROB_01.next;

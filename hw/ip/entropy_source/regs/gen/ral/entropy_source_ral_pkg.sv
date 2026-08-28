@@ -30,7 +30,7 @@
     // reg - entropy_source.CTRL
     class entropy_source__CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__CTRL)
-        rand uvm_reg_field RESET;
+        rand uvm_reg_field RSVD0;
         rand uvm_reg_field MODULE_ENABLE;
         rand uvm_reg_field AUTOTUNE_ENABLE;
         rand uvm_reg_field BYPASS_ENTROPY_COMPRESSOR;
@@ -42,8 +42,8 @@
         endfunction : new
 
         virtual function void build();
-            this.RESET = uvm_reg_field::type_id::create("RESET");
-            this.RESET.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.RSVD0 = uvm_reg_field::type_id::create("RSVD0");
+            this.RSVD0.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
             this.MODULE_ENABLE = uvm_reg_field::type_id::create("MODULE_ENABLE");
             this.MODULE_ENABLE.configure(this, 1, 1, "RW", 0, 'h1, 1, 1, 0);
             this.AUTOTUNE_ENABLE = uvm_reg_field::type_id::create("AUTOTUNE_ENABLE");
@@ -530,24 +530,6 @@
             this.COUNT_10.configure(this, 16, 16, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__MARKOV_TEST_COUNTS_0
-
-    // reg - entropy_source.MARKOV_TEST_COUNTS_1
-    class entropy_source__MARKOV_TEST_COUNTS_1 extends uvm_reg;
-        `uvm_object_utils(entropy_source__MARKOV_TEST_COUNTS_1)
-        rand uvm_reg_field COUNT_00;
-        rand uvm_reg_field COUNT_11;
-
-        function new(string name = "entropy_source__MARKOV_TEST_COUNTS_1");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.COUNT_00 = uvm_reg_field::type_id::create("COUNT_00");
-            this.COUNT_00.configure(this, 16, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.COUNT_11 = uvm_reg_field::type_id::create("COUNT_11");
-            this.COUNT_11.configure(this, 16, 16, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__MARKOV_TEST_COUNTS_1
 
     // reg - entropy_source.MARKOV_TEST_PROBABILITIES
     class entropy_source__MARKOV_TEST_PROBABILITIES extends uvm_reg;
@@ -1394,7 +1376,6 @@
         rand entropy_source__APT_PROPORTION_4BIT APT_PROPORTION_4BIT;
         rand entropy_source__APT_PROPORTION_LO APT_PROPORTION_LO;
         rand entropy_source__MARKOV_TEST_COUNTS_0 MARKOV_TEST_COUNTS_0;
-        rand entropy_source__MARKOV_TEST_COUNTS_1 MARKOV_TEST_COUNTS_1;
         rand entropy_source__MARKOV_TEST_PROBABILITIES MARKOV_TEST_PROBABILITIES;
         rand entropy_source__RING_OSC_ENABLE RING_OSC_ENABLE;
         rand entropy_source__RING_OSC_TUNE RING_OSC_TUNE;
@@ -1582,11 +1563,6 @@
 
             this.MARKOV_TEST_COUNTS_0.build();
             this.default_map.add_reg(this.MARKOV_TEST_COUNTS_0, 'h80);
-            this.MARKOV_TEST_COUNTS_1 = entropy_source__MARKOV_TEST_COUNTS_1::type_id::create("MARKOV_TEST_COUNTS_1");
-            this.MARKOV_TEST_COUNTS_1.configure(this);
-
-            this.MARKOV_TEST_COUNTS_1.build();
-            this.default_map.add_reg(this.MARKOV_TEST_COUNTS_1, 'h84);
             this.MARKOV_TEST_PROBABILITIES = entropy_source__MARKOV_TEST_PROBABILITIES::type_id::create("MARKOV_TEST_PROBABILITIES");
             this.MARKOV_TEST_PROBABILITIES.configure(this);
 

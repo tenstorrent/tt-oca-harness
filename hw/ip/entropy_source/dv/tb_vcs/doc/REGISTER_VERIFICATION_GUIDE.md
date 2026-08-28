@@ -128,7 +128,6 @@ Step 3: Verify reset completed
 | Register | Address | Default | Verification Notes |
 |----------|---------|---------|-------------------|
 | **MARKOV_TEST_COUNTS_0** | 0x80 | 0x00000000 | ⚠ Check after disabling tests |
-| **MARKOV_TEST_COUNTS_1** | 0x84 | 0x00000000 | ⚠ Check after disabling tests |
 | **MARKOV_TEST_PROBABILITIES** | 0x88 | 0x00000000 | ⚠ Check after disabling tests |
 
 #### Ring Oscillator Registers
@@ -188,7 +187,6 @@ Step 3: Verify health status defaults
    - Read APT_PATTERN_COUNT_3BIT (0x58)      → Expect 0x00000000
    - Read APT_PATTERN_COUNT_4BIT (0x5C)      → Expect 0x00000000
    - Read MARKOV_TEST_COUNTS_0 (0x80)        → Expect 0x00000000
-   - Read MARKOV_TEST_COUNTS_1 (0x84)        → Expect 0x00000000
    - Read MARKOV_TEST_PROBABILITIES (0x88)   → Expect 0x00000000
    - Read HEALTH_TEST_STATUS (0x40)          → Expect 0x00000000
    - Read GENERATOR_0..11_HEALTH_STATUS      → Expect 0x00000000 each

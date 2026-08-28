@@ -161,6 +161,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shared TRNG-reset recovery contract: populate the entropy pool, quiesce
+# AES/KMAC/OTBN/KM, reset ESRC+CSRNG+EDN, prove the pool scrubbed stale/partial
+# data while its AXI responder stayed live, verify external-source selection and
+# CSR passthrough remain outside reset, reinitialize the complete entropy chain,
+# observe fresh pool progress, then release consumers.
+name = "sep_trng_reset_recovery_test"
+module = "system.sep_trng_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "trng", "entropy", "isolation", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # Inbound-filter per-entry RULE matrix (the reference suite's
 # sep_inbound_filter_blockbydefault_test +
 # sep_inbound_filter_programming_ownership_test +
@@ -233,12 +248,13 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x1E, bad-address D-bus NMI x2, WDT
+# wdt_sanity_test): SW_RESET_N=0x3E plus the per-IP and shared TRNG reset-wire
+# clears, bad-address D-bus NMI x2, WDT
 # bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
 # JTAG-holds OTBN/AES/HMAC/KMAC across rst_ni release and fuse sense so they
-# never raise crypto edn_req, then releases them; the firmware then probes all
-# four per-IP reset wires.
+# never raise crypto edn_req, then releases them; the firmware then probes the
+# four per-IP reset wires and the shared TRNG reset across ESRC, CSRNG and EDN.
 name = "sep_reset_wdt_sanity_test"
 module = "cpu.sep_reset_wdt_sanity_test"
 firmware = "reset_wdt_sanity_test"
