@@ -19,7 +19,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
-  discussions: write
+  discussions: read
   copilot-requests: write
 
 network:
@@ -48,6 +48,7 @@ safe-outputs:
     close-older-discussions: true
     expires: false
     max: 1
+    github-token: ${{ secrets.GITHUB_TOKEN }}
 
 steps:
   - name: Setup Python environment
