@@ -127,8 +127,6 @@ STATUS_VALUES_PATH ?= $(BOOTCODE_DIR)/include/status_values.h
 # default Cadence build.
 BOOT_OT_BUILD_DIR := build_ot
 BOOT_ELF          := $(BOOTCODE_DIR)/$(BOOT_OT_BUILD_DIR)/boot_rom.elf
-# Signed SPI image for the OT-negative pytest suite (generated, not prebuilt).
-SECURE_BOOT_PRELOAD := $(BOOTCODE_DIR)/build/secure_boot.spi_preload
 # Pass-through args: `make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"`
 BOOT_ARGS     ?=
 FW_ARGS       ?=
@@ -286,7 +284,7 @@ DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 
 .PHONY: help scratch-build download deps deps-info vp vp-clean clean env enable_vp \
         systemc boost openssl cci submodule-init check-tt-oca-harness-model check-cxx smoke \
-        boot-build boot-secure-image boot-run fw-run vp-test vp-py-deps FORCE
+        boot-build boot-run fw-run vp-test vp-py-deps FORCE
 
 # =============================================================================
 # Help
@@ -312,7 +310,6 @@ help:
 	@echo ""
 	@echo "Firmware test harness (sepvp/ + tests/):"
 	@echo "  boot-build       - build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf)"
-	@echo "  boot-secure-image- generate the signed SPI image (-> build/secure_boot.spi_preload)"
 	@echo "  boot-run         - build + run boot_rom.elf on sep-vp (BOOT_ARGS=\"--boot primary ...\")"
 	@echo "  fw-run           - build + run a hw/sys/sep/dv/fw test (FW_TEST=<name>, FW_ARGS=...)"
 	@echo "  vp-test          - run the pytest harness suite (PYTEST_ARGS=...)"
@@ -683,7 +680,7 @@ vp-py-deps:
 
 # Build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf).
 # The named ot-toolchain-images target owns the BUILD_DIR/flag mapping; it does
-# NOT run pack-images (which needs uv + the tt-boot-manifest submodule — the
+# NOT run oca-images (which needs uv + the tt-boot-manifest submodule — the
 # ELF the VP boots does not).
 boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."
@@ -694,12 +691,6 @@ boot-build:
 # Generate the signed SPI image used by the OT-negative pytest suite.
 # Needs uv on PATH and the tt-boot-manifest submodule initialized
 # (git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest).
-boot-secure-image:
-	@echo "[VP] Generating the signed SPI image (secure_boot.spi_preload)..."
-	$(FW_ENV)
-	$(MAKE) -C $(BOOTCODE_DIR) secure_boot_spi
-	@echo "[VP] Built: $(SECURE_BOOT_PRELOAD)"
-
 # Build + run the boot ROM on sep-vp. Control via BOOT_ARGS, e.g.:
 #   make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"
 #   make boot-run BOOT_ARGS="--boot secondary --timeout 30"
