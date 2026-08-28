@@ -2248,3 +2248,78 @@ args = [
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml",
 ]
+
+[[tests]]
+# OCA encrypted payload: AES-256-CBC ciphertext with the key derived from the
+# CLASS_KEY eFuse bank through the OCA KDF. Signed as well as encrypted -- the
+# format forbids encryption without secure boot -- so this is the signed test
+# plus the decryption stretch, and it inherits that test's markers.
+#
+# The only DV test that drives the AES engine or runs the HMAC core as a KDF.
+# Both drivers had latent bugs found during the OCA integration (HMAC key_length
+# left unset and the key packed little-endian; AES KEY_LEN needing a one-hot
+# encoding) which until now were only ever validated against the VP model.
+#
+# Needs +sep_crypto_edn_force for the same reason the signed sibling does: the
+# RSA verify still runs, and OTBN parks in UrndRefresh without EDN entropy.
+name = "sep_rom_oca_encrypted_boot_test"
+module = "rom_fw.sep_rom_oca_encrypted_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "oca", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# OCA secure boot anchored on CHIPLET_PUBK_HASH0 rather than a ROM-resident key
+# digest. Same RSA-3072 verification as sep_rom_ot_secure_boot_test; what differs
+# is where the trust in the key comes from -- a sensed eFuse bank instead of a
+# memcmp against .rodata. The manifest selects the bank via
+# public_key_select_classic bit 16 (sep_efuse_map.rdl:727 carries the bit map,
+# shared with CHIPLET_PUBK_REVOKE).
+name = "sep_rom_oca_otp_key_boot_test"
+module = "rom_fw.sep_rom_oca_otp_key_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "oca", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The first manifest-negative ROM test here: a byte flipped in the signed region
+# of BOTH manifest slots, which the ROM must refuse rather than boot. Every other
+# ROM test asserts an acceptance; this one asserts a rejection, and a ROM that
+# validated nothing would pass all the others while failing this.
+#
+# No +sep_crypto_edn_force, deliberately. The manifest hash is checked before the
+# signature, so the tampered image is rejected before OTBN is ever driven -- the
+# shortcut would be dead weight, and its absence is a standing check that the
+# rejection really does happen before the RSA stage.
+#
+# Timeout is the signed sibling's even though less work happens: a refused boot
+# never asserts fw_done, so the poll runs its full cycle budget instead of
+# breaking out early.
+name = "sep_rom_oca_tamper_test"
+module = "rom_fw.sep_rom_oca_tamper_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "negative", "oca", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]

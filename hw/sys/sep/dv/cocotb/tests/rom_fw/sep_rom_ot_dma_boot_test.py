@@ -80,6 +80,11 @@ _PROGRESS_EVERY = 50_000
 _SPI_PATH_MARKER = "BOOT_SPI"
 _SMC_PATH_MARKER = "WAIT_SMC_MANIFEST"
 _MANIFEST_OK_MARKER = "MANIFEST_OK"
+# Printed after the payload hash chain and TOC entry hashes verified -- i.e. the
+# bytes about to be jumped to are the ones the manifest describes, not merely
+# bytes that arrived. Distinct from MANIFEST_OK, which says only that the
+# manifest itself was sound.
+_PAYLOAD_OK_MARKER = "PAYLOAD_OK"
 # Flash-relative manifest offset. This is the transport evidence that is NOT entailed
 # by BOOT_SPI: the SMC-SRAM branch prints an absolute 0x4006xxxx address, so only the
 # OT-SPI branch can print 0x00001000. See the note on forbidden_markers below.
@@ -102,7 +107,13 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # Console lines that must appear / must not appear. The subclass appends the
     # RSA markers; keeping them as class data is what lets the two variants share
     # one scenario without a copy.
-    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER)
+    # Cycle budget for poll_boot. Class data so a test whose boot ends earlier --
+    # a negative test that is refused before the payload is ever fetched -- can
+    # trim it. poll_boot breaks out on fw_done, so this is normally a backstop;
+    # it only becomes the runtime if the firmware neither passes nor reports.
+    max_run_cycles = _MAX_RUN_CYCLES
+    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER,
+                        _PAYLOAD_OK_MARKER)
     # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
     # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
     # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
@@ -207,7 +218,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
             await self.poll_boot(
                 self.sb,
-                max_run_cycles=_MAX_RUN_CYCLES,
+                max_run_cycles=self.max_run_cycles,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
             )

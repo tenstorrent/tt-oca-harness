@@ -218,6 +218,16 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_DECRYPTION_START);
 
+    // Release AES from software reset before driving it, exactly as
+    // rsa_verify.c calls otbn_init() before driving OTBN. Both blocks come out
+    // of hard reset held by SEP_RESET_CTRL.SW_RESET_N and stay there until the
+    // ROM clears their bit; an AES left in reset never asserts STATUS.IDLE, so
+    // the driver's first wait_idle() burns its full timeout and reports
+    // AES_DEC_FAIL with nothing to say about why.
+    if (aes_init() != 0) {
+        return OCA_FAIL_DECRYPT;
+    }
+
     uint8_t key[32];
     int rc = oca_derive_payload_key(secret, OCA_CLASS_KEY_BYTES, in->kdf_input,
                                     key_bits, key);

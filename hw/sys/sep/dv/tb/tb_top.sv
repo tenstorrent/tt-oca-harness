@@ -1487,9 +1487,30 @@ module sep_uvm_top
     // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants the crypto
     // blocks' EDN handshakes directly so they can leave their reseed states and
     // run; the real entropy_source -> CSRNG -> EDN path is bypassed and NOT
-    // exercised. Covers OTBN (RND/URND) and AES; AES is a separate EDN client
-    // and stalls in its masking-PRNG reseed without a client-0 grant.
-    localparam logic [31:0] AesEdnWord = 32'hA5A5_5A5A;
+    // exercised. Rationale, cost and the open DE question live with the tests
+    // that opt in (testlists/rom_fw.toml) and in
+    // .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+    //
+    // Covers two clients, for the same reason and with the same caveat:
+    //   [2]/[3] OTBN RND/URND -- OTBN parks in UrndRefresh until reseeded, so
+    //           the ROM's RSA verify never starts without this.
+    //   [0]     AES           -- the masking PRNG reseeds before the core will
+    //           report STATUS.IDLE, so aes_driver.c's first wait_idle() burns
+    //           its 1M-iteration timeout and the ROM reports AES_DEC_FAIL.
+    //           Established by sep_rom_oca_encrypted_boot_test, the first test
+    //           to drive AES from the boot ROM: releasing the AES software reset
+    //           (the separate aes_init() fix) moved the hang but did not clear
+    //           it; only granting this client's EDN request does.
+    //
+    // Note the AES KAT tests take the other route (+esrc_noise_force, which runs
+    // the real chain). That is not available here: it needs software to bring up
+    // entropy_source/CSRNG/EDN, and the boot ROM has no such code -- the same
+    // reason this shortcut exists for OTBN.
+    //
+    // KMAC ([1]) is deliberately NOT forced: nothing in the boot flow uses it,
+    // so forcing it would be an unexercised claim. The ROM's KDF runs on the
+    // separate HMAC core, which needs no EDN -- that path completes in
+    // simulation with this shortcut absent.
     logic edn_force_on;
     logic otbn_rnd_ack_q, otbn_urnd_ack_q, aes_ack_q;
     initial begin
@@ -1508,6 +1529,7 @@ module sep_uvm_top
 `define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
 `define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
 `define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
+// Index 0 = AES masking-PRNG client (sep_crypto.sv, aes_wrapper .edn_req_o).
 `define AES_RSP       `SEP_CORE.sep_crypto.crypto_edn_rsp[0]
 `define AES_REQ       `SEP_CORE.sep_crypto.crypto_edn_req[0]
     // ack pulses for one cycle per request rather than sitting high, so a
@@ -1525,7 +1547,7 @@ module sep_uvm_top
             force `OTBN_URND_RSP.edn_bus  = $urandom();
             force `AES_RSP.edn_ack        = aes_ack_q;
             force `AES_RSP.edn_fips       = 1'b1;
-            force `AES_RSP.edn_bus        = AesEdnWord;
+            force `AES_RSP.edn_bus        = $urandom();
         end
     end
 `undef AES_RSP
@@ -1534,6 +1556,8 @@ module sep_uvm_top
 `undef OTBN_URND_RSP
 `undef OTBN_RND_REQ
 `undef OTBN_URND_REQ
+`undef AES_RSP
+`undef AES_REQ
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
