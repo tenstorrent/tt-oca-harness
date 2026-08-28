@@ -87,6 +87,11 @@ _PROGRESS_EVERY = 50_000
 _SPI_PATH_MARKER = "BOOT_SPI"
 _SMC_PATH_MARKER = "WAIT_SMC_MANIFEST"
 _MANIFEST_OK_MARKER = "MANIFEST_OK"
+# Printed after the payload hash chain and TOC entry hashes verified -- i.e. the
+# bytes about to be jumped to are the ones the manifest describes, not merely
+# bytes that arrived. Distinct from MANIFEST_OK, which says only that the
+# manifest itself was sound.
+_PAYLOAD_OK_MARKER = "PAYLOAD_OK"
 # Flash-relative manifest offset. This is the transport evidence that is NOT entailed
 # by BOOT_SPI: the SMC-SRAM branch prints an absolute 0x4006xxxx address, so only the
 # OT-SPI branch can print 0x00001000. See the note on forbidden_markers below.
@@ -107,10 +112,16 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # that supplies the ROM responder image, and a mismatched pair would run one
     # variant's .text against another's .rodata.
     rom_build_dir = _FW_DIR
+    # Cycle budget for poll_boot. Class data so a test whose boot ends earlier --
+    # a negative test that is refused before the payload is ever fetched -- can
+    # trim it. poll_boot breaks out on fw_done, so this is normally a backstop;
+    # it only becomes the runtime if the firmware neither passes nor reports.
+    max_run_cycles = _MAX_RUN_CYCLES
     # Console lines that must appear / must not appear. The subclass appends the
     # RSA markers; keeping them as class data is what lets the two variants share
     # one scenario without a copy.
-    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER)
+    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER,
+                        _PAYLOAD_OK_MARKER)
     # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
     # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
     # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
@@ -123,18 +134,29 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
 
+    def make_efuse_image(self) -> SepEfuseImage:
+        """Build the OTP image this boot senses.
+
+        Overridable so a subclass can provision the banks its image needs -- a
+        CLASS_KEY for an encrypted payload, a CHIPLET_PUBK_HASH0 for an
+        OTP-anchored root key -- without restating the whole scenario. The
+        default is the minimum a manifest boot needs: a lifecycle the ROM will
+        accept, everything else left erased.
+        """
+        # rom_lifecycle_policy validates the eFuse LC_STATE, so real fuse sense
+        # runs (no +skip_fuse_sense). TEST_DEV is in the manifest's allowed
+        # life_cycle_states (0x7).
+        efuse_img = SepEfuseImage()
+        efuse_img.set_lc_state(LC_TEST_DEV)
+        return efuse_img
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
         # BL1 (bl1_pass_test) prints on the SCRATCH2 virt console, not the mailbox
         # byte console the scoreboard's banner check reads -- same as the SMC-SRAM
         # sibling, so disable the banner check and gate on fw_done && fw_pass.
         self.sb.expected_line = ""
-        # rom_lifecycle_policy validates the eFuse LC_STATE, so real fuse sense
-        # runs (no +skip_fuse_sense). TEST_DEV is in the manifest's allowed
-        # life_cycle_states (0x7).
-        efuse_img = SepEfuseImage()
-        efuse_img.set_lc_state(LC_TEST_DEV)
-        self.write_efuse_image(efuse_img)
+        self.write_efuse_image(self.make_efuse_image())
 
         console: list[str] = []
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
@@ -156,7 +178,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
                 os.path.join(self.rom_build_dir, "boot_rom.itcm.hex"),
                 os.path.join(self.rom_build_dir, "boot_rom.dtcm.hex"),
                 rst_vec=_ROM_BASE >> 1,
-                max_run_cycles=_MAX_RUN_CYCLES,
+                max_run_cycles=self.max_run_cycles,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
             )

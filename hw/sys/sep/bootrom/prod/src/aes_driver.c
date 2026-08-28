@@ -51,6 +51,16 @@ static int wait_idle(void) {
         s.w = mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
         if (s.f.IDLE) return 0;
     }
+    // Report the register rather than just the timeout. The two ways this fails
+    // look identical from the outside but have opposite fixes: STATUS == 0 means
+    // nothing is answering (block still in reset, or its AXI port isolated),
+    // while a non-zero STATUS with IDLE clear means the core is alive and stuck
+    // busy -- which is what an AES waiting on an EDN reseed that never arrives
+    // looks like. Both were hit bringing this path up in simulation, and without
+    // this value they are a full debug cycle apart.
+    simputs("AES_IDLE_TIMEOUT=");
+    simputhex32(mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR));
+    simputs("\n");
     return -1;
 }
 
