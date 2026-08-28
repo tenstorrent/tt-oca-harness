@@ -3469,6 +3469,7 @@ both lock flavours of one seed-selected spare.
 
 [arabic]
 . Take the register inventory and the exclusion reasons from `sep_reg_bit_bash_seq`: `write_reason() is None` for the no-side-effect blocks, plus `touch_reason() is None` restricted to `TOUCH_BLOCKS` for plain RW storage inside the other major IPs. A second list would let two sweeps disagree about which registers are safe to write.
+. Drop the blocks where the access itself would decide the result. `WDT_TIMER` is the one today: aon_timer runs on a clock 1000 times slower than the system clock, so the AXI timeout spans about ten of its edges and whether a round trip fits depends on the phase the access arrives on. A probe there measures CDC latency against the timeout rather than channel delivery. `sep_reg_bit_bash_rand_test` covers that block's storage.
 . Prime the register with the complement under its write mask at default timing, and read it back, so a write that never lands reads as the prime rather than looking plausible.
 . Apply the cell's timing profile through the VIP master (`ocah_axi_timing.AxiTimingProfile`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
 . Read a second register in the same block, write it back with one software-usable bit flipped at default timing, read it again, then re-read the swept register. Deriving the value from the current contents keeps a write that never arrived from reading back correct.

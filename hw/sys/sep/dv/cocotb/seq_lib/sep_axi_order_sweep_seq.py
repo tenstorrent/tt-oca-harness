@@ -64,6 +64,20 @@ SIZE_4B = 2
 # behaviour.
 SIZE_CROSS_BLOCKS = ("SEP_SCRATCH_COLD", "SEP_SCRATCH_WARM")
 
+# Blocks kept out of the sweep for a reason that is about the access, not
+# about the register. Each entry states what a probe there would measure
+# instead of the ordering contract.
+BLOCK_EXCLUDE: dict[str, str] = {
+    # aon_timer runs on clk_wdt at 5000ns against a 5ns system clock, so one
+    # register access crosses into a domain 1000x slower and the AXI timeout
+    # of 50000ns spans about ten of its clock edges. Whether a round trip
+    # fits depends on the phase the access arrives on, so a probe here
+    # measures CDC latency against the timeout, not whether AW and W were
+    # delivered. sep_reg_bit_bash_rand_test covers the block's storage with a
+    # single touch.
+    "WDT_TIMER": "slow always-on clock domain; the access outruns the AXI timeout",
+}
+
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
 # scales the separation; the ordering itself is fixed, so every seed covers
 # all three on every register.
@@ -114,11 +128,18 @@ def sweep_candidates() -> tuple[list[RegInfo], dict[str, int]]:
       storage inside the other major IPs. Restricted deliberately: a block
       outside that list may be held in reset or need an init sequence, and a
       readback mismatch there would report bring-up state as an ordering bug.
+
+    ``BLOCK_EXCLUDE`` then removes blocks where the access itself, rather than
+    the register, would decide the result.
     """
     skipped: dict[str, int] = defaultdict(int)
     out: list[RegInfo] = []
     seen: set[tuple[str, str]] = set()
     for info in iter_register_walk().regs:
+        block_why = BLOCK_EXCLUDE.get(info.block)
+        if block_why is not None:
+            skipped[block_why] += 1
+            continue
         why_w = write_reason(info)
         if why_w is None:
             out.append(info)
