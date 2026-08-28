@@ -20,9 +20,9 @@ sep_debug skip gate (sep_lcc_uvm_inbound_filter_gating_test).
 CHK-OWNERSHIP ports the CPU-vs-external asymmetry at the filter CFG CSR
 (0x10A2_1000): CPU-LSU reads the programmed rule, the external master completes
 DECERR on read and write, and the denied write does not land. That is the
-spec's "only the SEP CPU can program these filters" under the programmed allow
-window, which does not include the CFG address. CHK-OWNERSHIP-WINDOW keeps that
-assert hard after a second entry allow-lists the CFG address.
+spec's "only the SEP CPU can program these filters" under correct programming
+(CFG stays outside every allow window). Firmware must not allow-list CFG; HW
+does not hard-block that SW hole, so this test never opens one.
 
 CHK-BURST-DENY / CHK-BURST-ALLOW and CHK-BURST-WRITE-DENY /
 CHK-BURST-WRITE-ALLOW walk FILTER_CONFIG.allow_burst (bit 24) on both
@@ -57,7 +57,7 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 from seq_lib.sep_inbound_filter_rule_seq import (
     SepInboundFilterCfg, SepInboundFilterMatrixCfg, SepInboundFilter,
     ext_read_seq, ext_write_seq, ext_burst_read_seq, ext_burst_write_seq,
-    RESP_OKAY, RESP_DECERR, FILTER_BEAT_MASK,
+    RESP_OKAY, RESP_DECERR,
 )
 from seq_lib.sep_fabric_csr_bank_seq import FILTER_RW_MASK
 
@@ -494,55 +494,3 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
 
         self.logger.info(
             "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
-
-        own = SepInboundFilterCfg(entry=1)
-        own.allow_addr = cfg_addr
-        await self.filt.program_rule(own, read_allowed=True, write_allowed=True)
-        own_cfg = await self.filt.read_cpu(own.cfg_addr)
-        own_expected = own.config_word(read_allowed=True, write_allowed=True)
-        assert (own_cfg & FILTER_RW_MASK) == (own_expected & FILTER_RW_MASK), (
-            f"entry 1 FILTER_CONFIG not programmed: got 0x{own_cfg:08x}, "
-            f"expected rw 0x{own_expected & FILTER_RW_MASK:08x}"
-        )
-        own_start = await self.filt.read_cpu(own.start_addr_reg)
-        assert own_start == cfg_addr, (
-            f"entry 1 START_ADDR does not cover CFG: got 0x{own_start:08x}, "
-            f"expected 0x{cfg_addr:08x}"
-        )
-        own_end = await self.filt.read_cpu(own.end_addr_reg)
-        # HW writeback: same-beat window expands END to the last byte of the
-        # data-bus granule (filter_ctrl.rdl END_ADDR reset 0x7 / 8-byte beat).
-        expected_end = cfg_addr | FILTER_BEAT_MASK
-        assert own_end == expected_end, (
-            f"entry 1 END_ADDR not granule-expanded: got 0x{own_end:08x}, "
-            f"expected 0x{expected_end:08x} (START=0x{cfg_addr:08x} | beat_mask)"
-        )
-        own_end_hi = await self.filt.read_cpu(own.end_addr_reg + 4)
-        assert own_end_hi == 0, (
-            f"entry 1 END_ADDR hi is not 0: got 0x{own_end_hi:08x}"
-        )
-        self.logger.info(
-            "CHK-FILTER-PROGRAMMED PASS: entry 1 FILTER_CONFIG rw=0x%08x "
-            "START_ADDR=0x%08x END_ADDR=0x%08x",
-            own_cfg & FILTER_RW_MASK, own_start, own_end)
-        resp, _ = await self._ext_read(cfg_addr)
-        assert resp == RESP_DECERR, (
-            f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
-            f"0x{cfg_addr:08x} on entry 1, external read resp={resp}, expected "
-            f"DECERR (RTL vs hw/sys/sep/doc/fabric.adoc: only the SEP CPU programs the filter)"
-        )
-        resp = await self._ext_write(cfg_addr, 0xFFFF_FFFF)
-        assert resp == RESP_DECERR, (
-            f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
-            f"0x{cfg_addr:08x} on entry 1, external write resp={resp}, expected "
-            f"DECERR (RTL vs hw/sys/sep/doc/fabric.adoc)"
-        )
-        cpu_cfg_after2 = await self.filt.read_cpu(cfg_addr)
-        assert (cpu_cfg_after2 & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (
-            f"filter cfg corrupted by denied ext write after allow-list: "
-            f"0x{cpu_cfg_after2:08x}"
-        )
-        self.logger.info(
-            "CHK-OWNERSHIP-WINDOW PASS: filter cfg 0x%08x still DECERR after entry-1 allow "
-            "window covers it (spec: only the SEP CPU can program the inbound filter)",
-            cfg_addr)

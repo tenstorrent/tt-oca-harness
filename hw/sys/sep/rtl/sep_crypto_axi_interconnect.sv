@@ -9,6 +9,7 @@
 module sep_crypto_axi_interconnect (
     input  logic clk_i,
     input  logic rst_ni,
+    input  logic sep_reset_ni,
     input  logic test_en_i,
 
     // Full AXI4 slave from local crossbar
@@ -955,7 +956,30 @@ module sep_crypto_axi_interconnect (
     assign lifecycle_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiLifecycle];
     assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiLifecycle] = lifecycle_axi_resp_i;
 
+`ifdef SEP_ABR_EN
+    // Break the B-channel combinational loop between the sep_crypto demux's
+    // round-robin B arbiter and the VeeR axi4_to_ahb bridge inside the ABR wrapper.
+    axi_cut #(
+        .Bypass     (1'b1),   // AW/W/AR/R: combinational passthrough
+        .BypassB    (1'b0),   // B: registered - this is what cuts the loop
+        .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+        .w_chan_t   (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+        .b_chan_t   (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+        .ar_chan_t  (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+        .r_chan_t   (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
+    ) u_abr_b_cut (
+        .clk_i,
+        .rst_ni     (sep_reset_ni),
+        .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr]),
+        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+        .mst_req_o  (abr_axi_req_o),
+        .mst_resp_i (abr_axi_resp_i)
+    );
+`else
     assign abr_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr];
     assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr] = abr_axi_resp_i;
+`endif
 
 endmodule

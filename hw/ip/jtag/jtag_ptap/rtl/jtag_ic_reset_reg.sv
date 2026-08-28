@@ -50,6 +50,9 @@ module jtag_ic_reset_reg
     output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ovrd_o,    // 1 ⇒ JTAG overriding this port (== !reset_enable)
     output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_o   // Active-low reset value (== reset_control TDR field)
 );
+    // Tie off unused field to satisfy lint
+    logic unused_tap_ctrl;
+    assign unused_tap_ctrl = ^{tap_ctrl_i.tms, tap_ctrl_i.tck};
 
     //--------------------------------------------------------------------------
     // Local Parameters

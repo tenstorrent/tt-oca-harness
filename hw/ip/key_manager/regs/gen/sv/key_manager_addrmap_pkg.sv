@@ -387,4 +387,4 @@ localparam longint unsigned KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STA
 localparam longint unsigned KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR = 64'h1C428;
 
 
-endpackage;
+endpackage

@@ -122,12 +122,16 @@ module smc_uvm_top
     output logic tb_sync_irq /*verilator public_flat_rw*/,
     output logic tb_gpio_irq_any /*verilator public_flat_rw*/,
     // AXI hang-detector irqs (smc_base combinational OR + per-master).
-    // smc.sv leaves axi_hang_irq_o open; lift here so cocotb can observe
-    // irq_test / independence without Force.
+    // Lifted so cocotb can observe irq_test / independence without Force.
     output logic tb_axi_hang_irq /*verilator public_flat_rw*/,
     output logic tb_axi_hang_irq_sys /*verilator public_flat_rw*/,
     output logic tb_axi_hang_irq_sep /*verilator public_flat_rw*/,
     output logic tb_axi_hang_irq_data /*verilator public_flat_rw*/,
+    // Hang IRQ on its way to the PLIC: the peripheral_interrupts[31] slot in
+    // smc_peripherals, and the cpu_interrupts bit that is the PLIC source pin
+    // on u_smc_cpu_wrapper.interrupts_i. PLIC source ID is that bit index + 1.
+    output logic tb_axi_hang_irq_periph31 /*verilator public_flat_rw*/,
+    output logic tb_axi_hang_irq_plic_src /*verilator public_flat_rw*/,
     // Boot-stall product pins: pad vs JTAG override mux, sticky processed out.
     output logic tb_boot_stall_combined_o /*verilator public_flat_rw*/,
     input  wire logic tb_boot_stall_jtag_ovrd_i /*verilator public_flat_rw*/,
@@ -1358,6 +1362,9 @@ module smc_uvm_top
     assign tb_axi_hang_irq_sys  = u_dut.u_smc.u_smc_base.hang_irq_sys_axi;
     assign tb_axi_hang_irq_sep  = u_dut.u_smc.u_smc_base.hang_irq_sep_axi;
     assign tb_axi_hang_irq_data = u_dut.u_smc.u_smc_base.hang_irq_data_accel;
+    assign tb_axi_hang_irq_periph31 = u_dut.u_smc.peripheral_interrupts[31];
+    assign tb_axi_hang_irq_plic_src =
+        u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 31];
     assign tb_gpio_pad57      = u_dut.u_smc.pad2core_i[BOOT_STALL_PAD];
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
@@ -1404,7 +1411,6 @@ module smc_uvm_top
 
     // TB-GLUE only (deferred test): pulse tb_dfd_fault_inject to latch a
     // deterministic token. This is NOT smc_dfd_wrap / hw/ip/dfd coverage.
-    // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
     always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin

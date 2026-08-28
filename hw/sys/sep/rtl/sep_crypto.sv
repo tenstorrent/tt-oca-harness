@@ -286,6 +286,7 @@ module sep_crypto #(
     sep_crypto_axi_interconnect u_sep_crypto_axi_interconnect (
         .clk_i,
         .rst_ni,
+        .sep_reset_ni,
         .test_en_i,
         .sep_crypto_axi_req_i,
         .sep_crypto_axi_resp_o,
@@ -469,7 +470,7 @@ module sep_crypto #(
     ) u_sep_crypto_abr_wrapper_s3c_scan (
         .clk_i,
         .rst_ni                (sep_reset_ni),
-        // Control/status path: ABR AXI aperture off the crypto AXI interconnect
+        // Control/status path: ABR AXI aperture off the crypto interconnect
         .abr_axi_req_i         (abr_axi_req),
         .abr_axi_resp_o        (abr_axi_resp),
         // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
@@ -960,7 +961,7 @@ module sep_crypto #(
         .SRAM_SIZE_BYTES      (32768),
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-        .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)
+        .OTP_EFUSE_REMAP_BASE (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
     ) u_key_manager_s3c_scan (
         .clk_i              (clk_i),
         // Cold reset: SEP system cold reset (AASD) resets the entire KM.

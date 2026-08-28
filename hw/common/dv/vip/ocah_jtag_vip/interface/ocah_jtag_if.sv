@@ -25,18 +25,18 @@ interface ocah_jtag_if;
     logic tdo_oen;
 
 `ifdef OCAH_JTAG_VENDOR_IF
-    // Commercial-VIP nesting hook (see README "Template Contract"). A
-    // vendor VIP brings its own SV interface; nest it HERE, wired from this
-    // interface's boundary signals, so DUT tb_tops never instantiate vendor
-    // collateral directly. The integration then publishes the nested
-    // instance once, e.g.:
+    // Commercial-VIP nesting hook (see README "Template Contract"). An
+    // adopter overlay (run_dv --overlay) supplies `ocah_jtag_vendor_if.svh`
+    // on an overlay incdir together with the OCAH_JTAG_VENDOR_IF define; the
+    // OSS tree ships no copy of that file. It nests the vendor VIP's own SV
+    // interface HERE, wired from this interface's boundary signals, so DUT
+    // tb_tops never instantiate vendor collateral directly, e.g.:
     //   <vendor>_jtag_if u_vendor_if (...);
     //   assign u_vendor_if.tck = tck;   // + tms/trst_n/tdi/tdo wiring
     //   ...
     //   uvm_config_db#(virtual <vendor>_jtag_if)::set(
     //       null, "*", "vendor_jtag_vif", u_vendor_if);
-    // Guarded by OCAH_JTAG_VENDOR_IF because the vendor interface only
-    // exists when the commercial VIP is compiled into the build.
+    `include "ocah_jtag_vendor_if.svh"
 `endif
 
 endinterface : ocah_jtag_if

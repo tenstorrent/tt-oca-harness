@@ -325,10 +325,16 @@ locked_field_access_interrupt`, sourced from the eFuse controller path.
 
 |`287`
 |`63`
-|Reserved
-|Unused peripheral interrupt slot; tied to zero
-|`peripheral_interrupts_o` is initialized to `'0`, and bit 31 is never
-overwritten in `smc_peripherals.sv`.
+|AXI hang detector OR
+|OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
+while any detector's `irq_o` is high, so software must read
+`SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL` to identify the
+stalled master, and clears the condition through those same registers. The
+CPU AXI master is not covered here; it is covered by the watchdog.
+|`smc_base.sv` OR-reduces `hang_irq_sys_axi \| hang_irq_sep_axi \|
+hang_irq_data_accel` onto `axi_hang_irq_o`; `smc.sv` routes that back into
+`u_smc_peripherals`, and `smc_peripherals.sv` drives
+`peripheral_interrupts_o[31] = axi_hang_irq_i`.
 
 |`[319:288]`
 |`[95:64]`
@@ -379,7 +385,10 @@ tail bits in `smc_base.sv`.
 ===== Trace Notes
 
 * Peripheral interrupt construction is defined in
-  `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`.
+  `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. Bit 31 is the one
+  peripheral source that originates outside that module: the AXI hang detectors
+  live in `hw/sys/smc/rtl/smc_base.sv` and their OR is routed back in through
+  `smc.sv` so the whole peripheral vector still has a single assembly point.
 * Mailbox interrupt construction is defined in `hw/ip/mailbox/rtl/mailbox.sv`
   and is routed into `cpu_interrupts_o` by `hw/sys/smc/rtl/smc_base.sv`.
 * Internal interrupt construction is defined by `hw/sys/smc/rtl/smc_base.sv`,
@@ -394,7 +403,7 @@ tail bits in `smc_base.sv`.
 
 The SMC uses a standards-compliant RISC-V Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
-interrupt sources (326 active, 6 reserved) with multi-core delivery in
+interrupt sources (327 active, 5 reserved) with multi-core delivery in
 the 4-core configuration. The PLIC provides hardware prioritization,
 per-core routing, and configurable thresholds for efficient, parallel
 interrupt handling. The SMC-driven contribution to global interrupt

@@ -140,7 +140,6 @@ module jtag_ptap
     output sep_otp_axil_req_t       axil_sep_otp_jtag_req_o,
     input  sep_otp_axil_resp_t      axil_sep_otp_jtag_resp_i
 );
-
     //--------------------------------------------------------------------------
     // Internal Signals
     //--------------------------------------------------------------------------

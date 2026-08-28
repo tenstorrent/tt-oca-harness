@@ -154,7 +154,7 @@ module entropy_fifo #(
     // Output
     ///////////
 
-    assign parity_error_o   = parity_error_detected;
+    assign parity_error_o   = parity_error_detected & ~empty_prim; // Ensure prim FIFO is not empty before outputting parity check. Don't want to check parity on power-up garbage
     assign pointer_error_o  = counter_err;
     assign rdata_o          = read_data & {32{~empty_prim}};
     assign wptr_o           = wptr_prim;

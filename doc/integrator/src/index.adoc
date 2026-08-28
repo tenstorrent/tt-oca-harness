@@ -172,17 +172,17 @@ The SMC fabric uses three registers in the CPU Control block
 (`0xC001_0000`) to distinguish local from remote addresses:
 
 * `LOCAL_BASE` (read-only, fixed at `0xC000_0000`): The local alias
-  base. Together with the fixed 16 MiB `LOCAL_ALIAS_REGION_SIZE`, this
-  is the address space the SMC CPU and internal fabric use to access SMC
-  resources.
+  base. Together with `REGION_SIZE`, this is the address space the SMC
+  CPU and internal fabric use to access SMC resources.
 * `GLOBAL_BASE` (read-write, defaults to `0x4000_0000`): The
   system-level base address. Firmware must program this during early boot
   to match the adopter's system address assignment, enabling the SMC to
   issue outbound transactions using global system addresses.
-* `REGION_SIZE` (read-write, currently resets to `0x0100_0000` /
-  16 MiB): The size of the SMC global aperture used by SMU-level routing
-  and SEP-to-SMC decode. The SMC input fabric's local/global split uses
-  the fixed `LOCAL_ALIAS_REGION_SIZE` parameter in RTL.
+* `REGION_SIZE` (read-write, resets to `0x0100_0000` / 16 MiB): The size
+  of both the local alias window and the global aperture. It sizes the
+  SMC input fabric's local/global split as well as SMU-level routing and
+  SEP-to-SMC decode. Firmware must not program it to zero, and must keep
+  `LOCAL_BASE + REGION_SIZE` inside the 32-bit SMC-local address space.
 
 For full details on alias remapping and outbound routing, see the SMC
 Fabric documentation (`hw/sys/smc/doc/fabric.adoc`).

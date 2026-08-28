@@ -3,8 +3,6 @@
 """smu_dtp_jtag_smoke_test — SMU_ALL_005 PTAP IDCODE/BYPASS/TRST (SEP=0).
 
 DV-CARD:          SMU_ALL_005   ANCHOR: smu_dtp_jtag_smoke_test
-DV-CARD-REVISION: 9   RECORD-SHA256: d1b60225e167bf1eae0232095647a37e7077704f340f2a4b37ad864fbc56f57d
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 9   ENV: cocotb
 
 Card OWNS DTP-JTAG-PTAP.S1/S2/S3 ONLY (IDCODE/BYPASS/TRST).
 JTAG2AXI / OTP / STAP are out of scope (re-homed to SMU_ALL_008).

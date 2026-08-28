@@ -99,11 +99,13 @@ interface ocah_axi_if #(
     modport mon (clocking mon_cb, input aclk, aresetn);
 
 `ifdef OCAH_AXI_VENDOR_IF
-    // Commercial-VIP nesting hook (mirrors ocah_jtag_if). A vendor VIP brings
-    // its own SV interface; nest it HERE, wired from this interface's
-    // boundary signals, so DUT tb_tops never instantiate vendor collateral
-    // directly. Guarded because the vendor interface only exists when the
-    // commercial VIP is compiled into the build.
+    // Commercial-VIP nesting hook (mirrors ocah_jtag_if). An adopter overlay
+    // (run_dv --overlay) supplies `ocah_axi_vendor_if.svh` on an overlay
+    // incdir together with the OCAH_AXI_VENDOR_IF define; the OSS tree ships
+    // no copy of that file. It nests the vendor VIP's own SV interface HERE,
+    // wired from this interface's boundary signals, so DUT tb_tops never
+    // instantiate vendor collateral directly.
+    `include "ocah_axi_vendor_if.svh"
 `endif
 
 endinterface : ocah_axi_if
