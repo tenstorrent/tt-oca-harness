@@ -356,15 +356,19 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# AXI channel-timing superset: three legal AW/W orderings x three transfer
-# sizes, all nine cells on every seed. A slave that latches its pending-write
-# flag on AW accept answers OKAY while dropping the data, so the cell compares
-# the readback, not the response.
-name = "sep_axi_superset_test"
-module = "system.sep_axi_superset_test"
+# AXI channel ordering, swept over the whole write-safe register inventory:
+# the three legal AW/W orderings at every register, crossed with the three
+# transfer sizes on the scratch words. Each block terminates AXI at its own
+# register adapter, so the ordering contract has to hold at each of them. An
+# adapter that latches its pending-write flag on AW accept answers OKAY while
+# dropping the data, so the cell compares the readback, not the response, and
+# a follow-on write to a second register in the block catches a stale flag
+# committing the next write to the wrong target.
+name = "sep_axi_order_sweep_test"
+module = "system.sep_axi_order_sweep_test"
 seed = 1
 reseed = 3
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["fabric", "axi", "protocol", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

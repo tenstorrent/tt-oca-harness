@@ -338,6 +338,18 @@ feature has no legal knob space (a strap, a single named handshake).
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, `axi_alias_remap`).
+|`sep_axi_order_sweep_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|AW and W are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal and each must deliver the write. Each block terminates AXI at its own register adapter, so the sweep drives all three orderings at every register the generated export establishes as write-safe storage, crossed with 1/2/4-byte sizes on the scratch words.
+|`sep_axi_strobe_window_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Narrow-write lane masking against the AXI strobe rule (IHI 0022 A3.4.3), plus write/readback of the OTBN and KMAC memory windows. A window behind an SRAM-style adapter applies the mask on reads, unlike a register behind a register adapter, so a bridge driving that mask from the write strobe returns zeros with a correct response — only a data compare sees it.
+|`sep_axi_map_refuse_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Inter-block reserved space: rows marked `_RSV_` in `hw/sys/sep/doc/memory_map.adoc` allocate nothing, so an access there must not answer OKAY. The expectation comes from the map; the crossbar decode table is parsed only as a cross-check and reported, never folded in — asking the decoder what the decoder should do would pass on any decoder. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
 |===
 
 ===== Mailbox, IRQ, PIC
@@ -633,6 +645,18 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |CSR reset / RW / RO / reserved
 |PROVEN
 |`sep_reg_bit_bash_rand_test`
+
+|AXI AW/W channel ordering
+|PROVEN
+|`sep_axi_order_sweep_test` (all three orderings at every write-safe register, crossed with transfer size)
+
+|AXI narrow-write strobe and memory windows
+|PROVEN
+|`sep_axi_strobe_window_test`
+
+|Reserved inter-block address space
+|PROVEN
+|`sep_axi_map_refuse_test`
 
 |Dead-space decode
 |PARTIAL
@@ -3422,6 +3446,120 @@ both lock flavours of one seed-selected spare.
 |One export RW storage register per other major IP (`TOUCH_BLOCKS`): write seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. Candidates exclude W1C/status/enable/key/GO. The register is seed-selected only where the block offers more than one candidate (DMA 14, SPI 4, WDT 4); AES, HMAC, KMAC, OTBN and both mailboxes have exactly one, so those picks are fixed. Four of the fixed picks are `INTR_ENABLE`, the generated interrupt shim -- block decode and storage evidence, not evidence about the engine.
 |CHK-RANDCFG
 |The whole seed-built configuration ran in one invocation: the reset, write and TOUCH_BLOCKS walks each covered every register the cfg named. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
+|===
+
+'''''
+
+[[sep_axi_order_sweep_test]]
+===== `sep_axi_order_sweep_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Testlist*: `system.toml`
+
+*Randomization*: RANDCFG — every (register x ordering) cell runs on every seed, and every (ordering x size) cell with it. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs.
+
+*Objective*: AXI write address and write data are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal stimulus and each must leave the written value in the addressed register. Every block behind the crossbar terminates AXI at its own register adapter, so the contract has to hold at each adapter rather than at one scratch word. The sweep drives all three orderings at every register the generated export establishes as write-safe storage, and crosses ordering with the 1/2/4-byte sizes on the scratch words, where a narrow write has no side effect and the surviving lanes are exactly the AXI lane rule.
+
+*Test Procedure*:
+
+[arabic]
+. Take the register inventory and the exclusion reasons from `sep_reg_bit_bash_seq`: `write_reason() is None` for the no-side-effect blocks, plus `touch_reason() is None` restricted to `TOUCH_BLOCKS` for plain RW storage inside the other major IPs. A second list would let two sweeps disagree about which registers are safe to write.
+. Prime the register with the complement under its write mask at default timing, and read it back, so a write that never lands reads as the prime rather than looking plausible.
+. Apply the cell's timing profile through the VIP master (`ocah_axi_timing.AxiTimingProfile`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
+. Write a second register in the same block at default timing, read that one back, then re-read the swept register.
+. A shadowed register commits on the second identical write, so both writes go out under the profile under test.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ORDER-LAND
+|The written value is in the register after the ordering write. An adapter that latches a pending-write flag on AW accept and reads that flag in the same cycle the W arrives answers OKAY while dropping the data, so the compare is on the readback, never on the response. Every cell must produce a data compare; a cell that could not run is named with its reason, and the count then fails the test rather than reading as a full sweep.
+|CHK-ORDER-DISPLACE
+|The next write in the block lands on the register it addresses, and the swept register does not change when its neighbour is written. A pending flag left set by the ordering commits the following W handshake to the wrong target, which CHK-ORDER-LAND cannot see: it reads the register that was written, not the neighbour that was corrupted. A cell in a single-register block cannot carry this check, so the witness count is reported and required non-zero rather than assumed equal to the cell count.
+|CHK-ORDER-XSIZE
+|All nine (ordering x size) cells produced a data compare, so the ordering axis is proven crossed with the lane axis and not only at the bus width.
+|CHK-COVERAGE
+|The per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count are logged, with every skipped register counted under its reason. A silent skip would let a shrinking sweep keep reporting PASS.
+|===
+
+'''''
+
+[[sep_axi_strobe_window_test]]
+===== `sep_axi_strobe_window_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Testlist*: `system.toml`
+
+*Randomization*: RANDCFG — every AxSIZE at every legal lane offset runs on every seed; the seed varies the data. Leaving the size axis to the seed meant some runs issued no byte write at all.
+
+*Objective*: A write narrower than the bus beat must change only the byte lanes its strobe selects (IHI 0022 A3.4.3), and a memory window must return the data that was written to it. A stage that widens the strobe, or writes the whole beat, changes bytes the master never asked for; only a data compare sees it, because the response is OKAY either way.
+
+*Test Procedure*:
+
+[arabic]
+. Prime a scratch word with a known value.
+. Issue a write narrower than the bus beat at each legal lane offset for each AxSIZE, and read the whole word back.
+. Compare against the AXI lane rule: the addressed lanes take the new data, every other lane keeps the primed value.
+. Write and read back the OTBN and KMAC memory windows.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-STROBE
+|Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass.
+|CHK-WINDOW-DATA
+|Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is counted as skipped rather than dropped.
+|CHK-RANDCFG
+|The narrow-write and window counts for the seed are logged, so a shrunken walk is visible.
+|===
+
+'''''
+
+[[sep_axi_map_refuse_test]]
+===== `sep_axi_map_refuse_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Testlist*: `system.toml`
+
+*Randomization*: RANDCFG — the directed anchors from every seed, plus seed-selected addresses from the reserved gaps.
+
+*Objective*: Rows marked `_RSV_` in `hw/sys/sep/doc/memory_map.adoc` allocate nothing, so an access there must not answer OKAY. The expectation is taken from the map, never from the RTL: `env/sep_axi_decode_map.py` parses the crossbar `AddrMap` too, but only as a cross-check whose findings are logged, because asking the decoder what the decoder should do would pass on any decoder. Scope is the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one, and neither subsumes the other.
+
+*Test Procedure*:
+
+[arabic]
+. Parse the allocation table in `hw/sys/sep/doc/memory_map.adoc`; a row marked `_RSV_`, and any address in no row at all, allocates nothing.
+. Parse the crossbar `AddrMap` and report every span the fabric routes that the map calls reserved. Two rules state their bounds as `och_sep_top_addrmap_pkg` symbols rather than hex literals and are resolved against the generated package, so no rule falls out of the cross-check silently.
+. Read and write the directed anchors and the seed-selected reserved addresses.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-MAP-REFUSE
+|Every access to an address the map does not allocate is refused. The map does not mandate which flavour, so DECERR and SLVERR both satisfy it and the line reports the split. An address the crossbar routes but the map calls reserved is reported as MAP-OPEN and is not asserted on: the map and the RTL disagree there, and folding the RTL in would let the decoder define its own contract.
+|CHK-RANDCFG
+|The probe and anchor counts for the seed are logged, so a shrunken walk is visible.
 |===
 
 '''''
