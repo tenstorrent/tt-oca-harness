@@ -1897,15 +1897,6 @@ Synthesis will otherwise remove them -- an inverter pair that cancels,
 redundant AND gates that always agree, a buffer driving a single load are all
 dead weight to an optimizer.
 
-`prim_ao222` is the clearest case of a structure the function does not capture.
-It carries the reset multiplexers in `prim_rst_mux2_hf_n`, where the third
-AND term is a consensus term: logically redundant, and there only to hold the
-output through a change of the select. An optimizer that reads the truth table
-sees a plain 2:1 mux and is free to drop the term or to spread the gate across
-discrete AND and OR cells, either of which restores the static-1 hazard and
-lets the multiplexer emit a spurious reset pulse. Map it to one AO222 library
-cell and keep it whole.
-
 Clock cells need the stronger `dont_touch` because that swap is exactly the
 problem. Under `size_only` the tool treats the logic function as the contract
 and every other property of the cell as free to change. On the clock path the
