@@ -58,6 +58,14 @@ OCA_AES128_IMAGE = BOOTCODE_DIR / "build" / "oca_aes128_boot.bin"
 OCA_SIP_KEY_IMAGE = BOOTCODE_DIR / "build" / "oca_sip_key_boot.bin"
 OCA_MULTI_IMAGE = BOOTCODE_DIR / "build" / "oca_multi_image_boot.bin"
 OCA_NO_BL1_IMAGE = BOOTCODE_DIR / "build" / "oca_no_bl1_boot.bin"
+# ROM key slots 1-5, one image per slot, each signed by its own key. Slot 0 is
+# OCA_SEC_IMAGE above (the submodule's dev0 key), so the six together cover every
+# digest key_digests.c pins. Indexed by slot number so a test can parametrise
+# over range(6) without a name-to-slot table.
+OCA_ROM_KEY_IMAGES = {
+    0: OCA_SEC_IMAGE,
+    **{n: BOOTCODE_DIR / "build" / f"oca_rom_key{n}_boot.bin" for n in range(1, 6)},
+}
 
 # --- SEP DV firmware engine (replaces the old fw/sep/tests tree) --------------
 # Tests live in hw/sys/sep/dv/fw/tests/ and are built by the shared engine

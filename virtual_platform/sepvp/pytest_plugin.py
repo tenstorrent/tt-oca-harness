@@ -213,6 +213,11 @@ def oca_images(request):
         "sip_key":   paths.OCA_SIP_KEY_IMAGE,
         "multi":     paths.OCA_MULTI_IMAGE,
         "no_bl1":    paths.OCA_NO_BL1_IMAGE,
+        # ROM key slots 1-5, each signed by its own key (slot 0 is "signed").
+        # Flat entries rather than a nested slot->path dict so the existence check
+        # below still sees every path; tests/bootcode/test_bootcode_oca_rom_keys.py
+        # rebuilds the slot map from these.
+        **{f"rom_key{n}": paths.OCA_ROM_KEY_IMAGES[n] for n in range(1, 6)},
     }
     if request.config.getoption("build"):
         res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
