@@ -535,6 +535,19 @@ module dtp_uvm_top
         .xtrig_ctp_ack_out_din_en_o       (xtrig_ctp_ack_out_din_en)
     );
 
+    // ------------------------------------------------------------------
+    // Functional coverage (DTP_FCOV.adoc): shared by both tb shapes. The
+    // module carries Verilator-safe cover-property points plus
+    // commercial-only covergroups internally.
+    // ------------------------------------------------------------------
+    dtp_fcov u_dtp_fcov (
+        .tck_i          (jtag_tck),
+        .tms_i          (jtag_tms),
+        .trst_ni        (jtag_trst),
+        .tap_state_i    (jtag_ptap_state),
+        .inst_decoded_i (jtag_ptap_inst_decoded)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
