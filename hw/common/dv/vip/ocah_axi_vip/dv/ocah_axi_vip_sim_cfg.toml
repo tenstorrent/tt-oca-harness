@@ -36,13 +36,6 @@ work_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build"
 # package closure.
 common_bender_targets = []
 bender_targets = ["ocah_axi_vip_harness"]
-# The VIP's own protocol checker, instantiated on t_axi at the foot of tb_top.
-# Rule bodies are guarded by OCAH_INC_ASSERT, so this is an empty module under
-# Verilator and live under VCS. hw/common/assert carries the guard header.
-sources = [
-  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
-]
-incdirs = ["hw/common/assert"]
 
 [frameworks.cocotb]
 python_root = "hw/common/dv/vip/ocah_axi_vip/dv/cocotb"

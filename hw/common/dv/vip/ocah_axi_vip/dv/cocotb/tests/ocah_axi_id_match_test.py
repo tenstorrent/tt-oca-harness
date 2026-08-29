@@ -25,8 +25,8 @@ log = logging.getLogger("cocotb.tb.ocah_axi_id_match_test")
 
 @cocotb.test()
 async def ocah_axi_id_match_test(dut) -> None:
-    master, slave = build_full_stack(dut)
     await start_clock_reset(dut)
+    master, slave = build_full_stack(dut)
     await master.start()
     seq = master.sequence
 
