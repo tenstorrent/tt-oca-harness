@@ -247,12 +247,12 @@ module sep_crypto #(
     logic csrng_write, csrng_read, edn_write, edn_read;
     logic entropy_src_write, entropy_src_read, trng_write, trng_read;
     logic abr_write, abr_read;  // Adams Bridge PQC
-    logic aw_single_beat, ar_single_beat;
+    logic aw_is_burst, ar_is_burst;
     logic [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL-1:0] aw_select, ar_select;
 
     // check if the transaction is a burst transactions to reject all bursts commands to CSR space
-    assign aw_single_beat = (sep_crypto_axi_req_i.aw.len == 8'h0);
-    assign ar_single_beat = (sep_crypto_axi_req_i.ar.len == 8'h0);
+    assign aw_is_burst = (|sep_crypto_axi_req_i.aw.len);
+    assign ar_is_burst = (|sep_crypto_axi_req_i.ar.len);
 
     always_comb begin
         otbn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::otbn_rule.start_addr) &
@@ -316,7 +316,7 @@ module sep_crypto #(
             (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::abr_rule.end_addr);
 
         // Port mapping follows sep_crypto_axi_port_e
-        if (!aw_single_beat) begin
+        if (aw_is_burst) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
         end else if (abr_write) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
@@ -346,7 +346,7 @@ module sep_crypto #(
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
         end
 
-        if (!ar_single_beat) begin
+        if (ar_is_burst) begin
             ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
         end else if (abr_read) begin
             ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
