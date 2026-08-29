@@ -42,7 +42,10 @@ incdirs = ["hw/sys/dtp/dv/tb", "hw/common/assert"]
 # Flow-shared functional-coverage module (cov/sv/): compiled in BOTH flows —
 # this list feeds the cocotb/Verilator filelist, and the [frameworks.uvm.build]
 # sources list (which replaces this one) repeats the entry.
-sources = ["hw/sys/dtp/dv/cov/sv/dtp_fcov.sv"]
+sources = [
+  "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
+]
 
 [frameworks.cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
@@ -139,6 +142,7 @@ incdirs = [
 ]
 sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",

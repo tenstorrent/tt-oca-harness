@@ -551,6 +551,71 @@ module dtp_uvm_top
         .dbg_disable_i  (dbg_disable)
     );
 
+    // JTAG2AXI / OTP bridge coverage. The completed-response boundary comes
+    // from each bridge's TCK-domain bookkeeping via hierarchical references
+    // (the cocotb Verilator build compiles with --public-flat-rw; VCS
+    // resolves them natively); bus-timing bins use the flat AXI pins.
+    dtp_jtag2axi_fcov u_dtp_jtag2axi_fcov (
+        .tck_i             (jtag_tck),
+        .trst_ni           (jtag_trst),
+        .clk_i             (clk_i),
+        .rst_ni            (rst_n_i),
+        .tap_state_i       (jtag_ptap_state),
+        .inst_decoded_i    (jtag_ptap_inst_decoded),
+        .dbg_disable_i     (dbg_disable),
+
+        .smc_axi_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.last_single_op_status_tclk),
+        .smc_axi_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk),
+        .smc_axi_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_op_tclk),
+        .smc_axi_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_addr_tclk),
+        .smc_axi_size_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_axi_size_tclk),
+        .smc_axi_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_wstrb_tclk),
+        .smc_axi_awvalid_i (m_axi_awvalid),
+        .smc_axi_awready_i (m_axi_awready),
+        .smc_axi_wvalid_i  (m_axi_wvalid),
+        .smc_axi_wready_i  (m_axi_wready),
+        .smc_axi_bvalid_i  (m_axi_bvalid),
+        .smc_axi_bready_i  (m_axi_bready),
+        .smc_axi_arvalid_i (m_axi_arvalid),
+        .smc_axi_arready_i (m_axi_arready),
+        .smc_axi_rvalid_i  (m_axi_rvalid),
+        .smc_axi_rready_i  (m_axi_rready),
+
+        .smc_otp_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.last_single_op_status_tclk),
+        .smc_otp_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk),
+        .smc_otp_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_op_tclk),
+        .smc_otp_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_addr_tclk),
+        .smc_otp_size_i    ({1'b0, u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_axi_size_tclk}),
+        .smc_otp_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_wstrb_tclk),
+        .smc_otp_awvalid_i (smc_otp_axil_awvalid),
+        .smc_otp_awready_i (smc_otp_axil_awready),
+        .smc_otp_wvalid_i  (smc_otp_axil_wvalid),
+        .smc_otp_wready_i  (smc_otp_axil_wready),
+        .smc_otp_bvalid_i  (smc_otp_axil_bvalid),
+        .smc_otp_bready_i  (smc_otp_axil_bready),
+        .smc_otp_arvalid_i (smc_otp_axil_arvalid),
+        .smc_otp_arready_i (smc_otp_axil_arready),
+        .smc_otp_rvalid_i  (smc_otp_axil_rvalid),
+        .smc_otp_rready_i  (smc_otp_axil_rready),
+
+        .sep_otp_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.last_single_op_status_tclk),
+        .sep_otp_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk),
+        .sep_otp_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_op_tclk),
+        .sep_otp_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_addr_tclk),
+        .sep_otp_size_i    ({1'b0, u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_axi_size_tclk}),
+        .sep_otp_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_wstrb_tclk),
+        .sep_otp_awvalid_i (sep_otp_axil_awvalid),
+        .sep_otp_awready_i (sep_otp_axil_awready),
+        .sep_otp_wvalid_i  (sep_otp_axil_wvalid),
+        .sep_otp_wready_i  (sep_otp_axil_wready),
+        .sep_otp_bvalid_i  (sep_otp_axil_bvalid),
+        .sep_otp_bready_i  (sep_otp_axil_bready),
+        .sep_otp_arvalid_i (sep_otp_axil_arvalid),
+        .sep_otp_arready_i (sep_otp_axil_arready),
+        .sep_otp_rvalid_i  (sep_otp_axil_rvalid),
+        .sep_otp_rready_i  (sep_otp_axil_rready)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
