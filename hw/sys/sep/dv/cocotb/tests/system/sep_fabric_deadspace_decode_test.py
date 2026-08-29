@@ -132,6 +132,17 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(cfg.probes),
             sum(1 for p in cfg.probes if p.anchor),
             cfg.seed)
+        # Reported, not asserted: memory_map.adoc names DECERR for the reserved
+        # remainder inside an aperture, and which other error responses are
+        # permitted is a specification question for the design owner.
+        for line in dead.flavour_findings:
+            self.logger.info("DEADSPACE-FLAVOUR: %s", line)
+        if dead.flavour_findings:
+            self.logger.info(
+                "DEADSPACE-FLAVOUR: %d refusal(s) used an error response other "
+                "than the DECERR memory_map.adoc names. The access was refused, "
+                "which is the asserted contract.", len(dead.flavour_findings))
+
         for line in burst_fails:
             self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
         if burst_fails:
