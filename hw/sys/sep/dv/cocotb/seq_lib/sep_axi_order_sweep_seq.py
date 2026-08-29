@@ -312,6 +312,8 @@ class SepAxiOrderSweep:
         # has to be caught on both.
         self.bus = bus
         env = test.env
+        self._agent_name = ("env.axi_agent" if bus == "s_axi"
+                            else "env.ext_axi_agent")
         self._agent = env.axi_agent if bus == "s_axi" else env.ext_axi_agent
         self._mon = env.axi_monitor if bus == "s_axi" else env.ext_axi_monitor
         self._start = (test.start_seq if bus == "s_axi"
@@ -322,7 +324,7 @@ class SepAxiOrderSweep:
         self.witnessed = 0
         self.stim_seen: dict[str, int] = defaultdict(int)
         self.hs_seen: dict[str, int] = defaultdict(int)
-        self.dropped: dict[tuple[str, str, str], str] = {}
+        self.dropped: dict[tuple[str, str, str, int], str] = {}
 
     def _driver(self):
         """The VIP master driver behind the SEP agent.
@@ -335,9 +337,10 @@ class SepAxiOrderSweep:
         drv = getattr(seq, "driver", None)
         if drv is None or not hasattr(drv, "set_timing"):
             raise RuntimeError(
-                "no VIP master with set_timing() behind env.axi_agent.driver"
-                ".axi.driver; the ordering sweep cannot apply a timing "
-                "profile and would report cells it never drove"
+                f"no VIP master with set_timing() behind "
+                f"{self._agent_name}.driver.axi.driver on {self.bus}; the "
+                f"ordering sweep cannot apply a timing profile and would "
+                f"report cells it never drove"
             )
         return drv
 

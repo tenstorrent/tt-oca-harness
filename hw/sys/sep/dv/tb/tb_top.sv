@@ -1594,8 +1594,10 @@ module sep_uvm_top
     // which Verilator does not define, so both instances elaborate to empty
     // modules there and cost nothing. The rules are live under VCS.
     //
-    // en_i is tied high: neither bus has a legitimate suppression window. A
-    // test that needs one should drive a TB signal here, not drop the bind.
+    // m_axi ties en_i high: it is TB-driven in both run modes. s_axi is gated
+    // by the run mode, for the reason stated at its instance. A test that needs
+    // a further suppression window drives a TB signal here, never drops the
+    // instance.
     // ------------------------------------------------------------------
     ocah_axi_sva #(
         .IS_LITE    (1'b0),
@@ -1641,6 +1643,14 @@ module sep_uvm_top
         .rready  (m_axi_rready)
     );
 
+    // The s_axi checker watches the CPU-LSU splice, which the TB drives only on
+    // the stub build. Under +cpu_boot the EL2 owns that bus, so the checker
+    // would be judging the core's own traffic rather than TB stimulus. Static
+    // initialisation resolves before any initial block, so the value is settled
+    // before the first assertion samples. m_axi stays armed in both modes: it is
+    // TB-driven throughout.
+    bit s_axi_sva_en = !$test$plusargs("cpu_boot");
+
     ocah_axi_sva #(
         .IS_LITE    (1'b0),
         .ADDR_WIDTH (32),
@@ -1649,7 +1659,7 @@ module sep_uvm_top
     ) u_s_axi_sva (                       // CPU LSU master (sep_cpu stub drive)
         .aclk    (clk_i),
         .aresetn (rst_ni),
-        .en_i    (1'b1),
+        .en_i    (s_axi_sva_en),
         .awid    (s_axi_awid),
         .awaddr  (s_axi_awaddr),
         .awlen   (s_axi_awlen),
