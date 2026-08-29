@@ -53,10 +53,6 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
   "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
-  # POR initializer for prim_flop. exclude_files drops the vendored definition
-  # for every tool, so this is the single definition in the build -- no MODDUP,
-  # and no reliance on a last-wins or first-wins ordering rule.
-  "hw/sys/sep/dv/shims/prim/prim_flop.sv",
 ]
 # PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
 # aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
@@ -64,9 +60,6 @@ sources = [
 # Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
 exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
-  # Replaced by shims/prim/prim_flop.sv (one-shot POR until first edge). Unique path so
-  # abr_prim_flop.sv is not also dropped.
-  "prim_generic/rtl/prim_flop.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
 # the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets

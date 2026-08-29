@@ -445,8 +445,9 @@ module sep_uvm_top
     // Cocotb drives rst_ni after time 0. Until then the input wire is Z, and
     // PeakRDL immediate asserts in an always_ff else treat `if (~arst_n)` as
     // false when arst_n is X/Z. Hold 0 until the port is a known 0/1, then
-    // follow. Combined with shims/prim/prim_flop.sv so prim_rst_sync is 0
-    // without a reset *edge* (already-0 rst_ni produces none).
+    // follow. The bring-up presents rst_ni high before asserting it, so the
+    // assertion is a real falling edge and every async-reset flop loads its
+    // reset value (sep_base_test.assert_cold_reset).
     // An X/Z on the port AFTER cocotb has driven it is a testbench defect, not
     // the bring-up window: latching the last good level would hide it for the
     // rest of the run, so it fails here instead. rst_n_driven marks the window
@@ -463,63 +464,31 @@ module sep_uvm_top
         end
     end
 
-    // OpenTitan concurrent SVAs (ROM noXOnCsI, SPI speed/CSID) evaluate at 0 fs
-    // on X operands before any clock. VCS reports those as `started at 0fs`.
-    // Hold every assertion class off across that window; re-enable well before
-    // cocotb releases reset (~20 cycles). PeakRDL always_ff immediates at 0 fs
-    // are handled by rst_n_int + prim_flop POR ($assertcontrol loses that race).
+    // Assertion classes held off, and why each is not a DUT contract here.
     //
-    // The window is ONE femtosecond, and that bound is load-bearing.
-    // `OCAH_OT_ASSERT_INIT_NET` is `initial begin #1ps; assert(...)`
-    // (prim_assert_standard_macros.svh:40-46) -- it evaluates once, at 1 ps, so
-    // any window reaching 1 ps disables that whole class for the run and
-    // $assertcontrol(3) cannot bring it back. `timescale is 1ps/1fs (see the top
-    // of this file), so 1 fs is representable and nothing outlives it.
+    // AssertConnected_A: 408 instances across three subtrees (403 entropy_source,
+    // 4 axis_edn_crypto, 1 axis_edn_pool). It asks whether a hardened counter's
+    // err_o reaches an OpenTitan alert, so it cannot fail on DUT behaviour. It is
+    // ASSERT_INIT_NET -- an immediate assert in `initial #1ps`, with no clock and
+    // no reset -- so `disable iff` cannot gate it and the scope is the only knob.
     //
-    // At #1fs the 0 fs firings are gone and 408 `at time 1000 fs` remain, which
-    // is what shows rst_n_int + the prim_flop POR fix the 0 fs class on their
-    // own. A wider window suppresses both and leaves a clean log with two
-    // possible explanations.
+    // ~23 do not apply: their err_o is wired and reaches escalation and irq_o, and
+    // SEP's entropy_source has no alert output for the OT convention to test. The
+    // declarative escape is EnableAlertTriggerSVA(0) at those instantiations.
+    //
+    // The other 385 are a real defect (#1300): the counters raise err_o into a net
+    // nothing reads. A green run is therefore NOT evidence that a glitched
+    // health-test counter would be reported. #1301 covers the SPI assertions armed
+    // only during reset; #1307 tracks the assertions-under-VCS work.
+    //
+    // Scope is by subtree because these are generate-loop instances with no single
+    // name to target, which also disables every other assertion under those three
+    // blocks -- so the one OCAH contract in the set is re-armed by name below.
 `ifndef VERILATOR
     initial begin
-        $assertcontrol(4, 31);
-        #1fs;
-        $assertcontrol(3, 31);
-        // AssertConnected_A, suppressed by name and subtree -- NOT by widening
-        // the window above. It is ASSERT_INIT_NET (`initial #1ps; assert(...)`),
-        // so any window reaching 1 ps kills it for the whole run and hides the
-        // 0 fs class along with it. This is the only assertion class held off.
-        //
-        // 408 instances fire: 403 under u_entropy_source_s3c_scan, 4 under
-        // u_axis_edn_crypto_s3c_scan, 1 under u_axis_edn_pool_s3c_scan. The
-        // check asks whether the counter's err_o was wired to an OpenTitan
-        // alert, so it cannot fail on DUT behaviour. Two different reasons sit
-        // behind it:
-        //
-        // ~23 instances -- NOT APPLICABLE. Their err_o is wired and reaches
-        // escalation and the interrupt (entropy_source.sv:1000 es_cntr_err ->
-        // :1083 local_escalate_i -> err_bus -> irq_o). SEP's entropy_source has
-        // no alert output at all -- 12 ports, none of them alert_tx_o -- so the
-        // OT alert convention the assertion tests does not apply to this block
-        // yet. An alert block is future work. The declarative fix is
-        // EnableAlertTriggerSVA(0) at those instantiations, which is the escape
-        // the assertion itself offers; suppressing here is the interim.
-        //
-        // 385 instances -- REAL DEFECT, and independent of alerts. Their err_o
-        // drives a net nothing reads: entropy_health_test declares
-        // repcnt/apt/markov_count_err and exposes no error output port at all,
-        // so a detected fault cannot leave the module. The ~23 above prove the
-        // point -- no alert block, yet they still reach escalation and irq_o.
-        // Filed as a separate RTL issue for the ESRC/EDN owner.
-        //
-        // A green run is therefore NOT evidence that a glitched health-test
-        // counter would be reported. Delete these three lines when the 385 are
-        // wired AND the alert convention is settled for this block.
-        // Scoped by subtree because the 408 are generate-loop instances with no
-        // single name to target. The cost is every other assertion under those
-        // three blocks, so the one OCAH-authored contract in the set is armed
-        // again immediately below. Re-arm by the assertion's own hierarchical
-        // name, never by re-enabling a parent instance, or the 408 return.
+        // FIXME(#1300): remove these three once the counters are wired AND the
+        // alert convention is settled for this block. Re-arm by an assertion's own
+        // hierarchical name, never by re-enabling a parent instance.
         $assertoff(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
@@ -533,8 +502,7 @@ module sep_uvm_top
         // on every hash beat, so it is not a contract on those instances. HMAC
         // and DMA use MultimodeEn=1 and keep the check. $assertoff scopes are
         // resolved from this module, so these are downward XMRs (a module-name
-        // scope does not resolve). Applied after the 2 ps global re-enable so
-        // $assertcontrol(3, 31) does not turn these back on.
+        // scope does not resolve).
         $assertoff(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan
             .u_sha256_whitener.u_sha2.gen_sha256_logic.u_prim_sha2_256
             .ValidDigestModeFlag_A);

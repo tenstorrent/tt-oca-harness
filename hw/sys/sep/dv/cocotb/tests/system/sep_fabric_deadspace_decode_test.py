@@ -15,13 +15,12 @@ RTL defect, not a shall written in ``memory_map.adoc``.
 Keep the full probe set. Do not XFAIL. Do not drop the addresses that
 already wrap.
 
-KNOWN HARD FAIL, following up the crossbar decode fix in PR #1216. That change
-made every single-beat access to a dead offset refuse. It did not reach a later
-beat of a burst: AXI decodes the request address only, so an INCR begun in a
-block's last live words carries its remaining beats past REG_MAP_SIZE.
-entropy_source and sep_lifecycle_ctrl answer OKAY there, the other seven windows
-refuse -- issue #1306, which proposes adding both to OCAH_REG_ERR_CHECK_BLOCKS.
-CHK-DEADSPACE-BURST fails until that lands.
+FIXME(#1306): KNOWN HARD FAIL. Every single-beat access to a dead offset
+refuses, but a later beat of a burst does not: AXI decodes the request address
+only, so an INCR begun in a block's last live words carries its remaining beats
+past REG_MAP_SIZE. entropy_source and sep_lifecycle_ctrl answer OKAY there, the
+other seven windows refuse. CHK-DEADSPACE-BURST fails until the RTL adds both
+blocks to OCAH_REG_ERR_CHECK_BLOCKS.
 """
 
 from __future__ import annotations
@@ -96,8 +95,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # last live words carries its later beats past REG_MAP_SIZE because AXI
         # decodes the request address only.
         #
-        # entropy_source and sep_lifecycle_ctrl answer OKAY there; the other
-        # seven windows refuse. Do not XFAIL and do not demote to a log line --
+        # FIXME(#1306): entropy_source and sep_lifecycle_ctrl answer OKAY
+        # there; the other seven windows refuse.
+        # Do not XFAIL and do not demote to a log line --
         # the same rule as the wrap anchors above.
         for win in cfg.windows.values():
             if win.dead_lo % 0x1000 == 0 or win.dead_lo <= win.base + 8:

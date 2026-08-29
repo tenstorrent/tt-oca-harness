@@ -424,7 +424,7 @@ def ot_reg_offsets(ip: str) -> list[tuple[str, int]]:
     return out
 
 
-# TEMPORARY, and DV-owned on purpose.
+# TODO(#1302): temporary, and DV-owned on purpose.
 #
 # Per-field software access lives in the RDL and only the JSON exporter emits it
 # (tools/regs/rdljson.py). rdlpyhdr.py compiles the same RDL and drops `sw`,
@@ -437,7 +437,7 @@ def ot_reg_offsets(ip: str) -> list[tuple[str, int]]:
 # are byte-identical copies committed under dv/, next to the other DV-owned
 # register artifacts (models/regs/sep_external.rdl).
 #
-# RETIRE THIS when rdlpyhdr.py emits per-register software access: point the
+# FIXME(#1302): retire this when rdlpyhdr.py emits per-register software access: point the
 # accessors below at the generated Python header and delete these files.
 #
 # Refresh with:

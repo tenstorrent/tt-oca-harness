@@ -4131,7 +4131,7 @@ constraint is not an open defect.
 |Topic |Contract
 
 |Dead-space decode (RTL)
-|`sep_fabric_deadspace_decode_test` must keep failing refuse/no-alias on the known wrap defect until RTL refuses those offsets. It also fails `CHK-DEADSPACE-BURST`: following up PR #1216, a burst beat still reaches dead space in `entropy_source` and `sep_lifecycle_ctrl`, where a single beat to the same address is refused -- issue #1306, which proposes adding both to `OCAH_REG_ERR_CHECK_BLOCKS`. Do not XFAIL and do not shrink the probe set to look green.
+|`sep_fabric_deadspace_decode_test` fails `CHK-DEADSPACE-BURST` and must keep failing it. AXI decodes the request address only, so an INCR begun in a block's last live words carries its remaining beats past `REG_MAP_SIZE`: `entropy_source` and `sep_lifecycle_ctrl` answer OKAY on a burst beat at an address they refuse as a single beat, while the other seven windows refuse both. The fix is to add those two blocks to `OCAH_REG_ERR_CHECK_BLOCKS` (#1306). `CHK-DEADSPACE-REFUSE` and `CHK-DEADSPACE-NO-ALIAS` pass. Do not XFAIL and do not shrink the probe set to look green.
 
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
@@ -4165,7 +4165,7 @@ constraint is not an open defect.
 |`hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register — the vector reaches the CPU through a direct wrapper input. The testbench shifts that opcode on every CPU-boot run and the sequence is inert: stimulus that reads as coverage and cannot fail. Remove it or give the claim an owner.
 
 |Remapper attributes and pass-through (spec)
-|`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. The RTL register has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. `sep_fabric_local_alias_datapath_test` owns the live-beat offset proof and keeps any missing-bit check a hard FAIL. Do not XFAIL.
+|`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. The RTL register has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. `sep_fabric_local_alias_datapath_test` proves the live-beat offset on a programmed region (`CHK-OFFSET`); the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.
 
 |Class 2 scan-root count (spec)
 |`hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is absent from the list, and nothing lints the manifest against the RTL. That manifest is the sole input deciding what is never scan-dumpable.
