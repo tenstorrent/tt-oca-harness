@@ -68,6 +68,15 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
     async def run_sib_all_off(self) -> None:
         self.log_banner("GH #3213 iJTAG SIB all-off")
         await self.check_pattern(0b000, context="all_off.nominal")
+        # Seeded per-pass disable mask: with every SIB closed, any lifecycle
+        # gating state must leave the outcome identical (closed stays closed).
+        rng = self.rng("ijtag_all_off")
+        random_disable = {
+            "dft_secure": rng.randrange(2),
+            "dft_nonsecure": rng.randrange(2),
+            "dfd": rng.randrange(2),
+        }
+        await self.check_pattern(0b000, dbg_disable=random_disable, context="all_off.random_disable")
         _, signals = await self.observe_ijtag_controls(0, context="all_off.recheck")
         for name in IJTAG_SIB_ORDER:
             prefix = {"dft_secure": "jtag_dft_secure", "dft": "jtag_dft", "dfd": "jtag_dfd"}[name]
@@ -82,6 +91,8 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             ("nonsecure", 0b111, {"dft_nonsecure": 1}),
             ("dfd", 0b111, {"dfd": 1}),
         ]
+        # Seeded per-pass order: each loop exercises a different gate sequence.
+        self.rng("ijtag_all_on_order").shuffle(gate_vectors)
         for label, pattern, dbg in gate_vectors:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"all_on.gated.{label}")
         self.log_summary("iJTAG all-on", gate_vectors=len(gate_vectors), chain_len=3)
@@ -116,6 +127,8 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             ("secure_gated_nonsecure_open", 0b110, {"dft_secure": 1}),
             ("nonsecure_gated_secure_open", 0b110, {"dft_nonsecure": 1}),
         ]
+        # Seeded per-pass order: each loop exercises a different gate sequence.
+        self.rng("ijtag_dft_order").shuffle(gate_cases)
         for label, pattern, dbg in gate_cases:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"dft.gated.{label}")
         await self.check_stored_sib_across_gate("dft", 0b010, context="dft.stored")

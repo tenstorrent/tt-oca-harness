@@ -194,7 +194,10 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.gate_enable")
         await self.disable_debug_bits("stap_host")
         window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
-        _, gated = await self.shift_dr_observe(0x2, 2, context="ext.host_gated_shift")
+        # Seeded per-pass gated attempt: any value with the select bit set is
+        # an equally valid attempt that must be ignored while gated.
+        gated_attempt = self.rng("ext_stap_gate").choice([0x2, 0x3])
+        _, gated = await self.shift_dr_observe(gated_attempt, 2, context="ext.host_gated_shift")
         self.check_scan_window(
             window,
             quiet=self.HOST_SCAN_CONTROLS,
@@ -218,22 +221,37 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             checked=("enable", "disable", "stap_host gate window", "recover without reset"),
         )
 
-    async def run_config_hold(self) -> None:
-        self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")
+    async def _config_hold_preserve(self) -> None:
         await self.write_ptap_3dcr(config_hold=1, select=0, context="config_hold.preserve_write")
         await self.apply_tlr()
         preserved = await self.read_ptap_3dcr(shift_value=0x1)
         self.assert_equal("config_hold.ptap_config_preserved", preserved & 0x1, 0x1)
 
+    async def _config_hold_tlr_clear(self) -> None:
         await self.write_ptap_3dcr(config_hold=0, select=1, context="config_hold.clear_write")
         await self.apply_tlr()
         cleared = await self.read_ptap_3dcr(shift_value=0x0)
         self.assert_equal("config_hold.ptap_cleared", cleared & 0x3, 0x0)
 
+    async def _config_hold_trst_clear(self) -> None:
         await self.write_ptap_3dcr(config_hold=1, select=0, context="config_hold.trst_write")
         await self.apply_trst()
         trst_cleared = await self.read_ptap_3dcr(shift_value=0x0)
         self.assert_equal("config_hold.ptap_trst_cleared", trst_cleared & 0x3, 0x0)
+
+    async def run_config_hold(self) -> None:
+        self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")
+        # Seeded per-pass order: each self-contained sub-case starts with its
+        # own 3DCR write and reset, so each loop proves a different sequencing
+        # of preserve/clear behavior.
+        cases = [
+            self._config_hold_preserve,
+            self._config_hold_tlr_clear,
+            self._config_hold_trst_clear,
+        ]
+        self.rng("config_hold_order").shuffle(cases)
+        for case in cases:
+            await case()
         self.log_summary(
             "CONFIG_HOLD",
             ptap_cases=("config_preserve", "tlr_clear", "trst_clear"),
@@ -242,7 +260,10 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
 
     async def run_tms_hold(self) -> None:
         self.log_banner("GH #3213 STAP TMS_HOLD behavior")
-        for stap in STAP_ORDER:
+        # Seeded per-pass STAP order: each loop walks the ports differently.
+        staps = list(STAP_ORDER)
+        self.rng("tms_hold_order").shuffle(staps)
+        for stap in staps:
             await self.apply_trst()
             await self.write_ptap_3dcr(config_hold=1, select=1, context=f"tms_hold.{stap}.ptap")
             await self.shift_stap_sibs(self.stap_sib_pattern(stap, 1), context=f"tms_hold.{stap}.open")
