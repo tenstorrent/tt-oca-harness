@@ -616,6 +616,36 @@ module dtp_uvm_top
         .sep_otp_rready_i  (sep_otp_axil_rready)
     );
 
+    // Debug-TDR coverage (TMP / IC_RESET / DEBUG_CONTROL / CAPS): flattened
+    // TDR outputs plus the TMP unit and clock-stop contributions through
+    // hierarchical references.
+    dtp_debug_tdr_fcov u_dtp_debug_tdr_fcov (
+        .tck_i                 (jtag_tck),
+        .tdi_i                 (jtag_tdi),
+        .tdo_i                 (jtag_tdo),
+        .trst_ni               (jtag_trst),
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .tap_state_i           (jtag_ptap_state),
+        .inst_decoded_i        (jtag_ptap_inst_decoded),
+        .ic_reset_smc_ovrd_i   (jtag_ic_reset_smc_ovrd),
+        .ic_reset_smc_ctrl_n_i (jtag_ic_reset_smc_ctrl_n),
+        .ic_reset_sep_ovrd_i   (jtag_ic_reset_sep_ovrd),
+        .ic_reset_sep_ctrl_n_i (jtag_ic_reset_sep_ctrl_n),
+        .ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
+        .ic_reset_ext_ctrl_n_i (jtag_ic_reset_ext_ctrl_n),
+        .boot_stall_ovrd_i     (jtag_boot_stall_ovrd),
+        .boot_stall_i          (jtag_boot_stall),
+        .stop_clks_i           (stop_clks),
+        .cla_clock_stop_en_i   (cla_clock_stop_en),
+        .clk_stop_req_i        (xtrig_clk_stop_req),
+        .tmp_state_i           (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.tmp_state_q_bits),
+        .tmp_status_reg_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_status_reg.u_jtag_tmp_status_reg.tmp_status_reg_q),
+        .tmp_escape_cond_i     (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.bypass_escape_condition),
+        .jtag_clock_stop_i     (u_dut.jtag_clock_stop),
+        .cla_clock_stop_i      (u_dut.cla_clock_stop)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,

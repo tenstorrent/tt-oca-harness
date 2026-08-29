@@ -45,6 +45,7 @@ incdirs = ["hw/sys/dtp/dv/tb", "hw/common/assert"]
 sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
 ]
 
 [frameworks.cocotb]
@@ -143,6 +144,7 @@ incdirs = [
 sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
