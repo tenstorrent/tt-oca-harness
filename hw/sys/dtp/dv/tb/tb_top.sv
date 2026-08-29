@@ -646,6 +646,43 @@ module dtp_uvm_top
         .cla_clock_stop_i      (u_dut.cla_clock_stop)
     );
 
+    // Scan-network coverage (iJTAG SIBs / STAP 3DCR): flattened chain
+    // controls plus each STAP's stored 3DCR state through hierarchical
+    // references (sel_int is the stored select before the security gate).
+    dtp_scan_fcov u_dtp_scan_fcov (
+        .tck_i                  (jtag_tck),
+        .trst_ni                (jtag_trst),
+        .tap_state_i            (jtag_ptap_state),
+        .inst_decoded_i         (jtag_ptap_inst_decoded),
+        .dbg_disable_i          (dbg_disable),
+        .dft_secure_select_i    (jtag_dft_secure_select),
+        .dft_secure_shift_en_i  (jtag_dft_secure_shift_en),
+        .dft_select_i           (jtag_dft_select),
+        .dft_shift_en_i         (jtag_dft_shift_en),
+        .dfd_select_i           (jtag_dfd_select),
+        .dfd_shift_en_i         (jtag_dfd_shift_en),
+        .stap_io_tdo_oen_i      (jtag_stap_io_tdo_oen),
+        .stap_smc_tdo_oen_i     (jtag_stap_smc_tdo_oen),
+        .stap_sep_tdo_oen_i     (jtag_stap_sep_tdo_oen),
+        .stap_extra_tdo_oen_i   (jtag_stap_extra0_tdo_oen),
+        .stap_io_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel),
+        .stap_io_sel_int_i      (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel_int),
+        .stap_io_tms_hold_i     (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.tms_hold),
+        .stap_io_config_hold_i  (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.config_hold),
+        .stap_smc_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel),
+        .stap_smc_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel_int),
+        .stap_smc_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.tms_hold),
+        .stap_smc_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.config_hold),
+        .stap_sep_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel),
+        .stap_sep_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel_int),
+        .stap_sep_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.tms_hold),
+        .stap_sep_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.config_hold),
+        .stap_extra_sel_i       (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel),
+        .stap_extra_sel_int_i   (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel_int),
+        .stap_extra_tms_hold_i  (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.tms_hold),
+        .stap_extra_config_hold_i (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.config_hold)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
