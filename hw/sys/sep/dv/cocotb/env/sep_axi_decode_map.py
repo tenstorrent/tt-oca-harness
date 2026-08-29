@@ -30,6 +30,10 @@ _SPEC = _DV_ROOT.parent / "doc" / "memory_map.adoc"
 _XBAR = _DV_ROOT.parent / "rtl" / "sep_local_axi_xbar.sv"
 _ADDRMAP_PKG = _DV_ROOT.parent / "regs" / "gen" / "sv" / "sep_addrmap_pkg.sv"
 
+# A row at least this wide is a container the detailed rows carve up, not an
+# allocation in its own right.
+_COARSE_SPAN = 0x0100_0000
+
 # Reserved marker in the memory-map Unit column.
 _RSV = "_RSV_"
 
@@ -150,8 +154,45 @@ def spec_regions() -> tuple[SpecRegion, ...]:
                 f"memory-map row runs backwards: 0x{r.base:08x}-"
                 f"0x{r.end_addr:08x} ({r.unit})"
             )
+    rows.extend(_hole_regions(rows))
     # Finest first so region_of() resolves the hierarchy the way a reader does.
     return tuple(sorted(rows, key=lambda r: (r.end_addr - r.base, r.base)))
+
+
+def _hole_regions(rows: list[SpecRegion]) -> list[SpecRegion]:
+    """Reserved rows for the spans no detailed row describes.
+
+    A coarse row names a region and the detailed rows carve it up. Where the
+    detailed rows leave a gap, nothing is allocated there -- but the gap is
+    inside the coarse row, so ``region_of`` would otherwise resolve it to the
+    coarse parent and report it allocated. An address described by no detailed
+    row allocates nothing and must read as reserved, the same as an explicit
+    ``_RSV_`` row.
+    """
+    coarse = [r for r in rows if (r.end_addr - r.base) >= _COARSE_SPAN]
+    holes: list[SpecRegion] = []
+    for parent in coarse:
+        inner = sorted(
+            (r for r in rows
+             if r is not parent
+             and r.base >= parent.base and r.end_addr <= parent.end_addr
+             and (r.end_addr - r.base) < _COARSE_SPAN),
+            key=lambda r: r.base,
+        )
+        if not inner:
+            continue
+        cursor = parent.base
+        for r in inner:
+            if r.base > cursor:
+                holes.append(SpecRegion(
+                    cursor, r.base - 1, _RSV,
+                    f"described by no detailed row inside {parent.unit}"))
+            cursor = max(cursor, r.end_addr + 1)
+        if cursor <= parent.end_addr:
+            holes.append(SpecRegion(
+                cursor, parent.end_addr, _RSV,
+                f"described by no detailed row inside {parent.unit}"))
+    return holes
 
 
 def _addrmap_symbols() -> dict[str, int]:
@@ -231,8 +272,11 @@ def region_of(addr: int, regions=None) -> SpecRegion | None:
 def may_complete(addr: int, regions=None) -> bool:
     """True when the specification allocates something at ``addr``.
 
-    False means the fabric must refuse -- DECERR or SLVERR, the map does not
-    mandate which flavour. An address in no row at all is also False.
+    False means the fabric must refuse. ``memory_map.adoc`` mandates DECERR for
+    the remainder inside a unit's aperture and is silent on the flavour for the
+    reserved rows between apertures, so this says only that the access must not
+    complete. An address described by no detailed row is also False: the gap
+    inside a coarse container allocates nothing.
     """
     r = region_of(addr, regions)
     return r is not None and not r.reserved

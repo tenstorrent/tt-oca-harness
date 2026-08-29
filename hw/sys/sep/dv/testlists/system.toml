@@ -27,24 +27,6 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Fabric decode-error / negative response (the reference suite\'s sep_cpu_lsu_negative_matrix_test # + sep_cpu_ifu_invalid_target_test +
-# sep_fabric_xbar_error_closure_test ). The CPU-LSU AXI master reads
-# an unmapped local address -> exact DECERR (allow_timeout=False so a wedge fails),
-# while a known-mapped CSR on the same bus returns OKAY + value. COVERED_STRONGER:
-# asserts the exact spec response vs the reference suite's any-non-OKAY/timeout-tolerated check.
-# no_cpu (host drives the CPU-LSU splice); +skip_fuse_sense (decode is independent
-# of OTP/entropy).
-name = "sep_fabric_decode_error_response_test"
-module = "system.sep_fabric_decode_error_response_test"
-seed = 1
-reseed = 3
-timeout_sec = 1800
-tags = ["fabric", "decode", "negative", "system", "subsystem"]
-run_modes = ["no_cpu"]
-target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
-
-[[tests]]
 # Simultaneous multi-source interrupt fan-in + anti-alias (the reference suite
 # sep_irq_extended_connectivity_test). Host asserts a CROSS-IP set (HMAC/KMAC/CSRNG/
 # EDN INTR_TEST -> sep_internal_interrupts bits 15/18/21/25) AT ONCE and proves the

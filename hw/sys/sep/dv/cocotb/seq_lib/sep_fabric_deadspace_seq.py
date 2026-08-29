@@ -429,15 +429,17 @@ class SepDeadspace:
                 f"expected refuse (allocated ends at +0x{win.alloc:x})"
             )
         elif resp != RESP_DECERR:
-            # A refusal, but not DECERR. The specification requires the access
-            # to be REFUSED; it does not mandate which error response, and
-            # `hw/sys/sep/doc/fabric.adoc` uses SLVERR for a refusal elsewhere.
-            # The defect this entry exists to catch is OKAY plus aliasing, so a
-            # clean SLVERR is not a failure -- but it is logged, because a
-            # block that changes its refusal flavour is worth noticing.
-            self.test.logger.info(
-                "%s %s 0x%08x refused with resp=%d (not DECERR); allocated "
-                "ends at +0x%x", win.name, item.op, item.addr, resp, win.alloc,
+            # `hw/sys/sep/doc/memory_map.adoc` is normative on the flavour here:
+            # "Within an aperture, only the unit's register extent responds; the
+            # remainder is reserved and returns DECERR." The SLVERR in
+            # `hw/sys/sep/doc/fabric.adoc` is a narrower rule -- writes to the
+            # read-only entropy-pool aperture -- and does not reach the
+            # in-aperture remainder this walks.
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} refused with "
+                f"resp={resp}, expected DECERR (allocated ends at "
+                f"+0x{win.alloc:x}); memory_map.adoc requires DECERR for the "
+                f"reserved remainder inside an aperture"
             )
         # A read of a dead offset must not return a live register's value.
         # Write probes also require the allocated image to stay put: a

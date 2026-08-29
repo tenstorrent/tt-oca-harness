@@ -310,10 +310,6 @@ feature has no legal knob space (a strap, a single named handshake).
 [cols="2,2,2,4",options="header"]
 |===
 |Test Case |Run mode |VIP / Model |Description
-|`sep_fabric_decode_error_response_test`
-|no_cpu, +skip_fuse_sense
-|ocah_axi_vip
-|Mapped CSR OKAY plus reset-value vs unmapped DECERR on the same CPU-LSU bus.
 |`sep_fabric_inbound_filter_rule_matrix_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -2437,46 +2433,6 @@ stall-duration / recovery stress are not exercised here.
 
 '''''
 
-[[sep_fabric_decode_error_response_test]]
-===== `sep_fabric_decode_error_response_test`
-
-*Phase*: 2
-
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
-
-*VIP / Model*: ocah_axi_vip
-
-*Objective*: Mapped CSR OKAY plus reset-value vs unmapped DECERR on the same CPU-LSU bus.
-
-*Test Procedure*:
-
-[arabic]
-. Read a mapped CSR (`SEP_NMI_VEC`) and require OKAY plus the documented reset.
-. Read and write unmapped addresses; both must complete DECERR.
-. Confirm the same bus returned both OKAY and DECERR.
-
-*Checkers*:
-
-[cols="2,5",options="header"]
-|===
-|Checker |Contract
-|CHK-OKAY
-|A mapped CSR read returns OKAY and its exact reset value. The target is `SEP_NMI_VEC` (reset `0xC0000100`), so a tied-off-zero decode fails the value half.
-|CHK-DECERR
-|Every unmapped read returns exactly DECERR, not merely a non-OKAY response.
-|CHK-DECERR-WR
-|An unmapped write returns DECERR on the write-response channel.
-|CHK-NONVAC
-|The same bus returned both OKAY and DECERR in one run, and the raw-pin monitor independently tallied the expected number of DECERR beats — so the responses were not fabricated by the driver.
-|===
-*Where the wedge property lives*: a wedged access fails in the AXI driver, which
-raises on a non-completing transaction unless the item opts into a timeout. These
-probe sequences do not, so the no-wedge property is enforced there rather than by
-an assert in this entry.
-
-
-'''''
-
 [[sep_fabric_inbound_filter_rule_matrix_test]]
 ===== `sep_fabric_inbound_filter_rule_matrix_test`
 
@@ -2849,7 +2805,7 @@ hole.
 |CHK-SEQ
 |Consecutive single-beat 64-bit words hold distinct per-address values, which is the real address-decode proof in this entry.
 |CHK-BOUNDARY
-|The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `OCH_SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `OCH_SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SRAM_N_ENTRIES = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_fabric_decode_error_response_test`, not this row: that address is the ROM base.
+|The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `OCH_SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `OCH_SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SRAM_N_ENTRIES = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row: that address is the ROM base.
 |CHK-NONVAC
 |Two addresses are written with complementary patterns and both are read back and value-checked, so a read path returning the same value for both fails. Requiring an *unwritten* neighbour to differ from a non-zero pattern is not claimed — that difference is already guaranteed by the pattern constructor; see <<audit>>.
 |===
@@ -2927,7 +2883,7 @@ deferred rather than covered.
 |CHK-ROM-READ
 |Load-store reads of ten half-words across five distinct 64-bit ROM words match the loaded image, against hard-coded literals. Nine of the ten expectations are non-zero, so a stuck-at-zero read path fails.
 |CHK-ROM-BOUNDARY
-|The last valid ROM word reads back exactly. One-past-top decode-error is `sep_fabric_decode_error_response_test`, not this row.
+|The last valid ROM word reads back exactly. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row.
 |CHK-ROM-WRITE-IGNORED
 |A store to ROM leaves the content unchanged, compared against the *image literal* rather than against a pre-write read of the same address, and the CPU does not trap. The store's AXI response is not sampled on this firmware path.
 |===
@@ -3561,6 +3517,10 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-MAP-REFUSE
 |Every probed address is refused. The map does not mandate which flavour, so DECERR and SLVERR both satisfy it and the line reports the split. The probe set is the map-reserved addresses that no crossbar decode rule covers; addresses the crossbar routes are excluded before the walk with a counted reason and are not asserted on. Spans the crossbar routes that the map calls reserved are enumerated statically and logged as MAP-AUDIT, so the disagreement between the map and the RTL is visible without either side being asserted.
+|CHK-NONVAC
+|The DECERR beats the monitor observed on the bus equal the count the master reported, so the refusals are evidence from the pins and not only from the driver.
+|CHK-OKAY
+|A known-mapped CSR on the same bus returns OKAY and its generated reset value, read before any refusal probe. Without it a wedged or dead bus would refuse everything and read as a clean pass. The address and the expected value come from the generated SystemRDL export, and the register's reset is non-zero so the compare cannot pass against a tied-off decode.
 |CHK-RANDCFG
 |The probe and anchor counts for the seed are logged, so a shrunken walk is visible.
 |===
@@ -3598,6 +3558,8 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-WINDOW-LIVE
 |Each of the ten watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller) has a non-empty allocated-register snapshot, so the no-alias compare can fail. The line reports readable and armed separately: the store compare drops hardware-updating addresses, so armed is the falsifiable count.
+|CHK-DEADSPACE
+|A refusal past the allocated size uses the response the map requires. `memory_map.adoc` mandates DECERR for the reserved remainder inside an aperture, so a refusal that answers SLVERR fails: the access was refused, but not the way the specification says. `spi_controller` fails this on writes today.
 |CHK-DEADSPACE-REFUSE
 |A read or write past the allocated size is refused (not OKAY). Every issue-228 anchor still wraps (KM `0x10920ff8` onto `SEP_CTRL`, DMA `0x108008a8` onto `+0xa8`). AES / lifecycle / some SPI probes already refuse. The accepted-OKAY count depends on the seed-selected probes; do not freeze it in the Proof cell.
 |CHK-DEADSPACE-NO-ALIAS
@@ -4131,7 +4093,7 @@ constraint is not an open defect.
 |Topic |Contract
 
 |Dead-space decode (RTL)
-|`sep_fabric_deadspace_decode_test` fails `CHK-DEADSPACE-BURST` and must keep failing it. AXI decodes the request address only, so an INCR begun in a block's last live words carries its remaining beats past `REG_MAP_SIZE`: `entropy_source` and `sep_lifecycle_ctrl` answer OKAY on a burst beat at an address they refuse as a single beat, while the other seven windows refuse both. The fix is to add those two blocks to `OCAH_REG_ERR_CHECK_BLOCKS` (#1306). `CHK-DEADSPACE-REFUSE` and `CHK-DEADSPACE-NO-ALIAS` pass. Do not XFAIL and do not shrink the probe set to look green.
+|`sep_fabric_deadspace_decode_test` fails two contracts and must keep failing both. `CHK-DEADSPACE` catches a refusal flavour the map does not allow: `memory_map.adoc` states that within an aperture only the unit's register extent responds and "the remainder is reserved and returns DECERR", but `spi_controller` answers SLVERR on a dead-space write. The SLVERR rule in `fabric.adoc` is narrower -- writes to the read-only entropy-pool aperture -- and does not reach the in-aperture remainder. `CHK-DEADSPACE-BURST` is the second: AXI decodes the request address only, so an INCR begun in a block's last live words carries its remaining beats past `REG_MAP_SIZE`: `entropy_source` and `sep_lifecycle_ctrl` answer OKAY on a burst beat at an address they refuse as a single beat, while the other seven windows refuse both. The fix is to add those two blocks to `OCAH_REG_ERR_CHECK_BLOCKS` (#1306). `CHK-DEADSPACE-REFUSE` and `CHK-DEADSPACE-NO-ALIAS` pass. Do not XFAIL and do not shrink the probe set to look green.
 
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).

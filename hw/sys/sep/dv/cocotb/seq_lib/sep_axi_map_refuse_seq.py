@@ -4,8 +4,11 @@
 
 Every probe address is classified by ``env/sep_axi_decode_map.py`` from the
 allocation tables in ``hw/sys/sep/doc/memory_map.adoc``. A reserved address
-must not answer OKAY; the map does not mandate DECERR over SLVERR, so either
-refusal is accepted and the flavour is only logged.
+must not answer OKAY. ``memory_map.adoc`` mandates DECERR for the remainder
+INSIDE a unit's aperture and is silent on the flavour for the reserved rows
+BETWEEN apertures, which is what this walks, so either refusal is accepted here
+and the flavour is only logged. ``sep_fabric_deadspace_decode_test`` owns the
+in-aperture case.
 
 Scope note. ``sep_fabric_deadspace_decode_test`` probes the dead tail INSIDE a
 block window -- the span between a block's allocated register size and its
@@ -26,9 +29,18 @@ from env.sep_axi_decode_map import (
     may_complete, region_of, rtl_ranges, spec_regions,
 )
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import SEP_CPU_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = 0
+
+# Live-bus control. sep_cpu_ctrl SEP_NMI_VEC is a known-good decode target with a
+# non-zero generated reset and no read side effects, so a refusal elsewhere in the
+# run is a decode result and not a dead bus. A register whose reset is 0 would be a
+# zero-vs-zero compare and would also pass against a tied-off decode. Address and
+# expected value come from the generated SystemRDL export.
+MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
+MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 
 # Reserved spans that must not be probed, each with the reason. These are
 # excluded from stimulus, not from the contract: the map still says reserved.
@@ -85,6 +97,8 @@ _ANCHORS: tuple[tuple[int, str], ...] = (
     (0x1096_0000, "r"),   # above the entropy pool
     (0x10A4_0000, "r"),   # above the system-bus window
     (0x1200_0000, "r"),   # above the STEE remap region
+    (0x10FF_0000, "r"),   # inside the span no detailed SEP-local row describes
+    (0x10FF_1000, "w"),
 )
 
 
@@ -194,6 +208,33 @@ class SepAxiMapRefuse:
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
 
+    async def mapped_csr(self) -> str | None:
+        """None when the mapped control read OKAY with its reset value.
+
+        Read through the ordinary path, with no DECERR credit armed: this
+        address must complete, so an error response here is a failure rather
+        than an expected refusal.
+        """
+        seq = SepAxiAccessSeq(
+            f"maprefuse_ctrl_0x{MAPPED_CSR_ADDR:08x}",
+            op=SepAxiOp.READ, addr=MAPPED_CSR_ADDR, length=4, size=2,
+        )
+        await self.test.start_seq(seq)
+        if seq.timed_out:
+            return f"mapped CSR 0x{MAPPED_CSR_ADDR:08x} timed out"
+        if seq.resp_code != RESP_OKAY:
+            return (
+                f"mapped CSR 0x{MAPPED_CSR_ADDR:08x} resp={seq.resp_code}, "
+                f"expected OKAY"
+            )
+        got = seq.rdata & 0xFFFF_FFFF
+        if got != MAPPED_CSR_EXP:
+            return (
+                f"mapped CSR 0x{MAPPED_CSR_ADDR:08x} read 0x{got:08x}, "
+                f"expected the generated reset 0x{MAPPED_CSR_EXP:08x}"
+            )
+        return None
+
     async def probe(self, item: MapProbe) -> str | None:
         """None when the fabric refused. A string names the failure."""
         # One DECERR credit, the way the deadspace probe does it: the monitor
@@ -204,6 +245,13 @@ class SepAxiMapRefuse:
                 SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF)
         else:
             resp, _rd, timed_out = await self._access(SepAxiOp.READ, item.addr)
+
+        # A standing credit absorbs the next unexpected DECERR anywhere on this
+        # bus, so a probe that saw no DECERR beat hands it back. Keyed off the
+        # response rather than the monitor tally: the monitor counts on its own
+        # clock edge, which may not have run when start_seq returns.
+        if timed_out or resp != 3:
+            self.test.env.axi_monitor.release_expected_decerr(1)
 
         if timed_out:
             return (
@@ -225,6 +273,13 @@ class SepAxiMapRefuse:
 
 def _selftest() -> None:
     cfg = SepAxiMapRefuseCfg(1)
+    # Both channels on every seed. The write anchor is what guarantees it, so a
+    # map change that routes that address must fail here rather than quietly
+    # reducing the walk to reads.
+    for seed in (1, 2, 3):
+        probes = SepAxiMapRefuseCfg(seed).probes
+        ops = {p.op for p in probes if not p.routed}
+        assert ops == {"r", "w"}, f"seed {seed} covers only {ops}"
     assert len(cfg.probes) >= 10, f"only {len(cfg.probes)} probes"
     # Every probe must be reserved per the spec, or the test is asking the DUT
     # to refuse something it is supposed to answer.
