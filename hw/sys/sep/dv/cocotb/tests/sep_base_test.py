@@ -229,9 +229,10 @@ class sep_base_test(uvm_test):
         genuine 1->0, so every async reset in the design fires and loads its
         reset value.
 
-        No clock is running across this window, so nothing sequential advances
-        and no clocked assertion samples: the high level exists only to give
-        the falling edge something to fall from.
+        No clock is running across this window, so nothing sequential advances.
+        The bus request nets are idled before this runs, because the reset
+        rules sample VALID against a low reset and an undriven net fails them
+        on stimulus that does not exist.
         """
         dut.rst_ni.value = 1
         await Timer(1, units="ns")
@@ -249,8 +250,8 @@ class sep_base_test(uvm_test):
         """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU held off)")
-        await self.assert_cold_reset(dut)
         self.drive_idle_defaults(dut, cpu_run=False)
+        await self.assert_cold_reset(dut)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -366,8 +367,8 @@ class sep_base_test(uvm_test):
         """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU run, rst_vec=0x%x)", rst_vec)
-        await self.assert_cold_reset(dut)
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
+        await self.assert_cold_reset(dut)
         # CPU boot: EL2 debug reset follows cold reset.
         self._set_if_exists(dut, "dbg_rstb_i", 0)
         self._jtag_sw_rst_hold(park, True)
