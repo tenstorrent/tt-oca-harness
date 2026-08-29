@@ -1685,6 +1685,82 @@ module sep_uvm_top
         .rready  (s_axi_rready)
     );
 
+    // ------------------------------------------------------------------
+    // The Key Manager's warm reset is conditioned and synchronised, so its
+    // sequential state is undefined until a clock edge has been taken with the
+    // reset known. Before that the CPU's AXI valids read X, and comparing them
+    // against a low reset says nothing about the design. The checker is
+    // enabled from the first such edge.
+    logic km_axil_sva_en = 1'b0;
+    always @(posedge clk_i) begin
+        if (`SEP_CORE.sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n === 1'b0
+            || `SEP_CORE.sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n === 1'b1)
+            km_axil_sva_en <= 1'b1;
+    end
+
+    // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
+    // to KPV, KMCSR, the DRBG sampler and the mailbox crosses this one port,
+    // and nothing checks it: the KM crossbar has a single slave port wired to
+    // the internal picorv32, so no testbench master can reach it.
+    //
+    // Bound rather than instantiated, so the port names resolve in the Key
+    // Manager's own scope. Passive: it needs no stimulus and adds none.
+    // IS_LITE=1 drops the burst, ID and exclusive rules an AXI-Lite port does
+    // not carry.
+    //
+    // Enabled only once the warm reset is a known 0 or 1. That reset is
+    // conditioned and synchronised, so it reads X until the first clock edge,
+    // and comparing VALID against a low reset has no meaning while the reset
+    // itself is unknown.
+    //
+    // This checks PROTOCOL, not data. A register that accepts a write, answers
+    // OKAY and stores nothing breaks no rule here, so a green run is not
+    // evidence that a KM register write landed.
+    bind key_manager ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_km_axil_sva (
+        .aclk    (clk_i),
+        .aresetn (rst_warm_sync_n),
+        .en_i    (sep_uvm_top.km_axil_sva_en),
+        .awid    (1'b0),
+        .awaddr  (cpu_axil_req.aw.addr),
+        .awlen   (8'd0),
+        .awsize  (3'd2),
+        .awburst (2'b01),
+        .awlock  (1'b0),
+        .awprot  (cpu_axil_req.aw.prot),
+        .awvalid (cpu_axil_req.aw_valid),
+        .awready (cpu_axil_resp.aw_ready),
+        .wdata   (cpu_axil_req.w.data),
+        .wstrb   (cpu_axil_req.w.strb),
+        .wlast   (1'b1),
+        .wvalid  (cpu_axil_req.w_valid),
+        .wready  (cpu_axil_resp.w_ready),
+        .bid     (1'b0),
+        .bresp   (cpu_axil_resp.b.resp),
+        .bvalid  (cpu_axil_resp.b_valid),
+        .bready  (cpu_axil_req.b_ready),
+        .arid    (1'b0),
+        .araddr  (cpu_axil_req.ar.addr),
+        .arlen   (8'd0),
+        .arsize  (3'd2),
+        .arburst (2'b01),
+        .arlock  (1'b0),
+        .arprot  (cpu_axil_req.ar.prot),
+        .arvalid (cpu_axil_req.ar_valid),
+        .arready (cpu_axil_resp.ar_ready),
+        .rid     (1'b0),
+        .rdata   (cpu_axil_resp.r.data),
+        .rresp   (cpu_axil_resp.r.resp),
+        .rlast   (1'b1),
+        .rvalid  (cpu_axil_resp.r_valid),
+        .rready  (cpu_axil_req.r_ready)
+    );
+
+
 `undef SEP_CORE
 `undef SEP_IPI
 

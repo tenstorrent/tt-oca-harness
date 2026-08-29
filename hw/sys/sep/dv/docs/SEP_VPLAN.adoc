@@ -337,7 +337,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_axi_order_sweep_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|AW and W are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal and each must deliver the write. Each block terminates AXI at its own register adapter, so the sweep drives all three orderings at every register the generated export establishes as write-safe storage, crossed with 1/2/4-byte sizes on the scratch words.
+|AW and W are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal and each must deliver the write without displacing its neighbour. Each block terminates AXI at its own register adapter, so the contract has to hold at each of them: 321 cells over 27 blocks, crossed with 1/2/4-byte sizes on the scratch words. The ordering each cell presented is read off the AW/W valid assertions and asserted against what was requested.
 |`sep_axi_strobe_window_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -642,9 +642,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_reg_bit_bash_rand_test`
 
-|AXI AW/W channel ordering
+|AXI AW/W channel ordering, write landing and neighbour displacement
 |PROVEN
-|`sep_axi_order_sweep_test` (all three orderings at every write-safe register, crossed with transfer size)
+|`sep_axi_order_sweep_test` (321 cells over 27 blocks, all three orderings presented on the bus and asserted by `CHK-ORDER-STIM`)
 
 |AXI narrow-write strobe and memory windows
 |PROVEN
@@ -3419,7 +3419,7 @@ both lock flavours of one seed-selected spare.
 
 *Randomization*: RANDCFG — every (register x ordering) cell runs on every seed, and every (ordering x size) cell with it. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs.
 
-*Objective*: AXI write address and write data are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal stimulus and each must leave the written value in the addressed register. Every block behind the crossbar terminates AXI at its own register adapter, so the contract has to hold at each adapter rather than at one scratch word. The sweep drives all three orderings at every register the generated export establishes as write-safe storage, and crosses ordering with the 1/2/4-byte sizes on the scratch words, where a narrow write has no side effect. The narrow cells compare the whole software-usable word against the AXI lane rule, so a strobe widened under a non-default ordering fails here; `sep_axi_strobe_window_test` owns the same rule at default timing.
+*Objective*: AXI write address and write data are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal stimulus and each must leave the written value in the addressed register without displacing its neighbour. The ordering is driven by holding the trailing channel until the leading one asserts VALID, and the ordering each cell actually presented is read off the bus and asserted against what was requested. Every block behind the crossbar terminates AXI at its own register adapter, so the contract has to hold at each adapter rather than at one scratch word. The sweep configures all three orderings at every write-safe register and crosses them with the 1/2/4-byte sizes on the scratch words, where a narrow write has no side effect. The narrow cells compare the whole software-usable word against the AXI lane rule; `sep_axi_strobe_window_test` owns the same rule at default timing.
 
 *Test Procedure*:
 
@@ -3441,7 +3441,9 @@ both lock flavours of one seed-selected spare.
 |CHK-ORDER-DISPLACE
 |The next write in the block lands on the register it addresses, and the swept register does not change when its neighbour is written. A pending flag left set by the ordering commits the following W handshake to the wrong target, which CHK-ORDER-LAND cannot see: it reads the register that was written, not the neighbour that was corrupted. The follow-on value is derived from what the neighbour currently holds and flips one software-usable bit, so a write that never arrived cannot read back correct. A refused follow-on write or readback fails this checker rather than being recorded as a skip. A cell in a single-register block offers no neighbour to write, so the required witness count is the number of cells that have one.
 |CHK-ORDER-XSIZE
-|All nine (ordering x size) cells produced a data compare, so the ordering axis is proven crossed with the lane axis and not only at the bus width.
+|All nine (ordering x size) cells produced a data compare, so the write lands at every transfer size and not only at the bus width.
+|CHK-ORDER-STIM
+|Each cell presented the ordering it requested, read off the AW/W valid assertions rather than taken from the configured profile. Asserted per cell. The slave's handshake is logged separately and is allowed to coincide: a slave that holds WREADY until AW answers a W-first presentation same-cycle, which is its own contract, not a stimulus failure.
 |CHK-COVERAGE
 |The per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count are logged, with every skipped register counted under its reason. A silent skip would let a shrinking sweep keep reporting PASS.
 |CHK-RANDCFG

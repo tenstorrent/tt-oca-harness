@@ -3,15 +3,15 @@
 """AXI channel-ordering sweep: every legal AW/W ordering must land, everywhere.
 
 no_cpu / +skip_fuse_sense. AXI write address and write data are independent
-channels with no ordering requirement between them (IHI 0022 A3.3), so
-AW-first, W-first and same-cycle are all legal stimulus and every one must
-leave the written value in the addressed register.
+channels with no ordering requirement between them (IHI 0022 A3.3), so all
+three orderings are legal stimulus and each must leave the written value in
+the addressed register. Each block behind the crossbar terminates AXI at its
+own register adapter, so the contract has to hold at every one of them rather
+than at one scratch word.
 
-Each block behind the crossbar terminates AXI at its own register adapter, so
-the ordering contract has to hold at every one of them, not at one scratch
-word. The sweep drives all three orderings at every register the generated
-export establishes as write-safe storage, and crosses ordering with the 1/2/4
-byte sizes on the scratch words, where a narrow write has no side effect.
+The sweep configures all three orderings at every register the export
+establishes as write-safe storage, and crosses them with the 1/2/4-byte sizes
+on the scratch words, where a narrow write has no side effect.
 
 CHK-ORDER-LAND: the write lands. The cell primes with the complement first, so
 a write that never lands reads back as the prime rather than looking plausible.
@@ -39,9 +39,16 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_order_sweep_seq import (
+    M_AXI_ALLOW_WINDOWS,
+    M_AXI_CELL_FLOOR,
     SIZE_BYTES,
+    WRITE_ORDERS,
     SepAxiOrderSweep,
     SepAxiOrderSweepCfg,
+)
+from seq_lib.sep_inbound_filter_rule_seq import (
+    SepInboundFilter,
+    SepInboundFilterCfg,
 )
 
 
@@ -49,11 +56,21 @@ from seq_lib.sep_axi_order_sweep_seq import (
 class sep_axi_order_sweep_test(sep_base_test):
     """Every legal AW/W ordering delivers the write, at every register."""
 
+    SWEEP_BUS = "s_axi"
+
+    async def open_sweep_path(self, cfg: SepAxiOrderSweepCfg) -> None:
+        """Make the swept registers reachable from SWEEP_BUS.
+
+        The CPU-LSU splice reaches them already; a bus that is gated opens its
+        gate here.
+        """
+
     async def run_scenario(self) -> None:
-        cfg = SepAxiOrderSweepCfg(self.random_seed())
+        cfg = SepAxiOrderSweepCfg(self.random_seed(), bus=self.SWEEP_BUS)
         self.logger.info("order sweep config: %s", cfg.summary())
         await self.bring_up_no_cpu()
-        sweep = SepAxiOrderSweep(self)
+        await self.open_sweep_path(cfg)
+        sweep = SepAxiOrderSweep(self, bus=self.SWEEP_BUS)
 
         fails: list[str] = []
         for cell in cfg.cells:
@@ -110,7 +127,57 @@ class sep_axi_order_sweep_test(sep_base_test):
             "CHK-ORDER-DISPLACE PASS: %d follow-on write(s) landed on the "
             "register they addressed", sweep.witnessed)
 
+        # CHK-ORDER-STIM: the ordering each cell PRESENTED on the bus, read
+        # off the AW/W valid assertions rather than taken from the profile
+        # that was requested. run_cell fails a cell whose presentation does
+        # not match, so reaching here means all three orderings were driven.
+        want = {o for o, _a, _w in WRITE_ORDERS}
+        assert set(sweep.stim_seen) == want, (
+            f"CHK-ORDER-STIM FAIL: presented {sorted(sweep.stim_seen)}, "
+            f"expected {sorted(want)}"
+        )
+        self.logger.info(
+            "CHK-ORDER-STIM PASS: presented %s; slave handshake %s",
+            " ".join(f"{k}={v}" for k, v in sorted(sweep.stim_seen.items())),
+            " ".join(f"{k}={v}" for k, v in sorted(sweep.hs_seen.items())))
+
         self.logger.info("CHK-COVERAGE: %s", report)
         self.logger.info(
             "CHK-RANDCFG PASS: %d/%d cells from seed %d",
             compares, cfg.n_cells(), cfg.seed)
+
+
+@pyuvm.test()
+class sep_axi_order_sweep_m_axi_test(sep_axi_order_sweep_test):
+    """The same sweep on the SMN inbound master.
+
+    m_axi reaches the same register adapters through the inbound filter, so an
+    adapter that mishandles a channel ordering has to be caught from both
+    TB-driven buses, not only the CPU-LSU splice.
+
+    The inbound filter blocks by default (axi_filter_wrap.sv
+    BlockByDefault=1), so the CPU-LSU master programs coarse read+write allow
+    windows over the swept span before the walk starts. The windows leave the
+    filter rule bank itself outside every window, and the rule-bank registers
+    are excluded from this walk, so the sweep cannot rewrite the gate it is
+    driving through.
+    """
+
+    SWEEP_BUS = "m_axi"
+
+    async def open_sweep_path(self, cfg: SepAxiOrderSweepCfg) -> None:
+        """Program the inbound-filter allow windows from the CPU-LSU side."""
+        assert len(cfg.cells) >= M_AXI_CELL_FLOOR, (
+            f"CHK-COVERAGE FAIL: the m_axi walk built {len(cfg.cells)} cells, "
+            f"below the floor of {M_AXI_CELL_FLOOR}; a shrinking walk must "
+            f"not pass silently ({cfg.summary()})"
+        )
+        filt = SepInboundFilter(self)
+        await filt.disable_all()
+        for entry, (name, start, end) in enumerate(M_AXI_ALLOW_WINDOWS):
+            rule = SepInboundFilterCfg(entry=entry, allow_addr=start)
+            await filt.program_rule(
+                rule, read_allowed=True, write_allowed=True, end_addr=end)
+            self.logger.info(
+                "inbound filter entry %d allows %s 0x%08x..0x%08x r+w",
+                entry, name, start, end)
