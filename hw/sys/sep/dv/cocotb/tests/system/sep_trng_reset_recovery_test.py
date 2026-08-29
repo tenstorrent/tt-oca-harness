@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared TRNG reset, pool scrub, and ordered recovery.
 
 The test fills the fabric entropy pool from the internal ESRC->CSRNG->EDN path,
