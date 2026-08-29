@@ -3,8 +3,8 @@
 """The AXI ordering sweep driven from the SMN inbound master.
 
 Its own module so the leaf name selects one testcase: the runner sets MODULE,
-and a module holding two `@pyuvm.test()` classes runs both of them under each
-leaf name.
+and a module holding two `@pyuvm.test()` classes runs both under each leaf
+name.
 
 m_axi reaches the same register adapters as the CPU-LSU splice, through the
 inbound filter, so an adapter that mishandles a channel ordering has to be
@@ -23,8 +23,19 @@ import pyuvm
 
 # The module is bound, not the class. Importing the class would put a
 # registered test object in this module's namespace, and the runner discovers
-# tests by scanning the module it was given -- which is the very duplication
-# this split removes.
+# tests by scanning the module it was given, so both leaves would run both.
+# These come from seq_lib, which registers no tests, so importing the NAMES is
+# safe. Only the test module is bound rather than imported.
+from seq_lib.sep_axi_order_sweep_seq import (
+    M_AXI_ALLOW_WINDOWS,
+    M_AXI_CELL_FLOOR,
+    SepAxiOrderSweepCfg,
+)
+from seq_lib.sep_inbound_filter_rule_seq import (
+    SepInboundFilter,
+    SepInboundFilterCfg,
+)
+
 import tests.system.sep_axi_order_sweep_test as _s_axi
 
 
@@ -45,14 +56,10 @@ class sep_axi_order_sweep_m_axi_test(_s_axi.sep_axi_order_sweep_test):
     """
 
     SWEEP_BUS = "m_axi"
+    CELL_FLOOR = M_AXI_CELL_FLOOR
 
     async def open_sweep_path(self, cfg: SepAxiOrderSweepCfg) -> None:
         """Program the inbound-filter allow windows from the CPU-LSU side."""
-        assert len(cfg.cells) >= M_AXI_CELL_FLOOR, (
-            f"CHK-COVERAGE FAIL: the m_axi walk built {len(cfg.cells)} cells, "
-            f"below the floor of {M_AXI_CELL_FLOOR}; a shrinking walk must "
-            f"not pass silently ({cfg.summary()})"
-        )
         filt = SepInboundFilter(self)
         await filt.disable_all()
         for entry, (name, start, end) in enumerate(M_AXI_ALLOW_WINDOWS):

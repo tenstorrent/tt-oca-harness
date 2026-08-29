@@ -99,9 +99,20 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # there; the other seven windows refuse.
         # Do not XFAIL and do not demote to a log line --
         # the same rule as the wrap anchors above.
+        burst_audited: list[str] = []
+        burst_skipped: list[str] = []
         for win in cfg.windows.values():
-            if win.dead_lo % 0x1000 == 0 or win.dead_lo <= win.base + 8:
+            # A window whose dead space starts on a 4KB boundary cannot be
+            # entered by a legal burst, and one with no live words before it
+            # has nowhere to begin. Neither can carry the contract; both are
+            # named rather than absorbed.
+            if win.dead_lo % 0x1000 == 0:
+                burst_skipped.append(f"{win.name}: dead space is 4KB-aligned")
                 continue
+            if win.dead_lo <= win.base + 8:
+                burst_skipped.append(f"{win.name}: no live words before it")
+                continue
+            burst_audited.append(win.name)
             start, resp, timed_out, words, singles = \
                 await dead.burst_across_extent(win)
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
@@ -143,16 +154,10 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 "than the DECERR memory_map.adoc names. The access was refused, "
                 "which is the asserted contract.", len(dead.flavour_findings))
 
-        for line in burst_fails:
-            self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
-        if burst_fails:
-            raise AssertionError(
-                f"CHK-DEADSPACE-BURST FAIL: {len(burst_fails)} window(s) "
-                f"accepted a burst beat in dead space -- see issue 1306"
-            )
-        self.logger.info(
-            "CHK-DEADSPACE-BURST PASS: every window refused a burst that ends "
-            "past its allocated extent")
+        # Adjudicate refuse/no-alias first and log their verdicts, then the
+        # burst contract. CHK-DEADSPACE-BURST fails on a known RTL defect, so
+        # raising on it before the other two summaries would stop either from
+        # ever reaching the log.
         if fails:
             self.logger.error(
                 "CHK-DEADSPACE-REFUSE FAIL: %d fail line(s) on %d probes "
@@ -168,3 +173,23 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         self.logger.info(
             "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved "
             "across any probe")
+
+        for line in burst_fails:
+            self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
+        if burst_fails:
+            raise AssertionError(
+                f"CHK-DEADSPACE-BURST FAIL: {len(burst_fails)} window(s) "
+                f"accepted a burst beat in dead space: a burst begun in a "
+                f"block's last live words carries its remaining beats past "
+                f"REG_MAP_SIZE and is answered OKAY"
+            )
+        assert burst_audited, (
+            "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
+            "contract, so it has no evidence here ("
+            + "; ".join(burst_skipped) + ")"
+        )
+        self.logger.info(
+            "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
+            "that ends past its allocated extent (%s); %d not auditable (%s)",
+            len(burst_audited), len(cfg.windows), ", ".join(burst_audited),
+            len(burst_skipped), "; ".join(burst_skipped) or "none")

@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AW/W ordering sweep across every register the export says is safe to write.
 
-sep_axi_superset_seq proves the three legal write orderings survive on two
-scratch words. That proves the stimulus, not the fabric: a register adapter
-that mishandles a channel ordering does so at its own AXI port, and every
-block behind the crossbar has its own adapter. This sweep drives the same
+A register adapter that mishandles a channel ordering does so at its own AXI
+port, and every block behind the crossbar has its own adapter, so the contract
+has to hold at each of them rather than at one scratch word. This sweep drives
+the
 three orderings at every register bit-bash already establishes as write-safe
 storage, so an adapter that only works when AW leads W is caught wherever it
 sits.
@@ -123,6 +123,11 @@ M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
 # justifies, so a map or routing change that removed more registers must fail
 # here rather than let a shrinking walk report a clean pass.
 M_AXI_CELL_FLOOR = 225
+
+# The same floor for s_axi. Comparing the cells run against the cells this same
+# config built only says the run matched itself: a map or exclusion change that
+# shrank the walk to a handful of cells would still satisfy it.
+S_AXI_CELL_FLOOR = 300
 
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
 # scales the separation; the ordering itself is fixed, so every seed covers
@@ -361,8 +366,10 @@ class SepAxiOrderSweep:
 
         A shadowed register latches on the second identical write, so a single
         write leaves the stored value unchanged and would read back as a lost
-        write. Both writes go out under whatever timing profile is active, so
-        the ordering under test applies to each of them.
+        write. The profile arms a one-shot release, so it shapes the FIRST
+        write only: the committing second write always goes out same-cycle.
+        The ordering under test is the one the register sees first, and the
+        commit itself is not an ordered access.
         """
         resp = await self._wr(info.addr, data, size=size)
         if resp == RESP_OKAY and "SHADOWED" in info.name:

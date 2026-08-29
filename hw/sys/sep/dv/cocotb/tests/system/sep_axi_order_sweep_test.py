@@ -39,16 +39,11 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_order_sweep_seq import (
-    M_AXI_ALLOW_WINDOWS,
-    M_AXI_CELL_FLOOR,
+    S_AXI_CELL_FLOOR,
     SIZE_BYTES,
     WRITE_ORDERS,
     SepAxiOrderSweep,
     SepAxiOrderSweepCfg,
-)
-from seq_lib.sep_inbound_filter_rule_seq import (
-    SepInboundFilter,
-    SepInboundFilterCfg,
 )
 
 
@@ -57,6 +52,7 @@ class sep_axi_order_sweep_test(sep_base_test):
     """Every legal AW/W ordering delivers the write, at every register."""
 
     SWEEP_BUS = "s_axi"
+    CELL_FLOOR = S_AXI_CELL_FLOOR
 
     async def open_sweep_path(self, cfg: SepAxiOrderSweepCfg) -> None:
         """Make the swept registers reachable from SWEEP_BUS.
@@ -93,6 +89,11 @@ class sep_axi_order_sweep_test(sep_base_test):
             )
 
         compares = sum(sweep.covered.values())
+        assert compares >= self.CELL_FLOOR, (
+            f"CHK-COVERAGE FAIL: the walk ran {compares} cells, below the "
+            f"floor of {self.CELL_FLOOR}; a shrinking walk must not pass "
+            f"silently ({cfg.summary()})"
+        )
         assert compares == cfg.n_cells(), (
             f"CHK-ORDER-LAND FAIL: {compares} of {cfg.n_cells()} cells "
             f"produced a data compare ({report}); every legal ordering must be "
@@ -141,6 +142,9 @@ class sep_axi_order_sweep_test(sep_base_test):
             " ".join(f"{k}={v}" for k, v in sorted(sweep.stim_seen.items())),
             " ".join(f"{k}={v}" for k, v in sorted(sweep.hs_seen.items())))
 
+        self.logger.info(
+            "CHK-COVERAGE PASS: %d cell(s) run, at or above the floor of %d",
+            compares, self.CELL_FLOOR)
         self.logger.info("CHK-COVERAGE: %s", report)
         self.logger.info(
             "CHK-RANDCFG PASS: %d/%d cells from seed %d",

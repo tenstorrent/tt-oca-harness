@@ -92,10 +92,11 @@ class sep_axi_strobe_window_test(sep_base_test):
                 "written value; %d skipped as not writable here",
                 sw.window_ok, len(cfg.windows), len(sw.window_skipped))
         else:
-            self.logger.info(
-                "CHK-WINDOW-DATA: no window was writable in this "
-                "configuration (%s); the read-mask contract is unproven here",
-                ", ".join(f"{k}: {v}" for k, v in sw.window_skipped.items()))
+            raise AssertionError(
+                "CHK-WINDOW-DATA FAIL: no memory window was writable, so the "
+                "read-mask contract has no evidence here ("
+                + ", ".join(f"{k}: {v}" for k, v in sw.window_skipped.items())
+                + ")")
 
         self.logger.info(
             "CHK-RANDCFG PASS: %d narrow write(s) + %d window(s) from seed %d",

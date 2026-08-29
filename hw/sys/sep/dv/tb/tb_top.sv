@@ -1686,18 +1686,6 @@ module sep_uvm_top
     );
 
     // ------------------------------------------------------------------
-    // The Key Manager's warm reset is conditioned and synchronised, so its
-    // sequential state is undefined until a clock edge has been taken with the
-    // reset known. Before that the CPU's AXI valids read X, and comparing them
-    // against a low reset says nothing about the design. The checker is
-    // enabled from the first such edge.
-    logic km_axil_sva_en = 1'b0;
-    always @(posedge clk_i) begin
-        if (`SEP_CORE.sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n === 1'b0
-            || `SEP_CORE.sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n === 1'b1)
-            km_axil_sva_en <= 1'b1;
-    end
-
     // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
     // to KPV, KMCSR, the DRBG sampler and the mailbox crosses this one port,
     // and nothing checks it: the KM crossbar has a single slave port wired to
@@ -1724,7 +1712,13 @@ module sep_uvm_top
     ) u_km_axil_sva (
         .aclk    (clk_i),
         .aresetn (rst_warm_sync_n),
-        .en_i    (sep_uvm_top.km_axil_sva_en),
+        // Resolved in the Key Manager's own scope, so this adds no
+        // hierarchical read of DUT state. The warm reset is conditioned and
+        // synchronised and the CPU's valids follow it, so both read X before
+        // the first edge; comparing VALID against a low reset says nothing
+        // while either is undefined.
+        .en_i    (!$isunknown(rst_warm_sync_n)
+                  && !$isunknown(cpu_axil_req.aw_valid)),
         .awid    (1'b0),
         .awaddr  (cpu_axil_req.aw.addr),
         .awlen   (8'd0),

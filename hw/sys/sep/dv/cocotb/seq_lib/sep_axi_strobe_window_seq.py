@@ -20,8 +20,7 @@ response, wrong data -- so register reads do not cover it and the readback
 compare is the only thing that catches it.
 
 Targets are the scratch banks (safe to scribble, not restored) and the OTBN
-DMEM/IMEM and KMAC STATE windows, which are the memory-mapped apertures in
-the SEP local map. Windows are only exercised when the run can prove they
+DMEM and IMEM windows. Windows are only exercised when the run can prove they
 read back what was written; see ``probe_window``.
 """
 
@@ -48,11 +47,10 @@ SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 # Memory-mapped windows. These are the apertures that sit behind an SRAM-style
 # adapter rather than a register adapter, which is the class the read-mask
 # defect affects.
-# KMAC STATE is deliberately absent: the Keccak state window is gated by the
-# engine's own configuration and refuses a bare CSR-path write, so probing it
-# here tests KMAC bring-up rather than the read mask. It is the window the
-# recovered mask defect actually bit, so it is worth adding back once a test
-# can bring KMAC up first -- see hw/sys/sep/dv/sim/axi.log.
+# KMAC STATE is absent: the Keccak state window is gated by the engine's own
+# configuration and refuses a bare CSR-path write, so a probe there tests KMAC
+# bring-up rather than the read mask. A test that brings KMAC up first can
+# cover it.
 WINDOWS: tuple[tuple[str, int], ...] = (
     ("otbn_dmem", sym("OTBN_DMEM_MEM_BASE_ADDR")),
     ("otbn_imem", sym("OTBN_IMEM_MEM_BASE_ADDR")),

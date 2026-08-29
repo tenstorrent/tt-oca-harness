@@ -36,7 +36,7 @@ It tallies beats + response codes so a clean run reports positive evidence.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Event, RisingEdge
+from cocotb.triggers import RisingEdge
 from pyuvm import ConfigDB, uvm_component
 
 
@@ -95,8 +95,6 @@ class SepAxiMonitor(uvm_component):
         self._w_hs_cycle: int | None = None
         self.last_write_stim: str | None = None
         self.last_write_hs: str | None = None
-        self.aw_valid_seen = Event("aw_valid_seen")
-        self.w_valid_seen = Event("w_valid_seen")
         self.expected_decerr_seen = 0
 
     def arm_expected_decerr(self, n: int = 1) -> None:
@@ -127,8 +125,6 @@ class SepAxiMonitor(uvm_component):
         self._w_hs_cycle = None
         self.last_write_stim = None
         self.last_write_hs = None
-        self.aw_valid_seen.clear()
-        self.w_valid_seen.clear()
 
     @staticmethod
     def _order(a, w) -> str | None:
@@ -180,10 +176,8 @@ class SepAxiMonitor(uvm_component):
             if has_aw:
                 if _hi(sig["awvalid"]) and self._aw_valid_cycle is None:
                     self._aw_valid_cycle = self.cycles
-                    self.aw_valid_seen.set()
                 if _hi(sig["wvalid"]) and self._w_valid_cycle is None:
                     self._w_valid_cycle = self.cycles
-                    self.w_valid_seen.set()
                 if (_hi(sig["awvalid"]) and _hi(sig["awready"])
                         and self._aw_hs_cycle is None):
                     self._aw_hs_cycle = self.cycles

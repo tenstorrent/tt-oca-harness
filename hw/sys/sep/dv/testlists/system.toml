@@ -358,8 +358,11 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # The same sweep driven from the SMN inbound master. m_axi reaches the same
-# register adapters through the inbound filter, so an adapter that mishandles
-# a channel ordering has to be caught from both TB-driven buses.
+# eleven IP block adapters through the inbound filter, so an adapter that
+# mishandles a channel ordering has to be caught from both TB-driven buses.
+# The walk opens allow windows first, and does not sweep the sixteen
+# INBOUND_FILTER_CTRL blocks: those CSRs gate the access in flight, so writing
+# them would measure filter reprogramming. They stay swept on s_axi.
 name = "sep_axi_order_sweep_m_axi_test"
 module = "system.sep_axi_order_sweep_m_axi_test"
 seed = 1

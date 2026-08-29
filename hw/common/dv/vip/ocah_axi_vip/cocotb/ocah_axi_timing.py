@@ -39,8 +39,8 @@ __all__ = ["AxiTimingProfile", "apply_profile", "clear_profile"]
 class AxiTimingProfile:
     """Cycles each channel is held back before it may drive.
 
-    Zero everywhere reproduces the backend default, so an unconfigured master
-    behaves exactly as it did before this module existed.
+    Zero everywhere is the backend default, so an unconfigured master is
+    unaffected.
     """
 
     aw_delay: int = 0
@@ -58,6 +58,13 @@ class AxiTimingProfile:
                     f"AxiTimingProfile.{name} must be a non-negative int, "
                     f"got {val!r}"
                 )
+        if self.aw_delay and self.w_delay:
+            raise ValueError(
+                "AxiTimingProfile holds the trailing write channel until the "
+                "leading one asserts VALID, so at most one of aw_delay / "
+                "w_delay may be non-zero; got "
+                f"aw_delay={self.aw_delay} w_delay={self.w_delay}"
+            )
 
     @property
     def write_order(self) -> str:
@@ -76,28 +83,18 @@ class AxiTimingProfile:
         )
 
 
-# Request channels, whose delay separates the channels of one transfer. The
-# response channels are ready-side backpressure: their queue holds what has
-# been received, so it is empty exactly when they are waiting, and gating on
-# that would hold READY low for the whole run.
-_REQUEST_FIELDS = ("aw_delay", "w_delay", "ar_delay")
-
-
-def _hold_then_go(channel, cycles: int):
-    """Pause generator: hold ``cycles`` edges once the channel has work.
+def _hold_then_go(cycles: int):
+    """Pause generator: hold the channel for ``cycles`` edges, then release.
 
     The backend advances one value per clock edge from the moment the
-    generator is armed, so a plain countdown measures from arming and is spent
-    before a later transaction reaches the channel -- leaving the channel free
-    and every ordering identical. Holding while the queue is empty makes the
-    count relative to the transfer instead: the delay separates THIS write's
-    channels, whenever it is issued.
+    generator is armed, so this counts from arming. That suits a response
+    channel, whose delay is plain backpressure and orders against nothing. The
+    write channels order against each other and use _release_on_leader_valid
+    instead.
 
     It never StopIterations, because a generator that ends leaves the channel
     at its last value.
     """
-    while channel is not None and channel.empty():
-        yield True
     for _ in range(cycles):
         yield True
     while True:
@@ -163,7 +160,7 @@ def apply_profile(driver, profile: AxiTimingProfile) -> None:
             _OCAH_RELEASERS[chan] = cocotb.start_soon(
                 _release_on_leader_valid(chan, chans[lead[field]], cycles))
         else:
-            chan.set_pause_generator(_hold_then_go(None, cycles))
+            chan.set_pause_generator(_hold_then_go(cycles))
 
 
 def clear_profile(driver) -> None:
@@ -176,20 +173,20 @@ def _selftest() -> None:
     assert p.write_order == "same-cycle", p.write_order
     assert AxiTimingProfile(aw_delay=3).write_order == "w-first"
     assert AxiTimingProfile(w_delay=3).write_order == "aw-first"
-    assert AxiTimingProfile(aw_delay=2, w_delay=2).write_order == "same-cycle"
-
-    # A response channel has no peer to order against: the countdown starts
-    # at once.
-    g_resp = _hold_then_go(None, 2)
-    assert [next(g_resp) for _ in range(4)] == [True, True, False, False]
-
-    for bad in ({"aw_delay": -1}, {"w_delay": "2"}):
+    for bad in ({"aw_delay": 2, "w_delay": 2}, {"aw_delay": -1},
+                {"w_delay": "2"}):
         try:
             AxiTimingProfile(**bad)
         except ValueError:
             pass
         else:
             raise AssertionError(f"AxiTimingProfile accepted {bad}")
+
+    # A response channel has no peer to order against: the countdown starts
+    # at once.
+    g_resp = _hold_then_go(2)
+    assert [next(g_resp) for _ in range(4)] == [True, True, False, False]
+
 
 
 _selftest()
