@@ -17,6 +17,6 @@ class dtp_jtag_highz_test(dtp_base_test):
             dtp_jtag_highz_test_seq,
             "jtag_highz_seq",
             specific_env="DTP_JTAG_HIGHZ_TEST_LOOPS",
-            default_loops=4,
+            default_loops=16,
             group_env="DTP_BASIC_JTAG_TEST_LOOPS",
         )
