@@ -361,7 +361,7 @@ args = ["+skip_fuse_sense"]
 # register adapters through the inbound filter, so an adapter that mishandles
 # a channel ordering has to be caught from both TB-driven buses.
 name = "sep_axi_order_sweep_m_axi_test"
-module = "system.sep_axi_order_sweep_test"
+module = "system.sep_axi_order_sweep_m_axi_test"
 seed = 1
 reseed = 3
 timeout_sec = 3600

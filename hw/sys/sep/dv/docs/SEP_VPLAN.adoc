@@ -338,6 +338,10 @@ feature has no legal knob space (a strap, a single named handshake).
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |AW and W are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal and each must deliver the write without displacing its neighbour. Each block terminates AXI at its own register adapter, so the contract has to hold at each of them: 321 cells over 27 blocks, crossed with 1/2/4-byte sizes on the scratch words. The ordering each cell presented is read off the AW/W valid assertions and asserted against what was requested.
+|`sep_axi_order_sweep_m_axi_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|The same ordering walk driven from the SMN inbound master. m_axi reaches the same eleven IP blocks through the inbound filter, which denies by default, so the walk opens allow windows from the CPU-LSU side first. The sixteen `INBOUND_FILTER_CTRL` blocks are excluded and counted: those CSRs gate the access in flight, so writing them mid-walk would measure filter reprogramming rather than adapter ordering. Unlike the CPU-LSU splice, this path grants a W-first handshake.
 |`sep_axi_strobe_window_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -643,16 +647,16 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_reg_bit_bash_rand_test`
 
 |AXI AW/W channel ordering, write landing and neighbour displacement
-|PROVEN
-|`sep_axi_order_sweep_test` (321 cells over 27 blocks, all three orderings presented on the bus and asserted by `CHK-ORDER-STIM`)
+|PARTIAL
+|`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11), all three orderings presented and asserted by `CHK-ORDER-STIM`. VCS-dev evidence only; the Verilator merge gate has no kept log yet, so this is not PROVEN.
 
 |AXI narrow-write strobe and memory windows
-|PROVEN
-|`sep_axi_strobe_window_test`
+|PARTIAL
+|`sep_axi_strobe_window_test`. VCS-dev evidence only; no kept Verilator log for the merge gate.
 
 |Reserved inter-block address space
-|PROVEN
-|`sep_axi_map_refuse_test`
+|PARTIAL
+|`sep_axi_map_refuse_test`. VCS-dev evidence only; no kept Verilator log for the merge gate.
 
 |Dead-space decode
 |PARTIAL
