@@ -21,10 +21,15 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_test_seq;
 
     // "smc_otp" (default) or "smc_axi"; set by the test before start().
     string target_name = "smc_otp";
-    int unsigned random_ops = 4;
+    // 16 randomized write+readback passes meet the suite-wide
+    // minimum-iteration floor; override per run with +DTP_JTAG2AXI_RANDOM_OPS=<n>.
+    int unsigned random_ops = 16;
 
     function new(string name = "dtp_jtag2axi_single_op_seq");
+        int unsigned count;
         super.new(name);
+        if ($value$plusargs("DTP_JTAG2AXI_RANDOM_OPS=%d", count) && count > 0)
+            random_ops = count;
     endfunction
 
     protected function j2a_target_t target();

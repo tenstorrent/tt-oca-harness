@@ -79,11 +79,15 @@ python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
 
-# JTAG2AXI checker-enabled tests (shared ocah_axi_vip scoreboard)
-python3 tools/dv/run_dv.py --dut dtp \
-  --items dtp_jtag2axi_decode_error_decerr_read_test \
-          dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test \
-          dtp_jtag2axi_smc_axi_error_single_write_test
+# Every JTAG2AXI test runs the shared ocah_axi_vip scoreboard (passive bus
+# monitors + reference model) with per-test required evidence IDs and
+# per-stream minimum compared-transaction counts, so a silent no-op run
+# fails at finalization
+python3 tools/dv/run_dv.py --dut dtp --items jtag2axi
+
+# Every XTRIG/CTM test finalizes a named-evidence checker (CTM reference
+# model route compare, CSR readback, quiet windows, stretch measurements)
+python3 tools/dv/run_dv.py --dut dtp --items xtrig
 
 # Checker negative validation: deliberately wrong arming must fail the run
 DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
@@ -92,6 +96,20 @@ DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 # TAP checker negative validation: a desynced TAP reference model must fail
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag_tlr_reset_test
+
+# Every JTAG instruction test (BYPASS variants, IDCODE, SAMPLE/PRELOAD,
+# EXTEST, INTEST, EXTEST_TRAIN/PULSE, CLAMP, HIGHZ, RUNBIST, CLAMP_HOLD/
+# RELEASE, undefined-instruction fallback, TRST/POR/TLR) finalizes a named
+# evidence checker per pass; most also run a passive pin-level scan monitor
+# whose IR/DR reconstruction is cross-checked against the sequence's own
+# scan intent. Corrupted family expectations must fail the run:
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag_extest_test
+
+# XTRIG checker negative validation: a corrupted CTM reference model must
+# fail every route-comparing scenario
+DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_ctm_p2p_cla_to_ctp_test
 
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
@@ -156,19 +174,31 @@ reference model, BYPASS 1-TCK TDI-to-TDO latency, and clean scan-path
 returns, plus randomized TMS stress walks reproducible from `--seed`.
 
 The cocotb tests use deterministic random scenarios derived from `RANDOM_SEED`.
-Loop and transaction counts can be increased without changing test code:
+Every looped scenario runs at least 16 passes by default
+(`dtp_base_test.MIN_DEFAULT_LOOPS`), each pass with its own scenario seed
+(`RANDOM_SEED + loop_idx`); the two debug-disable matrix tests instead run a
+16-row matrix per pass (seeded multi-hot rows). Loop and transaction counts
+can be changed without touching test code:
 
 ```bash
-# Apply to any looped test without a more specific override
-DTP_TEST_LOOPS=8 python3 tools/dv/run_dv.py --dut dtp --items smoke
+# Apply to any looped test without a more specific override (e.g. a quick
+# 1-pass bring-up run, or a deeper soak)
+DTP_TEST_LOOPS=1 python3 tools/dv/run_dv.py --dut dtp --items smoke
+DTP_TEST_LOOPS=64 python3 tools/dv/run_dv.py --dut dtp --items smoke
 
 # Apply to the Basic JTAG group, with more random scan patterns per loop
-DTP_BASIC_JTAG_TEST_LOOPS=8 DTP_RANDOM_COUNT=10 \
+DTP_BASIC_JTAG_TEST_LOOPS=32 DTP_RANDOM_COUNT=10 \
   python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
-# Apply to JTAG2AXI read/write tests
-DTP_JTAG2AXI_TEST_LOOPS=16 python3 tools/dv/run_dv.py --dut dtp --items functional
+# Group knobs: DTP_JTAG2AXI_TEST_LOOPS, DTP_SCAN_TEST_LOOPS,
+# DTP_XTRIG_TEST_LOOPS, DTP_DEBUG_TDR_TEST_LOOPS
+DTP_JTAG2AXI_TEST_LOOPS=32 python3 tools/dv/run_dv.py --dut dtp --items functional
 ```
+
+The SV-UVM flow follows the same floor: `dtp_sanity_test` runs 16 randomized
+TMS stress walks (`+DTP_RAND_WALKS=<n>` overrides) and the JTAG2AXI single-op
+scenario runs 16 randomized write+readback passes
+(`+DTP_JTAG2AXI_RANDOM_OPS=<n>` overrides).
 
 PASS/FAIL is classified by the global parser registry in
 `hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from
