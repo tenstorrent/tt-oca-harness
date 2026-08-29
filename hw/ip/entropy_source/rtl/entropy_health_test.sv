@@ -53,7 +53,12 @@ module entropy_health_test #(
     output      logic [7:0]            prob_10_o,
     output      logic [7:0]            prob_00_o,
     output      logic [7:0]            prob_11_o,
-    output      logic [7:0]            status_o
+    output      logic [7:0]            status_o,
+    // Set when a health-test counter's duplicate copies disagree
+    // (prim_count's own fault detection), independent of a test threshold
+    // trip. Every caller must route this to the alert path: a glitched
+    // counter can silently stop reporting real threshold failures.
+    output      logic                  count_err_o
 );
 
     /////////////////////
@@ -129,6 +134,8 @@ module entropy_health_test #(
 
     assign count_01_o = markov_test_cnt_hi;
     assign count_10_o = markov_test_cnt_lo;
+
+    assign count_err_o = repcnt_count_err | apt_count_err | markov_count_err;
 
     assign prob_01_o = 8'd0;
     assign prob_10_o = 8'd0;

@@ -52,7 +52,9 @@ module entropy_generator #(
     output      logic                    noise_bit_monitor_o,
     output      logic [7:0]              test_status_o,
     output      logic [7:0]              entropy_byte_o,
-    output      logic                    entropy_byte_valid_o
+    output      logic                    entropy_byte_valid_o,
+    // This lane's health-test counter-disagreement error; see entropy_health_test.
+    output      logic                    count_err_o
 );
 
     /////////////
@@ -151,7 +153,8 @@ module entropy_generator #(
         .prob_10_o                    (open_prob_10),
         .prob_00_o                    (open_prob_00),
         .prob_11_o                    (open_prob_11),
-        .status_o                     (test_status_o)
+        .status_o                     (test_status_o),
+        .count_err_o                  (count_err_o)
     );
 
     entropy_rosc_tune_fsm u_tune_fsm (

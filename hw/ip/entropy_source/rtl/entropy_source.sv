@@ -184,6 +184,7 @@ module entropy_source
     logic apt_hi_alert_cntr_err,    apt_lo_alert_cntr_err;
     logic markov_hi_alert_cntr_err, markov_lo_alert_cntr_err;
     logic es_cntr_err;
+    logic generator_complex_cntr_err;
 
     // FIPS configuration lock: asserted once FIPS_LOCK.LOCK is written,
     // cleared only by reset. Drives swwel on every certified-config field.
@@ -324,6 +325,9 @@ module entropy_source
         .generator_9_test_status_o              (generator_9_test_status),
         .generator_10_test_status_o             (generator_10_test_status),
         .generator_11_test_status_o             (generator_11_test_status),
+
+        // Per-lane and window-counter self-check error, folded into es_cntr_err
+        .count_err_o                            (generator_complex_cntr_err),
 
         // Window wrap pulse output
         .window_wrap_pulse_o                    (window_wrap_pulse)
@@ -994,7 +998,7 @@ module entropy_source
                          markov_lo_fails_cntr_err  || any_fails_cntr_err    ||
                          repcnt_alert_cntr_err     || apt_hi_alert_cntr_err ||
                          apt_lo_alert_cntr_err     || markov_hi_alert_cntr_err ||
-                         markov_lo_alert_cntr_err;
+                         markov_lo_alert_cntr_err  || generator_complex_cntr_err;
 
     // per-window sticky health-test-fail latch.
     //
