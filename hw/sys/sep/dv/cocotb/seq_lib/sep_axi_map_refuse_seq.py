@@ -68,23 +68,15 @@ class MapProbe:
     op: str          # "r" | "w"
     unit: str        # spec Unit column, for the failure message
     anchor: bool     # True = walked every seed
-    routed: bool     # True = an xbar rule covers this address
 
-    @property
-    def klass(self) -> str:
-        """Which contract this probe belongs to.
 
-        "unrouted"  no decode rule covers the address, so the fabric has
-                    nothing to send it to and must refuse. A hard contract.
-        "routed"    an xbar rule covers it but the map calls the span
-                    reserved. Whether the fabric should refuse is an open
-                    specification question, not a proven defect, so these are
-                    reported as findings and do not fail the test. Deciding it
-                    from the RTL would be letting the decoder write its own
-                    contract.
-        """
-        return "routed" if self.routed else "unrouted"
+# The walk must stay at least this wide. Below it, a reserved row has stopped
+# yielding addresses and the run is proving less than it reports.
+_PROBE_FLOOR = 18
 
+# Reserved rows the crossbar routes, which therefore yield no probe. They are
+# counted, and a new one has to be understood rather than absorbed.
+_SHORT_ROW_LIMIT = 5
 
 # Reserved gaps that stay in the probe set on every seed: one address just past
 # the end of a live block, which is where a truncating decoder aliases first.
@@ -136,7 +128,7 @@ class SepAxiMapRefuseCfg:
                     continue
                 reg = region_of(addr, regions)
                 probes.append(MapProbe(
-                    addr, op, reg.unit if reg else "?", True, False))
+                    addr, op, reg.unit if reg else "?", True))
                 seen.add((addr, op))
 
         # Reserved rows, coarse ones last so the fine gaps are probed first.
@@ -161,7 +153,7 @@ class SepAxiMapRefuseCfg:
                         self.skipped.get("routed span, open spec question", 0) + 1)
                     continue
                 seen.add((addr, op))
-                probes.append(MapProbe(addr, op, reg.unit, False, False))
+                probes.append(MapProbe(addr, op, reg.unit, False))
                 added += 1
             if added < per_region:
                 # Probe count is the coverage claim; record the shortfall.
@@ -177,7 +169,6 @@ class SepAxiMapRefuseCfg:
 
     def summary(self) -> str:
         n_anchor = sum(1 for p in self.probes if p.anchor)
-        n_routed = sum(1 for p in self.probes if p.routed)
         skips = " ".join(f"{k}={v}" for k, v in sorted(self.skipped.items()))
         short = " ".join(
             f"{k}={g}/{w}" for k, (g, w) in sorted(self.short_regions.items())
@@ -185,7 +176,6 @@ class SepAxiMapRefuseCfg:
         return (
             f"seed={self.seed} probes={len(self.probes)} anchors={n_anchor} "
             f"random={len(self.probes) - n_anchor} "
-            f"unrouted={len(self.probes) - n_routed} routed_reserved={n_routed} "
             f"skip=[{skips}] short=[{short}]"
         )
 
@@ -277,9 +267,21 @@ def _selftest() -> None:
     # map change that routes that address must fail here rather than quietly
     # reducing the walk to reads.
     for seed in (1, 2, 3):
-        probes = SepAxiMapRefuseCfg(seed).probes
-        ops = {p.op for p in probes if not p.routed}
+        c = SepAxiMapRefuseCfg(seed)
+        ops = {p.op for p in c.probes}
         assert ops == {"r", "w"}, f"seed {seed} covers only {ops}"
+        # A floor on the walk. Rows the crossbar routes yield nothing, which is
+        # correct, but the shortfall is otherwise only logged -- so a map or
+        # crossbar change that routed more rows could shrink the walk toward
+        # the anchors while the run still reported a clean pass.
+        assert len(c.probes) >= _PROBE_FLOOR, (
+            f"seed {seed} built {len(c.probes)} probes, below the floor of "
+            f"{_PROBE_FLOOR}; a reserved row stopped yielding addresses"
+        )
+        assert len(c.short_regions) <= _SHORT_ROW_LIMIT, (
+            f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
+            f"their quota, above the {_SHORT_ROW_LIMIT} the crossbar routes"
+        )
     assert len(cfg.probes) >= 10, f"only {len(cfg.probes)} probes"
     # Every probe must be reserved per the spec, or the test is asking the DUT
     # to refuse something it is supposed to answer.

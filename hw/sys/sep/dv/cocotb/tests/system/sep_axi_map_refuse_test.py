@@ -68,31 +68,20 @@ class sep_axi_map_refuse_test(sep_base_test):
             "CHK-OKAY PASS: mapped CSR 0x%08x returned OKAY with its "
             "generated reset value", MAPPED_CSR_ADDR)
 
-        fails: list[str] = []          # unrouted: a hard contract
-        findings: list[str] = []       # routed-reserved: an open question
+        # Every probe is an address no decode rule covers: a span the crossbar
+        # routes is excluded when the set is built, and counted in cfg.skipped
+        # under the open specification question it raises.
+        fails: list[str] = []
         for item in cfg.probes:
             tag = "anchor" if item.anchor else "rand"
             miss = await refuse.probe(item)
             if miss is None:
                 self.logger.info(
-                    "CHK-MAP-REFUSE PASS: %s 0x%08x refused (%s, %s, %s)",
-                    item.op, item.addr, item.unit, item.klass, tag)
-            elif item.klass == "unrouted":
+                    "CHK-MAP-REFUSE PASS: %s 0x%08x refused (%s, %s)",
+                    item.op, item.addr, item.unit, tag)
+            else:
                 fails.append(miss)
                 self.logger.error("CHK-MAP-REFUSE FAIL [%s]: %s", tag, miss)
-            else:
-                findings.append(miss)
-                self.logger.info("MAP-OPEN [%s]: %s", tag, miss)
-
-        # Findings first, so they are in the log whichever way the run ends.
-        if findings:
-            self.logger.info(
-                "MAP-OPEN: %d routed-but-reserved address(es) completed. The "
-                "crossbar routes these spans and memory_map.adoc calls them "
-                "reserved. Whether the fabric must refuse them is a "
-                "specification question and is NOT asserted here; resolving "
-                "it from the RTL would let the decoder define its own "
-                "contract.", len(findings))
 
         if fails:
             raise AssertionError(
@@ -101,26 +90,20 @@ class sep_axi_map_refuse_test(sep_base_test):
                 f"({refuse.refused} of {len(cfg.probes)} refused)"
             )
 
-        # Positive evidence: the unrouted contract was actually exercised, on
-        # both channels. A write reaches the B path and a read the R path, and
-        # a decoder can refuse one while completing the other.
-        n_unrouted = sum(1 for p in cfg.probes if not p.routed)
-        assert n_unrouted > 0, (
-            "CHK-MAP-REFUSE FAIL: no unrouted address in the probe set; the "
-            "hard contract was not exercised at all"
-        )
-        n_wr = sum(1 for p in cfg.probes if p.op == "w" and not p.routed)
-        n_rd = sum(1 for p in cfg.probes if p.op == "r" and not p.routed)
+        # Positive evidence: both channels were exercised. A write reaches the
+        # B path and a read the R path, and a decoder can refuse one while
+        # completing the other.
+        n_wr = sum(1 for p in cfg.probes if p.op == "w")
+        n_rd = sum(1 for p in cfg.probes if p.op == "r")
         assert n_wr > 0 and n_rd > 0, (
             f"CHK-MAP-REFUSE FAIL: probe set is {n_rd} read(s) and {n_wr} "
             f"write(s); both channels must be exercised, or a decoder that "
             f"refuses one and completes the other passes"
         )
         self.logger.info(
-            "CHK-MAP-REFUSE PASS: %d unrouted address(es) refused "
-            "(%d DECERR, %d SLVERR); %d routed-but-reserved address(es) "
-            "reported as MAP-OPEN, not asserted",
-            n_unrouted, refuse.decerr, refuse.slverr, len(findings))
+            "CHK-MAP-REFUSE PASS: %d address(es) no decode rule covers were "
+            "refused (%d DECERR, %d SLVERR)",
+            len(cfg.probes), refuse.decerr, refuse.slverr)
         # Raw-pin cross-check: the monitor counts DECERR beats it saw on the
         # bus, which is evidence independent of what the master reported. Every
         # credit armed for a DECERR was consumed by a real beat.
