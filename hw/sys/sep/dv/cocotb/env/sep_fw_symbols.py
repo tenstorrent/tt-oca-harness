@@ -46,7 +46,7 @@ class SepFwSymbols:
         """
         path = Path(path)
         count = 0
-        for line in path.read_text().splitlines():
+        for line in path.read_text(encoding="utf-8").splitlines():
             parts = line.split(None, 2)
             if len(parts) != 3 or parts[1] not in _CODE_TYPES:
                 continue

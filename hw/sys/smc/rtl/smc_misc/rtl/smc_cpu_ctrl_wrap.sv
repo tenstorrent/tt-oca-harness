@@ -451,10 +451,21 @@ module smc_cpu_ctrl_wrap
 		end
 	end
 
-	assign int_core_reset_n[0] = core_reset_pulse_done[0] ? reset_ctrl_reg_value_n0_scan.core0_reset_n_n0_scan : core_reset_pulse_out[0];
-	assign int_core_reset_n[1] = core_reset_pulse_done[1] ? reset_ctrl_reg_value_n0_scan.core1_reset_n_n0_scan : core_reset_pulse_out[1];
-	assign int_core_reset_n[2] = core_reset_pulse_done[2] ? reset_ctrl_reg_value_n0_scan.core2_reset_n_n0_scan : core_reset_pulse_out[2];
-	assign int_core_reset_n[3] = core_reset_pulse_done[3] ? reset_ctrl_reg_value_n0_scan.core3_reset_n_n0_scan : core_reset_pulse_out[3];
+	logic [MaxCPUCores-1:0] core_reset_reg_n;
+
+	assign core_reset_reg_n = {reset_ctrl_reg_value_n0_scan.core3_reset_n_n0_scan,
+				   reset_ctrl_reg_value_n0_scan.core2_reset_n_n0_scan,
+				   reset_ctrl_reg_value_n0_scan.core1_reset_n_n0_scan,
+				   reset_ctrl_reg_value_n0_scan.core0_reset_n_n0_scan};
+
+	for (genvar i = 0; i < MaxCPUCores; i++) begin : gen_core_reset_mux
+		prim_rst_mux2_hf_n u_core_reset_mux (
+			.rst0_ni (core_reset_pulse_out[i]),
+			.rst1_ni (core_reset_reg_n[i]),
+			.sel_i   (core_reset_pulse_done[i]),
+			.rst_no  (int_core_reset_n[i])
+		);
+	end
 
 	assign reg_uncore_reset_n  = reset_ctrl_reg_value_n0_scan.uncore_reset_n_n0_scan;
 	assign debug_reset_n_o = reset_ctrl_reg_value_n0_scan.debug_reset_n_n0_scan;
