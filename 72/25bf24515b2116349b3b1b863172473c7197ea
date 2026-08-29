@@ -1,0 +1,19 @@
+hw/sys/sep/dv/cocotb/tests/system/sep_trng_reset_recovery_test.py
+  s_8a5cfbd7ae04eb::t_6d42f85d5effca 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7225bf24515b2116349b3b1b863172473c7197ea",
+  "prompts": {},
+  "sessions": {
+    "s_8a5cfbd7ae04eb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1d72c2f-f90b-4a57-bca4-e3b65d6ca3d3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
