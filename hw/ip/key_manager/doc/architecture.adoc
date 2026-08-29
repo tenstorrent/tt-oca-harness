@@ -575,11 +575,13 @@ achieves maximum coverage. During scan test the secure-test-mode signal
 Key Manager captures no real secret and key derivation is starved of key
 material while registers are being shifted.
 
-* *Never scan-dumpable.* During debug (`secure_tm = 0`) the dedicated KM
-scan chain is tied off, so no KM register or key material can ever be
-extracted via scan dump -- in any LC state and for any owner (chiplet or
-SiP). This protection is governed solely by `secure_tm`; it is *not* gated
-by, and cannot be overridden by, the `*_DBG` feature-control bits.
+* *Never scan-dumpable.* No KM register or key material can ever be extracted
+via scan dump -- in any LC state and for any owner (chiplet or SiP). The
+protection is the command class admitted on the dedicated KM chain, not a gate
+on its output: the DFT controller admits a *test* command only when
+`secure_tm = 1`, admits no command at `secure_tm = 0`, and never admits a *dump*
+command. The `*_DBG` feature-control bits gate whether the chain is reachable at
+all, but no combination of them can turn a permitted test into a dump.
 
 The complete Key Manager forms one Class 2 scan boundary. This boundary includes
 the processor, key vault, control and status logic, mailboxes, entropy sampling,

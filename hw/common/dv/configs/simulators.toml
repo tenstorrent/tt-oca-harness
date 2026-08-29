@@ -10,7 +10,7 @@ binary = "verilator"
 frameworks = ["cocotb"]
 license_env = []
 supports_waves = ["fst", "vcd"]
-supports_cov = ["line", "toggle", "branch"]
+supports_cov = ["line", "toggle", "branch", "expression", "user"]
 default_waves = "fst"
 
 [verilator.build_defaults]
