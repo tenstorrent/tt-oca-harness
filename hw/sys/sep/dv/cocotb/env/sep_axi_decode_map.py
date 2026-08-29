@@ -11,7 +11,7 @@ that asked the decoder what the decoder should do would pass on any
 decoder. Rows whose Unit column is ``_RSV_`` are reserved: nothing is
 allocated there, so an access must not return OKAY.
 
-The RTL decode table in ``hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv``
+The RTL decode table in ``hw/sys/sep/rtl/sep_local_axi_xbar.sv``
 is parsed too, but only as a cross-check. ``audit_rtl_vs_spec()`` reports
 every span the crossbar routes that the specification calls reserved.
 Those are real findings -- an address the fabric accepts and the map does
@@ -44,10 +44,9 @@ class SpecRegion:
 
     ``end_addr`` is INCLUSIVE. The coarse region table writes an exclusive end
     (0x0000_0000-0x1000_0000 for a 256 MB region) while the detailed tables
-    write an inclusive one (0x1000_0000-0x1000_FFFF for 64 kB). Treating both
-    as inclusive attributed every coarse upper boundary to the wrong row, so
-    ``spec_regions`` normalises the coarse rows on the way in and everything
-    downstream sees one convention.
+    write an inclusive one (0x1000_0000-0x1000_FFFF for 64 kB).
+    ``spec_regions`` normalises the coarse rows on the way in, so everything
+    downstream sees one convention: an inclusive ``end_addr``.
     """
 
     base: int
@@ -96,8 +95,8 @@ def _is_reserved(unit: str, desc: str) -> bool:
     Three spellings appear in the document: Unit ``_RSV_``; a blank Unit with
     a Description that starts "Reserved"; and a named Unit whose Description
     says it is reserved (the 512 MB "SEP External Region ... Reserved for
-    adopter extension IP"). Reading only the first two classified that whole
-    region as allocated, so it was never probed and never counted as a skip.
+    adopter extension IP"). All three forms classify as reserved, or the
+    region is probed as allocated and never counted as a skip.
     """
     if unit == _RSV:
         return True
@@ -130,9 +129,9 @@ def spec_regions() -> tuple[SpecRegion, ...]:
         base, end, _size, unit, desc = m.groups()
         unit, desc = unit.strip(), desc.strip()
         lo, hi = _hexint(base), _hexint(end)
-        # Normalise the coarse table's exclusive end. A row whose size is an
-        # exact power-of-two multiple of (hi - lo) is exclusive; the detailed
-        # rows always end on an all-ones boundary, which is inclusive.
+        # Normalise the coarse table's exclusive end. A row whose base and end
+        # are both 4 kB aligned is exclusive; a detailed row ends on an
+        # all-ones boundary, which is inclusive and never 4 kB aligned.
         if hi > lo and (hi & 0xFFF) == 0 and (lo & 0xFFF) == 0:
             hi -= 1
         rows.append(

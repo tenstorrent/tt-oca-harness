@@ -72,12 +72,20 @@ class MapProbe:
 
 # The walk must stay at least this wide. Below it, a reserved row has stopped
 # yielding addresses and the run is proving less than it reports.
-_PROBE_FLOOR = 18
+_PROBE_FLOOR = 20
 
 # Reserved rows the crossbar routes, which therefore yield no probe. They are
 # counted, and a new one has to be understood rather than absorbed.
 _SHORT_ROW_LIMIT = 5
 
+# Anchors that survive the routed filter. A drop here does not move
+# short_regions, so the count is held on its own.
+_ANCHOR_KEPT = 6
+
+# Reserved gaps walked every seed WHERE THE CROSSBAR DOES NOT ROUTE THEM. Four
+# of these sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
+# 0x1093_8000, 0x10A4_0000) and are dropped when the set is built, so six
+# survive. See _ANCHOR_KEPT.
 # Reserved gaps that stay in the probe set on every seed: one address just past
 # the end of a live block, which is where a truncating decoder aliases first.
 _ANCHORS: tuple[tuple[int, str], ...] = (
@@ -281,6 +289,12 @@ def _selftest() -> None:
         assert len(c.short_regions) <= _SHORT_ROW_LIMIT, (
             f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
             f"their quota, above the {_SHORT_ROW_LIMIT} the crossbar routes"
+        )
+        n_anchor = sum(1 for p in c.probes if p.anchor)
+        assert n_anchor == _ANCHOR_KEPT, (
+            f"seed {seed} kept {n_anchor} anchors, expected {_ANCHOR_KEPT}; a "
+            f"span the crossbar now routes dropped one without moving the "
+            f"short-row count"
         )
     assert len(cfg.probes) >= 10, f"only {len(cfg.probes)} probes"
     # Every probe must be reserved per the spec, or the test is asking the DUT

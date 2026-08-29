@@ -340,11 +340,22 @@ class SepDeadspace:
         """
         beats = 4                     # two live beats, then two past the extent
         start = win.dead_lo - 4 * (beats // 2)
+        mon = self.test.env.axi_monitor
+        # The later beats land in dead space, so a correct fabric answers this
+        # burst with an error. Credit those beats and hand back whatever the
+        # fabric did not use: without the credit the monitor reports a correct
+        # refusal as a protocol error, and this walk cannot pass even once the
+        # block starts refusing.
+        mon.arm_expected_decerr(beats)
         seq = SepAxiAccessSeq(
             f"dead_burst_0x{start:08x}", op=SepAxiOp.READ, addr=start,
-            length=4 * beats, size=2, expect_error=False,
+            length=4 * beats, size=2, expect_error=True,
+            allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
+        used = sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        if beats > used:
+            mon.release_expected_decerr(beats - used)
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
         # Single-beat the same four addresses. Beats 0-1 are inside the extent
         # and must match; beats 2-3 are past it and are refused on their own, so
@@ -352,8 +363,12 @@ class SepDeadspace:
         singles = []
         for i in range(beats):
             past = start + 4 * i >= win.dead_lo
+            if past:
+                mon.arm_expected_decerr(1)
             r, d, _to = await self._access(
                 SepAxiOp.READ, start + 4 * i, expect_error=past)
+            if past and r != RESP_DECERR:
+                mon.release_expected_decerr(1)
             singles.append((r, d))
         return start, seq.resp_code, seq.timed_out, words, singles
 
