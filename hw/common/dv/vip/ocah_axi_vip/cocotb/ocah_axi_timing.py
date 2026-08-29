@@ -107,6 +107,17 @@ def _hold_then_go(cycles: int):
 _OCAH_RELEASERS: dict = {}
 
 
+def _is_high(sig) -> bool:
+    """True only when ``sig`` resolves to 1.
+
+    cocotb 1.x hands back a BinaryValue and 2.x a Logic, and only one of them
+    carries ``.integer``. Both render as a single character, and anything that
+    is not "1" -- including X and Z before the driver is up -- is not a VALID
+    assertion.
+    """
+    return str(sig.value) == "1"
+
+
 async def _release_on_leader_valid(trailing, leading, cycles: int) -> None:
     """Hold ``trailing`` until ``leading`` asserts VALID, then ``cycles`` more.
 
@@ -121,7 +132,7 @@ async def _release_on_leader_valid(trailing, leading, cycles: int) -> None:
     edge = RisingEdge(trailing.clock)
     while True:
         await edge
-        if leading.valid is not None and leading.valid.value.integer:
+        if leading.valid is not None and _is_high(leading.valid):
             break
     for _ in range(cycles):
         await edge

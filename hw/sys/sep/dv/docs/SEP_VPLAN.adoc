@@ -647,16 +647,16 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_reg_bit_bash_rand_test`
 
 |AXI AW/W channel ordering, write landing and neighbour displacement
-|PARTIAL
-|`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11), all three orderings presented and asserted by `CHK-ORDER-STIM`. VCS-dev evidence only; the Verilator merge gate has no kept log yet, so this is not PROVEN.
+|PROVEN
+|`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks, 107 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11, 75 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. Both pass on VCS and on the Verilator merge gate. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
 
 |AXI narrow-write strobe and memory windows
-|PARTIAL
-|`sep_axi_strobe_window_test`. VCS-dev evidence only; no kept Verilator log for the merge gate.
+|PROVEN
+|`sep_axi_strobe_window_test`, passing on VCS and on the Verilator merge gate.
 
 |Reserved inter-block address space
-|PARTIAL
-|`sep_axi_map_refuse_test`. VCS-dev evidence only; no kept Verilator log for the merge gate.
+|PROVEN
+|`sep_axi_map_refuse_test`, passing on VCS and on the Verilator merge gate.
 
 |Dead-space decode
 |PARTIAL
