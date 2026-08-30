@@ -369,42 +369,49 @@ class SepDrbgScoreboard:
         while it sits outside bits[28:21] and mismatches when it rotates in --
         exactly the intermittent CHK1 pattern seen when syncing on decor alone.
         The full TRNG reset resets ff_stage through the entropy-source rst_ni.
-        Detect that reset from the explicit gated-reset probe; decor_bytes can
-        already be zero before an initial reset pulse, so a zero-transition
-        detector can miss the reset entirely.
+        Detect the bring-up pulse from the explicit gated-reset probe. Ignore
+        the initial asserted level at cold reset: first observe release, then
+        the software-controlled TRNG reset assertion.
 
-        So: drive noise from the start, wait for the TRNG reset and let the SR
-        refill a few samples, then SNAPSHOT the real 12x29 ff_stage
-        (esrc_decor_sr_o) and seed the golden from it. From there the golden
-        free-runs the whole CHK1..CHK5 chain on the read-back esrc_noise_o."""
+        So: drive noise from the start, wait for the TRNG reset, then seed from
+        the pre-edge 12x29 ff_stage snapshot on the first valid decor sample
+        whose bytes prove that snapshot's phase. From there the golden free-runs
+        the whole CHK1..CHK5 chain on the read-back esrc_noise_o."""
         d = self.dut
         d.esrc_noise_ext_i.value = 0
-        state = "wait_reset"
+        state = "wait_release"
         prev_decor = None
         prev_probe = None
-        changes = 0
         while True:
             dut_decor = _safe_int(d.esrc_decor_bytes_o)
+            decor_valid = _safe_int(d.esrc_decor_valid_o) or 0
             whiten_push = _safe_int(d.esrc_whiten_push_o) or 0
             gsr = self.golden.decor_sr_word()
             changed = (dut_decor is not None and prev_decor is not None
                        and dut_decor != prev_decor)
 
-            if state == "wait_reset":
+            trng_rst_n = _safe_int(d.trng_gated_rst_n_probe_o)
+            if state == "wait_release":
+                if trng_rst_n == 1:
+                    state = "wait_reset"
+            elif state == "wait_reset":
                 # The coordinated TRNG reset resets the complete entropy_source:
                 # decorrelator SR, SHA, FIFO, and CSRs.
                 # Restart the decor-sample chain so its SHA starts at sample 0.
-                if _safe_int(d.trng_gated_rst_n_probe_o) == 0:
-                    state, changes = "wait_fill", 0
+                if trng_rst_n == 0:
+                    state = "wait_deassert"
                     self.chain = SepEntropyGolden(**self._gk)
                     self._reset_results()
+            elif state == "wait_deassert":
+                if trng_rst_n == 1:
+                    state = "wait_fill"
             elif state == "wait_fill":
-                # Let the SR fully refill (>=3 samples => 29-bit SR is past its
-                # fill) so the ff_stage snapshot is a live, fully-shifted state.
-                if changed:
-                    changes += 1
-                    if changes >= 3 and prev_probe:
-                        self._seed_golden(prev_probe)
+                # entropy_byte_sample_o captures the pre-edge ff_stage. The
+                # previous cycle's probe is that exact state; require its byte
+                # projection to match before locking the free-running golden.
+                if decor_valid and prev_probe is not None and dut_decor is not None:
+                    self._seed_golden(prev_probe)
+                    if self.golden.decor_sr_word() == dut_decor:
                         state = "locked"
                         self.log.info(
                             "CHK1 golden seeded from live ff_stage @ decor=%024x",
@@ -420,7 +427,7 @@ class SepDrbgScoreboard:
             # upstream backpressure), so feeding every decor-valid would misframe
             # the SHA 16:1 blocks after block 0. The held decor byte word at the
             # accept cycle is BIW-compressed into the word the whitener consumes.
-            if state != "wait_reset" and whiten_push and dut_decor is not None:
+            if state in ("wait_fill", "locked") and whiten_push and dut_decor is not None:
                 self.chain.feed_decor_sample(dut_decor)
 
             prev_decor = dut_decor

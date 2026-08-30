@@ -1419,8 +1419,9 @@ module sep_uvm_top
     // `noise_bit` wire instead lets the SR flop sample a different scheduling point
     // under Verilator, so the decorrelator golden cannot reproduce the RTL output.
     // RE-ISSUE the force every clock: a `force` in an `initial` block snapshots the
-    // RHS once at t=0 (Verilator), so it would hold the stale value; the posedge
-    // re-force re-captures the current driven bit so noise_i tracks it.
+    // RHS once at t=0 (Verilator), so it would hold the stale value. Update on the
+    // falling edge so noise_i is stable before the decorrelator samples it on the
+    // rising edge; forcing on that same rising edge creates an ordering race.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
     force `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
@@ -1429,7 +1430,7 @@ module sep_uvm_top
     // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
     // active in noise-injection runs) and each test is its own elaboration, so the force
     // cannot leak into another test; it is simply torn down when the sim ends.
-    always @(posedge clk_i) begin
+    always @(negedge clk_i) begin
         if ($test$plusargs("esrc_noise_force")) begin
             `ESRC_NOISE_FORCE(0);  `ESRC_NOISE_FORCE(1);  `ESRC_NOISE_FORCE(2);
             `ESRC_NOISE_FORCE(3);  `ESRC_NOISE_FORCE(4);  `ESRC_NOISE_FORCE(5);

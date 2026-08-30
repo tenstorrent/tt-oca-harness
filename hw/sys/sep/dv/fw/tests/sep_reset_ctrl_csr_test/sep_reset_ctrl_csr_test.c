@@ -232,9 +232,9 @@ int main(void) {
         uint32_t probe_addr;
         uint32_t write_val;
     } trng_ports[] = {
-        {"esrc",  0x10916010u, 0x00000001u}, // DEBUG_CTRL
-        {"csrng", 0x10915004u, 0x00000001u}, // INTR_ENABLE
-        {"edn",   0x10915804u, 0x00000001u}, // INTR_ENABLE
+        {"esrc", OCH_SEP_TOP_ENTROPY_SOURCE_DEBUG_CTRL_BASE_ADDR, 0x00000001u},
+        {"csrng", OCH_SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR, 0x00000001u},
+        {"edn", OCH_SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR, 0x00000001u},
     };
 
     for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {

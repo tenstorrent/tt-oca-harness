@@ -46,7 +46,6 @@ CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_CTRL_RESET = SEP_CPU_CTRL.reset("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
 SW_RESET_N = SEP_RESET_CTRL.addr("SW_RESET_N")
-SW_RESET_N_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 TRNG_SW_RST_N_MASK = SEP_RESET_CTRL.field_mask("SW_RESET_N", "trng_sw_rst_n")
 # The ESRC / CSRNG / EDN addresses below stay LITERAL, unlike every other block in
 # this env, because the generated top-level export does not cover them: there is no
@@ -275,8 +274,9 @@ class SepEsrcConfigSeq(uvm_sequence):
             # Initial bring-up has no enabled entropy consumers. Alarm recovery
             # uses SepSwReset.begin_trng_recovery(), then invokes this sequence
             # with reset_trng=False while the consumers remain held.
-            await _wr(self, SW_RESET_N, SW_RESET_N_DEFAULT & ~TRNG_SW_RST_N_MASK)
-            await _wr(self, SW_RESET_N, SW_RESET_N_DEFAULT)
+            saved_sw_reset_n = await _rd(self, SW_RESET_N)
+            await _wr(self, SW_RESET_N, saved_sw_reset_n & ~TRNG_SW_RST_N_MASK)
+            await _wr(self, SW_RESET_N, saved_sw_reset_n)
         await _wr(self, EXT_TRNG_SRC_SEL, cfg.ext_trng_src_sel)
         await _wr(self, ESRC_RING_OSC_ENABLE, RING_OSC_SAMPLECLK_ONLY)  # generators off
         await _wr(self, ESRC_DECORRELATOR_CTRL, cfg.decor_ctrl)

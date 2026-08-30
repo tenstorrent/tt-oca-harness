@@ -845,19 +845,19 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1032, 873, 159):
+    if (walk.export, walk.inventory, walk.nometa) != (1031, 872, 159):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1032/873/159"
+            f"{walk.nometa} != 1031/872/159"
         )
     if walk.inventory < 100:
         failures.append(
             f"iter_registers returned {walk.inventory} entries; expected 100+"
         )
     esrc_ro = reg_sw_readonly("entropy_source")
-    if len(esrc_ro) != 26:
+    if len(esrc_ro) != 25:
         failures.append(
-            f"entropy_source sw-readonly count {len(esrc_ro)} != 26"
+            f"entropy_source sw-readonly count {len(esrc_ro)} != 25"
         )
     if "HT_WATERMARK" not in esrc_ro or "HT_WATERMARK_NUM" in esrc_ro:
         failures.append(f"entropy_source sw-readonly set is wrong: {sorted(esrc_ro)}")
