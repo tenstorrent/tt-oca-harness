@@ -1,0 +1,17 @@
+{
+  "date": "2026-08-30",
+  "sim_run_id": "33326818512",
+  "status": "FAIL",
+  "leaves": {
+    "total": 60,
+    "pass": 56
+  },
+  "failures": {
+    "infra": 0,
+    "design": 4,
+    "unknown": 0
+  },
+  "flaky_tests": [
+    "dtp_jtag_clamp_release_test"
+  ]
+}
