@@ -18,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'data' / 'registers
 from entropy_source_reg import (
     ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT,
     ENTROPY_SOURCE_CTRL_REG_DEFAULT,
-    ENTROPY_SOURCE_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,
@@ -27,25 +26,20 @@ from entropy_source_reg import (
     ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_FIFO_RDATA_REG_DEFAULT,
     ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT,
+    ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT,
     ENTROPY_SOURCE_MARKOV_TEST_PROB_THRESHOLDS_REG_DEFAULT,
     ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT,
-    ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_REG_DEFAULT,
-    ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT,
-    ENTROPY_SOURCE_APT_PROPORTION_2BIT_REG_DEFAULT,
-    ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT,
-    ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT,
+    ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT,
     ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT,
-    ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT,
-    ENTROPY_SOURCE_STARTUP_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_DEFAULT,
@@ -71,43 +65,36 @@ PROB_SCALE = DEFAULT_CONFIG.ro.prob_scale
 REG_MAP = {
     # Register Name                   Address   RW/RO   Description                                          Default (from RDL)                           Write Mask
     'COMPONENT_ID':                   (0x00,    'RO',   'Component Identification',                         ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT,     0x00000000),
-    'CTRL':                           (0x04,    'RW',   'Entropy Source Control',                           ENTROPY_SOURCE_CTRL_REG_DEFAULT,             0x03FF0111),
-    'STATUS':                         (0x08,    'RO',   'Entropy Source Status (Reserved)',                 ENTROPY_SOURCE_STATUS_REG_DEFAULT,           0x00000000),
+    'CTRL':                           (0x04,    'RW',   'Entropy Source Control',                           ENTROPY_SOURCE_CTRL_REG_DEFAULT,             0x13FF0112),
     'DEBUG_CTRL':                     (0x0C,    'RW',   'Debug control to monitor internal signals',        ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT,       0x000007FF),  # SELECT_SIGNAL[7:0] + SELECT_FREQ_DIV[10:8] = 11 bits
-    'INTR_STATUS':                    (0x10,    'RW',   'Interrupt Status - Write 1 to clear',             ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,      0x00001111),
-    'INTR_ENABLE':                    (0x14,    'RW',   'Interrupt Enable',                                 ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,      0x00001111),
-    'INTR_TEST':                      (0x18,    'WO',   'Interrupt Test - Single pulse',                    ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,        0x00001111),
+    'INTR_STATUS':                    (0x10,    'RW',   'Interrupt Status - Write 1 to clear',             ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,      0x11111111),
+    'INTR_ENABLE':                    (0x14,    'RW',   'Interrupt Enable',                                 ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,      0x11111111),
+    'INTR_TEST':                      (0x18,    'WO',   'Interrupt Test - Single pulse',                    ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,        0x11111111),
     # 0x1C RESERVED
-    'FIFO_CTRL':                      (0x20,    'RW',   'FIFO Control (Reserved)',                          ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT,        0x00000001),
+    'FIFO_CTRL':                      (0x20,    'RW',   'FIFO Control',                                     ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT,        0x00000011),
     'FIFO_STATUS':                    (0x24,    'RO',   'FIFO Status - Level, pointers',                    ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT,      0x00000000),
     'FIFO_RDATA':                     (0x28,    'RO',   'FIFO Read Data - Read pops 32 entropy bits',       ENTROPY_SOURCE_FIFO_RDATA_REG_DEFAULT,       0x00000000),
     # 0x2C RESERVED
-    'HEALTH_TEST_CTRL':               (0x30,    'RW',   'Health Test Control - Enable and configure',       ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT, 0x0000FFFF),  # ENABLE[7:0] + REPETITION_LIMIT[15:8]
-    # 0x34 RESERVED (gap after Issue #1014 removed SAMPLE_SIZE)
+    'HEALTH_TEST_CTRL':               (0x30,    'RW',   'Health Test Control - Enable and configure',       ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT, 0x0000FF07),  # ENABLE[2:0] + REPETITION_LIMIT[15:8]
+    'HEALTH_TEST_WINDOW_SIZE':        (0x34,    'RW',   'APT and Markov Window Size',                      ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT, 0x0000FFFF),
     'MARKOV_TEST_PROB_THRESHOLDS':    (0x38,    'RW',   'Markov Test Probability Thresholds',               ENTROPY_SOURCE_MARKOV_TEST_PROB_THRESHOLDS_REG_DEFAULT, 0xFFFFFFFF),
     # 0x3C RESERVED
     'HEALTH_TEST_STATUS':             (0x40,    'RO',   'Health Test Status - 0=pass, 1=fail',              ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT, 0x00000000),
     'REPETITION_TEST_COUNT':          (0x44,    'RO',   'Repetition Test Count',                            ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT, 0x00000000),
     # 0x48-0x4C RESERVED
-    # 0x50-0x5C: APT_PATTERN_COUNT parallel test registers
-    'APT_PATTERN_COUNT_1BIT':         (0x50,    'RO',   'APT 1-bit Pattern Count',                          ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT, 0x00000000),
-    'APT_PATTERN_COUNT_2BIT':         (0x54,    'RO',   'APT 2-bit Pattern Count',                          ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT, 0x00000000),
-    'APT_PATTERN_COUNT_3BIT':         (0x58,    'RO',   'APT 3-bit Pattern Count',                          ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_REG_DEFAULT, 0x00000000),
-    'APT_PATTERN_COUNT_4BIT':         (0x5C,    'RO',   'APT 4-bit Pattern Count',                          ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_REG_DEFAULT, 0x00000000),
-    # 0x60-0x6C: APT_PROPORTION parallel limit registers (Issue #1014 fix)
-    'APT_PROPORTION_1BIT':            (0x60,    'RW',   'APT 1-bit Proportion Limit',                       ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT, 0x000003FF),  # LIMIT[9:0]
-    'APT_PROPORTION_2BIT':            (0x64,    'RW',   'APT 2-bit Proportion Limit',                       ENTROPY_SOURCE_APT_PROPORTION_2BIT_REG_DEFAULT, 0x000003FF),  # LIMIT[9:0]
-    'APT_PROPORTION_3BIT':            (0x68,    'RW',   'APT 3-bit Proportion Limit',                       ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT, 0x000003FF),  # LIMIT[9:0]
-    'APT_PROPORTION_4BIT':            (0x6C,    'RW',   'APT 4-bit Proportion Limit',                       ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT, 0x000003FF),  # LIMIT[9:0]
-    # 0x70-0x7C RESERVED
+    'APT_PATTERN_COUNT_1BIT':         (0x50,    'RO',   'APT High One Count',                               ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT, 0x00000000),
+    'APT_PATTERN_COUNT_2BIT':         (0x54,    'RO',   'APT Low One Count',                                ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT, 0x00000000),
+    # 0x58-0x5C RESERVED
+    'APT_PROPORTION_1BIT':            (0x60,    'RW',   'APT High One-Count Limit',                         ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT, 0x0000FFFF),
+    # 0x64-0x6C RESERVED
+    'APT_PROPORTION_LO':              (0x70,    'RW',   'APT Low One-Count Limit',                          ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT, 0x0000FFFF),
+    # 0x74-0x7C RESERVED
     'MARKOV_TEST_COUNTS_0':           (0x80,    'RO',   'Markov Test Counts - per-lane max, min alternation', ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT, 0x00000000),
-    'MARKOV_TEST_PROBABILITIES':      (0x88,    'RO',   'Markov Test Probabilities',                        ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_DEFAULT, 0x00000000),
     'RING_OSC_ENABLE':                (0x90,    'RW',   'Ring Oscillator Enables',                          ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,  0x00FFFFFF),
     'RING_OSC_TUNE':                  (0x94,    'RW',   'Ring Oscillator Tune Control',                     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,    0x00FFFFFF),
     'RING_OSC_CTRL':                  (0x98,    'RW',   'Ring Oscillator Sample Clock Select',              ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,    0x00000FFF),
     'DECORRELATOR_CTRL':              (0xA0,    'RW',   'Decorrelator Control',                             ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT, 0xFFFFFFFF),
     'DECORRELATOR_MASK':              (0xA4,    'RW',   'Decorrelator Mask',                                ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT, 0x000000FF),
-    'STARTUP_CTRL':                   (0xB0,    'RW',   'Startup Control',                                  ENTROPY_SOURCE_STARTUP_CTRL_REG_DEFAULT,     0x0000FFFF),
     # Individual generator health status registers (0xC0-0xEC)
     'GENERATOR_0_HEALTH_STATUS':      (0xC0,    'RO',   'Generator 0 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
     'GENERATOR_1_HEALTH_STATUS':      (0xC4,    'RO',   'Generator 1 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
@@ -194,9 +181,6 @@ __all__ = [
     "read_intr_status",
     "read_irq_output",
     "read_repetition_counter",
-    "read_apt_counter",
-    "read_markov_probabilities",
-    "verify_apt_counter_behavior",
 ]
 
 
@@ -408,7 +392,7 @@ async def reg_wr(master: APBMaster, reg_name: str, data: int) -> None:
         data: Data value to write (32-bit)
 
     Example:
-        await reg_wr(apb, 'CTRL', 0x00000001)
+        await reg_wr(apb, 'CTRL', ctrl_value)
     """
     if reg_name not in REG_MAP:
         raise ValueError(f"Unknown register: {reg_name}. Valid registers: {', '.join(REG_MAP.keys())}")
@@ -1645,10 +1629,10 @@ async def configure_health_tests(
     enable_rep: bool = True,
     enable_apt: bool = True,
     enable_markov: bool = True,
-    rep_threshold: int = 50,
-    apt_sample_size: int = 1,
-    apt_limit: int = 600,
-    markov_thresholds: int = 0x64646464
+    rep_threshold: int = 25,
+    apt_hi_limit: int = 1200,
+    apt_lo_limit: int = 848,
+    markov_thresholds: int = 0x006404B0
 ):
     """Configure health test enables and thresholds.
 
@@ -1658,87 +1642,32 @@ async def configure_health_tests(
         enable_apt: Enable APT test
         enable_markov: Enable Markov test
         rep_threshold: Repetition test threshold (8-bit)
-        apt_sample_size: DEPRECATED - SAMPLE_SIZE field removed in Issue #1014
-        apt_limit: DEPRECATED - Use configure_apt_thresholds() directly for per-test control.
-                   For backward compatibility, sets all 4 APT tests to same threshold.
-        markov_thresholds: Markov probability thresholds (32-bit, 4x8-bit)
+        apt_hi_limit: Maximum accepted one count in an APT window
+        apt_lo_limit: Minimum accepted one count in an APT window
+        markov_thresholds: Packed high and low 16-bit Markov count thresholds
 
     Example:
         await configure_health_tests(apb)  # Default config
-        await configure_health_tests(apb, rep_threshold=10, apt_limit=200)
-
-    Note: After Issue #1014, SAMPLE_SIZE and PROPORTION_LIMIT were removed from HEALTH_TEST_CTRL.
-          APT proportion limits moved to 4 separate registers (APT_PROPORTION_*BIT).
-          This function provides backward compatibility by setting all 4 to the same value.
+        await configure_health_tests(apb, rep_threshold=10,
+                                     apt_hi_limit=1100, apt_lo_limit=948)
     """
     enables = (int(enable_rep) | (int(enable_apt) << 1) | (int(enable_markov) << 2))
-    ctrl_val = enables | (rep_threshold << 8)  # Issue #1014: removed apt_limit from bits [25:16]
+    ctrl_val = enables | (rep_threshold << 8)
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
     await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', markov_thresholds)
-
-    # Issue #1014: Configure APT proportion limits in separate registers
-    # For backward compatibility, scale apt_limit proportionally to default thresholds
-    #
-    # Standard defaults: 1bit=650, 2bit=175, 3bit=90, 4bit=45
-    # These provide different margins: 1-bit has 27% margin, 2/3/4-bit have 37% margin
-    # (2/3/4-bit need more margin due to higher statistical variance in smaller windows)
-    #
-    # Scale all thresholds by the same factor relative to defaults
-    scale_factor = apt_limit / 650.0  # User's requested threshold vs standard
-
-    await configure_apt_thresholds(
-        apb,
-        threshold_1bit=apt_limit,                         # Use provided value directly
-        threshold_2bit=int(175 * scale_factor),           # Scale from default 175
-        threshold_3bit=int(90 * scale_factor),            # Scale from default 90
-        threshold_4bit=int(45 * scale_factor)             # Scale from default 45
-    )
+    await configure_apt_thresholds(apb, apt_hi_limit, apt_lo_limit)
 
 
-async def configure_apt_thresholds(apb, threshold_1bit: int = 650,
-                                   threshold_2bit: int = 175,
-                                   threshold_3bit: int = 90,
-                                   threshold_4bit: int = 45):
-    """Configure APT proportion thresholds for all 4 sample widths.
-
-    Sets the proportion limit thresholds for the 4 parallel APT tests.
-    Default values provide ~27-37% margin above expected counts for random source.
-    Increased from (600,160,80,40) to reduce transient statistical failures.
+async def configure_apt_thresholds(apb, high_limit: int = 1200, low_limit: int = 848):
+    """Configure the APT high and low one-count limits.
 
     Args:
         apb: APB master instance
-        threshold_1bit: 1-bit APT threshold (W=1024, expect=512, default=600)
-        threshold_2bit: 2-bit APT threshold (W=512, expect=128, default=160)
-        threshold_3bit: 3-bit APT threshold (W=512, expect=64, default=80)
-        threshold_4bit: 4-bit APT threshold (W=512, expect=32, default=40)
-
-    Window sizes and expected counts for random source (p=0.5):
-        - 1-bit samples: W=1024, most frequent pattern expected = 512
-        - 2-bit samples: W=512, most frequent pattern expected = 128
-        - 3-bit samples: W=512, most frequent pattern expected = 64
-        - 4-bit samples: W=512, most frequent pattern expected = 32
-
-    Example usage:
-        # Normal operation (default values, ~20-25% margin)
-        await configure_apt_thresholds(apb)
-
-        # Aggressive detection (~10-15% margin, easier to trigger)
-        await configure_apt_thresholds(apb, 570, 145, 72, 36)
-
-        # Very lenient (almost never fail)
-        await configure_apt_thresholds(apb, 1000, 500, 500, 500)
-
-        # Scale from 1-bit base threshold
-        base = 600
-        await configure_apt_thresholds(apb, base, base//4, base//8, base//16)
-
-    Note: After Issue #1014, PROPORTION_LIMIT moved from HEALTH_TEST_CTRL to
-          4 separate APT_PROPORTION_*BIT registers.
+        high_limit: Fail when the window one count exceeds this value
+        low_limit: Fail when the window one count is below this value
     """
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', threshold_1bit)
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', threshold_2bit)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', threshold_3bit)
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', threshold_4bit)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', high_limit)
+    await reg_wr(apb, 'APT_PROPORTION_LO', low_limit)
 
 
 async def enable_and_verify_interrupt(apb, intr_name: str, intr_bit: int, dut_log):
@@ -2101,9 +2030,9 @@ async def health_test_isr_recovery(
     elif test_type == "apt":
         enable_bit = 1
         test_name = "APT"
-        threshold_start_bit = None  # Issue #1014: APT proportion moved to separate registers
+        threshold_start_bit = None
         threshold_num_bits = None
-        threshold_register = 'APT_PROPORTION_1BIT'  # Will set all 4 APT registers
+        threshold_register = 'APT_PROPORTION_1BIT'
     elif test_type == "markov":
         enable_bit = 2
         test_name = "Markov"
@@ -2126,28 +2055,25 @@ async def health_test_isr_recovery(
     ctrl_val |= (1 << enable_bit)
 
     if test_type == "markov":
-        # Markov uses separate threshold register (4 thresholds, 8 bits each)
         await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-        markov_threshold_val = ((new_threshold << 24) | (new_threshold << 16) |
-                               (new_threshold << 8) | new_threshold)
+        markov_threshold_val = (100 << 16) | new_threshold
         await reg_wr(apb, threshold_register, markov_threshold_val)
-        dut_log.info(f"  {test_name} test re-enabled with threshold={new_threshold}")
+        dut_log.info(
+            f"  {test_name} test re-enabled with limits: "
+            f"low=100, high={new_threshold}"
+        )
     elif test_type == "apt":
-        # Issue #1014: APT uses 4 separate proportion limit registers
-        # Scale thresholds based on window sizes and expected counts:
-        # 1-bit: W=1024, expect=512 | 2-bit: W=512, expect=128
-        # 3-bit: W=512, expect=64  | 4-bit: W=512, expect=32
         await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-        apt_1bit = new_threshold
-        apt_2bit = max(1, new_threshold // 4)   # Scale by 512/128 ratio (4x)
-        apt_3bit = max(1, new_threshold // 8)   # Scale by 512/64 ratio (8x)
-        apt_4bit = max(1, new_threshold // 16)  # Scale by 512/32 ratio (16x)
-        await reg_wr(apb, 'APT_PROPORTION_1BIT', apt_1bit)
-        await reg_wr(apb, 'APT_PROPORTION_2BIT', apt_2bit)
-        await reg_wr(apb, 'APT_PROPORTION_3BIT', apt_3bit)
-        await reg_wr(apb, 'APT_PROPORTION_4BIT', apt_4bit)
-        dut_log.info(f"  {test_name} test re-enabled with thresholds: "
-                     f"1bit={apt_1bit}, 2bit={apt_2bit}, 3bit={apt_3bit}, 4bit={apt_4bit}")
+        window_size = await reg_rd(apb, 'HEALTH_TEST_WINDOW_SIZE') & 0xFFFF
+        await configure_apt_thresholds(
+            apb,
+            high_limit=new_threshold,
+            low_limit=max(0, window_size - new_threshold)
+        )
+        dut_log.info(
+            f"  {test_name} test re-enabled with limits: "
+            f"low={max(0, window_size - new_threshold)}, high={new_threshold}"
+        )
     else:
         # Repetition has threshold in HEALTH_TEST_CTRL
         threshold_mask = ((1 << threshold_num_bits) - 1) << threshold_start_bit
@@ -2258,60 +2184,6 @@ async def read_repetition_counter(apb):
     """
     reg_val = await reg_rd(apb, 'REPETITION_TEST_COUNT')
     return reg_val & 0xFF
-
-
-async def read_apt_counter(apb, sample_size: int):
-    """Read APT pattern count for specified sample size.
-
-    Args:
-        apb: APB master instance
-        sample_size: APT sample size (1, 2, 3, or 4)
-
-    Returns:
-        Tuple of (pattern_count, samples, window_complete)
-
-    Example:
-        pattern_count, samples, complete = await read_apt_counter(apb, 1)
-    """
-    reg_names = {
-        1: 'APT_PATTERN_COUNT_1BIT',
-        2: 'APT_PATTERN_COUNT_2BIT',
-        3: 'APT_PATTERN_COUNT_3BIT',
-        4: 'APT_PATTERN_COUNT_4BIT'
-    }
-
-    if sample_size not in reg_names:
-        raise ValueError(f"Invalid APT sample_size: {sample_size} (must be 1-4)")
-
-    reg_val = await reg_rd(apb, reg_names[sample_size])
-    pattern_count = (reg_val >> 0) & 0x3FF
-    samples = (reg_val >> 20) & 0x3FF
-    window_complete = (reg_val >> 31) & 0x1
-
-    return pattern_count, samples, window_complete
-
-
-async def read_markov_probabilities(apb):
-    """Read Markov test probability values from hardware.
-
-    Args:
-        apb: APB master instance
-
-    Returns:
-        Dict with keys: 'prob_01', 'prob_10', 'prob_00', 'prob_11'
-        Values are on 0-255 scale (0=0%, 255=100%)
-
-    Example:
-        probs = await read_markov_probabilities(apb)
-        print(f"P(0->1) = {probs['prob_01']/255*100:.1f}%")
-    """
-    prob_reg = await reg_rd(apb, 'MARKOV_TEST_PROBABILITIES')
-    return {
-        'prob_01': (prob_reg >> 0) & 0xFF,
-        'prob_10': (prob_reg >> 8) & 0xFF,
-        'prob_00': (prob_reg >> 16) & 0xFF,
-        'prob_11': (prob_reg >> 24) & 0xFF,
-    }
 
 
 # ============================================================================
@@ -2839,7 +2711,7 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
         expected_ranges: Dict with expected min/max values for each counter
                         Example: {
                             'repetition': (0, 50),
-                            'apt_1bit': (400, 600),
+                            'apt_hi': (400, 600),
                             'markov_01': (1000, None)
                         }
         log_verbose: If True, log all counter values; if False, log summary only
@@ -2856,11 +2728,9 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
     # Read repetition counter
     counters['repetition'] = await reg_rd(apb, 'REPETITION_TEST_COUNT')
 
-    # Read APT counters (all 4 parallel tests)
-    counters['apt_1bit'] = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT')
-    counters['apt_2bit'] = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT')
-    counters['apt_3bit'] = await reg_rd(apb, 'APT_PATTERN_COUNT_3BIT')
-    counters['apt_4bit'] = await reg_rd(apb, 'APT_PATTERN_COUNT_4BIT')
+    # Read the retained high and low APT count views.
+    counters['apt_hi'] = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT')
+    counters['apt_lo'] = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT')
 
     # Read Markov counters. The two fields are the per-lane maximum and minimum
     # alternation count, not per-direction transition counts, so they do not sum
@@ -2873,8 +2743,9 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
     if log_verbose and dut_log:
         dut_log.info("  Health Test Counters:")
         dut_log.info(f"    REP={counters['repetition']}")
-        dut_log.info(f"    APT=[{counters['apt_1bit']}, {counters['apt_2bit']}, "
-                     f"{counters['apt_3bit']}, {counters['apt_4bit']}]")
+        dut_log.info(
+            f"    APT: high={counters['apt_hi']}, low={counters['apt_lo']}"
+        )
         dut_log.info(f"    MARKOV: max={counters['markov_01']}, "
                      f"min={counters['markov_10']}")
 
@@ -2931,18 +2802,18 @@ async def monitor_per_lane_health_status(apb, lanes=None, expected_failures=None
         # Decode status bits
         # Bit [0]: Repetition test failure
         # Bit [3]: APT test failure
-        # Bits [7:4]: Markov test failures (4 types)
+        # Bits [4] and [5]: Markov high- and low-threshold failures
         if status & 0x01:
             failures['repetition'].append(lane)
         if status & 0x08:
             failures['apt'].append(lane)
-        if status & 0xF0:
+        if status & 0x30:
             failures['markov'].append(lane)
 
         if log_details and dut_log:
             rep_char = 'F' if (status & 0x01) else 'P'
             apt_char = 'F' if (status & 0x08) else 'P'
-            markov_bits = (status >> 4) & 0xF
+            markov_bits = (status >> 4) & 0x3
             dut_log.info(f"  Lane {lane:2d}: 0x{status:02X} "
                         f"[Rep={rep_char} APT={apt_char} Markov=0x{markov_bits:X}]")
 
@@ -3073,200 +2944,6 @@ async def verify_autotune_detune_pattern(apb, dut, expected_lanes, min_count=Non
         'detuned_lanes': detuned_lanes,
         'per_lane_status': per_lane_status,
         'errors': errors
-    }
-
-
-async def verify_apt_counter_behavior(dut, apb, sample_size=1, min_valid_samples=50,
-                                      expected_ratio=None, ratio_tolerance=0.1,
-                                      error_tolerance=None,
-                                      num_reads=5, read_interval=100,
-                                      dut_log=None):
-    """Read APT counter via RTL signals and verify ratio behavior.
-
-    This function directly probes the APT RTL outputs (pattern_count and samples_processed)
-    to verify counter behavior. APT counters wrap around when the window completes (not saturate).
-
-    IMPORTANT: We cannot "wait for" a specific sample count because APT counters wrap!
-    Instead, we read the counter state (multiple times) and check the ratio for whatever
-    samples are currently collected.
-
-    Can verify different pattern types by checking the ratio of pattern_count to samples_processed:
-    - All-1s or All-0s: expected_ratio ~= 1.0 (100%)
-    - Good random entropy (1-bit): expected_ratio ~= 0.5 (50%)
-    - Biased entropy: expected_ratio based on bias percentage
-
-    Args:
-        dut: DUT instance with hierarchical access to htst.apt signals
-        apb: APB master instance (for logging compatibility)
-        sample_size: APT sample size (1, 2, 3, or 4)
-        min_valid_samples: Minimum samples for statistical validity (default: 50)
-                          If current samples < this, reading is considered invalid
-        expected_ratio: Expected pattern_count/samples_processed ratio (None = don't check)
-                       Examples: 1.0 for all-1s, 0.5 for random 1-bit, 0.85 for 85% bias
-        ratio_tolerance: Warning threshold - deviation that triggers warning (default: 0.1 = +/- 10%)
-        error_tolerance: Error threshold - deviation that triggers error (default: 1.5x ratio_tolerance)
-                        Set to None to disable error checking (only warnings)
-        num_reads: Number of times to read counter (default: 5)
-        read_interval: Clock cycles between reads (default: 100)
-        dut_log: Logger instance (uses dut._log if not provided)
-
-    Returns:
-        dict with keys:
-            - 'valid': bool - True if samples >= min_valid_samples
-            - 'pattern_count': int - Pattern count value (0-1023)
-            - 'samples_processed': int - Samples processed value (0-1024)
-            - 'actual_ratio': float - pattern_count / samples_processed ratio
-            - 'expected_ratio': float or None - Expected ratio (if provided)
-            - 'ratio_match': bool or None - True if ratio within warning tolerance
-            - 'ratio_error': float or None - Absolute difference from expected
-            - 'severe_error': bool or None - True if ratio exceeds error tolerance
-
-    Examples:
-        # Test APT with all-1s pattern (expect 100% match)
-        result = await verify_apt_counter_behavior(
-            dut, apb, sample_size=1, min_samples=1000,
-            expected_ratio=1.0, ratio_tolerance=0.03, dut_log=dut._log
-        )
-        assert result['ratio_match'], "All-1s pattern should give ~100% ratio"
-
-        # Test APT with good random entropy (1-bit, expect 50%)
-        result = await verify_apt_counter_behavior(
-            dut, apb, sample_size=1, min_samples=500,
-            expected_ratio=0.5, ratio_tolerance=0.1, dut_log=dut._log
-        )
-        assert result['ratio_match'], "Random entropy should give ~50% ratio"
-
-        # Test APT counter increments (no ratio check)
-        result = await verify_apt_counter_behavior(
-            dut, apb, sample_size=2, min_samples=400, dut_log=dut._log
-        )
-        assert result['sufficient_samples'], "Counter should increment"
-
-    RTL Signal Paths:
-        - Pattern count: dut.dut.htst.apt.pattern_count_Nbit_o[9:0]
-        - Samples: dut.dut.htst.apt.samples_processed_Nbit_o[9:0]
-        where N = sample_size (1, 2, 3, or 4)
-    """
-    from cocotb.triggers import ClockCycles
-
-    log = dut_log if dut_log else dut._log
-
-    # Map sample size to signal names
-    signal_map = {
-        1: ('pattern_count_1bit_o', 'samples_processed_1bit_o'),
-        2: ('pattern_count_2bit_o', 'samples_processed_2bit_o'),
-        3: ('pattern_count_3bit_o', 'samples_processed_3bit_o'),
-        4: ('pattern_count_4bit_o', 'samples_processed_4bit_o'),
-    }
-
-    if sample_size not in signal_map:
-        raise ValueError(f"Invalid sample_size: {sample_size}. Must be 1, 2, 3, or 4.")
-
-    pattern_signal_name, samples_signal_name = signal_map[sample_size]
-
-    # Access RTL signals directly
-    try:
-        apt_module = dut.dut.htst.apt
-        pattern_signal = getattr(apt_module, pattern_signal_name)
-        samples_signal = getattr(apt_module, samples_signal_name)
-    except AttributeError as e:
-        log.error(f"Failed to access APT RTL signals: {e}")
-        log.error(f"Expected path: dut.dut.htst.apt.{pattern_signal_name}")
-        raise
-
-    log.info(f"[APT Counter Monitor] Reading counter state")
-    log.info(f"  Sample size: {sample_size}-bit")
-    log.info(f"  Min valid samples: {min_valid_samples}")
-    log.info(f"  Number of reads: {num_reads}")
-    if expected_ratio is not None:
-        log.info(f"  Expected ratio: {expected_ratio:.2f} (+/- {ratio_tolerance:.2f})")
-
-    # Read counter state multiple times and pick the best (highest samples)
-    # APT counters wrap, so we want to catch it when it has the most samples collected
-    best_pattern_count = 0
-    best_samples_processed = 0
-
-    for read_num in range(num_reads):
-        if read_num > 0:
-            await ClockCycles(dut.apb.pclk, read_interval)
-
-        # Read RTL signals directly
-        pattern_count = int(pattern_signal.value) & 0x3FF
-        samples_processed = int(samples_signal.value) & 0x3FF
-
-        log.info(f"  Read {read_num+1}/{num_reads}: pattern_count={pattern_count}, samples={samples_processed}")
-
-        # Keep the reading with the most samples (before wrap)
-        if samples_processed > best_samples_processed:
-            best_pattern_count = pattern_count
-            best_samples_processed = samples_processed
-
-    # Use the best reading
-    final_pattern_count = best_pattern_count
-    final_samples_processed = best_samples_processed
-
-    # Check if we have enough samples for statistical validity
-    valid = final_samples_processed >= min_valid_samples
-
-    # Calculate actual ratio
-    actual_ratio = (final_pattern_count / final_samples_processed) if final_samples_processed > 0 else 0.0
-
-    # Check ratio against expected (if provided) - two-level checking
-    ratio_match = None
-    ratio_error = None
-    severe_error = None
-
-    if expected_ratio is not None and final_samples_processed > 0:
-        ratio_error = abs(actual_ratio - expected_ratio)
-
-        # Default error_tolerance to 1.5x ratio_tolerance if not specified
-        if error_tolerance is None:
-            actual_error_tolerance = ratio_tolerance * 1.5
-        else:
-            actual_error_tolerance = error_tolerance
-
-        # Two-level checking:
-        # - ratio_match: True if within warning tolerance (good)
-        # - severe_error: True if outside error tolerance (bad)
-        ratio_match = ratio_error <= ratio_tolerance
-        severe_error = ratio_error > actual_error_tolerance
-
-    # Log results
-    log.info(f"\n[APT Counter Monitor] Counter state read complete")
-    log.info(f"  Pattern count: {final_pattern_count}")
-    log.info(f"  Samples processed: {final_samples_processed}")
-    log.info(f"  Actual ratio: {actual_ratio:.4f}")
-    log.info(f"  Valid: {valid} (>= {min_valid_samples} samples)")
-
-    if expected_ratio is not None:
-        log.info(f"  Expected ratio: {expected_ratio:.4f}")
-        log.info(f"  Ratio error: {ratio_error:.4f}")
-        log.info(f"  Warning tolerance: +/- {ratio_tolerance:.4f}")
-        if error_tolerance is not None:
-            log.info(f"  Error tolerance: +/- {error_tolerance:.4f}")
-        else:
-            log.info(f"  Error tolerance: +/- {actual_error_tolerance:.4f} (1.5x warning)")
-
-        if not valid:
-            log.warning(f"  [WARN] Insufficient samples for statistical validity")
-        elif ratio_match:
-            log.info(f"  [PASS] Ratio within warning tolerance")
-        elif not severe_error:
-            log.warning(f"  [WARN] Ratio outside warning tolerance but within error tolerance")
-            log.warning(f"        This indicates minor statistical variation or timing differences")
-        else:
-            log.error(f"  [ERROR] Ratio severely abnormal - exceeds error tolerance!")
-            log.error(f"        This indicates biased entropy or counter malfunction")
-
-    return {
-        'valid': valid,
-        'pattern_count': final_pattern_count,
-        'samples_processed': final_samples_processed,
-        'actual_ratio': actual_ratio,
-        'expected_ratio': expected_ratio,
-        'ratio_match': ratio_match,
-        'ratio_error': ratio_error,
-        'severe_error': severe_error
     }
 
 

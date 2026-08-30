@@ -10,6 +10,14 @@ It also proves all three internal CSR ports return DECERR while isolated, then
 resets with all external-source mux legs selected and proves the external TRNG
 CSR responder and source-select register remain outside the reset domain. The
 new JTAG reset pair is exercised to hold and release the same coordinated reset.
+
+When software clears SW_RESET_N.trng_sw_rst_n, the coordinator stops accepting
+new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three AXI
+ports, and asserts the shared reset only after every port reports isolated.
+Buffered post-mux and pool entropy is cleared with the reset. While held, new
+CSR accesses receive DECERR. Setting trng_sw_rst_n releases the internal blocks,
+keeps their ports isolated for one release cycle, and then restores normal CSR
+traffic; firmware must reconfigure ESRC, CSRNG, and EDN before using entropy.
 """
 
 from __future__ import annotations
@@ -19,8 +27,10 @@ import pyuvm
 from cocotb.triggers import ClockCycles, with_timeout
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_reg_meta import sym
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS
 from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcConfigSeq,
     SepEsrcEnableEdnSeq,
@@ -30,28 +40,30 @@ from ocah_axi_vip.cocotb.ocah_axi_results import worst_resp
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
 
-ENTROPY_POOL_STATUS = 0x1095_0000
-ENTROPY_POOL_DATA = 0x1095_0010
-ESRC_COMPONENT_ID = 0x1091_6000
-ESRC_CTRL = 0x1091_6004
-ESRC_FIPS_LOCK = 0x1091_6154
-CSRNG_INTR_STATE = 0x1091_5000
-CSRNG_INTR_ENABLE = 0x1091_5004
-EDN_INTR_STATE = 0x1091_5800
-EDN_INTR_ENABLE = 0x1091_5804
+# RDL-described addresses come from the generated SEP map. The external TRNG
+# responder is an integration aperture rather than a register block.
+ESRC_COMPONENT_ID = sym("ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR")
+ESRC_CTRL = sym("ENTROPY_SOURCE_CTRL_REG_ADDR")
+ESRC_FIPS_LOCK = sym("ENTROPY_SOURCE_FIPS_LOCK_REG_ADDR")
+CSRNG_INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR")
+CSRNG_INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR")
+EDN_INTR_STATE = sym("EDN_INTR_STATE_REG_ADDR")
+EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
 EXT_TRNG_CSR = 0x1091_7000
-EXT_TRNG_SRC_SEL = 0x10A3_0190
+EXT_TRNG_SRC_SEL = sym("SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR")
 
 @pyuvm.test()
 class sep_trng_reset_recovery_test(sep_base_test):
     """Prove pool scrub and fresh-only ordered TRNG recovery."""
 
-    async def _read(self, addr: int, *, expect_error: bool = False) -> SepAxiAccessSeq:
+    async def _read(
+        self, addr: int, *, length: int = 4, expect_error: bool = False
+    ) -> SepAxiAccessSeq:
         seq = SepAxiAccessSeq(
             f"trng_rd_{addr:08x}",
             op=SepAxiOp.READ,
             addr=addr,
-            length=8,
+            length=length,
             expect_error=expect_error,
         )
         await self.start_seq(seq)
@@ -69,7 +81,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
 
     async def _wait_pool_level(self, *, nonzero: bool, timeout: int = 80_000) -> int:
         for _ in range(timeout // 20):
-            seq = await self._read(ENTROPY_POOL_STATUS)
+            seq = await self._read(POOL_STATUS)
             assert seq.resp_ok, "entropy-pool status read failed"
             level = seq.rdata & 0x3F
             if bool(level) == nonzero:
@@ -221,7 +233,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # cached word and any half-packed input. Reconfiguration below switches
         # all three source legs back to the internal DRBG.
         await self._wait_pool_level(nonzero=False)
-        empty_pop = await self._read(ENTROPY_POOL_DATA, expect_error=True)
+        empty_pop = await self._read(POOL_POP, length=8, expect_error=True)
         assert empty_pop.resp_code != 0, "empty pool returned OKAY after TRNG reset"
         assert empty_pop.rdata == 0, "empty pool exposed stale pre-reset entropy"
 
@@ -237,7 +249,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         )
 
         fresh_level = await self._wait_pool_level(nonzero=True)
-        fresh_pop = await self._read(ENTROPY_POOL_DATA)
+        fresh_pop = await self._read(POOL_POP, length=8)
         assert fresh_pop.resp_ok, "fresh entropy-pool read failed after recovery"
         await self.check_entropy_alerts_zero()
 

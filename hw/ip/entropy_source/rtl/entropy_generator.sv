@@ -38,13 +38,10 @@ module entropy_generator #(
     input       logic                    bypass_decorrelator_i,
     input       logic [7:0]              entropy_byte_mask_i,
 
-    input       logic [7:0]              test_enable_i,
+    input       logic [2:0]              test_enable_i,
     input       logic [7:0]              repetition_limit_i,
     input       logic [15:0]             proportion_limit_1bit_i,
     input       logic [15:0]             proportion_limit_lo_i,
-    input       logic [9:0]              proportion_limit_2bit_i,
-    input       logic [9:0]              proportion_limit_3bit_i,
-    input       logic [9:0]              proportion_limit_4bit_i,
     input       logic [15:0]             markov_prob_01_threshold_i,
     input       logic [15:0]             markov_prob_10_threshold_i,
     input       logic                    window_wrap_pulse_i,
@@ -69,13 +66,7 @@ module entropy_generator #(
     // Tie-offs for health-test monitoring outputs not used at this level
     logic [15:0] open_ctr_repetition;
     logic [15:0] open_apt_pattern_count_1bit, open_apt_pattern_count_2bit;
-    logic [9:0]  open_apt_pattern_count_3bit, open_apt_pattern_count_4bit;
-    logic [3:0]  open_apt_target_pattern_1bit,  open_apt_target_pattern_2bit;
-    logic [3:0]  open_apt_target_pattern_3bit,  open_apt_target_pattern_4bit;
-    logic [9:0]  open_apt_samples_processed_1bit,  open_apt_samples_processed_2bit;
-    logic [9:0]  open_apt_samples_processed_3bit,  open_apt_samples_processed_4bit;
     logic [15:0] open_count_01, open_count_10;
-    logic [7:0]  open_prob_01, open_prob_10, open_prob_00, open_prob_11;
 
     /////////////////
     // Combinational
@@ -128,31 +119,16 @@ module entropy_generator #(
         .repetition_limit_i,
         .proportion_limit_1bit_i,
         .proportion_limit_lo_i,
-        .proportion_limit_2bit_i,
-        .proportion_limit_3bit_i,
-        .proportion_limit_4bit_i,
         .markov_prob_01_threshold_i,
         .markov_prob_10_threshold_i,
         .window_wrap_pulse_i,
         .ctr_repetition_o             (open_ctr_repetition),
         .apt_pattern_count_1bit_o     (open_apt_pattern_count_1bit),
         .apt_pattern_count_2bit_o     (open_apt_pattern_count_2bit),
-        .apt_pattern_count_3bit_o     (open_apt_pattern_count_3bit),
-        .apt_pattern_count_4bit_o     (open_apt_pattern_count_4bit),
-        .apt_target_pattern_1bit_o    (open_apt_target_pattern_1bit),
-        .apt_target_pattern_2bit_o    (open_apt_target_pattern_2bit),
-        .apt_target_pattern_3bit_o    (open_apt_target_pattern_3bit),
-        .apt_target_pattern_4bit_o    (open_apt_target_pattern_4bit),
-        .apt_samples_processed_1bit_o (open_apt_samples_processed_1bit),
-        .apt_samples_processed_2bit_o (open_apt_samples_processed_2bit),
-        .apt_samples_processed_3bit_o (open_apt_samples_processed_3bit),
-        .apt_samples_processed_4bit_o (open_apt_samples_processed_4bit),
         .count_01_o                   (open_count_01),
         .count_10_o                   (open_count_10),
-        .prob_01_o                    (open_prob_01),
-        .prob_10_o                    (open_prob_10),
-        .prob_00_o                    (open_prob_00),
-        .prob_11_o                    (open_prob_11),
+        .apt_fail_hi_o                (),
+        .apt_fail_lo_o                (),
         .status_o                     (test_status_o),
         .count_err_o                  (count_err_o)
     );

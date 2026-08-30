@@ -91,13 +91,7 @@ module entropy_source
 
     logic [15:0] ctr_repetition;
     logic [15:0] apt_pattern_count_1bit,  apt_pattern_count_2bit;
-    logic [9:0]  apt_pattern_count_3bit,  apt_pattern_count_4bit;
-    logic [3:0]  apt_target_pattern_1bit, apt_target_pattern_2bit;
-    logic [3:0]  apt_target_pattern_3bit, apt_target_pattern_4bit;
-    logic [9:0]  apt_samples_processed_1bit, apt_samples_processed_2bit;
-    logic [9:0]  apt_samples_processed_3bit, apt_samples_processed_4bit;
     logic [15:0] count_01, count_10;
-    logic [7:0]  prob_01, prob_10, prob_00, prob_11;
 
     logic        fifo_push;
     logic [31:0] fifo_wdata, fifo_rdata;
@@ -303,9 +297,6 @@ module entropy_source
         .health_test_repetition_limit_i         (reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value),
         .health_test_proportion_limit_1bit_i    (reg_out.APT_PROPORTION_1BIT.LIMIT.value),
         .health_test_proportion_limit_lo_i      (reg_out.APT_PROPORTION_LO.LIMIT.value),
-        .health_test_proportion_limit_2bit_i    (reg_out.APT_PROPORTION_2BIT.LIMIT.value),
-        .health_test_proportion_limit_3bit_i    (reg_out.APT_PROPORTION_3BIT.LIMIT.value),
-        .health_test_proportion_limit_4bit_i    (reg_out.APT_PROPORTION_4BIT.LIMIT.value),
         .health_test_markov_prob_01_threshold_i (
             reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value),
         .health_test_markov_prob_10_threshold_i (
@@ -377,9 +368,6 @@ module entropy_source
         .repetition_limit_i           (reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value),
         .proportion_limit_1bit_i      (reg_out.APT_PROPORTION_1BIT.LIMIT.value),
         .proportion_limit_lo_i        (reg_out.APT_PROPORTION_LO.LIMIT.value),
-        .proportion_limit_2bit_i      (reg_out.APT_PROPORTION_2BIT.LIMIT.value),
-        .proportion_limit_3bit_i      (reg_out.APT_PROPORTION_3BIT.LIMIT.value),
-        .proportion_limit_4bit_i      (reg_out.APT_PROPORTION_4BIT.LIMIT.value),
         // Markov test thresholds
         .markov_prob_01_threshold_i   (reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value),
         .markov_prob_10_threshold_i   (reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value),
@@ -387,22 +375,10 @@ module entropy_source
         .ctr_repetition_o             (ctr_repetition),
         .apt_pattern_count_1bit_o     (apt_pattern_count_1bit),
         .apt_pattern_count_2bit_o     (apt_pattern_count_2bit),
-        .apt_pattern_count_3bit_o     (apt_pattern_count_3bit),
-        .apt_pattern_count_4bit_o     (apt_pattern_count_4bit),
-        .apt_target_pattern_1bit_o    (apt_target_pattern_1bit),
-        .apt_target_pattern_2bit_o    (apt_target_pattern_2bit),
-        .apt_target_pattern_3bit_o    (apt_target_pattern_3bit),
-        .apt_target_pattern_4bit_o    (apt_target_pattern_4bit),
-        .apt_samples_processed_1bit_o (apt_samples_processed_1bit),
-        .apt_samples_processed_2bit_o (apt_samples_processed_2bit),
-        .apt_samples_processed_3bit_o (apt_samples_processed_3bit),
-        .apt_samples_processed_4bit_o (apt_samples_processed_4bit),
         .count_01_o                   (count_01),
         .count_10_o                   (count_10),
-        .prob_01_o                    (prob_01),
-        .prob_10_o                    (prob_10),
-        .prob_00_o                    (prob_00),
-        .prob_11_o                    (prob_11),
+        .apt_fail_hi_o                (apt_hi_fail_pulse),
+        .apt_fail_lo_o                (apt_lo_fail_pulse),
         .status_o                     (health_status)
     );
 
@@ -775,8 +751,6 @@ module entropy_source
     // Register feeds
     ///////////////////
 
-    assign reg_in.STATUS.RSVD.next = 1'b0;
-
     // ----------------------------------------------------------------------
     // FIPS configuration lock (swwel REGWEN).
     //
@@ -803,9 +777,6 @@ module entropy_source
     assign reg_in.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.swwel = fips_lock;
     assign reg_in.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.swwel = fips_lock;
     assign reg_in.APT_PROPORTION_1BIT.LIMIT.swwel                = fips_lock;
-    assign reg_in.APT_PROPORTION_2BIT.LIMIT.swwel                = fips_lock;
-    assign reg_in.APT_PROPORTION_3BIT.LIMIT.swwel                = fips_lock;
-    assign reg_in.APT_PROPORTION_4BIT.LIMIT.swwel                = fips_lock;
     assign reg_in.APT_PROPORTION_LO.LIMIT.swwel                  = fips_lock;
     assign reg_in.ALERT_THRESHOLD.THRESHOLD.swwel                = fips_lock;
     assign reg_in.MIN_ENTROPY_H.H.swwel                          = fips_lock;
@@ -932,31 +903,13 @@ module entropy_source
 
     assign reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next = health_status;
 
-    // APT counters (4 sample sizes)
-    assign reg_in.APT_PATTERN_COUNT_1BIT.PATTERN_COUNT.next     = apt_pattern_count_1bit;
-    assign reg_in.APT_PATTERN_COUNT_1BIT.TARGET_PATTERN.next    = apt_target_pattern_1bit;
-    assign reg_in.APT_PATTERN_COUNT_1BIT.SAMPLES_PROCESSED.next = apt_samples_processed_1bit;
-
-    assign reg_in.APT_PATTERN_COUNT_2BIT.PATTERN_COUNT.next     = apt_pattern_count_2bit;
-    assign reg_in.APT_PATTERN_COUNT_2BIT.TARGET_PATTERN.next    = apt_target_pattern_2bit;
-    assign reg_in.APT_PATTERN_COUNT_2BIT.SAMPLES_PROCESSED.next = apt_samples_processed_2bit;
-
-    assign reg_in.APT_PATTERN_COUNT_3BIT.PATTERN_COUNT.next     = apt_pattern_count_3bit;
-    assign reg_in.APT_PATTERN_COUNT_3BIT.TARGET_PATTERN.next    = apt_target_pattern_3bit;
-    assign reg_in.APT_PATTERN_COUNT_3BIT.SAMPLES_PROCESSED.next = apt_samples_processed_3bit;
-
-    assign reg_in.APT_PATTERN_COUNT_4BIT.PATTERN_COUNT.next     = apt_pattern_count_4bit;
-    assign reg_in.APT_PATTERN_COUNT_4BIT.TARGET_PATTERN.next    = apt_target_pattern_4bit;
-    assign reg_in.APT_PATTERN_COUNT_4BIT.SAMPLES_PROCESSED.next = apt_samples_processed_4bit;
+    assign reg_in.APT_PATTERN_COUNT_1BIT.PATTERN_COUNT.next = apt_pattern_count_1bit;
+    assign reg_in.APT_PATTERN_COUNT_2BIT.PATTERN_COUNT.next = apt_pattern_count_2bit;
 
     assign reg_in.REPETITION_TEST_COUNT.REPETITION_COUNT.next = ctr_repetition;
 
     assign reg_in.MARKOV_TEST_COUNTS_0.COUNT_01.next = count_01;
     assign reg_in.MARKOV_TEST_COUNTS_0.COUNT_10.next = count_10;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_01.next = prob_01;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_10.next = prob_10;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_00.next = prob_00;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_11.next = prob_11;
 
     assign reg_in.GENERATOR_0_HEALTH_STATUS.STATUS.next  = generator_0_test_status;
     assign reg_in.GENERATOR_1_HEALTH_STATUS.STATUS.next  = generator_1_test_status;
@@ -976,8 +929,6 @@ module entropy_source
     /////////////////////////////
 
     assign repcnt_fail_pulse    = health_status[0];
-    assign apt_hi_fail_pulse    = health_status[3];  // hi|lo combined in current design
-    assign apt_lo_fail_pulse    = 1'b0;
     assign markov_hi_fail_pulse = health_status[4];
     assign markov_lo_fail_pulse = health_status[5];
 

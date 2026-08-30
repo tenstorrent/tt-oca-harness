@@ -475,13 +475,14 @@ The fabric entropy-pool AXI responder is not reset, so accesses remain
 responsive. While the TRNG reset is active, its pending EDN request, half-packed
 word, FIFO contents, and fill-stall state are synchronously cleared.
 
-Software must quiesce AES, KMAC, and OTBN before requesting a TRNG reset. If
-internal DRBG endpoint 0 feeds KM, KM must also be idle or held in reset. The
-reset does not answer EDN requests that were already outstanding: those are
-carried on AXI-Stream rather than the AXI ports the coordinator drains, so a
-consumer still waiting on entropy when the reset asserts waits indefinitely.
-Following TRNG reset release, software reprograms ESRC, waits for startup health
-testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
+Consumers are not part of the reset coordinator. Native EDN requests receive no
+acknowledgement while the post-mux adapter is clearing, remain asserted, and are
+serviced with fresh entropy after the chain restarts. The Key Manager
+AXI-Stream leg stalls in the same way. Software may wait for consumers to become
+idle and hold them in reset when policy requires aborting in-flight operations,
+but this is not required to assert the TRNG reset. Following reset release,
+software reprograms ESRC, waits for startup health testing, locks the certified
+configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.
 
 // Additive cross-reference: canonical OTP/eFuse IP documentation

@@ -165,6 +165,7 @@ cross-document link descriptions with the current implementation.
 CTRL.RESET with the SEP Reset Controller's active-low TRNG reset request.
 The shared reset drains and isolates the ESRC, CSRNG, and EDN AXI ports before
 resetting the full entropy complex, scrubs post-mux adapters and the fabric
-entropy pool, and requires ordered consumer quiesce and full TRNG
-reinitialization. SW_RESET_N now resets to 0x3E; CTRL[0] is reserved RAZ/WI.
+entropy pool, and requires full TRNG reinitialization before entropy resumes.
+Outstanding consumer requests stall until fresh entropy is available.
+SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
 |=======================================================================

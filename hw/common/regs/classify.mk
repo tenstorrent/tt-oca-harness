@@ -17,6 +17,10 @@ OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
 # is on and this list stays empty until some block proves otherwise.
 OCAH_REG_NO_BITFIELDS_PY ?=
 
+# Python field-access metadata is opt-in because generic register walkers are
+# its only consumers. It carries sw/onwrite/onread/singlepulse from the RDL.
+OCAH_REG_PY_FIELD_ACCESS_BLOCKS ?= hw/ip/entropy_source
+
 # A top is composite when its resolved RDL sits next to a regs/blocks/ dir: each
 # sub-block is generated on its own, the top keeps only its address view. Reading
 # the resolved RDL means an overlay variant reusing a canonical top inherits this.
@@ -91,12 +95,7 @@ OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
 # JSON register models are opt-in for the same reason as RAL: only a testbench
 # that walks the register space generically needs one (the SMC/SMU cocotb
 # register_test). Listed by block id, like the RAL leaves.
-#
-# entropy_source is here because the JSON exporter is the only one that emits
-# per-field software access, which the SEP cocotb env needs to tell a
-# software-writable register from a status one; see hw/sys/sep/dv/cocotb/env/
-# sep_reg_meta.py, whose committed copy is refreshed from this output.
-OCAH_REG_JSON_BLOCKS ?= hw/sys/smc hw/ip/entropy_source
+OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
 OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
 # Blocks whose regblock RTL answers a bad address or a write to a read-only
@@ -116,6 +115,7 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
+ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
 ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
 

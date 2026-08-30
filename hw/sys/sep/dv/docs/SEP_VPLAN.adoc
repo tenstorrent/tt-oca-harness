@@ -2343,7 +2343,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-CONSUMERS-HELD
 |The `SW_RESET_N` readback shows the four consumers still held and the TRNG bit released, so the recovery ordering is observed rather than assumed.
 |CHK-TRNG-CSR-RESET
-|After the reset `FIPS_LOCK` is clear, the CSRNG and EDN interrupt enables read zero, and the reserved ESRC `CTRL[0]` is RAZ/WI — the domain returned to its register-map reset rather than partially.
+|After the reset `FIPS_LOCK` is clear, the CSRNG and EDN interrupt enables read zero, and reserved ESRC `CTRL[0]` reads zero and ignores writes — the domain returned to its register-map reset rather than partially.
 |CHK-TRNG-STALE
 |A pop from the empty pool does not answer OKAY and returns zero data, so pre-reset entropy cannot be read back.
 |CHK-TRNG-FRESH
@@ -3431,7 +3431,6 @@ both lock flavours of one seed-selected spare.
 
 [arabic]
 . Every supported selector arms on MODULE_ENABLE 0→1.
-. Every supported selector arms on `CTRL.RESET`; the selector survives.
 . Changing the selector does not re-arm. An unsupported value becomes `REPCNT_HI`.
 . A low watermark falls once `HEALTH_TEST_CTRL.ENABLE` is allowed.
 
@@ -3442,10 +3441,6 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-ARM-MEN
 |Each supported selector arms to `0x0000` (high) or `0xFFFF` (low) on MODULE_ENABLE 0→1.
-|CHK-ARM-RST
-|The same arm values on `CTRL.RESET`.
-|CHK-SEL-PERSIST
-|`HT_WATERMARK_NUM` survives a `CTRL.RESET` pulse.
 |CHK-NO-REARM
 |A selector write leaves `HT_WATERMARK` at the entry value.
 |CHK-UNSUPPORTED
@@ -3621,8 +3616,8 @@ both lock flavours of one seed-selected spare.
 |The same field rejects a poke after `LOCK=1`.
 |CHK-LOCK-W1S
 |Write-0 leaves `FIPS_LOCK.LOCK=1`.
-|CHK-RESET-HOLD
-|`CTRL.RESET` does not clear the lock.
+|CHK-CTRL-RSVD
+|Writing reserved `CTRL[0]` leaves `FIPS_LOCK.LOCK=1`.
 |CHK-RST-NI
 |`rst_ni` clears the lock and a later write succeeds.
 |CHK-FIFO-LIVE

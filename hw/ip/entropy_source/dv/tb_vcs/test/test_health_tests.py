@@ -56,7 +56,6 @@ from test.test_base import (
     verify_health_test_counters,
     monitor_per_lane_health_status,
     verify_autotune_detune_pattern,
-    verify_apt_counter_behavior,
     # Constants
     PROB_SCALE,
 )
@@ -121,67 +120,39 @@ async def read_health_test_status(apb, log=None):
     Returns:
         Dict with status bits: repetition_fail, apt_fail, markov_hi_fail, markov_lo_fail
 
-    Note: OpenTitan health tests use count-based thresholds (not probability):
-        - markov_hi_fail: Too many transitions (high randomness, suspicious)
-        - markov_lo_fail: Too few transitions (stuck/biased bits)
-        - Bits [6:7] are reserved (always 0) in OpenTitan implementation
+    The status allocation is:
+        {reserved[7:6], markov_lo[5], markov_hi[4], apt[3],
+         reserved[2:1], repetition[0]}
     """
     status_reg = await reg_rd(apb, 'HEALTH_TEST_STATUS')
     status = {
         'repetition_fail': (status_reg >> 0) & 0x1,
         'apt_fail': (status_reg >> 3) & 0x1,
-        'markov_hi_fail': (status_reg >> 4) & 0x1,  # OpenTitan: transition count too high
-        'markov_lo_fail': (status_reg >> 5) & 0x1,  # OpenTitan: transition count too low
-        # Backward compatibility aliases (deprecated)
-        'markov_01_fail': (status_reg >> 4) & 0x1,  # Alias for markov_hi_fail
-        'markov_10_fail': (status_reg >> 5) & 0x1,  # Alias for markov_lo_fail
-        'markov_00_fail': 0,  # Removed in OpenTitan (always 0)
-        'markov_11_fail': 0,  # Removed in OpenTitan (always 0)
+        'markov_hi_fail': (status_reg >> 4) & 0x1,
+        'markov_lo_fail': (status_reg >> 5) & 0x1,
     }
 
     if log:
-        total_failures = sum([status['repetition_fail'], status['apt_fail'],
-                             status['markov_hi_fail'], status['markov_lo_fail']])
+        total_failures = sum(status.values())
         markov_failures = status['markov_hi_fail'] + status['markov_lo_fail']
         log.info(f"HEALTH_TEST_STATUS: 0x{status_reg:08X}")
         log.info(f"  Repetition [0]: {status['repetition_fail']}")
+        log.info("  Reserved [2:1]")
         log.info(f"  APT [3]:        {status['apt_fail']}")
-        log.info(f"  Markov HIGH [4]: {status['markov_hi_fail']} (too many transitions)")
-        log.info(f"  Markov LOW [5]:  {status['markov_lo_fail']} (too few transitions)")
-        log.info(f"  Reserved [6:7]: (always 0 in OpenTitan)")
+        log.info(f"  Markov HIGH [4]: {status['markov_hi_fail']} (maximum above high threshold)")
+        log.info(f"  Markov LOW [5]:  {status['markov_lo_fail']} (minimum below low threshold)")
+        log.info("  Reserved [7:6]")
         log.info(f"  Total failures: {total_failures}/4 (Markov: {markov_failures}/2)")
 
     return status
 
 
 async def read_markov_counters(apb):
-    """Read and parse Markov counter registers.
-
-    Each noise lane counts bit alternations, so a 0-to-1 and a 1-to-0 change
-    increment the same counter. The two register fields are the maximum and
-    minimum of those per-lane counters over the window, not per-direction
-    transition counts; the COUNT_01 / COUNT_10 field names are retained only for
-    software compatibility.
-
-    Returns:
-        Dict with keys: count_01, count_10, count_00, count_11
-        Note: count_00 and count_11 always return 0; no such counter exists.
-    """
+    """Read the maximum and minimum per-lane alternation counts."""
     markov_counts_0 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_0')
-    count_01 = (markov_counts_0 >> 0) & 0xFFFF    # highest per-lane count [15:0]
-    count_10 = (markov_counts_0 >> 16) & 0xFFFF   # lowest per-lane count [31:16]
-
-    # Placeholders only: the hardware has never counted non-transitions, and the
-    # MARKOV_TEST_COUNTS_1 register that once exposed these was removed. Kept so
-    # the legacy callers below still resolve.
-    count_00 = 0
-    count_11 = 0
-
     return {
-        'count_01': count_01,
-        'count_10': count_10,
-        'count_00': count_00,  # Legacy compatibility (always 0)
-        'count_11': count_11,  # Legacy compatibility (always 0)
+        'max_alternation_count': markov_counts_0 & 0xFFFF,
+        'min_alternation_count': (markov_counts_0 >> 16) & 0xFFFF,
     }
 
 
@@ -240,7 +211,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
     4. Enable Markov only - Trigger correlated pattern, verify only Markov responds
     5. Enable all three - Verify all tests active simultaneously
 
-    Note: All 4 APT tests (1-bit, 2-bit, 3-bit, 4-bit) run in parallel by design.
+    The APT checks the maximum and minimum per-lane one counts against separate limits.
     """
 
     dut._log.info("\n[TEST 3.1.1] Health Test Enable/Disable (Functional Verification)")
@@ -266,7 +237,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
     status = await read_health_test_status(apb, dut._log)
     assert status['repetition_fail'] == 0, "Repetition test should not fail when disabled"
     assert status['apt_fail'] == 0, "APT test should not fail when disabled"
-    # OpenTitan design: check both Markov status bits
+    # Check both Markov limit status bits.
     assert status['markov_hi_fail'] == 0 and status['markov_lo_fail'] == 0, "Markov test should not fail when disabled"
     dut._log.info("[PASS] Step 1: No false positives with all tests disabled")
 
@@ -290,7 +261,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
     status = await read_health_test_status(apb, dut._log)
     assert status['repetition_fail'] == 1, "Repetition test should detect stuck-at pattern"
     assert status['apt_fail'] == 0, "APT should be disabled (no response)"
-    # OpenTitan design: check both Markov status bits
+    # Check both Markov limit status bits.
     assert status['markov_hi_fail'] == 0 and status['markov_lo_fail'] == 0, "Markov should be disabled (no response)"
     dut._log.info("[PASS] Step 2: Only Repetition responded (cross-interference verified)")
 
@@ -304,15 +275,12 @@ async def test_3_1_1_health_test_enable_disable(dut):
     # ========================================================================
     dut._log.info("\n--- Step 3: Enable APT only (ENABLE[2:0] = 0x2) ---")
 
-    # Configure APT thresholds (aggressive for quick detection) and enable test
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 570)  # 1-bit threshold
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 145)  # 2-bit threshold
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 72)   # 3-bit threshold
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 36)   # 4-bit threshold
+    # Configure APT limits (aggressive for quick high-count detection).
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 0)
 
     await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000002)  # Enable APT only
-    dut._log.info("HEALTH_TEST_CTRL: 0x00000002 (APT enabled with aggressive thresholds)")
-    dut._log.info("  Note: All 4 APT tests (1-bit, 2-bit, 3-bit, 4-bit) run in parallel")
+    dut._log.info("HEALTH_TEST_CTRL: 0x00000002 (APT enabled with aggressive limits)")
 
     # Trigger biased pattern using 32-bit word injection
     dut._log.info("Triggering biased pattern (p_bias=0.85)...")
@@ -323,7 +291,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
     status = await read_health_test_status(apb, dut._log)
     assert status['apt_fail'] == 1, "APT test should detect biased pattern"
     assert status['repetition_fail'] == 0, "Repetition should be disabled (no response)"
-    # OpenTitan design: check both Markov status bits
+    # Check both Markov limit status bits.
     assert status['markov_hi_fail'] == 0 and status['markov_lo_fail'] == 0, "Markov should be disabled (no response)"
     dut._log.info("[PASS] Step 3: Only APT responded (cross-interference verified)")
 
@@ -338,7 +306,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
     dut._log.info("\n--- Step 4: Enable Markov only (ENABLE[2:0] = 0x4) ---")
 
     # Configure Markov thresholds (aggressive) and enable test
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x32323232)  # All thresholds = 50
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00320032)
 
     await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000004)  # Enable Markov only
     dut._log.info("HEALTH_TEST_CTRL: 0x00000004 (Markov enabled with aggressive thresholds)")
@@ -350,7 +318,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
 
     # Verify only Markov responds (at least one Markov failure should trigger)
     status = await read_health_test_status(apb, dut._log)
-    # OpenTitan: Only check transition failures (hi/lo), non-transition bits always 0
+    # Check the high- and low-limit failure bits.
     markov_failed = (status['markov_hi_fail'] or status['markov_lo_fail'])
     assert markov_failed, "Markov test should detect correlated pattern"
     assert status['repetition_fail'] == 0, "Repetition should be disabled (no response)"
@@ -369,11 +337,9 @@ async def test_3_1_1_health_test_enable_disable(dut):
 
     # Configure all thresholds (aggressive) and enable all tests
     threshold = 15
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 570)
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 145)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 72)
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 36)
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x32323232)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 0)
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00320032)
 
     ctrl_val = 0x00000007 | (threshold << 8)  # Enable all, set Rep threshold
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
@@ -387,7 +353,7 @@ async def test_3_1_1_health_test_enable_disable(dut):
 
     # Verify multiple tests respond
     status = await read_health_test_status(apb, dut._log)
-    # OpenTitan: Only check transition failures (hi/lo)
+    # Check the high- and low-limit failure bits.
     markov_failed = (status['markov_hi_fail'] or status['markov_lo_fail'])
 
     # At least APT should fail with 90% bias (may also trigger Repetition or Markov)
@@ -429,57 +395,49 @@ async def test_3_1_2_threshold_register_configuration(dut):
         dut._log.info(f"  Wrote {val}, read back {repetition_limit}")
         assert repetition_limit == val, f"REPETITION_LIMIT mismatch: expected {val}, got {repetition_limit}"
 
-    # Phase 2: Test APT_PROPORTION_*BIT registers (Issue #1014: separate registers for each APT test)
-    dut._log.info("\n--- Phase 2: Test APT_PROPORTION_*BIT registers ---")
+    # Phase 2: Test APT high and low limit registers.
+    dut._log.info("\n--- Phase 2: Test APT limit registers ---")
 
-    test_values = [1, 100, 512, 600, 1023]
-    apt_regs = ['APT_PROPORTION_1BIT', 'APT_PROPORTION_2BIT', 'APT_PROPORTION_3BIT', 'APT_PROPORTION_4BIT']
+    test_values = [1, 100, 512, 600, 1023, 65535]
+    apt_regs = ['APT_PROPORTION_1BIT', 'APT_PROPORTION_LO']
 
     for reg_name in apt_regs:
         dut._log.info(f"\nTesting {reg_name}:")
         for val in test_values:
-            # Write value to LIMIT[9:0] field
+            # Write value to LIMIT[15:0] field
             await reg_wr(apb, reg_name, val)
 
             # Read back and verify
             readback = await reg_rd(apb, reg_name)
-            proportion_limit = readback & 0x3FF
+            proportion_limit = readback & 0xFFFF
 
             dut._log.info(f"  Wrote {val}, read back {proportion_limit}")
             assert proportion_limit == val, f"{reg_name} mismatch: expected {val}, got {proportion_limit}"
 
-    # Phase 3: Test MARKOV_TEST_PROB_THRESHOLDS (register read/write)
-    # NOTE: OpenTitan design interprets these as transition COUNT thresholds, not probabilities
-    # Only [15:0] and [23:16] are used (thresh_lo for 01/10 combined, thresh_hi for max)
-    # [7:0] and [31:24] are legacy fields (ignored by OpenTitan RTL)
+    # Phase 3: Test both 16-bit Markov alternation-count thresholds.
     dut._log.info("\n--- Phase 3: Test MARKOV_TEST_PROB_THRESHOLDS (register access) ---")
 
     test_configs = [
-        (10, 20, 30, 40),
-        (50, 50, 50, 50),
-        (100, 100, 100, 100),
-        (255, 255, 255, 255),
+        (10, 20),
+        (50, 50),
+        (100, 100),
+        (0xFFFF, 0xFFFF),
     ]
 
-    for thresh_01, thresh_10, thresh_00, thresh_11 in test_configs:
-        # Pack into 32-bit value (register format preserved for compatibility)
-        thresh_val = (thresh_11 << 24) | (thresh_00 << 16) | (thresh_10 << 8) | thresh_01
+    for high_threshold, low_threshold in test_configs:
+        thresh_val = (low_threshold << 16) | high_threshold
         await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', thresh_val)
 
-        # Read back and verify
         readback = await reg_rd(apb, 'MARKOV_TEST_PROB_THRESHOLDS')
-        r_thresh_01 = (readback >> 0) & 0xFF
-        r_thresh_10 = (readback >> 8) & 0xFF
-        r_thresh_00 = (readback >> 16) & 0xFF
-        r_thresh_11 = (readback >> 24) & 0xFF
+        read_high_threshold = readback & 0xFFFF
+        read_low_threshold = (readback >> 16) & 0xFFFF
 
-        dut._log.info(f"  Wrote ({thresh_01}, {thresh_10}, {thresh_00}, {thresh_11})")
-        dut._log.info(f"  Read ({r_thresh_01}, {r_thresh_10}, {r_thresh_00}, {r_thresh_11})")
-
-        assert r_thresh_01 == thresh_01, f"THRESH_01 mismatch"
-        assert r_thresh_10 == thresh_10, f"THRESH_10 mismatch"
-        assert r_thresh_00 == thresh_00, f"THRESH_00 mismatch"
-        assert r_thresh_11 == thresh_11, f"THRESH_11 mismatch"
+        dut._log.info(
+            f"  Wrote high={high_threshold}, low={low_threshold}; "
+            f"read high={read_high_threshold}, low={read_low_threshold}"
+        )
+        assert read_high_threshold == high_threshold, "Markov high threshold mismatch"
+        assert read_low_threshold == low_threshold, "Markov low threshold mismatch"
 
     dut._log.info("[PASS] Test 3.1.2: Threshold configuration verified")
 
@@ -528,36 +486,20 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     dut._log.info(f"    - Enable bits [2:0] = 0x7 (Repetition=ON, APT=ON, Markov=ON)")
     dut._log.info(f"    - Repetition limit [15:8] = {repetition_limit}")
 
-    # Issue #1014: Configure APT proportion limits (4 separate registers)
-    # All 4 APT tests run in parallel with their own thresholds
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 600)  # W=1024, expect=512, +17%
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 160)  # W=512, expect=128, +25%
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 80)   # W=512, expect=64, +25%
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 40)   # W=512, expect=32, +25%
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 848)
 
-    dut._log.info(f"[OK] APT proportion limits configured:")
-    dut._log.info(f"    - 1-bit: 600 (W=1024, expect=512)")
-    dut._log.info(f"    - 2-bit: 160 (W=512, expect=128)")
-    dut._log.info(f"    - 3-bit: 80  (W=512, expect=64)")
-    dut._log.info(f"    - 4-bit: 40  (W=512, expect=32)")
+    dut._log.info("[OK] APT one-count limits configured: low=848, high=1200")
 
-    # Step 1e: Configure Markov test thresholds (OpenTitan count-based)
-    # OpenTitan: Counts transitions (01 and 10), compares to thresholds
-    # thresh_lo: minimum expected transitions (fail if count < thresh_lo)
-    # thresh_hi: maximum expected transitions (fail if count > thresh_hi)
-    # For window_size=2048, expect ~1024 transitions (50% of samples are transitions)
-    # Conservative thresholds: 512-1536 (allow 25-75% transition rate)
-    thresh_lo = 50   # Minimum transition count (mapped to [7:0] and [15:8])
-    thresh_hi = 200  # Maximum transition count (mapped to [23:16] and [31:24])
-
-    markov_thresh = (thresh_hi << 24) | (thresh_hi << 16) | (thresh_lo << 8) | thresh_lo
+    # Step 1e: Configure high and low per-lane alternation-count thresholds.
+    thresh_lo = 50
+    thresh_hi = 200
+    markov_thresh = (thresh_lo << 16) | thresh_hi
     await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', markov_thresh)
 
     dut._log.info(f"[OK] MARKOV_TEST_PROB_THRESHOLDS = 0x{markov_thresh:08X} (count-based)")
-    dut._log.info(f"    - Transition count LOW threshold  [7:0]   = {thresh_lo}")
-    dut._log.info(f"    - Transition count LOW threshold  [15:8]  = {thresh_lo}")
-    dut._log.info(f"    - Transition count HIGH threshold [23:16] = {thresh_hi}")
-    dut._log.info(f"    - Transition count HIGH threshold [31:24] = {thresh_hi}")
+    dut._log.info(f"    - Maximum alternation count threshold [15:0] = {thresh_hi}")
+    dut._log.info(f"    - Minimum alternation count threshold [31:16] = {thresh_lo}")
 
     # Step 1f: Verify configuration by reading back
     dut._log.info("")
@@ -602,19 +544,17 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     dut._log.info("\n[PHASE 3] Read and verify counter registers increment")
 
     # Wait for counters to accumulate
-    # APT needs: 1-bit=1024 samples, 2/3/4-bit=512 samples
+    # The default APT window contains 2048 valid entropy words.
     # With div-64 decorrelator: 1 entropy word every ~80 cycles (including pipeline delays)
-    # 1-bit needs: 1024/32 = 32 words * 80 cycles = 2560 cycles minimum
-    # 2/3/4-bit need: 512/16 = 32 words * 80 cycles = 2560 cycles (2-bit, most demanding)
-    # Adding margin for pipeline startup and variations: 12000 cycles
+    # Add margin for pipeline startup and variations.
     await ClockCycles(dut.apb.pclk, 12000)
 
     dut._log.info("")
     dut._log.info("--- Reading Counter Registers ---")
 
-    # Read REPETITION_TEST_COUNT (8-bit)
+    # Read REPETITION_TEST_COUNT.
     rep_count = await reg_rd(apb, 'REPETITION_TEST_COUNT')
-    rep_count_val = rep_count & 0xFF
+    rep_count_val = rep_count & 0xFFFF
     dut._log.info(f"REPETITION_TEST_COUNT: {rep_count_val}")
 
     # Soft check for repetition counter
@@ -625,178 +565,48 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     else:
         dut._log.info(f"  [OK] Value {rep_count_val} < threshold {repetition_limit} (good!)")
 
-    # ============================================================================
-    # APT Counter Verification - Re-enabled after RTL fix (commit 12399bae)
-    # ============================================================================
-    # Read APT counters (all 4 sample sizes run in parallel!)
-    # NOTE: All 4 APT tests run simultaneously in parallel
-    dut._log.info("")
-    dut._log.info("All 4 APT tests run in parallel - all counters should increment")
-
-    # Expected values for good entropy (approximate):
-    # 1-bit: W=1024 samples, target appears ~512 times (50%)
-    # 2-bit: W=512 samples, target appears ~128 times (25%)
-    # 3-bit: W=512 samples, target appears ~64 times (12.5%)
-    # 4-bit: W=512 samples, target appears ~32 times (6.25%)
-
-    apt_errors = []  # Track errors without terminating
-
-    # Calculate expected samples we should have sent by now
-    # We waited 12000 cycles with div-64 decorrelator
-    # Entropy rate: ~1 word per 80 cycles (64 cycles decorr + ~16 pipeline)
-    # Total words: 12000 / 80 = 150 words
-    # Each word = 32 bits
-    cycles_waited = 12000
-    decorr_div = 64
-    pipeline_overhead = 16
-    cycles_per_word = decorr_div + pipeline_overhead  # ~80 cycles
-    words_sent = cycles_waited // cycles_per_word  # ~150 words
-    bits_sent = words_sent * 32  # ~4800 bits
-
-    dut._log.info(f"Estimated entropy sent: ~{words_sent} words, ~{bits_sent} bits")
-
-    for size in [1, 2, 3, 4]:
-        if size == 1:
-            reg_name = 'APT_PATTERN_COUNT_1BIT'
-            window_size = 1024
-            expected_ratio = 0.50  # 50% for 1-bit
-            # Expected samples: each bit = 1 sample
-            expected_samples = bits_sent  # ~4800 samples
-        elif size == 2:
-            reg_name = 'APT_PATTERN_COUNT_2BIT'
-            window_size = 512
-            expected_ratio = 0.25  # 25% for 2-bit
-            # Expected samples: each 2 bits = 1 sample
-            expected_samples = bits_sent // 2  # ~2400 samples
-        elif size == 3:
-            reg_name = 'APT_PATTERN_COUNT_3BIT'
-            window_size = 512
-            expected_ratio = 0.125  # 12.5% for 3-bit
-            # Expected samples: each 3 bits = 1 sample
-            expected_samples = bits_sent // 3  # ~1600 samples
-        else:
-            reg_name = 'APT_PATTERN_COUNT_4BIT'
-            window_size = 512
-            expected_ratio = 0.0625  # 6.25% for 4-bit
-            # Expected samples: each 4 bits = 1 sample
-            expected_samples = bits_sent // 4  # ~1200 samples
-
-        # Calculate which window we should be in
-        # If we sent enough samples to complete multiple windows, counter wraps to 0
-        windows_completed = expected_samples // window_size
-        expected_samples_in_window = expected_samples % window_size
-
-        apt_reg = await reg_rd(apb, reg_name)
-        pattern_count = (apt_reg >> 0) & 0x3FF
-        target_pattern = (apt_reg >> 10) & 0xF
-        samples_processed = (apt_reg >> 20) & 0x3FF
-
-        dut._log.info(f"{reg_name}: count={pattern_count}, target={target_pattern}, samples={samples_processed}")
-        dut._log.info(f"  Window: {window_size} samples, Expected: ~{expected_samples} total (~{windows_completed} windows + {expected_samples_in_window} in current)")
-
-        # Smart boundary checking based on actual samples sent
-        # Strategy: Use safe boundary (500 for W=512, 950 for W=1024) to avoid wrap zone
-        if size == 1:
-            safe_boundary = 950  # Safe to check before wrap at 1024
-        else:
-            safe_boundary = 500  # Safe to check before wrap at 512
-
-        # Three-level checking based on samples_processed:
-        # 1. samples < 50: Too early, just wrapped, or not running -> WARNING (ignore)
-        # 2. 50 <= samples < safe_boundary: Valid for checking -> verify ratio
-        # 3. samples >= safe_boundary: Approaching wrap, getting stale -> WARNING (less reliable)
-
-        if samples_processed < 50:
-            # Too few samples - likely just wrapped or beginning of window
-            dut._log.warning(f"  [WARN] APT {size}-bit too few samples: {samples_processed} < 50")
-            dut._log.info(f"        Likely just wrapped or at start of window - skipping check")
-            # Do NOT add to apt_errors - this is expected timing issue
-        else:
-            # Verify counter is incrementing and ratio is reasonable
-            # Use current samples_processed value for checking
-
-            # Calculate actual ratio from current reading
-            actual_ratio = (pattern_count / samples_processed) if samples_processed > 0 else 0
-
-            # Two-level tolerance checking:
-            # Warning tolerance: +/- 40% relative deviation
-            # Error tolerance: +/- 60% relative deviation
-            ratio_tolerance_warn = 0.40
-            ratio_tolerance_error = 0.60
-
-            expected_count = expected_ratio * samples_processed
-            warn_min = expected_count * (1.0 - ratio_tolerance_warn)
-            warn_max = expected_count * (1.0 + ratio_tolerance_warn)
-            error_min = expected_count * (1.0 - ratio_tolerance_error)
-            error_max = expected_count * (1.0 + ratio_tolerance_error)
-
-            if warn_min <= pattern_count <= warn_max:
-                # Within warning tolerance - good
-                dut._log.info(f"  [OK] APT {size}-bit: samples={samples_processed}, count={pattern_count}, " +
-                             f"ratio={actual_ratio:.4f} (expected: {expected_ratio:.4f})")
-            elif error_min <= pattern_count <= error_max:
-                # Outside warning but within error tolerance - warning only
-                dut._log.warning(f"  [WARN] APT {size}-bit count {pattern_count} unusual for {samples_processed} samples")
-                dut._log.info(f"        ratio={actual_ratio:.4f}, expected={expected_ratio:.4f} " +
-                             f"(+/- 40% warning, +/- 60% error)")
-                # Does NOT add to apt_errors - test continues
-            else:
-                # Outside error tolerance - hard error
-                error_msg = (f"APT {size}-bit severely abnormal: samples={samples_processed}, count={pattern_count}, " +
-                           f"ratio={actual_ratio:.4f}, expected={expected_ratio:.4f} (+/- 60%)")
-                dut._log.error(f"  [ERROR] {error_msg}")
-                apt_errors.append(error_msg)
-
-    dut._log.info("")
-    if apt_errors:
-        dut._log.error(f"[FAIL] APT tests had {len(apt_errors)} error(s):")
-        for err in apt_errors:
-            dut._log.error(f"  - {err}")
-    else:
-        dut._log.info("[OK] All 4 APT tests running in parallel with reasonable values")
-
-    # Read Markov counters (OpenTitan: only transitions counted)
-    counters = await read_markov_counters(apb)
-    count_01 = counters['count_01']  # 0->1 transitions
-    count_10 = counters['count_10']  # 1->0 transitions
-    count_00 = counters['count_00']  # Always 0 (not counted in OpenTitan)
-    count_11 = counters['count_11']  # Always 0 (not counted in OpenTitan)
-
-    dut._log.info(f"Markov transition counts: 01={count_01}, 10={count_10}")
-    dut._log.info(f"  (count_00 and count_11 always 0 in OpenTitan - non-transitions not counted)")
-
-    # MARKOV_TEST_PROBABILITIES register hardcoded to 0 in OpenTitan (legacy field)
-    # Kept for register compatibility but not used
-    markov_probs = await reg_rd(apb, 'MARKOV_TEST_PROBABILITIES')
-    dut._log.info(f"Markov probabilities register: 0x{markov_probs:08X} (hardcoded to 0 in OpenTitan)")
-
-    # Verify Markov transitions are balanced (good entropy: ~50% transitions each direction)
-    total_transitions = count_01 + count_10  # OpenTitan: only actual transitions
-    dut._log.info(f"Total transitions (01+10): {total_transitions}")
-
-    # Check minimum transitions collected
-    if total_transitions < 100:
-        error_msg = f"Insufficient Markov transitions: {total_transitions} < 100"
+    # The two APT count registers expose the maximum and minimum one counts
+    # across the tested lanes for the current window.
+    apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+    apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+    dut._log.info(
+        f"APT current-window counts: high={apt_hi_count}, low={apt_lo_count}"
+    )
+    apt_errors = []
+    if apt_hi_count < apt_lo_count:
+        apt_errors.append(
+            f"APT high count {apt_hi_count} is below low count {apt_lo_count}"
+        )
+    if apt_hi_count == 0:
+        apt_errors.append("APT counters did not observe any one bits")
+    for error_msg in apt_errors:
         dut._log.error(f"  [ERROR] {error_msg}")
-        phase3_errors.append(error_msg)
-    else:
-        dut._log.info(f"  [OK] Sufficient transitions collected: {total_transitions}")
 
-    # Check transition balance: 01 and 10 should each be ~50% (allow 35-65% range)
+    # Read the maximum and minimum per-lane Markov alternation counts.
+    counters = await read_markov_counters(apb)
+    max_alternations = counters['max_alternation_count']
+    min_alternations = counters['min_alternation_count']
+    dut._log.info(
+        f"Markov per-lane alternation extrema: "
+        f"max={max_alternations}, min={min_alternations}"
+    )
+
     markov_errors = []
-    for name, count in [('01', count_01), ('10', count_10)]:
-        percentage = (count * 100.0) / total_transitions if total_transitions > 0 else 0
-        if percentage < 35.0 or percentage > 65.0:
-            error_msg = f"Markov {name} transition {percentage:.1f}% out of range (expect 35-65%)"
-            dut._log.error(f"  [ERROR] {error_msg}")
-            markov_errors.append(error_msg)
-        else:
-            dut._log.info(f"  [OK] Markov {name}: {count} ({percentage:.1f}%) - balanced")
+    if max_alternations < min_alternations:
+        error_msg = (
+            f"Markov maximum {max_alternations} is below minimum {min_alternations}"
+        )
+        dut._log.error(f"  [ERROR] {error_msg}")
+        markov_errors.append(error_msg)
+    if min_alternations == 0:
+        error_msg = "Markov minimum alternation count did not make progress"
+        dut._log.error(f"  [ERROR] {error_msg}")
+        markov_errors.append(error_msg)
 
     if markov_errors:
-        dut._log.error(f"[FAIL] Markov balance check had {len(markov_errors)} error(s)")
+        dut._log.error(f"[FAIL] Markov counter check had {len(markov_errors)} error(s)")
     else:
-        dut._log.info("[OK] All Markov transitions balanced (~50% each direction)")
+        dut._log.info("[OK] All lanes made Markov alternation progress")
 
     # Phase 4: Test counter saturation behavior
     dut._log.info("\n--- Phase 4: Test counter saturation ---")
@@ -856,29 +666,26 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
 
     # Enable Markov test while ROs still stuck-at-0
     await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000004)  # Markov only
-    await ClockCycles(dut.apb.pclk, 2000)  # Collect some transitions
+    await ClockCycles(dut.apb.pclk, 2000)  # Collect alternation counts
 
     # Read Markov counters with stuck-at-0 pattern
     counters_stuck = await read_markov_counters(apb)
-    stuck_01 = counters_stuck['count_01']
-    stuck_10 = counters_stuck['count_10']
-    stuck_00 = counters_stuck['count_00']
-    stuck_11 = counters_stuck['count_11']
+    stuck_max = counters_stuck['max_alternation_count']
+    stuck_min = counters_stuck['min_alternation_count']
+    dut._log.info(
+        f"  Markov with stuck-at-0: max alternations={stuck_max}, "
+        f"min alternations={stuck_min}"
+    )
 
-    dut._log.info(f"  Markov with stuck-at-0: 00={stuck_00}, 01={stuck_01}, 10={stuck_10}, 11={stuck_11}")
-
-    # Verify count_00 dominates (should be >> others since we have 0->0->0->0...)
-    total_stuck = stuck_00 + stuck_01 + stuck_10 + stuck_11
-    if total_stuck > 0:
-        pct_00 = (stuck_00 * 100.0) / total_stuck
-        if pct_00 > 80.0:
-            dut._log.info(f"  [OK] Stuck-at-0 verified: 0->0 transitions dominate ({pct_00:.1f}%)")
-        else:
-            error_msg = f"Stuck-at-0 not working: 0->0 only {pct_00:.1f}% (expect >80%)"
-            dut._log.error(f"  [ERROR] {error_msg}")
-            phase3_errors.append(error_msg)
+    if stuck_max <= 1 and stuck_min <= 1:
+        dut._log.info("  [OK] Stuck-at-0 kept all per-lane alternation counts near zero")
     else:
-        dut._log.warning("  [WARN] No Markov transitions collected during stuck-at-0 test")
+        error_msg = (
+            f"Stuck-at-0 produced unexpected alternations: max={stuck_max}, "
+            f"min={stuck_min} (expected both <= 1)"
+        )
+        dut._log.error(f"  [ERROR] {error_msg}")
+        phase3_errors.append(error_msg)
 
     # Restore all ROs to normal operation and re-enable decorrelation
     dut._log.info("\n[4a++] Restoring ROs to normal operation...")
@@ -886,153 +693,81 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
         await ro_model_set(dut, idx=lane, stuck=None)
     await reg_wr(apb, 'DECORRELATOR_CTRL', 0x0003F000)  # div-64, no bypass
 
-    # Verify restoration by checking all 4 Markov transitions can increment
+    # Verify restoration by checking every lane resumes alternating.
     dut._log.info("[4a++] Verifying RO restoration with Markov counters...")
 
-    # Reset Markov counters again to measure only post-restoration transitions
+    # Reset Markov counters again to measure only post-restoration alternations.
     dut._log.info("  Resetting Markov counters to measure restoration...")
     await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000000)  # Disable all tests
     await ClockCycles(dut.apb.pclk, 10)  # Wait for reset
 
     # Re-enable Markov test with restored ROs
     await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000004)  # Markov only
-    await ClockCycles(dut.apb.pclk, 2000)  # Collect transitions with good entropy
+    await ClockCycles(dut.apb.pclk, 2000)  # Collect alternations with good entropy
 
     # Read Markov counters after restoration
     counters_restored = await read_markov_counters(apb)
-    restored_01 = counters_restored['count_01']
-    restored_10 = counters_restored['count_10']
-    restored_00 = counters_restored['count_00']
-    restored_11 = counters_restored['count_11']
+    restored_max = counters_restored['max_alternation_count']
+    restored_min = counters_restored['min_alternation_count']
+    dut._log.info(
+        f"  Markov after restoration: max alternations={restored_max}, "
+        f"min alternations={restored_min}"
+    )
 
-    dut._log.info(f"  Markov after restoration: 00={restored_00}, 01={restored_01}, 10={restored_10}, 11={restored_11}")
-
-    # Verify all 4 transition types are present (proves ROs generating both 0s and 1s)
-    restoration_ok = True
-    if restored_01 == 0 or restored_10 == 0:
-        dut._log.error(f"  [ERROR] ROs may still be stuck: 0->1={restored_01}, 1->0={restored_10}")
-        restoration_ok = False
-    elif restored_11 == 0:
-        dut._log.error(f"  [ERROR] No 1->1 transitions: ROs may not be producing 1s")
-        restoration_ok = False
+    restoration_ok = (
+        restored_max >= restored_min
+        and restored_max > stuck_max
+        and restored_min > stuck_min
+    )
+    if restoration_ok:
+        dut._log.info(
+            "  [OK] ROs restored: maximum and minimum alternation counts "
+            "both made nonzero progress"
+        )
     else:
-        # Check if balanced (15-35% each)
-        total_restored = restored_00 + restored_01 + restored_10 + restored_11
-        pct_01 = (restored_01 * 100.0) / total_restored if total_restored > 0 else 0
-        pct_10 = (restored_10 * 100.0) / total_restored if total_restored > 0 else 0
-        pct_00 = (restored_00 * 100.0) / total_restored if total_restored > 0 else 0
-        pct_11 = (restored_11 * 100.0) / total_restored if total_restored > 0 else 0
-
-        dut._log.info(f"  Transition distribution: 00={pct_00:.1f}%, 01={pct_01:.1f}%, 10={pct_10:.1f}%, 11={pct_11:.1f}%")
-
-        # Special case: If count_00 is saturated (65535), check other 3 are balanced
-        if restored_00 == 65535:
-            dut._log.info("  [NOTE] count_00 saturated at 65535, checking balance of other 3 transitions")
-            # Check that 01, 10, 11 are balanced among themselves (should be ~33% each of the 3)
-            total_non_saturated = restored_01 + restored_10 + restored_11
-            if total_non_saturated > 0:
-                pct_01_of_3 = (restored_01 * 100.0) / total_non_saturated
-                pct_10_of_3 = (restored_10 * 100.0) / total_non_saturated
-                pct_11_of_3 = (restored_11 * 100.0) / total_non_saturated
-                dut._log.info(f"  Balance of non-saturated: 01={pct_01_of_3:.1f}%, 10={pct_10_of_3:.1f}%, 11={pct_11_of_3:.1f}%")
-                # Each should be ~33% (allow 25-45% range)
-                if all(25.0 < pct < 45.0 for pct in [pct_01_of_3, pct_10_of_3, pct_11_of_3]):
-                    dut._log.info("  [OK] ROs restored: Non-saturated transitions balanced, 00 dominant (expected)")
-                else:
-                    dut._log.warning("  [WARN] Non-saturated transitions not balanced")
-        # Normal case: All 4 should be balanced (15-35% each)
-        elif all(15.0 < pct < 35.0 for pct in [pct_00, pct_01, pct_10, pct_11]):
-            dut._log.info("  [OK] ROs restored: All 4 transition types balanced (15-35% each)")
-        else:
-            dut._log.warning("  [WARN] ROs restored but transitions not perfectly balanced (may be OK)")
+        dut._log.error(
+            f"  [ERROR] ROs may still be stuck: restored max/min="
+            f"{restored_max}/{restored_min}, stuck max/min={stuck_max}/{stuck_min}"
+        )
 
     assert restoration_ok, "RO restoration failed - stuck-at pattern still present"
 
     # ============================================================================
-    # Test 4b: APT counter behavior with all-1s pattern (all 4 modes)
+    # Test 4b: APT high and low count behavior with an all-ones pattern
     # ============================================================================
-    dut._log.info("\n[4b] Testing APT_PATTERN_COUNT with all-1s pattern (1-bit through 4-bit)...")
+    dut._log.info("\n[4b] Testing APT count views with an all-ones pattern...")
     dut._log.info("  Strategy: Use 32-bit fixed word injection (0xFFFFFFFF) to bypass compressor")
-    dut._log.info("  Expected: pattern_count ~= samples_processed (ratio ~= 1.0)")
-    dut._log.info("  Note: APT counters wrap when window completes, not saturate")
+    dut._log.info("  Expected: maximum and minimum lane counts both advance")
 
-    # Configure 32-bit fixed word injection (all 1s pattern)
-    # This bypasses the 8-bit RO lanes AND the compressor, directly injecting into health tests
     dut._log.info("\n  Configuring 32-bit word injection: 0xFFFFFFFF (all 1s)")
     await ro_model_word32_set_fixed(dut, value=0xFFFFFFFF, enable=True)
-    await ClockCycles(dut.apb.pclk, 10)  # Let injection stabilize
+    await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000000)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 0xFFFF)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 0)
+    await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000002)
 
-    # Test all 4 APT modes with all-1s pattern
-    apt_4b_errors = []
-
-    for size in [1, 2, 3, 4]:
-        dut._log.info(f"\n  Testing APT {size}-bit mode with all-1s pattern...")
-
-        # Reset APT counter by disabling and re-enabling
-        await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000000)
-        await ClockCycles(dut.apb.pclk, 10)
-
-        # Enable APT test with high threshold to prevent immediate failure
-        # All 4 APT modes run in parallel
-        ctrl_val = 0x00000002 | (1023 << 16)  # APT only, threshold=1023
-        await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-        dut._log.info(f"    Enabled: APT {size}-bit mode, threshold=1023")
-
-        # Determine min_valid_samples based on window size
-        # 1-bit: 1024-sample window, others: 512-sample window
-        if size == 1:
-            min_valid = 200  # ~20% of 1024-sample window
-        else:
-            min_valid = 100  # ~20% of 512-sample window
-
-        # Set tolerance based on pattern size
-        # 3-bit patterns have alignment issues with 32-bit words (32 % 3 != 0)
-        # Each 32-bit word has 10 complete 3-bit patterns + 2 leftover bits
-        # This causes ~6-9% error rate when injecting fixed patterns
-        if size == 3:
-            ratio_tol = 0.06   # +/- 6% for 3-bit (alignment issues)
-            error_tol = 0.10   # +/- 10% error tolerance
-        else:
-            ratio_tol = 0.03   # +/- 3% for other sizes
-            error_tol = 0.05   # +/- 5% error tolerance
-
-        # Use helper to read APT counter state via RTL signals
-        # With all-1s pattern, expect pattern_count ~= samples_processed (ratio ~= 1.0)
-        result = await verify_apt_counter_behavior(
-            dut, apb,
-            sample_size=size,
-            min_valid_samples=min_valid,
-            expected_ratio=1.0,        # All-1s pattern should give 100% ratio
-            ratio_tolerance=ratio_tol, # Varies by pattern size
-            error_tolerance=error_tol, # Varies by pattern size
-            num_reads=10,              # Read counter 10 times
-            read_interval=100,         # 100 cycles between reads
-            dut_log=dut._log
+    best_hi = 0
+    best_lo = 0
+    for _ in range(10):
+        await ClockCycles(dut.apb.pclk, 100)
+        best_hi = max(
+            best_hi,
+            await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+        )
+        best_lo = max(
+            best_lo,
+            await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
         )
 
-        # Check results
-        if result['valid']:
-            if result['ratio_match']:
-                dut._log.info(f"    [PASS] APT {size}-bit all-1s: samples={result['samples_processed']}, " +
-                             f"count={result['pattern_count']}, ratio={result['actual_ratio']:.4f}")
-            elif result['severe_error']:
-                error_msg = f"APT {size}-bit all-1s ratio severely abnormal: ratio={result['actual_ratio']:.4f}"
-                dut._log.error(f"    [ERROR] {error_msg}")
-                apt_4b_errors.append(error_msg)
-            else:
-                dut._log.warning(f"    [WARN] APT {size}-bit all-1s minor deviation: ratio={result['actual_ratio']:.4f}")
-        else:
-            dut._log.warning(f"    [WARN] APT {size}-bit insufficient samples: {result['samples_processed']} < {min_valid}")
-            dut._log.warning(f"           Counter may have just wrapped - this is expected behavior")
-
-    # Summary
-    if apt_4b_errors:
-        dut._log.error(f"\n[4b] FAIL: {len(apt_4b_errors)} APT mode(s) failed with all-1s pattern")
-        for err in apt_4b_errors:
-            dut._log.error(f"  - {err}")
-            phase3_errors.append(err)
+    dut._log.info(f"  Peak observed counts: high={best_hi}, low={best_lo}")
+    if best_hi == 0 or best_lo == 0:
+        error_msg = (
+            f"APT all-ones counts did not both advance: high={best_hi}, low={best_lo}"
+        )
+        dut._log.error(f"  [ERROR] {error_msg}")
+        phase3_errors.append(error_msg)
     else:
-        dut._log.info(f"\n[4b] PASS: All 4 APT modes verified with all-1s pattern")
+        dut._log.info("  [PASS] Both retained APT count views advanced")
 
     # Disable 32-bit word injection and restore normal operation
     dut._log.info("  Disabling 32-bit word injection...")
@@ -1042,8 +777,8 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     # Restore normal operation for remaining tests
     await restore_normal_entropy_generation(dut, apb, num_lanes=12, wait_cycles=128)
 
-    # Test 4c: Markov counters (16-bit, verify they increment beyond threshold)
-    dut._log.info("\n[4c] Testing Markov counter increment (16-bit, verifying >1000)...")
+    # Test 4c: Verify both 16-bit Markov counter extrema advance.
+    dut._log.info("\n[4c] Testing Markov alternation-count progress...")
 
     # Reset Markov counters by disabling and re-enabling the test
     dut._log.info("  Resetting Markov counters by toggling enable...")
@@ -1052,10 +787,10 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
 
     # Verify counters are reset
     counters_initial = await read_markov_counters(apb)
-    dut._log.info(f"  Initial state: 00={counters_initial['count_00']}, " +
-                  f"01={counters_initial['count_01']}, " +
-                  f"10={counters_initial['count_10']}, " +
-                  f"11={counters_initial['count_11']}")
+    dut._log.info(
+        f"  Initial state: max={counters_initial['max_alternation_count']}, "
+        f"min={counters_initial['min_alternation_count']}"
+    )
 
     # Re-enable Markov test
     ctrl_val = 0x00000004  # Markov only
@@ -1067,19 +802,17 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
 
     # Read final counts
     counters_final = await read_markov_counters(apb)
-    count_01_final = counters_final['count_01']
-    count_10_final = counters_final['count_10']
-    count_00_final = counters_final['count_00']
-    count_11_final = counters_final['count_11']
+    final_max = counters_final['max_alternation_count']
+    final_min = counters_final['min_alternation_count']
+    dut._log.info(f"  Final Markov alternation extrema: max={final_max}, min={final_min}")
 
-    total_transitions = count_01_final + count_10_final + count_00_final + count_11_final
-    dut._log.info(f"  Final Markov counts: 01={count_01_final}, 10={count_10_final}, 00={count_00_final}, 11={count_11_final}")
-    dut._log.info(f"  Total transitions: {total_transitions}")
-
-    if total_transitions > 1000:
-        dut._log.info("  [PASS] Markov counters increment beyond 1000 (saturation at 65535 not tested)")
+    if final_max >= final_min and final_min > 0:
+        dut._log.info("  [PASS] Maximum and minimum alternation counts both advanced")
     else:
-        dut._log.warning(f"  [WARN] Markov total transitions only {total_transitions} (expected >1000)")
+        dut._log.warning(
+            f"  [WARN] Markov alternation extrema did not both advance: "
+            f"max={final_max}, min={final_min}"
+        )
 
     # ============================================================================
     # Test 4d: Maximum threshold testing (merged from test_3_4_2)
@@ -1090,11 +823,13 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000FFF)
     await reg_wr(apb, 'DECORRELATOR_CTRL', 0x0003F000)  # div-64, no bypass
 
-    # Set maximum thresholds: REPETITION=255, APT=1023, MARKOV=255
-    dut._log.info("  Setting maximum thresholds: REP=255, APT=1023, MARKOV=255")
-    ctrl_val = 0x00000007 | (255 << 8) | (1023 << 16)
+    # Set permissive thresholds.
+    dut._log.info("  Setting permissive thresholds: REP=255, APT=0..65535, MARKOV=0..65535")
+    ctrl_val = 0x00000007 | (255 << 8)
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0xFFFFFFFF)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 0xFFFF)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 0)
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x0000FFFF)
 
     # Test with normal entropy
     dut._log.info("  Running with maximum thresholds (normal entropy)...")
@@ -1133,23 +868,14 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     # Re-enabled APT verification after RTL fix (commit 12399bae)
     assert len(apt_errors) == 0, f"Test failed with {len(apt_errors)} APT error(s) - see log for details"
 
-    # Check Markov balance (from Phase 3)
-    assert len(markov_errors) == 0, f"Test failed with {len(markov_errors)} Markov balance error(s) - see log for details"
+    # Check Markov extrema (from Phase 3)
+    assert len(markov_errors) == 0, f"Test failed with {len(markov_errors)} Markov counter error(s) - see log for details"
 
-    # Check Phase 3 counter verification errors (repetition, insufficient transitions, stuck-at-0)
+    # Check Phase 3 counter verification errors (repetition, Markov progress, stuck-at-0)
     assert len(phase3_errors) == 0, f"Test failed with {len(phase3_errors)} Phase 3 error(s) - see log for details"
 
     dut._log.info("\n[PASS] Test 3.1.3: Register monitoring, counters, saturation, and max thresholds verified")
 
-
-# ============================================================================
-# Test 3.1.4 REMOVED: test_3_1_4_apt_sample_size_configuration
-#
-# Reason: SAMPLE_SIZE field was removed from HEALTH_TEST_CTRL register in
-# Issue #1014 (Dec 2025). The field at bits [18:16] no longer exists.
-# All 4 APT tests (1-bit, 2-bit, 3-bit, 4-bit) run in parallel by design.
-# APT counter functionality is already verified in test_3_1_3 Phase 3.
-# ============================================================================
 
 # ============================================================================
 # Category 3.2: Pipeline Integration Tests
@@ -1164,8 +890,8 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
     Phase 4: STATUS register verification (pass/fail flags)
     Phase 5: Comprehensive counter verification:
         - Phase 5a: Repetition counter value check
-        - Phase 5b: APT counters (all 4 modes: 1-bit, 2-bit, 3-bit, 4-bit)
-        - Phase 5c: Markov counters and probability distribution (4 transition types)
+        - Phase 5b: APT high and low count views
+        - Phase 5c: Markov maximum/minimum alternation counts
         - Phase 5d: Summary of all counter checks
 
     FIFO: Full verification ENABLED (decorrelator + compressor checkers + FIFO monitor).
@@ -1183,16 +909,13 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
     # Phase 2: Enable all health tests with moderate thresholds
     dut._log.info("\n--- Phase 2: Enable health tests ---")
 
-    # Configure APT proportion limits (all 4 modes per TEST_PLAN.txt)
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 650)  # 1-bit: 650
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 175)  # 2-bit: 175
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 90)   # 3-bit: 90
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 45)   # 4-bit: 45
-    dut._log.info("  APT thresholds: 1bit=650, 2bit=175, 3bit=90, 4bit=45")
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 848)
+    dut._log.info("  APT one-count limits: low=848, high=1200")
 
-    # Configure Markov thresholds (all 4 transitions = 100)
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x64646464)
-    dut._log.info("  Markov thresholds: all = 100")
+    # Configure Markov high and low alternation-count thresholds.
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x006404B0)
+    dut._log.info("  Markov alternation-count thresholds: low=100, high=1200")
 
     # Enable all health tests with REPETITION_LIMIT=50
     ctrl_val = 0x00000007 | (50 << 8)
@@ -1239,7 +962,7 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
     # With good decorrelated entropy (all 12 ROs enabled, standard config),
     # we should see ZERO failures. Any failure indicates a bug in the health test logic.
     failures = sum(status.values())
-    dut._log.info(f"Total failures: {failures}/6 (expect 0 = all tests passing)")
+    dut._log.info(f"Total failures: {failures}/4 (expect 0 = all tests passing)")
 
     # Check individual test results and fail on ANY unexpected failure
     test_passed = True
@@ -1251,26 +974,21 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
         test_passed = False
 
     if status['apt_fail']:
-        error_messages.append("APT test failed with good entropy (threshold=600)")
+        error_messages.append("APT test failed with good entropy")
         dut._log.error("  [ERROR] APT test failed - unexpected with good entropy!")
         test_passed = False
 
-    # OpenTitan: Only 2 Markov status bits (hi_fail, lo_fail for transition thresholds)
+    # The two Markov bits report high- and low-threshold failures.
     markov_fails = status['markov_hi_fail'] + status['markov_lo_fail']
     if markov_fails > 0:
         error_messages.append(f"Markov test failed: {markov_fails}/2 thresholds exceeded")
         dut._log.error(f"  [ERROR] Markov test failed - {markov_fails}/2 thresholds exceeded")
 
-        # If BOTH Markov thresholds fail simultaneously, indicates potential counter issue
-        if markov_fails == 2:
-            error_messages.append("Both Markov thresholds failed - likely counter wrap-around or saturation bug")
-            dut._log.error("  [CRITICAL] Both Markov thresholds failed - likely wrap-around bug!")
-
         test_passed = False
 
     # Phase 5: Verify all health test counters (Repetition, APT, Markov)
     dut._log.info("\n--- Phase 5: Verify all health test counters ---")
-    dut._log.info("Verifying Repetition, APT (all 4 modes), and Markov counters with good entropy...")
+    dut._log.info("Verifying Repetition, APT, and Markov counters with good entropy...")
 
     # Calculate expected samples sent during test
     # Total runtime: 20 iterations × 500 cycles = 10,000 cycles
@@ -1316,75 +1034,20 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
     dut._log.info("")
 
     # =============================================================================
-    # PHASE 5b: APT Counter Verification (All 4 Modes)
+    # PHASE 5b: APT Counter Verification
     # =============================================================================
-    dut._log.info("--- Phase 5b: APT Counters (All 4 Modes) ---")
+    dut._log.info("--- Phase 5b: APT High/Low Counts ---")
 
-    for size in [1, 2, 3, 4]:
-        if size == 1:
-            reg_name = 'APT_PATTERN_COUNT_1BIT'
-            window_size = 1024
-            expected_ratio = 0.50  # 50% for 1-bit
-            expected_samples = bits_sent  # ~4800 samples
-        elif size == 2:
-            reg_name = 'APT_PATTERN_COUNT_2BIT'
-            window_size = 512
-            expected_ratio = 0.25  # 25% for 2-bit
-            expected_samples = bits_sent // 2  # ~2400 samples
-        elif size == 3:
-            reg_name = 'APT_PATTERN_COUNT_3BIT'
-            window_size = 512
-            expected_ratio = 0.125  # 12.5% for 3-bit
-            expected_samples = bits_sent // 3  # ~1600 samples
-        else:
-            reg_name = 'APT_PATTERN_COUNT_4BIT'
-            window_size = 512
-            expected_ratio = 0.0625  # 6.25% for 4-bit
-            expected_samples = bits_sent // 4  # ~1200 samples
+    apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+    apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+    dut._log.info(f"APT current-window counts: high={apt_hi_count}, low={apt_lo_count}")
 
-        apt_reg = await reg_rd(apb, reg_name)
-        pattern_count = (apt_reg >> 0) & 0x3FF
-        target_pattern = (apt_reg >> 10) & 0xF
-        samples_processed = (apt_reg >> 20) & 0x3FF
-
-        dut._log.info(f"{reg_name}: count={pattern_count}, target={target_pattern}, samples={samples_processed}")
-
-        # Smart boundary checking based on actual samples sent
-        if samples_processed < 50:
-            # Too few samples - likely just wrapped or beginning of window
-            dut._log.warning(f"  [WARN] APT {size}-bit too few samples: {samples_processed} < 50")
-            dut._log.info(f"        Likely just wrapped or at start of window - skipping check")
-        else:
-            # Verify counter is incrementing and ratio is reasonable
-            actual_ratio = (pattern_count / samples_processed) if samples_processed > 0 else 0
-
-            # Two-level tolerance checking:
-            # Warning tolerance: +/- 40% relative deviation
-            # Error tolerance: +/- 60% relative deviation
-            ratio_tolerance_warn = 0.40
-            ratio_tolerance_error = 0.60
-
-            expected_count = expected_ratio * samples_processed
-            warn_min = expected_count * (1.0 - ratio_tolerance_warn)
-            warn_max = expected_count * (1.0 + ratio_tolerance_warn)
-            error_min = expected_count * (1.0 - ratio_tolerance_error)
-            error_max = expected_count * (1.0 + ratio_tolerance_error)
-
-            if warn_min <= pattern_count <= warn_max:
-                # Within warning tolerance - good
-                dut._log.info(f"  [OK] APT {size}-bit: samples={samples_processed}, count={pattern_count}, " +
-                             f"ratio={actual_ratio:.4f} (expected: {expected_ratio:.4f})")
-            elif error_min <= pattern_count <= error_max:
-                # Outside warning but within error tolerance - warning only
-                dut._log.warning(f"  [WARN] APT {size}-bit count {pattern_count} unusual for {samples_processed} samples")
-                dut._log.info(f"        ratio={actual_ratio:.4f}, expected={expected_ratio:.4f} " +
-                             f"(+/- 40% warning, +/- 60% error)")
-            else:
-                # Outside error tolerance - hard error
-                error_msg = (f"APT {size}-bit severely abnormal: samples={samples_processed}, count={pattern_count}, " +
-                           f"ratio={actual_ratio:.4f}, expected={expected_ratio:.4f} (+/- 60%)")
-                dut._log.error(f"  [ERROR] {error_msg}")
-                apt_errors.append(error_msg)
+    if apt_hi_count < apt_lo_count:
+        apt_errors.append(
+            f"APT high count {apt_hi_count} is below low count {apt_lo_count}"
+        )
+    if apt_hi_count == 0:
+        apt_errors.append("APT counters did not observe any one bits")
 
     # Check APT results
     if apt_errors:
@@ -1394,58 +1057,40 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
         test_passed = False
         error_messages.extend(apt_errors)
     else:
-        dut._log.info("[OK] All 4 APT tests running in parallel with reasonable values")
+        dut._log.info("[OK] APT high and low count views are consistent")
 
     dut._log.info("")
 
     # =============================================================================
-    # PHASE 5c: Markov Counter and Probability Verification
+    # PHASE 5c: Markov Counter Verification
     # =============================================================================
-    dut._log.info("--- Phase 5c: Markov Counters and Probabilities ---")
+    dut._log.info("--- Phase 5c: Markov Alternation-Count Extrema ---")
 
-    # Read Markov counters
     counters = await read_markov_counters(apb)
-    count_01 = counters['count_01']
-    count_10 = counters['count_10']
-    count_00 = counters['count_00']
-    count_11 = counters['count_11']
+    max_alternations = counters['max_alternation_count']
+    min_alternations = counters['min_alternation_count']
+    dut._log.info(
+        f"Markov per-lane alternation extrema: "
+        f"max={max_alternations}, min={min_alternations}"
+    )
 
-    dut._log.info(f"Markov transition counts: 01={count_01}, 10={count_10}")
-    dut._log.info(f"  (count_00={count_00} and count_11={count_11} always 0 in OpenTitan - non-transitions not counted)")
-
-    # NOTE: OpenTitan design uses count-based thresholds, not probability-based
-    # MARKOV_TEST_PROBABILITIES register will return 0 (probabilities not computed)
-    markov_probs = await reg_rd(apb, 'MARKOV_TEST_PROBABILITIES')
-    dut._log.info(f"MARKOV_TEST_PROBABILITIES register: 0x{markov_probs:08X} (hardcoded to 0 in OpenTitan)")
-
-    # Verify Markov transitions are balanced (good entropy: ~50% transitions each direction)
-    total_transitions = count_01 + count_10  # OpenTitan: only actual transitions
-    dut._log.info(f"Total transitions (01+10): {total_transitions}")
-
-    # Check minimum transitions collected
-    if total_transitions < 1000:
-        error_msg = f"Insufficient Markov transitions: {total_transitions} < 1000"
+    if max_alternations < min_alternations:
+        error_msg = (
+            f"Markov maximum {max_alternations} is below minimum {min_alternations}"
+        )
         dut._log.error(f"  [ERROR] {error_msg}")
         markov_errors.append(error_msg)
-    else:
-        dut._log.info(f"  [OK] Sufficient transitions collected: {total_transitions}")
-
-    # Check each transition type is approximately 25% (allow 15-35% range for randomness)
-    for name, count in [('01', count_01), ('10', count_10), ('00', count_00), ('11', count_11)]:
-        percentage = (count * 100.0) / total_transitions if total_transitions > 0 else 0
-        if percentage < 15.0 or percentage > 35.0:
-            error_msg = f"Markov {name} transition {percentage:.1f}% out of range (expect 15-35%)"
-            dut._log.error(f"  [ERROR] {error_msg}")
-            markov_errors.append(error_msg)
-        else:
-            dut._log.info(f"  [OK] Markov {name}: {count} ({percentage:.1f}%) - balanced")
+    if min_alternations == 0:
+        error_msg = "Markov minimum alternation count did not make progress"
+        dut._log.error(f"  [ERROR] {error_msg}")
+        markov_errors.append(error_msg)
 
     if markov_errors:
-        dut._log.error(f"[FAIL] Markov balance check had {len(markov_errors)} error(s)")
+        dut._log.error(f"[FAIL] Markov counter check had {len(markov_errors)} error(s)")
         test_passed = False
         error_messages.extend(markov_errors)
     else:
-        dut._log.info("[OK] All Markov transitions balanced (~25% each)")
+        dut._log.info("[OK] All lanes made sufficient Markov alternation progress")
 
     dut._log.info("")
 
@@ -1464,12 +1109,12 @@ async def test_3_2_1_health_tests_with_decorrelation(dut):
     if apt_errors:
         dut._log.error(f"[FAIL] APT: {len(apt_errors)} error(s)")
     else:
-        dut._log.info("[PASS] APT: All 4 modes verified")
+        dut._log.info("[PASS] APT: High and low counts verified")
 
     if markov_errors:
         dut._log.error(f"[FAIL] Markov: {len(markov_errors)} error(s)")
     else:
-        dut._log.info("[PASS] Markov: All transitions balanced")
+        dut._log.info("[PASS] Markov: Maximum/minimum alternation counts verified")
 
     if total_errors == 0:
         dut._log.info("[PASS] Phase 5: All health test counters verified successfully")
@@ -1684,27 +1329,19 @@ async def test_3_3_2_apt_test_failure(dut):
     ctrl_val = 0x00000002  # ENABLE[1]=1 (APT test only)
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
 
-    # Issue #1014: Configure APT proportion limits (4 separate registers)
-    # Use aggressive thresholds (~40% above expected) to easily trigger with biased entropy
-    # With p_bias=0.85, expect ~870/1024 for 1-bit, which exceeds threshold of 570
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 570)  # Aggressive: 512+58 (11% margin)
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 145)  # Aggressive: 128+17 (13% margin)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 72)   # Aggressive: 64+8 (13% margin)
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 36)   # Aggressive: 32+4 (13% margin)
+    # With p_bias=0.85, the maximum lane count exceeds this high limit.
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 0)
 
     dut._log.info(f"HEALTH_TEST_CTRL: 0x{ctrl_val:08X} (APT enabled)")
-    dut._log.info("APT thresholds (aggressive for triggering failures):")
-    dut._log.info("  1-bit: 570 (W=1024, expect=512, +11% - will fail at ~85% bias)")
-    dut._log.info("  2-bit: 145 (W=512, expect=128, +13%)")
-    dut._log.info("  3-bit: 72  (W=512, expect=64, +13%)")
-    dut._log.info("  4-bit: 36  (W=512, expect=32, +13%)")
+    dut._log.info("APT limits: low=0, high=1200")
 
     # Phase 3: Trigger failure using 32-bit direct injection
     dut._log.info("\n--- Phase 3: Trigger failure (32-bit injection with bias) ---")
     await ro_model_word32_set(dut, enable=True, p_bias=0.85, p_corr=0.0)
     dut._log.info("Configured: p_bias=0.85 (85% biased towards '1'), p_corr=0.0")
     dut._log.info("Expected: ~85% of bits are '1' in 32-bit words")
-    dut._log.info("APT 1-bit test will detect this bias (expect ~870/1024 samples)")
+    dut._log.info("APT high-limit check will detect this bias")
 
     # Phase 3.5: Verify configuration was applied correctly
     dut._log.info("\n--- Phase 3.5: Verify configuration (readback check) ---")
@@ -1714,15 +1351,14 @@ async def test_3_3_2_apt_test_failure(dut):
     enable_bits = ctrl_readback & 0xFF
     rep_limit = (ctrl_readback >> 8) & 0xFF
     dut._log.info(f"HEALTH_TEST_CTRL readback: 0x{ctrl_readback:08X}")
-    dut._log.info(f"  ENABLE[7:0] = 0x{enable_bits:02X} (Repetition={enable_bits&0x1}, APT={(enable_bits>>1)&0x1}, Markov={(enable_bits>>2)&0x1})")
+    dut._log.info(f"  ENABLE[2:0] = 0x{enable_bits:01X} (Repetition={enable_bits&0x1}, APT={(enable_bits>>1)&0x1}, Markov={(enable_bits>>2)&0x1})")
     dut._log.info(f"  REPETITION_LIMIT = {rep_limit}")
 
-    # Readback APT thresholds
-    apt_1bit = await reg_rd(apb, 'APT_PROPORTION_1BIT')
-    apt_2bit = await reg_rd(apb, 'APT_PROPORTION_2BIT')
-    apt_3bit = await reg_rd(apb, 'APT_PROPORTION_3BIT')
-    apt_4bit = await reg_rd(apb, 'APT_PROPORTION_4BIT')
-    dut._log.info(f"APT thresholds readback: 1bit={apt_1bit}, 2bit={apt_2bit}, 3bit={apt_3bit}, 4bit={apt_4bit}")
+    apt_hi_limit = await reg_rd(apb, 'APT_PROPORTION_1BIT')
+    apt_lo_limit = await reg_rd(apb, 'APT_PROPORTION_LO')
+    dut._log.info(
+        f"APT limits readback: low={apt_lo_limit}, high={apt_hi_limit}"
+    )
 
     # Verify enable bits are correct
     if enable_bits != 0x02:
@@ -1758,87 +1394,19 @@ async def test_3_3_2_apt_test_failure(dut):
         dut._log.error(f"  [ERROR] {error_msg}")
         phase3_errors.append(error_msg)
 
-    # Phase 3.6: Verify APT counter behavior - EXTENDED VERSION
-    # User requested: "run a little bit longer to see if 0.85 entropy can reach expected ratio with all 4 APT tests"
-    dut._log.info("\n--- Phase 3.6: Verify APT counter behavior (Extended) ---")
-    dut._log.info("Running longer duration to observe ratio convergence for ALL 4 APT tests")
-    dut._log.info("")
-    dut._log.info("Mathematical expectations with p_bias=0.85:")
-    dut._log.info("  1-bit pattern ('1'):    0.85^1 = 0.8500 (85.00%)")
-    dut._log.info("  2-bit pattern ('11'):   0.85^2 = 0.7225 (72.25%)")
-    dut._log.info("  3-bit pattern ('111'):  0.85^3 = 0.6141 (61.41%)")
-    dut._log.info("  4-bit pattern ('1111'): 0.85^4 = 0.5220 (52.20%)")
-    dut._log.info("")
-
-    # Wait longer for more samples to accumulate across all 4 APT tests
-    # 4-bit APT has window size W=512, with 32-bit injection ~512 samples = 16 words
-    # To get multiple windows: 20000 cycles @ div-64 = ~312 decorrelator outputs = ~9.75 4-bit windows
-    dut._log.info("Waiting for APT to accumulate samples (20000 cycles)...")
+    # Run through multiple windows, then check the retained count views.
+    dut._log.info("\n--- Phase 3.6: Verify APT high/low count views ---")
     await ClockCycles(dut.apb.pclk, 20000)
 
-    # Verify ALL 4 APT tests
-    expected_ratios = {
-        1: 0.85,      # 1-bit: 85%
-        2: 0.7225,    # 2-bit: 72.25%
-        3: 0.6141,    # 3-bit: 61.41%
-        4: 0.5220,    # 4-bit: 52.20%
-    }
-
-    apt_results = {}
-    for sample_size in [1, 2, 3, 4]:
-        dut._log.info(f"\n[{sample_size}-bit APT] Reading counter state...")
-
-        result = await verify_apt_counter_behavior(
-            dut, apb,
-            sample_size=sample_size,
-            min_valid_samples=100,                    # Need at least 100 samples
-            expected_ratio=expected_ratios[sample_size],
-            ratio_tolerance=0.10,                     # Warning: +/- 10%
-            error_tolerance=0.15,                     # Error: +/- 15%
-            num_reads=20,                             # 20 reads to find best window state
-            read_interval=100,                        # 100 cycles between reads
-            dut_log=dut._log
+    apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+    apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+    dut._log.info(f"APT counts: high={apt_hi_count}, low={apt_lo_count}")
+    if apt_hi_count < apt_lo_count:
+        error_msg = (
+            f"APT high count {apt_hi_count} is below low count {apt_lo_count}"
         )
-
-        apt_results[sample_size] = result
-
-    # Summary of all 4 APT tests
-    dut._log.info("\n" + "=" * 80)
-    dut._log.info("APT RATIO CONVERGENCE SUMMARY (p_bias=0.85)")
-    dut._log.info("=" * 80)
-    dut._log.info("Sample | Pattern  | Samples | Ratio  | Expected | Error   | Status")
-    dut._log.info("Width  | Count    | Proc    |        | Ratio    |         |")
-    dut._log.info("-------|----------|---------|--------|----------|---------|--------")
-
-    for sample_size in [1, 2, 3, 4]:
-        result = apt_results[sample_size]
-        pattern_count = result['pattern_count']
-        samples = result['samples_processed']
-        ratio = result['actual_ratio']
-        expected = result['expected_ratio']
-        error = result['ratio_error'] if result['ratio_error'] is not None else 0.0
-
-        if result['valid']:
-            if result['ratio_match']:
-                status = "PASS"
-            elif not result['severe_error']:
-                status = "WARN"
-            else:
-                status = "ERROR"
-        else:
-            status = "INSUFFICIENT"
-
-        dut._log.info(f" {sample_size}-bit  | {pattern_count:8d} | {samples:7d} | {ratio:6.4f} | {expected:8.4f} | {error:7.4f} | {status}")
-
-    dut._log.info("=" * 80)
-
-    # Check if any APT tests have severe errors
-    for sample_size in [1, 2, 3, 4]:
-        result = apt_results[sample_size]
-        if result['valid'] and result['severe_error']:
-            error_msg = f"{sample_size}-bit APT: Ratio severely abnormal ({result['actual_ratio']:.4f} vs {result['expected_ratio']:.4f})"
-            dut._log.error(f"  [ERROR] {error_msg}")
-            phase3_errors.append(error_msg)
+        dut._log.error(f"  [ERROR] {error_msg}")
+        phase3_errors.append(error_msg)
 
     # Phase 3.7: Check current health test status BEFORE polling for IRQ
     dut._log.info("\n--- Phase 3.7: Pre-IRQ diagnostic - Check current status ---")
@@ -1846,18 +1414,14 @@ async def test_3_3_2_apt_test_failure(dut):
     # Read HEALTH_TEST_STATUS now (before waiting for IRQ)
     health_status_pre = await read_health_test_status(apb, log=dut._log)
 
-    # Read all 4 APT counters
-    dut._log.info("APT counter states (before IRQ polling):")
-    for apt_name in ['1BIT', '2BIT', '3BIT', '4BIT']:
-        reg_name = f'APT_PATTERN_COUNT_{apt_name}'
-        count_reg = await reg_rd(apb, reg_name)
-        pattern_count = (count_reg >> 0) & 0x3FF
-        samples = (count_reg >> 20) & 0x3FF
-        window_complete = (count_reg >> 31) & 0x1
-        dut._log.info(f"  {apt_name}: pattern_count={pattern_count}, samples={samples}, window_complete={window_complete}")
+    apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+    apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+    dut._log.info(
+        f"APT counts before IRQ polling: high={apt_hi_count}, low={apt_lo_count}"
+    )
 
     # Check if any health test has already failed
-    # NOTE: OpenTitan design has only 2 Markov status bits (markov_hi_fail, markov_lo_fail)
+    # Check all implemented health-test status bits.
     if (health_status_pre['repetition_fail'] or health_status_pre['apt_fail'] or
         health_status_pre['markov_hi_fail'] or health_status_pre['markov_lo_fail']):
         dut._log.info("  [INFO] Health test failure(s) already detected before polling:")
@@ -1878,47 +1442,11 @@ async def test_3_3_2_apt_test_failure(dut):
     assert intr_status['health_test_failed'] == 1
     dut._log.info("[PASS] Interrupt source: HEALTH_TEST_FAILED")
 
-    # Phase 6: ISR - Read HEALTH_TEST_STATUS and identify which APT tests failed
+    # Phase 6: ISR - Read HEALTH_TEST_STATUS and identify the APT failure
     dut._log.info("\n--- Phase 6: ISR - Read HEALTH_TEST_STATUS ---")
     health_status = await read_health_test_status(apb)
     assert health_status['apt_fail'] == 1
     dut._log.info("[PASS] Failure identified: APT_TEST")
-
-    # Phase 6.5: Verify which specific APT tests exceeded thresholds
-    dut._log.info("\n--- Phase 6.5: ISR - Identify which APT tests failed ---")
-    apt_failures = []
-    apt_threshold_map = {
-        '1BIT': (570, 1024),  # (threshold, window)
-        '2BIT': (145, 512),
-        '3BIT': (72, 512),
-        '4BIT': (36, 512),
-    }
-
-    for apt_name, (threshold, window) in apt_threshold_map.items():
-        reg_name = f'APT_PATTERN_COUNT_{apt_name}'
-        count_reg = await reg_rd(apb, reg_name)
-        pattern_count = (count_reg >> 0) & 0x3FF
-        samples = (count_reg >> 20) & 0x3FF
-        window_complete = (count_reg >> 31) & 0x1
-
-        dut._log.info(f"  {apt_name}: count={pattern_count}, samples={samples}, window_complete={window_complete}, threshold={threshold}")
-
-        if pattern_count > threshold and window_complete:
-            apt_failures.append(apt_name)
-            dut._log.info(f"    [FAILED] {pattern_count} > {threshold}")
-        elif pattern_count > threshold:
-            apt_failures.append(apt_name)
-            dut._log.warning(f"    [FAILED] {pattern_count} > {threshold} (window not complete yet)")
-        else:
-            dut._log.info(f"    [OK] {pattern_count} <= {threshold}")
-
-    # Verify at least one APT test failed (since apt_fail=1)
-    if len(apt_failures) == 0:
-        error_msg = "HEALTH_TEST_STATUS shows apt_fail=1 but no individual APT test exceeded threshold!"
-        dut._log.error(f"  [ERROR] {error_msg}")
-        phase3_errors.append(error_msg)
-    else:
-        dut._log.info(f"[VERIFIED] APT failures detected in: {', '.join(apt_failures)}")
 
     # Phase 7-9: ISR - Common recovery flow (restore → toggle → W1C)
     async def restore_apt_entropy():
@@ -1931,7 +1459,7 @@ async def test_3_3_2_apt_test_failure(dut):
         dut, apb,
         test_type="apt",
         restore_entropy_fn=restore_apt_entropy,
-        new_threshold=600,
+        new_threshold=1200,
         dut_log=dut._log
     )
 
@@ -1965,14 +1493,14 @@ async def test_3_3_3_markov_test_failure(dut):
     1. Enable interrupt FIRST
     2. Configure Markov test with low thresholds
     3. Trigger failure (32-bit injection with p_bias=0.9, p_corr=0.9)
-    3.5. Verify Markov transition distribution
+    3.5. Verify Markov alternation-count extrema
     4. Poll for irq_o assertion (like real ISR)
     5. ISR: Read INTR_STATUS (identify source)
-    6. ISR: Read HEALTH_TEST_STATUS (identify which Markov transition failed)
+    6. ISR: Read HEALTH_TEST_STATUS (identify which Markov limit failed)
     7. ISR: Restore good entropy (disable 32-bit injection & bypass)
     8. ISR: Toggle enable (disable->enable clears counter & updates threshold)
     9. ISR: Clear interrupt (W1C) - safe now that good entropy restored
-    10. Markov counter saturation test (extended test - 100,000 cycles)
+    10. Extended Markov counter growth test (100,000 cycles)
     11. Second failure injection (~600,000ns mark) - verify health test still active
         - Inject second Markov failure
         - Verify IRQ fires again
@@ -2010,73 +1538,36 @@ async def test_3_3_3_markov_test_failure(dut):
     dut._log.info(f"HEALTH_TEST_CTRL: 0x{ctrl_val:08X} (Markov enabled)")
 
     # Set low Markov thresholds
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x32323232)  # All 50
-    dut._log.info("MARKOV_TEST_PROB_THRESHOLDS: 0x32323232 (all transitions threshold=50)")
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00320032)
+    dut._log.info("MARKOV_TEST_PROB_THRESHOLDS: 0x00320032 (low=50, high=50)")
 
     # Phase 3: Trigger failure using 32-bit direct injection with correlation
     dut._log.info("\n--- Phase 3: Trigger failure (32-bit injection with correlation) ---")
     dut._log.info("Using 32-bit direct injection to bypass decorrelator/compressor variability")
     await ro_model_word32_set(dut, enable=True, p_bias=0.9, p_corr=0.9)
     dut._log.info("Configured: p_bias=0.9 (90% biased towards '1'), p_corr=0.9 (90% correlation)")
-    dut._log.info("Expected Markov distribution: 0->0: ~10%, 0->1: ~1%, 1->0: ~1%, 1->1: ~87%")
-    dut._log.info("Note: 1->1 dominates due to high bias towards '1' + high correlation")
-    dut._log.info("Markov test will detect strong correlation (1->1 ~87% >> threshold 50)")
+    dut._log.info("Expected: correlation reduces per-lane alternation counts")
+    dut._log.info("Markov high/low limits will detect the degraded stream")
 
-    # Phase 3.5: Verify Actual Markov Transition Distribution (32-bit injection)
-    dut._log.info("\n--- Phase 3.5: Verify Markov transition distribution (32-bit injection) ---")
-    dut._log.info("Reading Markov counters to verify 32-bit injection working correctly...")
+    # Phase 3.5: Verify the exposed Markov alternation-count extrema.
+    dut._log.info("\n--- Phase 3.5: Verify Markov alternation counts (32-bit injection) ---")
+    dut._log.info("Reading maximum/minimum per-lane alternation counts...")
 
-    # Wait for some transitions to accumulate
+    # Wait for the changing correlated stream to accumulate alternations.
     await ClockCycles(dut.apb.pclk, 5000)
 
-    # Read Markov counter registers
     counters = await read_markov_counters(apb)
-    count_01 = counters['count_01']    # 0->1 transitions [15:0]
-    count_10 = counters['count_10']    # 1->0 transitions [31:16]
-    count_00 = counters['count_00']    # 0->0 transitions [15:0]
-    count_11 = counters['count_11']    # 1->1 transitions [31:16]
-
-    # Calculate distribution
-    total_transitions = count_00 + count_01 + count_10 + count_11
-    if total_transitions > 0:
-        pct_00 = (count_00 * 100.0) / total_transitions
-        pct_01 = (count_01 * 100.0) / total_transitions
-        pct_10 = (count_10 * 100.0) / total_transitions
-        pct_11 = (count_11 * 100.0) / total_transitions
-
-        dut._log.info(f"Markov Transition Counts (Total: {total_transitions}):")
-        dut._log.info(f"  0->0: {count_00:5d} ({pct_00:5.1f}%)  [Expected: ~10% with p_bias=0.9, p_corr=0.9]")
-        dut._log.info(f"  0->1: {count_01:5d} ({pct_01:5.1f}%)  [Expected: ~1%]")
-        dut._log.info(f"  1->0: {count_10:5d} ({pct_10:5.1f}%)  [Expected: ~1%]")
-        dut._log.info(f"  1->1: {count_11:5d} ({pct_11:5.1f}%)  [Expected: ~87%]")
-
-        # With 32-bit direct injection (p_bias=0.9, p_corr=0.9):
-        # Expected: Extreme bias towards 1->1 transition (~87%)
-        # Due to: 90% of bits are '1' (bias) + 90% stay same (correlation)
-        # This creates: P(1->1) = 0.9 * 0.9 + 0.9 * 0.1 * 0.9 ~= 87%
-        max_pct = max(pct_00, pct_01, pct_10, pct_11)
-        min_pct = min(pct_00, pct_01, pct_10, pct_11)
-        deviation = max_pct - min_pct
-
-        # With p_bias=0.9 + p_corr=0.9, expect deviation >80% (1->1 dominates)
-        if deviation > 80.0:
-            dut._log.info(f"[VERIFIED] Extreme bias: {deviation:.1f}% spread (32-bit injection working)")
-        else:
-            dut._log.error(f"[ERROR] Weak bias: only {deviation:.1f}% spread (expected >80%)")
-            dut._log.error(f"  32-bit injection may not be working correctly!")
-            assert False, f"32-bit injection bias too weak: deviation={deviation:.1f}% (expected >80%)"
-
-        # Verify high correlation: stay transitions should dominate (>95%)
-        stay_pct = pct_00 + pct_11
-        transition_pct = pct_01 + pct_10
-        if stay_pct > 95.0:
-            dut._log.info(f"[VERIFIED] Extreme correlation: stay={stay_pct:.1f}% > 95% (32-bit injection working)")
-        else:
-            dut._log.error(f"[ERROR] Lower correlation: stay={stay_pct:.1f}% (expected >95%)")
-            dut._log.error(f"  32-bit injection may not be working correctly!")
-            assert False, f"32-bit injection correlation too weak: stay={stay_pct:.1f}% (expected >95%)"
-    else:
-        dut._log.error("No Markov transitions collected - test may fail!")
+    max_alternations = counters['max_alternation_count']
+    min_alternations = counters['min_alternation_count']
+    dut._log.info(
+        f"Markov per-lane alternation extrema: "
+        f"max={max_alternations}, min={min_alternations}"
+    )
+    assert max_alternations >= min_alternations, \
+        "Markov maximum alternation count must not be below the minimum"
+    assert min_alternations > 0, \
+        "Changing correlated data should produce alternations on every lane"
+    dut._log.info("[VERIFIED] Both Markov alternation-count extrema made progress")
 
     # Phase 4: Poll for irq_o assertion with timeout (realistic ISR behavior)
     dut._log.info("\n--- Phase 4: Poll for irq_o assertion (like real ISR) ---")
@@ -2105,8 +1596,8 @@ async def test_3_3_3_markov_test_failure(dut):
         # Verify IRQ checker - interrupt asserted
         await irq_checker_verify_async(dut, apb, expected_irq=True)
 
-        # Phase 6: ISR - Read HEALTH_TEST_STATUS to identify which Markov transition failed
-        dut._log.info("\n--- Phase 6: ISR - Read HEALTH_TEST_STATUS (identify Markov transitions) ---")
+        # Phase 6: ISR - Read HEALTH_TEST_STATUS to identify the failed Markov limit.
+        dut._log.info("\n--- Phase 6: ISR - Read HEALTH_TEST_STATUS (identify Markov limit) ---")
         health_status = await read_health_test_status(apb)
 
         dut._log.info(f"HEALTH_TEST_STATUS:")
@@ -2114,11 +1605,10 @@ async def test_3_3_3_markov_test_failure(dut):
         dut._log.info(f"  APT [3]: {health_status['apt_fail']}")
         dut._log.info(f"  Markov_HI [4]: {health_status['markov_hi_fail']}")
         dut._log.info(f"  Markov_LO [5]: {health_status['markov_lo_fail']}")
-        dut._log.info(f"  (OpenTitan design: only transition counts, no separate 00/11 tests)")
 
         markov_fail_count = (health_status['markov_hi_fail'] + health_status['markov_lo_fail'])
-        assert markov_fail_count > 0, "At least one Markov transition should have failed"
-        dut._log.info(f"[PASS] Health test failure identified: MARKOV_TEST ({markov_fail_count} transitions failed)")
+        assert markov_fail_count > 0, "At least one Markov limit should have failed"
+        dut._log.info(f"[PASS] Health test failure identified: MARKOV_TEST ({markov_fail_count} limits failed)")
 
         # Phase 7-9: ISR - Common recovery flow (restore → toggle → W1C)
         async def restore_markov_entropy():
@@ -2135,13 +1625,13 @@ async def test_3_3_3_markov_test_failure(dut):
             dut, apb,
             test_type="markov",
             restore_entropy_fn=restore_markov_entropy,
-            new_threshold=100,
+            new_threshold=1200,
             dut_log=dut._log
         )
 
-        # Phase 10: Test Markov counter saturation (16-bit max = 65535)
-        dut._log.info("\n--- Phase 10: Test Markov Counter Saturation (16-bit) ---")
-        dut._log.info("Goal: Accumulate enough transitions to hit 16-bit counter max (65535)")
+        # Phase 10: Exercise extended 16-bit per-lane Markov counter growth.
+        dut._log.info("\n--- Phase 10: Test Extended Markov Counter Growth ---")
+        dut._log.info("Goal: Verify both exposed alternation-count extrema keep reporting activity")
         dut._log.info("Strategy: Use div-8 decorrelator for fast sampling + long runtime")
 
         # Step 10a: Configure decorrelator with div-8 for fast sampling (8x faster than div-64)
@@ -2149,8 +1639,6 @@ async def test_3_3_3_markov_test_failure(dut):
         await reg_wr(apb, 'DECORRELATOR_CTRL', 0x00007000)  # div-8, no bypass
         dut._log.info("  Decorrelator: DIV=7 (divide by 8), no bypass")
         dut._log.info("  Entropy rate: ~1 word per 10 cycles (8 decorr + ~2 pipeline)")
-        dut._log.info("  Each word = 32 bits = 31 Markov transitions")
-        dut._log.info("  To reach 65535 transitions: need ~2114 words = ~21140 cycles")
 
         # Step 10b: Reset Markov counters to start fresh
         dut._log.info("\n[10b] Resetting Markov counters by toggling enable...")
@@ -2164,10 +1652,10 @@ async def test_3_3_3_markov_test_failure(dut):
         await ClockCycles(dut.apb.pclk, 10)
         dut._log.info("  Markov counters reset")
 
-        # Step 10c: Run for extended period to accumulate transitions
-        dut._log.info("\n[10c] Running for extended period to accumulate transitions...")
-        dut._log.info("  Target: 100,000 cycles @ div-8 = ~10,000 words = ~310,000 transitions")
-        dut._log.info("  Expected: Multiple counters should saturate at 65535")
+        # Step 10c: Run for an extended period to accumulate alternations.
+        dut._log.info("\n[10c] Running for extended period to accumulate alternations...")
+        dut._log.info("  Target: 100,000 cycles @ div-8")
+        dut._log.info("  Expected: One or both exposed extrema may reach 65535")
 
         # Run in chunks and monitor progress
         total_cycles = 80000
@@ -2180,63 +1668,34 @@ async def test_3_3_3_markov_test_failure(dut):
             # Read counters every few chunks to monitor progress
             if chunk % 3 == 0:
                 counters = await read_markov_counters(apb)
-                count_00 = counters['count_00']
-                count_01 = counters['count_01']
-                count_10 = counters['count_10']
-                count_11 = counters['count_11']
-                total = count_00 + count_01 + count_10 + count_11
-
-                # Check for saturated counters (== 65535)
-                saturated = []
-                if count_00 == 65535:
-                    saturated.append("00")
-                if count_01 == 65535:
-                    saturated.append("01")
-                if count_10 == 65535:
-                    saturated.append("10")
-                if count_11 == 65535:
-                    saturated.append("11")
-
-                if saturated:
-                    dut._log.info(f"  Chunk {chunk}/{num_chunks}: total={total}, SATURATED: {saturated}")
-                else:
-                    dut._log.info(f"  Chunk {chunk}/{num_chunks}: total={total} (00={count_00}, 01={count_01}, 10={count_10}, 11={count_11})")
+                max_alternations = counters['max_alternation_count']
+                min_alternations = counters['min_alternation_count']
+                dut._log.info(
+                    f"  Chunk {chunk}/{num_chunks}: "
+                    f"max={max_alternations}, min={min_alternations}"
+                )
 
         # Step 8.5d: Final counter check
         dut._log.info("\n[8.5d] Final Markov counter check after extended run...")
         counters_final = await read_markov_counters(apb)
-        count_00_final = counters_final['count_00']
-        count_01_final = counters_final['count_01']
-        count_10_final = counters_final['count_10']
-        count_11_final = counters_final['count_11']
-        total_final = count_00_final + count_01_final + count_10_final + count_11_final
+        max_alternations_final = counters_final['max_alternation_count']
+        min_alternations_final = counters_final['min_alternation_count']
+        dut._log.info("Final Markov alternation extrema (after 100,000 cycles @ div-8):")
+        dut._log.info(f"  Maximum: {max_alternations_final:5d}")
+        dut._log.info(f"  Minimum: {min_alternations_final:5d}")
 
-        dut._log.info(f"Final Markov counters (after 100,000 cycles @ div-8):")
-        dut._log.info(f"  0->0: {count_00_final:5d} {'[SATURATED]' if count_00_final == 65535 else ''}")
-        dut._log.info(f"  0->1: {count_01_final:5d} {'[SATURATED]' if count_01_final == 65535 else ''}")
-        dut._log.info(f"  1->0: {count_10_final:5d} {'[SATURATED]' if count_10_final == 65535 else ''}")
-        dut._log.info(f"  1->1: {count_11_final:5d} {'[SATURATED]' if count_11_final == 65535 else ''}")
-        dut._log.info(f"  Total: {total_final}")
-
-        # Count saturated counters
-        saturated_count = sum([
-            count_00_final == 65535,
-            count_01_final == 65535,
-            count_10_final == 65535,
-            count_11_final == 65535
-        ])
-
-        if saturated_count > 0:
-            dut._log.info(f"[VERIFIED] {saturated_count}/4 Markov counter(s) saturated at 16-bit max (65535)")
+        if max_alternations_final >= min_alternations_final and min_alternations_final > 0:
+            dut._log.info("[VERIFIED] Both Markov alternation-count extrema report activity")
         else:
-            dut._log.info(f"[INFO] No counters saturated yet (may need longer runtime)")
-            dut._log.info(f"      With random entropy @ div-8, each counter gets ~25% of transitions")
-            dut._log.info(f"      Total collected: {total_final}, per counter: ~{total_final//4}")
+            assert False, (
+                "Extended Markov counter check failed: "
+                f"max={max_alternations_final}, min={min_alternations_final}"
+            )
 
         # Step 8.5e: Restore decorrelator to standard div-64
         dut._log.info("\n[8.5e] Restoring decorrelator to standard div-64...")
         await reg_wr(apb, 'DECORRELATOR_CTRL', 0x0003F000)  # div-64, no bypass
-        dut._log.info("  [PASS] Phase 10: Markov counter saturation test completed")
+        dut._log.info("  [PASS] Phase 10: Extended Markov counter growth verified")
 
         # =============================================================================
         # Phase 11: Second Failure Injection (~600,000ns mark) - Verify Health Test Still Active
@@ -2284,12 +1743,11 @@ async def test_3_3_3_markov_test_failure(dut):
         health_status_2nd = await read_health_test_status(apb)
 
         dut._log.info(f"  INTR_STATUS.HEALTH_TEST_FAILED: {intr_status_2nd['health_test_failed']}")
-        # OpenTitan design: only 2 Markov status bits (markov_hi_fail, markov_lo_fail)
         markov_fail_count_2nd = (health_status_2nd['markov_hi_fail'] + health_status_2nd['markov_lo_fail'])
         dut._log.info(f"  Markov failures detected: {markov_fail_count_2nd}")
 
         assert intr_status_2nd['health_test_failed'] == 1, "INTR_STATUS.HEALTH_TEST_FAILED should be set for second failure"
-        assert markov_fail_count_2nd > 0, "At least one Markov transition should have failed (second injection)"
+        assert markov_fail_count_2nd > 0, "At least one Markov limit should have failed (second injection)"
         dut._log.info("[PASS] Second failure properly detected by health test logic")
 
         # Verify IRQ checker - interrupt asserted (second time)
@@ -2343,7 +1801,6 @@ async def test_3_3_3_markov_test_failure(dut):
             health_status = await read_health_test_status(apb)
 
             if i % 5 == 0:  # Log every 500 cycles
-                # OpenTitan design: only 2 Markov status bits
                 markov_fails = (health_status['markov_hi_fail'] + health_status['markov_lo_fail'])
                 dut._log.info(f"  Cycle {i*check_interval}/{poll_cycles}: irq_o={irq}, "
                              f"INTR_STATUS[0]={intr_status['health_test_failed']}, "
@@ -2370,7 +1827,6 @@ async def test_3_3_3_markov_test_failure(dut):
 
             # Check if health tests have recovered
             final_health_status = await read_health_test_status(apb)
-            # OpenTitan design: only 2 Markov status bits
             markov_fail_after = (final_health_status['markov_hi_fail'] + final_health_status['markov_lo_fail'])
             if markov_fail_after == 0:
                 dut._log.info("[PASS] Markov tests recovered (all failures cleared)")
@@ -2413,25 +1869,20 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
     await enable_entropy_pipeline(apb)  # Standard config: FIFO + 12 ROs + div-64 + mask
 
     # Enable all three tests with aggressive thresholds (easy to trigger with 32-bit injection)
-    # Repetition: threshold=10, APT: aggressive thresholds, Markov: all=50
+    # Repetition: threshold=10, APT high=1200, Markov high/low=50
     ctrl_val = 0x00000007 | (10 << 8)  # Enable all 3, REPETITION_LIMIT=10
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
 
-    # Issue #1014: Configure APT proportion limits (4 separate registers)
-    # Use aggressive thresholds to trigger failures with p_bias=0.95
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 570)  # Will fail: 0.95*1024 = 972 > 570
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 145)  # Will fail: 0.95*512/4 = 121 < 145 (OK for 2-bit)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 72)   # Will fail with extreme bias
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 36)   # Will fail with extreme bias
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 0)
 
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x32323232)  # All 50
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00320032)
 
     dut._log.info(f"HEALTH_TEST_CTRL: 0x{ctrl_val:08X}")
     dut._log.info("  Repetition enabled (threshold=10)")
-    dut._log.info("  APT enabled with aggressive thresholds:")
-    dut._log.info("    1-bit: 570, 2-bit: 145, 3-bit: 72, 4-bit: 36")
-    dut._log.info("  Markov enabled (all thresholds=50)")
-    dut._log.info("MARKOV_TEST_PROB_THRESHOLDS: 0x32323232")
+    dut._log.info("  APT enabled with limits: low=0, high=1200")
+    dut._log.info("  Markov enabled (low=50, high=50)")
+    dut._log.info("MARKOV_TEST_PROB_THRESHOLDS: 0x00320032")
 
     # Phase 3: Trigger multiple failures using 32-bit direct injection
     dut._log.info("\n--- Phase 3: Trigger multiple failures (32-bit injection) ---")
@@ -2440,8 +1891,8 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
     dut._log.info("Configured: p_bias=0.95 (95% biased towards '1'), p_corr=0.95 (95% correlation)")
     dut._log.info("Expected behavior with EXTREME degradation:")
     dut._log.info("  - Repetition: Long runs of 1s (>>10) -> TRIGGERS")
-    dut._log.info("  - APT: 95% of bits are '1' (~970/1024) >> threshold 200 -> TRIGGERS")
-    dut._log.info("  - Markov: 1->1 dominates (~90%) >> threshold 50 -> TRIGGERS")
+    dut._log.info("  - APT: 95% of bits are '1' (~1946/2048) > high limit 1200 -> TRIGGERS")
+    dut._log.info("  - Markov: Correlation suppresses alternations below low limit 50 -> TRIGGERS")
     dut._log.info("All three health tests should fail simultaneously!")
 
     # Phase 4: Poll for irq_o assertion with timeout (realistic ISR behavior)
@@ -2462,11 +1913,11 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
 
         # Periodic logging
         if i % 10 == 0:
-            dut._log.info(f"  Polling cycle {i}: irq_o={irq}, failures={failures}/6")
+            dut._log.info(f"  Polling cycle {i}: irq_o={irq}, failures={failures}/4")
 
         if irq == 1:
             dut._log.info(f"  >>> irq_o ASSERTED at polling cycle {i} ({i*poll_interval} APB clocks)")
-            dut._log.info(f"      Current failures: {failures}/6")
+            dut._log.info(f"      Current failures: {failures}/4")
             irq_detected = True
             break
 
@@ -2496,8 +1947,8 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
     # Wait longer to let all health tests accumulate failures
     # With p_bias=0.95 + p_corr=0.95, all three tests should fail:
     # - Repetition: Fails quickly (long runs of 1s)
-    # - APT: Needs 1024 samples for 1-bit test (~1024 cycles)
-    # - Markov: Needs transitions to accumulate
+    # - APT: Evaluates at the 2048-word window boundary.
+    # - Markov: Needs alternation counts to accumulate
     dut._log.info("Waiting additional cycles to let all health tests fail...")
     await ClockCycles(dut.apb.pclk, 2000)  # Wait for APT window + Markov accumulation
 
@@ -2508,10 +1959,8 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
     dut._log.info(f"  APT [3]: {health_status['apt_fail']}")
     dut._log.info(f"  Markov_HI [4]: {health_status['markov_hi_fail']}")
     dut._log.info(f"  Markov_LO [5]: {health_status['markov_lo_fail']}")
-    dut._log.info(f"  (OpenTitan design: only transition counts, no separate 00/11 tests)")
 
     failure_count = sum(health_status.values())
-    # OpenTitan design: only 2 Markov status bits
     markov_fail_count = (health_status['markov_hi_fail'] + health_status['markov_lo_fail'])
     dut._log.info(f"Total failures detected: {failure_count}/4")
 
@@ -2524,16 +1973,16 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
         errors.append("Repetition test should fail with p_bias=0.95 (long runs of 1s)")
 
     if health_status['apt_fail'] == 0:
-        errors.append("APT test should fail with p_bias=0.95 (~970/1024 samples >> threshold 200)")
+        errors.append("APT test should fail with p_bias=0.95")
 
     if markov_fail_count == 0:
-        errors.append("Markov test should fail with p_corr=0.95 (1->1 dominates ~90%)")
+        errors.append("Markov test should fail with p_corr=0.95 (alternations suppressed)")
 
     # Log status of all tests
     dut._log.info(f"Failure verification (p_bias=0.95, p_corr=0.95):")
     dut._log.info(f"  - Repetition (long runs): {'[OK] Failed' if health_status['repetition_fail'] else '[ERROR] Missing - RTL BUG'}")
     dut._log.info(f"  - APT (95% bias): {'[OK] Failed' if health_status['apt_fail'] else '[ERROR] Missing - RTL BUG'}")
-    dut._log.info(f"  - Markov (1->1 ~90%): {'[OK] Failed' if markov_fail_count else '[ERROR] Missing - RTL BUG'}")
+    dut._log.info(f"  - Markov (suppressed alternations): {'[OK] Failed' if markov_fail_count else '[ERROR] Missing - RTL BUG'}")
 
     # Flag error if any test didn't fail - but continue test to completion
     phase6_errors = errors  # Save for final check
@@ -2548,7 +1997,7 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
         dut._log.info(f"[PASS] All 3 health tests failed as expected: {failure_count} total failures")
         dut._log.info(f"  - Repetition: Failed")
         dut._log.info(f"  - APT: Failed")
-        dut._log.info(f"  - Markov: Failed ({markov_fail_count} transition types)")
+        dut._log.info(f"  - Markov: Failed ({markov_fail_count} limits)")
 
     # Phase 7: ISR - Stop root cause FIRST (restore system to normal operation)
     dut._log.info("\n--- Phase 7: ISR - Stop root cause (restore system to normal) ---")
@@ -2585,29 +2034,16 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
 
     # Step 7e: Restore REASONABLE thresholds for normal operation
     dut._log.info("\n[7e] Restoring thresholds to reasonable values...")
-    # Previous: Repetition=10, APT=200, Markov=50 (aggressive for triggering)
-    # Reasonable: Repetition=50, APT scaled per window, Markov=100 (normal operation)
+    # Restore thresholds suitable for normal operation.
     ctrl_val = await reg_rd(apb, 'HEALTH_TEST_CTRL')
     ctrl_val = (ctrl_val & ~0x0000FF00) | (50 << 8)      # REPETITION_LIMIT=50
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    # Issue #1014: APT proportion limits moved to separate registers
-    # Scale thresholds based on window size and expected counts (~20-25% margin):
-    # 1-bit: W=1024, expect=512, thresh=600 (+17%)
-    # 2-bit: W=512, expect=128, thresh=160 (+25%)
-    # 3-bit: W=512, expect=64, thresh=80 (+25%)
-    # 4-bit: W=512, expect=32, thresh=40 (+25%)
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 600)
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 160)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 80)
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 40)
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x64646464)  # All 100 (0x64)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 848)
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x006404B0)
     dut._log.info("  REPETITION_LIMIT: 50 (was 10)")
-    dut._log.info("  APT PROPORTION thresholds (was 200 for all):")
-    dut._log.info("    1-bit=600 (W=1024, expect=512, +17%)")
-    dut._log.info("    2-bit=160 (W=512, expect=128, +25%)")
-    dut._log.info("    3-bit=80  (W=512, expect=64, +25%)")
-    dut._log.info("    4-bit=40  (W=512, expect=32, +25%)")
-    dut._log.info("  MARKOV thresholds: 100 per transition (was 50)")
+    dut._log.info("  APT one-count limits: low=848, high=1200")
+    dut._log.info("  MARKOV alternation-count limits: low=100, high=1200")
     dut._log.info("  With good entropy, expect NO failures with these thresholds")
 
     # Step 7f: Wait for stabilization
@@ -2639,7 +2075,7 @@ async def test_3_3_4_multiple_simultaneous_failures(dut):
         if i % 5 == 0:  # Log every 500 cycles
             dut._log.info(f"  Cycle {i*check_interval}/{poll_cycles}: irq_o={irq}, "
                          f"INTR_STATUS[0]={intr_status['health_test_failed']}, "
-                         f"total_failures={failures}/6")
+                         f"total_failures={failures}/4")
 
         if irq == 1:
             dut._log.error(f"  >>> irq_o RE-ASSERTED at cycle {i*check_interval}!")
@@ -2792,9 +2228,9 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
     dut._log.info("\n[PHASE 1 COMPLETE] Repetition test boundary verification done")
 
     # =============================================================================
-    # PHASE 2: APT TEST BOUNDARY (1-bit mode) - Use IRQ instead of STATUS
+    # PHASE 2: APT TEST BOUNDARY - Use IRQ instead of STATUS
     # =============================================================================
-    dut._log.info("\n[PHASE 2] APT Test Boundary Verification (1-bit mode)")
+    dut._log.info("\n[PHASE 2] APT Test Boundary Verification")
     dut._log.info("Note: Using IRQ detection instead of STATUS polling (window-based, can be overridden)")
 
     # Clear any pending interrupts from Phase 1
@@ -2811,7 +2247,7 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
     await ClockCycles(dut.apb.pclk, 10)
 
     # Step 3: Clear INTR_STATUS (W1C)
-    await reg_wr(apb, 'INTR_STATUS', 0x00001111)  # Clear all 4 interrupt status bits (W1C)
+    await reg_wr(apb, 'INTR_STATUS', 0x11111111)  # Clear every interrupt status bit (W1C)
     await ClockCycles(dut.apb.pclk, 2)
 
     # Verify cleared
@@ -2823,37 +2259,29 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
 
     if irq != 0 or intr_status['health_test_failed'] != 0:
         dut._log.warning(f"  [WARN] INTR_STATUS not fully cleared, forcing another clear...")
-        await reg_wr(apb, 'INTR_STATUS', 0x00001111)
+        await reg_wr(apb, 'INTR_STATUS', 0x11111111)
         await ClockCycles(dut.apb.pclk, 2)
 
-    apt_threshold = 550  # Reasonable threshold for 1024-sample window
-    sample_size = 1
-
-    # Disable 2-bit, 3-bit, 4-bit APT modes to prevent false alarms
-    # Pattern 0x55555555 is good for 1-bit (512 ones) but bad for 2/4-bit (pattern repeats 100%)
-    dut._log.info("\n[2.0.5] Disabling 2/3/4-bit APT modes (set thresholds to max)...")
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', apt_threshold) 
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 1023)  # Max value (10 bits) - effectively disabled
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 1023)  # Max value (10 bits) - effectively disabled
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 1023)  # Max value (10 bits) - effectively disabled
-    dut._log.info("  APT_PROPORTION_2BIT = 1023 (disabled)")
-    dut._log.info("  APT_PROPORTION_3BIT = 1023 (disabled)")
-    dut._log.info("  APT_PROPORTION_4BIT = 1023 (disabled)")
+    apt_hi_threshold = 1100
+    apt_lo_threshold = 948
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', apt_hi_threshold)
+    await reg_wr(apb, 'APT_PROPORTION_LO', apt_lo_threshold)
 
     # Enable interrupt for APT test
     dut._log.info("\n[2.1] Enabling HEALTH_TEST_FAILED interrupt for APT verification...")
     await enable_and_verify_interrupt(apb, "HEALTH_TEST_FAILED", 0, dut._log)
 
-    # Configure APT test (1-bit mode only)
-    ctrl_val = 0x00000002 | (apt_threshold << 16)
+    # Configure the APT test.
+    ctrl_val = 0x00000002
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    dut._log.info(f"HEALTH_TEST_CTRL: APT enabled, 1-bit mode only, threshold={apt_threshold}")
+    dut._log.info(
+        f"HEALTH_TEST_CTRL: APT enabled, limits={apt_lo_threshold}..{apt_hi_threshold}"
+    )
 
-    # Test case 2a: Inject pattern below threshold (~50% ones = 512/1024)
+    # Test case 2a: Inject unbiased words.
     # Expected: APT should NOT trigger interrupt
-    dut._log.info(f"\n[2a] Testing below APT boundary: Alternating pattern (~50% ones)")
-    # Pattern: 0x55555555 = 0b01010101... (16 ones, 16 zeros per word)
-    await ro_model_word32_set_fixed(dut, 0x55555555)
+    dut._log.info("\n[2a] Testing inside APT boundaries with unbiased words")
+    await ro_model_word32_set(dut, enable=True, p_bias=0.5, p_corr=0.0)
 
     # Run for sufficient time for multiple windows
     dut._log.info("  Running for 15000 cycles (enough for ~1.5 APT windows)")
@@ -2862,15 +2290,13 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
     # Check that interrupt did NOT fire
     irq = await read_irq_output(dut)
     intr_status = await read_intr_status(apb)
-    apt_reg = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT')
-    pattern_count = (apt_reg >> 0) & 0x3FF
-    samples = (apt_reg >> 20) & 0x3FF
-
-    dut._log.info(f"  Pattern count: {pattern_count}/{samples}, threshold: {apt_threshold}")
+    apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+    apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+    dut._log.info(f"  Current counts: low={apt_lo_count}, high={apt_hi_count}")
     dut._log.info(f"  IRQ: {irq}, INTR_STATUS[0]: {intr_status['health_test_failed']}")
 
     if irq == 0 and intr_status['health_test_failed'] == 0:
-        dut._log.info(f"  [PASS] Pattern count {pattern_count} < threshold {apt_threshold}, IRQ not fired (correct!)")
+        dut._log.info("  [PASS] Unbiased entropy remained inside APT limits")
     else:
         error_msg = f"APT: Below boundary failed - IRQ fired unexpectedly (irq={irq}, INTR_STATUS={intr_status['health_test_failed']})"
         dut._log.error(f"  [ERROR] {error_msg}")
@@ -2889,15 +2315,13 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
     irq_detected = await poll_for_irq_assertion(dut, timeout_cycles=15000, poll_interval=100)
 
     # Read counter values
-    apt_reg = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT')
-    pattern_count = (apt_reg >> 0) & 0x3FF
-    samples = (apt_reg >> 20) & 0x3FF
-
-    dut._log.info(f"  Pattern count: {pattern_count}/{samples}, threshold: {apt_threshold}")
+    apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+    apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+    dut._log.info(f"  Current counts: low={apt_lo_count}, high={apt_hi_count}")
     dut._log.info(f"  IRQ detected: {irq_detected}")
 
-    if irq_detected and pattern_count >= apt_threshold:
-        dut._log.info(f"  [PASS] Pattern count {pattern_count} >= threshold {apt_threshold}, IRQ fired (correct!)")
+    if irq_detected:
+        dut._log.info("  [PASS] High-bias entropy triggered the APT interrupt")
 
         # Verify INTR_STATUS and HEALTH_TEST_STATUS
         intr_status = await read_intr_status(apb)
@@ -2932,7 +2356,7 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
             dut._log.error(f"  [ERROR] {error_msg}")
             test_errors.append(error_msg)
     else:
-        error_msg = f"APT: Above boundary failed - IRQ not detected (count={pattern_count}, threshold={apt_threshold})"
+        error_msg = "APT: Above-boundary high bias did not trigger an IRQ"
         dut._log.error(f"  [ERROR] {error_msg}")
         test_errors.append(error_msg)
 
@@ -2945,60 +2369,56 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
     # =============================================================================
     # PHASE 3: MARKOV TEST BOUNDARY
     # =============================================================================
-    # MARKOV TEST SEMANTICS (from hardware observation):
-    # - Hardware computes JOINT probabilities: P(transition) = count/total
-    # - NOT conditional probabilities like P(0→1 | bit=0)
-    # - Probabilities reported on 0-255 scale (0=0%, 255=100%)
-    # - Threshold is a MAXIMUM (upper bound) on 0-255 scale
-    # - Test FAILS if any joint probability > threshold (too biased)
-    # - For balanced random data: each transition = 25% → ~64 on 0-255 scale
-    # - Threshold must be > 64 to pass with balanced data (e.g., 100 = 39%)
-    # =============================================================================
     dut._log.info("\n[PHASE 3] Markov Test Boundary Verification")
 
-    markov_threshold = 100  # MAXIMUM threshold on 0-255 scale (test fails if joint prob > threshold)
-                            # Hardware computes JOINT probabilities: P(transition) = count/total
-                            # With balanced data: each transition = 25% → 64 on 0-255 scale
-                            # Threshold must be > 64 to pass (e.g., 100 allows up to 39%)
+    markov_high_threshold = 0xFFFF
+    markov_low_threshold = 1
 
     # Configure Markov test
     ctrl_val = 0x00000004
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', (markov_threshold << 24) | (markov_threshold << 16) | (markov_threshold << 8) | markov_threshold)
-    dut._log.info(f"HEALTH_TEST_CTRL: Markov enabled, all thresholds={markov_threshold} (MAXIMUM, 0-255 scale)")
+    await reg_wr(
+        apb,
+        'MARKOV_TEST_PROB_THRESHOLDS',
+        (markov_low_threshold << 16) | markov_high_threshold
+    )
+    dut._log.info(
+        f"HEALTH_TEST_CTRL: Markov enabled, limits="
+        f"{markov_low_threshold}..{markov_high_threshold}"
+    )
 
-    # Test case 3a: Inject balanced pattern (all transitions ~25%)
+    # Test case 3a: Inject changing data with independent samples.
     # Expected: Markov should NOT trigger
-    dut._log.info(f"\n[3a] Testing below Markov boundary: Balanced transitions")
-    # Pattern: 0x36363636 = 0b00110110_00110110_00110110_00110110
-    # Bit sequence: 0,0,1,1,0,1,1,0 (repeated) creates balanced transitions:
-    # Per byte: 0→0:1, 0→1:2, 1→0:2, 1→1:2 → Overall: 22.6%, 25.8%, 25.8%, 25.8%
-    await ro_model_word32_set_fixed(dut, 0x36363636)
-    await ClockCycles(dut.apb.pclk, 5000)  # Accumulate transitions
+    dut._log.info("\n[3a] Testing inside Markov alternation-count limits")
+    await ro_model_word32_set(dut, enable=True, p_bias=0.5, p_corr=0.0)
+    await ClockCycles(dut.apb.pclk, 5000)
 
     counters = await read_markov_counters(apb)
     status = await read_health_test_status(apb)
+    max_alternations = counters['max_alternation_count']
+    min_alternations = counters['min_alternation_count']
 
-    # NOTE: OpenTitan design uses count-based thresholds, not probability-based
-    # MARKOV_TEST_PROBABILITIES register will return 0 (probabilities not computed)
-    # Only transitions (01, 10) are counted; non-transitions (00, 11) always return 0
-
-    # Read transition counts (only 01 and 10 are meaningful in OpenTitan)
-    count_01 = counters['count_01']  # 0->1 transitions
-    count_10 = counters['count_10']  # 1->0 transitions
-    total_transitions = count_01 + count_10
-
-    dut._log.info(f"  Markov transition counts: 01={count_01}, 10={count_10} (total={total_transitions})")
-    dut._log.info(f"  (count_00 and count_11 always 0 in OpenTitan - non-transitions not counted)")
+    dut._log.info(
+        f"  Markov per-lane alternation extrema: "
+        f"max={max_alternations}, min={min_alternations}"
+    )
     dut._log.info(f"  STATUS: markov_hi_fail={status['markov_hi_fail']}, markov_lo_fail={status['markov_lo_fail']}")
-    dut._log.info(f"  Expected: Balanced transitions (~50% each direction)")
-    dut._log.info(f"  Threshold: {markov_threshold} (COUNT threshold - test passes if transition count < threshold)")
+    dut._log.info(
+        f"  Expected range: {markov_low_threshold}..{markov_high_threshold}"
+    )
 
     markov_failures = status['markov_hi_fail'] + status['markov_lo_fail']
-    if markov_failures == 0:
-        dut._log.info(f"  [PASS] Balanced transitions, no Markov failures (correct!)")
+    if (
+        markov_failures == 0
+        and max_alternations >= min_alternations
+        and min_alternations > 0
+    ):
+        dut._log.info("  [PASS] Changing data remained inside Markov limits")
     else:
-        error_msg = f"Markov: Balanced pattern failed - {markov_failures} transitions triggered (expect 0)"
+        error_msg = (
+            f"Markov: changing data check failed - max={max_alternations}, "
+            f"min={min_alternations}, failures={markov_failures}"
+        )
         dut._log.error(f"  [ERROR] {error_msg}")
         test_errors.append(error_msg)
 
@@ -3006,30 +2426,29 @@ async def test_3_4_1_threshold_at_failure_boundary(dut):
     await toggle_health_test_enable(apb, dut, 0x4)
     await ClockCycles(dut.apb.pclk, 10)
 
-    # Test case 3b: Inject biased pattern (1->1 dominates)
-    # Expected: Markov SHOULD trigger (joint prob > threshold)
-    dut._log.info(f"\n[3b] Testing above Markov boundary: Biased transitions (1->1 dominates)")
-    # Pattern: 0xFFFFFFFE = 0b11111111111111111111111111111110 (31 ones, 1 zero)
-    # This creates: P(1->1) ~= 97% (joint prob) -> ~247 on 0-255 scale > 100 threshold -> FAIL
-    await ro_model_word32_set_fixed(dut, 0xFFFFFFFE)
+    # Test case 3b: Inject an all-ones stream with no per-lane alternations.
+    # Expected: Markov low-limit failure.
+    dut._log.info("\n[3b] Testing below Markov low limit: stuck-at-one data")
+    await ro_model_word32_set_fixed(dut, 0xFFFFFFFF)
     await ClockCycles(dut.apb.pclk, 5000)
 
     counters = await read_markov_counters(apb)
     status = await read_health_test_status(apb)
-
-    # Read transition counts (OpenTitan: only 01 and 10 meaningful)
-    count_01 = counters['count_01']
-    count_10 = counters['count_10']
-    total_transitions = count_01 + count_10
-
-    dut._log.info(f"  Markov transition counts: 01={count_01}, 10={count_10} (total={total_transitions})")
+    max_alternations = counters['max_alternation_count']
+    min_alternations = counters['min_alternation_count']
+    dut._log.info(
+        f"  Markov per-lane alternation extrema: "
+        f"max={max_alternations}, min={min_alternations}"
+    )
     dut._log.info(f"  STATUS: markov_hi_fail={status['markov_hi_fail']}, markov_lo_fail={status['markov_lo_fail']}")
 
-    markov_failures = status['markov_hi_fail'] + status['markov_lo_fail']
-    if markov_failures > 0:
-        dut._log.info(f"  [PASS] Biased pattern triggered {markov_failures} Markov failure(s) (correct!)")
+    if max_alternations <= 1 and min_alternations <= 1 and status['markov_lo_fail']:
+        dut._log.info("  [PASS] Stuck data kept alternation counts near zero and triggered the low limit")
     else:
-        error_msg = f"Markov: Biased pattern failed - no triggers (expect >= 1 failure with 1->1 dominance)"
+        error_msg = (
+            f"Markov: stuck-data check failed - max={max_alternations}, "
+            f"min={min_alternations}, markov_lo_fail={status['markov_lo_fail']}"
+        )
         dut._log.error(f"  [ERROR] {error_msg}")
         test_errors.append(error_msg)
 
@@ -3078,17 +2497,14 @@ async def test_3_5_1_extended_operation_without_failures(dut):
     # Use div-8 for fast sampling (8x faster than standard div-64)
     await enable_entropy_pipeline(apb, decorr_div=8)
 
-    # Configure health tests: Repetition + APT (all 4 modes) + Markov
+    # Configure health tests: Repetition + APT + Markov.
     ctrl_val = 0x00000007 | (50 << 8)  # Enable all 3 tests, REPETITION_LIMIT=50
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
 
-    # Issue #1014: Configure all 4 APT proportion limits (separate registers)
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 650)
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 175)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 90)
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 45)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 848)
 
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x64646464)  # All 100 (0x64)
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x006404B0)
 
     # Run for 20000+ samples with div-8 fast sampling
     # div-8: ~1 sample per 10 cycles
@@ -3110,39 +2526,27 @@ async def test_3_5_1_extended_operation_without_failures(dut):
 
         # Always log failures immediately when detected (not just every 10th cycle)
         if failures > 0:
-            dut._log.warning(f"  Cycle {i}: FIFO level={level}, failures={failures}/6 - FAILURE DETECTED!")
+            dut._log.warning(f"  Cycle {i}: FIFO level={level}, failures={failures}/4 - FAILURE DETECTED!")
             dut._log.warning(f"    Detailed health test status (from first read):")
             dut._log.warning(f"      Repetition: {status['repetition_fail']}")
             dut._log.warning(f"      APT:        {status['apt_fail']}")
             dut._log.warning(f"      Markov HI:  {status['markov_hi_fail']}")
             dut._log.warning(f"      Markov LO:  {status['markov_lo_fail']}")
-            dut._log.warning(f"      (OpenTitan: only transition counts, no separate 00/11 tests)")
 
-            # If APT failed, read all 4 APT counters and thresholds to identify which one(s)
+            # Log the current APT high/low counts and configured limits.
             if status['apt_fail']:
-                dut._log.warning(f"    APT counter details:")
-                for apt_name in ['1BIT', '2BIT', '3BIT', '4BIT']:
-                    # Read counter
-                    count_reg_name = f'APT_PATTERN_COUNT_{apt_name}'
-                    count_reg = await reg_rd(apb, count_reg_name)
-                    pattern_count = (count_reg >> 0) & 0x3FF
-                    samples = (count_reg >> 20) & 0x3FF
-                    window_complete = (count_reg >> 31) & 0x1
-
-                    # Read threshold
-                    threshold_reg_name = f'APT_PROPORTION_{apt_name}'
-                    threshold = await reg_rd(apb, threshold_reg_name) & 0x3FF
-
-                    if samples > 0:
-                        ratio = pattern_count / samples
-                        status_str = "FAIL" if pattern_count > threshold else "OK"
-                        dut._log.warning(f"      {apt_name}: count={pattern_count:3d}/{samples:4d} ({ratio:.3f}) vs threshold={threshold:3d} [{status_str}]")
-                    else:
-                        dut._log.warning(f"      {apt_name}: count={pattern_count:3d}/{samples:4d} (no samples yet) threshold={threshold:3d}")
+                apt_hi_count = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT') & 0xFFFF
+                apt_lo_count = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT') & 0xFFFF
+                apt_hi_limit = await reg_rd(apb, 'APT_PROPORTION_1BIT') & 0xFFFF
+                apt_lo_limit = await reg_rd(apb, 'APT_PROPORTION_LO') & 0xFFFF
+                dut._log.warning(
+                    f"    APT counts: low={apt_lo_count}, high={apt_hi_count}; "
+                    f"limits={apt_lo_limit}..{apt_hi_limit}"
+                )
 
             dut._log.warning(f"    NOTE: Status bits are level-triggered and may have cleared by now")
         elif i % 10 == 0:
-            dut._log.info(f"  Cycle {i}: FIFO level={level}, failures={failures}/6")
+            dut._log.info(f"  Cycle {i}: FIFO level={level}, failures={failures}/4")
 
     # Analyze results
     total_failures = sum(failure_history)
@@ -3182,17 +2586,14 @@ async def test_3_5_2_repeated_failure_recovery_cycles(dut):
     # Configure health tests with low thresholds (to trigger failures with degraded entropy)
     await enable_entropy_pipeline(apb)
 
-    # Configure health tests: Repetition + APT (all 4 modes) + Markov
+    # Configure health tests: Repetition + APT + Markov.
     ctrl_val = 0x00000007 | (20 << 8)  # Enable all 3 tests, REPETITION_LIMIT=20
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
 
-    # Issue #1014: Configure all 4 APT proportion limits (low thresholds for triggering)
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 300)
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 80)
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 40)
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 20)
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 848)
 
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x50505050)  # All 80 (0x50)
+    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00500050)
 
     # Cycle through failure/recovery 20 times
     dut._log.info("\n--- Cycling through failure/recovery 20 times ---")
@@ -3679,7 +3080,7 @@ async def test_3_7_2_autotune_repetition_test(dut):
 
     CRITICAL: Uses per-generator APB registers (NOT global 0x38 HEALTH_TEST_STATUS)
     - Reads GENERATOR_0_HEALTH_STATUS (0x0C0) to GENERATOR_11_HEALTH_STATUS (0x0EC)
-    - Each register has bits [7:0] = {markov_11, markov_00, markov_10, markov_01, apt, rsv, rsv, repetition}
+    - Each register has bits [7:0] = {reserved[7:6], markov_lo[5], markov_hi[4], apt[3], reserved[2:1], repetition[0]}
     - Probes auto_tune_state and detune RTL signals to verify FSM response
 
     Strategy:
@@ -3916,7 +3317,7 @@ async def test_3_7_2_autotune_repetition_test(dut):
     dut._log.info("")
     dut._log.info("Health Status Access:")
     dut._log.info("  - Per-generator APB registers: GENERATOR_0_HEALTH_STATUS (0x0C0) to GENERATOR_11_HEALTH_STATUS (0x0EC)")
-    dut._log.info("  - Bit mapping [7:0]: {markov_11, markov_00, markov_10, markov_01, apt, rsv, rsv, repetition}")
+    dut._log.info("  - Bit mapping [7:0]: {reserved[7:6], markov_lo[5], markov_hi[4], apt[3], reserved[2:1], repetition[0]}")
     dut._log.info("")
     dut._log.info("RTL Signals Probed (autotune FSM and detune):")
     dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.auto_tune_state")
@@ -3933,7 +3334,7 @@ async def test_3_7_3_autotune_apt_test(dut):
 
     CRITICAL: Uses per-generator APB registers (NOT global 0x38 HEALTH_TEST_STATUS)
     - Reads GENERATOR_0_HEALTH_STATUS (0x0C0) to GENERATOR_11_HEALTH_STATUS (0x0EC)
-    - Each register has bits [7:0] = {markov_11, markov_00, markov_10, markov_01, apt, rsv, rsv, repetition}
+    - Each register has bits [7:0] = {reserved[7:6], markov_lo[5], markov_hi[4], apt[3], reserved[2:1], repetition[0]}
     - Probes auto_tune_state and detune RTL signals to verify FSM response
 
     Strategy:
@@ -3985,14 +3386,9 @@ async def test_3_7_3_autotune_apt_test(dut):
     dut._log.info("\n[1d] Configuring APT test...")
     ctrl_val = 0x00000002  # ENABLE[1]=1 (APT test only)
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    # Issue #1014: APT proportion limits moved to separate registers
-    # Set normal thresholds that won't trigger on random entropy (~20-25% margin)
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', 600)  # W=1024, expect=512
-    await reg_wr(apb, 'APT_PROPORTION_2BIT', 160)  # W=512, expect=128
-    await reg_wr(apb, 'APT_PROPORTION_3BIT', 80)   # W=512, expect=64
-    await reg_wr(apb, 'APT_PROPORTION_4BIT', 40)   # W=512, expect=32
-    dut._log.info("  APT tests configured with normal thresholds (won't trigger on random entropy):")
-    dut._log.info("    1-bit=600, 2-bit=160, 3-bit=80, 4-bit=40")
+    await reg_wr(apb, 'APT_PROPORTION_1BIT', 1200)
+    await reg_wr(apb, 'APT_PROPORTION_LO', 848)
+    dut._log.info("  APT configured with one-count limits: low=848, high=1200")
     dut._log.info("  Health test counters start from 0 with stuck-at-0 pattern")
 
     # Phase 2: Enable AUTOTUNE
@@ -4171,7 +3567,7 @@ async def test_3_7_3_autotune_apt_test(dut):
     dut._log.info("")
     dut._log.info("Health Status Access:")
     dut._log.info("  - Per-generator APB registers: GENERATOR_0_HEALTH_STATUS (0x0C0) to GENERATOR_11_HEALTH_STATUS (0x0EC)")
-    dut._log.info("  - Bit mapping [7:0]: {markov_11, markov_00, markov_10, markov_01, apt, rsv, rsv, repetition}")
+    dut._log.info("  - Bit mapping [7:0]: {reserved[7:6], markov_lo[5], markov_hi[4], apt[3], reserved[2:1], repetition[0]}")
     dut._log.info("  - APT bit is bit [3]")
     dut._log.info("")
     dut._log.info("RTL Signals Probed (autotune FSM and detune):")
@@ -4189,8 +3585,8 @@ async def test_3_7_4_autotune_markov_test(dut):
 
     CRITICAL: Uses per-generator APB registers (NOT global 0x38 HEALTH_TEST_STATUS)
     - Reads GENERATOR_0_HEALTH_STATUS (0x0C0) to GENERATOR_11_HEALTH_STATUS (0x0EC)
-    - Each register has bits [7:0] = {markov_11, markov_00, markov_10, markov_01, apt, rsv, rsv, repetition}
-    - Markov bits are [7:4]: markov_11[7], markov_00[6], markov_10[5], markov_01[4]
+    - Each register has bits [7:0] = {reserved[7:6], markov_lo[5], markov_hi[4], apt[3], reserved[2:1], repetition[0]}
+    - Markov bits are markov_hi[4] and markov_lo[5]; bits [7:6] are reserved
     - Probes auto_tune_state and detune RTL signals to verify FSM response
 
     Strategy:
@@ -4223,7 +3619,7 @@ async def test_3_7_4_autotune_markov_test(dut):
     # Enable only Markov test, disable Repetition and APT
     ctrl_val = 0x00000004  # ENABLE[2]=1
     await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    #await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x32323232)  # All thresholds=50 (aggressive)
+    # await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00320032)
     #dut._log.info("Markov test configured: thresholds=50 (aggressive)")
 
     # Phase 2: Enable AUTOTUNE
@@ -4361,18 +3757,16 @@ async def test_3_7_4_autotune_markov_test(dut):
 
     for lane in even_lane_failures[:3]:  # Check first 3 failed even lanes
         lane_health = await reg_rd(apb, f'GENERATOR_{lane}_HEALTH_STATUS')
-        # Markov bits [7:4]: markov_11[7], markov_00[6], markov_10[5], markov_01[4]
-        markov_fail_01 = (lane_health >> 4) & 0x1
-        markov_fail_10 = (lane_health >> 5) & 0x1
-        markov_fail_00 = (lane_health >> 6) & 0x1
-        markov_fail_11 = (lane_health >> 7) & 0x1
-        markov_any_fail = markov_fail_01 or markov_fail_10 or markov_fail_00 or markov_fail_11
+        markov_fail_hi = (lane_health >> 4) & 0x1
+        markov_fail_lo = (lane_health >> 5) & 0x1
+        markov_any_fail = markov_fail_hi or markov_fail_lo
         lane_detune = (composite_detune_after >> lane) & 0x1
 
         dut._log.info(f"Lane {lane} after recovery:")
         dut._log.info(f"  GENERATOR_{lane}_HEALTH_STATUS: 0x{lane_health:02X}")
-        dut._log.info(f"  Markov failures: 01={markov_fail_01}, 10={markov_fail_10}, " +
-                     f"00={markov_fail_00}, 11={markov_fail_11}")
+        dut._log.info(
+            f"  Markov failures: high={markov_fail_hi}, low={markov_fail_lo}"
+        )
         dut._log.info(f"  detune: {lane_detune}")
 
         if markov_any_fail:
@@ -4437,8 +3831,8 @@ async def test_3_7_4_autotune_markov_test(dut):
     dut._log.info("")
     dut._log.info("Health Status Access:")
     dut._log.info("  - Per-generator APB registers: GENERATOR_0_HEALTH_STATUS (0x0C0) to GENERATOR_11_HEALTH_STATUS (0x0EC)")
-    dut._log.info("  - Bit mapping [7:0]: {markov_11, markov_00, markov_10, markov_01, apt, rsv, rsv, repetition}")
-    dut._log.info("  - Markov bits are [7:4]: markov_11[7], markov_00[6], markov_10[5], markov_01[4]")
+    dut._log.info("  - Bit mapping [7:0]: {reserved[7:6], markov_lo[5], markov_hi[4], apt[3], reserved[2:1], repetition[0]}")
+    dut._log.info("  - Markov bits: markov_hi[4], markov_lo[5]; bits [7:6] are reserved")
     dut._log.info("")
     dut._log.info("RTL Signals Probed (autotune FSM and detune):")
     dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.auto_tune_state")

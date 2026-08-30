@@ -13,7 +13,7 @@ Based on entropy_source.rdl register definitions.
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import ClockCycles
 from test.test_base import *
 from test.test_config import get_custom_config, ROConfig, DecorrelatorConfig, CompressorConfig
 
@@ -60,15 +60,11 @@ async def test_reg_walk(dut):
     apb, mon = await init(dut, config=cfg)
 
     # ========================================================================
-    # Apply software reset to get clean defaults
+    # Apply hardware reset to get clean defaults
     # ========================================================================
-    # Apply reset to ensure all registers (including counters) are at defaults
-    dut._log.info("\n[SETUP] Applying software reset for clean default values...")
-    await reg_wr(apb, 'CTRL', 0x00000001)  # RESET = 1
-    await ClockCycles(dut.apb.pclk, 10)     # Hold reset for 10 cycles
-    await reg_wr(apb, 'CTRL', 0x00000000)  # RESET = 0
-    await ClockCycles(dut.apb.pclk, 20)     # Wait for reset to complete
-    dut._log.info("  Software reset applied - all registers at default values")
+    dut._log.info("\n[SETUP] Applying APB hardware reset for clean default values...")
+    await apb_reset(apb)
+    dut._log.info("  Hardware reset applied - all registers at default values")
 
     # ========================================================================
     # Define skip lists for different test phases
@@ -84,10 +80,7 @@ async def test_reg_walk(dut):
         'REPETITION_TEST_COUNT',
         'APT_PATTERN_COUNT_1BIT',
         'APT_PATTERN_COUNT_2BIT',
-        'APT_PATTERN_COUNT_3BIT',
-        'APT_PATTERN_COUNT_4BIT',
         'MARKOV_TEST_COUNTS_0',
-        'MARKOV_TEST_PROBABILITIES',
     ]
 
     # Skip RW tests for special registers that need dedicated testing
@@ -146,18 +139,12 @@ async def test_reg_walk(dut):
     dut._log.info("\n[1.5/3] Checking health status register defaults (after disabling health tests)...")
     dut._log.info("-" * 80)
     dut._log.info("  Health tests enabled by default, so status counters may be non-zero.")
-    dut._log.info("  Disabling health tests, applying reset, then checking status defaults.")
+    dut._log.info("  Disabling health tests, then checking their cleared count state.")
 
-    # Disable health tests
+    # Disabling each test clears its live count state.
     await reg_wr(apb, 'HEALTH_TEST_CTRL', 0x00000000)
+    await ClockCycles(dut.apb.pclk, 2)
     dut._log.info("  Health tests disabled")
-
-    # Apply reset to clear counters
-    await reg_wr(apb, 'CTRL', 0x00000001)
-    await ClockCycles(dut.apb.pclk, 10)
-    await reg_wr(apb, 'CTRL', 0x00000000)
-    await ClockCycles(dut.apb.pclk, 20)
-    dut._log.info("  Reset applied to clear status counters")
 
     # Now check health status registers
     health_status_pass = 0

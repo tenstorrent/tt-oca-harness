@@ -8,7 +8,6 @@
 // Comprehensive testbench for the entropy_health_test module
 // Tests both Repetition Test and Adaptive Proportion Test integration
 // Verifies individual enable controls and combined operation
-// Tests various sample sizes and thresholds for APT
 //------------------------------------------------------------------------------
 
 `timescale 1ns/1ps
@@ -20,37 +19,26 @@ module tb_health_test();
     reg rst_ni;
     reg [31:0] entropy_i;
     reg entropy_valid_i;
-    reg [7:0] enable_i;
+    reg [2:0] enable_i;
     reg [7:0] repetition_limit_i;
-    reg [9:0] proportion_limit_1bit_i;
-    reg [9:0] proportion_limit_2bit_i;
-    reg [9:0] proportion_limit_3bit_i;
-    reg [9:0] proportion_limit_4bit_i;
+    reg [15:0] proportion_limit_1bit_i;
+    reg [15:0] proportion_limit_lo_i;
     // Markov test thresholds
-    reg [7:0] markov_prob_01_threshold_i;
-    reg [7:0] markov_prob_10_threshold_i;
-    reg [7:0] markov_prob_00_threshold_i;
-    reg [7:0] markov_prob_11_threshold_i;
+    reg [15:0] markov_prob_01_threshold_i;
+    reg [15:0] markov_prob_10_threshold_i;
+    reg window_wrap_pulse_i;
     wire [7:0] status_o;
+    wire apt_fail_hi_o;
+    wire apt_fail_lo_o;
+    wire count_err_o;
+    reg apt_fail_hi_seen;
+    reg apt_fail_lo_seen;
+    reg clear_apt_fail_seen;
 
-    // Counter output wires - new signals from expanded interface
-    wire [7:0] ctr_repetition_o;
-    // Parallel APT outputs for all 4 sample sizes
-    wire [9:0] apt_pattern_count_1bit_o;     // Count of 1-bit target pattern
-    wire [9:0] apt_pattern_count_2bit_o;     // Count of 2-bit target pattern
-    wire [9:0] apt_pattern_count_3bit_o;     // Count of 3-bit target pattern
-    wire [9:0] apt_pattern_count_4bit_o;     // Count of 4-bit target pattern
-    wire [3:0] apt_target_pattern_1bit_o;    // 1-bit target pattern
-    wire [3:0] apt_target_pattern_2bit_o;    // 2-bit target pattern
-    wire [3:0] apt_target_pattern_3bit_o;    // 3-bit target pattern
-    wire [3:0] apt_target_pattern_4bit_o;    // 4-bit target pattern
-    wire [9:0] apt_samples_processed_1bit_o; // Samples processed for 1-bit
-    wire [9:0] apt_samples_processed_2bit_o; // Samples processed for 2-bit
-    wire [9:0] apt_samples_processed_3bit_o; // Samples processed for 3-bit
-    wire [9:0] apt_samples_processed_4bit_o; // Samples processed for 4-bit
-    // Markov test counters and probabilities
+    wire [15:0] ctr_repetition_o;
+    wire [15:0] apt_pattern_count_1bit_o;
+    wire [15:0] apt_pattern_count_2bit_o;
     wire [15:0] count_01_o, count_10_o;
-    wire [7:0] prob_01_o, prob_10_o, prob_00_o, prob_11_o;
 
     // Testbench variables
     integer test_phase = 0;
@@ -59,6 +47,7 @@ module tb_health_test();
     integer total_tests_passed = 0;
     integer false_positives = 0;
     integer false_negatives = 0;
+    integer ht_window_count = 0;
 
     // xoroshiro128+ for high-quality pseudorandom data generation
     reg [63:0] xoro_s0 = 64'h0123456789ABCDEF;  // State 0
@@ -80,42 +69,48 @@ module tb_health_test();
         .enable_i(enable_i),
         .repetition_limit_i(repetition_limit_i),
         .proportion_limit_1bit_i(proportion_limit_1bit_i),
-        .proportion_limit_2bit_i(proportion_limit_2bit_i),
-        .proportion_limit_3bit_i(proportion_limit_3bit_i),
-        .proportion_limit_4bit_i(proportion_limit_4bit_i),
+        .proportion_limit_lo_i(proportion_limit_lo_i),
         .markov_prob_01_threshold_i(markov_prob_01_threshold_i),
         .markov_prob_10_threshold_i(markov_prob_10_threshold_i),
-        .markov_prob_00_threshold_i(markov_prob_00_threshold_i),
-        .markov_prob_11_threshold_i(markov_prob_11_threshold_i),
-        // Counter outputs - repetition test
+        .window_wrap_pulse_i(window_wrap_pulse_i),
         .ctr_repetition_o(ctr_repetition_o),
-        // Parallel APT outputs for all 4 sample sizes
         .apt_pattern_count_1bit_o(apt_pattern_count_1bit_o),
         .apt_pattern_count_2bit_o(apt_pattern_count_2bit_o),
-        .apt_pattern_count_3bit_o(apt_pattern_count_3bit_o),
-        .apt_pattern_count_4bit_o(apt_pattern_count_4bit_o),
-        .apt_target_pattern_1bit_o(apt_target_pattern_1bit_o),
-        .apt_target_pattern_2bit_o(apt_target_pattern_2bit_o),
-        .apt_target_pattern_3bit_o(apt_target_pattern_3bit_o),
-        .apt_target_pattern_4bit_o(apt_target_pattern_4bit_o),
-        .apt_samples_processed_1bit_o(apt_samples_processed_1bit_o),
-        .apt_samples_processed_2bit_o(apt_samples_processed_2bit_o),
-        .apt_samples_processed_3bit_o(apt_samples_processed_3bit_o),
-        .apt_samples_processed_4bit_o(apt_samples_processed_4bit_o),
-        // Counter outputs - Markov test counters and probabilities
         .count_01_o(count_01_o),
         .count_10_o(count_10_o),
-        .prob_01_o(prob_01_o),
-        .prob_10_o(prob_10_o),
-        .prob_00_o(prob_00_o),
-        .prob_11_o(prob_11_o),
-        .status_o(status_o)
+        .apt_fail_hi_o(apt_fail_hi_o),
+        .apt_fail_lo_o(apt_fail_lo_o),
+        .status_o(status_o),
+        .count_err_o(count_err_o)
     );
 
     // Clock generation
     initial begin
         clk_i = 0;
         forever #5 clk_i = ~clk_i;  // 100MHz clock (10ns period)
+    end
+
+    always @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+            ht_window_count <= 0;
+            window_wrap_pulse_i <= 1'b0;
+        end else if (ht_window_count == 127) begin
+            ht_window_count <= 0;
+            window_wrap_pulse_i <= 1'b1;
+        end else begin
+            ht_window_count <= ht_window_count + 1;
+            window_wrap_pulse_i <= 1'b0;
+        end
+    end
+
+    always @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni || clear_apt_fail_seen) begin
+            apt_fail_hi_seen <= 1'b0;
+            apt_fail_lo_seen <= 1'b0;
+        end else begin
+            apt_fail_hi_seen <= apt_fail_hi_seen | apt_fail_hi_o;
+            apt_fail_lo_seen <= apt_fail_lo_seen | apt_fail_lo_o;
+        end
     end
 
     // xoroshiro128+ high-quality PRNG
@@ -161,13 +156,22 @@ module tb_health_test();
             end
             2'd2: begin // APT test failure
                 if (inject_failure) begin
-                    // Create bias patterns that will trigger APT failures in parallel testing
+          // Create high- and low-one-count bias patterns.
                     case (failure_pattern[1:0])
-                        2'b00: entropy_i = 32'h00000000; // All 0s - creates bias in all sample sizes
-                        2'b01: entropy_i = 32'hFFFFFFFF; // All 1s - creates bias in all sample sizes
-                        2'b10: entropy_i = 32'hAAAAAAAA; // 10101010 pattern - creates bias in 2-bit patterns
-                        2'b11: entropy_i = {failure_pattern, failure_pattern, failure_pattern, failure_pattern,
-                                          failure_pattern, failure_pattern, failure_pattern, failure_pattern}; // Specific 4-bit pattern
+            2'b00: entropy_i = 32'h00000000;
+            2'b01: entropy_i = 32'hFFFFFFFF;
+            2'b10: entropy_i = 32'hAAAAAAAA;
+            2'b11:
+            entropy_i = {
+              failure_pattern,
+              failure_pattern,
+              failure_pattern,
+              failure_pattern,
+              failure_pattern,
+              failure_pattern,
+              failure_pattern,
+              failure_pattern
+            };
                     endcase
                 end else begin
                     entropy_i = prng_data; // Normal pseudorandom data
@@ -199,17 +203,14 @@ module tb_health_test();
         // Initialize
         rst_ni = 0;
         entropy_valid_i = 1;  // Enable entropy data processing
-        enable_i = 8'h00;
+    enable_i = 3'b000;
         repetition_limit_i = 8'd15;
-        proportion_limit_1bit_i = 10'd300;
-        proportion_limit_2bit_i = 10'd300;
-        proportion_limit_3bit_i = 10'd300;
-        proportion_limit_4bit_i = 10'd300;
+    proportion_limit_1bit_i = 16'd100;
+    proportion_limit_lo_i = 16'd28;
         // Initialize Markov test thresholds (reasonable values for testing)
-        markov_prob_01_threshold_i = 8'd100;
-        markov_prob_10_threshold_i = 8'd100;
-        markov_prob_00_threshold_i = 8'd100;
-        markov_prob_11_threshold_i = 8'd100;
+    markov_prob_01_threshold_i = 16'd100;
+    markov_prob_10_threshold_i = 16'd28;
+    clear_apt_fail_seen = 1'b0;
         inject_failure = 0;
         test_select = 0;
 
@@ -226,14 +227,14 @@ module tb_health_test();
         // Test Phase 2: Repetition test integration
         run_repetition_integration_test();
 
-        // Test Phase 3: APT integration with different sample sizes
+    // Test Phase 3: APT high/low integration
         run_apt_integration_test();
 
         // Test Phase 4: Markov test integration
         run_markov_integration_test();
 
         // Reset between test phases to ensure clean state
-        enable_i = 8'h00;
+    enable_i = 3'b000;
         inject_failure = 0;
         test_select = 0;
         repeat(50) @(posedge clk_i);
@@ -272,7 +273,7 @@ module tb_health_test();
             total_tests_run = total_tests_run + 2;
 
             // Test 1: All disabled
-            enable_i = 8'h00;
+      enable_i = 3'b000;
             inject_failure = 1;
             test_select = 2'd1; // Try repetition failure
             failure_pattern = 4'd0; // Stuck-at-0
@@ -291,11 +292,11 @@ module tb_health_test();
             test_select = 0;
 
             // Enable only repetition test
-            enable_i = 8'h01;
+            enable_i = 3'b001;
             repeat(50) @(posedge clk_i);
 
             // Enable only APT test
-            enable_i = 8'h02;
+            enable_i = 3'b010;
             repeat(50) @(posedge clk_i);
 
             if (status_o == 8'h00) begin
@@ -317,7 +318,7 @@ module tb_health_test();
             $display("=== Phase 2: Repetition Test Integration ===");
             total_tests_run = total_tests_run + 2;
 
-            enable_i = 8'h01; // Enable only repetition test
+      enable_i = 3'b001;  // Enable only repetition test
             repetition_limit_i = 8'd15;
 
             // Test normal operation
@@ -362,13 +363,10 @@ module tb_health_test();
             $display("=== Phase 3: APT Integration Test ===");
             total_tests_run = total_tests_run + 3;
 
-            enable_i = 8'h02; // Enable only APT test
+      enable_i = 3'b010;  // Enable only APT test
 
-            // Test parallel APT (all sample sizes simultaneously)
-            proportion_limit_1bit_i = 10'd300;
-            proportion_limit_2bit_i = 10'd300;
-            proportion_limit_3bit_i = 10'd300;
-            proportion_limit_4bit_i = 10'd300;
+      proportion_limit_1bit_i = 16'd100;
+      proportion_limit_lo_i = 16'd28;
 
             // Normal operation
             inject_failure = 0;
@@ -376,42 +374,52 @@ module tb_health_test();
             repeat(200) @(posedge clk_i);
 
             if (status_o[3] == 1'b0) begin
-                $display("✓ PASS: APT parallel normal operation");
+                $display("✓ PASS: APT normal operation");
                 total_tests_passed = total_tests_passed + 1;
             end else begin
-                $display("✗ FAIL: APT parallel false positive");
+                $display("✗ FAIL: APT false positive");
                 false_positives = false_positives + 1;
             end
 
             // Test bias detection
+            clear_apt_fail_seen = 1'b1;
+            @(posedge clk_i);
+            @(negedge clk_i);
+            clear_apt_fail_seen = 1'b0;
             inject_failure = 1;
             test_select = 2'd2; // APT failure
             failure_pattern = 4'd0; // Bias toward 0
             repeat(400) @(posedge clk_i);
 
-            if (status_o[3] == 1'b1) begin
-                $display("✓ PASS: APT bias correctly detected");
+            if (apt_fail_lo_seen && !apt_fail_hi_seen) begin
+                $display("✓ PASS: APT low-count bias correctly detected");
                 total_tests_passed = total_tests_passed + 1;
             end else begin
-                $display("✗ FAIL: APT bias not detected");
+                $display("✗ FAIL: APT low-count attribution incorrect (high=%b low=%b)",
+                         apt_fail_hi_seen, apt_fail_lo_seen);
                 false_negatives = false_negatives + 1;
             end
 
             // Test different bias pattern
+            enable_i = 3'b000;
+            clear_apt_fail_seen = 1'b1;
+            @(posedge clk_i);
+            @(negedge clk_i);
+            clear_apt_fail_seen = 1'b0;
+            enable_i = 3'b010;
             inject_failure = 1;
             test_select = 2'd2;
             failure_pattern = 4'd1; // All 1s pattern
-            proportion_limit_1bit_i = 10'd150;
-            proportion_limit_2bit_i = 10'd150;
-            proportion_limit_3bit_i = 10'd150;
-            proportion_limit_4bit_i = 10'd150;
+            proportion_limit_1bit_i = 16'd100;
+            proportion_limit_lo_i = 16'd28;
             repeat(200) @(posedge clk_i);
 
-            if (status_o[3] == 1'b1) begin
-                $display("✓ PASS: APT 1s bias correctly detected");
+            if (apt_fail_hi_seen && !apt_fail_lo_seen) begin
+                $display("✓ PASS: APT high-count bias correctly detected");
                 total_tests_passed = total_tests_passed + 1;
             end else begin
-                $display("✗ FAIL: APT 1s bias not detected");
+                $display("✗ FAIL: APT high-count attribution incorrect (high=%b low=%b)",
+                         apt_fail_hi_seen, apt_fail_lo_seen);
                 false_negatives = false_negatives + 1;
             end
 
@@ -431,11 +439,9 @@ module tb_health_test();
             $display("=== Phase 4: Markov Test Integration ===");
             total_tests_run = total_tests_run + 3;
 
-            enable_i = 8'h04; // Enable only Markov test (bit 2)
-            markov_prob_01_threshold_i = 8'd100;
-            markov_prob_10_threshold_i = 8'd100;
-            markov_prob_00_threshold_i = 8'd100;
-            markov_prob_11_threshold_i = 8'd100;
+      enable_i = 3'b100;  // Enable only Markov test (bit 2)
+      markov_prob_01_threshold_i = 16'd100;
+      markov_prob_10_threshold_i = 16'd28;
 
             // Test normal operation
             inject_failure = 0;
@@ -452,7 +458,7 @@ module tb_health_test();
 
             // Clear Markov state before alternating pattern test
             // This ensures the test starts with zero counters
-            enable_i = 8'h00; // Disable all tests (clears Markov counters)
+            enable_i = 3'b000; // Disable all tests (clears Markov counters)
             repeat(10) @(posedge clk_i); // Wait for clear
 
             // Set up failure injection BEFORE re-enabling so no PRNG data accumulates
@@ -461,7 +467,7 @@ module tb_health_test();
             failure_pattern = 4'b0000; // Alternating pattern
 
             // Now re-enable with alternating pattern already flowing
-            enable_i = 8'h04; // Re-enable only Markov test
+            enable_i = 3'b100; // Re-enable only Markov test
             repeat(300) @(posedge clk_i);
 
             // For alternating pattern: expect 0→1 and 1→0 transitions to exceed threshold
@@ -470,16 +476,16 @@ module tb_health_test();
                 $display("✓ PASS: Markov test alternating pattern correctly detected");
                 total_tests_passed = total_tests_passed + 1;
             end else begin
-                $display("✗ FAIL: Markov test alternating pattern not detected, status[7:4]=%04b", status_o[7:4]);
+                $display("✗ FAIL: Markov test alternating pattern not detected, status[7:4]=%04b",
+                         status_o[7:4]);
                 false_negatives = false_negatives + 1;
             end
 
-            // Test stuck-at pattern detection
-            // Stuck-at-0 should trigger 0→0 transition threshold (status_o[6])
+            // Test stuck-at pattern detection through the low transition count.
             failure_pattern = 4'b0010; // Stuck-at-0 pattern
             repeat(200) @(posedge clk_i);
 
-            if (status_o[6] == 1'b1) begin
+            if (status_o[5] == 1'b1) begin
                 $display("✓ PASS: Markov test stuck-at pattern correctly detected");
                 total_tests_passed = total_tests_passed + 1;
             end else begin
@@ -503,12 +509,10 @@ module tb_health_test();
             $display("=== Phase 5: Combined Operation Test ===");
             total_tests_run = total_tests_run + 2;
 
-            enable_i = 8'h07; // Enable all three tests (repetition, APT, Markov)
+      enable_i = 3'b111;  // Enable all three tests (repetition, APT, Markov)
             repetition_limit_i = 8'd15;
-            proportion_limit_1bit_i = 10'd400; // Increase threshold to avoid false positives
-            proportion_limit_2bit_i = 10'd400;
-            proportion_limit_3bit_i = 10'd400;
-            proportion_limit_4bit_i = 10'd400;
+      proportion_limit_1bit_i = 16'd100;
+      proportion_limit_lo_i = 16'd28;
 
             // Normal operation with both enabled
             inject_failure = 0;
@@ -558,12 +562,12 @@ module tb_health_test();
             $display("  status_o[1] = Reserved");
             $display("  status_o[2] = Reserved");
             $display("  status_o[3] = Adaptive Proportion Test");
-            $display("  status_o[4] = Markov 0→1 transition threshold exceeded");
-            $display("  status_o[5] = Markov 1→0 transition threshold exceeded");
-            $display("  status_o[6] = Markov 0→0 transition threshold exceeded");
-            $display("  status_o[7] = Markov 1→1 transition threshold exceeded");
+            $display("  status_o[4] = Markov high threshold exceeded");
+            $display("  status_o[5] = Markov low threshold exceeded");
+            $display("  status_o[6] = Reserved");
+            $display("  status_o[7] = Reserved");
 
-            enable_i = 8'h07; // Enable all tests
+            enable_i = 3'b111;  // Enable all tests
             inject_failure = 0;
             test_select = 0;
             repeat(50) @(posedge clk_i);
@@ -586,33 +590,21 @@ module tb_health_test();
         end
     end
 
-    always @(posedge status_o[1]) begin
+    always @(posedge status_o[3]) begin
         if (enable_i[1]) begin
             $display("Time=%0t: APT TEST FAILURE", $time);
         end
     end
 
-    always @(posedge status_o[2]) begin
-        if (enable_i[2]) begin
-            $display("Time=%0t: MARKOV TEST FAILURE - 0→1 threshold exceeded", $time);
-        end
-    end
-
-    always @(posedge status_o[3]) begin
-        if (enable_i[2]) begin
-            $display("Time=%0t: MARKOV TEST FAILURE - 1→0 threshold exceeded", $time);
-        end
-    end
-
     always @(posedge status_o[4]) begin
         if (enable_i[2]) begin
-            $display("Time=%0t: MARKOV TEST FAILURE - 0→0 threshold exceeded", $time);
+            $display("Time=%0t: MARKOV TEST FAILURE - high threshold exceeded", $time);
         end
     end
 
     always @(posedge status_o[5]) begin
         if (enable_i[2]) begin
-            $display("Time=%0t: MARKOV TEST FAILURE - 1→1 threshold exceeded", $time);
+            $display("Time=%0t: MARKOV TEST FAILURE - low threshold exceeded", $time);
         end
     end
 
@@ -625,8 +617,8 @@ module tb_health_test();
         $dumpvars(1, u_health_test.status_markov_test);
         // Add counter monitoring to VCD
         $dumpvars(1, ctr_repetition_o);
+    $dumpvars(1, apt_pattern_count_1bit_o, apt_pattern_count_2bit_o);
         $dumpvars(1, count_01_o, count_10_o);
-        $dumpvars(1, prob_01_o, prob_10_o, prob_00_o, prob_11_o);
     end
 
     // Monitor counter values during key test phases
@@ -635,8 +627,7 @@ module tb_health_test();
         if (inject_failure && (cycle_count % 50 == 0)) begin
             case (test_select)
                 2'd1: $display("Time=%0t: Repetition counter: %d", $time, ctr_repetition_o);
-                2'd3: $display("Time=%0t: Markov counters - max:%d min:%d",
-                              $time, count_01_o, count_10_o);
+        2'd3: $display("Time=%0t: Markov counters - max:%d min:%d", $time, count_01_o, count_10_o);
                 default: ; // No display for other cases to avoid clutter
             endcase
         end

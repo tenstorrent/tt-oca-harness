@@ -51,7 +51,7 @@ The 12 decorrelated byte streams are combined by the Balanced Iterative Whirlpoo
 
 Health tests operate at two levels. Each of the 12 `entropy_generator` instances runs an 8-bit `entropy_health_test` on its individual decorrelated output. At the top level, a second 32-bit `entropy_health_test` instance monitors the post-BIW (or post-bypass) stream.
 
-The health test wrapper instantiates three OpenTitan-derived test modules. The repetition count test (`entropy_src_repcnt_ht`) tracks consecutive identical values per bit lane and flags when a threshold is exceeded. The adaptive proportion test (`entropy_src_adaptp_ht`) accumulates per-bit ones counts within a configurable window and compares against high thresholds. The Markov test (`entropy_src_markov_ht`) counts bit-pair transitions and compares to high and low thresholds at window boundaries. Window synchronization is driven by a `prim_count` counter in the `entropy_generator_complex`.
+The health test wrapper instantiates three OpenTitan-derived test modules. The repetition count test (`entropy_src_repcnt_ht`) tracks consecutive identical values per bit lane and flags when a threshold is exceeded. The adaptive proportion test (`entropy_src_adaptp_ht`) accumulates per-bit ones counts within a configurable window and compares the maximum and minimum lane counts against high and low thresholds. The Markov test (`entropy_src_markov_ht`) counts bit-pair transitions and compares to high and low thresholds at window boundaries. Window synchronization is driven by a `prim_count` counter in the `entropy_generator_complex`.
 
 Health test thresholds, enable bits, and window sizes are all programmable through the CSR interface. Test status is reported as an 8-bit vector where bit 0 indicates a repetition count failure, bit 3 an adaptive proportion failure, and bits 4-5 Markov high/low failures.
 
@@ -59,7 +59,7 @@ Health test thresholds, enable bits, and window sizes are all programmable throu
 
 `HT_WATERMARK` is one shared register whose source and maximum/minimum direction are selected by `HT_WATERMARK_NUM`; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.
 
-The shared watermark is armed by a `CTRL.MODULE_ENABLE` 0-to-1 transition or by a `CTRL.RESET` pulse. High modes (`REPCNT_HI`, `APT_HI`, and `MARKOV_HI`) arm to `0x0000`; low modes (`APT_LO` and `MARKOV_LO`) arm to `0xFFFF`. The selector persists across `CTRL.RESET`, allowing the synchronous clear to use the selected mode. Software that needs a deterministic baseline must write `HT_WATERMARK_NUM` before the arming event. With the reset-default `MODULE_ENABLE=1`, the power-on enable pulse performs the first mode-aware arm automatically.
+The shared watermark is armed by a `CTRL.MODULE_ENABLE` 0-to-1 transition. High modes (`REPCNT_HI`, `APT_HI`, and `MARKOV_HI`) arm to `0x0000`; low modes (`APT_LO` and `MARKOV_LO`) arm to `0xFFFF`. A hardware reset restores the selector and watermark together. Software that needs a deterministic baseline must write `HT_WATERMARK_NUM` before toggling `MODULE_ENABLE`. With the reset-default `MODULE_ENABLE=1`, the power-on enable pulse performs the first mode-aware arm automatically.
 
 ===== Persistent Failure and AlertHang
 
@@ -80,7 +80,8 @@ The FIFO output drives the `entropy_stream_data_o` and `entropy_stream_vld_o` to
 ===== Reset
 
 The entropy source `rst_ni` input resets its register block, health-test/FSM
-state, conditioning pipeline, counters, and FIFOs. `CTRL[0]` is reserved RAZ/WI.
+state, conditioning pipeline, counters, and FIFOs. Reserved `CTRL[0]` reads as
+zero and ignores writes.
 
 At SEP integration level, `SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N` requests a
 shared reset of the entropy source and DRBG. Hardware first drains and isolates

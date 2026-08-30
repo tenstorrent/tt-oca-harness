@@ -232,12 +232,12 @@ async def test_my_feature(dut):
     apb, mon = await init(dut, config=cfg)
 
     # Configure DUT
-    await reg_wr(apb, 'CTRL', 0x00000001)
-    await ClockCycles(dut.apb.pclk, 10)
+    ctrl = await reg_rd(apb, 'CTRL')
+    await reg_wr(apb, 'CTRL', ctrl & ~(1 << 1))
 
     # Verify behavior
-    status = await reg_rd(apb, 'STATUS')
-    assert status == expected_value, f"Status mismatch: {status:#x}"
+    ctrl = await reg_rd(apb, 'CTRL')
+    assert not (ctrl & (1 << 1)), f"MODULE_ENABLE did not clear: {ctrl:#x}"
 
     # Verify checkers
     decorrelator_checker_verify(dut, mon, expected_match=True)
