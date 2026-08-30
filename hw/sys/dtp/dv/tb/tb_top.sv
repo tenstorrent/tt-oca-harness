@@ -535,6 +535,175 @@ module dtp_uvm_top
         .xtrig_ctp_ack_out_din_en_o       (xtrig_ctp_ack_out_din_en)
     );
 
+    // ------------------------------------------------------------------
+    // Functional coverage (DTP_FCOV.adoc): shared by both tb shapes. The
+    // module carries Verilator-safe cover-property points plus
+    // commercial-only covergroups internally.
+    // ------------------------------------------------------------------
+    dtp_fcov u_dtp_fcov (
+        .tck_i          (jtag_tck),
+        .tms_i          (jtag_tms),
+        .tdi_i          (jtag_tdi),
+        .tdo_i          (jtag_tdo),
+        .trst_ni        (jtag_trst),
+        .tap_state_i    (jtag_ptap_state),
+        .inst_decoded_i (jtag_ptap_inst_decoded),
+        .dbg_disable_i  (dbg_disable)
+    );
+
+    // JTAG2AXI / OTP bridge coverage. The completed-response boundary comes
+    // from each bridge's TCK-domain bookkeeping via hierarchical references
+    // (the cocotb Verilator build compiles with --public-flat-rw; VCS
+    // resolves them natively); bus-timing bins use the flat AXI pins.
+    dtp_jtag2axi_fcov u_dtp_jtag2axi_fcov (
+        .tck_i             (jtag_tck),
+        .trst_ni           (jtag_trst),
+        .clk_i             (clk_i),
+        .rst_ni            (rst_n_i),
+        .tap_state_i       (jtag_ptap_state),
+        .inst_decoded_i    (jtag_ptap_inst_decoded),
+        .dbg_disable_i     (dbg_disable),
+
+        .smc_axi_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.last_single_op_status_tclk),
+        .smc_axi_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk),
+        .smc_axi_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_op_tclk),
+        .smc_axi_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_addr_tclk),
+        .smc_axi_size_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_axi_size_tclk),
+        .smc_axi_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_wstrb_tclk),
+        .smc_axi_awvalid_i (m_axi_awvalid),
+        .smc_axi_awready_i (m_axi_awready),
+        .smc_axi_wvalid_i  (m_axi_wvalid),
+        .smc_axi_wready_i  (m_axi_wready),
+        .smc_axi_bvalid_i  (m_axi_bvalid),
+        .smc_axi_bready_i  (m_axi_bready),
+        .smc_axi_arvalid_i (m_axi_arvalid),
+        .smc_axi_arready_i (m_axi_arready),
+        .smc_axi_rvalid_i  (m_axi_rvalid),
+        .smc_axi_rready_i  (m_axi_rready),
+
+        .smc_otp_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.last_single_op_status_tclk),
+        .smc_otp_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk),
+        .smc_otp_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_op_tclk),
+        .smc_otp_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_addr_tclk),
+        .smc_otp_size_i    ({1'b0, u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_axi_size_tclk}),
+        .smc_otp_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_wstrb_tclk),
+        .smc_otp_awvalid_i (smc_otp_axil_awvalid),
+        .smc_otp_awready_i (smc_otp_axil_awready),
+        .smc_otp_wvalid_i  (smc_otp_axil_wvalid),
+        .smc_otp_wready_i  (smc_otp_axil_wready),
+        .smc_otp_bvalid_i  (smc_otp_axil_bvalid),
+        .smc_otp_bready_i  (smc_otp_axil_bready),
+        .smc_otp_arvalid_i (smc_otp_axil_arvalid),
+        .smc_otp_arready_i (smc_otp_axil_arready),
+        .smc_otp_rvalid_i  (smc_otp_axil_rvalid),
+        .smc_otp_rready_i  (smc_otp_axil_rready),
+
+        .sep_otp_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.last_single_op_status_tclk),
+        .sep_otp_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk),
+        .sep_otp_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_op_tclk),
+        .sep_otp_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_addr_tclk),
+        .sep_otp_size_i    ({1'b0, u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_axi_size_tclk}),
+        .sep_otp_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_wstrb_tclk),
+        .sep_otp_awvalid_i (sep_otp_axil_awvalid),
+        .sep_otp_awready_i (sep_otp_axil_awready),
+        .sep_otp_wvalid_i  (sep_otp_axil_wvalid),
+        .sep_otp_wready_i  (sep_otp_axil_wready),
+        .sep_otp_bvalid_i  (sep_otp_axil_bvalid),
+        .sep_otp_bready_i  (sep_otp_axil_bready),
+        .sep_otp_arvalid_i (sep_otp_axil_arvalid),
+        .sep_otp_arready_i (sep_otp_axil_arready),
+        .sep_otp_rvalid_i  (sep_otp_axil_rvalid),
+        .sep_otp_rready_i  (sep_otp_axil_rready)
+    );
+
+    // Debug-TDR coverage (TMP / IC_RESET / DEBUG_CONTROL / CAPS): flattened
+    // TDR outputs plus the TMP unit and clock-stop contributions through
+    // hierarchical references.
+    dtp_debug_tdr_fcov u_dtp_debug_tdr_fcov (
+        .tck_i                 (jtag_tck),
+        .tdi_i                 (jtag_tdi),
+        .tdo_i                 (jtag_tdo),
+        .trst_ni               (jtag_trst),
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .tap_state_i           (jtag_ptap_state),
+        .inst_decoded_i        (jtag_ptap_inst_decoded),
+        .ic_reset_smc_ovrd_i   (jtag_ic_reset_smc_ovrd),
+        .ic_reset_smc_ctrl_n_i (jtag_ic_reset_smc_ctrl_n),
+        .ic_reset_sep_ovrd_i   (jtag_ic_reset_sep_ovrd),
+        .ic_reset_sep_ctrl_n_i (jtag_ic_reset_sep_ctrl_n),
+        .ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
+        .ic_reset_ext_ctrl_n_i (jtag_ic_reset_ext_ctrl_n),
+        .boot_stall_ovrd_i     (jtag_boot_stall_ovrd),
+        .boot_stall_i          (jtag_boot_stall),
+        .stop_clks_i           (stop_clks),
+        .cla_clock_stop_en_i   (cla_clock_stop_en),
+        .clk_stop_req_i        (xtrig_clk_stop_req),
+        .tmp_state_i           (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.tmp_state_q_bits),
+        .tmp_status_reg_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_status_reg.u_jtag_tmp_status_reg.tmp_status_reg_q),
+        .tmp_escape_cond_i     (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.bypass_escape_condition),
+        .jtag_clock_stop_i     (u_dut.jtag_clock_stop),
+        .cla_clock_stop_i      (u_dut.cla_clock_stop)
+    );
+
+    // Scan-network coverage (iJTAG SIBs / STAP 3DCR): flattened chain
+    // controls plus each STAP's stored 3DCR state through hierarchical
+    // references (sel_int is the stored select before the security gate).
+    dtp_scan_fcov u_dtp_scan_fcov (
+        .tck_i                  (jtag_tck),
+        .trst_ni                (jtag_trst),
+        .tap_state_i            (jtag_ptap_state),
+        .inst_decoded_i         (jtag_ptap_inst_decoded),
+        .dbg_disable_i          (dbg_disable),
+        .dft_secure_select_i    (jtag_dft_secure_select),
+        .dft_secure_shift_en_i  (jtag_dft_secure_shift_en),
+        .dft_select_i           (jtag_dft_select),
+        .dft_shift_en_i         (jtag_dft_shift_en),
+        .dfd_select_i           (jtag_dfd_select),
+        .dfd_shift_en_i         (jtag_dfd_shift_en),
+        .stap_io_tdo_oen_i      (jtag_stap_io_tdo_oen),
+        .stap_smc_tdo_oen_i     (jtag_stap_smc_tdo_oen),
+        .stap_sep_tdo_oen_i     (jtag_stap_sep_tdo_oen),
+        .stap_extra_tdo_oen_i   (jtag_stap_extra0_tdo_oen),
+        .stap_io_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel),
+        .stap_io_sel_int_i      (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel_int),
+        .stap_io_tms_hold_i     (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.tms_hold),
+        .stap_io_config_hold_i  (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.config_hold),
+        .stap_smc_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel),
+        .stap_smc_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel_int),
+        .stap_smc_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.tms_hold),
+        .stap_smc_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.config_hold),
+        .stap_sep_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel),
+        .stap_sep_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel_int),
+        .stap_sep_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.tms_hold),
+        .stap_sep_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.config_hold),
+        .stap_extra_sel_i       (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel),
+        .stap_extra_sel_int_i   (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel_int),
+        .stap_extra_tms_hold_i  (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.tms_hold),
+        .stap_extra_config_hold_i (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.config_hold)
+    );
+
+    // Cross-trigger coverage (CTP / CTM): CSR-write decode plus the
+    // cross-trigger GPIO and matrix handshake pins, all in the system-clock
+    // domain. The SV-UVM shape ties these inputs quiescent, so the bins
+    // collect only where the stimulus exists (the cocotb flow today).
+    dtp_xtrig_fcov u_dtp_xtrig_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .axil_awaddr_i         (xtrig_axil_awaddr),
+        .axil_awvalid_i        (xtrig_axil_awvalid),
+        .axil_awready_i        (xtrig_axil_awready),
+        .axil_wdata_i          (xtrig_axil_wdata),
+        .axil_wvalid_i         (xtrig_axil_wvalid),
+        .axil_wready_i         (xtrig_axil_wready),
+        .ctm_src_req_i         (xtrig_ctm_src_req),
+        .ctm_dst_req_i         (xtrig_ctm_dst_req),
+        .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
+        .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
+        .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
+        .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
