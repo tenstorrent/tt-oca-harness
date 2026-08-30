@@ -2628,10 +2628,10 @@ above; anything left in `.data`, `.bss` or the stack is gone, including the
 message buffers, the PRNG state and every scratch copy of key material ROM
 handled during the boot.
 
-. *Clear GPRs.*  All general-purpose registers except the jump target
-  (`x5`) are cleared to zero.  `x5` is cleared last because it carries the
-  target, and the jump is `jalr zero, 0(x5)`, which discards the link address
-  into `x0` rather than writing `x5`.  Mutable firmware therefore lands with
+. *Clear GPRs.*  The entry address is loaded into `x5` first, and every other
+  general-purpose register is then cleared to zero.  `x5` is never cleared: the
+  jump is `jalr zero, 0(x5)`, which writes the link address to `x0` and so
+  discards it rather than writing `x5`.  Mutable firmware therefore lands with
   every register zeroed except `x5`, which still holds its own entry address.
 
 . *Enable SRAM execution mode.*  Immediately before the jump, the assembly
