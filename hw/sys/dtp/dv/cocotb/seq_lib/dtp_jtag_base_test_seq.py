@@ -4,14 +4,26 @@
 
 from __future__ import annotations
 
+import os
 import random
 
+import cocotb
 from env.dtp_scan_model import DtpScanModel
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
-from env.dtp_types import DtpJtagInstr, DtpTapFsm, DtpTapState
-from ocah_jtag_vip import OcahJtagChecker
+from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr, DtpTapFsm, DtpTapState
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 
 from .dtp_base_test_seq import dtp_base_test_seq
+
+# Pin map for the passive scan monitor (shared by every family-checked test).
+DTP_JTAG_SIGNAL_MAP = {
+    "tck": "jtag_tck",
+    "tms": "jtag_tms",
+    "tdi": "jtag_tdi",
+    "tdo": "jtag_tdo",
+    "trst": "jtag_trst",
+    "tdo_oen": "jtag_tdo_oen",
+}
 
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
@@ -20,10 +32,116 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     # Optional shared-VIP checker; when attached, TAP resets and every raw TMS
     # step also emit reference-model named evidence (issue tt-oca-hw#3296).
     tap_checker: OcahJtagChecker | None = None
+    # Optional passive scan monitor; when started, load_ir/shift_dr record the
+    # sequence's own scan intent so finalize can cross-check the pin-level
+    # reconstruction (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN).
+    family_monitor: OcahJtagMasterMonitor | None = None
+    _family_negative: bool = False
 
     def attach_tap_checker(self, checker: OcahJtagChecker) -> None:
         """Route TAP reset/state navigation through VIP reference-model evidence."""
         self.tap_checker = checker
+
+    # --- instruction-family evidence checker ---------------------------------
+    async def attach_family_checker(
+        self,
+        required_ids: set[str],
+        *,
+        use_monitor: bool = True,
+    ) -> OcahJtagChecker:
+        """Create the per-instruction evidence checker for this sequence pass.
+
+        Every family helper (loopback, bypass delay, IR decode, TMP persist)
+        then records named ``CHK-*`` evidence instead of bare asserts, and
+        ``finalize_family_checker()`` rejects a pass with zero checks or a
+        missing required ID. With ``use_monitor`` a passive pin-level scan
+        monitor independently reconstructs every IR/DR scan for cross-checks;
+        disable it only for sequences whose scans go through driver-level TDR
+        ops the sequence cannot count.
+
+        DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 is the documented negative-
+        validation hook: every integer family expectation is corrupted so the
+        run must FAIL, proving the evidence path gates pass/fail end to end.
+        """
+        checker = OcahJtagChecker(
+            name=f"{self.get_name()}.checker",
+            raise_on_error=False,
+            required_ids=set(required_ids),
+            logger=cocotb.log,
+        )
+        self.attach_tap_checker(checker)
+        self._family_negative = os.environ.get(
+            "DTP_JTAG_FAMILY_CHECKER_NEGATIVE", "0"
+        ) not in ("", "0")
+        if self._family_negative:
+            self.log.warning(
+                "NEGATIVE VALIDATION: family checker expectations will be corrupted"
+            )
+        self._expected_ir_widths: list[int] = []
+        self._expected_dr_widths: list[int] = []
+        if use_monitor:
+            self.family_monitor = OcahJtagMasterMonitor(
+                cocotb.top,
+                name=f"{self.get_name()}.monitor",
+                signal_map=DTP_JTAG_SIGNAL_MAP,
+            )
+            await self.family_monitor.start()
+        return checker
+
+    def family_check(
+        self,
+        check_id: str,
+        name: str,
+        observed: int,
+        expected: int,
+        *,
+        context: str = "",
+    ) -> None:
+        """Record one named family comparison; plain assert when unattached."""
+        if self.tap_checker is None:
+            self.assert_equal(name, observed, expected, context)
+            return
+        if self._family_negative and isinstance(expected, int):
+            expected = expected ^ 1
+        self.tap_checker.expect_equal(
+            check_id, observed, expected, context=f"{name} {context}".strip()
+        )
+
+    async def finalize_family_checker(self) -> None:
+        """Cross-check monitored scans against sequence intent and finalize."""
+        checker = self.tap_checker
+        assert checker is not None, "family checker was never attached"
+        if self.family_monitor is not None:
+            await self.family_monitor.stop()
+            ir_items = self.family_monitor.get_ir_transactions()
+            dr_items = self.family_monitor.get_dr_transactions()
+            checker.expect_equal(
+                "CHK-SCAN-COUNT",
+                (len(ir_items), len(dr_items)),
+                (len(self._expected_ir_widths), len(self._expected_dr_widths)),
+                context="monitored (ir, dr) scans vs sequence-issued scans",
+            )
+            if len(ir_items) == len(self._expected_ir_widths) and len(dr_items) == len(
+                self._expected_dr_widths
+            ):
+                for idx, (item, width) in enumerate(
+                    zip(ir_items, self._expected_ir_widths), start=1
+                ):
+                    checker.check_scan_length(
+                        item, expected_width=width, context=f"ir_scan#{idx}"
+                    )
+                for idx, (item, width) in enumerate(
+                    zip(dr_items, self._expected_dr_widths), start=1
+                ):
+                    checker.check_scan_length(
+                        item, expected_width=width, context=f"dr_scan#{idx}"
+                    )
+            checker.expect_true(
+                "CHK-NONVAC",
+                len(ir_items) > 0 and len(dr_items) > 0,
+                context=f"ir_scans={len(ir_items)} dr_scans={len(dr_items)}",
+            )
+        checker.finalize()
 
     def record_tap_state(self, observed: int, expected: DtpTapState) -> None:
         """Check the observed DUT TAP state and record the visit."""
@@ -58,6 +176,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await super().load_ir(instr, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
             self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_ir_widths.append(DTP_IR_WIDTH)
         return item
 
     async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True):
@@ -65,6 +185,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await super().shift_dr(value, width, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
             self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_dr_widths.append(width)
         return item
 
     async def goto_run_test_idle(self) -> None:
@@ -140,9 +262,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             return
 
         expected = self.decoded_mask(instr)
-        assert item.decoded == expected, (
-            f"decoded instruction mismatch: expected 0x{expected:016x}, "
-            f"got 0x{item.decoded:016x}"
+        self.family_check(
+            "CHK-IR-DECODE",
+            "decoded instruction",
+            item.decoded,
+            expected,
+            context=f"ir=0x{int(instr):02x}",
         )
 
     @classmethod
@@ -174,10 +299,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await self.shift_dr(pattern, width)
         expected = self.expected_bypass_tdo(pattern, width, capture_bit=capture_bit)
         observed = item.result & self._bit_mask(width)
-        assert observed == expected, (
-            f"bypass TDO mismatch for IR 0x{int(instr):02x}: "
-            f"expected 0x{expected:0{(width + 3) // 4}x}, "
-            f"got 0x{observed:0{(width + 3) // 4}x}"
+        self.family_check(
+            "CHK-BYPASS-DELAY",
+            f"bypass TDO for IR 0x{int(instr):02x}",
+            observed,
+            expected,
+            context=f"pattern=0x{pattern:x} width={width}",
         )
 
     async def check_bypass_patterns(
@@ -205,9 +332,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await self.shift_dr(pattern, width)
         expected = self.expected_inverted_bypass_tdo(pattern, width)
         observed = item.result & self._bit_mask(width)
-        assert observed == expected, (
-            f"inverted bypass TDO mismatch: expected 0x{expected:0{(width + 3) // 4}x}, "
-            f"got 0x{observed:0{(width + 3) // 4}x}"
+        self.family_check(
+            "CHK-INV-BYPASS",
+            "inverted bypass TDO",
+            observed,
+            expected,
+            context=f"pattern=0x{pattern:x} width={width}",
         )
 
     async def check_inverted_bypass_patterns(
@@ -234,9 +364,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await self.shift_dr(pattern, width)
         expected = pattern & self._bit_mask(width)
         observed = item.result & self._bit_mask(width)
-        assert observed == expected, (
-            f"zero-length bypass mismatch: expected 0x{expected:0{(width + 3) // 4}x}, "
-            f"got 0x{observed:0{(width + 3) // 4}x}"
+        self.family_check(
+            "CHK-ZLB-PASSTHROUGH",
+            "zero-length bypass TDO",
+            observed,
+            expected,
+            context=f"pattern=0x{pattern:x} width={width}",
         )
 
     async def check_zero_length_bypass_patterns(
@@ -264,7 +397,13 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         await self.load_ir(instr)
         await self.expect_decoded_instruction(instr)
         item = await self.shift_dr(pattern, width)
-        model.assert_loopback(item.result, pattern, f"IR 0x{int(instr):02x}")
+        self.family_check(
+            "CHK-BSR-LOOPBACK",
+            f"IR 0x{int(instr):02x} loopback",
+            item.result & model.mask,
+            model.loopback_expected(pattern),
+            context=f"pattern=0x{pattern:x} width={width}",
+        )
 
     async def check_loopback_patterns(
         self,
