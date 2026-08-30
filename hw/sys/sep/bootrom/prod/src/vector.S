@@ -45,47 +45,137 @@
 #define PMP_LOCK 0
 #endif
 
-/* SEP scratch registers (warm reset retention).
- * warm_scratch[0] survives warm reset (wdt_rst_ni only resets CPU).
- * cold_scratch[0] is cleared on any reset.
+/* Warm-handler slot: SEP COLD scratch 7.
+ *
+ * The COLD bank, not the warm one, and the choice is load-bearing. The value has
+ * to SURVIVE a warm/watchdog reset -- that is its entire purpose -- and only the
+ * cold bank provides that. `sep-boot-flow.puml:42-56` names COLD Scratch 7 and
+ * says so directly: "This register is always 0 on cold resets, maintains value
+ * across warm/watchdog resets." The reference agrees
+ * (tt_sep/firmware/bootcode/src/vector.S:131,145).
+ *
+ * This used to read WARM scratch 0 on the strength of a comment claiming
+ * "warm_scratch[0] survives warm reset (wdt_rst_ni only resets CPU)". That claim
+ * cited nothing and the RTL contradicts it: the warm bank's
+ * arst_n = sep_reset_n & wdt_rst_ni (sep.sv:951-952, sep_reset_ctrl.sv:55,
+ * sep_system_csr.sv:809), so a watchdog reset clears the very register the
+ * handler address was parked in. That was filed as an RTL blocker, BLK-003; it
+ * was the firmware using a bank that does not retain, not the bank misbehaving.
+ * See FINDINGS.md F28.
  */
-.equ SEP_WARM_SCRATCH_0, OCH_SEP_TOP_SEP_SCRATCH_WARM_SCRATCH_BASE_ADDR(0)
+.equ SEP_COLD_SCRATCH_7, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
 .equ SEP_COLD_SCRATCH_0, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 
-/* SRAM address range for warm handler jump validation.
- * BL1 executes from SRAM after handoff, so warm reset handler lives there. */
-.equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
-.equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
+/* ICCM address range for warm handler jump validation.
+ *
+ * ICCM, not SRAM: the spec requires a "valid ICCM address"
+ * (sep-boot-flow.puml:45) and the reference range-checks the same way. The old
+ * range was [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE), which is a different memory
+ * entirely -- and the comment above the check said "must be within ICCM" while
+ * the constants said SRAM, so the code and its own documentation disagreed. */
+.equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
+.equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
 
 /* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
  * these numbers, so they must be changed in both places together. Kept as .equ
  * rather than pulled from a header because that header is C, not assembly. */
 .equ SEP_SMC_GLOBAL_BASE,      0x40000000
-.equ SMC_DFX_CTRL_STATUS_SMU,  SEP_SMC_GLOBAL_BASE + 0xF800
+/* Offsets must match include/sep_smc_interface.h, which is in turn taken from
+ * this design's generated SMC map, hw/sys/smc/regs/gen/c/smc_addr.h. Both were
+ * corrected together: the values below used to be 0xF800 and 0x10100, neither of
+ * which is mapped in this design. See sep_smc_interface.h for the evidence and
+ * for why a SEP->SMC remap cannot explain the difference. */
+.equ SMC_DFX_CTRL_STATUS_SMU,  SEP_SMC_GLOBAL_BASE + 0xB800
 /* SMC scratch registers are 64-bit; index 10 is the agreed MBIST/MEM_REPAIR
  * failure slot, read back by the debugger and by DV. */
-.equ SMC_SCRATCH_MBIST_FAIL,   SEP_SMC_GLOBAL_BASE + 0x10100 + (10 * 8)
-.equ DFT_MEM_REPAIR_SUCCESS,   (1 << 1)
+.equ SMC_SCRATCH_MBIST_FAIL,   SEP_SMC_GLOBAL_BASE + 0x39080 + (10 * 8)
 
-/* MEM_REPAIR bypass fuse: STATUS_RPT bit 2.
+/* DFX_CTRL_STATUS_SMU fields (dfx_ctrl_status.rdl). All six are sticky-1,
+ * software-read-only, and written by the external DFT controller. */
+.equ DFT_MEM_REPAIR_SUCCESS,   (1 << 1)
+.equ DFT_MBIST_DONE,           (1 << 4)
+.equ DFT_MBIST_PASS,           (1 << 8)
+.equ DFT_MBIST_ABORT,          (1 << 12)
+
+/* Straps, read from the SMC. BYPASS_SRAM_REPAIR mirrors
+ * include/sep_smc_interface.h:76; MBIST_BYPASS has no counterpart there yet
+ * and is derived from the OCAH-MAS GPIO table (pin 54) -- add it to the
+ * header if the C side ever needs it. */
+.equ SMC_STRAPS_LO,            SEP_SMC_GLOBAL_BASE + 0x2090
+.equ SMC_STRAPS_HI,            SEP_SMC_GLOBAL_BASE + 0x2094
+/* BYPASS_SRAM_REPAIR, GPIO pin 13 -> STRAPS_LO[13]. OCAH-MAS 6.4.4: it drives
+ * skip_mem_repair_o, so repair NEVER RAN.
  *
- * Fail-closed: the bit is 0 on an unblown part, and 0 means hang. Permitting a
- * boot after a repair failure therefore requires deliberately blowing a fuse; it
- * cannot be arranged at run time. That is the whole point of reading a fuse here
- * instead of the SMC strap the C version used -- a strap is a pin, so anyone able
- * to hold it could switch this gate off on a production part.
+ * The status bits then do not report on any repair that happened -- but do NOT
+ * assume they read back 0. OCAH-MAS 16.1.7 says that when skip_mem_repair_o is
+ * asserted the external repair logic "should skip operations and immediately
+ * assert completion status", without saying which of done/success it asserts. A
+ * bypassed part may therefore present done=1,success=0 (completion asserted,
+ * nothing repaired) just as plausibly as done=1,success=1. In the first case,
+ * reading success here would brick a legitimately strapped part on a fuse
+ * (SKIP_MEM_CHECK) that nobody has any reason to have blown. Skipping the arm is
+ * the correct response under either reading, which is why this arm skips
+ * outright rather than treating some particular value as a failure to excuse. */
+.equ STRAP_BYPASS_SRAM_REPAIR,  (1 << 13)
+/* MBIST_BYPASS, GPIO pin 54 -> STRAPS_HI[22] (54 - 32). OCAH-MAS GPIO table
+ * strap notes: "Ignore results of Power-On MBIST for boot". Note the asymmetry
+ * with pin 13, and do not refactor the two arms into one: MBIST still RUNS under
+ * this strap, so mbist_done will set normally and only the verdict is discarded.
+ * Pin 13 stops repair happening at all. */
+.equ STRAP_MBIST_BYPASS_HI,     (1 << 22)
+
+/* SKIP_MEM_CHECK fuse: STATUS_RPT bit 2. Applies to a check that RAN and FAILED
+ * -- distinct from either bypass strap above, which mean the check did not run
+ * or its result is not to be believed. 0 = hang, 1 = warn and continue.
+ *
+ * Fail-closed: the bit is 0 on an unblown part. Permitting a boot after a check
+ * that RAN AND FAILED therefore requires deliberately blowing a fuse; that
+ * particular escape cannot be arranged at run time by holding a pin.
+ *
+ * That is a statement about THIS FUSE ONLY, not about the gate as a whole. Both
+ * bypass straps skip their arm outright -- BYPASS_SRAM_REPAIR (pin 13) skips the
+ * repair check, MBIST_BYPASS (pin 54) skips the MBIST check -- so anyone able to
+ * hold a strap can stop the corresponding check from being evaluated at all,
+ * without touching any fuse. That is the straps' documented purpose and a
+ * different threat surface; do not read the sentence above as covering it.
  *
  * NOTE: bit 2 currently falls inside `reserved[31:2]` in
  * regs/blocks/sep_efuse_map/sep_efuse_map.rdl:806, so this is an undeclared use
- * of a reserved bit. The reference does exactly the same thing -- its own RDL
- * also leaves the bit reserved while its vector.S reads it -- and the OCH eFuse
- * spec does not allocate it either. Splitting that field into
- * `mem_repair_ignore[2:2]` would document the allocation rather than leave it
- * merely relied upon. The register's existing `sw = r` / `hw = rw` access is
- * already correct for a bypass: software cannot assert it, only the fuse can.
+ * of a reserved bit -- tracked as A32 in dv/docs/rom_boot_flow_vs_reference.md
+ * ("MEM_REPAIR bypass as a fuse rather than a strap"). NOT A46: that row covers
+ * the gate implementation and is closed; the fuse allocation is still open.
+ * The NAME comes from the reference design's efuse schema
+ * (tt_sep/meta/scripts/efuse/efuse_schema.toml, bit 2, "BOOTROM continues to
+ * boot when MBIST failures detected"). Neither this design's RDL nor the
+ * OCAH-MAS fuse table allocates it -- MAS declares STATUS_RPT as 32 bits with 2
+ * used, both for status reporting. So this is an unallocated bit borrowed from
+ * another chip's map, not an allocated one awaiting a declaration (F23/F25). The register's existing `sw = r` / `hw = rw`
+ * access is already correct for this: software cannot assert it, only the fuse can.
  */
 .equ SEP_EFUSE_STATUS_RPT,     OCH_SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
-.equ STATUS_RPT_MEM_REPAIR_IGNORE, (1 << 2)
+.equ STATUS_RPT_SKIP_MEM_CHECK, (1 << 2)
+
+/* Bound on the wait for mbist_done. PLACEHOLDER, NOT CALIBRATED -- no expected
+ * MBIST duration was available when this was written.
+ *
+ * COUNT AXI TRANSACTIONS, NOT INSTRUCTIONS. Each iteration performs one read of
+ * a register on the far side of the SMC fabric, so the cost per iteration is a
+ * bus round trip -- tens of cycles -- not the handful of instructions the loop
+ * body looks like. An earlier draft used 1000000 on the assumption that this was
+ * a cheap counting loop; at roughly 30 cycles per round trip that is ~30M cycles,
+ * which is about 0.3 s of silicon boot latency and, worse, several HOURS of
+ * simulation for a single timeout (a whole passing boot is ~1.6M clocks).
+ *
+ * 10000 bounds the worst case to roughly 300K cycles, about 3 ms at 100 MHz and a
+ * fraction of a boot in simulation. It runs on REFCLK, the PLL not being up yet,
+ * so it has no fixed wall-clock meaning either way.
+ *
+ * Replace with a measured MBIST duration plus margin when one exists. A timeout
+ * is treated as a failure, so too small a value could stop a healthy part -- but
+ * note the hardware releases the SEP CPU only after repair, and MBIST is expected
+ * to be complete or nearly so by then, which is why a large margin is not needed.
+ */
+.equ MBIST_DONE_WAIT_ITERS,    10000
 
 _start:
     /* Multi-hart safety: only hart0 proceeds (others park). */
@@ -101,8 +191,10 @@ _start:
     csrw    mtvec, t0
 
     /* Configure VeeR EL2 MRAC before warm reset check so that the
-     * warm_scratch read at 0x1080xxxx (region 1) gets correct
-     * memory attributes (side-effect, non-cacheable). */
+     * cold_scratch read at 0x1080xxxx (region 1) gets correct
+     * memory attributes (side-effect, non-cacheable). Cold, not warm: the
+     * handler slot moved to COLD scratch 7, see the block above SEP_COLD_SCRATCH_7.
+     * Both banks sit in region 1, so the MRAC value itself is unchanged. */
     li      t0, 0xAAAAAAA8
     csrw    0x7C0, t0
 
@@ -111,18 +203,23 @@ _start:
      * On warm reset (WDT bark → wdt_rst_ni low):
      *   - CPU is reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni)
      *   - ICCM/DCCM content preserved (not reset)
-     *   - sep_scratch_warm_scratch[] preserved (not reset)
+     *   - sep_scratch_cold_scratch[] preserved (not reset) -- this is the bank
+     *     the handler slot lives in
+     *   - sep_scratch_warm_scratch[] is NOT preserved: its
+     *     arst_n = sep_reset_n & wdt_rst_ni, so a watchdog reset clears it.
+     *     The slot was moved off this bank for exactly that reason; see the
+     *     block above SEP_COLD_SCRATCH_7 and FINDINGS F28.
      *   - All CPU CSRs reset to defaults
      *
-     * BL1 writes its re-entry address to warm_scratch[0] before enabling
+     * BL1 writes its re-entry address to cold_scratch[7] before enabling
      * the WDT.  On warm reset, ROM reads this and jumps back to BL1.
      *
      * Protocol:
-     *   1. Read warm_scratch[0]
+     *   1. Read cold_scratch[7]
      *   2. If zero → cold boot
      *   3. If non-zero: range check against
-     *      [WARM_HANDLER_RANGE_BASE, WARM_HANDLER_RANGE_END) = SEP SRAM
-     *   4. If valid: poison scratch (write 0), jump to handler
+     *      [WARM_HANDLER_RANGE_BASE, WARM_HANDLER_RANGE_END) = SEP ICCM
+     *   4. If valid: jump to handler, leaving the slot INTACT
      *   5. If invalid: hang
      *   The cold path poisons with -1, deliberately out of range, so an
      *   unarmed warm reset lands on step 5 rather than step 2.
@@ -130,7 +227,7 @@ _start:
      * This check happens BEFORE touching DCCM (sp/gp/scrub/.data/.bss)
      * to preserve BL1's runtime state across warm reset.
      */
-    li      t0, SEP_WARM_SCRATCH_0
+    li      t0, SEP_COLD_SCRATCH_7
     lw      t1, 0(t0)              /* t1 = warm handler address */
     beqz    t1, cold_boot          /* zero → cold boot */
 
@@ -145,17 +242,30 @@ _start:
      * record that the ROM took the warm path rather than falling into cold_boot.
      * STATUS_ENCODE(STATUS_TYPE_INFO, SEP_MSG_WARM_RESET_JUMP)
      * = (0x01 << 24) | (0x01 << 16) | 0x68 = 0x01010068
-     * Written with t3/t4 so t0 (warm scratch base) and t1 (handler address)
-     * stay live for the poison and the jump below. */
+     * Written with t3/t4 so t1 (handler address) stays live for the jump. */
     li      t3, SEP_COLD_SCRATCH_1
     li      t4, 0x01010068
     sw      t4, 0(t3)
 
-    /* Poison scratch to prevent re-entry. */
-    sw      zero, 0(t0)
+    /* NO POISON HERE, DELIBERATELY. The handler address is left in place.
+     *
+     * This used to write 0 over the slot before jumping, to stop a second warm
+     * reset re-entering the same handler. Both the spec and the reference leave
+     * it alone: sep-boot-flow.puml:46-48 branches to the address and does
+     * nothing else, and the reference jumps straight from the status write
+     * (tt_sep/firmware/bootcode/src/vector.S:140-141). Only the cold path -- the
+     * scratch == 0 case -- writes anything, and it writes -1.
+     *
+     * Leaving it is the behaviour a watchdog handler needs. BL1 arms the
+     * watchdog after parking its re-entry address here, so persistence is the
+     * point: the SECOND watchdog reset must reach the handler too. Poisoning
+     * made the first one dispatch and every one after that cold boot, silently
+     * disarming watchdog recovery unless the handler happened to rewrite the
+     * slot on every entry -- and if it does rewrite it, the poison achieved
+     * nothing anyway. It was not the stronger choice, just a different one, and
+     * it was undocumented. See FINDINGS F29. */
 
-    /* Jump to warm reset handler.  BL1 is already in SRAM and will
-     * set up its own sp/mtvec/PMP as needed. */
+    /* Jump to warm reset handler. BL1 sets up its own sp/mtvec/PMP as needed. */
     jr      t1
 
     /* Invalid warm handler address — hang.
@@ -175,7 +285,7 @@ warm_reset_hang:
     /* ── end warm reset ─────────────────────────────────────────── */
 
 cold_boot:
-    /* Poison warm_scratch[0] with an out-of-range value rather than 0.
+    /* Poison cold_scratch[7] with an out-of-range value rather than 0.
      * A later warm reset arriving with no handler armed then fails the range
      * check and hangs with SEP_MSG_WARM_RESET_HANG, instead of taking the
      * beqz early-out and silently cold booting -- for a repeating watchdog
@@ -183,10 +293,17 @@ cold_boot:
      * philosophy already stated on the invalid-handler path below: an
      * unexpected handler value may indicate corruption or attack.
      *
-     * The warm path keeps its own zero poison; that one exists to prevent
-     * handler re-entry and must stay. Neither value alone is the stronger
-     * choice on both paths. */
-    li      t0, SEP_WARM_SCRATCH_0
+     * The warm path writes NOTHING -- see the accept arm above. An earlier
+     * version poisoned it there to block re-entry; the spec and the reference
+     * both leave it alone, because persistence is what a watchdog handler slot
+     * is for (FINDINGS F29).
+     *
+     * -1 is also what the spec asks for. sep-boot-flow.puml:54 sets COLD Scratch 7
+     * to 0xFFFFFFFF on the cold path, and the reference does the same
+     * (tt_sep/firmware/bootcode/src/vector.S:145). This used to write 0 here --
+     * recorded as finding J in dv/docs/rom_boot_flow_vs_reference.md -- which took
+     * the beqz early-out and cold booted silently. */
+    li      t0, SEP_COLD_SCRATCH_7
     li      t1, -1
     sw      t1, 0(t0)
 
@@ -341,26 +458,78 @@ cold_boot:
      */
     li      t0, SMC_DFX_CTRL_STATUS_SMU
     lw      t1, 0(t0)                       /* t1 = raw DFT status, kept live */
-    andi    t2, t1, DFT_MEM_REPAIR_SUCCESS
-    bnez    t2, 4f                          /* repaired -> continue */
 
-    /* Repair failed. Record the raw status before doing anything else: if this
-     * read ever returns 0 because the SMC window is not reachable this early,
-     * scratch 10 shows 0 and distinguishes "cannot read" from "really failed". */
+    /* ---- Arm 1: memory repair --------------------------------------------
+     * Skipped entirely when BYPASS_SRAM_REPAIR is strapped: repair never ran, so
+     * the status bits are not a report on it and must not be read as one. See
+     * STRAP_BYPASS_SRAM_REPAIR above for why the bits cannot simply be assumed
+     * to be 0 either (OCAH-MAS 16.1.7). */
+    li      t0, SMC_STRAPS_LO
+    lw      t5, 0(t0)
+    li      t4, STRAP_BYPASS_SRAM_REPAIR    /* (1<<13) exceeds andi's 12-bit imm */
+    and     t2, t5, t4
+    bnez    t2, 1f                          /* repair bypassed -> do not check */
+
+    andi    t2, t1, DFT_MEM_REPAIR_SUCCESS
+    beqz    t2, dft_gate_failed             /* ran and failed */
+
+1:  /* ---- Arm 2: MBIST ----------------------------------------------------
+     * Required by sep-boot-flow.puml:58-67 ("Check SMU MBIST results?"), which
+     * the previous version of this gate did not implement at all.
+     *
+     * The wait is not defensive, it is required. OCAH-MAS releases the SEP CPU
+     * "once memory repair is done or bypassed" -- repair only, MBIST is not
+     * named -- while the SMC cluster waits for both. So MBIST may still be
+     * running here, and reading mbist_pass without waiting would read a 0 that
+     * means "not finished yet" and report it as a failure. */
+    li      t0, SMC_STRAPS_HI
+    lw      t5, 0(t0)
+    li      t4, STRAP_MBIST_BYPASS_HI       /* (1<<22) exceeds andi's 12-bit imm */
+    and     t2, t5, t4
+    bnez    t2, 4f                          /* results to be ignored -> continue */
+
+    /* Address and mask are loop invariants; hoisting them halves the work per
+     * iteration. t0 and t4 must therefore survive the loop body, which only
+     * writes t1, t2 and t3. */
+    li      t0, SMC_DFX_CTRL_STATUS_SMU
+    li      t4, DFT_MBIST_ABORT             /* (1<<12) exceeds andi's 12-bit imm */
+    li      t3, MBIST_DONE_WAIT_ITERS
+2:  lw      t1, 0(t0)                       /* refresh: sticky bits, so re-read */
+    and     t2, t1, t4
+    bnez    t2, dft_gate_failed             /* aborted -> verification incomplete */
+    andi    t2, t1, DFT_MBIST_DONE
+    bnez    t2, 3f                          /* done -> verdict is now valid */
+    addi    t3, t3, -1
+    bnez    t3, 2b
+    j       dft_gate_failed                 /* timeout -> fail closed */
+
+3:  andi    t2, t1, DFT_MBIST_PASS
+    bnez    t2, 4f                          /* passed -> continue */
+
+    /* ---- Shared failure path ---------------------------------------------
+     * Reached by: repair ran and failed; MBIST aborted; MBIST timed out; MBIST
+     * completed and failed. All four mean the same thing for boot safety --
+     * this memory has not been shown to be trustworthy -- so they share one
+     * response. The raw status word in scratch 10 is what distinguishes them
+     * afterwards. */
+dft_gate_failed:
+    /* Record the raw status before doing anything else: if this read ever
+     * returns 0 because the SMC window is not reachable this early, scratch 10
+     * shows 0 and distinguishes "cannot read" from "really failed". */
     li      t0, SMC_SCRATCH_MBIST_FAIL
     sw      t1, 0(t0)
 
     /* STATUS_ENCODE(STATUS_TYPE_WARN, SEP_MSG_MBIST_FAIL)
      * = (0x08 << 24) | (0x01 << 16) | 0x219 = 0x08010219
-     * WARN, not ERROR: the bypass fuse below may still permit the boot. */
+     * WARN, not ERROR: the SKIP_MEM_CHECK fuse below may still permit the boot. */
     li      t0, SEP_COLD_SCRATCH_1
     li      t2, 0x08010219
     sw      t2, 0(t0)
 
-    /* Bypass fuse. Blown -> continue despite the failure; unblown -> hang. */
+    /* SKIP_MEM_CHECK. Blown -> continue despite the failure; unblown -> hang. */
     li      t0, SEP_EFUSE_STATUS_RPT
     lw      t3, 0(t0)
-    andi    t4, t3, STATUS_RPT_MEM_REPAIR_IGNORE
+    andi    t4, t3, STATUS_RPT_SKIP_MEM_CHECK
     bnez    t4, 4f
 
     /* No bypass: stop. Do not fall through to the scrub -- writing 128KiB of

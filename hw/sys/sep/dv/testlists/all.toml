@@ -72,8 +72,37 @@ tests = [
     "sep_firmware_backup_unpopulated_rom_key_slot_test",
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
+    # TP080. Subclass of the entry above; adds an SRAM scoreboard to the same
+    # failover. Covers the EXT SRAM half of the requirement only -- this ROM never
+    # clears SMC SRAM (FINDINGS F19, as amended by F21), so a green run here is not F038 coverage of
+    # that half. Slower than most of this group, and mostly for an inherited
+    # reason: the clear it asserts is 65536 CPU stores, about 1.05M clocks
+    # (measured, run 20260829_111100). The entry above pays the same cycle cost
+    # already. Compare in CYCLES: sys_clk_period is randomised per run, so
+    # simulated-time and wall-second figures are not comparable between runs.
+    "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_encrypted_boot_test",
+    "sep_firmware_mbist_pass_test",
+    "sep_firmware_mbist_only_fail_test",
+    "sep_boot_recovery_test",
+    "sep_rotate_update_set_test",
+    "sep_firmware_primary_invalid_key_hash_test",
+    "sep_firmware_backup_invalid_key_hash_test",
+    "sep_firmware_backup_pubkey_rom_5_revoked_key_test",
+    "sep_bl1_size_invalid_test",
+    "sep_bl1_entry_invalid_test",
+    # KNOWN-FAIL SENTINEL, kept red on purpose. Expected to fail until the
+    # TP049 procedure-vs-ROM dispute is ruled on; see the long comment on its
+    # [[tests]] entry in rom_fw.toml. A run whose ONLY failure is this test is
+    # the expected result. Do not remove this line to get a green run.
+    "sep_decryption_failure_terminal_test",
+    "sep_mbist_fail_continue_test",
+    "sep_warm_reset_invalid_hang_test",
+    # SLOW ON PURPOSE: ~35-45 min. Two full RSA-3072 modexps on the real OTBN,
+    # one per manifest slot. Adding this made a full `all` run about 40 minutes
+    # longer; see its [[tests]] entry in rom_fw.toml. Not a hang.
+    "sep_otbn_rsa_verify_failure_test",
     "sep_boot_rom_smoke_test",
     "sep_sram_smoke_test",
     "sep_km_mem_smoke_test",
@@ -223,6 +252,35 @@ tests = [
     "sep_firmware_backup_unpopulated_rom_key_slot_test",
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
+    # TP080. Subclass of the entry above; adds an SRAM scoreboard to the same
+    # failover. Covers the EXT SRAM half of the requirement only -- this ROM never
+    # clears SMC SRAM (FINDINGS F19, as amended by F21), so a green run here is not F038 coverage of
+    # that half. Slower than most of this group, and mostly for an inherited
+    # reason: the clear it asserts is 65536 CPU stores, about 1.05M clocks
+    # (measured, run 20260829_111100). The entry above pays the same cycle cost
+    # already. Compare in CYCLES: sys_clk_period is randomised per run, so
+    # simulated-time and wall-second figures are not comparable between runs.
+    "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_encrypted_boot_test",
+    "sep_firmware_mbist_pass_test",
+    "sep_firmware_mbist_only_fail_test",
+    "sep_boot_recovery_test",
+    "sep_rotate_update_set_test",
+    "sep_firmware_primary_invalid_key_hash_test",
+    "sep_firmware_backup_invalid_key_hash_test",
+    "sep_firmware_backup_pubkey_rom_5_revoked_key_test",
+    "sep_bl1_size_invalid_test",
+    "sep_bl1_entry_invalid_test",
+    # KNOWN-FAIL SENTINEL, kept red on purpose. Expected to fail until the
+    # TP049 procedure-vs-ROM dispute is ruled on; see the long comment on its
+    # [[tests]] entry in rom_fw.toml. A run whose ONLY failure is this test is
+    # the expected result. Do not remove this line to get a green run.
+    "sep_decryption_failure_terminal_test",
+    "sep_mbist_fail_continue_test",
+    "sep_warm_reset_invalid_hang_test",
+    # SLOW ON PURPOSE: ~35-45 min. Two full RSA-3072 modexps on the real OTBN,
+    # one per manifest slot. Adding this made a full `rom_fw` run about 40
+    # minutes longer; see its [[tests]] entry in rom_fw.toml. Not a hang.
+    "sep_otbn_rsa_verify_failure_test",
 ]

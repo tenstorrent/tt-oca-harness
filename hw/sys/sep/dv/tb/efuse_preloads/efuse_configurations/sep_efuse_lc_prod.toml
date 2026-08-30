@@ -5,8 +5,13 @@
 # sep_firmware_enforced_secure_boot_flow_test,
 # sep_firmware_cntl_secure_boot_flow_test,
 # sep_firmware_backup_invalid_signature_test,
-# sep_firmware_backup_invalid_public_key_selection_test and
-# sep_firmware_backup_unpopulated_rom_key_slot_test.
+# sep_firmware_backup_invalid_public_key_selection_test,
+# sep_firmware_backup_unpopulated_rom_key_slot_test,
+# sep_firmware_primary_invalid_key_hash_test and
+# sep_firmware_backup_invalid_key_hash_test.
+#
+# sep_efuse_lc_prod_pubk_revoke5.toml is this file plus one revocation bit; it is
+# a separate preload, not a user of this one.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

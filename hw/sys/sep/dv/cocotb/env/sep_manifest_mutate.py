@@ -60,11 +60,22 @@ OFF_IDENTIFIER = 0        # uint32  "TBL1"
 OFF_SECURITY_VERSION = 162  # uint16
 OFF_SIGNATURE_TYPE = 165    # uint8
 OFF_PUBLIC_KEY_SEL = 166    # uint16 {index:4, selection:3, rsvd:9}
+OFF_PUBLIC_KEY = 168      # 384 B  -- RSA-3072 modulus, inside the TBS
 OFF_SIGNATURE = 744       # 384 B  -- outside the TBS
 OFF_MANIFEST_HASH = 1128  # 32 B   -- outside the TBS
 OFF_FLAG_ARGS = 1168      # uint32 -- outside the TBS
 
+PUBLIC_KEY_LEN = 384  # manifest.h:102, RSA_3072_KEY_SZ_BYTES
+
 MANIFEST_MAGIC = b"TBL1"
+
+# SHA-256 of the dev0 RSA-3072 modulus, copied verbatim from ROM key slot 0
+# (bootrom/prod/src/key_digests.c:19-21). It is what check_pubkey_hash() compares
+# a ROM-slot-0 manifest's modulus against, so it doubles as the cross-check that
+# OFF_PUBLIC_KEY really points at the modulus -- see verify_public_key().
+ROM_KEY0_DIGEST = bytes.fromhex(
+    "4676d023736b5ebd5131f75b062a355e9ae1790e80c872b5ee9b0c1fff04c3e3"
+)
 
 # Erased-flash byte. Matches the BFM's backing store and its out-of-range read
 # value (ocah_spi_flash.py:186,494-495), so an erased region in the image and an
@@ -221,6 +232,75 @@ def get_public_key_sel(buf: bytes, slot: str) -> int:
     return struct.unpack_from("<H", buf, base + OFF_PUBLIC_KEY_SEL)[0]
 
 
+def public_key(buf: bytes, slot: str) -> bytes:
+    """The 384-byte RSA modulus this slot's manifest carries."""
+    base = slot_base(slot)
+    return bytes(buf[base + OFF_PUBLIC_KEY:base + OFF_PUBLIC_KEY + PUBLIC_KEY_LEN])
+
+
+def verify_public_key(buf: bytes, slot: str) -> None:
+    """Assert this slot's modulus is the dev0 key the ROM has in slot 0.
+
+    :func:`verify_layout` cannot check OFF_PUBLIC_KEY -- a manifest is free to
+    carry any modulus, so there is no self-consistent field to compare it with.
+    The ROM supplies the missing half: ``check_pubkey_hash``
+    (``manifest_crypto.c:124-136``) compares SHA-256 of the bytes at this offset
+    with ``public_key_digests[0].digest``. Reproducing that comparison here proves
+    two things at once, before any mutation runs:
+
+      * OFF_PUBLIC_KEY is the modulus and not some neighbouring field, so
+        :func:`corrupt_public_key` writes where it claims to; and
+      * this image really does verify against ROM slot 0, so a KEY_HASH_MISMATCH
+        seen afterwards is caused by the mutation rather than by an image that
+        never matched.
+
+    Only the signed images (``secure_boot.bin``, ``encrypted_boot.bin``) satisfy
+    this, which is why it is a separate entry point rather than part of
+    verify_layout(): the unsigned image carries no usable modulus and its slots
+    are still legitimate erase / magic-corruption targets.
+    """
+    verify_layout(buf, slot)
+    digest = hashlib.sha256(public_key(buf, slot)).digest()
+    if digest != ROM_KEY0_DIGEST:
+        raise AssertionError(
+            f"sha256 of {slot} manifest bytes [{OFF_PUBLIC_KEY}:"
+            f"{OFF_PUBLIC_KEY + PUBLIC_KEY_LEN}] is {digest.hex()}, expected the "
+            f"ROM slot-0 (dev0) digest {ROM_KEY0_DIGEST.hex()}. Either "
+            f"OFF_PUBLIC_KEY no longer matches the packed layout, or this image "
+            f"is not signed with the key the ROM has compiled in"
+        )
+
+
+def corrupt_public_key(buf: bytearray, slot: str, *, byte_index: int = 0,
+                       xor_mask: int = 0x01) -> None:
+    """Flip a bit of the RSA modulus, so SHA-256 of it stops matching the digest.
+
+    In-TBS, so the manifest hash is recomputed: the slot must still pass
+    ``validate_manifest_header`` and ``manifest_check_integrity``
+    (``manifest_load.c:477,500``) or it would be rejected as a malformed manifest
+    long before the key-hash comparison it is meant to reach. Re-signing is neither
+    possible nor needed -- ``check_pubkey_hash`` runs before ``rsa_3072_verify``
+    (``manifest_crypto.c:195,244``), so the now-stale signature is never examined.
+
+    One bit by default. The digest binding must fail on the smallest possible
+    change, and a wholesale overwrite could not tell a hash comparison from a
+    coarser sanity check on the modulus.
+    """
+    verify_public_key(buf, slot)
+    if not 0 <= byte_index < PUBLIC_KEY_LEN:
+        raise ValueError(f"modulus is {PUBLIC_KEY_LEN} bytes")
+    if xor_mask == 0:
+        raise ValueError("xor_mask 0 would not change anything")
+    base = slot_base(slot)
+    buf[base + OFF_PUBLIC_KEY + byte_index] ^= xor_mask & 0xFF
+    rehash(buf, slot)
+    digest = hashlib.sha256(public_key(buf, slot)).digest()
+    if digest == ROM_KEY0_DIGEST:
+        raise AssertionError(
+            "modulus digest is unchanged after the mutation; the write did not land"
+        )
+
+
 def flip_signature_byte(buf: bytearray, slot: str, *, byte_index: int = 0,
                         xor_mask: int = 0x01) -> None:
     """Corrupt the signature (outside the TBS; no re-hash, no re-sign).
@@ -267,9 +347,17 @@ def describe(buf: bytes, slot: str) -> str:
     flag_args = struct.unpack_from("<I", buf, base + OFF_FLAG_ARGS)[0]
     hash_ok = bytes(buf[base + OFF_MANIFEST_HASH:base + OFF_MANIFEST_HASH + 32]) == tbs_hash(buf, base)
     sig8 = bytes(buf[base + OFF_SIGNATURE:base + OFF_SIGNATURE + 8]).hex()
+    # The modulus digest, i.e. exactly what check_pubkey_hash() compares. Logged
+    # so a key-hash testcase's stimulus is readable from the run log without
+    # re-deriving it: "binds_rom_key0=False" IS the planted defect.
+    pubk_digest = hashlib.sha256(
+        bytes(buf[base + OFF_PUBLIC_KEY:base + OFF_PUBLIC_KEY + PUBLIC_KEY_LEN])
+    ).digest()
     return (
         f"{slot}@0x{base:x}: ident={ident!r} secver={secver} sigtype={sigtype} "
         f"pubksel=0x{pubksel:04x} flag_args=0x{flag_args:08x} "
         f"secure_boot_bit={(flag_args >> FLAG_ARGS_BIT_SECURE_BOOT) & 1} "
-        f"tbs_hash_valid={hash_ok} sig[0:8]={sig8}"
+        f"tbs_hash_valid={hash_ok} sig[0:8]={sig8} "
+        f"pubk_sha256[0:8]={pubk_digest[:8].hex()} "
+        f"binds_rom_key0={pubk_digest == ROM_KEY0_DIGEST}"
     )

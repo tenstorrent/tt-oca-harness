@@ -6,14 +6,22 @@ FEATURE UNDER TEST. Before the ROM boots anything it asks the SMC whether memory
 repair succeeded, and refuses to continue if it did not. The gate lives in
 ``bootrom/prod/src/vector.S``, immediately before the DCCM scrub::
 
-    lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xF800
-    andi t2, t1, DFT_MEM_REPAIR_SUCCESS     # bit 1 set -> continue
-    sw   t1, (SMC_SCRATCH_MBIST_FAIL)       # publish raw value, scratch 10
-    sw   0x08010219, (SEP_COLD_SCRATCH_1)   # WARN + SEP_MSG_MBIST_FAIL
-    lw   t3, (SEP_EFUSE_STATUS_RPT)         # bypass fuse
-    andi t4, t3, (1 << 2)                   # blown -> continue
-    sw   0x0f01d001, (SEP_COLD_SCRATCH_1)   # ERROR + ROM_ERR_DFT_GATE_BLOCKED
-    wfi, then spin
+    lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xB800 (smc_addr.h)
+    # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
+    and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
+    bnez t2, 1f
+    andi t2, t1, DFT_MEM_REPAIR_SUCCESS     # bit 1 clear -> dft_gate_failed
+    beqz t2, dft_gate_failed                #   <-- THIS RUN LEAVES HERE
+1:  # arm 2: MBIST, skipped if MBIST_BYPASS is strapped; polls mbist_done, then
+    #        checks mbist_abort / timeout / mbist_pass -- not reached by this test
+    dft_gate_failed:
+      sw   t1, (SMC_SCRATCH_MBIST_FAIL)     # publish raw value, scratch 10
+      sw   0x08010219, (SEP_COLD_SCRATCH_1) # WARN + SEP_MSG_MBIST_FAIL
+      lw   t3, (SEP_EFUSE_STATUS_RPT)       # bypass fuse
+      andi t4, t3, STATUS_RPT_SKIP_MEM_CHECK # (1 << 2) blown -> continue
+    mem_repair_fail_hang:
+      sw   0x0f01d001, (SEP_COLD_SCRATCH_1) # ERROR + ROM_ERR_DFT_GATE_BLOCKED
+      wfi, then spin
 
 This covers the fail + no-bypass arm only. The bypass and pass arms are separate
 items and are NOT exercised here.
@@ -42,10 +50,18 @@ Injecting 0 would also pass against a ROM that gated on any-bit-clear, on a zero
 word, or on the wrong bit entirely, so it would not test what it claims.
 All-ones-but-one can only pass if the ROM reads bit 1 specifically.
 
-BYPASS. Now the eFuse ``STATUS_RPT`` bit 2, left unblown, rather than the old
-``STRAPS_LO[13]`` strap -- a strap is a pin, so anyone able to hold it could
-switch this gate off on a production part. Bit 2 is still inside
-``reserved[31:2]`` in ``sep_efuse_map.rdl``, so its use there is undeclared.
+BYPASS. The escape from a check that RAN AND FAILED is the eFuse ``STATUS_RPT``
+bit 2, left unblown here. It is a fuse, so this particular escape cannot be
+arranged at run time by holding a pin. Bit 2 is still inside ``reserved[31:2]`` in
+``sep_efuse_map.rdl``, so its use there is undeclared (A32).
+
+That is a claim about the FUSE, not about the gate. Two STRAPS now skip their arm
+outright -- ``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``, pin 13) and
+``MBIST_BYPASS`` (``STRAPS_HI[22]``, pin 54) -- so anyone able to hold a pin can
+still stop the corresponding check from being evaluated at all. That is the
+straps' documented purpose in OCAH-MAS, and neither arm has a testcase. An earlier
+version of this note read the fuse's pin-immunity as a property of the whole gate;
+it is not.
 
 The terminal outcome is a silent halt, so ``SepBootScoreboard`` is not used: it
 expects a firmware completion signal that this path deliberately never sends.
@@ -95,9 +111,10 @@ _STATUS_MBIST_WARN = 0x0801_0000 | _SEP_MSG_MBIST_FAIL
 _ROM_ERR_DFT_GATE_BLOCKED = 0xD001
 _STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | _ROM_ERR_DFT_GATE_BLOCKED
 
-# The gate is early in rom_main (DFT_STATUS prints around 50k cycles, with real
-# fuse sense in front of it), so this budget is generous. The run ends when the
-# terminal status word reaches cold_scratch[1]; there is no fw_done on this path.
+# The gate is pre-C, in vector.S, and runs before the DCCM scrub -- earlier than
+# anything in rom_main -- with only real fuse sense in front of it, so this budget
+# is generous. The run ends when the terminal status word reaches cold_scratch[1];
+# there is no fw_done on this path.
 _MAX_RUN_CYCLES = 400_000
 _PROGRESS_EVERY = 50_000
 
@@ -121,6 +138,30 @@ class sep_firmware_mbist_fail_test(sep_base_test):
     build_env = False
     rom_build_dir = _FW_DIR
 
+    # The injection this test expects, as a class attribute so a subclass can
+    # target a different arm of the same gate without duplicating the halt
+    # machinery below. Default unchanged: the repair arm.
+    dft_status_injected = _DFT_STATUS_FAIL
+
+    def check_stimulus_shape(self) -> None:
+        """Prove the injection really exercises the arm this test claims.
+
+        Overridable so a subclass can state its own shape contract. The default
+        is the repair arm's: every bit set EXCEPT mem_repair_success, which is
+        what distinguishes a gate keyed on bit 1 from one keyed on a zero word.
+        """
+        word = self.dft_status_injected
+        assert not (word >> _MEM_REPAIR_SUCCESS_BIT) & 1, (
+            f"injected DFT status 0x{word:08x} has mem_repair_success "
+            f"(bit {_MEM_REPAIR_SUCCESS_BIT}) SET -- that is the pass arm"
+        )
+        assert word & ~(1 << _MEM_REPAIR_SUCCESS_BIT) & 0xFFFF_FFFF == (
+            0xFFFF_FFFF & ~(1 << _MEM_REPAIR_SUCCESS_BIT)
+        ), (
+            "injected DFT status must have every bit except mem_repair_success set, "
+            "otherwise it cannot distinguish a bit-1 check from a zero-word check"
+        )
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
 
@@ -132,22 +173,13 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             "+sep_dft_status is not set: without the injection the DFT gate passes "
             "and this test proves nothing about the failure arm"
         )
-        assert int(str(injected), 16) == _DFT_STATUS_FAIL, (
+        assert int(str(injected), 16) == self.dft_status_injected, (
             f"+sep_dft_status={injected} does not match the word this test checks "
-            f"for (0x{_DFT_STATUS_FAIL:08x})"
+            f"for (0x{self.dft_status_injected:08x})"
         )
         # Self-check the stimulus shape, so a future edit cannot quietly turn this
         # into a pass-arm injection (which would still boot, and still be green).
-        assert not (_DFT_STATUS_FAIL >> _MEM_REPAIR_SUCCESS_BIT) & 1, (
-            f"injected DFT status 0x{_DFT_STATUS_FAIL:08x} has mem_repair_success "
-            f"(bit {_MEM_REPAIR_SUCCESS_BIT}) SET -- that is the pass arm"
-        )
-        assert _DFT_STATUS_FAIL & ~(1 << _MEM_REPAIR_SUCCESS_BIT) & 0xFFFF_FFFF == (
-            0xFFFF_FFFF & ~(1 << _MEM_REPAIR_SUCCESS_BIT)
-        ), (
-            "injected DFT status must have every bit except mem_repair_success set, "
-            "otherwise it cannot distinguish a bit-1 check from a zero-word check"
-        )
+        self.check_stimulus_shape()
 
         efuse_img = SepEfuseImage()
         efuse_img.set_lc_state(LC_TEST_DEV)
@@ -219,7 +251,14 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             for _ in range(_QUIESCE_CYCLES):
                 await RisingEdge(dut.clk_i)
                 if self.rd(dut.cpu_trace_valid_o):
-                    post_pcs.add(self.rd(dut.cpu_trace_addr_o) << 1)
+                    # No shift: cpu_trace_addr_o is driven straight from
+                    # trace_rv_i_address_ip (tb_top.sv), so it is already a
+                    # byte address. The `<< 1` this used to carry printed PCs
+                    # that map to no instruction -- 0x20080498 instead of
+                    # 0x1004024c. The span check still held (8 <= 64, in fact
+                    # stricter), so it was misleading output rather than a
+                    # false pass, but the addresses in the log were fiction.
+                    post_pcs.add(self.rd(dut.cpu_trace_addr_o))
                 if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != \
                         _STATUS_DFT_GATE_BLOCKED:
                     post_status_moved = True
@@ -241,14 +280,14 @@ class sep_firmware_mbist_fail_test(sep_base_test):
 
         # CHK-DFT-READ: the ROM read the injected word. scratch[10] carries it, so
         # this ties the rest of the run to our stimulus rather than to the tb's
-        # default 0x03, and it is durable evidence: scratch[10] is readable over
+        # default 0x113, and it is durable evidence: scratch[10] is readable over
         # JTAG on a part that is hung.
-        assert _DFT_STATUS_FAIL in scratch10_seq, (
+        assert self.dft_status_injected in scratch10_seq, (
             f"SMC scratch[10] never held the injected DFT status "
-            f"0x{_DFT_STATUS_FAIL:08x}; the ROM did not read our DFX_CTRL_STATUS. "
+            f"0x{self.dft_status_injected:08x}; the ROM did not read our DFX_CTRL_STATUS. "
             f"Observed {s10_hex}"
         )
-        self.logger.info("CHK-DFT-READ: ROM read DFT_STATUS=0x%08x", _DFT_STATUS_FAIL)
+        self.logger.info("CHK-DFT-READ: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
 
         # CHK-DFT-DETECT: the gate classified it as a failure and said so before
         # consulting the bypass fuse. Without this, a ROM that skipped straight to
@@ -280,12 +319,12 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         # CHK-DFT-PUBLISH: the raw value reached SMC scratch[10]. The procedure
         # calls this out specifically -- it is the JTAG-readable evidence that the
         # ROM stopped *because* of MEM_REPAIR, available on a part that is hung.
-        assert _DFT_STATUS_FAIL in scratch10_seq, (
+        assert self.dft_status_injected in scratch10_seq, (
             f"SMC scratch[10] never held the failing DFT status "
-            f"0x{_DFT_STATUS_FAIL:08x}; observed {s10_hex}"
+            f"0x{self.dft_status_injected:08x}; observed {s10_hex}"
         )
         self.logger.info(
-            "CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", _DFT_STATUS_FAIL
+            "CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", self.dft_status_injected
         )
 
         # CHK-DFT-NO-BYPASS: the bypass fuse (STATUS_RPT bit 2) is unblown in this

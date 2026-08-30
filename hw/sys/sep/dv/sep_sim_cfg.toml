@@ -333,6 +333,11 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
+  # The SMC-SRAM staged image, produced by the same `pack-images` rule as the two
+  # .bin files above. Declared because sep_boot_recovery_test passes it as
+  # +sep_smc_mem_hex, and an undeclared input would let `--stage sim` start and
+  # then die inside $readmemh instead of failing the output check.
+  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
 [c_build.boot_rom_ot_pio]

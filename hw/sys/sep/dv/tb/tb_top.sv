@@ -276,19 +276,38 @@ module sep_uvm_top
     output logic [383:0]      sram_payload_probe_o,
     // SEP scratch-WARM CSR array (8 words x 32b). Same access pattern as the cold
     // probe, but a different reset domain: the warm block is reset by
-    // (rst_ni && rst_warm_ni), which is what makes warm_scratch[0] the ROM's
-    // warm-reset handler slot (vector.S). Surfaced so the warm-dispatch test can
-    // prove BOTH halves of that protocol without an AXI master (the EL2 owns the
-    // LSU bus under +cpu_boot): that the seeded handler address was actually
-    // visible to the ROM, and that the ROM poisoned it back to 0 before jumping.
-    // Without this probe a failed seed and a correct boot look identical.
+    // (rst_ni && rst_warm_ni).
+    //
+    // CURRENTLY UNUSED. It was added when the ROM kept its warm-reset handler
+    // address in warm_scratch[0]. The ROM now uses COLD scratch 7 -- precisely
+    // because this bank does NOT survive a watchdog reset (vector.S, FINDINGS
+    // F28) -- so the warm-dispatch tests read scratch_cold_probe_o instead and
+    // nothing reads this port. Retained rather than deleted because it predates
+    // that change and costs nothing; delete it if it is still unused when the
+    // warm bank next comes up. Do not restore the old claim that the ROM poisons
+    // word 0 before jumping: the accept path now leaves its slot intact (F29).
     output logic [255:0]      scratch_warm_probe_o,
-    // SMC scratch[10] (smc_base+0x10150), the slot the ROM publishes the raw
+    // SMC scratch[10] (smc_base+0x390D0), the slot the ROM publishes the raw
     // DFX/MEM_REPAIR status into when it blocks the boot -- the documented
     // JTAG-readable evidence that the ROM saw the failure. Sampled rather than
     // continuously assigned: axi_sim_mem backs the SMC with an ASSOCIATIVE array,
     // which cannot appear in a continuous assign. Reads 0 until the ROM writes it.
     output logic [31:0]       smc_scratch10_probe_o,
+    // DFX_CTRL_STATUS_SMU (smc_base+0xB800) as the SMC model actually holds it,
+    // i.e. the word the ROM's MEM_REPAIR gate reads over AXI. The FAILURE arm can
+    // confirm its own injection from SMC scratch[10], because the gate republishes
+    // the raw value there; the PASS arm cannot, because that publication sits on
+    // the failure branch and the pass branch writes nothing at all. Without this
+    // probe a pass-arm test whose +sep_dft_status silently failed to apply would
+    // read the tb default 0x113 -- which has mem_repair_success, mbist_done AND
+    // mbist_pass set, so it would still boot and still be green, and the whole
+    // discrimination the testcase rests on would be untested.
+    output logic [31:0]       smc_dft_status_probe_o,
+    // Count of SEP->SMC accesses that landed outside every register window the
+    // generated SMC map declares. Non-zero means the ROM used an offset this
+    // design does not implement -- see the SMC address decode check below. Any
+    // test may assert this is 0; the flat axi_sim_mem cannot catch it otherwise.
+    output logic [31:0]       smc_addr_violations_o,
     output logic [31:0]       km_rom_req_count_o,
     output logic [31:0]       km_sram_req_count_o,
     output logic [31:0]       km_sram_write_count_o,
@@ -638,7 +657,7 @@ module sep_uvm_top
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4001_0100+, straps 0x4000_2090, SMC SRAM
+        // Route the SMC region (scratch 0x4003_9080+, straps 0x4000_2090, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
         // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
@@ -661,7 +680,7 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // SEP->SMC external AXI responder (real-ROM boot only).
-    // The Boot ROM accesses the SMC scratch registers (0x4001_0100+) and SMC
+    // The Boot ROM accesses the SMC scratch registers (0x4003_9080+) and SMC
     // SRAM (0x4006_0000, manifest+BL1) over sep_ext_to_smc_axi. A behavioral
     // axi_sim_mem gives those a real memory (R/W), so the ROM's scratch
     // round-trip passes and its non-SPI manifest fetch works. The backing
@@ -708,40 +727,171 @@ module sep_uvm_top
         .axi_rsp_o (smc_mem_rsp_arr)
     );
 
+    // ------------------------------------------------------------------
+    // SMC address decode check.
+    //
+    // WHY THIS EXISTS. u_smc_mem is a FLAT axi_sim_mem: it answers at whatever
+    // address the ROM presents, so a wrong SEP<->SMC offset is invisible -- the
+    // testbench simply seeds the wrong address too and every test stays green.
+    // That is exactly how four offsets in sep_smc_interface.h drifted out of
+    // agreement with this design's generated map (smc_addr.h) without a single
+    // test failing: SCRATCH_BASE, DFX_CTRL_STATUS_SMU and both FUSE_MAP entries
+    // all pointed into unmapped holes.
+    //
+    // This checker restores the one property the flat model threw away: an
+    // access outside a register window that actually exists is an ERROR. The
+    // windows below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen
+    // as 0x4000_XXXX from SEP, the identity mapping this tb configures via
+    // smc_global_base_addr_i). Keep them in step with that header; if the ROM
+    // legitimately needs a new block, add its authoritative base/size here
+    // rather than widening an existing window.
+    localparam int unsigned SmcNumWindows = 6;
+    // {base, size} pairs, SEP-side addresses.
+    localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
+        56'h4000_2000,  // SMC_RESET_UNIT            (straps LO/HI)
+        56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
+        56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
+        56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
+        56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
+        56'h4006_0000   // SPM_MEMORY                (manifest + BL1)
+    };
+    localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
+        56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
+        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000
+    };
+
+    // Counted as well as reported: a cocotb test can require this to be 0, so the
+    // check cannot be silently lost if $error severity is ever downgraded.
+    int unsigned smc_addr_violations;
+    assign smc_addr_violations_o = smc_addr_violations;
+
+    function automatic bit smc_addr_mapped(input logic [55:0] a);
+        smc_addr_mapped = 1'b0;
+        for (int unsigned w = 0; w < SmcNumWindows; w++) begin
+            if (a >= SmcWinBase[w] && a < (SmcWinBase[w] + SmcWinSize[w])) begin
+                smc_addr_mapped = 1'b1;
+            end
+        end
+    endfunction
+
+    always @(posedge clk_i) begin
+        if (rst_ni) begin
+            if (ext_to_smc_req_w.aw_valid && ext_to_smc_resp_w.aw_ready &&
+                !smc_addr_mapped(ext_to_smc_req_w.aw.addr)) begin
+                smc_addr_violations++;
+                $error("[tb] SMC ADDRESS DECODE: write to 0x%0h is outside every register window in smc_addr.h -- the ROM is using an offset this design does not implement",
+                       ext_to_smc_req_w.aw.addr);
+            end
+            if (ext_to_smc_req_w.ar_valid && ext_to_smc_resp_w.ar_ready &&
+                !smc_addr_mapped(ext_to_smc_req_w.ar.addr)) begin
+                smc_addr_violations++;
+                $error("[tb] SMC ADDRESS DECODE: read from 0x%0h is outside every register window in smc_addr.h -- the ROM is using an offset this design does not implement",
+                       ext_to_smc_req_w.ar.addr);
+            end
+        end else begin
+            smc_addr_violations <= 0;
+        end
+    end
+
     // Preload the SMC memory so the Boot ROM's non-SPI manifest path proceeds:
-    //   scratch[9] (0x4001_0148) = SMC_SEP_STATUS_MANIFEST_READY (bit1) so the
-    //   ROM's manifest-ready poll breaks; scratch[8] (0x4001_0140) = manifest
+    //   scratch[9] (0x4003_90C8) = SMC_SEP_STATUS_MANIFEST_READY (bit1) so the
+    //   ROM's manifest-ready poll breaks; scratch[8] (0x4003_90C0) = manifest
     //   offset 0. The manifest+BL1 image is loaded from +sep_smc_mem_hex if given.
     string smc_mem_image;
     logic [31:0] dft_status_ovr;
+    logic [31:0] straps_hi_ovr;
+    logic [31:0] straps_lo_ovr;
     initial begin
         #1;
         // scratch[9] status: SRAM_INIT|MANIFEST_READY|BUFFER_READY|SRAM_PROTECTED
-        u_smc_mem.mem[56'h4001_0148] = 8'h0F;
+        u_smc_mem.mem[56'h4003_90C8] = 8'h0F;
         // scratch[8] manifest offset = 0x1000 (TBL1 manifest at that offset in the
         // packed SMC image -> manifest_addr = 0x4006_0000 + 0x1000). No primary
         // strap -> boot_from_spi()=false -> non-SPI (SMC-SRAM) manifest path.
-        u_smc_mem.mem[56'h4001_0140] = 8'h00;
-        u_smc_mem.mem[56'h4001_0141] = 8'h10;
-        // DFX_CTRL_STATUS_SMU (smc_base+0xF800): mem_repair done(bit0)+success(bit1)
-        // so the ROM's DFT/MEM_REPAIR gate passes (models mem-repair completed OK).
-        u_smc_mem.mem[56'h4000_F800] = 8'h03;
-        // +sep_boot_from_spi flips the ROM to its SPI manifest path by setting
-        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x2090; boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h), and boot_recovery
-        // lives in STRAPS_HI, which stays 0. Bit 25 is byte 3 of the word, bit 1.
-        // Default off: without it the ROM keeps taking the SMC-SRAM branch, so
-        // sep_rom_non_secure_boot_test is unaffected.
-        if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[56'h4000_2093] = 8'h02;
-            $display("[tb] STRAPS_LO[25] primary_chiplet=1 -> ROM boots from SPI");
-        end
+        u_smc_mem.mem[56'h4003_90C0] = 8'h00;
+        u_smc_mem.mem[56'h4003_90C1] = 8'h10;
+        // DFX_CTRL_STATUS_SMU (smc_base+0xB800) = 0x00000113, the healthy part:
+        //   bit 0  mem_repair_done     bit 1 mem_repair_success
+        //   bit 4  mbist_done          bit 8 mbist_pass
+        // The ROM's boot gate checks BOTH arms (vector.S), so the MBIST bits are
+        // not decoration: without mbist_done the gate polls for it, times out
+        // after MBIST_DONE_WAIT_ITERS and halts. Every rom_fw test that does not
+        // pass +sep_dft_status inherits this word, so it must represent a part
+        // that boots. It was 0x03 while the gate only read mem_repair_success.
+        u_smc_mem.mem[56'h4000_B800] = 8'h13;
+        u_smc_mem.mem[56'h4000_B801] = 8'h01;
+        // STRAPS_LO (smc_base+0x2090) and STRAPS_HI (+0x2094), all eight bytes,
+        // explicitly zero.
+        // REQUIRED, not tidiness: u_smc_mem.mem is an associative array, so
+        // reading a key that was never written yields X. Both halves are now read
+        // by the ROM's pre-C boot gate -- STRAPS_LO[13] BYPASS_SRAM_REPAIR and
+        // STRAPS_HI[22] MBIST_BYPASS (vector.S) -- and an X there makes the gate
+        // branch on an undefined bit. STRAPS_LO additionally needs it because
+        // +sep_boot_from_spi and +sep_straps_lo read-modify-write these bytes so
+        // that they can be combined, and the OR would propagate the X.
+        //
+        // Zeroing the HIGH half matters only on a 4-state simulator. Verilator is
+        // 2-state, so an unwritten key reads 0 there and the tests pass either
+        // way; sep_sim_cfg.toml also lists vcs and xcelium, where without this the
+        // MBIST arm would branch on X for every test that does not pass
+        // +sep_straps_hi. Do not remove it because the Verilator runs are green.
+        u_smc_mem.mem[56'h4000_2090] = 8'h00;
+        u_smc_mem.mem[56'h4000_2091] = 8'h00;
+        u_smc_mem.mem[56'h4000_2092] = 8'h00;
+        u_smc_mem.mem[56'h4000_2093] = 8'h00;
+        u_smc_mem.mem[56'h4000_2094] = 8'h00;
+        u_smc_mem.mem[56'h4000_2095] = 8'h00;
+        u_smc_mem.mem[56'h4000_2096] = 8'h00;
+        u_smc_mem.mem[56'h4000_2097] = 8'h00;
         if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin
             $readmemh(smc_mem_image, u_smc_mem.mem);
             $display("[tb] SMC mem preloaded from %s", smc_mem_image);
         end
-        // MEM_REPAIR / MBIST gate injection, applied LAST so it also wins over a
-        // +sep_smc_mem_hex image that happens to cover 0xF800.
+        // ---- Explicit per-test injections. -------------------------------
+        // All three sit BELOW the $readmemh above, so an explicit request always
+        // wins over whatever a +sep_smc_mem_hex image happens to cover. Keeping
+        // them together is not cosmetic: the strap seed used to run ABOVE the
+        // $readmemh, so an SMC image that grew to cover 0x2090 would have
+        // silently cleared primary_chiplet while boot_recovery -- written below
+        // -- survived, quietly moving a recovery test onto the secondary arm.
+        //
+        // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
+        // smc_base+0x2090. Bit 25 is byte 3 of the word, bit 1. It is a strap
+        // value, NOT a boot-path selector: boot_from_spi() is
+        // `primary_chiplet && !boot_recovery` (boot_straps.h:46), so with
+        // +sep_straps_hi also asserting boot_recovery the ROM takes its RECOVERY
+        // branch instead -- which is exactly what sep_boot_recovery_test needs.
+        // Default off: without it the ROM keeps taking the SMC-SRAM secondary
+        // branch, so sep_rom_non_secure_boot_test is unaffected.
+        if ($test$plusargs("sep_boot_from_spi")) begin
+            u_smc_mem.mem[56'h4000_2093] = u_smc_mem.mem[56'h4000_2093] | 8'h02;
+            $display("[tb] STRAPS_LO[25] primary_chiplet=1");
+        end
+        // STRAPS_LO (smc_base+0x2090) whole-word override, the twin of
+        // +sep_straps_hi below. sep_smc_interface.h: [13] bypass_sram_repair,
+        // [21] status_rpt_disable, [25] primary_chiplet.
+        //
+        // Needed because the ROM's boot gate reads bit 13: OCAH-MAS makes
+        // BYPASS_SRAM_REPAIR (GPIO pin 13) mean repair never ran, and the gate
+        // skips its repair check entirely in that case rather than reading a 0
+        // status as a failure. Nothing could drive bit 13 before this: the only
+        // STRAPS_LO stimulus was +sep_boot_from_spi, which writes byte 3 alone,
+        // so bit 13 (byte 1) was permanently 0 and that branch was unreachable.
+        //
+        // Ordering with +sep_boot_from_spi is deliberate and both may be used
+        // together. This runs AFTER it and ORs rather than assigns, and the
+        // convenience flag above was changed to OR as well, so neither clobbers
+        // the other whichever bits each sets. Both sit after the $readmemh for
+        // the reason given above.
+        if ($value$plusargs("sep_straps_lo=%h", straps_lo_ovr)) begin
+            u_smc_mem.mem[56'h4000_2090] = u_smc_mem.mem[56'h4000_2090] | straps_lo_ovr[7:0];
+            u_smc_mem.mem[56'h4000_2091] = u_smc_mem.mem[56'h4000_2091] | straps_lo_ovr[15:8];
+            u_smc_mem.mem[56'h4000_2092] = u_smc_mem.mem[56'h4000_2092] | straps_lo_ovr[23:16];
+            u_smc_mem.mem[56'h4000_2093] = u_smc_mem.mem[56'h4000_2093] | straps_lo_ovr[31:24];
+            $display("[tb] STRAPS_LO or'd with 0x%08x (+sep_straps_lo): bypass_sram_repair=%0d",
+                     straps_lo_ovr, straps_lo_ovr[13]);
+        end
+        // MEM_REPAIR / MBIST gate injection.
         //
         // Writes the whole 32-bit word rather than just clearing bit 1, because
         // the point of the failure case is to prove the ROM gates on
@@ -750,12 +900,30 @@ module sep_uvm_top
         // useful stimulus is every bit set EXCEPT bit 1 (0xFFFFFFFD).
         // Little-endian byte order: byte 0 holds bits [7:0].
         if ($value$plusargs("sep_dft_status=%h", dft_status_ovr)) begin
-            u_smc_mem.mem[56'h4000_F800] = dft_status_ovr[7:0];
-            u_smc_mem.mem[56'h4000_F801] = dft_status_ovr[15:8];
-            u_smc_mem.mem[56'h4000_F802] = dft_status_ovr[23:16];
-            u_smc_mem.mem[56'h4000_F803] = dft_status_ovr[31:24];
+            u_smc_mem.mem[56'h4000_B800] = dft_status_ovr[7:0];
+            u_smc_mem.mem[56'h4000_B801] = dft_status_ovr[15:8];
+            u_smc_mem.mem[56'h4000_B802] = dft_status_ovr[23:16];
+            u_smc_mem.mem[56'h4000_B803] = dft_status_ovr[31:24];
             $display("[tb] DFX_CTRL_STATUS_SMU overridden to 0x%08x (+sep_dft_status)",
                      dft_status_ovr);
+        end
+        // STRAPS_HI (smc_base+0x2094) = bits [63:32] of the 64-bit strap word.
+        // sep_smc_interface.h: [23] boot_recovery, [24] bl0_pll_clk,
+        // [29] rotate_update. STRAPS_LO already has a strap-specific plusarg
+        // (+sep_boot_from_spi) but nothing reached the high half, so the recovery
+        // and rotate boot modes had no stimulus at all.
+        //
+        // Whole-word, like +sep_dft_status: a per-bit flag would need one plusarg
+        // per strap and could not express a combination, and the ROM reads the
+        // word once (boot_straps.c:14-26) so partial writes would be the odd case
+        // rather than the normal one. Little-endian: byte 0 holds bits [7:0].
+        if ($value$plusargs("sep_straps_hi=%h", straps_hi_ovr)) begin
+            u_smc_mem.mem[56'h4000_2094] = straps_hi_ovr[7:0];
+            u_smc_mem.mem[56'h4000_2095] = straps_hi_ovr[15:8];
+            u_smc_mem.mem[56'h4000_2096] = straps_hi_ovr[23:16];
+            u_smc_mem.mem[56'h4000_2097] = straps_hi_ovr[31:24];
+            $display("[tb] STRAPS_HI set to 0x%08x (+sep_straps_hi): recovery=%0d rotate=%0d",
+                     straps_hi_ovr, straps_hi_ovr[23], straps_hi_ovr[29]);
         end
     end
 
@@ -767,17 +935,35 @@ module sep_uvm_top
     logic [31:0] smc_scratch10_q;
     always @(posedge clk_i) begin
         smc_scratch10_q <= {
-            u_smc_mem.mem.exists(56'h4001_0153) ? u_smc_mem.mem[56'h4001_0153] : 8'h00,
-            u_smc_mem.mem.exists(56'h4001_0152) ? u_smc_mem.mem[56'h4001_0152] : 8'h00,
-            u_smc_mem.mem.exists(56'h4001_0151) ? u_smc_mem.mem[56'h4001_0151] : 8'h00,
-            u_smc_mem.mem.exists(56'h4001_0150) ? u_smc_mem.mem[56'h4001_0150] : 8'h00
+            u_smc_mem.mem.exists(56'h4003_90D3) ? u_smc_mem.mem[56'h4003_90D3] : 8'h00,
+            u_smc_mem.mem.exists(56'h4003_90D2) ? u_smc_mem.mem[56'h4003_90D2] : 8'h00,
+            u_smc_mem.mem.exists(56'h4003_90D1) ? u_smc_mem.mem[56'h4003_90D1] : 8'h00,
+            u_smc_mem.mem.exists(56'h4003_90D0) ? u_smc_mem.mem[56'h4003_90D0] : 8'h00
         };
     end
     assign smc_scratch10_probe_o = smc_scratch10_q;
 
+    // DFX_CTRL_STATUS_SMU mirror, same sampling pattern and same reason as the
+    // scratch[10] mirror above (associative array, so no continuous assign).
+    logic [31:0] smc_dft_status_q;
+    always @(posedge clk_i) begin
+        smc_dft_status_q <= {
+            u_smc_mem.mem.exists(56'h4000_B803) ? u_smc_mem.mem[56'h4000_B803] : 8'h00,
+            u_smc_mem.mem.exists(56'h4000_B802) ? u_smc_mem.mem[56'h4000_B802] : 8'h00,
+            u_smc_mem.mem.exists(56'h4000_B801) ? u_smc_mem.mem[56'h4000_B801] : 8'h00,
+            u_smc_mem.mem.exists(56'h4000_B800) ? u_smc_mem.mem[56'h4000_B800] : 8'h00
+        };
+    end
+    assign smc_dft_status_probe_o = smc_dft_status_q;
+
 `else
     assign ext_to_smc_resp_w = ext_to_smc_resp_idle;
     assign smc_scratch10_probe_o = '0;
+    assign smc_dft_status_probe_o = '0;
+    // No SMC model, so no SEP->SMC traffic to decode. 0 rather than X: a test
+    // asserting "no address violations" must not pass on an undriven port, and
+    // must not fail on a build that never had an SMC to address.
+    assign smc_addr_violations_o = '0;
 `endif
 
     // ------------------------------------------------------------------
@@ -891,6 +1077,10 @@ module sep_uvm_top
     // written (imaged or ECC-valid 0). Constant bank indices keep the XMR legal.
     logic [7:0] bd_itcm_buf [262144];
     logic [7:0] bd_dtcm_buf [131072];
+    string        iccm_poke_arg;
+    logic [31:0]  iccm_poke_addr, iccm_poke_data;
+    logic [38:0]  iccm_poke_word;
+    int           iccm_poke_off;
     always @(posedge tcm_load_i) begin : backdoor_tcm_load
         int off;
         logic [31:0] w;
@@ -916,6 +1106,51 @@ module sep_uvm_top
             else        `BD_DCCM(0)[off[16:3]] = fw;
         end
         $display("[tb_backdoor_mem] TCM image loaded (sep_itcm.hex / sep_dtcm.hex)");
+
+        // ICCM single-word poke: +sep_iccm_word=<hexaddr>:<hexdata>
+        //
+        // MUST RUN HERE, AFTER THE BULK LOAD, AND THAT IS THE WHOLE POINT. An
+        // earlier version did this from its own `initial` block at time 0 and was
+        // silently erased: the loop above rewrites all 256 KiB of ICCM at
+        // tcm_load_i, so the poked word became whatever the ROM image happens to
+        // hold at that offset. sep_scratch_7_test then "passed" while executing
+        // ROM code at the handler address instead of the `j .` it thought it had
+        // placed there. Ordering between two separate always/initial blocks in
+        // the same timestep is not guaranteed either, which is why this is
+        // appended to the loader rather than raced against it.
+        //
+        // Needed because the ROM's warm-handler range check is ICCM
+        // (sep-boot-flow.puml:45), so proving dispatch means putting a real
+        // instruction at the seeded address and watching the PC settle there.
+        // +sep_sram_hex cannot do it: different memory. The reference testbench
+        // has the same need and the same answer -- +preload_iccm_ram_upper /
+        // _lower appear on exactly one entry in its whole regression, the
+        // scratch-7 test.
+        //
+        // ECC is not optional: the EL2 TCMs carry Hsiao SECDED, so a raw 32-bit
+        // write reads back as an ECC error rather than an instruction. Uses the
+        // same bd_riscv_ecc32() and the same off[3:2] bank interleave as the bulk
+        // load above -- a narrow entry point onto proven machinery.
+        if ($value$plusargs("sep_iccm_word=%s", iccm_poke_arg)) begin
+            if ($sscanf(iccm_poke_arg, "%h:%h", iccm_poke_addr, iccm_poke_data) != 2) begin
+                $fatal(1, "[tb] +sep_iccm_word must be <hexaddr>:<hexdata>, got '%s'",
+                       iccm_poke_arg);
+            end
+            iccm_poke_off = int'(iccm_poke_addr - 32'hC000_0000);
+            if (iccm_poke_off < 0 || iccm_poke_off + 3 >= 262144) begin
+                $fatal(1, "[tb] +sep_iccm_word address 0x%08x is outside ICCM [0xC0000000,0xC0040000)",
+                       iccm_poke_addr);
+            end
+            iccm_poke_word = {bd_riscv_ecc32(iccm_poke_data), iccm_poke_data};
+            case (iccm_poke_off[3:2])
+                2'd0: `BD_ICCM(0)[iccm_poke_off[17:4]] = iccm_poke_word;
+                2'd1: `BD_ICCM(1)[iccm_poke_off[17:4]] = iccm_poke_word;
+                2'd2: `BD_ICCM(2)[iccm_poke_off[17:4]] = iccm_poke_word;
+                2'd3: `BD_ICCM(3)[iccm_poke_off[17:4]] = iccm_poke_word;
+            endcase
+            $display("[tb] ICCM[0x%08x] = 0x%08x with ECC, AFTER the bulk load (+sep_iccm_word)",
+                     iccm_poke_addr, iccm_poke_data);
+        end
     end
 `undef BD_ICCM
 `undef BD_DCCM
@@ -1135,9 +1370,10 @@ module sep_uvm_top
     `SRAM_PL(3); `SRAM_PL(4); `SRAM_PL(5);
 `undef SRAM_PL
 
-    // Same for the warm block (reset by rst_ni && rst_warm_ni). word 0 is the
-    // ROM's warm-reset handler slot; the rest are unused by the ROM and are
-    // probed only so the port shape matches the cold probe.
+    // Same for the warm block (reset by rst_ni && rst_warm_ni). The ROM reads
+    // none of these words -- the handler slot is COLD scratch 7 -- so all eight
+    // are probed only to keep the port shape matching the cold probe. See the
+    // port declaration for why this is retained while unused.
 `define SCRATCH_WARM(i) \
     assign scratch_warm_probe_o[32*(i) +: 32] = \
         `SEP_CORE.sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_warm.field_storage.SCRATCH[i].data.value
@@ -1146,29 +1382,37 @@ module sep_uvm_top
 `undef SCRATCH_WARM
 
     // ------------------------------------------------------------------
-    // Warm-reset handler seed: +sep_warm_scratch0=<hex32>
+    // Warm-reset handler seed, SPEC VERSION: +sep_cold_scratch7=<hex32>
     // ------------------------------------------------------------------
-    // The ROM reads warm_scratch[0] in the first handful of instructions out of
-    // reset (vector.S), so the value has to be in place before the core fetches.
-    // It cannot be staged earlier than reset release: the warm block's async
-    // reset is (rst_ni && rst_warm_ni), so anything written while rst_ni is low
-    // is wiped. bring_up_cpu_boot releases rst_ni, waits for fuse sense, then
-    // waits another 30 cycles before pulsing i_cpu_run_req_i -- so a deposit a
-    // few cycles after rst_ni rises sits comfortably inside that window.
+    // Seeds the register the ROM reads for its warm-handler slot.
+    // sep-boot-flow.puml:42-56 puts the address in SEP COLD Scratch 7 -- "always
+    // 0 on cold resets, maintains value across warm/watchdog resets" -- and the
+    // ROM was re-pointed there from WARM Scratch 0 (vector.S, FINDINGS F28).
     //
-    // A one-shot DEPOSIT, deliberately not a `force`. The ROM must be able to
-    // poison the register on its way out (sw zero, vector.S), and a force would
-    // silently defeat that -- which is precisely how a missing-poison
-    // (warm-reset re-entry) bug would hide from this test.
-    logic [31:0] warm_scratch0_seed;
-    initial begin : warm_scratch0_seed_deposit
-        if ($value$plusargs("sep_warm_scratch0=%h", warm_scratch0_seed)) begin
+    // The old +sep_warm_scratch0 deposit was removed with this change rather than
+    // left behind: both testcases that used it were migrated, so it had no
+    // callers, and an unused stimulus path is one nobody maintains or notices
+    // rotting.
+    //
+    // Same two-rail wait as the warm deposit, and for the same reason, even
+    // though the cold bank's retention is what makes it the right register:
+    // the write still has to land after reset release and before the core
+    // fetches. Waiting on rst_ni alone is what made sep_scratch_7_test fail five
+    // consecutive runs (F07/F09/F12) -- that was a testbench bug, not RTL.
+    //
+    // A one-shot DEPOSIT, not a `force`, for the same reason as the warm twin:
+    // the ROM poisons this register with -1 on the cold path, and a force would
+    // hide a missing poison.
+    logic [31:0] cold_scratch7_seed;
+    initial begin : cold_scratch7_seed_deposit
+        if ($value$plusargs("sep_cold_scratch7=%h", cold_scratch7_seed)) begin
             wait (rst_ni === 1'b1);
+            wait (sep_cpu_reset_n_o === 1'b1);
             repeat (4) @(posedge clk_i);
             `SEP_CORE.sep_system_peripherals.u_sep_system_csr
-                .u_sep_scratch_reg_warm.field_storage.SCRATCH[0].data.value = warm_scratch0_seed;
-            $display("[tb] warm_scratch[0] seeded 0x%08x (+sep_warm_scratch0)",
-                     warm_scratch0_seed);
+                .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
+            $display("[tb] cold_scratch[7] seeded 0x%08x (+sep_cold_scratch7)",
+                     cold_scratch7_seed);
         end
     end
 

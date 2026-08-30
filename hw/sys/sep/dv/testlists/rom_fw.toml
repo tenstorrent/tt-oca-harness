@@ -163,9 +163,10 @@ args = [
 # MEM_REPAIR (MBIST) boot gate, failure arm.
 #
 # Reuses build_ot/ rather than adding a fourth firmware profile: the DFT gate runs
-# in rom_main long before any manifest transport is selected, so which SPI variant
-# the ROM was built with cannot affect this arm, and sharing the profile means
-# sharing the already-built ROM and Verilator model with the OT boot tests.
+# pre-C in vector.S, before the DCCM scrub and long before any manifest transport
+# is selected, so which SPI variant the ROM was built with cannot affect this arm,
+# and sharing the profile means sharing the already-built ROM and Verilator model
+# with the OT boot tests.
 #
 # +sep_boot_from_spi is deliberately NOT passed. The gate is upstream of the
 # boot-path split, so the ROM stops before either transport is reached; adding the
@@ -179,9 +180,11 @@ args = [
 # not released until sense completes, so bypassing it would change the sequencing
 # the ROM actually sees.
 #
-# Timeout is well under the boot tests': this run ends at the gate (early in
-# rom_main) with a mailbox FAIL, so it never reaches the serial flash fetch or any
-# crypto. Raise it with an observed sim time if that ever stops being true.
+# Timeout is well under the boot tests': this run ends at the pre-C gate in
+# vector.S, so it never reaches the serial flash fetch or any crypto. It ends on
+# the terminal status word in cold_scratch[1], NOT on a mailbox FAIL -- the halt
+# path deliberately writes no mailbox at all (see the test docstring). Raise the
+# timeout with an observed sim time if that ever stops being true.
 name = "sep_firmware_mbist_fail_test"
 module = "rom_fw.sep_firmware_mbist_fail_test"
 target = "rom_boot"
@@ -198,27 +201,33 @@ args = [
 [[tests]]
 # Boot ROM warm-reset handler dispatch, accept-and-jump arm.
 #
-# NOTE ON THE NAME: this design's ROM reads WARM scratch 0 (vector.S), not scratch
-# 7. The name refers to the feature -- the scratch-held warm handler -- not the
-# register index. See the test docstring.
+# NOTE ON THE NAME: the name now matches the register. The ROM reads COLD scratch
+# 7 (vector.S), which is what sep-boot-flow.puml:42-56 specifies. It previously
+# read WARM scratch 0, and this note used to explain the name as referring to the
+# feature rather than the index; that explanation is obsolete (FINDINGS F28).
 #
 # Reuses build_ot/ for the same reason as the entry above: the warm branch is the
 # first decision in _start, upstream of everything transport-related.
 #
 # Two plusargs carry the whole stimulus and both are load-bearing:
-#   +sep_warm_scratch0  seeds the handler address the ROM must dispatch to. The tb
-#                       deposits it after rst_ni release (the warm block's reset is
-#                       rst_ni && rst_warm_ni, so earlier would be wiped) and well
-#                       before the core is let go.
-#   +sep_sram_hex       puts one `j .` instruction at that address. Without it the
+#   +sep_cold_scratch7  seeds the handler address the ROM must dispatch to. The tb
+#                       deposits it after rst_ni release and well before the core
+#                       is let go. (The deposit used to target the WARM bank, whose
+#                       rst_ni && rst_warm_ni reset wiped anything written earlier;
+#                       the cold bank does not have that race, but the test still
+#                       ASSERTS the seed was observed rather than assuming it.)
+#   +sep_iccm_word      puts one `j .` instruction (0x0000006f) at that address,
+#                       with ECC computed by the tb. Without it the
 #                       target is zero-filled, which is an illegal instruction, and
 #                       the ROM's trap_vector needs an sp the warm path never sets
 #                       up -- so the observation would be destroyed rather than made.
 # The two must agree on the address; the test asserts that they do.
 #
-# This entry covers the ACCEPT arm only. The reject arm (out-of-range ->
-# warm_reset_hang) is a separate procedure item and has no entry here yet, so
-# treat that leg as unverified rather than covered.
+# This entry covers the ACCEPT arm only. The reject arm has its own entry,
+# sep_warm_reset_invalid_hang_test (below), but that one seeds
+# WARM_HANDLER_RANGE_END and so drives the UPPER bound alone: the lower bound
+# (bltu, an address below ICCM base) and the beqz early-out to cold_boot have no
+# entry in any testlist. Treat those two legs as unverified.
 #
 # Short timeout: the ROM branches within the first ~15 instructions after the core
 # is released, and the run stops as soon as the jump is observed.
@@ -232,8 +241,8 @@ tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
-  "+sep_sram_hex={repo_root}/hw/sys/sep/dv/tb/sram_preloads/sep_warm_handler.hex",
-  "+sep_warm_scratch0=10000100",
+  "+sep_cold_scratch7=C0000100",
+  "+sep_iccm_word=C0000100:0000006f",
 ]
 
 [[tests]]
@@ -422,6 +431,72 @@ args = [
 ]
 
 [[tests]]
+# TP080 -- the EXT SRAM is cleared between the primary rejection and the backup
+# fetch. Subclasses the entry above and inherits its stimulus and every one of its
+# failover checks unchanged; what it adds is an SRAM scoreboard.
+#
+# Same axes and the same two plusargs as its parent, because the scenario is the
+# parent's scenario. No new plusarg, no new firmware profile, no testbench change:
+# the SRAM macro's storage array is already public_flat_rw (sep_public_scope.vlt:38)
+# and is therefore readable and writable from cocotb over VPI.
+#
+# TWO THINGS A READER SHOULD KNOW BEFORE TREATING A GREEN RUN AS F038 COVERAGE.
+#
+# 1. It covers the EXT SRAM half of TP080 only, and the reason the other half is
+#    missing is NOT that someone forgot a memset. sep-boot-flow.puml:152 asks for
+#    the SMC SRAM clear only "if SMC SRAM used", and puml:384-392 decides "used"
+#    from the manifest USE_EXT bit. The stimulus side of that is implemented and in
+#    use: the packer emits the bit (bootrom/prod/tools/tt-boot-manifest/src/
+#    pack_images.py:91) and every image this tree boots is built with it CLEAR
+#    (bootrom/prod/configs/non_secure_boot_test.yaml:32,101 and its secure/encrypted
+#    siblings all set use_ext_sram: 0). What is missing is the ROM's consuming
+#    branch: FLAG_ARGS_BIT_USE_EXT_SRAM (bootrom/prod/include/manifest.h:88) is
+#    referenced nowhere under bootrom/prod/src, and manifest_load.c:647-657 stages
+#    the payload in EXT SRAM regardless. The run observes exactly that -- it boots a
+#    manifest with flag_args=0x00000000 and then logs LOAD=0x10020000 /
+#    COPY_SRC=0x10002000, both EXT SRAM. So there is nothing for an SMC-clear
+#    assertion to check. (Independently, the only path whose manifest comes from SMC
+#    SRAM runs num_retries = 0, manifest_load.c:727, so it has no retry window at
+#    all.) The test asserts nothing about SMC SRAM and says so in its own log
+#    (CHK-SCOPE). Full evidence: FINDINGS F19 and its correction F21, in
+#    aegissocspec's .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md (that path is
+#    in the SPEC repo, not this one).
+# 2. It is one of the slower members of this group, and almost all of that is
+#    INHERITED rather than added here. The failover clear it asserts is 65536 CPU
+#    stores: measured in run 20260829_111100, MANIFEST_ERR=0x00030002 at 2154352 ns
+#    to MANIFEST_BACKUP at 18963904 ns is about 1.05M of that run's ~1.62M clocks.
+#    sep_spi_primary_fail_backup_test above pays the same cost in CYCLES -- it just
+#    does not assert anything about it. What this entry adds on top is the
+#    scoreboard's VPI traffic (one 32768-word fill plus its read-back, and one
+#    32768-word scan).
+#
+#    COMPARE IN CYCLES, NOT MILLISECONDS OR WALL SECONDS. The testbench randomises
+#    sys_clk_period per run, so simulated-time and wall-clock figures are not
+#    comparable between runs and an earlier version of this comment drew a wrong
+#    conclusion from exactly that. The parent's three runs on disk span 20.09,
+#    14.51 and 6.70 ms for the same work; the cycle count is what is invariant.
+#    Cycle-normalised, the parent band is 772-816 s per Mcycle against this
+#    entry's 856, so the scoreboard's attributable cost is roughly 97 s, about
+#    7.5% -- not the ~148 s / ~12% a naive wall-second subtraction gives, because
+#    that comparison used runs at 16 ns and 13 ns clock periods and TP080 also
+#    executed 4.8% more cycles. Treat 7.5% as an estimate with a real error bar,
+#    not as a measurement.
+#    Do not "speed it up" by scanning fewer words -- the claim is that the whole
+#    256 KiB was cleared, and a sparser scan cannot support it.
+name = "sep_failover_sram_clear_assertion_test"
+module = "rom_fw.sep_failover_sram_clear_assertion_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "failover", "sram", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
 # Both slot addresses blank, terminal error and hang. Expected outcome is fw_done
 # with fw_pass=0, so this test drives its own poll loop rather than
 # SepBootScoreboard. No manifest ever validates, so no crypto and no entropy run.
@@ -455,5 +530,400 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# MBIST arm of the boot gate, FAILURE case -- the leg neither existing MBIST
+# test reaches. sep_firmware_mbist_fail_test injects 0xFFFFFFFD, which stops on
+# the REPAIR arm before MBIST is ever evaluated, so without this entry the MBIST
+# check added for sep-boot-flow.puml:58-67 has no testcase that exercises its
+# rejection at all.
+#
+# +sep_dft_status=00000012 = mem_repair_success (bit 1) SET so the repair arm
+# passes, mbist_done (bit 4) SET so the gate stops polling and trusts the
+# verdict, mbist_pass (bit 8) CLEAR so that verdict is a failure. The test
+# asserts all three, because each one moves the run onto a different path: clear
+# bit 1 and it stops on repair; clear bit 4 and it reaches the same handler by
+# TIMEOUT instead, proving something else while still looking green.
+#
+# Reuses build_ot/ and the repair arm's axes for the same reason that one does:
+# the gate is upstream of every transport decision, so the SPI variant cannot
+# affect it. No +sep_boot_from_spi -- the ROM halts long before a transport is
+# chosen, and passing it would imply this test says something about SPI.
+name = "sep_firmware_mbist_only_fail_test"
+module = "rom_fw.sep_firmware_mbist_only_fail_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_dft_status=00000012",
+]
+
+[[tests]]
+# MEM_REPAIR (MBIST) boot gate, PASS arm -- the partner of
+# sep_firmware_mbist_fail_test. Same gate, same injection mechanism, opposite
+# stimulus and opposite expectation.
+#
+# +sep_dft_status=00000112 is exactly the three bits the gate requires and
+# NOTHING else: mem_repair_success (bit 1), mbist_done (bit 4), mbist_pass
+# (bit 8). It deliberately leaves mem_repair_done (bit 0), mem_repair_abort
+# (bit 2) and mbist_abort (bit 12) clear, so a gate that keyed on any of those
+# would fail here. Injecting nothing would leave the tb default 0x113, which also
+# boots but cannot tell which bits are load-bearing.
+#
+# This was 0x00000002 while the gate read only mem_repair_success. That value now
+# HANGS, and correctly so: with mbist_done clear the ROM waits for MBIST to
+# finish, times out, and treats it as a failure. If this entry is ever reverted to
+# 0x02 the symptom will be a very slow hang, not an obvious rejection.
+#
+# The gate writes nothing on the pass path (it is pre-C assembly, and every
+# console/status/scratch write sits on the failure branch), so this entry borrows
+# the OT-SPI non-secure boot as its "and then it booted" evidence. That makes the
+# axes and the timeout the same as sep_rom_ot_dma_boot_test's; it says nothing
+# about SPI, which is downstream of the gate.
+name = "sep_firmware_mbist_pass_test"
+module = "rom_fw.sep_firmware_mbist_pass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "mbist", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_dft_status=00000112",
+]
+
+[[tests]]
+# Recovery boot: PRIMARY_CHIPLET=1 + BOOT_RECOVERY=1 -> SMC-SRAM manifest.
+#
+# Three plusargs carry the whole stimulus and all three are load-bearing:
+#   +sep_boot_from_spi   seeds STRAPS_LO[25] (primary_chiplet). Without it the ROM
+#                        takes the SECONDARY arm, which reaches the same SMC-SRAM
+#                        wait loop and would look almost identical -- so the test
+#                        forbids BOOT_SECONDARY rather than trusting the strap.
+#   +sep_straps_hi       seeds STRAPS_HI[23] (boot_recovery). 0x00800000 sets that
+#                        bit and no other; STRAPS_HI[24] is bl0_pll_clk and
+#                        STRAPS_HI[29] is rotate_update, neither of which belongs
+#                        in this scenario.
+#   +sep_smc_mem_hex     stages the manifest+BL1 image at the SMC-SRAM base, which
+#                        is where the recovery path fetches from.
+#
+# smc_mem.hex comes from build/ while the ROM comes from build_ot/: the packed
+# image is transport-agnostic (same reason sep_rom_ot_dma_boot_test reads
+# build/non_secure_boot.bin), and [c_build.boot_rom_ot] runs `pack-images`, which
+# is the rule that produces it.
+#
+# build_ot rather than the SPI-stub ROM on purpose: the OT ROM CAN drive the flash
+# and the flash BFM is attached and preloaded, so "no SPI reads" is a real
+# observation about a capable ROM declining a working device.
+name = "sep_boot_recovery_test"
+module = "rom_fw.sep_boot_recovery_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "recovery", "strap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_straps_hi=00800000",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+]
+
+[[tests]]
+# ROTATE_UPDATE strap: the primary and backup manifest slots swap order.
+#
+# +sep_straps_hi=20000000 is STRAPS_HI[29] and nothing else. The test erases the
+# 0x1000 slot, so the only bootable image is at 0x41000 -- but that alone would
+# NOT prove rotation, because an unrotated ROM would reject 0x1000 as BAD_MAGIC
+# and then boot 0x41000 anyway. The evidence is address ORDER (asserted on the
+# console, on the retry label, and on the flash model's own transaction log), not
+# the fact that it booted.
+#
+# Unsigned image and the default TEST_DEV OTP: slot selection is upstream of the
+# crypto chain, so secure boot here would only add failure modes that say nothing
+# about rotation. No +sep_crypto_edn_force for the same reason.
+name = "sep_rotate_update_set_test"
+module = "rom_fw.sep_rotate_update_set_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "strap", "rotate", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_straps_hi=20000000",
+]
+
+[[tests]]
+# Primary manifest's public-key hash does not bind; the backup boots.
+#
+# Needs +sep_crypto_edn_force: the BACKUP is valid, so the full RSA-3072 modexp
+# runs on OTBN, which parks in UrndRefresh until EDN grants entropy. Same DV
+# shortcut as the other secure-boot entries -- it grants OTBN's EDN handshakes
+# only, and the RSA assertions are untouched, so SIG_VALID still means the
+# signature really verified.
+#
+# Timeout matches the other entries that run a modexp.
+name = "sep_firmware_primary_invalid_key_hash_test"
+module = "rom_fw.sep_firmware_primary_invalid_key_hash_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Both manifests fail the public-key hash bind -> terminal. The terminal partner
+# of sep_firmware_primary_invalid_key_hash_test, and the only member of the
+# backup-fail family whose PRIMARY defect is the one under test rather than a
+# BAD_MAGIC failover trigger.
+#
+# No +sep_crypto_edn_force: the hash bind precedes the signature step, so OTBN is
+# never driven. The test forbids RSA_VERIFY_START, so if that ordering ever
+# changed this entry would fail rather than silently start needing the shortcut.
+name = "sep_firmware_backup_invalid_key_hash_test"
+module = "rom_fw.sep_firmware_backup_invalid_key_hash_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# Backup selects ROM key slot 5 while CHIPLET_PUBK_REVOKE bit 5 is blown.
+#
+# Its own OTP image is the whole stimulus: sep_efuse_lc_prod_pubk_revoke5.toml is
+# sep_efuse_lc_prod.toml plus exactly that one bit. Slot 5 also has no compiled-in
+# digest, so this entry additionally pins the ORDER -- revocation before the
+# digest table -- by forbidding ROM_KEY_EMPTY.
+#
+# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_VERIFY_START is forbidden.
+name = "sep_firmware_backup_pubkey_rom_5_revoked_key_test"
+module = "rom_fw.sep_firmware_backup_pubkey_rom_5_revoked_key_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke5.toml",
+]
+[[tests]]
+# TP053-S: BL1 image size out of range. Both slots carry a zero-length SEP BL1
+# TOC entry, re-hashed and re-signed with dev0 so the crypto chain still passes
+# and the rejection is the payload validator's (manifest_load.c:380-383).
+# PROD + secure boot: the BL1 checks must be reached by the production path.
+# +sep_crypto_edn_force is required -- the RSA verify runs on both slots before
+# the payload is validated, and OTBN's EDN client would otherwise stall.
+name = "sep_bl1_size_invalid_test"
+module = "rom_fw.sep_bl1_size_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "bl1", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# TP053-E: BL1 entry_point == length, the smallest value check_bl1_image rejects
+# (manifest.h:286). Same shape as the size arm; only the mutated field and the
+# expected console marker differ.
+name = "sep_bl1_entry_invalid_test"
+module = "rom_fw.sep_bl1_entry_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "bl1", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# TP049: the primary's ciphertext is corrupted and the manifest re-sealed, so the
+# AES engine runs and the plaintext then fails the TOC identifier check.
+# PROD + CLASS_KEY preload: PROD enforces the crypto chain from the lifecycle, and
+# CLASS_KEY is the KBKDF root the ROM derives the AES key from.
+# +sep_crypto_edn_force covers EDN client 0 (AES) as well as OTBN's 2/3; without
+# it the AES masking PRNG never leaves reseed and the run hangs after
+# DECRYPT_START (see sep_firmware_encrypted_boot_test).
+#
+# ################ THIS TEST IS EXPECTED TO FAIL. DO NOT "FIX" IT. ################
+#
+# It is a deliberate known-fail sentinel, kept red on purpose while a
+# specification question is open. This framework has no xfail/expect_fail
+# mechanism, so a red `rom_fw` or `all` run with THIS test as the only failure is
+# the expected result, not a regression. Budget ~47 minutes for it.
+#
+# What it asserts and why it fails: the procedure (TP049 step 5) says a decryption
+# failure is TERMINAL. The ROM instead rejects the primary and fails over to the
+# backup, which then boots -- observed as DECRYPT_OK, MANIFEST_ERR=0x00030005,
+# then MANIFEST_SRC=0x00041000 and BL1_JUMP=0x10020000. CHK-NO-BACKUP-RETRY is
+# left at full spec strength and therefore fires.
+#
+# Who is right is NOT yet decided, which is exactly why this stays red. The
+# authoritative flow diagram (sep-boot-flow.puml) sides with the ROM: a primary
+# with an invalid TOC identifier is a <<Warning>> routed to the (S) backup-retry
+# connector, and only DECRYPTION_KEY_FAILED / DECRYPTION_FAILED are <<Error>> +
+# kill. So the procedure step looks over-generalised -- but that is the procedure
+# author's call to make, not DV's.
+#
+# Do NOT resolve this by relaxing CHK-NO-BACKUP-RETRY, by removing this entry from
+# the groups in all.toml, or by deleting the test. Any of those hides an open
+# specification dispute. When the procedure author rules, either the procedure is
+# corrected (then this test's expectation changes with a cited reason) or the ROM
+# is corrected (then this test goes green on its own).
+#
+# Full evidence, both variants, and the decision needed:
+#   .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md, entry F06
+#   (in the aegissocspec repo, not this one)
+# ################################################################################
+name = "sep_decryption_failure_terminal_test"
+module = "rom_fw.sep_decryption_failure_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# TP008: MEM_REPAIR gate, BYPASS arm -- the third arm of the pair formed by
+# sep_firmware_mbist_fail_test and sep_firmware_mbist_pass_test.
+#
+# +sep_dft_status=FFFFFFFD is the SAME injection the fail arm uses. The only
+# difference is the OTP: this test blows STATUS_RPT bit 2
+# (STATUS_RPT_SKIP_MEM_CHECK in vector.S) in the image it builds, so the gate finds the
+# failure, records it, and continues instead of halting. Keeping the stimulus
+# identical is what makes the fuse the sole cause of the different outcome.
+#
+# No +sep_efuse_preload: the image is built in the test because only one bit
+# differs from the default, exactly as the fail arm does.
+name = "sep_mbist_fail_continue_test"
+module = "rom_fw.sep_mbist_fail_continue_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "mbist", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_dft_status=FFFFFFFD",
+]
+
+[[tests]]
+# TP006: warm-dispatch REJECT arm -- the partner of sep_scratch_7_test, which
+# covers the accept arm with the same +sep_cold_scratch7 deposit mechanism.
+#
+# +sep_cold_scratch7=C0040000 is WARM_HANDLER_RANGE_END exactly (vector.S:
+# SEP ICCM base 0xC0000000 + size 0x40000), the smallest address the upper bound
+# rejects, so the run
+# pins the ROM's `bgeu` against a mistaken `bgtu`. It must not be 0 -- that is the
+# beqz early-out to cold_boot, not the hang -- and must not be 0xFFFFFFFF, which
+# is the value cold_boot itself poisons the register with and so could not be told
+# apart from a run that never armed the handler.
+#
+# The dispatch runs before the C runtime and before any transport is selected, so
+# no flash image, no SPI strap and no eFuse preload are needed; a zero OTP senses
+# to TEST_DEV, which is valid.
+name = "sep_warm_reset_invalid_hang_test"
+module = "rom_fw.sep_warm_reset_invalid_hang_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_cold_scratch7=C0040000",
+]
+
+[[tests]]
+# TP061E: a corrupted RSA signature is rejected by the OTBN verify itself.
+#
+# Both slots carry a single flipped signature bit, so the primary's rejection IS
+# the retry trigger (the procedure's step 5) and the backup then makes the run
+# terminal. Distinct from sep_firmware_backup_invalid_signature_test, which puts
+# BAD_MAGIC on the primary and therefore covers neither the "invalid signature is
+# a retryable class" leg nor the OTBN result itself: it requires only
+# RSA_VERIFY_FAIL, which manifest_crypto.c:245 also prints when OTBN fails to
+# init, load or execute. This entry requires RSA_EXEC then RSA_PKCS1_FAIL per
+# slot and forbids the three engine-error markers.
+#
+# +sep_crypto_edn_force is required (OTBN parks in UrndRefresh with no entropy
+# chain up), hence the dv_shortcut tag. It grants EDN handshakes only and leaves
+# every RSA input and assertion alone.
+#
+# ### THIS IS ONE OF THE SLOWEST TESTS IN THE GROUP. Budget ~35-45 minutes. ###
+# Two full RSA-3072 modular exponentiations run on the real OTBN, one per slot,
+# at roughly 5 ms of simulated time each. If a `rom_fw` or `all` regression
+# suddenly takes ~40 minutes longer than you remember, this entry is why. Do not
+# lower timeout_sec: the modexp cost is real work, not a hang.
+#
+# It is NOT the only slow member, and an earlier version of this comment wrongly
+# said it was. sep_bl1_size_invalid_test (~2013 s), sep_bl1_entry_invalid_test
+# (~2289 s) and sep_decryption_failure_terminal_test (~2837 s) each run two
+# modexps as well, and the last of those is slower than this one. What is
+# specific to this entry is that the two modexps ARE the feature under test
+# rather than a cost paid on the way to something else.
+name = "sep_otbn_rsa_verify_failure_test"
+module = "rom_fw.sep_otbn_rsa_verify_failure_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
 ]
