@@ -3511,7 +3511,7 @@ both lock flavours of one seed-selected spare.
 |===
 |Checker |Contract
 |CHK-STROBE
-|Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass.
+|Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass. The compare is the addressed 32-bit word: the generated SEP C headers contain no 4-byte-adjacent register pair, so a 64-bit beat has no neighbour CSR in bytes 4–7 and a widened strobe has no second register to corrupt.
 |CHK-WINDOW-DATA
 |Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is named with its reason. At least one window must have been verified: a walk where none was writable proves nothing and fails.
 |CHK-RANDCFG

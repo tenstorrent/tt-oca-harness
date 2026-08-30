@@ -203,8 +203,10 @@ def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
     as a single ``-f`` line. That text is blind both to a path added or removed inside the
     bender filelist and to a content-only edit of a file it names, so the digest here is what
     makes vendored or DUT RTL move the build identity. Each entry contributes its
-    path and the SHA-256 of its bytes; a path that does not resolve contributes
-    ``<missing>`` so a deleted file still moves the digest instead of failing the build.
+    repo-relative path (so the digest does not move when the same tree is built
+    from a different checkout) and the SHA-256 of its bytes; a path that does
+    not resolve contributes ``<missing>`` so a deleted file still moves the
+    digest instead of failing the build.
 
     Cost is one read of the named sources -- about 900 files and 11 MB for SEP, ~0.3 s.
     """
@@ -213,7 +215,7 @@ def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
         return []
     digest = hashlib.sha256()
     for path in sources:
-        digest.update(str(path).encode("utf-8"))
+        digest.update((repo_rel(root, path) or str(path)).encode("utf-8"))
         digest.update(b"\0")
         try:
             with path.open("rb") as handle:

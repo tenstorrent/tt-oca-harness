@@ -143,11 +143,11 @@ class SepAxiStrobeWindow:
         self.window_skipped: dict[str, str] = {}
 
     # The readback masks to 32 bits, which is the whole of the addressed
-    # register: every register in the SEP map is 8-byte spaced, so a 32-bit
-    # register owns its 64-bit beat outright and bytes 4-7 of that beat are
-    # unimplemented, not a neighbour. A strobe widened past the addressed lanes
-    # therefore has no second register to corrupt, and the addressed-word
-    # compare below is the whole contract.
+    # register. Every generated SEP C header was walked for a 4-byte-adjacent
+    # register pair: there are none. A 32-bit register therefore owns its
+    # 64-bit beat and bytes 4-7 are unimplemented, not a neighbour. A strobe
+    # widened past the addressed lanes has no second register to corrupt, and
+    # the addressed-word compare below is the whole contract.
     async def _rd(self, addr: int, *, size: int = 2) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
             f"sw_rd_0x{addr:08x}", op=SepAxiOp.READ, addr=addr,
@@ -218,11 +218,14 @@ class SepAxiStrobeWindow:
         with the response, not counted as a pass: the read-mask defect is only
         observable on a window that stores.
 
-        The accesses are marked expect_error so a refusal is the sequence's
-        own result rather than a scoreboard failure. Whether a window accepts
-        a bare CSR-path write depends on the engine's state (OTBN IMEM/DMEM
-        and the KMAC state window are gated), and that is a skip here, not a
-        defect -- the contract under test is the DATA, on a window that stores.
+        The write uses allow_unverified_write_resp so a refusal is the
+        sequence's own result rather than a scoreboard failure. expect_error
+        would be wrong: it demands a refusal, and a window that stores would
+        then fail. Whether a window accepts a bare CSR-path write depends on
+        the engine's state (OTBN IMEM/DMEM are gated), and that is a skip
+        here, not a defect -- the contract under test is the DATA, on a
+        window that stores. A write that is accepted and a read that then
+        refuses is a failure: the window stored, so the readback must return.
         """
         resp = await self._wr(p.addr, p.value, tolerate=True)
         if resp != RESP_OKAY:
@@ -230,8 +233,10 @@ class SepAxiStrobeWindow:
             return None
         resp, got = await self._rd(p.addr)
         if resp != RESP_OKAY:
-            self.window_skipped[p.name] = f"read resp={resp}"
-            return None
+            return (
+                f"{p.name} window 0x{p.addr:08x}: write accepted, read "
+                f"resp={resp}; the read-mask contract needs a readable window"
+            )
         if got != p.value:
             extra = (
                 " -- all zeros, the signature of a read that masked every byte"
