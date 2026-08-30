@@ -72,4 +72,6 @@ defines = [
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",
+  "--timescale",
+  "1ns/1ps",
 ]

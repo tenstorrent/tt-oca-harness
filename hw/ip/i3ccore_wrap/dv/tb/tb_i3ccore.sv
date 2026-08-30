@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+`timescale 1ns / 1ps
+
 /*************************************************************************
  * I3C Core Wrapper Testbench - Lightweight testbench for i3ccore_wrapper
  *
@@ -418,9 +420,6 @@ module tb_i3ccore;
         .rdata    (axi_rdata)
     );
 
-    //--------------------------------------------------------------------------
-    // Simple test: let it run for basic compilation check
-    //--------------------------------------------------------------------------
     initial begin
         $display("I3C Core Wrapper Testbench starting...");
 

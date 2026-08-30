@@ -24,7 +24,8 @@ import logging
 import sys
 import os
 
-from cocotb.triggers import ClockCycles, Timer
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotbext.axi import AxiResp
 
 # CCC Command Codes (Direct GET commands)
@@ -153,15 +154,10 @@ TtiTargetErrCtrl = _union_by_suffix("TARGET_ERR_CTRL", _TTI)
 
 
 def _bit(union, field):
-    """Bit offset of `field` within a generated register union.
+    """Return the bit offset of `field` in a generated register union.
 
-    Derived, never hand-written. The generated map is the only authority for bit
-    positions, and deriving them means a field that is renamed or moved by a
-    regeneration breaks loudly here instead of silently shifting which bit every
-    test masks — the failure mode is a test that still passes while checking the
-    wrong bit. The eight constants below were previously transcribed from
-    target_transaction_interface.rdl; all eight were correct at the time of this
-    change, so this is a rot-proofing change with no behavioural difference.
+    The generated map is authoritative; deriving offsets makes renamed or moved
+    fields fail loudly instead of silently masking the wrong bit.
     """
     struct = dict((f[0], f[1]) for f in union._fields_)["f"]
     offset = 0
@@ -240,6 +236,23 @@ class I3CHelper:
         self.axi = axi_master
         self.dut = dut
         self.log = log or logging.getLogger("i3c_api")
+        # Verilator + cocotbext-axi can miss a 1-cycle B/R: the DUT retires
+        # the beat while the Python sink still samples the pre-NBA value.
+        # Touching the handshake handles each posedge forces a VPI refresh.
+        cocotb.start_soon(self._verilator_axi_keepalive())
+
+    async def _verilator_axi_keepalive(self):
+        names = (
+            "axi_awvalid", "axi_awready", "axi_wvalid", "axi_wready",
+            "axi_bvalid", "axi_bready", "axi_arvalid", "axi_arready",
+            "axi_rvalid", "axi_rready",
+        )
+        while True:
+            await RisingEdge(self.dut.clk)
+            for name in names:
+                sig = getattr(self.dut, name, None)
+                if sig is not None:
+                    _ = sig.value
 
     async def write(self, addr, data, *, expect_resp=AxiResp.OKAY):
         """Write 32-bit value and require the AXI BRESP to match expect_resp.
@@ -421,8 +434,7 @@ class I3CController:
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR, 66600)
 
     async def configure_timing_pp(self):
-        """No-op: upstream core dropped the dedicated PP timing registers (kept for
-        call-site compatibility; PP timing derives from the generic T_HIGH/T_LOW)."""
+        """Retain call-site compatibility; PP timing derives from T_HIGH/T_LOW."""
         return
 
     async def configure_thresholds(self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0,
@@ -849,12 +861,9 @@ class I3CController:
         await self.h.write(target.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, tx_desc)
         self.h.log.debug(f"private_read: wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})")
 
-        # Pre-fill the target TX queue up to the WHOLE message or TX_DATA_QUEUE_FULL
-        # BEFORE issuing the read command. The target NACKs a read until the message is
-        # startable (whole-resident, or queue at the streaming start-threshold for
-        # messages larger than the queue), and this block-level API does not retry on
-        # NACK (chiplet fw does), so arming must win the race deterministically -- the
-        # old tiny threshold-sized prefill only worked by racing the address phase.
+        # Pre-fill the target TX queue through its available capacity before issuing
+        # the read. The target NACKs until the message is startable, and this API
+        # does not retry NACKs.
         if data_len > 0:
             while bytes_written < data_len:
                 qs = await self.h.read_into(
@@ -887,10 +896,8 @@ class I3CController:
                                  f"bytes_read={bytes_read}")
                 break
 
-            # Top up target TX by POLLING QUEUE_STATUS.tx_data_queue_full
-            # instead of waiting for TX_DATA_THLD_STAT, which this core hardwires to 0
-            # (tti.sv:273-274, "FW owns this queue"). FW-owns-queue model => poll, don't
-            # wait for the (unimplemented) threshold interrupt.
+            # Poll QUEUE_STATUS.tx_data_queue_full because this core does not provide
+            # TX_DATA_THLD_STAT for this FW-owned queue.
             while bytes_written < data_len:
                 qs = await self.h.read_into(
                     target.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
@@ -1427,10 +1434,7 @@ class I3CTarget:
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR, 66600)
 
     async def configure_timing_pp(self):
-        """No-op: the upstream core dropped the dedicated PP timing registers.
-
-        Kept for call-site compatibility (see I3CController.configure_timing_pp).
-        """
+        """Retain call-site compatibility; this core has no dedicated PP timing."""
         return
 
     async def configure_thresholds(self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0,
@@ -1483,8 +1487,7 @@ class I3CTarget:
 
         Clears TTI_CONTROL.IBI_EN. Needed because that bit is SET at reset
         (TTI_CONTROL reset value 0x1400), so simply not calling enable_ibi_mode()
-        leaves IBI generation ENABLED. The RTL gates transmission on this bit
-        (i3c_target_fsm.sv: ibi_pending = ibi_byte_valid_i && ibi_enable_i && ...).
+        leaves IBI generation ENABLED. The RTL gates transmission on this bit.
 
         Returns:
             int: TTI_CONTROL.ibi_en as read back, so the caller can assert it is 0.
@@ -1599,33 +1602,8 @@ class I3CTarget:
         return False
 
 
-# ===========================================================================
-# ADDITIVE-ONLY SECTION -- DV-CARD I3C_CTRL_017 (i3c_ctrl_intr_threshold_test)
-# ===========================================================================
-# Nothing above this line is modified, renamed or re-ordered: 30 other cocotb
-# modules import from this file. This block only ADDS register offsets, ctypes
-# unions and derived bit positions for the four-register interrupt model and the
-# threshold/queue registers that DV-CARD I3C_CTRL_017 exercises.
-#
-# Every offset is imported by symbol from the generated map (never hand-copied),
-# same rot-proofing rule as the block at the top of this file. The values in the
-# generated map at the time of this change are:
-#   INTR_STATUS         BASE + 0x20   (I3CBASE_INTR_STATUS_REG_ADDR        = 0x020)
-#   INTR_STATUS_ENABLE  BASE + 0x24   (I3CBASE_INTR_STATUS_ENABLE_REG_ADDR = 0x024)
-#   INTR_SIGNAL_ENABLE  BASE + 0x28   (I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR = 0x028)
-#   INTR_FORCE          BASE + 0x2C   (I3CBASE_INTR_FORCE_REG_ADDR         = 0x02C)
-#   RESET_CONTROL       BASE + 0x10   (queue/FIFO reset, used for cleanup only)
-# and, with PIO_SECTION_OFFSET = 0x80 (BASEREGS parameterisation
-# "PIO_OFFSET_80"), the PIO set that already exists above resolves to
-#   RESPONSE_QUEUE_PORT PIO + 0x04 = 0x084   (PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-#   XFER_DATA_PORT      PIO + 0x08 = 0x088   (PIOCONTROL_TX_DATA_PORT_REG_ADDR /
-#                                             PIOCONTROL_RX_DATA_PORT_REG_ADDR)
-#   QUEUE_SIZE          PIO + 0x18 = 0x098   (PIOCONTROL_QUEUE_SIZE_REG_ADDR)
-#   PIO_INTR_STATUS     PIO + 0x20 = 0x0A0   (PIOCONTROL_PIO_INTR_STATUS_REG_ADDR)
-#   PIO_INTR_STATUS_EN  PIO + 0x24 = 0x0A4
-#   PIO_INTR_SIGNAL_EN  PIO + 0x28 = 0x0A8
-#   PIO_INTR_FORCE      PIO + 0x2C = 0x0AC
-# so no new PIO symbols are needed -- the card's PIO offsets are already here.
+# Register offsets are imported from generated map symbols rather than copied,
+# keeping the generated map authoritative across register regeneration.
 
 I3CBASE_INTR_STATUS_REG_ADDR = _csr.I3CBASE_INTR_STATUS_REG_ADDR
 I3CBASE_INTR_STATUS_ENABLE_REG_ADDR = _csr.I3CBASE_INTR_STATUS_ENABLE_REG_ADDR
