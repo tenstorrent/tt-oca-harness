@@ -140,7 +140,7 @@ failed to derive, or that has been revoked, reports `KM_ERR_ROOT_CLEARED` when a
 command would have used it.
 
 Revoking a root is the same hardware operation as revoking a key: the KM asserts
-`ERASE_KEY` on the root's slot, which wipes the material. `CMD_CLEAR_ID_ROOT`,
+`ERASE` on the root's slot, which wipes the material. `CMD_CLEAR_ID_ROOT`,
 `CMD_CLEAR_OWNER_KEYS` and `CMD_CLEAR_HW_KEYS` all clear roots this way, in
 either mode. Because root slots are sealed from derivation onwards, clearing one
 retires its slot rather than freeing it (<<km-kpv-slot-map>>), so a revoked root
@@ -256,7 +256,7 @@ made available to it and can revoke it, but it can neither mint nor replace one,
 and the slot map is therefore binding on it regardless of what its own code
 believes the map to be.
 
-Destruction stays available everywhere. `ERASE_KEY` is exempt from `lock_write`,
+Destruction stays available everywhere. `ERASE` is exempt from `lock_write`,
 `lock_use` and `SEAL` alike — the exemption every revocation command is built
 on, so `CMD_KEY_REVOKE` and the bulk sweeps keep working after handover, on root
 slots as much as key slots (<<km-handover-posture>>). What the seal changes is
@@ -2629,8 +2629,10 @@ message buffers, the PRNG state and every scratch copy of key material ROM
 handled during the boot.
 
 . *Clear GPRs.*  All general-purpose registers except the jump target
-  (`x5`) are cleared to zero.  `x5` is then used to jump, after which it
-  too is zeroed by `x0` convention.
+  (`x5`) are cleared to zero.  `x5` is cleared last because it carries the
+  target, and the jump is `jalr zero, 0(x5)`, which discards the link address
+  into `x0` rather than writing `x5`.  Mutable firmware therefore lands with
+  every register zeroed except `x5`, which still holds its own entry address.
 
 . *Enable SRAM execution mode.*  Immediately before the jump, the assembly
   performs a triple write to `KMCSR.SRAM_EXEC_MODE.enable` (write-1-only,
@@ -2795,7 +2797,7 @@ one of them survives a hostile or defective image:
 
 * *Hardware-enforced,* and so binding on any image: the seal on the root slots
   and the slot map it pins (<<km-kpv-slot-map>>), retirement as the outcome of
-  clearing a sealed slot, `ERASE_KEY` as the only path that clears a root,
+  clearing a sealed slot, `ERASE` as the only path that clears a root,
   `SRAM_EXEC_MODE` being write-1-only, the execute-permission whitelist and the
   ROM lockout, the OTP read-locks, the per-slot `lock_write`, `lock_use` and
   `seal` bits, and the dual-share engine key ports.
@@ -3424,7 +3426,7 @@ read. It has the following execution flow:
 
 These functions provide firmware abstractions for the KPV. The KPV is a bank of
 key-data registers plus, per slot, a control register carrying the `lock_use`,
-`lock_write` and `seal` bits and the `ERASE_KEY` trigger.
+`lock_write` and `seal` bits and the `ERASE` trigger.
 Firmware drives the control register and reads the key and status registers.
 Every function here operates on one slot, addressed by slot index. The KPV has no
 notion of a key spanning slots, so grouping slots into keys belongs to the key
@@ -3506,10 +3508,10 @@ such path (<<km-material-flow>>).
 
 Invokes the hardware erase state machine on one slot:
 
-. Asserts the slot's `ERASE_KEY` trigger. The write-1 trigger is issued
+. Asserts the slot's `ERASE` trigger. The write-1 trigger is issued
 three times so a single skipped store (e.g. from a fault-injection
 glitch) cannot prevent the erase from starting.
-. Polls the slot's `ERASE_KEY` bit until the hardware self-clears it.
+. Polls the slot's `ERASE` bit until the hardware self-clears it.
 
 The state machine overwrites every key word of the slot (through the KPV
 scrambler). Erase is blocked by nothing at all — not `lock_write`, not
