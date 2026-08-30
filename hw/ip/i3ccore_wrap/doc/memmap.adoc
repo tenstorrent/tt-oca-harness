@@ -28,9 +28,9 @@ Transaction Interface (0x200-0x290), SoC Management Interface (0x300-0x390,
 includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 (0x3A0)
 * *DAT Section* (0x400-0x7FF): Device Address Table, 128-entry address window
-(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=32 (usable index 0-31)
-* *DCT Section* (0x800-0xFFF): Device Configuration Table, 128-entry address window
-(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=32 (usable index 0-31)
+(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=16 (usable index 0-15)
+* *DCT Section* (0x800-0xFFF): Device Characteristic Table, 128-entry address window
+(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)
 
 ====== Address Alignment and Access
 

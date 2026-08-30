@@ -543,9 +543,12 @@ module dtp_uvm_top
     dtp_fcov u_dtp_fcov (
         .tck_i          (jtag_tck),
         .tms_i          (jtag_tms),
+        .tdi_i          (jtag_tdi),
+        .tdo_i          (jtag_tdo),
         .trst_ni        (jtag_trst),
         .tap_state_i    (jtag_ptap_state),
-        .inst_decoded_i (jtag_ptap_inst_decoded)
+        .inst_decoded_i (jtag_ptap_inst_decoded),
+        .dbg_disable_i  (dbg_disable)
     );
 
 `ifdef UVM
