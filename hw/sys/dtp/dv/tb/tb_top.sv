@@ -616,6 +616,94 @@ module dtp_uvm_top
         .sep_otp_rready_i  (sep_otp_axil_rready)
     );
 
+    // Debug-TDR coverage (TMP / IC_RESET / DEBUG_CONTROL / CAPS): flattened
+    // TDR outputs plus the TMP unit and clock-stop contributions through
+    // hierarchical references.
+    dtp_debug_tdr_fcov u_dtp_debug_tdr_fcov (
+        .tck_i                 (jtag_tck),
+        .tdi_i                 (jtag_tdi),
+        .tdo_i                 (jtag_tdo),
+        .trst_ni               (jtag_trst),
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .tap_state_i           (jtag_ptap_state),
+        .inst_decoded_i        (jtag_ptap_inst_decoded),
+        .ic_reset_smc_ovrd_i   (jtag_ic_reset_smc_ovrd),
+        .ic_reset_smc_ctrl_n_i (jtag_ic_reset_smc_ctrl_n),
+        .ic_reset_sep_ovrd_i   (jtag_ic_reset_sep_ovrd),
+        .ic_reset_sep_ctrl_n_i (jtag_ic_reset_sep_ctrl_n),
+        .ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
+        .ic_reset_ext_ctrl_n_i (jtag_ic_reset_ext_ctrl_n),
+        .boot_stall_ovrd_i     (jtag_boot_stall_ovrd),
+        .boot_stall_i          (jtag_boot_stall),
+        .stop_clks_i           (stop_clks),
+        .cla_clock_stop_en_i   (cla_clock_stop_en),
+        .clk_stop_req_i        (xtrig_clk_stop_req),
+        .tmp_state_i           (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.tmp_state_q_bits),
+        .tmp_status_reg_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_status_reg.u_jtag_tmp_status_reg.tmp_status_reg_q),
+        .tmp_escape_cond_i     (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.bypass_escape_condition),
+        .jtag_clock_stop_i     (u_dut.jtag_clock_stop),
+        .cla_clock_stop_i      (u_dut.cla_clock_stop)
+    );
+
+    // Scan-network coverage (iJTAG SIBs / STAP 3DCR): flattened chain
+    // controls plus each STAP's stored 3DCR state through hierarchical
+    // references (sel_int is the stored select before the security gate).
+    dtp_scan_fcov u_dtp_scan_fcov (
+        .tck_i                  (jtag_tck),
+        .trst_ni                (jtag_trst),
+        .tap_state_i            (jtag_ptap_state),
+        .inst_decoded_i         (jtag_ptap_inst_decoded),
+        .dbg_disable_i          (dbg_disable),
+        .dft_secure_select_i    (jtag_dft_secure_select),
+        .dft_secure_shift_en_i  (jtag_dft_secure_shift_en),
+        .dft_select_i           (jtag_dft_select),
+        .dft_shift_en_i         (jtag_dft_shift_en),
+        .dfd_select_i           (jtag_dfd_select),
+        .dfd_shift_en_i         (jtag_dfd_shift_en),
+        .stap_io_tdo_oen_i      (jtag_stap_io_tdo_oen),
+        .stap_smc_tdo_oen_i     (jtag_stap_smc_tdo_oen),
+        .stap_sep_tdo_oen_i     (jtag_stap_sep_tdo_oen),
+        .stap_extra_tdo_oen_i   (jtag_stap_extra0_tdo_oen),
+        .stap_io_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel),
+        .stap_io_sel_int_i      (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel_int),
+        .stap_io_tms_hold_i     (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.tms_hold),
+        .stap_io_config_hold_i  (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.config_hold),
+        .stap_smc_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel),
+        .stap_smc_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel_int),
+        .stap_smc_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.tms_hold),
+        .stap_smc_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.config_hold),
+        .stap_sep_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel),
+        .stap_sep_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel_int),
+        .stap_sep_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.tms_hold),
+        .stap_sep_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.config_hold),
+        .stap_extra_sel_i       (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel),
+        .stap_extra_sel_int_i   (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel_int),
+        .stap_extra_tms_hold_i  (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.tms_hold),
+        .stap_extra_config_hold_i (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.config_hold)
+    );
+
+    // Cross-trigger coverage (CTP / CTM): CSR-write decode plus the
+    // cross-trigger GPIO and matrix handshake pins, all in the system-clock
+    // domain. The SV-UVM shape ties these inputs quiescent, so the bins
+    // collect only where the stimulus exists (the cocotb flow today).
+    dtp_xtrig_fcov u_dtp_xtrig_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .axil_awaddr_i         (xtrig_axil_awaddr),
+        .axil_awvalid_i        (xtrig_axil_awvalid),
+        .axil_awready_i        (xtrig_axil_awready),
+        .axil_wdata_i          (xtrig_axil_wdata),
+        .axil_wvalid_i         (xtrig_axil_wvalid),
+        .axil_wready_i         (xtrig_axil_wready),
+        .ctm_src_req_i         (xtrig_ctm_src_req),
+        .ctm_dst_req_i         (xtrig_ctm_dst_req),
+        .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
+        .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
+        .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
+        .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
