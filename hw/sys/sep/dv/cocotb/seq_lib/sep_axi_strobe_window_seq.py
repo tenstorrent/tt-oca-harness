@@ -142,6 +142,12 @@ class SepAxiStrobeWindow:
         self.window_ok = 0
         self.window_skipped: dict[str, str] = {}
 
+    # The readback masks to 32 bits, which is the whole of the addressed
+    # register: every register in the SEP map is 8-byte spaced, so a 32-bit
+    # register owns its 64-bit beat outright and bytes 4-7 of that beat are
+    # unimplemented, not a neighbour. A strobe widened past the addressed lanes
+    # therefore has no second register to corrupt, and the addressed-word
+    # compare below is the whole contract.
     async def _rd(self, addr: int, *, size: int = 2) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
             f"sw_rd_0x{addr:08x}", op=SepAxiOp.READ, addr=addr,

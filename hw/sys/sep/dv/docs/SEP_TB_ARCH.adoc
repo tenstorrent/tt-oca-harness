@@ -155,7 +155,7 @@ structs to cocotb-friendly scalar/vector ports.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes — observation-only unless listed as a signed-off inject
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
 |===
 
 Signed-off exceptions (do not extend without owner approval):
@@ -168,6 +168,9 @@ Signed-off exceptions (do not extend without owner approval):
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate, …).
+* *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
+  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
+  reach that port. Protocol, not data.
 
 === Environment Components
 

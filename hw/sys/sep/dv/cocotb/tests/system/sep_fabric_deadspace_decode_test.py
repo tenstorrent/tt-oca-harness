@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Intra-block dead-space decode. Hard FAILED until RTL refuses the wrap.
+"""Intra-block dead-space decode: a wrap past a block's extent must be refused.
 
 no_cpu / +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
 plus seed-selected dead offsets inside each block window.
@@ -9,18 +9,25 @@ A write or read past a block's allocated size must be refused (DECERR
 or SLVERR; the specification does not mandate which), and no live
 register in that block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
-still writing the register. The intra-block refuse rule is the filed
-RTL defect, not a shall written in ``memory_map.adoc``.
+still writing the register, so every probe reads back the window's live
+registers as well. ``memory_map.adoc`` states the rule: within an
+aperture only the unit's register extent responds, the remainder
+returns DECERR, and an access there never reaches the unit.
 
 Keep the full probe set. Do not XFAIL. Do not drop the addresses that
 already wrap.
 
-FIXME(#1306): KNOWN HARD FAIL. Every single-beat access to a dead offset
-refuses, but a later beat of a burst does not: AXI decodes the request address
-only, so an INCR begun in a block's last live words carries its remaining beats
-past REG_MAP_SIZE. entropy_source and sep_lifecycle_ctrl answer OKAY there, the
-other seven windows refuse. CHK-DEADSPACE-BURST fails until the RTL adds both
-blocks to OCAH_REG_ERR_CHECK_BLOCKS.
+CHK-DEADSPACE-BURST asserts the same refusal on a beat a single-beat probe
+cannot reach: AXI decodes the request address only, so an INCR begun in a
+block's last live words carries its remaining beats past REG_MAP_SIZE. Each
+burst that answers OKAY where the same address is refused as a single beat
+fails. The master reports one response for the whole burst, so a burst that
+refused only some of its beats cannot be told from one that refused all of
+them; a beat inside the extent is therefore also compared against the value the
+single-beat path reads, which catches data the single beat could not reach. A
+burst that times out is a failure of the audit, not a pass. A window whose dead space is
+4KB-aligned carries no legal burst into it and is reported as not auditable,
+never counted as a pass; a run where no window was auditable fails.
 """
 
 from __future__ import annotations
@@ -95,8 +102,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # last live words carries its later beats past REG_MAP_SIZE because AXI
         # decodes the request address only.
         #
-        # FIXME(#1306): entropy_source and sep_lifecycle_ctrl answer OKAY
-        # there; the other seven windows refuse.
+        # Those later beats must be refused too.
         # Do not XFAIL and do not demote to a log line --
         # the same rule as the wrap anchors above.
         burst_audited: list[str] = []
@@ -113,28 +119,55 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 burst_skipped.append(f"{win.name}: no live words before it")
                 continue
             burst_audited.append(win.name)
-            start, resp, timed_out, words, singles = \
+            start, resps, timed_out, words, singles = \
                 await dead.burst_across_extent(win)
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
                 where = "in-extent" if start + 4 * i < win.dead_lo else "PAST"
                 self.logger.info(
                     "deadspace burst-audit: %s beat%d 0x%08x %-9s burst=0x%08x "
-                    "single=0x%08x(resp=%d)",
-                    win.name, i, start + 4 * i, where, word, sdata, sresp)
+                    "single=0x%08x(resp=%d) beat_resp=%s",
+                    win.name, i, start + 4 * i, where, word, sdata, sresp,
+                    resps[i] if i < len(resps) else "n/a")
             self.logger.info(
-                "deadspace burst-audit: %s burst resp=%d timed_out=%s",
-                win.name, resp, timed_out)
-            for i, (sresp, _sdata) in enumerate(singles):
+                "deadspace burst-audit: %s beat responses=%s timed_out=%s",
+                win.name, resps, timed_out)
+
+            # A burst that never completed proves nothing either way, so it is
+            # a failure of the audit rather than a silent pass.
+            if timed_out:
+                burst_fails.append(
+                    f"{win.name} burst beginning 0x{start:08x} timed out, so "
+                    f"no beat response is evidence"
+                )
+                continue
+            # The master reports one response for the burst, not one per beat
+            # (`normalize_resp_list` wraps a scalar), so the aggregate is the
+            # only refusal evidence available here. It still fails a fabric
+            # that answers the whole burst OKAY while refusing the same address
+            # as a single beat.
+            worst = max(resps) if resps else RESP_OKAY
+            for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i
-                if addr < win.dead_lo or sresp != RESP_DECERR:
+                if addr >= win.dead_lo:
+                    if sresp == RESP_DECERR and worst == RESP_OKAY:
+                        burst_fails.append(
+                            f"{win.name} 0x{addr:08x} is refused as a single "
+                            f"beat (resp={sresp}) but the burst beginning "
+                            f"0x{start:08x} was accepted (resp={worst})"
+                        )
+                        break
                     continue
-                # The single beat proves the address is dead. If the burst was
-                # not refused, that same address answered a burst beat.
-                if resp == RESP_OKAY:
+                # Inside the extent, and only when the burst was accepted: an
+                # accepted burst must read what the single-beat path reads. A
+                # refused burst carries the error slave's poison on every beat,
+                # which is not data and is not compared.
+                if worst != RESP_OKAY:
+                    continue
+                if sresp == RESP_OKAY and words[i] != sdata:
                     burst_fails.append(
-                        f"{win.name} 0x{addr:08x} is refused as a single beat "
-                        f"(resp={sresp}) but a burst beginning 0x{start:08x} "
-                        f"was accepted (resp={resp})"
+                        f"{win.name} 0x{addr:08x} reads 0x{sdata:08x} as a "
+                        f"single beat but 0x{words[i]:08x} as beat{i} of the "
+                        f"burst beginning 0x{start:08x}"
                     )
                     break
 
@@ -155,9 +188,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 "which is the asserted contract.", len(dead.flavour_findings))
 
         # Adjudicate refuse/no-alias first and log their verdicts, then the
-        # burst contract. CHK-DEADSPACE-BURST fails on a known RTL defect, so
-        # raising on it before the other two summaries would stop either from
-        # ever reaching the log.
+        # burst contract, so a burst failure cannot stop the other two
+        # summaries from reaching the log.
         if fails:
             self.logger.error(
                 "CHK-DEADSPACE-REFUSE FAIL: %d fail line(s) on %d probes "

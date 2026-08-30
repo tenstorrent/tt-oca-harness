@@ -5,8 +5,8 @@
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
 refused -- DECERR or SLVERR, the specification does not mandate which.
-Several SEP blocks truncate the address, wrap it onto a live register,
-and answer OKAY, which is the defect this entry exists to catch.
+Truncating the address, wrapping it onto a live register and answering
+OKAY is what this sequence exists to catch.
 
 Allocated size comes from the generated export (or the OT/IP header for
 CSRNG / EDN / entropy_source). Window end comes from
@@ -217,7 +217,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
     )
 
 
-# (window name, addr, "r"|"w") — known wrap anchors. Every seed probes all of them.
+# (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("km_mailbox", 0x1092_0414, "w"),
     ("km_mailbox", 0x1092_0C04, "w"),
@@ -333,10 +333,9 @@ class SepDeadspace:
         land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says returns
         DECERR and never reaches the unit.
 
-        Returns the start address, the burst response, the timeout flag, the four
-        beats, and a single-beat read of each of the same addresses. A dead-space
-        beat that answers OKAY where the single beat is refused is the defect the
-        caller asserts on.
+        Returns the start address, the responses the master reported, the
+        timeout flag, the four beats, and a single-beat read of each of the same
+        addresses. The responses cover the burst, not one entry per beat.
         """
         beats = 4                     # two live beats, then two past the extent
         start = win.dead_lo - 4 * (beats // 2)
@@ -370,7 +369,7 @@ class SepDeadspace:
             if past and r != RESP_DECERR:
                 mon.release_expected_decerr(1)
             singles.append((r, d))
-        return start, seq.resp_code, seq.timed_out, words, singles
+        return start, list(seq.resp_list), seq.timed_out, words, singles
 
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
@@ -428,11 +427,18 @@ class SepDeadspace:
             resp, rdata, timed_out = await self._access(
                 SepAxiOp.READ, item.addr, expect_error=True,
             )
-            if resp == RESP_OKAY:
+            # `memory_map.adoc` makes two statements about the reserved
+            # remainder: it returns DECERR, and an access there never reaches
+            # the unit. The second holds whatever the response was, so the
+            # alias compare is not gated on OKAY -- a refused read that still
+            # hands back a live register's value has reached the unit. A real
+            # refusal carries the error slave's poison, which matches no
+            # allocated value.
+            if not timed_out:
                 for live_addr, live_val in snap.items():
                     if rdata == live_val:
                         fails.append(
-                            f"{win.name} read 0x{item.addr:08x} OKAY "
+                            f"{win.name} read 0x{item.addr:08x} resp={resp} "
                             f"rdata=0x{rdata:08x} aliases 0x{live_addr:08x}"
                         )
                         break

@@ -108,6 +108,13 @@ class sep_axi_map_refuse_test(sep_base_test):
         # bus, which is evidence independent of what the master reported. Every
         # credit armed for a DECERR was consumed by a real beat.
         seen = self.env.axi_monitor.expected_decerr_seen
+        # Both sides being zero would satisfy the compare below while proving
+        # nothing: this checker exists to show the walk actually refused
+        # something, so a run that observed no DECERR at all fails here.
+        assert refuse.decerr > 0, (
+            "CHK-NONVAC FAIL: the walk reported no DECERR response at all, so "
+            "the refusal contract has no evidence in this run"
+        )
         assert seen == refuse.decerr, (
             f"CHK-NONVAC FAIL: the master reported {refuse.decerr} DECERR "
             f"response(s) but the monitor saw {seen} on the bus"

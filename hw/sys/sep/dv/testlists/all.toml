@@ -24,15 +24,9 @@ schema_version = 1
 # firmware tests intentionally omit target and use the full-CPU default model.
 # Keep group membership aligned with each test's first run_modes[] entry.
 #
-# One test currently FAILs as an RTL-vs-spec reveal, not a regression. Do not
-# XFAIL it. CI `--items smoke` does not include it. A class regression is
-# expected one-red until RTL:
-#   sep_fabric_deadspace_decode_test CHK-DEADSPACE-REFUSE
-#     (intra-block unpopulated offsets must be refused; RTL wraps/aliases)
-#
 # Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They
 # run in the `all` and `rom_fw` groups, not `cpu`; this VPLAN does not grade them
-# (see docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
+# (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the

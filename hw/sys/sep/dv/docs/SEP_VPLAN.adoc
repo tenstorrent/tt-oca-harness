@@ -329,7 +329,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_fabric_deadspace_decode_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc` (inter-block `_RSV_` gaps), which does not state an intra-block refuse rule. Landing on a live register instead is a hard failure — see the dead-space row in <<known-limitations>>.
+|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds and the remainder returns DECERR. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
 |`sep_fabric_local_alias_datapath_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -660,7 +660,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Dead-space decode
 |PARTIAL
-|`sep_fabric_deadspace_decode_test` fails `CHK-DEADSPACE-BURST` only; refuse and no-alias pass (see <<known-limitations>>).
+|`sep_fabric_deadspace_decode_test` — single-beat refuse and no-alias are proven on VCS and on the Verilator merge gate. `CHK-DEADSPACE-BURST` passes but its predicate tests only the aggregate burst response, so it does not yet prove per-beat refusal; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
 |PROVEN
@@ -3570,18 +3570,18 @@ both lock flavours of one seed-selected spare.
 
 *Testlist*: `system.toml`
 
-*Randomization*: RANDCFG — the twelve known-bad offsets from every seed, plus two seed-selected dead offsets per block window Negative control, and a hard `FAILED` on landing.
+*Randomization*: RANDCFG — the twelve directed wrap offsets on every seed, plus two seed-selected dead offsets per block window.
 
-*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc` (inter-block `_RSV_` gaps), which does not state an intra-block refuse rule. Landing on a live register instead is a hard failure — see the dead-space row in <<known-limitations>>.
+*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds and the remainder returns DECERR. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
 
 *Test Procedure*:
 
 [arabic]
 . Each block owns an address window and populates only part of it.
 . An access past the allocated size owns no register and must be refused.
-. Window ends come from `hw/sys/sep/doc/memory_map.adoc` (inter-block `_RSV_` gaps); that file does not write an intra-block refuse rule.
-. The shall is the filed RTL defect
-. In several SEP blocks the RTL truncates the address instead, wraps it back inside the block, lands on a live register and answers OKAY, so software is never told.
+. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds, the remainder returns DECERR, and an access there never reaches the unit.
+. A refusal that still writes the register is a failure, so every probe reads back the window's live registers as well as the response.
+. A later beat of a burst that ends past the extent is held to the same rule as a single beat.
 
 *Checkers*:
 
@@ -3591,9 +3591,11 @@ both lock flavours of one seed-selected spare.
 |CHK-WINDOW-LIVE
 |Each of the ten watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller) has a non-empty allocated-register snapshot, so the no-alias compare can fail. The line reports readable and armed separately: the store compare drops hardware-updating addresses, so armed is the falsifiable count.
 |CHK-DEADSPACE-REFUSE
-|A read or write past the allocated size is refused (not OKAY). Every issue-228 anchor still wraps (KM `0x10920ff8` onto `SEP_CTRL`, DMA `0x108008a8` onto `+0xa8`). AES / lifecycle / some SPI probes already refuse. The accepted-OKAY count depends on the seed-selected probes; do not freeze it in the Proof cell.
+|Every probed address past the allocated size is refused (not OKAY), including the directed wrap anchors (KM `0x10920ff8`, DMA `0x108008a8`). A single accepted probe fails the checker; there is no tolerated count.
 |CHK-DEADSPACE-NO-ALIAS
-|No allocated register in that window changes across a probe. Directed issue-228 anchors still alias; the aliased-probe count is seed-varying.
+|No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access to the reserved remainder never reaches the unit, so a refused read that still hands back live data has reached it. A single aliased probe fails the checker.
+|CHK-DEADSPACE-BURST
+|A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
 |CHK-RANDCFG
 |Twelve anchors plus seed-selected dead offsets ran in one invocation.
 |===
@@ -4122,11 +4124,14 @@ constraint is not an open defect.
 |===
 |Topic |Contract
 
-|Dead-space decode (RTL)
-|`sep_fabric_deadspace_decode_test` fails `CHK-DEADSPACE-BURST` and must keep failing it. The burst audit skips a window whose dead space starts on a 4KB boundary or that has no live words before it -- no legal burst can enter it -- and both the audited and the skipped windows are named in the verdict line; a run where none was auditable fails. AXI decodes the request address only, so an INCR begun in a block's last live words carries its remaining beats past `REG_MAP_SIZE`: `entropy_source` and `sep_lifecycle_ctrl` answer OKAY on a burst beat at an address they refuse as a single beat, while the other seven windows refuse both. The fix is to add those two blocks to `OCAH_REG_ERR_CHECK_BLOCKS` (#1306). `CHK-DEADSPACE-REFUSE` and `CHK-DEADSPACE-NO-ALIAS` pass. Do not XFAIL and do not shrink the probe set to look green.
-
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
+
+|Routed-but-reserved spans (specification)
+|`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle. The folded `sep_fabric_decode_error_response_test` did require a refusal on those locals, so this is a deliberate narrowing to what the map states.
+
+|Dead-space burst granularity (VIP)
+|The AXI master reports one response for a read burst, not one per beat, so `CHK-DEADSPACE-BURST` cannot distinguish a burst that refused every beat from one that refused only its last. It fails a burst answered OKAY where the same address is refused as a single beat, and compares in-extent beat data against the single-beat read, which bounds the contract without proving per-beat refusal. Proving it needs per-beat `RRESP` from the VIP.
 
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
@@ -4150,8 +4155,8 @@ constraint is not an open defect.
 
 |JTAG MMR token-block access
 |`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
-|RTL assertions compiled out
-|The shared native build profile defines `DISABLE_ASSERT` and `COMMON_CELLS_ASSERTS_OFF`, so no design or vendored-IP SVA participates in any run. Where a checker proves a property, that checker is the whole of the proof — no assertion layer sits underneath it.
+|RTL assertions are backend-dependent
+|What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA — the `ocah_axi_sva` protocol bind included — expand to nothing. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 
 |Entropy-pool interrupt numbering (spec)
 |`hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs are 1-based, so aggregation index 36/37 is PIC source 37/38; firmware following `crypto.adoc` would enable and mask the wrong two sources. No checker asserts this today; do not XFAIL it.

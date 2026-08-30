@@ -7,8 +7,8 @@ helper keeps a shadow of the register so a test can release / park individual
 engines without a read-modify-write race, the way the reference consume base sequence
 releases KM first and the target crypto engine later.
 
-The shadow is seeded with the HW reset default (hw/sys/sep/regs/rdl/
-sep_reset_ctrl.rdl): km_sw_rst_n=0 (held), otbn/aes/hmac/kmac=1 (released) => 0x1E.
+The shadow is seeded with the HW reset default
+(hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl): km_sw_rst_n=0 (held), otbn/aes/hmac/kmac=1 (released) => 0x1E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
 must park() them explicitly; do not rely on a wrong all-parked assumption.
 

@@ -476,18 +476,18 @@ module sep_uvm_top
     // SEP's entropy_source has no alert output for the OT convention to test. The
     // declarative escape is EnableAlertTriggerSVA(0) at those instantiations.
     //
-    // The other 385 are a real defect (#1300): the counters raise err_o into a net
+    // The other 385 are a real defect: the counters raise err_o into a net
     // nothing reads. A green run is therefore NOT evidence that a glitched
-    // health-test counter would be reported. #1301 covers the SPI assertions armed
-    // only during reset; #1307 tracks the assertions-under-VCS work.
+    // health-test counter would be reported. The SPI assertions in this subtree
+    // are armed only during reset, so they judge nothing after it.
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
     // blocks -- so the one OCAH contract in the set is re-armed by name below.
 `ifndef VERILATOR
     initial begin
-        // FIXME(#1300): remove these three once the counters are wired AND the
-        // alert convention is settled for this block. Re-arm by an assertion's own
+        // Remove these three once the counters are wired and the alert
+        // convention is settled for this block. Re-arm by an assertion's own
         // hierarchical name, never by re-enabling a parent instance.
         $assertoff(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
@@ -1696,10 +1696,11 @@ module sep_uvm_top
     );
 
     // ------------------------------------------------------------------
-    // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
-    // to KPV, KMCSR, the DRBG sampler and the mailbox crosses this one port,
-    // and nothing checks it: the KM crossbar has a single slave port wired to
-    // the internal picorv32, so no testbench master can reach it.
+    // Key Manager internal AXI-Lite, CPU side. SIGNED OFF 2026-08-30 by
+    // yenhenglai. Every access KM firmware makes to KPV, KMCSR, the DRBG
+    // sampler and the mailbox crosses this one port: the KM crossbar has a
+    // single slave port wired to the internal picorv32, so no testbench
+    // master can reach it.
     //
     // Bound rather than instantiated, so the port names resolve in the Key
     // Manager's own scope. Passive: it needs no stimulus and adds none.
@@ -1722,13 +1723,13 @@ module sep_uvm_top
     ) u_km_axil_sva (
         .aclk    (clk_i),
         .aresetn (rst_warm_sync_n),
-        // Resolved in the Key Manager's own scope, so this adds no
-        // hierarchical read of DUT state. The warm reset is conditioned and
+        // Names resolve in key_manager. The warm reset is conditioned and
         // synchronised and the CPU's valids follow it, so both read X before
         // the first edge; comparing VALID against a low reset says nothing
         // while either is undefined.
         .en_i    (!$isunknown(rst_warm_sync_n)
-                  && !$isunknown(cpu_axil_req.aw_valid)),
+                  && !$isunknown(cpu_axil_req.aw_valid)
+                  && !$isunknown(cpu_axil_req.ar_valid)),
         .awid    (1'b0),
         .awaddr  (cpu_axil_req.aw.addr),
         .awlen   (8'd0),
