@@ -47,6 +47,7 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
 ]
 
 [frameworks.cocotb]
@@ -147,6 +148,7 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",

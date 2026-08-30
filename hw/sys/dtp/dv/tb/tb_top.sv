@@ -683,6 +683,27 @@ module dtp_uvm_top
         .stap_extra_config_hold_i (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.config_hold)
     );
 
+    // Cross-trigger coverage (CTP / CTM): CSR-write decode plus the
+    // cross-trigger GPIO and matrix handshake pins, all in the system-clock
+    // domain. The SV-UVM shape ties these inputs quiescent, so the bins
+    // collect only where the stimulus exists (the cocotb flow today).
+    dtp_xtrig_fcov u_dtp_xtrig_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .axil_awaddr_i         (xtrig_axil_awaddr),
+        .axil_awvalid_i        (xtrig_axil_awvalid),
+        .axil_awready_i        (xtrig_axil_awready),
+        .axil_wdata_i          (xtrig_axil_wdata),
+        .axil_wvalid_i         (xtrig_axil_wvalid),
+        .axil_wready_i         (xtrig_axil_wready),
+        .ctm_src_req_i         (xtrig_ctm_src_req),
+        .ctm_dst_req_i         (xtrig_ctm_dst_req),
+        .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
+        .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
+        .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
+        .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
