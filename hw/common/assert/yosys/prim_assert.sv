@@ -4,9 +4,14 @@
 // Local shim for the vendored OpenTitan prim_assert.sv.
 //
 // This file shadows vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv
-// because hw/common/assert precedes that directory in the flist +incdir search
-// order (see Bender.yml include_dirs). Do NOT edit the vendored tree; keep this
-// override in the harness instead.
+// because this directory precedes that one in the flist +incdir search order.
+// Do NOT edit the vendored tree; keep this override in the harness instead.
+//
+// It lives in its own include dir, which only the yosys flow puts on its flist
+// (flows/synth/yosys/yosys.mk prepends it). Do not move it back beside the other
+// hw/common/assert headers: those are on every flist, and the customer IP
+// packager flattens all include dirs into one directory, where this file and
+// the vendored file it delegates to collide on the basename `prim_assert.sv`.
 //
 // Why the shim exists:
 //   yosys-slang auto-defines `YOSYS`. The vendored prim_assert.sv treats `YOSYS`
@@ -35,11 +40,11 @@
 `ifdef YOSYS
 `ifdef SYNTHESIS
   `undef YOSYS
-  `include "../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
+  `include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
   `define YOSYS
 `else
-  `include "../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
+  `include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
 `endif
 `else
-  `include "../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
+  `include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
 `endif
