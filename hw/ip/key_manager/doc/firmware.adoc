@@ -267,9 +267,9 @@ what the device can do, never widen it.
 [[km-kpv-extent-in-software]]
 Within the key region, the KPV tracks slot usage alone. It has no field naming
 how many slots a key spans and none naming how many words of a key's final slot
-are in use. A key exists only as registry state — `first_slot`, `slot_map`,
-`num_slots` and `stored_bytes` in its descriptor. Three consequences follow and
-are normative:
+are in use. A key exists only as registry state: which slots it occupies, how
+many it spans, and how many bytes are stored in it. Three consequences follow
+and are normative:
 
 * *A key may span several slots, and they need not be contiguous.* The slot set
   is a bitmap walked in chain order from `first_slot`, so slot count and key
@@ -408,13 +408,18 @@ All command messages use the following container format.
 [cols="<22%,<78%",options="header"]
 |===
 | Field | Description
-| `CMD_SEQ_NUM` | The command message sequence number. It is reset to zero during initialization or during any message buffer flush — note that a key-registry reset is neither, and does not disturb it. This value must increment with each message. It must roll over to 0 after reaching the maximum value. A message that passes header-CRC and sequence validation CONSUMES its sequence number even if the command is subsequently rejected; see the note under the return codes.
+| `CMD_SEQ_NUM` | The command message sequence number. It must increment with each message, and must roll over to 0 after reaching the maximum value.
 | `COMMAND_ID` | The ID of the command for the KM to execute. This determines how the `PAYLOAD_WORD` s are interpreted.
 | `PAYLOAD_LEN` | The length of the message payload in number of 32-bit words, _not_ including the `PAYLOAD_CRC32`. A payload length of 0 indicates the message has no payload.
 | `HEADER_CRC8` | A CRC-8/ROHC computed over the 24-bit message header {`PAYLOAD_LEN`, `COMMAND_ID`, `CMD_SEQ_NUM`} in little endian order, starting with `CMD_SEQ_NUM`.
 | `PAYLOAD_WORD[n]` | A 32-bit data word for the command message payload, where _n_ is always less than `PAYLOAD_LEN`. `PAYLOAD_LEN` equal to 0 implies no `PAYLOAD_WORD` s are present. The contents of the `PAYLOAD_WORD` s are command-specific.
 | `PAYLOAD_CRC32` | A CRC-32C (Castagnoli) computed from the command payload in little endian order from `PAYLOAD_WORD[0]` to `PAYLOAD_WORD[n-1]`. `PAYLOAD_LEN` equal to 0 implies no `PAYLOAD_CRC32` is present.
 |===
+
+`CMD_SEQ_NUM` is reset to zero during initialization and during any message
+buffer flush. A key-registry reset does not disturb it. A message that passes
+header-CRC and sequence validation consumes its sequence number even if the
+command is subsequently rejected (<<km-resp-cmd>>).
 
 The rest of this section describes all valid commands and their payloads.
 
@@ -669,10 +674,9 @@ for sending its own ready message to the SEP.
   build-time constant, so a warm-reset
   `CMD_SRAM_EXEC` restart whose ROM stack runs deeper than at load time can
   never descend into the loaded image.
-* The two execution paths (`CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC`) both
-  call `rom_handover_finish()`.  The stack-less assembly handoff
-  (`rom_handover_jump.S`) runs after all C-level operations complete.
-  This ordering is required because the assembly wipes the C stack.
+* `CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC` perform the same handover, and the
+  scramble that destroys the ROM stack is its last step, after every operation
+  that still needs that stack.
 
 *Payload*
 
@@ -857,7 +861,7 @@ are little-endian.
 | 5   | 1  | `RESERVED`  | KM  | Domain. Forged: inherited from the parent, so a HW-rooted chain stays HW.
 | 6   | 2  | `RESERVED`  | KM  | Provenance flags. Forged: ephemeral, imported, ROM-created and ROM-lineage bits.
 | 8   | 2  | `PURPOSE`   | SEP | Free-form label, opaque to the KM, returned by `CMD_KEY_INFO`.
-| 10  | 2  | `OUT_BITS`  | SEP | SYMMETRIC: requested key length in bits, 8 to 512, a multiple of 8 (one KPV slot). Note this is the STORAGE limit, not a transfer guarantee — the symmetric engine ports are 256 bits, so a key above that is derivable and usable as a KDF parent but not sideloadable; see <<km-sideload-port-widths>>. PRIVATE: must be `0x0000` — the type dictates the width. Violations return `KM_ERR_INVALID_SIZE`.
+| 10  | 2  | `OUT_BITS`  | SEP | SYMMETRIC: requested key length in bits, 8 to 512, a multiple of 8 (one KPV slot). This is a storage limit, not a transfer guarantee; see <<km-sideload-port-widths>>. PRIVATE: must be `0x0000` — the type dictates the width. Violations return `KM_ERR_INVALID_SIZE`.
 | 12  | 4  | `CAPS`      | SEP | Requested capabilities; see <<km-kdf-caps>>.
 | 16  | 4  | `RESERVED`  | KM  | Device state. Forged: the KM samples live LC_STATE and DEMOTION immediately before deriving.
 | 20  | 12 | `RESERVED`  | —   | Future expansion.
@@ -1076,8 +1080,8 @@ seed is what crosses, and all curve or parameter-set-specific expansion is
 engine-internal.
 
 Every requested destination must be permitted by the key's `CAPS`
-(<<km-kdf-caps>>). The `DEST_ENGINE` bit order predates the `CAPS` bit order
-and the two differ; the normative mapping is:
+(<<km-kdf-caps>>). The `DEST_ENGINE` bit positions differ from the `CAPS` bit
+positions; the normative mapping is:
 
 .DEST_ENGINE to Required Capability
 [cols="^10%,<28%,<30%,<32%",options="header"]
@@ -1808,9 +1812,9 @@ credential must prove device *state* rather than device *identity*.
 
 This command is effectively ROM-mode only. The handover to mutable firmware
 retires all three identity root slots (<<km-handover-domain-split>>), so every
-call afterwards returns `KM_ERR_ROOT_CLEARED`. Unlike `CMD_BL_DECRYPT_KEY` the
-restriction is not a mode check in the handler — it falls out of the root being
-gone, and it holds equally for an owner whose root `CMD_CLEAR_ID_ROOT` had
+call afterwards returns `KM_ERR_ROOT_CLEARED`. Unlike `CMD_BL_DECRYPT_KEY`, the
+restriction does not depend on the KM's mode: it follows from the root being
+gone, and so holds equally for an owner whose root `CMD_CLEAR_ID_ROOT` had
 already cleared.
 
 *Payload*
@@ -2066,8 +2070,8 @@ of zero and leaves the roots cleared.
 32+^| `SWEPT_COUNT[31:0]`
 |===
 
-NOTE: Engine sideload registers are not touched — a key already transferred to
-an engine survives there until `CMD_ENGINE_SHRED`.
+NOTE: Engine sideload registers are unaffected, as for `CMD_CLEAR_OWNER_KEYS`
+(<<km-cmd-clear-owner-keys>>).
 
 [[km-cmd-clear-key-tree]]
 ====== 0x38 - CMD_CLEAR_KEY_TREE
@@ -2075,11 +2079,9 @@ an engine survives there until `CMD_ENGINE_SHRED`.
 *Description*
 
 Revokes the named key and every live key whose KDF derivation chain passes
-through it, by walking the registry's stored parent references. The walk is
-iterative — reachability is fully discovered over the untouched registry
-before anything is revoked, then the whole marked set is swept — so the
-firmware uses no recursion and no dynamic allocation, and the sweep count is
-exact.
+through it, by walking the registry's stored parent references. Reachability is
+fully discovered over the untouched registry before anything is revoked, and the
+whole marked set is then swept, so the returned sweep count is exact.
 
 *Payload*
 
@@ -2268,8 +2270,8 @@ This message has no payload.
 
 An unsolicited response message that notifies the SEP that Adams Bridge has
 delivered an ML-KEM shared key into the KM and it is available to capture. The
-KM emits this notification from its main loop after the shared-key interrupt
-fires and its ISR flags the pending event. The SEP responds by issuing
+KM sends it once a shared key is pending on the shared-key interface. The SEP
+responds by issuing
 `CMD_ABR_SK_INGEST` (see <<km-cmd-abr-sk-ingest>>) to store the key in the
 KPV and obtain a handle.
 
@@ -2613,13 +2615,13 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   `IRQ_ENTRY_ADDR`; the vector is left at the ROM default and the loaded
   firmware sets its own before re-enabling interrupts.
 
-. *Scramble.*  A stack-less assembly routine (`rom_handover_jump.S`) seeds a
-  `xoshiro128++` PRNG from the value passed from C, iterates over the full
-  SRAM range `0x8000`–`0xFFFF`, and overwrites each address with a
+. *Scramble.*  The handover routine seeds a `xoshiro128++` PRNG, iterates over
+  the full SRAM range `0x8000`–`0xFFFF`, and overwrites each address with a
   pseudo-random word.  Hardware silently discards writes to write-locked
-  regions (firmware image and `rom_persist`), so only ROM runtime data
-  (stack, `.data`, `.bss`) is actually overwritten.  No stack pointer or
-  memory-resident variable is accessed during or after this step.
+  regions (firmware image and `rom_persist`), so only ROM runtime state — the
+  stack and the ROM's initialized and zero-initialized data — is actually
+  overwritten.  No stack pointer or memory-resident variable is accessed during
+  or after this step.
 +
 The scramble is indiscriminate by design — it is a blanket erase of everything
 not explicitly preserved, rather than a list of things to clear.  Anything ROM
@@ -2752,10 +2754,10 @@ point rather than resuming it.
 
 *Consequence for mutable firmware*
 
-Mutable firmware shares no code with the ROM. It cannot call `rom_crc32c`,
-`rom_kdf_800_108()`, the KPV driver, the mailbox handlers, or anything else
-documented in this chapter as ROM firmware. Those symbols describe the ROM
-application, and after handover their addresses are unreachable. Any function a
+Mutable firmware shares no code with the ROM. It cannot invoke the CRC or KDF
+routines, the KPV driver, the mailbox handlers, or anything else documented in
+this chapter as ROM firmware. Those routines belong to the ROM application, and
+after handover their addresses are unreachable. Any function a
 mutable image needs, it must carry its own copy of within the 32 KB SRAM budget,
 minus whatever the ROM stack reserve costs it (<<km-rom-stack-budget>>).
 
@@ -3161,8 +3163,7 @@ firmware revisions.
 ====== DRBG Error
 
 The DRBG error interrupt handler will trigger an unrecoverable fault with the
-`drbg_err` fault code. It is checked before the AXI SLVERR handler, because a
-DRBG read timeout sets both status bits and the specific code is the useful one
+`drbg_err` fault code. It is checked before the AXI SLVERR handler
 (<<km-irq-priority>>). A stale DRBG error cannot misattribute a later fabric
 fault, because the handler halts the CPU rather than returning. The interrupt
 status bit is not cleared. This behavior may change in future firmware
@@ -3186,8 +3187,8 @@ fault handlers, this handler does not halt the KM. It has the following
 execution flow:
 
 . Read the OTP change status to determine which fields changed.
-. Invoke the OTP change hook to take any firmware-defined action. In the
-ROM this is a weak no-op hook intended to be overridden by later firmware.
+. Invoke the OTP change hook to take any firmware-defined action. The ROM's
+hook does nothing; mutable firmware may replace it with its own handler.
 . Clear (write-1-to-clear) the change status bits that were handled.
 
 [[km-irq-mailbox]]
@@ -3273,7 +3274,7 @@ the key remains available for the subsequent SEP-issued `CMD_ABR_SK_INGEST`.
 Because the interrupt status is sticky and cleared via W1C (rather than by
 disabling `IRQ_ENABLE`), a later shared-key delivery re-arms the interrupt
 automatically. The main loop sends `RESP_ABR_SHARED_KEY_READY` to the SEP when
-it observes the pending-notify flag.
+it observes the pending-notify flag (<<km-firmware-main-event-loop>>).
 
 [[km-irq-spurious]]
 ====== Spurious IRQ
@@ -3677,9 +3678,7 @@ output-length fields are big-endian.
 An HMAC key of at most 64 bytes is passed directly to HMAC. A longer key is
 first reduced to a 32-byte SHA-256 digest as specified by RFC 2104. Since the
 KM symmetric-key limit is 64 bytes, one KPV slot, every parent key the KM can
-actually hold takes the direct path. The reduction is retained for the
-library's own generality and to keep it correct if the slot width ever grows,
-not because any KM derivation reaches it.
+actually hold takes the direct path.
 
 The KDF rejects null required pointers, a null key with non-zero length,
 and output lengths outside the supported range. Invalid arguments leave
@@ -3698,9 +3697,8 @@ must run this test first and fail closed if it does not pass.
 ===== CRC Function Library
 
 The CRC function library contains routines for CRC computations. The
-high-level functions (`rom_crc8_rohc`, `rom_crc32c`) preserve their public
-signatures and golden-vector results, but are implemented on top of the
-hardware CRC accelerator rather than software lookup loops: each consumes
+high-level functions (`rom_crc8_rohc`, `rom_crc32c`) are built on the hardware
+CRC accelerator, each consuming
 one accelerator instruction per input unit (one byte per CRC-8/ROHC call,
 one 32-bit word per CRC-32C word call, and one byte per CRC-32C tail
 byte). The accelerator returns the CRC-32C running remainder before the
@@ -3942,8 +3940,8 @@ designers, expressed here in the KM's word order:
 The Speck round-key schedule MUST be expanded once, at boot, as soon as the DRBG
 has delivered the sealing key, and retained as 27 round-key words for the life
 of the boot. Every subsequent seal and open then reads only that stored
-schedule and never touches the 128-bit key again. This is a requirement of the
-design rather than an implementation optimization, for two reasons.
+schedule and never touches the 128-bit key again. Expanding the schedule once at
+boot is required, for two reasons.
 
 * *Deriving the schedule per call makes the default cipher the slow one.* The
   schedule's `a[i mod 3]` indexing is a division by three, and the PicoRV32
@@ -4192,10 +4190,10 @@ the descriptor's current counter.
 if it does not match.
 . Returns the descriptor index.
 
-Every failure path returns the single undistinguished `KM_ERR_INVALID_HANDLE` —
-including the CRC failure, so a corrupted descriptor is indistinguishable from
-one that never existed. All other functions taking a handle resolve it through
-this one, so no caller can reach descriptor fields that have not just been
+Every failure path returns the single undistinguished `KM_ERR_INVALID_HANDLE`,
+including the CRC failure (<<km-descriptor-crc>>). All other functions taking a
+handle resolve it through this one, so no caller can reach descriptor fields
+that have not just been
 verified.
 
 *Get Key Slot*
@@ -4260,10 +4258,9 @@ unconditionally (<<km-handle-cipher>>).
 key material, and writes it to the tail (<<km-descriptor-crc>>).
 . Claims the slot mappings, marks the descriptor live, and returns the handle.
 
-Steps 4 to 6 are ordered by the CRC's coverage, not by convenience: the handle
-is inside the sealed region, so it must exist before the seal is taken. A
-descriptor is never observable in a partly built state — it becomes live in step
-7, after it has been sealed.
+Steps 4 to 6 follow the ordering the CRC's coverage requires
+(<<km-descriptor-crc>>). A descriptor is never observable in a partly built
+state: it becomes live in step 7, after it has been sealed.
 
 *Reparent Children*
 
