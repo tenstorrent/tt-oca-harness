@@ -5,8 +5,8 @@
 // SEP Reset Controller
 //
 // Provides software-controllable reset for KM and crypto accelerators.
-// Each bit in the SW_RESET register drives a prim_rst_sync synchronizer
-// whose output is able to be overridden by JTAG overrides.
+// Each bit in the SW_RESET register gates the SEP reset for one IP, and the
+// JTAG IC_RESET slice can override the result.
 //
 // Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
@@ -133,14 +133,88 @@ module sep_reset_ctrl
     // If syncronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
     // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
-    assign sep_sw_rst_no.kmac = jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val : (sw_reset_bits.kmac & sep_reset_n);
-    assign sep_sw_rst_no.hmac = jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val : (sw_reset_bits.hmac & sep_reset_n);
-    assign sep_sw_rst_no.aes  = jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd  ? jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val  : (sw_reset_bits.aes  & sep_reset_n);
-    assign sep_sw_rst_no.otbn = jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val : (sw_reset_bits.otbn & sep_reset_n);
-    assign sep_sw_rst_no.km   = jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd   ? jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val   : (sw_reset_bits.km   & sep_reset_n);
+    logic kmac_gated_rst_n, hmac_gated_rst_n, aes_gated_rst_n, otbn_gated_rst_n, km_gated_rst_n;
+    logic kmac_rst_n, hmac_rst_n, aes_rst_n, otbn_rst_n, km_rst_n;
+
+    prim_and2 #(.Width(1)) u_kmac_rst_and (
+        .in0_i (sw_reset_bits.kmac),
+        .in1_i (sep_reset_n),
+        .out_o (kmac_gated_rst_n)
+    );
+
+    prim_and2 #(.Width(1)) u_hmac_rst_and (
+        .in0_i (sw_reset_bits.hmac),
+        .in1_i (sep_reset_n),
+        .out_o (hmac_gated_rst_n)
+    );
+
+    prim_and2 #(.Width(1)) u_aes_rst_and (
+        .in0_i (sw_reset_bits.aes),
+        .in1_i (sep_reset_n),
+        .out_o (aes_gated_rst_n)
+    );
+
+    prim_and2 #(.Width(1)) u_otbn_rst_and (
+        .in0_i (sw_reset_bits.otbn),
+        .in1_i (sep_reset_n),
+        .out_o (otbn_gated_rst_n)
+    );
+
+    prim_and2 #(.Width(1)) u_km_rst_and (
+        .in0_i (sw_reset_bits.km),
+        .in1_i (sep_reset_n),
+        .out_o (km_gated_rst_n)
+    );
+
+    prim_rst_mux2_hf_n u_kmac_rst_ovrd_mux (
+        .rst0_ni (kmac_gated_rst_n),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd),
+        .rst_no  (kmac_rst_n)
+    );
+
+    prim_rst_mux2_hf_n u_hmac_rst_ovrd_mux (
+        .rst0_ni (hmac_gated_rst_n),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd),
+        .rst_no  (hmac_rst_n)
+    );
+
+    prim_rst_mux2_hf_n u_aes_rst_ovrd_mux (
+        .rst0_ni (aes_gated_rst_n),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd),
+        .rst_no  (aes_rst_n)
+    );
+
+    prim_rst_mux2_hf_n u_otbn_rst_ovrd_mux (
+        .rst0_ni (otbn_gated_rst_n),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd),
+        .rst_no  (otbn_rst_n)
+    );
+
+    prim_rst_mux2_hf_n u_km_rst_ovrd_mux (
+        .rst0_ni (km_gated_rst_n),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd),
+        .rst_no  (km_rst_n)
+    );
+
+    assign sep_sw_rst_no.kmac = kmac_rst_n;
+    assign sep_sw_rst_no.hmac = hmac_rst_n;
+    assign sep_sw_rst_no.aes  = aes_rst_n;
+    assign sep_sw_rst_no.otbn = otbn_rst_n;
+    assign sep_sw_rst_no.km   = km_rst_n;
 
     // JTAG override to efuse reset
-    assign sep_reset_n        = jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd ? jtag_sep_reset_ctrl_i.val.sep_reset_n_val : sep_intermediate_reset_ni;
+    prim_rst_mux2_hf_n u_sep_reset_ovrd_mux (
+        .rst0_ni (sep_intermediate_reset_ni),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.sep_reset_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd),
+        .rst_no  (sep_reset_n)
+    );
+
     assign sep_reset_no       = sep_reset_n;
 
 endmodule : sep_reset_ctrl

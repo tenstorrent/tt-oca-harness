@@ -42,36 +42,21 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_KPV__CTRL_REG__ERASE_bp 2
 #define KM_KPV__CTRL_REG__ERASE_bw 1
 #define KM_KPV__CTRL_REG__ERASE_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_3_bm 0x8
-#define KM_KPV__CTRL_REG__RSVD_3_bp 3
-#define KM_KPV__CTRL_REG__RSVD_3_bw 1
-#define KM_KPV__CTRL_REG__RSVD_3_reset 0x0
-#define KM_KPV__CTRL_REG__EXTEND_bm 0x70
-#define KM_KPV__CTRL_REG__EXTEND_bp 4
-#define KM_KPV__CTRL_REG__EXTEND_bw 3
-#define KM_KPV__CTRL_REG__EXTEND_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_16_7_bm 0x1ff80
-#define KM_KPV__CTRL_REG__RSVD_16_7_bp 7
-#define KM_KPV__CTRL_REG__RSVD_16_7_bw 10
-#define KM_KPV__CTRL_REG__RSVD_16_7_reset 0x0
-#define KM_KPV__CTRL_REG__LAST_DWORD_bm 0x1e0000
-#define KM_KPV__CTRL_REG__LAST_DWORD_bp 17
-#define KM_KPV__CTRL_REG__LAST_DWORD_bw 4
-#define KM_KPV__CTRL_REG__LAST_DWORD_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_31_21_bm 0xffe00000
-#define KM_KPV__CTRL_REG__RSVD_31_21_bp 21
-#define KM_KPV__CTRL_REG__RSVD_31_21_bw 11
-#define KM_KPV__CTRL_REG__RSVD_31_21_reset 0x0
+#define KM_KPV__CTRL_REG__SEAL_bm 0x8
+#define KM_KPV__CTRL_REG__SEAL_bp 3
+#define KM_KPV__CTRL_REG__SEAL_bw 1
+#define KM_KPV__CTRL_REG__SEAL_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_31_4_bm 0xfffffff0
+#define KM_KPV__CTRL_REG__RSVD_31_4_bp 4
+#define KM_KPV__CTRL_REG__RSVD_31_4_bw 28
+#define KM_KPV__CTRL_REG__RSVD_31_4_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t lock_write :1;
         uint32_t lock_use :1;
         uint32_t erase :1;
-        uint32_t rsvd_3 :1;
-        uint32_t extend :3;
-        uint32_t rsvd_16_7 :10;
-        uint32_t last_dword :4;
-        uint32_t rsvd_31_21 :11;
+        uint32_t seal :1;
+        uint32_t rsvd_31_4 :28;
     } f;
     uint32_t w;
 } km_kpv__ctrl_reg_t;
@@ -111,14 +96,14 @@ typedef union {
 
 // addrmap - km_kpv
 typedef struct __attribute__ ((__packed__)) {
-    km_kpv__key_entry_rf_t KEY_ENTRY[32];
-    km_kpv__ctrl_reg_t CTRL[32];
+    km_kpv__key_entry_rf_t KEY_ENTRY[64];
+    km_kpv__ctrl_reg_t CTRL[64];
     km_kpv__kpv_scrambler_key_reg_t KPV_SCRAMBLER_KEY;
     km_kpv__kpv_scrambler_ctrl_reg_t KPV_SCRAMBLER_CTRL;
 } km_kpv_t;
 
 
-static_assert(sizeof(km_kpv_t) == 0x888, "Packing error");
+static_assert(sizeof(km_kpv_t) == 0x1108, "Packing error");
 
 #ifdef __cplusplus
 }

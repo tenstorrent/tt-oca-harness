@@ -6,7 +6,7 @@
 package km_csr_addrmap_pkg;
 
 localparam longint unsigned KM_CSR_BASE_ADDR = 64'h0;
-localparam longint unsigned KM_CSR_SIZE = 64'h30C;
+localparam longint unsigned KM_CSR_SIZE = 64'h4C0;
 
 localparam longint unsigned KM_CSR_VERSION_BASE_ADDR = 64'h0;
 localparam longint unsigned KM_CSR_CTRL_BASE_ADDR = 64'h4;
@@ -104,6 +104,54 @@ localparam longint unsigned KM_CSR_OTP_CLASS_KEY_CPL_7_BASE_ADDR = 64'h2FC;
 localparam longint unsigned KM_CSR_OTP_READ_LOCK_BASE_ADDR = 64'h300;
 localparam longint unsigned KM_CSR_OTP_CHANGE_STATUS_BASE_ADDR = 64'h304;
 localparam longint unsigned KM_CSR_OTP_READ_LOCK_COLD_BASE_ADDR = 64'h308;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_0_BASE_ADDR = 64'h400;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_1_BASE_ADDR = 64'h404;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_2_BASE_ADDR = 64'h408;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_3_BASE_ADDR = 64'h40C;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_4_BASE_ADDR = 64'h410;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_5_BASE_ADDR = 64'h414;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_6_BASE_ADDR = 64'h418;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_VAL_7_BASE_ADDR = 64'h41C;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_0_BASE_ADDR = 64'h420;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_1_BASE_ADDR = 64'h424;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_2_BASE_ADDR = 64'h428;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_3_BASE_ADDR = 64'h42C;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_4_BASE_ADDR = 64'h430;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_5_BASE_ADDR = 64'h434;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_6_BASE_ADDR = 64'h438;
+localparam longint unsigned KM_CSR_OTP_SEP_CHIPLET_ID_CPL_7_BASE_ADDR = 64'h43C;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_0_BASE_ADDR = 64'h440;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_1_BASE_ADDR = 64'h444;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_2_BASE_ADDR = 64'h448;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_3_BASE_ADDR = 64'h44C;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_4_BASE_ADDR = 64'h450;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_5_BASE_ADDR = 64'h454;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_6_BASE_ADDR = 64'h458;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_VAL_7_BASE_ADDR = 64'h45C;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_0_BASE_ADDR = 64'h460;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_1_BASE_ADDR = 64'h464;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_2_BASE_ADDR = 64'h468;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_3_BASE_ADDR = 64'h46C;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_4_BASE_ADDR = 64'h470;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_5_BASE_ADDR = 64'h474;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_6_BASE_ADDR = 64'h478;
+localparam longint unsigned KM_CSR_OTP_SEP_SIP_ID_CPL_7_BASE_ADDR = 64'h47C;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_0_BASE_ADDR = 64'h480;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_1_BASE_ADDR = 64'h484;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_2_BASE_ADDR = 64'h488;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_3_BASE_ADDR = 64'h48C;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_4_BASE_ADDR = 64'h490;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_5_BASE_ADDR = 64'h494;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_6_BASE_ADDR = 64'h498;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_VAL_7_BASE_ADDR = 64'h49C;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_0_BASE_ADDR = 64'h4A0;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_1_BASE_ADDR = 64'h4A4;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_2_BASE_ADDR = 64'h4A8;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_3_BASE_ADDR = 64'h4AC;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_4_BASE_ADDR = 64'h4B0;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_5_BASE_ADDR = 64'h4B4;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_6_BASE_ADDR = 64'h4B8;
+localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_7_BASE_ADDR = 64'h4BC;
 
 
-endpackage;
+endpackage

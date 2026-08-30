@@ -13,9 +13,8 @@
 // The DMA copy is intentionally much larger than the CPU loop (2 KiB vs 256 B,
 // 8:1) so the DMA is provably still busy when the CPU loop finishes -- that
 // mid-flight STATUS read is the non-vacuity proof that the two streams really
-// overlapped. (Sizes are kept small enough that the Verilator sim finishes well
-// inside the regression timeout; the E8 contention proof needs the imbalance and
-// the overlap, not a large transfer -- the reference suite's 16 KiB/1 KiB is overkill here.)
+// overlapped. Sizes stay small enough for the Verilator timeout; the 8:1
+// imbalance is what makes the mid-flight BUSY && !DONE sample a real overlap.
 //
 // Checks (every failure increments errors; main() returns it and start.S turns
 // 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
@@ -31,10 +30,9 @@
 //     reaches DONE (timeout FAIL) and a starved/corrupted CPU stream fails the
 //     CPU-integrity check.
 //
-// Polled, interrupt-free (mirrors reference suite): no PIC/ISR. The DMA clock is left as
-// dma_hash_test leaves it (dynamic gating clocks the CSRs on access); the global
-// MRAC from start.S makes the SRAM stores real fabric traffic, so the reference suite
-// per-test `csrw 0x7c0` region write is subsumed (same as the SPI/DMA ports).
+// Polled, interrupt-free: no PIC/ISR. DMA CSRs are dynamically clocked on
+// access; this test does not write CLOCK_GATE_CTRL. Side-effect region marking
+// is inherited from startup; this test does not write MRAC.
 
 #include <stdint.h>
 

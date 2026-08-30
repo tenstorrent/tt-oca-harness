@@ -11,7 +11,7 @@
  * phase indicator.
  *
  * Phase 0 (cold boot, sram_fw_size == 0):
- *   1. Copy mutable_fw_blob_small (14 words, 56 bytes) to SRAM at 0x4000
+ *   1. Copy mutable_fw_blob_small (14 words, 56 bytes) to SRAM at 0x8000
  *      using memcpy.  The blob is in the mutable-firmware load area (below
  *      the ROM stack / .data / .bss).
  *   2. Record sram_fw_size = MUTABLE_FW_BLOB_SMALL_WORDS * 4 in rom_persist
@@ -26,17 +26,17 @@
  *   4. rom_msg_rx_process() dispatches to rom_cmd_sram_exec →
  *      rom_handover_exec_existing → rom_handover_finish.
  *   5. rom_handover_finish: lock OTP, lock rom_persist, apply SRAM write-lock
- *      for region 0 (covering the blob at 0x4000..0x41FF), disable all IRQs,
+ *      for region 0 (covering the blob at 0x8000..0x83FF), disable all IRQs,
  *      call rom_handover_jump.S.
  *   6. rom_handover_jump.S: scrambles unlocked SRAM (write-locked region 0 is
- *      unaffected), clears GPRs, jumps to 0x4000.
+ *      unaffected), clears GPRs, jumps to 0x8000.
  *   7. Mutable blob runs and writes TEST_PASS_SIGNATURE → test passes.
  *
  * Phase detection uses rom_persist_get_sram_fw_size():
  *   sram_fw_size == 0  → Phase 0 (cold boot, no firmware loaded)
  *   sram_fw_size != 0  → Phase 1 (warm reset, firmware copied in Phase 0)
  *
- * The sram_fw_size lives in the rom_persist region (0x7E00), which is outside
+ * The sram_fw_size lives in the rom_persist region (0xFC00), which is outside
  * the BSS section cleared by crt0 on warm restart; it therefore survives the
  * warm reset, making it a reliable phase indicator.
  *
@@ -80,16 +80,16 @@ int main(void) {
 
         if (!tb_drbg_set_seed(0xE030u, 5000)) TEST_FAIL("drbg set seed failed");
 
-        TEST_SUBTEST_START("Phase 0: copy blob to SRAM 0x4000");
+        TEST_SUBTEST_START("Phase 0: copy blob to SRAM base");
         {
-            void *sram_base = (void *)SRAM_BASE; /* 0x4000 */
+            void *sram_base = (void *)SRAM_BASE;
             memcpy(sram_base, mutable_fw_blob_small, MUTABLE_FW_BLOB_SMALL_WORDS * 4u);
             __asm__ volatile("fence" ::: "memory");
 
             /* Quick readback sanity check (first word only). */
             volatile uint32_t *sram_ptr = (volatile uint32_t *)SRAM_BASE;
             if (*sram_ptr != mutable_fw_blob_small[0]) {
-                TEST_FAIL("Phase 0: blob readback mismatch at 0x4000 "
+                TEST_FAIL("Phase 0: blob readback mismatch at the SRAM base "
                           "(got 0x%08X, expected 0x%08X)",
                           (unsigned)*sram_ptr, (unsigned)mutable_fw_blob_small[0]);
             }
@@ -152,10 +152,10 @@ int main(void) {
          *
          * rom_handover_finish:
          *   - Locks OTP, rom_persist.
-         *   - Sets SRAM write-lock for region 0 (firmware blob at 0x4000..0x41FF).
+         *   - Sets SRAM write-lock for region 0 (firmware blob at 0x8000..0x83FF).
          *   - Disables all IRQs.
          *   - Calls rom_handover_jump.S: scrambles unlocked SRAM, clears GPRs,
-         *     jumps to 0x4000.
+         *     jumps to 0x8000.
          *
          * The mutable blob writes TEST_PASS_SIGNATURE to KMCSR → test passes.
          * This dispatch never returns.
@@ -189,7 +189,7 @@ int main(void) {
             rom_msg_rx_process();
 
             /* Should never reach here. */
-            TEST_FAIL("Phase 1: CMD_SRAM_EXEC should have jumped to 0x4000");
+            TEST_FAIL("Phase 1: CMD_SRAM_EXEC should have jumped to the SRAM base");
         }
     }
 

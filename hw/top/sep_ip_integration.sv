@@ -280,7 +280,7 @@ module sep_ip_integration
     // KM SRAM External Module //
     /////////////////////////////
 
-    localparam int unsigned KM_SRAM_DEPTH = 4096; // 4K words x 32b = 16KB
+    localparam int unsigned KM_SRAM_DEPTH = 8192; // 8K words x 32b = 32KB
     localparam int unsigned KM_SRAM_AW    = $clog2(KM_SRAM_DEPTH);
     localparam int unsigned KM_SRAM_WIDTH = 36;   // 32 data + 4 parity
 

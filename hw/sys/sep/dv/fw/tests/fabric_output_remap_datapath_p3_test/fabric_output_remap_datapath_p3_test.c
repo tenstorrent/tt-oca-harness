@@ -4,9 +4,7 @@
 /*
  * fabric_output_remap_datapath_p3_test
  *
- * Goal: output_remap 64.35% -> 90%+, output_remap_reg 86.06% -> 90%+ [near target]
  * Strategy: AP/STEE remap traffic covers every region index; full datapath matrix
- * Priority: first pass (medium difficulty)
  *
  * Focus on full datapath testing across all 16 output-remap regions
  */
@@ -260,8 +258,7 @@ static int test_region_boundary_crossing(void) {
 }
 
 int main(void) {
-    printf("Output Remap Datapath P3 Test\n");
-    printf("Goals: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
+    printf("Output Remap Datapath Test\n");
     printf("Strategy: AP/STEE remap traffic covers every region index; full datapath matrix\n\n");
 
     // Initialize fabric system
@@ -296,9 +293,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== OUTPUT REMAP DATAPATH P3 TEST PASSED ===\n");
-    printf(
-        "Expected improvement: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
+    printf("\n=== OUTPUT REMAP DATAPATH TEST PASSED ===\n");
 
     test_pass("fabric_output_remap_datapath_p3_test");
     return TEST_PASS;

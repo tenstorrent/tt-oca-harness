@@ -36,7 +36,7 @@ AES_CTRL_SHADOWED = AES_BASE + 0x74
 AES_TRIGGER = AES_BASE + 0x80
 AES_STATUS = AES_BASE + 0x84
 
-# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / hw/sys/sep/regs/gen/adoc/blocks/aes.adoc):
+# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
 #   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
 #   SIDELOAD[11], PRNG_RESEED_RATE[14:12]=100 PER_8K, MANUAL_OPERATION[15]=0.
 AES_OP_ENC = 0b01
@@ -64,6 +64,8 @@ AES_STATUS_ALERT_FATAL_FAULT = 6
 
 # TRIGGER.PRNG_RESEED (bit 3) -> reseed the masking PRNG from the entropy source.
 AES_TRIGGER_PRNG_RESEED = 1 << 3
+# TRIGGER.DATA_OUT_CLEAR (bit 2) -> CIPHER_CTRL_CLEAR_S: state_we with crypt=0.
+AES_TRIGGER_DATA_OUT_CLEAR = 1 << 2
 
 
 def build_aes_ctrl(*, sideload: bool, operation: int = AES_OP_ENC,
@@ -151,22 +153,40 @@ class SepAes(SepAxiRegDriver):
     async def configure_ecb_dec_256(self, *, sideload: bool) -> None:
         await self._configure_ecb_256(sideload=sideload, operation=AES_OP_DEC, op_name="DEC")
 
+    def _key_mask_rng(self):
+        """Independent stream for KEY_SHARE1 so the test's RAND-REP key/pt
+        draws are unchanged. ``0xA5E5`` is a domain tag, not a credential."""
+        rng = getattr(self, "_key_mask_rng_inst", None)
+        if rng is None:
+            from env.sep_seeded_rng import SepSeededRng
+            rng = SepSeededRng(int(self.test.random_seed()) ^ 0xA5E5)
+            self._key_mask_rng_inst = rng
+        return rng
+
     async def write_full_key(self, key_words: list[int]) -> None:
-        """Write the 8-word key to KEY_SHARE0 with KEY_SHARE1 = 0 (SW-key path)."""
+        """Write an AES-256 SW key as two shares (``write_key``)."""
         assert len(key_words) == 8, "AES-256 SW key needs 8 words"
-        for i, word in enumerate(key_words):
-            await self._wr(AES_KEY_SHARE0_0 + i * 4, word & 0xFFFF_FFFF)
-            await self._wr(AES_KEY_SHARE1_0 + i * 4, 0)
+        await self.write_key(key_words)
 
     async def write_key(self, key_words: list[int]) -> None:
-        """Write a 128/192/256-bit SW key. OpenTitan requires all 8 words of BOTH
-        shares written each time; unused upper words are 0, KEY_SHARE1 = 0 so the
-        effective key (SHARE0 ^ SHARE1) is the given key words."""
+        """Write a 128/192/256-bit SW key as two non-zero shares.
+
+        OpenTitan requires all 8 words of both shares each time (unused
+        upper key words are 0). ``SHARE0 ^ SHARE1`` is the effective key
+        the golden uses. ``KEY_SHARE1 = 0`` is the documented unmask path
+        (aes CTRL_AUX FORCE_MASKS) and fails ``AesSecCmKeyMaskingStateShare``
+        because AddRoundKey on the mask share is then a no-op.
+        """
         assert len(key_words) in (4, 6, 8), "AES key = 4/6/8 words (128/192/256)"
-        padded = list(key_words) + [0] * (8 - len(key_words))
+        padded = [(w & 0xFFFF_FFFF) for w in key_words] + [0] * (8 - len(key_words))
+        rng = self._key_mask_rng()
+        share1 = [rng.getrandbits(32) for _ in range(8)]
+        if all(w == 0 for w in share1):
+            share1[0] = 1
+        share0 = [(padded[i] ^ share1[i]) & 0xFFFF_FFFF for i in range(8)]
         for i in range(8):
-            await self._wr(AES_KEY_SHARE0_0 + i * 4, padded[i] & 0xFFFF_FFFF)
-            await self._wr(AES_KEY_SHARE1_0 + i * 4, 0)
+            await self._wr(AES_KEY_SHARE0_0 + i * 4, share0[i])
+            await self._wr(AES_KEY_SHARE1_0 + i * 4, share1[i])
 
     async def write_iv(self, iv_words: list[int]) -> None:
         """Write IV_0..3 (little-endian words). Required for CBC/CTR, unused ECB."""
@@ -186,6 +206,14 @@ class SepAes(SepAxiRegDriver):
         if iv_words is not None:
             await self.write_iv(iv_words)
             await self.wait_idle("post-iv")
+        # Seed the masking PRD buffer before the first crypt. ``prd_sub_bytes_q``
+        # resets to 0 and loads live PRNG output on any ``state_we``, so a crypt
+        # issued straight out of reset masks its data-in with a zero share and
+        # ``AesSecCmKeyMaskingStateShare`` reads a share that never changes.
+        # ``DATA_OUT_CLEAR`` raises ``state_we`` without starting a crypt, so the
+        # buffer holds a real mask by the first block and the assertion is armed
+        # from it. The key and the IV are untouched.
+        await self._clear_data_out()
 
     async def configure(self, *, mode: int, key_len: int, operation: int = AES_OP_ENC,
                         sideload: bool = False) -> None:
@@ -228,10 +256,16 @@ class SepAes(SepAxiRegDriver):
         control = await self._rd(AES_STATUS)
         return s0, s1, control
 
+    async def _clear_data_out(self) -> None:
+        """Pulse DATA_OUT_CLEAR and wait idle. Fills the masking PRD buffer."""
+        await self._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
+        await self.wait_idle("post-data-out-clear")
+
     async def trigger_prng_reseed(self) -> None:
         """Reseed the masking PRNG from the entropy source, then wait idle."""
         await self._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
         await self.wait_idle("post-prng-reseed")
+        await self._clear_data_out()
 
     async def run_ecb_block(self, pt_words: list[int]) -> list[int]:
         """Run one ECB block: write DATA_IN, wait OUTPUT_VALID, read DATA_OUT."""

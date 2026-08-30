@@ -26,22 +26,25 @@ from sep_reg_meta import sym
 # sys.path as an import side effect, so it has to come first.
 import sep_reg  # noqa: E402
 
-# Stimulus randomness is deliberately the seeded, NON-cryptographic Mersenne Twister
-# from ``random``, and must stay that way. This generator is run TWICE per simulation
-# from two different processes -- once by dv_sim_prestage.py to stage the t=0 OTP image
-# the RTL $readmemh reads, and once inside the cocotb test to build the golden that the
-# post-sense backdoor compare checks that image against. The two runs agree only because
-# ``random.Random(seed)`` is reproducible from RANDOM_SEED. A cryptographically secure
-# source (``secrets``, ``random.SystemRandom``, ``os.urandom``) cannot be seeded, so
-# adopting one here would make every real-fuse-sense test fail its own shadow compare.
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+# Stimulus randomness is deliberately the seeded, NON-cryptographic SepSeededRng, and
+# must stay that way. This generator is run TWICE per simulation from two different
+# processes -- once by dv_sim_prestage.py to stage the t=0 OTP image the RTL $readmemh
+# reads, and once inside the cocotb test to build the golden that the post-sense
+# backdoor compare checks that image against. The two runs agree only because
+# SepSeededRng is a pure function of RANDOM_SEED. A cryptographically secure source
+# (``secrets``, ``random.SystemRandom``, ``os.urandom``) cannot be seeded, so adopting
+# one here would make every real-fuse-sense test fail its own shadow compare.
 #
 # Nothing this module produces is a secret, a token, or an access-control decision: the
 # values are fuse-array contents for a simulated DUT, written to a plaintext hex file in
-# the run directory and printed to the log. Static analysers flag the module on sight
-# (Cycode "weak PRNG"); this is the triage answer, not an oversight.
-import random
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+# the run directory and printed to the log.
+#
+# Bare sibling import: cocotb/env is on sys.path both in the sim (sep_sim_cfg.toml
+# ``python_paths``) and in the prestage hook, which inserts it explicitly.
+from sep_seeded_rng import SepSeededRng  # noqa: E402
 
 # Array geometry (sep_efuse_pkg: NumEfuseBits=8192, NumFuseWordWidth=32).
 NUM_FUSE_WORDS = 256
@@ -57,12 +60,9 @@ SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
 # LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
 # 4-bit raw code in [3:0] and the FSM differential-encodes it.
 #
-# Derived, never written down. This index moved 2 -> 3 when LOCKS_SPARE was inserted
-# ahead of LC_STATE, and every hardcoded copy of it in this environment then pointed
-# at LOCKS_SPARE while still claiming to read the lifecycle state -- which the shadow
-# checkers could not flag, because a wrong-but-self-consistent differential pair looks
-# exactly like a healthy one. Read it out of the generated map so the map is the only
-# place it is stated.
+# Derived, never written down. Read the index out of the generated map so a
+# hardcoded word offset cannot silently point at a neighbour field (a wrong but
+# self-consistent differential pair still looks healthy to a shadow checker).
 LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 LC_RAW_WIDTH = 4
 # efuse_pkg::lc_state_raw_e — only these 7 codes are legal.
@@ -263,7 +263,7 @@ class SepEfuseImage:
     def load(self, path: str | Path) -> "SepEfuseImage":
         """Load a preload file, auto-detecting the format: a per-bit reference suite
         ``*.preload`` (one 0/1 per line) vs a 256-word hex image."""
-        toks = Path(path).read_text().split()
+        toks = Path(path).read_text(encoding="utf-8").split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:
             return self.load_preload_bits(path)
         return self.load_hex(path)
@@ -276,7 +276,7 @@ class SepEfuseImage:
         works because only the LC_STATE word's [3:0] (== the raw nibble) is significant.
         """
         path = Path(path)
-        words = [int(tok, 16) for tok in path.read_text().split()]
+        words = [int(tok, 16) for tok in path.read_text(encoding="utf-8").split()]
         if len(words) > NUM_FUSE_WORDS:
             raise ValueError(f"{path}: {len(words)} words > {NUM_FUSE_WORDS}")
         self.words = [0] * NUM_FUSE_WORDS
@@ -288,7 +288,7 @@ class SepEfuseImage:
         """Load a reference-suite OTP ``*.preload`` (one bit per line, LSB-first) as the
         golden, packing 32 bits/word to match the fuse-array word layout."""
         path = Path(path)
-        bits = [c for c in path.read_text().split() if c in ("0", "1")]
+        bits = [c for c in path.read_text(encoding="utf-8").split() if c in ("0", "1")]
         self.words = [0] * NUM_FUSE_WORDS
         for bit_idx, c in enumerate(bits):
             if c == "1":
@@ -347,7 +347,7 @@ class SepEfuseImage:
             back (read-locks would return 0xbadcab1e instead of data).
           * ``fixed`` pins named fields to explicit values after randomization.
         """
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         # LOCKS and LOCKS_SPARE are one 96-bit vector, not two independent
         # fields. Build it once, then slice each register by its bit offset
         # from the LOCKS base: LOCKS <- [63:0], LOCKS_SPARE <- [95:64]

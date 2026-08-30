@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002 rev 4).
+"""Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002).
 
 DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test
-DV-CARD-REVISION: 4   RECORD-SHA256: 61e6a1d6e4b3a7f36b116cea03e3071127257a88b50b87161c3dd4b5bc62cca6
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 4   ENV: cocotb
 
 Approved OWNS (card r4 / plan r3):
   SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via
@@ -25,7 +23,7 @@ import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer, with_timeout
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 
 from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO
 from seq_lib.smu_axi_helpers import (
@@ -40,7 +38,7 @@ SMC_FILTER_POISON_LO = 0xBADCAB1E
 
 
 class smu_axi_external_port_connectivity_test_seq:
-    """SMU_ALL_002 r4: SEP=0 inbound→SMC + direct IW converter elaboration."""
+    """SMU_ALL_002: SEP=0 inbound→SMC + direct IW converter elaboration."""
 
     # Authoritative map: smc_addr.h VERSION_LO (SMC local-alias aperture).
     IN_PROBE = SMC_CHIP_CONFIG_VERSION_LO
@@ -214,7 +212,7 @@ class smu_axi_external_port_connectivity_test_seq:
             master, self.IN_PROBE, wdata, self.WRITE_ID
         )
         # Path reached SMC: BlockByDefault → DECERR, or programmed → OKAY.
-        if wresp not in (AxiResp.OKAY, AxiResp.DECERR):
+        if wresp not in (RESP_OKAY, RESP_DECERR):
             raise AssertionError(
                 f"inbound BRESP unexpected {resp_name(wresp)} "
                 f"(expect OKAY|DECERR proving SMC path)"
@@ -227,7 +225,7 @@ class smu_axi_external_port_connectivity_test_seq:
         rdata, rresp, r_arid, r_rid = await self._axi_read_bounded(
             master, self.IN_PROBE, self.READ_ID
         )
-        if rresp not in (AxiResp.OKAY, AxiResp.DECERR):
+        if rresp not in (RESP_OKAY, RESP_DECERR):
             raise AssertionError(
                 f"inbound RRESP unexpected {resp_name(rresp)} "
                 f"(expect OKAY|DECERR proving SMC path)"
@@ -237,7 +235,7 @@ class smu_axi_external_port_connectivity_test_seq:
                 f"inbound RID mismatch: rid=0x{r_rid:x} arid=0x{self.READ_ID:x}"
             )
         # When BlockByDefault DECERR, err_slv poison confirms SMC consumer.
-        if rresp == AxiResp.DECERR:
+        if rresp == RESP_DECERR:
             poison = rdata & 0xFFFF_FFFF
             if poison != SMC_FILTER_POISON_LO:
                 raise AssertionError(

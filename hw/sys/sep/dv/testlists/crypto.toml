@@ -17,6 +17,22 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# OTBN compute RANDCFG. no_cpu direct-AXI: IMEM program, EXECUTE, ERR_BITS==0,
+# DMEM result == independent golden. Walks ADD/XOR/AND; operands from the run
+# seed. Entropy bring-up for post-reset URND wipe (+esrc_noise_force);
+# +skip_fuse_sense. Distinct from IMEM/DMEM smoke (no EXECUTE) and from the
+# KM sideload key-dump.
+name = "sep_otbn_compute_rand_test"
+module = "otbn.sep_otbn_compute_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["otbn", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 name = "sep_esrc_e2e_smoke_test"
 module = "system.sep_esrc_e2e_smoke_test"
 seed = 1
@@ -25,6 +41,46 @@ tags = ["smoke", "entropy", "crypto"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
+
+[[tests]]
+# Shared HT_WATERMARK arming (not the ESRC->DRBG datapath). RANDCFG walks every
+# supported selector on MODULE_ENABLE and CTRL.RESET; seed picks the illegal
+# selector and the low-mode fall. HEALTH_TEST_CTRL.ENABLE stays 0 on arming
+# legs. +skip_fuse_sense; +esrc_noise_force only for the fall window.
+name = "sep_esrc_ht_watermark_arming_test"
+module = "crypto.sep_esrc_ht_watermark_arming_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class every
+# seed; lock sequencing is directed. Write-0 leaves LOCK=1. CTRL.RESET does
+# not clear; rst_ni does. Observe FIFO stays writable. +skip_fuse_sense.
+name = "sep_esrc_fips_lock_test"
+module = "crypto.sep_esrc_fips_lock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# ESRC persistent-failure alert to PIC source 16, then W1C-clear. RAND-NONE.
+# Short window plus stuck forced noise trips ALERT_THRESHOLD. Health-test
+# quality stays out of scope. +skip_fuse_sense; +esrc_noise_force.
+name = "sep_esrc_alert_delivery_test"
+module = "crypto.sep_esrc_alert_delivery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # CHK4 Generate segmentation at glen=4. BOOT_GEN_CMD resets to glen=4095 and is
@@ -56,11 +112,12 @@ args = ["+skip_fuse_sense"]
 # over SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256; SepKmacCfg
 # is SSOT for CFG+KEY_LEN+PREFIX+key+msg and the Keccak golden. KMAC masking reseeds
 # from EDN, so entropy bring-up is required (+esrc_noise_force); +skip_fuse_sense.
+# Strict CHK1..CHK4 + CHK5_kmac routing golden (OTBN/AES/HMAC parked).
 name = "sep_kmac_mode_strength_rand_test"
 module = "crypto.sep_kmac_mode_strength_rand_test"
 seed = 1
 timeout_sec = 1800
-tags = ["crypto", "kmac", "sha3", "rand-rep", "subsystem"]
+tags = ["crypto", "kmac", "sha3", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -70,11 +127,12 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # {ECB,CBC,CTR} x {128,192,256}; SepAesCfg is SSOT for CTRL+key+IV+data and
 # the golden. AES masking reseeds from crypto-EDN, so entropy bring-up is required
 # (+esrc_noise_force for deterministic ESRC noise); +skip_fuse_sense (no OTP need).
+# Strict CHK1..CHK4 + CHK5_aes routing golden (OTBN/KMAC/HMAC parked).
 name = "sep_aes_mode_keysize_rand_test"
 module = "crypto.sep_aes_mode_keysize_rand_test"
 seed = 1
 timeout_sec = 1800
-tags = ["crypto", "aes", "rand-rep", "subsystem"]
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -88,27 +146,25 @@ name = "sep_hmac_sha_variant_rand_test"
 module = "crypto.sep_hmac_sha_variant_rand_test"
 seed = 1
 timeout_sec = 1800
-tags = ["crypto", "hmac", "rand-rep", "subsystem"]
+tags = ["crypto", "hmac", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# DRBG real-sink multi-consumer KM + AES concurrent (edge
-# E2 multi-rand): one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
+# DRBG real-sink multi-consumer KM + AES concurrent: one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
 # (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
-# shared DRBG is correct; CHK5_km + CHK5_aes observed (>=1 beat each) prove
-# concurrent multi-sink consumption. Per-sink bit-exact (which word to which sink)
-# is the documented delta (needs the reference suite AXIS1 pre-adapter tap + arbiter trace,
-# not built; sep_drbg_scoreboard raises NotImplementedError for crypto golden).
+# shared DRBG is correct. CHK5 scores AES golden (AES beats == AXIS1 order) and
+# KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
+# bit-exact routing is a Phase 2 claim, not this test.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
 # oscillators under Verilator. rom_main.rom.parhex from tracked source.
 name = "sep_drbg_real_sink_multi_km_aes_test"
 module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
 seed = 1
 timeout_sec = 7200
-tags = ["drbg", "entropy", "crypto", "multi-sink", "subsystem"]
+tags = ["drbg", "entropy", "crypto", "multi_sink", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
@@ -118,15 +174,15 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # pull the shared crypto-EDN leg concurrently off one verified DRBG stream.
 # Two real crypto clients contend the round-robin arbiter (distinct from the KM+AES
 # test above: there AES was the sole crypto client + KM was the second leg). No KM
-# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + per-sink
-# MEMBERSHIP (each AES and each KMAC word is a genbits-golden word) + both-beats +
+# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + dual-sink
+# CHK5 ROUTING (each AES/KMAC beat equals the AXIS1 grant) + both-beats +
 # both-KAT under contention. +esrc_noise_force (masking entropy) + +skip_fuse_sense.
 name = "sep_crypto_edn_multisink_arbitration_test"
 module = "crypto.sep_crypto_edn_multisink_arbitration_test"
 seed = 1
 reseed = 3
 timeout_sec = 1800
-tags = ["drbg", "entropy", "crypto", "multi-sink", "aes", "kmac", "subsystem"]
+tags = ["drbg", "entropy", "crypto", "multi_sink", "aes", "kmac", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -136,6 +192,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
 # inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
 # time-span overlap test above, which cannot hold two edn_req bits together.
+# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd ROUTING (two live sinks).
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1
@@ -144,3 +201,19 @@ tags = ["drbg", "entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
+# (sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR). Software-written seed only.
+# Public key matches the vendored ACVP vector; one seed-bit flip must
+# change the key. PIC [34] low / [35] high on completion. RANDCFG: masking
+# entropy and flip bit from the run seed. Sign/verify, ML-KEM, and the
+# key-vault seed path are not claimed. no_cpu; +skip_fuse_sense.
+name = "sep_abr_mldsa_keygen_kat_test"
+module = "crypto.sep_abr_mldsa_keygen_kat_test"
+seed = 1
+timeout_sec = 7200
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]

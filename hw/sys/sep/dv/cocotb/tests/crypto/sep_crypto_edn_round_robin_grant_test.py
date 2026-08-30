@@ -10,11 +10,11 @@ configuration. This test holds AES (crypto_edn[0]) and OTBN URND
 the real entropy chain so ``prim_arbiter_ppc`` inside ``drbg_axis_edn_adapter``
 has to grant both.
 
-The grant monitor starts only after the ESRC seed is ready, and the DRBG
-scoreboard runs with crypto-sink scoring off: extra every-cycle Python
-monitors through ``wait_seed_ready`` (60 k cycles) do not finish inside a
-reasonable wall-clock budget on this DUT. Noise still comes from the
-scoreboard driver so the generators produce a real seed.
+The grant monitor starts only after the ESRC seed is ready so the dual-req
+window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
+on that bring-up. Two crypto sinks are live (AES + OTBN URND), so CHK5 is
+dual-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
+granted that cycle.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (signed-off
 observation ports).
@@ -100,9 +100,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cfg = SepEntropyCfg()
         self.entropy_cfg = cfg
         self.drbg_sb = SepDrbgScoreboard(
-            dut, self.logger, strict=False,
+            dut, self.logger, strict=True,
             golden_kwargs=cfg.golden_kwargs(), chk2_backdoor=cfg.chk2_backdoor,
             score_km=False,
+            score_sinks={"aes": "golden", "otbn_urnd": "golden"},
         )
         self.drbg_sb.start()
         await self.assert_noise_force_active()
@@ -111,6 +112,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        self.start_fifo_drain()
+        self.drbg_sb.enable_chk5()
 
         grants: list[int] = []
         dual_grants: list[int] = []
@@ -170,4 +173,15 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants[:12], dual_grants[:12],
         )
 
+        await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report()
+        ra = self.drbg_sb.results["CHK5_aes"]
+        ru = self.drbg_sb.results["CHK5_otbn_urnd"]
+        assert ra.mismatches == 0 and ru.mismatches == 0
+        self.logger.info(
+            "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
+            "equal the AXIS1 grant-order stream (mismatch=0)",
+            ra.matches, ru.matches)
+        self.logger.info(
+            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")

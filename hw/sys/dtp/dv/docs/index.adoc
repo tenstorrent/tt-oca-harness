@@ -8,6 +8,9 @@
 :sectnums:
 :source-highlighter: highlight.js
 
+include::DTP_SPEC.adoc[leveloffset=0]
+include::DTP_CSR.adoc[leveloffset=0]
+include::../../doc/defines.adoc[leveloffset=-1]
 include::DTP_TB_ARCH.adoc[leveloffset=0]
 include::DTP_VPLAN.adoc[leveloffset=0]
 include::DTP_FCOV.adoc[leveloffset=0]

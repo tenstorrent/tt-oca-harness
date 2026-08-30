@@ -268,8 +268,8 @@ module smu #(
     output logic [63:0]  timer_count_o,
 
     // Trace Memory
-    output dfd_trace_mem_pkg::SinkMemPktIn_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
-    input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_resp_i,
+    output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
+    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_resp_i,
 
     // Test Mode
     input  logic  test_en_i,
@@ -438,7 +438,7 @@ module smu #(
     // cla_ext_action_custom[2] - mpc_reset_run_req (inverted: action asserted = Debug Mode)
     // cla_ext_action_custom[3] - i_cpu_halt_req
     // cla_ext_action_custom[4] - i_cpu_run_req
-    logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
+    logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
 
     // SEP lifecycle and mailbox signals
     logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  sep_lc_state;
@@ -880,21 +880,21 @@ module smu #(
 
             .ext_boot_seq_done_i           (ext_boot_seq_done_i),
 
-            .dmi_core_enable               (1'b0),   // TODO: DMI routing TBD
-            .dmi_uncore_enable             (1'b0),   // TODO: DMI routing TBD
+            .dmi_core_enable               (1'b0),
+            .dmi_uncore_enable             (1'b0),
             .dmi_uncore_en                 (/* unused */),
             .dmi_uncore_wr_en              (/* unused */),
             .dmi_uncore_addr               (/* unused */),
             .dmi_uncore_wdata              (/* unused */),
-            .dmi_uncore_rdata              (32'h0),  // TODO: DMI routing TBD
+            .dmi_uncore_rdata              (32'h0),
             .dmi_active                    (/* unused */),
 
             .sep_cpu_trace                 (sep_cpu_trace_o),
 
             .jtag_id                       ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
 
-            .timer_int                     (1'b0),   // TODO: interrupt routing TBD
-            .soft_int                      (1'b0),   // TODO: interrupt routing TBD
+            .timer_int                     (1'b0),
+            .soft_int                      (1'b0),
             .extintsrc_req                 (sep_extintsrc_req_i),
 
             .sep_cpu_tcm_req_o             (sep_cpu_tcm_req_o),

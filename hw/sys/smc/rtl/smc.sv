@@ -222,7 +222,7 @@ module smc
     input  smc_pkg::jtag_smc_reset_ctrl_t                                                  jtag_reset_ctrl_i,
 
     // DFD signals
-		output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						               cla_ext_action_custom_o,
+		output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						               cla_ext_action_custom_o,
 
     output smc_pkg::xtrigger_t                                                             xtrigger_ss_o,
     input  wire smc_pkg::xtrigger_t                                                        xtrigger_ss_i,
@@ -231,8 +231,8 @@ module smc
     input  wire logic                                                                      tdr_dbg_ctrl_clock_stop_en_i,
     output      logic                                                                      tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-    output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
-    input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
+    output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
+    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
 
     input  logic [511:0]                                                                   ext_debug_bus_i, // Note: Ensure signals are 16-bit aligned within this bus
 
@@ -289,6 +289,7 @@ module smc
 
   // Interrupt signals
   logic [31:0] peripheral_interrupts;
+  logic        axi_hang_irq;
 
   // Debug
   logic [16:0]            avsbus_cur_state_debug;
@@ -325,7 +326,6 @@ module smc
 
   smc_base # (
     .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),           // Enable address remap in the output fabric
-    .LOCAL_ALIAS_REGION_SIZE            (smc_pkg::LOCAL_ALIAS_REGION_SIZE), // Use smc address space for local alias region
     .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG)
   ) u_smc_base (
     // Clocks from PLLs
@@ -423,10 +423,9 @@ module smc
     .mbist_pass_i                           (mbist_pass_i),
     .mbist_abort_i                          (mbist_abort_i),
 
-    // AXI hang detector fault output. Config lives in smc_base_config (inside
-    // u_smc_base); the OR'd fault terminates at smc_base and is not propagated
-    // above smc for now.
-    .axi_hang_irq_o                         ()
+    // AXI hang detector fault output. 
+    // The OR'd fault is routed into smc_peripherals peripheral_interrupts[31] so PLIC can see it.
+    .axi_hang_irq_o                         (axi_hang_irq)
   );
 
 
@@ -656,6 +655,7 @@ module smc
 
     // interrupts
     .sep_mailbox_interrupts_i              (sep_mailbox_interrupts_i),
+    .axi_hang_irq_i                        (axi_hang_irq),
     .peripheral_interrupts_o               (peripheral_interrupts),
 
     .gpio_interrupt_o                      (gpio_interrupt_o),

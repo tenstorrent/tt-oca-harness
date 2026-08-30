@@ -287,11 +287,25 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         addr = self._addr(ERROR_BASE + 0x900, 1)
-        data = 0xA5A5_5A5A_C3C3_3C3C & self.data_mask(size)
-        for idx, bit_name in enumerate(cfg.required_enable_bits, start=1):
-            self.log_step(idx, "Gate %s with lifecycle %s and attempt error-path write", self.target, bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
-            self.configure_target_error(self.target, addr, AXI_SLVERR, read=False, write=True)
+        # Seeded per-pass payload for the gated/ungated/recovery writes.
+        data = self.rng(f"{self.target}_error_gate").getrandbits(64) & self.data_mask(size)
+        # Two assert/release passes of the target's direct disable prove the
+        # gate is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
+            self.log_step(idx, "Gate %s with %s (pass %d) and attempt error-path write",
+                          self.target, cfg.dbg_disable_bit, idx)
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
+            # arm=False: the gated op must never reach the bus, so no model
+            # expectation or scoreboard credit may be armed for it (an armed
+            # credit that is never consumed fails CHK-AXI-CREDITS).
+            self.configure_target_error(
+                self.target, addr, AXI_SLVERR, read=False, write=True, arm=False
+            )
+            # Hold a blocked window across the gated attempt: any monitored
+            # transaction inside it fails (CHK-AXI-BLOCKED).
+            gate_before = await self.target_activity_counts(self.target)
+            self.scoreboard_begin_blocked(self.target)
             raw = pack_single_op(
                 DtpJtag2AxiOp.WRITE,
                 addr,
@@ -302,8 +316,20 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             )
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"error_gate.{bit_name}.no_axi")
+            if self.axi_scoreboard is not None:
+                gate_after = await self.target_activity_counts(self.target)
+                self.axi_scoreboard.expect_no_activity(
+                    before=gate_before,
+                    after=gate_after,
+                    context=(
+                        f"error_gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
+                    ),
+                )
             self.clear_target_errors(self.target)
-            await self.clear_lifecycle()
+            await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.scoreboard_end_blocked(self.target, context=f"error_gate.{bit_name}")
             expected = self.configure_target_error(self.target, addr, AXI_DECERR, read=False, write=True)
             status, _ = await self.write_target_single_expect_status(
                 self.target,
@@ -324,7 +350,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.status = DtpJtag2AxiStatus.SUCCESS
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "error_single_write": self.run_error_single_write,
             "error_single_read": self.run_error_single_read,
@@ -339,9 +365,22 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         if self.scenario not in scenarios:
             raise ValueError(f"unknown JTAG2AXI error scenario {self.scenario!r}")
         await scenarios[self.scenario]()
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            # CHK-AXI-NONVAC for every error scenario: real operations ran and
+            # no armed error credit was left unconsumed. A tied-off or wedged
+            # bridge cannot satisfy both.
+            unconsumed = scoreboard.unconsumed_credits()
+            scoreboard.expect_nonvacuous(
+                self.operation_count >= 1 and unconsumed == 0,
+                context=(
+                    f"scenario={self.scenario} target={self.target} "
+                    f"operations={self.operation_count} credits_unconsumed={unconsumed}"
+                ),
+            )
         self.clear_target_errors(self.target)
         self.clear_target_backpressure(self.target)
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "JTAG2AXI error scenario complete",
             target=self.target,

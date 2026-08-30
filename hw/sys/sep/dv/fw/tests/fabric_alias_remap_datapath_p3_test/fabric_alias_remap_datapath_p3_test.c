@@ -4,9 +4,7 @@
 /*
  * fabric_alias_remap_datapath_p3_test
  *
- * Goal: axi_alias_remap_wrap 2.18% -> 90%+ [critical], axi_alias_remap 50.57% -> 90%+
  * Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage
- * Priority: first pass (critical - needs ~87.82% improvement)
  *
  * Focus on full alias-remap datapath matrix and all AXI signal toggles
  */
@@ -243,9 +241,7 @@ static int test_axi_signal_comprehensive_toggle(void) {
 }
 
 int main(void) {
-    printf("Alias Remap Datapath P3 Test\n");
-    printf(
-        "Goals: axi_alias_remap_wrap 2.18%% -> 90%%+ [critical], axi_alias_remap 50.57%% -> 90%%+\n");
+    printf("Alias Remap Datapath Test\n");
     printf("Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage\n\n");
 
     // Initialize fabric system
@@ -280,8 +276,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== ALIAS REMAP DATAPATH P3 TEST PASSED ===\n");
-    printf("Expected improvement: axi_alias_remap_wrap 2.18%% -> 90%%+ (87.82%% improvement!)\n");
+    printf("\n=== ALIAS REMAP DATAPATH TEST PASSED ===\n");
 
     test_pass("fabric_alias_remap_datapath_p3_test");
     return TEST_PASS;

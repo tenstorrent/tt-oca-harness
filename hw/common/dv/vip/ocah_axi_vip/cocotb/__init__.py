@@ -7,10 +7,6 @@ This package provides a single, versioned Python API surface for driving and
 responding to AXI4 and AXI4-Lite traffic in OCAH cocotb tests.  All classes
 accept and return plain Python ints; no internal VIP types leak out.
 
-APB lives in its own package (``ocah_apb_vip``) because it is a distinct
-protocol (one package per protocol); it also targets ``cocotbext-axi``, which
-provides ``ApbMaster``/``ApbBus``.
-
 The VIP is implemented per side with side-token naming
 (``ocah_axi[_lite]_master_*`` / ``ocah_axi[_lite]_slave_*``); tests consume
 each side through its ``*Sequence`` class (the mandated test-facing surface),
@@ -66,6 +62,9 @@ from .ocah_axi_ref_model import (
 )
 from .ocah_axi_scoreboard import OcahAxiScoreboard
 from .ocah_axi_results import (
+    PROT_INSTRUCTION,
+    PROT_NONSECURE,
+    PROT_PRIVILEGED,
     RESP_DECERR,
     RESP_EXOKAY,
     RESP_OKAY,
@@ -73,6 +72,7 @@ from .ocah_axi_results import (
     RESP_TIMEOUT,
     OcahAxiReadResult,
     OcahAxiWriteResult,
+    resp_name,
 )
 
 
@@ -95,7 +95,7 @@ def _unavailable_class(class_name: str, backend: str):
 try:
     from .ocah_axi_master_agent import OcahAxiMasterAgent
     from .ocah_axi_master_config import OcahAxiMasterConfig
-    from .ocah_axi_master_driver import OcahAxiMasterDriver
+    from .ocah_axi_master_driver import OcahAxiIdCapture, OcahAxiMasterDriver
     from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
     from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
     from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
@@ -115,6 +115,7 @@ except ModuleNotFoundError as exc:
     OcahAxiMasterAgent = _unavailable_class("OcahAxiMasterAgent", "cocotbext-axi")
     OcahAxiMasterConfig = _unavailable_class("OcahAxiMasterConfig", "cocotbext-axi")
     OcahAxiMasterDriver = _unavailable_class("OcahAxiMasterDriver", "cocotbext-axi")
+    OcahAxiIdCapture = _unavailable_class("OcahAxiIdCapture", "cocotbext-axi")
     OcahAxiMasterSequence = _unavailable_class("OcahAxiMasterSequence", "cocotbext-axi")
     OcahAxiMasterError = OcahAxiVipBackendError
     OcahAxiLiteMasterAgent = _unavailable_class("OcahAxiLiteMasterAgent", "cocotbext-axi")
@@ -158,6 +159,7 @@ __all__ = [
     "OcahAxiMasterConfig",
     "OcahAxiMasterDriver",
     "OcahAxiMasterSequence",
+    "OcahAxiIdCapture",
     "OcahAxiLiteMasterAgent",
     "OcahAxiLiteMasterConfig",
     "OcahAxiLiteMasterDriver",
@@ -202,6 +204,11 @@ __all__ = [
     "RESP_SLVERR",
     "RESP_DECERR",
     "RESP_TIMEOUT",
+    "resp_name",
+    # AxPROT bit values
+    "PROT_PRIVILEGED",
+    "PROT_NONSECURE",
+    "PROT_INSTRUCTION",
 ]
 
 __version__ = "0.2.0"

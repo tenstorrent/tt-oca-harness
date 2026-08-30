@@ -20,6 +20,7 @@ _dv_root_str = str(_DV_ROOT)
 if _dv_root_str not in sys.path:
     sys.path.insert(0, _dv_root_str)
 
+from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
 
@@ -34,93 +35,12 @@ class dtp_base_test(uvm_test):
     axi_checker_required_ids: tuple[str, ...] = ()
     axi_checker_stream_minimums: dict[str, int] | None = None
 
-    # JTAG2AXI scenarios with randomized address/data/series choices get more
-    # default passes. Directed/exhaustive scenarios stay one-pass so group loop
-    # knobs do not inflate simulation time without adding coverage.
-    JTAG2AXI_DEFAULT_LOOP_SCENARIOS = {
-        "series_write_incr",
-        "series_write_no_incr",
-        "series_write_incr_with_error",
-        "random_ops",
-        "series_write_read_incr",
-        "series_write_read_no_incr",
-        "series_write_read_incr_with_error",
-        "read_random_ops",
-        "error_single_write",
-        "error_single_read",
-        "backpressure_aw_before_w",
-        "backpressure_long_stall",
-        "backpressure_abort_at_data_w",
-        "decode_error_mixed",
-    }
-    JTAG2AXI_ONE_PASS_SCENARIOS = {
-        "single_write",
-        "single_write_data_verify",
-        "write_security_gating",
-        "single_write_read",
-        "read_security_gating",
-        "read_security_gating_no_axi_activity",
-        "error_series_no_incr_write",
-        "error_series_no_incr_read",
-        "error_series_incr_write",
-        "error_series_incr_read",
-        "error_series_incr_write_with_status",
-        "error_series_incr_read_with_status",
-        "error_security_gating",
-        "cdc_clear_abort_narrow_reset_mid_xaction",
-        "cdc_clear_abort_back_to_back_reset",
-        "decode_error_decerr_write",
-        "decode_error_decerr_read",
-        "series_corner_all_bridges",
-    }
-    SCAN_DEFAULT_LOOP_SCENARIOS = {
-        "sib_random",
-        "dfd",
-    }
-    SCAN_ONE_PASS_SCENARIOS = {
-        "sib_all_off",
-        "sib_all_on",
-        "dft",
-        "stap_sel_ds",
-        "stap_sel_smc",
-        "stap_sel_extra",
-        "stap_sel_sep",
-        "ext_stap_scan",
-        "config_hold",
-        "tms_hold",
-    }
-    XTRIG_DEFAULT_LOOP_SCENARIOS = {
-        "random",
-        "ctm_rand_all_scenarios",
-        "ctm_rand_wire_or_only",
-        "ctm_rand_p2p_only",
-        "ctm_rand_cla_to_ctp",
-        "ctm_rand_ctp_to_cla",
-    }
-    XTRIG_ONE_PASS_SCENARIOS = {
-        "reg_stall",
-        "ctp_csr_sweep",
-        "ctm_csr_sweep",
-        "wire_or",
-        "p2p",
-        "reset",
-        "dst_port_sweep",
-        "axi_channel_skew",
-        "axi_channel_skew_demux_aw_lock_release",
-        "axi_channel_skew_read_decode_backpressure",
-        "ctm_wire_or_cla_to_ctp",
-        "ctm_wire_or_ctp_to_cla",
-        "ctm_wire_or_cla_to_cla",
-        "ctm_wire_or_ctp_to_ctp",
-        "ctm_p2p_cla_to_ctp",
-        "ctm_p2p_ctp_to_cla",
-        "ctm_p2p_cla_to_cla",
-        "ctm_p2p_ctp_to_ctp",
-        "ctm_reset_wire_or_mode",
-        "ctm_reset_p2p_mode",
-        "ctm_reset_all_modes",
-        "ctm_all_source_select",
-    }
+    # Every looped scenario runs at least this many passes by default. Each
+    # pass gets its own scenario seed (base_seed + loop_idx), so directed
+    # scenarios re-prove back-to-back recovery and randomized scenarios add
+    # stimulus diversity. Env knobs (specific/group/DTP_TEST_LOOPS) can still
+    # raise or lower the count for a given run.
+    MIN_DEFAULT_LOOPS = 16
 
     @staticmethod
     def random_seed() -> int:
@@ -180,31 +100,12 @@ class dtp_base_test(uvm_test):
         base_name: str,
         *,
         specific_env: str,
-        default_loops: int = 4,
+        default_loops: int = 16,
         group_env: str | None = "DTP_TEST_LOOPS",
         **seq_kwargs,
     ) -> list:
         """Run a sequence class multiple times with deterministic per-loop seeds."""
-        scenario = seq_kwargs.get("scenario")
-        if group_env == "DTP_JTAG2AXI_TEST_LOOPS":
-            if scenario in self.JTAG2AXI_DEFAULT_LOOP_SCENARIOS:
-                default_loops = max(default_loops, 16)
-            elif scenario in self.JTAG2AXI_ONE_PASS_SCENARIOS:
-                default_loops = 1
-                group_env = None
-        elif group_env == "DTP_SCAN_TEST_LOOPS":
-            if scenario in self.SCAN_DEFAULT_LOOP_SCENARIOS:
-                default_loops = max(default_loops, 16)
-            elif scenario in self.SCAN_ONE_PASS_SCENARIOS:
-                default_loops = 1
-                group_env = None
-        elif group_env == "DTP_XTRIG_TEST_LOOPS":
-            if scenario in self.XTRIG_DEFAULT_LOOP_SCENARIOS:
-                default_loops = max(default_loops, 16)
-            elif scenario in self.XTRIG_ONE_PASS_SCENARIOS:
-                default_loops = 1
-                group_env = None
-
+        default_loops = max(default_loops, self.MIN_DEFAULT_LOOPS)
         loops = self.loop_count(specific_env, default_loops, group_env=group_env)
         random_count = self.env_int("DTP_RANDOM_COUNT", 5)
         base_seed = self.random_seed()
@@ -250,15 +151,15 @@ class dtp_base_test(uvm_test):
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0
-        for name in (
-            "feat_ctrl_sip_debug",
-            "feat_ctrl_soc_debug",
-            "feat_ctrl_ap_debug",
-            "feat_ctrl_sep_debug",
-            "feat_ctrl_fuse_test",
-        ):
-            if hasattr(dut, name):
-                getattr(dut, name).value = 1
+        # Startup vector, driven while POR is still asserted: all eleven
+        # active-high disables cleared so tests begin with full debug access
+        # and assert the disables they gate explicitly. The DUT itself is
+        # fail-closed until its TCK-domain synchronizers pass the cleared
+        # values through.
+        startup = {name: 0 for name in DBG_DISABLE_FIELDS}
+        for name, value in startup.items():
+            getattr(dut, f"dbg_disable_{name}").value = value
+        self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
         cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
         await ClockCycles(dut.clk_i, 5)
         dut.pwr_on_rst_ni.value = 1

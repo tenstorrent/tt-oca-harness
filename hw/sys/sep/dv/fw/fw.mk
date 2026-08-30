@@ -21,7 +21,7 @@ FW_INCLUDES := -I$(FW_DIR)/include
 FW_REG_SYS := sep
 
 # Test discovery is unified in compile.mk; declare only the SEP deltas.
-FW_TEST_EXCLUDE_NAMES := bl1_pass_test
+FW_TEST_EXCLUDE_NAMES := bl1_pass_test sep_smu_spi_mux
 # drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
 # The boot ROM's include/ holds the rom_*/boot_* headers that the sep_smc_* and
 # sep_smu_* tests include directly. The register headers are not here:
@@ -100,11 +100,11 @@ FW_TEST_EXTRA_CFLAGS += \
 # trap as illegal instructions on this EL2 config.
 FW_TEST_BITMANIP := \
   ap_stee_output_remap_test bl1_pass_test hello_world \
-  lcc_inbound_filter_gating_test nmi_sanity_test \
+  nmi_sanity_test \
   otbn_fw_control_test otbn_loops_test otbn_p256_verify_test otbn_plic_test \
   otbn_rsa_3072_verify_test otbn_sep_integration_test otbn_smoke_test \
   otbn_sw_error_test rom_no_tcm_preload_mem_init sep_aes_back_to_back_test \
-  sep_inbound_filter_decerr sep_mailbox_plic_test sep_smc_notify \
+  sep_inbound_filter_decerr sep_smc_notify \
   sram_perf_test uart \
   wdt_bark_bite_order_test wdt_bite_before_bark_test wdt_cdc_sync_test \
   wdt_cfg_lock_test wdt_count_overflow_test wdt_intr_clear_test wdt_intr_test \

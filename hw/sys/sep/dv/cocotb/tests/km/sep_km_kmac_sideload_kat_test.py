@@ -17,14 +17,12 @@ it bit-exactly against this same masked engine. Attaching it here would upgrade 
 cross-check below into a real known-answer test. The OSS port is a FRONTDOOR
 known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
 sideload output to that specific key via the SW path, and the dummy-key negative
-reference proves the key actually drives the output. This sidesteps the 
-value-agnostic false-confidence trap (the lesson this very test originated) by
-construction -- the key is known and non-degenerate, not a possibly-collapsed
-KM-generated key.
+reference proves the key actually drives the output. Consume-proof is
+sideload-vs-SW plus decoy difference, not a KMAC golden.
 
 VPLAN-parity checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
-  CHK-A     CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE + backdoor)
+  CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
             sideload targets released; AES/HMAC/OTBN parked
@@ -62,7 +60,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_kmac_seq import SepKmac
 from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_KMAC
-from seq_lib.sep_sw_reset_seq import SepSwReset, SW_RESET_N_BIT
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words (non-degenerate by construction).
 KAT_KEY = (
@@ -91,16 +89,13 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # --- Boot the real KM firmware on real entropy -------------------------
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD (KM reads OTP at boot)
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.kmac = SepKmac(self)
 
-        # Park all four sideload-target crypto engines: KM owns the EDN stream for
-        # boot/keygen and the key bus is isolated. KMAC is released only before the
-        # transfer so its keyed ops pull EDN masking entropy afterwards.
-        await self.swrst.park("otbn", "aes", "hmac", "kmac")
+        # All four sideload targets JTAG-held across rst_ni release, then parked in SW_RESET_N. KMAC is released only
+        # before the transfer so its keyed ops pull EDN masking entropy.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
         # (KM boot/load consumer). score_sinks kmac="observe": prove KMAC pulls real
@@ -204,5 +199,5 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         await self.km.check_outbound_empty("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK-ENT + CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

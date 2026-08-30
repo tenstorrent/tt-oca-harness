@@ -25,9 +25,14 @@
 //     ic_reset_ctrl_n_o[i] =  reset_control[i];  // active-low reset value
 //
 // Downstream `jtag_ptap` forwards this active-high `ic_reset_ovrd_o` straight
-// into the `.ovrd` member of the per-slice `jtag_*_reset_ctrl_t` structs, so
-// SMC / SEP / external reset-mux consumers can use the natural
-// `ovrd ? val : upstream_reset_n` form.
+// into the `.ovrd` member of the per-slice `jtag_*_reset_ctrl_t` structs, which
+// SMC / SEP / external consumers use as the select of a reset multiplexer.
+//
+// PROGRAMMING RULE - change `reset_control` and `reset_enable` for a port in
+// separate Update-DR operations, `reset_control` first. Consumers mux with
+// prim_rst_mux2_hf_n, which is hazard-free only while the select moves on its
+// own; both fields moving in one update can pulse a reset on a port that
+// neither source is resetting.
 //
 //-----------------------------------------------------------------------------
 
@@ -50,6 +55,9 @@ module jtag_ic_reset_reg
     output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ovrd_o,    // 1 ⇒ JTAG overriding this port (== !reset_enable)
     output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_o   // Active-low reset value (== reset_control TDR field)
 );
+    // Tie off unused field to satisfy lint
+    logic unused_tap_ctrl;
+    assign unused_tap_ctrl = ^{tap_ctrl_i.tms, tap_ctrl_i.tck};
 
     //--------------------------------------------------------------------------
     // Local Parameters

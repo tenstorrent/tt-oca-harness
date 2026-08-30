@@ -17,7 +17,7 @@
 #include "sep_outbound_filter.h"
 #include "sep_kmac.h"
 
-/* Composed from generated field reset / bitmasks in blocks/kmac.h. */
+/* Composed from generated field reset / bitmasks in kmac.h. */
 #define KMAC_STATUS_RESET_VAL (KMAC__STATUS__SHA3_IDLE_bm | KMAC__STATUS__FIFO_EMPTY_bm)
 #define KMAC_CFG_REGWEN_RESET_VAL (KMAC__CFG_REGWEN__EN_bm)
 #define KMAC_CFG_SHADOWED_RESET_VAL (KMAC__CFG_SHADOWED__SIDELOAD_bm)

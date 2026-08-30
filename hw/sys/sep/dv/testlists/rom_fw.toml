@@ -11,14 +11,14 @@ schema_version = 1
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
 #
-# OWNERSHIP: these exercise ROM firmware, not the ROM macro. They arrived with
-# PR #451 and are not graded in verification_plan_phase1/2. ROM *hardware*
+# OWNERSHIP: these exercise ROM firmware, not the ROM macro. They are not
+# contracted in docs/SEP_VPLAN.adoc. ROM *hardware*
 # coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
 # `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
 # four names are graded.
 #
-# They still run in the `all` and `cpu` groups: the boot path is worth exercising
-# in a SEP sweep even though SEP does not grade it.
+# They run in the `all` and `rom_fw` groups, not `cpu`: a CPU-class run is
+# one RTL target (`default`), and these need `rom_boot`.
 
 [[tests]]
 # ROM non-secure boot (the reference suite's sep_rom_non_secure_boot_test): the CPU boots the REAL
@@ -26,9 +26,9 @@ schema_version = 1
 # manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
 # into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
-# OpenTitan Quad spi_host, not the licensed xSPI controller the ROM drives),
+# OpenTitan Quad spi_host),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
-# behavioral SMC responder (SEP_SMC_MEM_MODEL). See sep-rom-non-secure-boot-design.md.
+# behavioral SMC responder (SEP_SMC_MEM_MODEL).
 name = "sep_rom_non_secure_boot_test"
 module = "cpu.sep_rom_non_secure_boot_test"
 target = "rom_boot"
@@ -69,10 +69,8 @@ args = [
 #
 # "dma" names the RX-FIFO drain, which boot_flash.h picks at build time: this
 # builds BOOT_OT_SPI_USE_PIO=0 (SECURE_DMA handshake). The CPU-PIO drain (=1,
-# build_ot_pio/, ot-pio-toolchain-images) is a genuinely different datapath and
-# has NO test here yet, so passing this proves nothing about it -- matching the
-# reference flow's sep_rom_ot_dma_boot_test / sep_rom_ot_pio_boot_test pair, of
-# which only the first is ported.
+# build_ot_pio/) is a genuinely different datapath with its own entry below,
+# sep_rom_ot_pio_boot_test, so passing this one proves nothing about that one.
 #
 # +sep_boot_from_spi seeds STRAPS_LO[25] (primary_chiplet) in the SMC responder so
 # boot_from_spi() is true; without it the ROM takes the SMC-SRAM branch.
@@ -153,14 +151,11 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   # DV SHORTCUT, tagged dv_shortcut above. OTBN parks in UrndRefresh until EDN
-  # grants entropy, and nothing in the boot flow enables the entropy chain (the
+  # grants entropy, and the boot flow does not enable the entropy chain (the
   # ROM has no CSRNG/EDN code), so without this the RSA verify never starts and
   # the test sits at RSA_VERIFY_START until timeout. This forces the OTBN EDN
   # grants only -- the entropy_source/CSRNG/EDN path is NOT exercised here, and
   # the RSA assertions are untouched, so a pass still means the signature really
-  # verified. Same shortcut the internal flow takes (+CRYPTO_EDN_HACK).
-  # FIXME(SEP-DV): drop this once DE confirms who is meant to bring up DRBG/EDN
-  # before the ROM runs RSA; if the answer is "nobody", this masks a real gap.
-  # See .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+  # verified.
   "+sep_crypto_edn_force",
 ]

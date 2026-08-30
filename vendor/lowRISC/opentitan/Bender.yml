@@ -34,6 +34,12 @@ sources:
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
+  # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is
+  # defined; the dtp graph receives prim_flop_2sync above but not the
+  # any(opentitan_smu, sep, smu) file set that carries the delay model.
+  - target: all(dtp, simulation)
+    files:
+      - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 
   - target: any(sep, smc, opentitan_smu, smu, key_manager)
     files:

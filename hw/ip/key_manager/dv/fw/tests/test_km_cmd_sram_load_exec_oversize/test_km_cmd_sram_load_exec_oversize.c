@@ -7,7 +7,7 @@
  * @brief CMD_SRAM_LOAD_EXEC: oversize FW_WORDS → INVALID_ARG, no image transfer.
  *
  * Sends CMD_SRAM_LOAD_EXEC with FW_WORDS larger than the available image load
- * area (0xFFFF words ≈ 256 KB, far beyond the 16 KB SRAM).  Verifies the
+ * area (0xFFFF words ≈ 256 KB, far beyond the 32 KB SRAM).  Verifies the
  * command returns ROM_KM_RC_INVALID_ARG without reading any image words from
  * the mailbox.
  *
@@ -113,7 +113,7 @@ int main(void) {
 
     /*=================================================================
      * Test 2: FW_WORDS = 0xFFFF (65535 words = 256 KB) → INVALID_ARG
-     * This is larger than the entire 16 KB SRAM; always rejected.
+     * This is larger than the entire 32 KB SRAM; always rejected.
      *=================================================================*/
     TEST_SUBTEST_START("FW_WORDS=0xFFFF (oversize) → INVALID_ARG");
     {

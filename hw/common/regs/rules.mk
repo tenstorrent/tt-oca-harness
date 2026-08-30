@@ -8,7 +8,20 @@
 # twice, so the second is resolved via secondary expansion ($$*). A no-op elsewhere.
 .SECONDEXPANSION:
 
+# Local svpkg template: upstream peakrdl-rawheader 0.2.4 sizes enum widths by the
+# number of entries rather than the largest value, silently truncating any enum
+# whose largest value needs more bits than its entry count, and ends the package
+# with a stray `endpackage;` (empty statement, lint W193). Both fixed in our copy;
+# drop this and the --template flag once the fixes land upstream.
+OCAH_SVPKG_TEMPLATE ?= $(OCAH_ROOT)/hw/common/regs/templates/svpkg.mako
+
 # Prepend SPDX to generated register files after PeakRDL / custom exporters.
+# Always pass the exact file(s) a recipe emitted, never a directory: several
+# blocks share one regs/gen/sv (the key_manager top and its ten sibling RDLs,
+# each a leaf) and composite sub-blocks share regs/gen/sv/blocks. Stamping the
+# whole directory made every block's recipe read-modify-write the others' files,
+# which truncated them non-deterministically under the flow's default -j. The
+# stamper accepts many paths and no-ops on ones that do not exist.
 ocah_reg_stamp = python3 "$(OCAH_ROOT)/tools/regs/stamp_spdx.py"
 
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
@@ -39,6 +52,12 @@ ocah_reg_run_ral      = "$(UV)" run peakrdl uvm $(call ocah_reg_incdirs,$(1)) "$
 # unrolling it triples the register count for consumers that only ever walk the
 # first element anyway.
 ocah_reg_run_json     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdljson.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) --repo-root "$(OCAH_ROOT)" --compact_arrays "$(2)" "$(3)" 2>&1 | tee "$(4)"
+# IP-XACT 1685-2014 component XML, straight from the stock peakrdl-ipxact
+# exporter. Fixed vendor/library/version and an explicit --standard keep the
+# output byte-stable for the regen gate (the exporter embeds no timestamps or
+# paths); --name defaults to the top component's own name. $(2) = input RDL,
+# $(3) = output xml, $(4) = log.
+ocah_reg_run_ipxact   = "$(UV)" run peakrdl ip-xact $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --vendor tenstorrent.com --library ocah --version 1.0 --standard 2014 2>&1 | tee "$(4)"
 
 # Refresh one committed vendored RDL from its upstream hjson. This is intentionally
 # NOT a make file rule on the RDL path: the committed RDL must never become a
@@ -54,10 +73,10 @@ $(call ocah_reg_raw_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format c --base-name "$(shell echo $(call ocah_reg_name,$(1))_addr | tr a-z A-Z)" -o "$(call ocah_reg_raw_c_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_c_header.log"'
 	@$(ocah_reg_stamp) "$(call ocah_reg_raw_c_output,$(1))"
 
-$(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
+$(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_SVPKG_TEMPLATE) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating SystemVerilog address package for $(1)"
-	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg -o "$(call ocah_reg_svpkg_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"'
+	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg --template "$(OCAH_SVPKG_TEMPLATE)" -o "$(call ocah_reg_svpkg_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"'
 	@$(ocah_reg_stamp) "$(call ocah_reg_svpkg_output,$(1))"
 
 $(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
@@ -72,7 +91,18 @@ $(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP)
 	@$(ocah_sh) '$(call ocah_reg_run_svh,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_svh_output,$(1)),$(call ocah_reg_build,$(1))/svh.log)'
 	@$(ocah_reg_stamp) "$(call ocah_reg_svh_output,$(1))"
 
-$(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1))
+$(call ocah_reg_ipxact_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
+	@mkdir -p "$(call ocah_reg_gen,$(1))/ipxact" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating IP-XACT component for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_ipxact,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_ipxact_output,$(1)),$(call ocah_reg_build,$(1))/ipxact.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_ipxact_output,$(1))"
+
+$(call ocah_reg_dep_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/dep_scanner.py | uv-sync
+	@mkdir -p "$(call ocah_reg_build,$(1))"
+	@echo "Scanning register includes for $(1)"
+	@$(ocah_sh) '"$(UV)" run python "$(OCAH_ROOT)/tools/regs/dep_scanner.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(call ocah_reg_rdl,$(1))" $(foreach t,$(call ocah_reg_dep_targets,$(1)),--target "$(t)") -o "$(call ocah_reg_dep_output,$(1))"'
+
+$(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1)) $(call ocah_reg_ipxact_output,$(1))
 	@mkdir -p "$(call ocah_reg_build,$(1))"
 	@touch "$$@"
 endef
@@ -83,7 +113,7 @@ $(call ocah_reg_sv_stamp,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) |
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_gen,$(1))/sv,$(call ocah_reg_name,$(1)),$(call ocah_reg_build,$(1))/peakrdl_sv.log)'
-	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv"
+	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg.sv" "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg_pkg.sv"
 	@touch "$$@"
 
 $(call ocah_reg_sv_outputs,$(1)): $(call ocah_reg_sv_stamp,$(1))
@@ -97,7 +127,7 @@ $(call ocah_reg_sv_block_dir,$(1))/%_reg.sv: $(call ocah_reg_root,$(1))/regs/blo
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$$<,$$(@D),$$*,$(1)/regs/build/peakrdl_sv_$$*.log)'
-	@$(ocah_reg_stamp) "$$(@D)"
+	@$(ocah_reg_stamp) "$$(@D)/$$*_reg.sv" "$$(@D)/$$*_reg_pkg.sv"
 
 $(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
@@ -189,3 +219,23 @@ $(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)
 # JSON applies to a top of either shape, so it loops over all blocks, not the
 # composite/leaf split.
 $(foreach block,$(filter $(OCAH_REG_JSON_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_json_rule,$(block))))
+
+# Pull in the per-block depfiles (built by the rule in ocah_reg_block_rules): each
+# adds its `include`d RDLs as prerequisites of that block's generated outputs, so
+# an include-only change rebuilds the top collateral. Silent `-` so a missing
+# depfile on a clean tree is not an error — make builds it, re-reads it, and the
+# include prerequisites take effect. Depfiles live in the gitignored build dir.
+#
+# The depfiles only matter to the regen flow. Because make brings `-include`d
+# files up to date before any goal, an unconditional include makes every build
+# that reads this fragment — RTL and FW smokes, docs — rescan every block (one
+# dep_scanner run each) even though those builds only consume the committed
+# collateral. The regen-diff CI job already guards collateral staleness, so pull
+# the depfiles in only for the goals that regenerate.
+OCAH_REGEN_DEP_GOALS := \
+  ocah-regen-regs ocah-regen-regs-sv ocah-regen-regs-h ocah-regen-regs-addrpkg \
+  ocah-regen-regs-svh ocah-regen-regs-py ocah-regen-regs-ral ocah-regen-regs-json \
+  ocah-regen-regs-ipxact ocah-regen-regs-adoc ocah-regen-regs-html
+ifneq ($(filter $(OCAH_REGEN_DEP_GOALS),$(MAKECMDGOALS)),)
+-include $(OCAH_REGEN_REG_DEPS)
+endif

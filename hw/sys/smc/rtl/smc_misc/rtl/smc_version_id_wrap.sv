@@ -13,7 +13,7 @@ module smc_version_id_wrap (
 	// rev cell, pulls tie signals to top metal layer to allow for easy re-spin
 	// can't put this into a for loop because it needs fine control over the values
 
-	// TODO: Adopter needs to set SRC_LOW and SRC_HIGH to set the values of the version ID
+	// Integrator must set SRC_LOW and SRC_HIGH to define the version ID values.
 	// The version ID is stored in the chip_config VERSION_LO and VERSION_HI registers
 
 	logic [63:0] low;

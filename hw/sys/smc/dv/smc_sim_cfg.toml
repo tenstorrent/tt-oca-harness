@@ -154,7 +154,6 @@ description = "OSS SMC cocotb target"
 build_dir = "hw/sys/smc/dv/build/cocotb"
 defines = [
   "SYNTHESIS",
-  "SIM",
 ]
 
 [targets.default.tools.verilator]

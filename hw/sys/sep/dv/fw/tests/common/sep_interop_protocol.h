@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_002  sep_interop  --  shared protocol contract (single source of truth).
+ * sep_interop  --  shared protocol contract (single source of truth).
  *
  * Included by BOTH firmwares (SMC producer main.c + SEP consumer sep_smc_interop.c) and
  * parsed by the cocotb checker so the DUT stimulus and the DV expectations can never drift
@@ -63,13 +63,13 @@
  * pop its reply, so bit0 does not immediately re-assert. Mirrors sep_mailbox_plic_test. */
 #define MBOX_IRQ_ALL 0x7 /* write | read | error status bits             */
 
-/* Firmware poll bound (loop iterations) shared by both sides -- mirrors 004's
- * SMU_STALL_FW_POLL_LIMIT. Bounded so a missing peer times out to a fail marker instead
+/* Firmware poll bound (loop iterations) shared by both sides -- mirrors
+ * smu_smc_stall_sep's SMU_STALL_FW_POLL_LIMIT. Bounded so a missing peer times out to a fail marker instead
  * of hanging the simulation. */
 #define SEP_INTEROP_POLL_LIMIT 4000000
 
 /*
- * SEP-driven SMC bring-up (mirrors SEP_SMU_004) -- the TB backdoor-preloads the SMC image
+ * SEP-driven SMC bring-up (mirrors smu_smc_stall_sep) -- the TB backdoor-preloads the SMC image
  * into SRAM, then the SEP re-vectors the four SMC cores to the SMC entry symbol and pulses
  * their reset. The SMC firmware is the STACKLESS producer whose naked entry symbol is
  * `sep_interop_entry` (fw/smc/tests/sep_interop/src/main.c, SMC_STACKLESS_ENTRY).
@@ -79,11 +79,10 @@
  * SEP_INTEROP_SMC_IMAGE_FIRST_WORD = first word of the preloaded SMC image (SRAM[0] cookie).
  *
  * BOTH are image-dependent: the human MUST reconcile them against the freshly BUILT image,
- * exactly as SEP_SMU_004 reconciles SMU_STALL_SMC_ENTRY / SMU_STALL_SMC_IMAGE_FIRST_WORD:
+ * exactly as smu_smc_stall_sep reconciles SMU_STALL_SMC_ENTRY / SMU_STALL_SMC_IMAGE_FIRST_WORD:
  *   entry  -> address of `sep_interop_entry` in fw/smc/tests/sep_interop/out/test.dis (.sym)
  *   cookie -> first data word at the SRAM base in fw/smc/tests/sep_interop/out/test.preload.hex
- * The values below were auto-filled from the local build (see agent report); re-verify after
- * any firmware/linker change.
+ * The values below must match the current build; re-verify after any firmware/linker change.
  */
 #define SEP_INTEROP_SMC_ENTRY 0x00000000C00601B2    /* RECONCILE vs built image */
 #define SEP_INTEROP_SMC_IMAGE_FIRST_WORD 0x41014081 /* RECONCILE vs built image */
@@ -93,7 +92,8 @@
 
 /* SEP-view alias of SMC CPU_CTRL scratch2 (SMC-local 0xC0039090): the SMC "up" marker that the
  * SEP POLLS before its first SMC-scratch write, so READY can never race the SMC clearing/initing
- * its own scratch (mirrors SEP_SMU_004's INIT_RELEASE_OK gate on SMU_STALL_STATUS_ALIAS_ADDR).
+ * its own scratch (mirrors the smu_smc_stall_sep INIT_RELEASE_OK gate on
+ * SMU_STALL_STATUS_ALIAS_ADDR).
  * 0x40039090 = 0xC0039090 - 0x80000000. */
 #define SEP_INTEROP_SMC_SCRATCH2_ALIAS 0x40039090u
 

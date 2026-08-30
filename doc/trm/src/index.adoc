@@ -27,7 +27,6 @@ ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
 * xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
-* xref:getting-started.adoc[Getting Started] - Dependencies, tools, and methodology
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 endif::backend-html5[]
 
@@ -37,6 +36,5 @@ ifndef::release[]
 include::revision.adoc[]
 endif::release[]
 include::about-ocah.adoc[leveloffset=+1]
-include::getting-started.adoc[leveloffset=+1]
 include::architecture.adoc[]
 endif::backend-pdf[]

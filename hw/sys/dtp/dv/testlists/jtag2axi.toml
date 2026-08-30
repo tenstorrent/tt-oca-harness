@@ -4,14 +4,17 @@
 schema_version = 1
 
 # SMC fabric JTAG2AXI scenarios for DTP issue #3210.
-# Legacy aggregate tests remain selectable as compatibility aliases.
+# The legacy aggregate tests are compatibility aliases for the scenario-specific
+# single_write/single_write_read tests: selectable by explicit --items name or
+# --tag legacy only, and members of no group, so regressions run each scenario
+# once.
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_wr_test"
 module = "dtp_jtag2axi_smc_axi_wr_test"
 seed = 1
 timeout_sec = 1800
-tags = ["functional", "jtag2axi", "legacy"]
+tags = ["legacy"]
 run_modes = ["functional", "jtag2axi"]
 
 [[tests]]
@@ -19,7 +22,7 @@ name = "dtp_jtag2axi_smc_axi_rd_test"
 module = "dtp_jtag2axi_smc_axi_rd_test"
 seed = 1
 timeout_sec = 1800
-tags = ["functional", "jtag2axi", "legacy"]
+tags = ["legacy"]
 run_modes = ["functional", "jtag2axi"]
 
 [[tests]]
@@ -80,7 +83,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_single_write_read_test"
-module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_read_test", uvm = "dtp_uvm_jtag2axi_smc_axi_test" }
+module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_read_test", uvm = "dtp_jtag2axi_smc_axi_single_write_read_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["jtag2axi"]
@@ -536,7 +539,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_otp_axi_single_write_read_test"
-module = { cocotb = "dtp_jtag2axi_smc_otp_axi_single_write_read_test", uvm = "dtp_uvm_jtag2axi_smc_otp_test" }
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_single_write_read_test", uvm = "dtp_jtag2axi_smc_otp_axi_single_write_read_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["jtag2axi"]
@@ -628,4 +631,12 @@ module = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test"
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_dbg_disable_matrix_test"
+module = "dtp_jtag2axi_dbg_disable_matrix_test"
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi", "dbg_disable"]
 run_modes = ["jtag2axi"]

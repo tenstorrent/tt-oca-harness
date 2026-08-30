@@ -4,8 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 
 Stable, OCAH-flavored Python wrappers for driving, responding to, and monitoring
 AXI4 and AXI4-Lite buses in cocotb testbenches.  Tests import from this package
-and never bind directly to the underlying VIP internals.  (APB lives in its own
-package, `ocah_apb_vip`.)
+and never bind directly to the underlying VIP internals.
 
 ---
 
@@ -19,8 +18,7 @@ that:
 3. Upstream API changes (`cocotbext-axi` or project VIPs) are absorbed at the
    wrapper boundary, not scattered across test files.
 
-This package satisfies task #14 (base bus BFM) and is the foundation that
-tasks #15–#20 (protocol-specific BFMs) build on.
+This package is the base bus BFM that the protocol-specific VIPs build on.
 
 ---
 
@@ -39,9 +37,6 @@ environment):
 | `OcahAxiMonitor` / `OcahAxiLiteMonitor` | OCAH passive samplers that emit item dataclasses |
 | `OcahAxiChecker` | OCAH item-level protocol checker |
 
-APB is handled by the separate `ocah_apb_vip` package (`OcahApbMaster`), which
-also uses `cocotbext-axi` (`ApbMaster`).
-
 ---
 
 ## When to use this wrapper vs the legacy VIPs
@@ -54,15 +49,14 @@ also uses `cocotbext-axi` (`ApbMaster`).
 | Memory-backed AXI subordinate/responder | `OcahAxiSlaveAgent` |
 | Control/status register access over AXI4-Lite | `OcahAxiLiteMasterAgent` |
 | Memory-backed AXI4-Lite responder | `OcahAxiLiteSlaveAgent` |
-| APB peripheral register access | `OcahApbMaster` (in `ocah_apb_vip`) |
 | Passive observation without driving the bus | `OcahAxiMonitor` / `OcahAxiLiteMonitor` |
 | Item-level protocol sanity checks | `OcahAxiChecker` |
-| AXI-Stream (e.g. entropy data path) | **Out of scope** — see task #19 (SEP entropy BFM) |
+| AXI-Stream (e.g. entropy data path) | **Out of scope** for this package — stream sources stay DUT-local |
 
 Do not use `cocotbext-axi` types (`AxiMaster`, `AxiLiteMaster`, etc.)
 directly in new test files; always go through this package. Existing SEP files
-are the no-touch compatibility reference for this release and are not migrated
-as part of GH #3288.
+are the no-touch compatibility reference for this release and are not
+migrated.
 
 ---
 
@@ -95,10 +89,19 @@ ocah_axi_vip/
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
+                                   + master agent/env (active initiator driven
+                                   through ocah_axi_master_sequence)
   cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
   examples/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
+  dv/                            — simulated VIP selftests on a passive wire
+                                   harness (master <-> fault slave; response-ID
+                                   observation and corruption proofs), one
+                                   scenario set for both frameworks:
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip \
+                                       --framework uvm --tool vcs --items smoke
 ```
 
 ### Side-token naming
@@ -149,8 +152,8 @@ master = OcahAxiMasterAgent(
 | `await master.wait_for_reset()` | `None` | Block until `aresetn` deasserts |
 | `await master.write(addr, data, *, strb, size, burst, id, prot)` | `int` (resp code) | Single-beat write |
 | `await master.read(addr, *, size, burst, id, prot)` | `int` (data) | Single-beat read |
-| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Response, `ok`, timeout, raw debug object |
-| `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Data bytes/words plus response inspection |
+| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Response, `ok`, timeout, issued/observed AWID-BID, raw debug object |
+| `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Data bytes/words, response inspection, issued/observed ARID-RID |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `await master.burst_write(addr, data_list, *, strb_list, size, burst, id, prot)` | `int` (resp code) | Multi-beat write; `len(data_list)` determines AWLEN |
 | `await master.burst_read(addr, length, *, size, burst, id, prot)` | `list[int]` | Multi-beat read; `length` = number of beats |
@@ -257,14 +260,6 @@ It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`.
 
 ---
 
-### APB
-
-APB lives in its own package, **`ocah_apb_vip`** (`OcahApbMaster`), because it is
-a distinct protocol (one package per protocol).  It targets `cocotbext-axi` too
-(`ApbMaster`/`ApbBus`).  See `bfm/ocah_apb_vip/README.md`.
-
----
-
 ### OcahAxiMonitor — passive AXI4 observation
 
 ```python
@@ -345,8 +340,6 @@ on non-OKAY responses:
 - `OcahAxiMasterError` — from `OcahAxiMasterAgent`
 - `OcahAxiLiteMasterError` — from `OcahAxiLiteMasterAgent`
 
-(`OcahApbMasterError` is exported by `ocah_apb_vip`.)
-
 To inspect the response code manually:
 
 ```python
@@ -401,8 +394,6 @@ AXI4 / AXI4-Lite master types and the passive monitor.
 | `AXI4MasterBFM(intf).write_single(addr, data)` | `OcahAxiMasterAgent(intf).sequence.write(addr, data)` |
 | `AXI4MasterBFM(intf).write_burst(txn)` | `OcahAxiMasterAgent(intf).sequence.burst_write(addr, data_list)` |
 | `create_axi4_monitor(intf, clk)` | `OcahAxiMonitor(intf, clk)` |
-
-(APB migration is documented in `bfm/ocah_apb_vip/README.md`.)
 
 The wrapper API does not expose transaction dataclass types (`AXI4WriteTransaction`,
 etc.).  If you need fine-grained control (e.g. non-default QOS or LOCK bits)

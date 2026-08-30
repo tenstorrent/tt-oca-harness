@@ -13,7 +13,7 @@
  * rx_wm: asserted when RXQD >= SPI_RX_WATERMARK (RX FIFO has data)
  *
  * Test Flow:
- * 1. Configure SPI mux for OpenTitan, enable controller
+ * 1. Enable controller
  * 2. Set SPI_TX_WATERMARK=4, verify STATUS.TXWM=1 (empty FIFO < 4)
  * 3. Write 8 words to TX FIFO, verify TXWM clears (TXQD >= 4)
  * 4. Drain via SW_RST, verify TXWM re-asserts
@@ -32,7 +32,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -66,8 +65,6 @@ int main(void) {
     spi_controller__STATUS_t status;
     uint32_t read_val;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller with SPI_TX_WATERMARK=4 */
     ctrl.w = 0;
@@ -179,9 +176,9 @@ int main(void) {
 
     /* Step 7: DMA INTR_SRC_ADDR_0 register (configure source address for handshake) */
     printf("\nStep 7: DMA INTR_SRC_ADDR_0 register\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR,
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0),
               OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR);
+    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0));
     if (!check_reg("INTR_SRC_ADDR_0", read_val, OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR))
         pass = 0;
 

@@ -15,4 +15,5 @@ OCAH_FLOW_COMMON_BENDER_TARGETS :=
 
 include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk
+include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk

@@ -7,7 +7,7 @@ CPU-LSU master (no_cpu). Exercises the aon_timer internals beyond the bark/bite/
 story: the WKUP (wakeup) timer + its wkup_expired RW1C status, the WDOG
 counter/pet, and the WDOG_REGWEN config-lock.
 
-Register map (hw/sys/sep/regs/blocks/aon_timer/aon_timer.rdl; offsets verified):
+Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl; offsets verified):
   WKUP_CTRL   +0x04  enable[0], prescaler[12:1]
   WKUP_THOLD  +0x08 (hi) / +0x0C (lo)   64-bit threshold
   WKUP_COUNT  +0x10 (hi) / +0x14 (lo)   64-bit counter (RW by sw + hw)
@@ -26,6 +26,7 @@ from __future__ import annotations
 from sep_reg_meta import sym
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -64,12 +65,11 @@ class SepWdtCfg:
     """
 
     def __init__(self, seed: int) -> None:
-        import random
         self.seed = seed
-        rng = random.Random(seed)
-        self.wkup_thold = rng.randint(4, 32)                   # small: expires in <=32 ticks
-        self.wkup_high_thold = rng.randint(0x4_0000, 0x10_0000)  # large: no expiry in the count window
-        self.bark_prelock = rng.randint(1, 0xFFFF)             # nonzero pre-lock BARK_THOLD
+        rng = SepSeededRng(seed)
+        self.wkup_thold = rng.randrange(4, 33)                   # small: expires in <=32 ticks
+        self.wkup_high_thold = rng.randrange(0x4_0000, 0x10_0001)  # large: no expiry in the count window
+        self.bark_prelock = rng.randrange(1, 0x1_0000)             # nonzero pre-lock BARK_THOLD
         self.bark_postlock = self.bark_prelock ^ 0xFFFF        # distinct locked-write attempt
 
     def summary(self) -> str:

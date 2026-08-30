@@ -24,18 +24,10 @@
  *                                         entropy_mode so it does not depend
  *                                         on EDN being available at SMU
  *                                         level.
- *   4. SPI register R/W sanity         — write/readback of SPI mux + clock
- *                                         divider + control registers in the
- *                                         licensed SPI host's register
- *                                         block.  Does NOT trigger SPI
- *                                         init/discovery (no flash model in
- *                                         SMU TB), only proves the fabric
- *                                         routes SEP CPU writes to the SPI
- *                                         control register space.
  *
  * Pass criterion
  * --------------
- *   All four stages succeed → test_pass(0) writes the 2-word magic
+ *   HMAC and KMAC stages succeed → test_pass(0) writes the 2-word magic
  *   sequence to STDOUT (0x80000000) which the cocotb test detects.
  */
 
@@ -311,123 +303,6 @@ static int stage_kmac(void) {
     return 0;
 }
 
-/* --------------------------------------------------------------------------
- * Stage 3 — SPI controller register R/W sanity
- *
- *   The SMU testbench does not instantiate an external SPI flash model, so
- *   we deliberately do NOT trigger init/discovery (which would never assert
- *   init_comp).  Instead we exercise:
- *     (a) SPI mux ctrl  : toggle spi_sel between OT (1) and licensed host (0),
- *                         and cs_force_high.
- *     (b) SPI clk div   : write a custom divider value and read it back.
- *     (c) SPI ctrl      : reset assert/deassert pattern + spi_enable.
- *   These prove that the SEP CPU can reach the SPI controller register
- *   space across the SEP fabric (SEP_EXTERNAL @ 0x2000_0000).
- * ------------------------------------------------------------------------ */
-
-#define SPI_MUX_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
-#define SPI_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
-#define SPI_CLK_DIV_CTRL_ADDR \
-    OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
-
-static int spi_check_field(const char *name, uint32_t got, uint32_t exp) {
-    if (got != exp) {
-        printf("    FAIL: %s mismatch: got=0x%08x exp=0x%08x\n", name, got, exp);
-        return -1;
-    }
-    printf("    PASS: %s readback=0x%08x\n", name, got);
-    return 0;
-}
-
-static int stage_spi_regs(void) {
-    printf("\n[Stage 4] SPI controller register R/W sanity\n");
-    printf("    SPI_MUX_CTRL @ 0x%08x\n", SPI_MUX_CTRL_ADDR);
-    printf("    SPI_CTRL     @ 0x%08x\n", SPI_CTRL_ADDR);
-    printf("    SPI_CLK_DIV  @ 0x%08x\n", SPI_CLK_DIV_CTRL_ADDR);
-
-    int errors = 0;
-
-    /* (a) SPI mux ctrl: select the licensed host, force CS high. */
-    {
-        och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t w = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
-        w.f.spi_sel = 0; /* licensed host */
-        w.f.cs_force_high = 1;
-        WRITE_REG(SPI_MUX_CTRL_ADDR, w.w);
-
-        och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t r = {.w = READ_REG(SPI_MUX_CTRL_ADDR)};
-        if (spi_check_field("spi_sel=0", r.f.spi_sel, 0) != 0) errors++;
-        if (spi_check_field("cs_force_high=1", r.f.cs_force_high, 1) != 0) errors++;
-
-        /* Toggle to OT to confirm RW field is live. */
-        w.f.spi_sel = 1;
-        w.f.cs_force_high = 0;
-        WRITE_REG(SPI_MUX_CTRL_ADDR, w.w);
-        r.w = READ_REG(SPI_MUX_CTRL_ADDR);
-        if (spi_check_field("spi_sel=1", r.f.spi_sel, 1) != 0) errors++;
-        if (spi_check_field("cs_force_high=0", r.f.cs_force_high, 0) != 0) errors++;
-    }
-
-    /* (b) SPI clock divider: write custom value, read back. */
-    {
-        och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t w = {
-            .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CLK_DIV_CTRL_reset};
-        w.f.clock_divider_value = 32; /* 800/32 = 25 MHz */
-        w.f.clock_div_set = 1;
-        w.f.clock_dutycycle = 128;
-        w.f.clock_div_enable = 1;
-        WRITE_REG(SPI_CLK_DIV_CTRL_ADDR, w.w);
-
-        och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t r = {.w = READ_REG(SPI_CLK_DIV_CTRL_ADDR)};
-        if (spi_check_field("clk_div_value", r.f.clock_divider_value, 32) != 0) errors++;
-        if (spi_check_field("clk_dutycycle", r.f.clock_dutycycle, 128) != 0) errors++;
-        if (spi_check_field("clk_div_enable", r.f.clock_div_enable, 1) != 0) errors++;
-    }
-
-    /* (c) SPI control: reset all sub-blocks, then deassert and enable. */
-    {
-        och_sep_cdns_spi_ctrl__SPI_CTRL_t w = {.w = OCH_SEP_CDNS_SPI_CTRL__SPI_CTRL_reset};
-        w.f.spi_enable = 0;
-        w.f.spi_reset_n_n0_scan = 0;
-        w.f.spi_ctrl_reg_reset_n_n0_scan = 0;
-        w.f.spi_phy_reg_reset_n_n0_scan = 0;
-        w.f.spi_phy_reset_n_n0_scan = 0;
-        w.f.spi_axi_reset_n_n0_scan = 0;
-        w.f.spi_reg_reset_n_n0_scan = 0;
-        w.f.spi_xspi_reg_reset_n_n0_scan = 0;
-        WRITE_REG(SPI_CTRL_ADDR, w.w);
-
-        och_sep_cdns_spi_ctrl__SPI_CTRL_t r = {.w = READ_REG(SPI_CTRL_ADDR)};
-        if (spi_check_field("spi_enable=0", r.f.spi_enable, 0) != 0) errors++;
-        if (spi_check_field("spi_reset_n=0", r.f.spi_reset_n_n0_scan, 0) != 0) errors++;
-
-        /* Deassert resets + enable. */
-        w.f.spi_enable = 1;
-        w.f.spi_reset_n_n0_scan = 1;
-        w.f.spi_ctrl_reg_reset_n_n0_scan = 1;
-        w.f.spi_phy_reg_reset_n_n0_scan = 1;
-        w.f.spi_phy_reset_n_n0_scan = 1;
-        w.f.spi_axi_reset_n_n0_scan = 1;
-        w.f.spi_reg_reset_n_n0_scan = 1;
-        w.f.spi_xspi_reg_reset_n_n0_scan = 1;
-        WRITE_REG(SPI_CTRL_ADDR, w.w);
-
-        r.w = READ_REG(SPI_CTRL_ADDR);
-        if (spi_check_field("spi_enable=1", r.f.spi_enable, 1) != 0) errors++;
-        if (spi_check_field("spi_reset_n=1", r.f.spi_reset_n_n0_scan, 1) != 0) errors++;
-    }
-
-    if (errors != 0) {
-        printf("    FAIL: SPI register sanity (%d errors)\n", errors);
-        return -1;
-    }
-    printf("    PASS: SPI register sanity (mux + clk_div + ctrl R/W OK)\n");
-    return 0;
-}
-
-/* --------------------------------------------------------------------------
- * main
- * ------------------------------------------------------------------------ */
-
 int main(void) {
     /* Beacon 0 = main entered; written via raw store BEFORE outbound filter
      * init.  In the standalone SEP TB the outbound filter is open by default
@@ -448,7 +323,7 @@ int main(void) {
 
     printf("\n========================================\n");
     printf("  SMU-level SEP Sanity Test\n");
-    printf("  (boot + HMAC + KMAC + SPI registers)\n");
+    printf("  (boot + HMAC + KMAC)\n");
     printf("========================================\n");
 
     int errors = 0;
@@ -458,8 +333,6 @@ int main(void) {
     STAGE_BEACON(3);
     if (stage_kmac() != 0) errors++;
     STAGE_BEACON(4);
-    if (stage_spi_regs() != 0) errors++;
-    STAGE_BEACON(5);
 
     printf("\n========================================\n");
     if (errors == 0) {

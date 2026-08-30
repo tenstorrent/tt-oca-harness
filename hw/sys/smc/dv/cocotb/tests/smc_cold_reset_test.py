@@ -3,8 +3,6 @@
 """SMC OSS PyUVM cold-reset test.
 
 DV-CARD:          SMC_001   ANCHOR: smc_cold_reset_test
-DV-CARD-REVISION: 2   RECORD-SHA256: a6539636377899cdcc508a3eb757eb5c746a96f1516cb74ded8324033091cc4f
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 
 Brings the SMC OSS top out of cold reset (handled by ``smc_base_test``), then
 runs the SMC_001 checkbox sequence on the reset + clk agents and emits exact

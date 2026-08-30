@@ -95,12 +95,15 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_backpressure_aw_before_w(self) -> None:
         self.log_banner("JTAG2AXI backpressure: AW accepted before delayed W")
         await self.reset_tap()
+        rng = self.rng("backpressure_aw_before_w")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
-            self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s WREADY stall", target)
+            # Seeded per-pass stall width: each loop delays WREADY differently.
+            stall = rng.randint(2, 6)
+            self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s WREADY stall=%d", target, stall)
             await self._write_with_backpressure(
                 target,
                 channels=("w",),
-                stall_cycles=3,
+                stall_cycles=stall,
                 context=f"aw_before_w.{target}",
             )
 
@@ -129,13 +132,19 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_backpressure_abort_at_data_w(self) -> None:
         self.log_banner("JTAG2AXI reset abort while W channel is stalled")
         await self.reset_tap()
+        rng = self.rng("backpressure_abort_at_data_w")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             cfg = self.target_cfg(target)
             size = cfg.default_size
             addr = self._target_addr(target, idx)
-            data = (0x7777_0000_5555_0000 ^ idx) & self.data_mask(size)
-            self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s abort W phase", target)
-            self.configure_target_backpressure(target, channels=("w",), stall_cycles=20)
+            # Seeded per-pass payload and CDC timing: the stall stays long
+            # enough that the reset always lands while W is outstanding.
+            data = rng.getrandbits(64) & self.data_mask(size)
+            stall = rng.randint(16, 24)
+            self.log_iteration(
+                idx, len(ROBUST_TARGETS), "target=%s abort W phase stall=%d", target, stall
+            )
+            self.configure_target_backpressure(target, channels=("w",), stall_cycles=stall)
             await self.write_target_single_raw(
                 target,
                 DtpJtag2AxiOp.WRITE,
@@ -144,8 +153,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 wstrb=self.target_full_wstrb(target, size),
                 size=size,
             )
-            await self.wait_sys_cycles(2)
-            await self.pulse_system_reset(cycles=2)
+            await self.wait_sys_cycles(rng.randint(1, 4))
+            await self.pulse_system_reset(cycles=rng.randint(1, 3))
             self.clear_target_backpressure(target)
             await self.verify_target_recovery(
                 target,
@@ -159,13 +168,19 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_cdc_clear_abort_narrow_reset_mid_xaction(self) -> None:
         self.log_banner("JTAG2AXI narrow reset during outstanding transaction")
         await self.reset_tap()
+        rng = self.rng("cdc_narrow_reset")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             cfg = self.target_cfg(target)
             size = cfg.default_size
             addr = self._target_addr(target, idx + 8)
-            data = (0x1234_5678_9ABC_DEF0 ^ idx) & self.data_mask(size)
-            self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s narrow reset", target)
-            self.configure_target_backpressure(target, channels=("aw",), stall_cycles=12)
+            # Seeded per-pass payload and stall: each loop lands the narrow
+            # reset at a different point of the stalled AW phase.
+            data = rng.getrandbits(64) & self.data_mask(size)
+            stall = rng.randint(8, 16)
+            self.log_iteration(
+                idx, len(ROBUST_TARGETS), "target=%s narrow reset stall=%d", target, stall
+            )
+            self.configure_target_backpressure(target, channels=("aw",), stall_cycles=stall)
             await self.write_target_single_raw(
                 target,
                 DtpJtag2AxiOp.WRITE,
@@ -174,7 +189,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 wstrb=self.target_full_wstrb(target, size),
                 size=size,
             )
-            await self.wait_sys_cycles(1)
+            await self.wait_sys_cycles(rng.randint(1, 3))
             await self.pulse_system_reset(cycles=1)
             self.clear_target_backpressure(target)
             await self.verify_target_recovery(
@@ -189,12 +204,15 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_cdc_clear_abort_back_to_back_reset(self) -> None:
         self.log_banner("JTAG2AXI back-to-back reset recovery")
         await self.reset_tap()
+        rng = self.rng("cdc_back_to_back_reset")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 16)
-            data = 0xCAFE_BABE_F00D_0000 ^ idx
+            # Seeded per-pass payload and pulse widths: each loop stresses a
+            # different back-to-back reset spacing.
+            data = rng.getrandbits(64) & self.target_data_mask(target)
             self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s back-to-back reset", target)
-            await self.pulse_system_reset(cycles=1)
-            await self.pulse_system_reset(cycles=2)
+            await self.pulse_system_reset(cycles=rng.randint(1, 2))
+            await self.pulse_system_reset(cycles=rng.randint(1, 3))
             await self.verify_target_recovery(
                 target,
                 addr=addr,
@@ -214,13 +232,14 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_decode_error_decerr_write(self) -> None:
         self.log_banner("JTAG2AXI DECERR write decode path")
         await self.reset_tap()
+        rng = self.rng("decerr_write_data")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 24)
             expected = self.configure_target_error(target, addr, AXI_DECERR, read=False, write=True)
             status, _ = await self.write_target_single_expect_status(
                 target,
                 addr,
-                0xD1CE_0000 ^ idx,
+                rng.getrandbits(32) ^ idx,
                 expected,
                 context=f"decerr_write.{target}",
             )
@@ -228,7 +247,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             await self.verify_target_recovery(
                 target,
                 addr=addr + 0x200,
-                data=0xFACE_0000 ^ idx,
+                # Seeded per-pass recovery payload.
+                data=rng.getrandbits(32) ^ idx,
                 read=False,
                 context=f"decerr_write.{target}",
             )
@@ -238,6 +258,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_decode_error_decerr_read(self) -> None:
         self.log_banner("JTAG2AXI DECERR read decode path")
         await self.reset_tap()
+        rng = self.rng("decerr_read_data")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 32)
             expected = self.configure_target_error(target, addr, AXI_DECERR, read=True, write=False)
@@ -251,7 +272,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             await self.verify_target_recovery(
                 target,
                 addr=addr + 0x200,
-                data=0xBEEF_0000 ^ idx,
+                # Seeded per-pass recovery payload.
+                data=rng.getrandbits(32) ^ idx,
                 read=True,
                 context=f"decerr_read.{target}",
             )
@@ -300,6 +322,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"mixed.good_read.{target}",
             )
             self.operation_count += 1
+        self._emit_decode_error_nonvacuity("mixed")
 
     async def run_series_corner_all_bridges(self) -> None:
         self.log_banner("JTAG2AXI series corner coverage across all bridges")
@@ -345,7 +368,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             self.operation_count += 1
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "backpressure_aw_before_w": self.run_backpressure_aw_before_w,
             "backpressure_long_stall": self.run_backpressure_long_stall,
@@ -363,7 +386,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         for target in ROBUST_TARGETS:
             self.clear_target_errors(target)
             self.clear_target_backpressure(target)
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "JTAG2AXI robustness scenario complete",
             scenario=self.scenario,

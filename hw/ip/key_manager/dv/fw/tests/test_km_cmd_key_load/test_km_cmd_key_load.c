@@ -15,7 +15,8 @@
  *   - Sweep KEY_SIZE in {0,1,3,15} — each load succeeds and the resulting
  *     handle is usable for CMD_KEY_TRANSFER.
  *   - After the 4-word load, verify KPV_CTRL for the allocated slot has
- *     lock_write=1, dest_valid matching request, extend and last_dword correct.
+ *     lock_write=1, and that the registry records the request's dest_valid
+ *     and key length.
  *   - Sweep DEST_VALID in {0x01,0x02,0x04,0x08,0x0F} — each load succeeds and
  *     CMD_KEY_TRANSFER to each set bit succeeds; unset bits fail.
  *
@@ -184,11 +185,8 @@ int main(void) {
     /*=================================================================
      * Verify KPV CTRL and registry fields for the 4-word loaded key
      *
-     * For KEY_SIZE=3 (key_size=4 words), num_slots=1:
-     *   extend    = 0  (only 1 slot)
-     *   last_dword = (4-1) % 16 = 3
-     *   lock_write = 1
-     * dest_valid is tracked in the software key registry, not KPV CTRL.
+     * For KEY_SIZE=3 the key is 4 words and occupies a single slot.  The KPV
+     * holds only lock_write; the length and dest_valid live in the registry.
      *=================================================================*/
     TEST_SUBTEST_START("KPV CTRL and registry fields correct after key_load");
     {
@@ -198,6 +196,7 @@ int main(void) {
 
         km_kpv__ctrl_reg_t ctrl;
         rom_km_dest_bits_t dest_valid;
+        uint8_t key_words;
         ctrl.w = KPV_CTRL(base_slot).w;
 
         TEST_ASSERT_EQ((uint32_t)ctrl.f.lock_write, 1u, "slot lock_write=1");
@@ -205,8 +204,9 @@ int main(void) {
                        "registry destination lookup");
         TEST_ASSERT_EQ((uint32_t)dest_valid.raw, (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw,
                        "registry dest_valid=AES");
-        TEST_ASSERT_EQ((uint32_t)ctrl.f.extend, 0u, "extend=0 (1 slot)");
-        TEST_ASSERT_EQ((uint32_t)ctrl.f.last_dword, 3u, "last_dword=(4-1)%%16=3");
+        TEST_ASSERT_EQ(rom_keyreg_get_key_words(&rom_keyreg_state, handle_a, &key_words), 0u,
+                       "registry key length lookup");
+        TEST_ASSERT_EQ((uint32_t)key_words, 4u, "registry key_words=4");
 
         TEST_LOG("  base_slot=%u ctrl.w=0x%08X", base_slot, ctrl.w);
     }

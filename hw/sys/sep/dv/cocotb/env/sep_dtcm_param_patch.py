@@ -5,8 +5,8 @@
 Lets a cocotb test be the single source of randomness for a CPU-firmware test
 without needing the .map: the firmware declares a ``volatile`` block whose first
 word is a unique non-ASCII magic, and the test byte-searches the $readmemh DTCM
-image for that magic and overwrites the following words. Used by the SPI flash
-reps (SPI flash command breadth flash command, SPI DMA-TX breadth DMA-TX) to seed legal address/length/data per
+image for that magic and overwrites the following words. CPU-firmware reps
+(SPI flash command, SPI DMA-TX, DMA basic) seed legal address/length/data per
 run while reusing one compiled firmware image.
 """
 

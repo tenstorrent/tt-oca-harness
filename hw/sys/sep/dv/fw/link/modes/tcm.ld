@@ -139,7 +139,7 @@ SECTIONS {
      * Stack grows DOWNWARD from here toward BSS_END */
     STACK = INTVEC_BASE - 4;
 
-    /* Aliases for compatibility */
+    /* Stack symbol aliases */
     stack  = STACK;
     _stack = STACK;
 

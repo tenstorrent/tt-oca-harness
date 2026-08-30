@@ -39,6 +39,15 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             cases.append((addr, size, data, self.full_wstrb(size)))
         cases.append((DEFAULT_OTP_ADDR + 0x80, 2, 0xA5A5_5A5A, 0x5))
         cases.append((DEFAULT_OTP_ADDR + 0xA0, 2, 0x5A5A_A5A5, 0xA))
+        # Seeded per-pass random cases on top of the deterministic sweep:
+        # every loop drives different address/size/data/strobe values.
+        rng = self.rng(f"{self.target}_directed_cases")
+        for _ in range(self.random_count):
+            size = rng.choice([0, 1, 2])
+            addr = self.random_target_aligned_addr(self.target, rng, size)
+            data = rng.getrandbits(32) & self.data_mask(size)
+            wstrb = rng.randint(1, self.target_full_wstrb(self.target, size))
+            cases.append((addr, size, data, wstrb))
         return cases
 
     async def run_single_write(self) -> None:
@@ -69,7 +78,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(f"{self.target} SINGLE_OP Write With Readback")
         await self.reset_tap()
         addr = DEFAULT_OTP_ADDR + 0x100
-        data = 0xD00D_F00D
+        # Seeded per-pass payload: each loop verifies readback of different data.
+        data = self.rng(f"{self.target}_write_readback").getrandbits(32)
         write_status, _ = await self.write_target_single_and_check(
             self.target,
             addr,
@@ -222,7 +232,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         addr = DEFAULT_OTP_ADDR + 0x200
-        data = 0xFACE_CAFE & self.data_mask(size)
+        # Seeded per-pass payload for baseline/gated/restore writes.
+        data = self.rng(f"{self.target}_write_gate").getrandbits(32) & self.data_mask(size)
         before = await self.target_activity_counts(self.target)
         await self.write_target_single_and_check(self.target, addr, data, context="gate.baseline")
         await self.expect_target_activity(
@@ -231,12 +242,27 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             read=False,
             context="gate.baseline",
         )
-        for idx, bit_name in enumerate(cfg.required_enable_bits, start=1):
-            self.log_step(idx + 1, "Gate %s write with lifecycle %s", self.target, bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
+        # Two assert/release passes of the target's direct disable prove the
+        # gate is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
+            self.log_step(idx + 1, "Gate %s write with %s (pass %d)",
+                          self.target, cfg.dbg_disable_bit, idx)
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
+            # Preload a sentinel at the gated-attempt address: the blocked
+            # write must leave memory untouched, both while gated and after
+            # the disable is released (a delayed replay would overwrite it).
+            gate_addr = addr + (idx * cfg.beat_bytes)
+            sentinel = 0x5EA1_0000 | idx
+            self.write_target_mem_int(self.target, gate_addr, sentinel, size)
+            # Snapshot BEFORE the gated attempt so a request pulse leaked at
+            # shift time is caught, then hold a blocked window across it: any
+            # monitored transaction inside the window fails (CHK-AXI-BLOCKED).
+            gate_before = await self.target_activity_counts(self.target)
+            self.scoreboard_begin_blocked(self.target)
             raw = pack_single_op(
                 DtpJtag2AxiOp.WRITE,
-                addr + (idx * cfg.beat_bytes),
+                gate_addr,
                 data ^ idx,
                 wstrb=self.target_full_wstrb(self.target, size),
                 size=size,
@@ -244,7 +270,27 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             )
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"gate.{bit_name}.no_axi")
-            await self.clear_lifecycle()
+            if self.axi_scoreboard is not None:
+                gate_after = await self.target_activity_counts(self.target)
+                self.axi_scoreboard.expect_no_activity(
+                    before=gate_before,
+                    after=gate_after,
+                    context=(
+                        f"gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
+                    ),
+                )
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel",
+                self.read_target_mem_int(self.target, gate_addr, size),
+                sentinel,
+            )
+            # Hold the blocked window ACROSS disable release: a bridge that
+            # queued the gated request and replays it once the gate re-opens
+            # is the exact leak this scenario must catch.
+            await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.scoreboard_end_blocked(self.target, context=f"gate.{bit_name}")
             before = await self.target_activity_counts(self.target)
             status, _ = await self.write_target_single_and_check(
                 self.target,
@@ -258,14 +304,49 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 read=False,
                 context=f"gate.{bit_name}.restore",
             )
+            if self.axi_scoreboard is not None:
+                # Exact-delta proof from BEFORE the gated attempt to AFTER the
+                # restore write: only the sanctioned restore write may appear
+                # (aw/w +1, ar +0). A delayed replay anywhere in the span
+                # makes aw >= +2 and fails.
+                final = await self.target_activity_counts(self.target)
+                expected_exact = {
+                    "aw": gate_before["aw"] + 1,
+                    "w": gate_before["w"] + 1,
+                    "ar": gate_before["ar"],
+                }
+                self.axi_scoreboard.expect_no_activity(
+                    before=expected_exact,
+                    after=final,
+                    context=(
+                        f"gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=exact_delta "
+                        f"sanctioned=restore_write(aw+1,w+1)"
+                    ),
+                )
             self.status = status
             self.operation_count += 1
+        if self.axi_scoreboard is not None:
+            # CHK-AXI-NONVAC: the same counters that stayed flat while gated
+            # demonstrably move for real traffic (baseline + both restores), so
+            # the no-activity evidence cannot pass on a dead or tied-off bus.
+            final = await self.target_activity_counts(self.target)
+            self.axi_scoreboard.expect_nonvacuous(
+                self.operation_count >= 2 and final["aw"] >= 3,
+                context=(
+                    f"gated_attempts={self.operation_count} aw_pulses={final['aw']} "
+                    f"expected_aw>=3 (baseline+2 restores)"
+                ),
+            )
 
     async def run_single_write_read(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Single Write-Read")
         await self.reset_tap()
         addr = DEFAULT_OTP_ADDR + 0x300
-        data = DEFAULT_OTP_DATA
+        # Seeded per-pass payload: each loop writes and reads back different data.
+        data = self.rng(f"{self.target}_single_wr_rd").getrandbits(32) & self.data_mask(
+            self.target_cfg(self.target).default_size
+        )
         write_status, _ = await self.write_target_single_and_check(
             self.target,
             addr,
@@ -458,7 +539,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         addr = DEFAULT_OTP_ADDR + 0x400
-        data = 0xABCD_EF01 & self.data_mask(size)
+        # Seeded per-pass payload for the baseline/restore reads.
+        data = self.rng(f"{self.target}_read_gate").getrandbits(32) & self.data_mask(size)
         self.write_target_mem_int(self.target, addr, data, size)
         before = await self.target_activity_counts(self.target)
         status, _ = await self.read_target_single_and_check(
@@ -474,13 +556,37 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             context="read_gate.baseline",
         )
         self.status = status
-        for idx, bit_name in enumerate(cfg.required_enable_bits, start=1):
-            self.log_step(idx + 1, "Gate %s read with lifecycle %s", self.target, bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
+        # Two assert/release passes of the target's direct disable prove the
+        # gate is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
+            self.log_step(idx + 1, "Gate %s read with %s (pass %d)",
+                          self.target, cfg.dbg_disable_bit, idx)
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
+            # Snapshot BEFORE the gated attempt and hold a blocked window
+            # across it: any monitored transaction inside the window fails
+            # (CHK-AXI-BLOCKED).
+            gate_before = await self.target_activity_counts(self.target)
+            self.scoreboard_begin_blocked(self.target)
             raw = pack_single_op(DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg)
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"read_gate.{bit_name}.no_axi")
-            await self.clear_lifecycle()
+            if self.axi_scoreboard is not None:
+                gate_after = await self.target_activity_counts(self.target)
+                self.axi_scoreboard.expect_no_activity(
+                    before=gate_before,
+                    after=gate_after,
+                    context=(
+                        f"read_gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
+                    ),
+                )
+            # Hold the blocked window ACROSS disable release: a queued gated
+            # request replaying once the gate re-opens is the exact leak this
+            # scenario must catch.
+            await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.scoreboard_end_blocked(self.target, context=f"read_gate.{bit_name}")
             before = await self.target_activity_counts(self.target)
             status, _ = await self.read_target_single_and_check(
                 self.target,
@@ -494,8 +600,38 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 read=True,
                 context=f"read_gate.{bit_name}.restore",
             )
+            if self.axi_scoreboard is not None:
+                # Exact-delta proof from BEFORE the gated attempt to AFTER the
+                # restore read: only the sanctioned restore read may appear
+                # (ar +1, aw/w +0).
+                final = await self.target_activity_counts(self.target)
+                expected_exact = {
+                    "aw": gate_before["aw"],
+                    "w": gate_before["w"],
+                    "ar": gate_before["ar"] + 1,
+                }
+                self.axi_scoreboard.expect_no_activity(
+                    before=expected_exact,
+                    after=final,
+                    context=(
+                        f"read_gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=exact_delta "
+                        f"sanctioned=restore_read(ar+1)"
+                    ),
+                )
             self.status = status
             self.operation_count += 1
+        if self.axi_scoreboard is not None:
+            # CHK-AXI-NONVAC: the counters that stayed flat while gated
+            # demonstrably move for real traffic (baseline + both restores).
+            final = await self.target_activity_counts(self.target)
+            self.axi_scoreboard.expect_nonvacuous(
+                self.operation_count >= 2 and final["ar"] >= 3,
+                context=(
+                    f"gated_attempts={self.operation_count} ar_pulses={final['ar']} "
+                    f"expected_ar>=3 (baseline+2 restores)"
+                ),
+            )
 
     @staticmethod
     def unpack_series_value(raw: int, size: int) -> tuple[int, int]:
@@ -503,7 +639,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         return unpack_series_data(raw, size)
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "single_write": self.run_single_write,
             "single_write_data_verify": self.run_single_write_data_verify,
@@ -524,7 +660,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         if self.scenario not in scenarios:
             raise ValueError(f"unknown OTP JTAG2AXI scenario {self.scenario!r}")
         await scenarios[self.scenario]()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "OTP AXI-Lite JTAG2AXI scenario complete",
             target=self.target,

@@ -23,13 +23,12 @@ sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test ha
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
 - `docs/` — public verification plan, TB architecture, register/coverage notes.
-- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`) plus Verilator stubs.
+- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, shared by the cocotb and SV-UVM flows) and `dtp_tb_if`.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
-- `dtp_sim.core` — optional FuseSoC/CAPI-2 view (not parsed by the native flow).
 
 ## BFM Policy
 
@@ -41,7 +40,7 @@ protocol BFMs behind a stable API:
 |-----------|-----|-----------|
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
-| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMasterAgent`/future responder) | Standard AXI-Lite. |
+| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
@@ -51,6 +50,15 @@ protocol BFMs behind a stable API:
 The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
+
+## Simulation defines
+
+DTP DV, lint, and synthesis compiles pass preprocessor defines that switch the
+shared testbench shape, gate assertions, and select a simulation vs synthesis
+view. The inventory — each define, why it exists, and what a DTP build does with
+or without it — is in [`../doc/defines.adoc`](../doc/defines.adoc). Runtime
+environment variables and plusargs in the commands below are not preprocessor
+defines.
 
 ## Running
 
@@ -71,11 +79,15 @@ python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
 
-# JTAG2AXI checker-enabled tests (shared ocah_axi_vip scoreboard)
-python3 tools/dv/run_dv.py --dut dtp \
-  --items dtp_jtag2axi_decode_error_decerr_read_test \
-          dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test \
-          dtp_jtag2axi_smc_axi_error_single_write_test
+# Every JTAG2AXI test runs the shared ocah_axi_vip scoreboard (passive bus
+# monitors + reference model) with per-test required evidence IDs and
+# per-stream minimum compared-transaction counts, so a silent no-op run
+# fails at finalization
+python3 tools/dv/run_dv.py --dut dtp --items jtag2axi
+
+# Every XTRIG/CTM test finalizes a named-evidence checker (CTM reference
+# model route compare, CSR readback, quiet windows, stretch measurements)
+python3 tools/dv/run_dv.py --dut dtp --items xtrig
 
 # Checker negative validation: deliberately wrong arming must fail the run
 DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
@@ -85,12 +97,31 @@ DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag_tlr_reset_test
 
+# Every JTAG instruction test (BYPASS variants, IDCODE, SAMPLE/PRELOAD,
+# EXTEST, INTEST, EXTEST_TRAIN/PULSE, CLAMP, HIGHZ, RUNBIST, CLAMP_HOLD/
+# RELEASE, undefined-instruction fallback, TRST/POR/TLR) finalizes a named
+# evidence checker per pass; most also run a passive pin-level scan monitor
+# whose IR/DR reconstruction is cross-checked against the sequence's own
+# scan intent. Corrupted family expectations must fail the run:
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag_extest_test
+
+# XTRIG checker negative validation: a corrupted CTM reference model must
+# fail every route-comparing scenario
+DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_ctm_p2p_cla_to_ctp_test
+
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
   --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
 
 # Smoke + functional group
 python3 tools/dv/run_dv.py --dut dtp --items functional
+
+# Debug-disable closure: the two per-gate matrices plus every directed
+# gating test for the eleven dbg_disable_t fields
+python3 tools/dv/run_dv.py --dut dtp --items dbg_disable
+python3 tools/dv/run_dv.py --dut dtp --items dbg_disable --regress --reseed 3
 
 # Commercial backends for coverage (same PyUVM tests)
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov
@@ -128,7 +159,7 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
 ```
 
 Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
-with `+define+DTP_UVM_TB` (set by the `[frameworks.uvm]` overlay) switching it from the
+with the bare `+define+UVM` (set by the `[frameworks.uvm]` overlay) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
 mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
 shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),
@@ -143,19 +174,31 @@ reference model, BYPASS 1-TCK TDI-to-TDO latency, and clean scan-path
 returns, plus randomized TMS stress walks reproducible from `--seed`.
 
 The cocotb tests use deterministic random scenarios derived from `RANDOM_SEED`.
-Loop and transaction counts can be increased without changing test code:
+Every looped scenario runs at least 16 passes by default
+(`dtp_base_test.MIN_DEFAULT_LOOPS`), each pass with its own scenario seed
+(`RANDOM_SEED + loop_idx`); the two debug-disable matrix tests instead run a
+16-row matrix per pass (seeded multi-hot rows). Loop and transaction counts
+can be changed without touching test code:
 
 ```bash
-# Apply to any looped test without a more specific override
-DTP_TEST_LOOPS=8 python3 tools/dv/run_dv.py --dut dtp --items smoke
+# Apply to any looped test without a more specific override (e.g. a quick
+# 1-pass bring-up run, or a deeper soak)
+DTP_TEST_LOOPS=1 python3 tools/dv/run_dv.py --dut dtp --items smoke
+DTP_TEST_LOOPS=64 python3 tools/dv/run_dv.py --dut dtp --items smoke
 
 # Apply to the Basic JTAG group, with more random scan patterns per loop
-DTP_BASIC_JTAG_TEST_LOOPS=8 DTP_RANDOM_COUNT=10 \
+DTP_BASIC_JTAG_TEST_LOOPS=32 DTP_RANDOM_COUNT=10 \
   python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
-# Apply to JTAG2AXI read/write tests
-DTP_JTAG2AXI_TEST_LOOPS=16 python3 tools/dv/run_dv.py --dut dtp --items functional
+# Group knobs: DTP_JTAG2AXI_TEST_LOOPS, DTP_SCAN_TEST_LOOPS,
+# DTP_XTRIG_TEST_LOOPS, DTP_DEBUG_TDR_TEST_LOOPS
+DTP_JTAG2AXI_TEST_LOOPS=32 python3 tools/dv/run_dv.py --dut dtp --items functional
 ```
+
+The SV-UVM flow follows the same floor: `dtp_sanity_test` runs 16 randomized
+TMS stress walks (`+DTP_RAND_WALKS=<n>` overrides) and the JTAG2AXI single-op
+scenario runs 16 randomized write+readback passes
+(`+DTP_JTAG2AXI_RANDOM_OPS=<n>` overrides).
 
 PASS/FAIL is classified by the global parser registry in
 `hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from

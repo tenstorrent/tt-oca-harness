@@ -106,7 +106,7 @@ localparam longint unsigned CSRNG_HW_EXC_STS_REG_DEFAULT                        
 localparam longint unsigned CSRNG_RECOV_ALERT_STS_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned CSRNG_ERR_CODE_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned CSRNG_ERR_CODE_TEST_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned CSRNG_MAIN_SM_STATE_REG_DEFAULT                                                       = 32'h0000004E;
+localparam longint unsigned CSRNG_MAIN_SM_STATE_REG_DEFAULT                                                       = 32'h00000037;
 
 
 
@@ -264,68 +264,20 @@ localparam int unsigned CSRNG_ERR_CODE_SFIFO_CMD_ERR_SHIFT                      
 localparam int unsigned CSRNG_ERR_CODE_SFIFO_GENBITS_ERR_MASK                                                     = 32'h2;
 localparam int unsigned CSRNG_ERR_CODE_SFIFO_GENBITS_ERR_SHIFT                                                    = 1;
 
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_CMDREQ_ERR_MASK                                                      = 32'h4;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_CMDREQ_ERR_SHIFT                                                     = 2;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_RCSTAGE_ERR_MASK                                                     = 32'h8;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_RCSTAGE_ERR_SHIFT                                                    = 3;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_KEYVRC_ERR_MASK                                                      = 32'h10;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_KEYVRC_ERR_SHIFT                                                     = 4;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_UPDREQ_ERR_MASK                                                      = 32'h20;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_UPDREQ_ERR_SHIFT                                                     = 5;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_BENCREQ_ERR_MASK                                                     = 32'h40;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_BENCREQ_ERR_SHIFT                                                    = 6;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_BENCACK_ERR_MASK                                                     = 32'h80;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_BENCACK_ERR_SHIFT                                                    = 7;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_PDATA_ERR_MASK                                                       = 32'h100;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_PDATA_ERR_SHIFT                                                      = 8;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_FINAL_ERR_MASK                                                       = 32'h200;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_FINAL_ERR_SHIFT                                                      = 9;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GBENCACK_ERR_MASK                                                    = 32'h400;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GBENCACK_ERR_SHIFT                                                   = 10;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GRCSTAGE_ERR_MASK                                                    = 32'h800;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GRCSTAGE_ERR_SHIFT                                                   = 11;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GGENREQ_ERR_MASK                                                     = 32'h1000;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GGENREQ_ERR_SHIFT                                                    = 12;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GADSTAGE_ERR_MASK                                                    = 32'h2000;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GADSTAGE_ERR_SHIFT                                                   = 13;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GGENBITS_ERR_MASK                                                    = 32'h4000;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_GGENBITS_ERR_SHIFT                                                   = 14;
-
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_BLKENC_ERR_MASK                                                      = 32'h8000;
-localparam int unsigned CSRNG_ERR_CODE_SFIFO_BLKENC_ERR_SHIFT                                                     = 15;
-
 localparam int unsigned CSRNG_ERR_CODE_CMD_STAGE_SM_ERR_MASK                                                      = 32'h100000;
 localparam int unsigned CSRNG_ERR_CODE_CMD_STAGE_SM_ERR_SHIFT                                                     = 20;
 
 localparam int unsigned CSRNG_ERR_CODE_MAIN_SM_ERR_MASK                                                           = 32'h200000;
 localparam int unsigned CSRNG_ERR_CODE_MAIN_SM_ERR_SHIFT                                                          = 21;
 
-localparam int unsigned CSRNG_ERR_CODE_DRBG_GEN_SM_ERR_MASK                                                       = 32'h400000;
-localparam int unsigned CSRNG_ERR_CODE_DRBG_GEN_SM_ERR_SHIFT                                                      = 22;
-
-localparam int unsigned CSRNG_ERR_CODE_DRBG_UPDBE_SM_ERR_MASK                                                     = 32'h800000;
-localparam int unsigned CSRNG_ERR_CODE_DRBG_UPDBE_SM_ERR_SHIFT                                                    = 23;
-
-localparam int unsigned CSRNG_ERR_CODE_DRBG_UPDOB_SM_ERR_MASK                                                     = 32'h1000000;
-localparam int unsigned CSRNG_ERR_CODE_DRBG_UPDOB_SM_ERR_SHIFT                                                    = 24;
+localparam int unsigned CSRNG_ERR_CODE_CTR_DRBG_SM_ERR_MASK                                                       = 32'h400000;
+localparam int unsigned CSRNG_ERR_CODE_CTR_DRBG_SM_ERR_SHIFT                                                      = 22;
 
 localparam int unsigned CSRNG_ERR_CODE_AES_CIPHER_SM_ERR_MASK                                                     = 32'h2000000;
 localparam int unsigned CSRNG_ERR_CODE_AES_CIPHER_SM_ERR_SHIFT                                                    = 25;
 
-localparam int unsigned CSRNG_ERR_CODE_CMD_GEN_CNT_ERR_MASK                                                       = 32'h4000000;
-localparam int unsigned CSRNG_ERR_CODE_CMD_GEN_CNT_ERR_SHIFT                                                      = 26;
+localparam int unsigned CSRNG_ERR_CODE_CTR_ERR_MASK                                                               = 32'h4000000;
+localparam int unsigned CSRNG_ERR_CODE_CTR_ERR_SHIFT                                                              = 26;
 
 localparam int unsigned CSRNG_ERR_CODE_FIFO_WRITE_ERR_MASK                                                        = 32'h10000000;
 localparam int unsigned CSRNG_ERR_CODE_FIFO_WRITE_ERR_SHIFT                                                       = 28;
@@ -339,7 +291,7 @@ localparam int unsigned CSRNG_ERR_CODE_FIFO_STATE_ERR_SHIFT                     
 localparam int unsigned CSRNG_ERR_CODE_TEST_ERR_CODE_TEST_MASK                                                    = 32'h1F;
 localparam int unsigned CSRNG_ERR_CODE_TEST_ERR_CODE_TEST_SHIFT                                                   = 0;
 
-localparam int unsigned CSRNG_MAIN_SM_STATE_MAIN_SM_STATE_MASK                                                    = 32'hFF;
+localparam int unsigned CSRNG_MAIN_SM_STATE_MAIN_SM_STATE_MASK                                                    = 32'h3F;
 localparam int unsigned CSRNG_MAIN_SM_STATE_MAIN_SM_STATE_SHIFT                                                   = 0;
 
 
@@ -505,29 +457,14 @@ typedef struct packed {
     logic [0:0]   fifo_state_err ;
     logic [0:0]   fifo_read_err ;
     logic [0:0]   fifo_write_err ;
-    logic [0:0]   rsvd_1 ;
-    logic [0:0]   cmd_gen_cnt_err ;
+    logic [0:0]   rsvd_2 ;
+    logic [0:0]   ctr_err ;
     logic [0:0]   aes_cipher_sm_err ;
-    logic [0:0]   drbg_updob_sm_err ;
-    logic [0:0]   drbg_updbe_sm_err ;
-    logic [0:0]   drbg_gen_sm_err ;
+    logic [1:0]   rsvd_1 ;
+    logic [0:0]   ctr_drbg_sm_err ;
     logic [0:0]   main_sm_err ;
     logic [0:0]   cmd_stage_sm_err ;
-    logic [3:0]   rsvd_0 ;
-    logic [0:0]   sfifo_blkenc_err ;
-    logic [0:0]   sfifo_ggenbits_err ;
-    logic [0:0]   sfifo_gadstage_err ;
-    logic [0:0]   sfifo_ggenreq_err ;
-    logic [0:0]   sfifo_grcstage_err ;
-    logic [0:0]   sfifo_gbencack_err ;
-    logic [0:0]   sfifo_final_err ;
-    logic [0:0]   sfifo_pdata_err ;
-    logic [0:0]   sfifo_bencack_err ;
-    logic [0:0]   sfifo_bencreq_err ;
-    logic [0:0]   sfifo_updreq_err ;
-    logic [0:0]   sfifo_keyvrc_err ;
-    logic [0:0]   sfifo_rcstage_err ;
-    logic [0:0]   sfifo_cmdreq_err ;
+    logic [17:0]   rsvd_0 ;
     logic [0:0]   sfifo_genbits_err ;
     logic [0:0]   sfifo_cmd_err ;
 } csrng_err_code_reg_t;
@@ -541,7 +478,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [7:0]   main_sm_state ;
+    logic [5:0]   main_sm_state ;
 } csrng_main_sm_state_reg_t;
 
 

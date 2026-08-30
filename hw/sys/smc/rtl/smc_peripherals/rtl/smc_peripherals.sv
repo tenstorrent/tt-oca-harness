@@ -161,6 +161,8 @@ module smc_peripherals #(
 	input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]                                            			captured_straps_i,
 
     input  logic [7:0]                                                            			        sep_mailbox_interrupts_i,
+
+    input  logic                                                                  			        axi_hang_irq_i,
     output logic [31:0]                                                                    			peripheral_interrupts_o,
 
 	// UART and GPIO interrupt outputs to top level
@@ -482,10 +484,16 @@ module smc_peripherals #(
 	// Padring //
 	/////////////
 
+	// Protect against truncation from casts
+	`OCAH_OT_ASSERT_INIT(PadringGpioSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(PadringGpioBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0) < (64'd1 << gpio_pkg::ADDR_WIDTH))
+
 	smc_padring #(
 		.MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
-		.ADDRESS_MAP_SIZE_PER_GPIO  (smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE),
-		.GPIO_INTF_BASE_ADDR 		(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0))
+		.ADDRESS_MAP_SIZE_PER_GPIO  (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
+		.GPIO_INTF_BASE_ADDR 		(gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
 	) u_smc_padring (
 		.clk_i                      (clk_smc_i),
 		.rst_primary_ni             (rst_primary_smc_clk_no),
@@ -643,6 +651,19 @@ module smc_peripherals #(
 		.o_clk(gated_clk_periph_i2c)
  	);
 
+	`OCAH_OT_ASSERT_INIT(I2cCtrlBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR
+	        < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(I2cCtrlSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE
+	        < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(I2c0BaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)
+	        < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(I2c0SizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE
+	        < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+
 	i2c_wrap #(
 		.NUM_I2CS                 (smc_config_pkg::NUM_I2C),
 		.CONTROLLER_TX_FIFO_DEPTH (smc_config_pkg::I2C_CONTROLLER_TX_FIFO_DEPTH),
@@ -651,10 +672,10 @@ module smc_peripherals #(
 		.TARGET_RX_FIFO_DEPTH     (smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH),
 		.INPUT_DELAY_CYCLES       (smc_config_pkg::I2C_INPUT_DELAY_CYCLES),
 
-		.I2C_CTRL_REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR),
-		.I2C_CTRL_REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE),
-		.I2C_0__REG_MAP_BASE_ADDR   (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-		.I2C_0__REG_MAP_SIZE        (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE),
+		.I2C_CTRL_REG_MAP_BASE_ADDR (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR)),
+		.I2C_CTRL_REG_MAP_SIZE      (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE)),
+		.I2C_0__REG_MAP_BASE_ADDR   (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))),
+		.I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE)),
 		.I2C_INSTANCE_SPACING		(i2c_wrap_pkg::I2C_INSTANCE_SPACING)
 	) i2c_wrap (
 		.clk_i                    (gated_clk_periph_i2c),
@@ -698,6 +719,31 @@ module smc_peripherals #(
 		.o_clk(gated_clk_periph_uart)
  	);
 
+	`OCAH_OT_ASSERT_INIT(UartLogEngineWrapBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0)
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(UartLogEngineWrapSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(UartBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(UartSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(LogEngineBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0)
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(LogEngineSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(UartLogEngineCtrlBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0)
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(UartLogEngineCtrlSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE
+	        < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+
 	uart_wrap #(
 		.NUM_UARTS             (smc_config_pkg::NUM_UART),
 		.UART_TX_FIFO_DEPTH    (smc_config_pkg::UART_TX_FIFO_DEPTH),
@@ -705,16 +751,16 @@ module smc_peripherals #(
 		.GEN_LOG_ENGINES       (smc_config_pkg::GEN_LOG_ENGINES),
 		.LOG_ENGINE_FIFO_DEPTH (smc_config_pkg::LOG_ENGINE_FIFO_DEPTH),
 
-		.UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0)),
-		.UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE),
+		.UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0))),
+		.UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE)),
 		.UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UART_LOG_ENGINE_WRAP_SPACING),
 
-		.UART_REG_MAP_BASE_ADDR                    (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-		.UART_REG_MAP_SIZE                         (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE),
-		.LOG_ENGINE_REG_MAP_BASE_ADDR              (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0)),
-		.LOG_ENGINE_REG_MAP_SIZE                   (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE),
-		.UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0)),
-		.UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE)
+		.UART_REG_MAP_BASE_ADDR                    (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))),
+		.UART_REG_MAP_SIZE                         (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE)),
+		.LOG_ENGINE_REG_MAP_BASE_ADDR              (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))),
+		.LOG_ENGINE_REG_MAP_SIZE                   (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE)),
+		.UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0))),
+		.UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE))
 	) u_uart_wrap (
 		.clk_i                  (gated_clk_periph_uart),
 		.rst_ni                 (rst_primary_periph_clk_n),
@@ -771,13 +817,20 @@ module smc_peripherals #(
 		.o_clk(gated_clk_telemetry)
  	);
 
+	`OCAH_OT_ASSERT_INIT(TelemetryRxBaseFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0)
+	        < (64'd1 << telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH))
+	`OCAH_OT_ASSERT_INIT(TelemetryRxSizeFits_A,
+	    smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE
+	        < (64'd1 << telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH))
+
 	telemetry_receiver_wrap #(
 		.NUM_TELEMETRY_RECEIVERS                            (smc_config_pkg::NUM_TELEMETRY_RECEIVERS),
 		.TELEMETRY_RECEIVER_BUFFER_DEPTH                    (smc_config_pkg::TELEMETRY_RECEIVER_BUFFER_DEPTH),
 		.TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE),
 
-		.TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0)),
-		.TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE)
+		.TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
+		.TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
 	) telemetry_receiver_wrap (
 		.clk_i                      (gated_clk_smc_tel),
 		.rst_ni                     (rst_primary_smc_clk_no),
@@ -933,7 +986,7 @@ module smc_peripherals #(
 	prim_clkgater i3c_clk_periph_gater (
 		.i_clk(clk_periph_i),
 		.i_en(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
-		.i_te(test_mode_i),
+		.i_te(test_en_i),
 		.o_clk(gated_clk_periph_i3c)
 	);
 
@@ -1120,6 +1173,7 @@ module smc_peripherals #(
 		peripheral_interrupts_o[28]      = locked_field_access_interrupt;
 		peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
 		peripheral_interrupts_o[30]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
+		peripheral_interrupts_o[31]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
 	end
 
 	// async assignment to top level ports

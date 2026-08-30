@@ -9,7 +9,7 @@ TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5
 is BIT-EXACT and genbits-anchored (stronger than the reference suite):
 
   * AES (per-sink ROUTING, golden): each AES post-adapter beat == the next word on the
-    AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], new tb_top probe).
+    AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], tb_top axis1_*).
     The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
     AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
     granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
@@ -25,8 +25,8 @@ is BIT-EXACT and genbits-anchored (stronger than the reference suite):
 Consumption is bounded to a single CSRNG Generate (<= cfg.glen=32 genbits blocks) so
 the CHK4 genbits golden (one Generate per seed) stays bit-exact -- the genbits-word
 pool the membership tally draws from must cover all consumed words. 1 keygen + 2 AES
-blocks + KM boot ~ 24 blocks (< 32). A first over-driven attempt (53 blocks) tripped
-CHK4; the budget is measured (per-keygen ~6-7 blocks) and noted at the constants.
+blocks + KM boot ~ 24 blocks (< 32). The budget is measured (per-keygen ~6-7
+blocks) and noted at the constants.
 
 Checkers:
   CHK1..CHK4  bit-exact golden (decorrelator / compressor / seed / CTR_DRBG genbits)
@@ -66,7 +66,6 @@ from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_AES
-from seq_lib.sep_sw_reset_seq import SepSwReset
 
 # AES SW-key path key + plaintext for the entropy-pulling encrypt loop (values
 # are arbitrary -- this test exercises the entropy datapath, not a key contract).
@@ -77,17 +76,11 @@ AES_KEY = (
 AES_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
 # Concurrent-window consumers: KM keygen DRBG pulls (KM AXIS sink) interleaved with
-# AES reseed+encrypt blocks (crypto-EDN sink). Bounded so KM boot (~9 blocks) + these
-# stays within ONE CSRNG Generate (cfg.glen=32 genbits blocks) -- else the bit-exact
-# CHK4 golden (one Generate per seed) desyncs (a first over-driven attempt with
-# 4 keygen + 8 blocks produced 53 > 32 blocks and tripped CHK4). Budget (MEASURED on
-# VCS, not just estimated): each KM keygen costs ~6-7 genbits blocks, each AES
-# reseed+block ~2, KM boot ~13. 2 keygen + 3 blocks hit EXACTLY glen=32 (bit-exact
-# still held, but zero margin -- fragile). 1 keygen + 2 blocks = ~13 + ~7 + ~4 = ~24
-# blocks, ~8 headroom under glen=32. Keep the total under glen or the one-Generate-
-# per-seed CHK4 golden desyncs. If you raise these or KM boot entropy grows, re-confirm
-# CHK4 mismatch=0. Raising glen is NOT a safe substitute (longer Generates can drift
-# the seed boundary on a longer real-firmware run).
+# AES reseed+encrypt blocks (crypto-EDN sink). Bounded so KM boot + these stay
+# inside one CSRNG Generate (cfg.glen=32). Budget: each KM keygen ~6-7 genbits
+# blocks, each AES reseed+block ~2, KM boot ~13. KM_CMDS=1 and AES_BLOCKS=2
+# stay under glen (~24 blocks). Raising glen is not a substitute: a longer
+# Generate can drift the seed boundary on a longer firmware run.
 KM_CMDS = 1
 AES_BLOCKS = 2
 
@@ -108,16 +101,14 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # --- Boot the real KM firmware on real entropy -------------------------
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD (KM reads OTP at boot)
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # Park OTBN/KMAC/HMAC so KM + AES are the only entropy sinks. Leave AES
-        # RELEASED (default SW_RESET_N=0x1E) so its masking-PRNG reseed is served as
-        # EDN starts (real_sink_aes ordering), making AES a live crypto-EDN consumer.
-        await self.swrst.park("otbn", "kmac", "hmac")
+        # OTBN/KMAC/HMAC JTAG-held across rst_ni release, then parked in SW_RESET_N. AES stays released so its
+        # masking-PRNG reseed is served as EDN starts, making AES a live
+        # crypto-EDN consumer.
 
         # Strict entropy bring-up. CHK1..CHK4 bit-exact golden anchors the one DRBG.
         # KM = "membership" (each KM AXIS word is a genbits-golden word; rom_main pull
@@ -200,7 +191,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # Strict report runs the genbits-chain membership tally + per-sink checks and
         # raises on: CHK1..CHK4 mismatch, CHK5_aes routing mismatch / AXIS1 underrun,
         # any AXIS1 or KM word not in the genbits golden, or a starved sink.
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info(
             "CHK1..CHK4 bit-exact + CHK5_aes per-sink ROUTING (AES==AXIS1) + CHK5_km/"
             "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact, > reference suite)")

@@ -28,7 +28,6 @@ module entropy_ring_oscillator #(
 );
 
     logic [TOTAL_LENGTH-1:0] stage_o;
-    logic [TOTAL_LENGTH-1:0] inv0_o;
     logic                    feedback;
 
     // first delay cell is inverting and has enable input

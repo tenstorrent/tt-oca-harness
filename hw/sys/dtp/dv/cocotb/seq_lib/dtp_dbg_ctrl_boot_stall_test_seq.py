@@ -58,6 +58,10 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
 
         self.log_step(1, "Reset TAP and verify boot-stall reset value")
         await self.reset_tap()
+        # The DEBUG_CONTROL reset check below includes the live cla_clock_stop
+        # status bit, which mirrors the xtrig_clk_stop_req TB input: clear it
+        # explicitly instead of relying on one-time bring-up state.
+        await self.set_clk_stop_requests(0)
 
         reset_value = await self.read_debug_control()
         self.log_debug_control("After reset", reset_value)
@@ -66,7 +70,10 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         await self.expect_signal("jtag_boot_stall", 0)
 
         self.log_step(2, "Loop all boot_stall_ovrd / boot_stall combinations")
+        # Exhaustive 2x2 sweep in a seeded per-pass order: repeated loops
+        # exercise different combination transitions.
         combinations = [(0, 0), (0, 1), (1, 0), (1, 1)]
+        self.rng("boot_stall_order").shuffle(combinations)
         for idx, (boot_stall_ovrd, boot_stall) in enumerate(combinations, start=1):
             self.log_iteration(
                 idx,

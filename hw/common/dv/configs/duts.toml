@@ -34,3 +34,9 @@ sim_cfg = "hw/sys/smc/dv/smc_dual_sim_cfg.toml"
 
 [duts.dtp]
 root = "hw/sys/dtp/dv"
+
+# Shared AXI VIP wire-harness selftests: the master and fault-slave VIPs
+# exercise each other on passive tb nets (no DUT RTL). Non-conventional root
+# under the shared VIP tree, so it is registered here.
+[duts.ocah_axi_vip]
+root = "hw/common/dv/vip/ocah_axi_vip/dv"

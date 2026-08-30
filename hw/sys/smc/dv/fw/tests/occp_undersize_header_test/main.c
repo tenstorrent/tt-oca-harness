@@ -5,35 +5,6 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-// void run_undersize_sequence(test_context_t *ctx)
-//{
-//     uint32_t status32 = 0;
-//     uint8_t buf4[4] = {0};
-//     uint8_t recv1[1] = {0};
-//
-//     if (occp_send_get_status_command(ctx, ctx->slave_addr, &status32) != OCCP_SUCCESS) {
-//         simputs("Undersize GET_STATUS failed\n");
-//         ctx->overall_result = false;
-//     }
-//
-//     if (occp_send_get_version_command(ctx, ctx->slave_addr, &status32) != OCCP_SUCCESS) {
-//         simputs("Undersize GET_VERSION failed\n");
-//         ctx->overall_result = false;
-//     }
-//
-//     if (occp_send_write_command(ctx, ctx->slave_addr, ctx->test_base_addr, buf4, sizeof(buf4)) !=
-//     OCCP_SUCCESS) {
-//         simputs("Undersize WRITE failed\n");
-//         ctx->overall_result = false;
-//     }
-//
-//     if (occp_send_read_command(ctx, ctx->slave_addr, ctx->test_base_addr, recv1, sizeof(recv1))
-//     != OCCP_SUCCESS) {
-//         simputs("Undersize READ failed\n");
-//         ctx->overall_result = false;
-//     }
-// }
-
 int main(void) {
     static test_context_t ctx = {0};
 

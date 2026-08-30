@@ -17,15 +17,19 @@ extern "C" {
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bm 0x1
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bp 0
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_reset 0x0
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bm 0x2
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bp 1
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_reset 0x0
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_bm 0x4
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_bp 2
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_reset 0x0
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_bm 0x8
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_bp 3
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_bw 1
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -41,15 +45,19 @@ typedef union {
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm 0x1
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bp 0
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_reset 0x0
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bm 0x2
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bp 1
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_reset 0x0
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bm 0x4
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bp 2
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_reset 0x0
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bm 0x8
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bp 3
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bw 1
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -65,15 +73,19 @@ typedef union {
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bm 0x1
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bp 0
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_reset 0x0
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bm 0x2
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bp 1
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_reset 0x0
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_bm 0x4
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_bp 2
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_reset 0x0
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_bm 0x8
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_bp 3
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_bw 1
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -89,9 +101,11 @@ typedef union {
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bm 0x1
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bp 0
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bw 1
+#define CSRNG__ALERT_TEST__RECOV_ALERT_reset 0x0
 #define CSRNG__ALERT_TEST__FATAL_ALERT_bm 0x2
 #define CSRNG__ALERT_TEST__FATAL_ALERT_bp 1
 #define CSRNG__ALERT_TEST__FATAL_ALERT_bw 1
+#define CSRNG__ALERT_TEST__FATAL_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RECOV_ALERT :1;
@@ -146,15 +160,19 @@ typedef union {
 #define CSRNG__CMD_REQ__ACMD_bm 0xf
 #define CSRNG__CMD_REQ__ACMD_bp 0
 #define CSRNG__CMD_REQ__ACMD_bw 4
+#define CSRNG__CMD_REQ__ACMD_reset 0x0
 #define CSRNG__CMD_REQ__CLEN_bm 0xf0
 #define CSRNG__CMD_REQ__CLEN_bp 4
 #define CSRNG__CMD_REQ__CLEN_bw 4
+#define CSRNG__CMD_REQ__CLEN_reset 0x0
 #define CSRNG__CMD_REQ__FLAG0_bm 0xf00
 #define CSRNG__CMD_REQ__FLAG0_bp 8
 #define CSRNG__CMD_REQ__FLAG0_bw 4
+#define CSRNG__CMD_REQ__FLAG0_reset 0x0
 #define CSRNG__CMD_REQ__GLEN_bm 0x1fff000
 #define CSRNG__CMD_REQ__GLEN_bp 12
 #define CSRNG__CMD_REQ__GLEN_bw 13
+#define CSRNG__CMD_REQ__GLEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t acmd :4;
@@ -242,9 +260,11 @@ typedef union {
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bm 0x1
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bp 0
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bw 1
+#define CSRNG__GENBITS_VLD__GENBITS_VLD_reset 0x0
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bm 0x2
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bp 1
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bw 1
+#define CSRNG__GENBITS_VLD__GENBITS_FIPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENBITS_VLD :1;
@@ -258,6 +278,7 @@ typedef union {
 #define CSRNG__GENBITS__GENBITS_bm 0xffffffff
 #define CSRNG__GENBITS__GENBITS_bp 0
 #define CSRNG__GENBITS__GENBITS_bw 32
+#define CSRNG__GENBITS__GENBITS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENBITS :32;
@@ -295,6 +316,7 @@ typedef union {
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bm 0xf
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bp 0
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bw 4
+#define CSRNG__INT_STATE_NUM__INT_STATE_NUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_NUM :4;
@@ -307,6 +329,7 @@ typedef union {
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bm 0xffffffff
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bp 0
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bw 32
+#define CSRNG__INT_STATE_VAL__INT_STATE_VAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_VAL :32;
@@ -318,6 +341,7 @@ typedef union {
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_bm 0x7
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_bp 0
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_bw 3
+#define CSRNG__FIPS_FORCE__FIPS_FORCE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t FIPS_FORCE :3;
@@ -330,6 +354,7 @@ typedef union {
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_bm 0xffff
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_bp 0
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_bw 16
+#define CSRNG__HW_EXC_STS__HW_EXC_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t HW_EXC_STS :16;
@@ -342,30 +367,39 @@ typedef union {
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bm 0x1
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bp 0
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bm 0x2
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bp 1
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bm 0x4
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bp 2
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bm 0x8
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bp 3
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bm 0x10
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bp 4
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bm 0x1000
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bp 12
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bm 0x2000
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bp 13
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bm 0x4000
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bp 14
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_reset 0x0
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bm 0x8000
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bp 15
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ENABLE_FIELD_ALERT :1;
@@ -387,107 +421,54 @@ typedef union {
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bm 0x1
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bp 0
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bw 1
+#define CSRNG__ERR_CODE__SFIFO_CMD_ERR_reset 0x0
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bm 0x2
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bp 1
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_CMDREQ_ERR_bm 0x4
-#define CSRNG__ERR_CODE__SFIFO_CMDREQ_ERR_bp 2
-#define CSRNG__ERR_CODE__SFIFO_CMDREQ_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_RCSTAGE_ERR_bm 0x8
-#define CSRNG__ERR_CODE__SFIFO_RCSTAGE_ERR_bp 3
-#define CSRNG__ERR_CODE__SFIFO_RCSTAGE_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_KEYVRC_ERR_bm 0x10
-#define CSRNG__ERR_CODE__SFIFO_KEYVRC_ERR_bp 4
-#define CSRNG__ERR_CODE__SFIFO_KEYVRC_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_UPDREQ_ERR_bm 0x20
-#define CSRNG__ERR_CODE__SFIFO_UPDREQ_ERR_bp 5
-#define CSRNG__ERR_CODE__SFIFO_UPDREQ_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_BENCREQ_ERR_bm 0x40
-#define CSRNG__ERR_CODE__SFIFO_BENCREQ_ERR_bp 6
-#define CSRNG__ERR_CODE__SFIFO_BENCREQ_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_BENCACK_ERR_bm 0x80
-#define CSRNG__ERR_CODE__SFIFO_BENCACK_ERR_bp 7
-#define CSRNG__ERR_CODE__SFIFO_BENCACK_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_PDATA_ERR_bm 0x100
-#define CSRNG__ERR_CODE__SFIFO_PDATA_ERR_bp 8
-#define CSRNG__ERR_CODE__SFIFO_PDATA_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_FINAL_ERR_bm 0x200
-#define CSRNG__ERR_CODE__SFIFO_FINAL_ERR_bp 9
-#define CSRNG__ERR_CODE__SFIFO_FINAL_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_GBENCACK_ERR_bm 0x400
-#define CSRNG__ERR_CODE__SFIFO_GBENCACK_ERR_bp 10
-#define CSRNG__ERR_CODE__SFIFO_GBENCACK_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_GRCSTAGE_ERR_bm 0x800
-#define CSRNG__ERR_CODE__SFIFO_GRCSTAGE_ERR_bp 11
-#define CSRNG__ERR_CODE__SFIFO_GRCSTAGE_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_GGENREQ_ERR_bm 0x1000
-#define CSRNG__ERR_CODE__SFIFO_GGENREQ_ERR_bp 12
-#define CSRNG__ERR_CODE__SFIFO_GGENREQ_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_GADSTAGE_ERR_bm 0x2000
-#define CSRNG__ERR_CODE__SFIFO_GADSTAGE_ERR_bp 13
-#define CSRNG__ERR_CODE__SFIFO_GADSTAGE_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_GGENBITS_ERR_bm 0x4000
-#define CSRNG__ERR_CODE__SFIFO_GGENBITS_ERR_bp 14
-#define CSRNG__ERR_CODE__SFIFO_GGENBITS_ERR_bw 1
-#define CSRNG__ERR_CODE__SFIFO_BLKENC_ERR_bm 0x8000
-#define CSRNG__ERR_CODE__SFIFO_BLKENC_ERR_bp 15
-#define CSRNG__ERR_CODE__SFIFO_BLKENC_ERR_bw 1
+#define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_reset 0x0
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bm 0x100000
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bp 20
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_reset 0x0
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_bm 0x200000
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_bp 21
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_bw 1
-#define CSRNG__ERR_CODE__DRBG_GEN_SM_ERR_bm 0x400000
-#define CSRNG__ERR_CODE__DRBG_GEN_SM_ERR_bp 22
-#define CSRNG__ERR_CODE__DRBG_GEN_SM_ERR_bw 1
-#define CSRNG__ERR_CODE__DRBG_UPDBE_SM_ERR_bm 0x800000
-#define CSRNG__ERR_CODE__DRBG_UPDBE_SM_ERR_bp 23
-#define CSRNG__ERR_CODE__DRBG_UPDBE_SM_ERR_bw 1
-#define CSRNG__ERR_CODE__DRBG_UPDOB_SM_ERR_bm 0x1000000
-#define CSRNG__ERR_CODE__DRBG_UPDOB_SM_ERR_bp 24
-#define CSRNG__ERR_CODE__DRBG_UPDOB_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__MAIN_SM_ERR_reset 0x0
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bm 0x400000
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bp 22
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_reset 0x0
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bm 0x2000000
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bp 25
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bw 1
-#define CSRNG__ERR_CODE__CMD_GEN_CNT_ERR_bm 0x4000000
-#define CSRNG__ERR_CODE__CMD_GEN_CNT_ERR_bp 26
-#define CSRNG__ERR_CODE__CMD_GEN_CNT_ERR_bw 1
+#define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_reset 0x0
+#define CSRNG__ERR_CODE__CTR_ERR_bm 0x4000000
+#define CSRNG__ERR_CODE__CTR_ERR_bp 26
+#define CSRNG__ERR_CODE__CTR_ERR_bw 1
+#define CSRNG__ERR_CODE__CTR_ERR_reset 0x0
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bp 28
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bw 1
+#define CSRNG__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_bp 29
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_bw 1
+#define CSRNG__ERR_CODE__FIFO_READ_ERR_reset 0x0
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_bp 30
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_bw 1
+#define CSRNG__ERR_CODE__FIFO_STATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SFIFO_CMD_ERR :1;
         uint32_t SFIFO_GENBITS_ERR :1;
-        uint32_t SFIFO_CMDREQ_ERR :1;
-        uint32_t SFIFO_RCSTAGE_ERR :1;
-        uint32_t SFIFO_KEYVRC_ERR :1;
-        uint32_t SFIFO_UPDREQ_ERR :1;
-        uint32_t SFIFO_BENCREQ_ERR :1;
-        uint32_t SFIFO_BENCACK_ERR :1;
-        uint32_t SFIFO_PDATA_ERR :1;
-        uint32_t SFIFO_FINAL_ERR :1;
-        uint32_t SFIFO_GBENCACK_ERR :1;
-        uint32_t SFIFO_GRCSTAGE_ERR :1;
-        uint32_t SFIFO_GGENREQ_ERR :1;
-        uint32_t SFIFO_GADSTAGE_ERR :1;
-        uint32_t SFIFO_GGENBITS_ERR :1;
-        uint32_t SFIFO_BLKENC_ERR :1;
-        uint32_t :4;
+        uint32_t :18;
         uint32_t CMD_STAGE_SM_ERR :1;
         uint32_t MAIN_SM_ERR :1;
-        uint32_t DRBG_GEN_SM_ERR :1;
-        uint32_t DRBG_UPDBE_SM_ERR :1;
-        uint32_t DRBG_UPDOB_SM_ERR :1;
+        uint32_t CTR_DRBG_SM_ERR :1;
+        uint32_t :2;
         uint32_t AES_CIPHER_SM_ERR :1;
-        uint32_t CMD_GEN_CNT_ERR :1;
+        uint32_t CTR_ERR :1;
         uint32_t :1;
         uint32_t FIFO_WRITE_ERR :1;
         uint32_t FIFO_READ_ERR :1;
@@ -501,6 +482,7 @@ typedef union {
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
+#define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ERR_CODE_TEST :5;
@@ -510,14 +492,14 @@ typedef union {
 } csrng__ERR_CODE_TEST_t;
 
 // reg - csrng::MAIN_SM_STATE
-#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bm 0xff
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x3f
 #define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
-#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bw 8
-#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_reset 0x4e
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bw 6
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_reset 0x37
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t MAIN_SM_STATE :8;
-        uint32_t :24;
+        uint32_t MAIN_SM_STATE :6;
+        uint32_t :26;
     } f;
     uint32_t w;
 } csrng__MAIN_SM_STATE_t;

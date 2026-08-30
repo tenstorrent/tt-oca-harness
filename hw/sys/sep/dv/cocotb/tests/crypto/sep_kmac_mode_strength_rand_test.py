@@ -19,9 +19,9 @@ mode/strength breadth is standalone SW-key with an exact golden.
 
 Entropy: the KMAC engine has masking hardwired on (EnMasking=1) and requires EDN
 entropy (entropy_mode=EDN) before it produces output, so the test brings up the
-real ESRC->DRBG->EDN stack (+esrc_noise_force) or the engine stalls. The DRBG
-scoreboard runs non-strict (KMAC mode/strength breadth's contract is KMAC correctness, not the entropy
-golden); reaching the digest checks proves masking entropy flowed.
+real ESRC->DRBG->EDN stack (+esrc_noise_force) or the engine stalls. OTBN/AES/HMAC
+are parked so KMAC is the only crypto EDN client: CHK1..CHK4 are bit-exact,
+CHK5_kmac is per-sink ROUTING golden. KM is unused.
 
 RAND-REP contract: a SepKmacCfg config object is the single source
 of truth for BOTH DUT programming (CFG + KEY_LEN + PREFIX + key + message tail)
@@ -34,17 +34,18 @@ Checkers:
   CHK-DONE-RW1C  per cell: INTR_STATE.kmac_done observed set -> W1C -> reads 0
                  (proven in sep_kmac_seq.run_family), and CMD DONE returns to idle
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
+  CHK1..CHK4     bit-exact entropy golden (strict scoreboard report)
+  CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink)
   CHK-RAND-REP   all 8 discrete cells walked in one invocation (seed logged)
 """
 
 from __future__ import annotations
 
-import random
-
 import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_kmac_golden import kmac_family_words
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
 # (mode, sec/strength, output bytes, key_bits[kmac only], customization S)
@@ -69,22 +70,25 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
     """Standalone KMAC-family SHA3/SHAKE/cSHAKE/KMAC x strengths (no_cpu, SW key)."""
 
     async def run_scenario(self) -> None:
-        await self.bring_up_no_cpu()
-        # KMAC masking reseeds from EDN; bring the stack up (non-strict: KMAC mode/strength breadth
-        # proves KMAC, not the entropy golden) and drive the deterministic noise.
-        await self.bring_up_entropy(strict=False, score_km=False)
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac"))
+        # Every other crypto-EDN client JTAG-held across rst_ni release, then parked in SW_RESET_N so CHK5_kmac golden
+        # routing is in-order (one live sink). KMAC stays released for the
+        # masking reseed.
+        await self.bring_up_entropy(
+            strict=True, score_km=False, score_sinks={"kmac": "golden"})
+        self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.kmac = SepKmac(self)
         seed = self.random_seed()
-        self.rng = random.Random(seed)
+        self.rng = SepSeededRng(seed)
         self.logger.info("KMAC mode/strength breadth KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. The former guard compared
-        # `walked` against a product of file-scope constants -- it asserted its
-        # own arithmetic. Distinct results additionally show the cells really did
-        # program different configurations.
+        # output, not on the loop's own trip count. Comparing `walked` only to a
+        # product of file-scope constants asserts the test's own arithmetic.
+        # Distinct results additionally show the cells programmed different
+        # configurations.
         results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
             results[f"{mode}-{sec}-{outb}"] = await self._run_cell(
@@ -96,7 +100,11 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             "KMAC cells produced duplicate digests, so they did not all run distinct "
             "configurations: "
             + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
+        await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report()
+        self.logger.info(
+            "CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS")
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "(SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256) in one "
@@ -108,7 +116,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
 
     async def _run_cell(self, mode: str, sec: int, outb: int,
                         key_bits: int | None, s: bytes) -> None:
-        msg = self._rand_words(self.rng.randint(1, 8))
+        msg = self._rand_words(self.rng.randrange(1, 9))
         key = self._rand_words(key_bits // 32) if mode == "kmac" else None
         cfg = SepKmacCfg(mode=mode, sec=sec, msg_words=msg, outlen_bytes=outb,
                          key_words=key, key_bits=key_bits, s=s)

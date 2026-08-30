@@ -11,7 +11,7 @@ DUT already produces is the value-agnostic trap: the module self-tests against t
 vector at import, so a transcription error in the S-box / key schedule / round
 math fails loudly here rather than silently agreeing with a broken DUT.
 
-Register byte/word convention (OpenTitan AES, hw/sys/sep/regs/gen/adoc/blocks/aes.adoc
+Register byte/word convention (OpenTitan AES, vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc
 "all registers are little-endian", programmers_guide.md):
   * The 256-bit key is KEY_SHARE0_0..7 (8 words); KEY_SHARE0_0 holds key bytes
     [3:0] little-endian (byte 0 = LSB), KEY_SHARE0_1 holds bytes [7:4], etc.
@@ -148,7 +148,7 @@ def aes256_encrypt_block(key: bytes, block: bytes) -> bytes:
 def aes256_ecb_encrypt_words(key_words: list[int], pt_words: list[int]) -> list[int]:
     """Encrypt one block expressed as OpenTitan AES register words.
 
-    ``key_words`` = KEY_SHARE0_0..7 (8 words, the full key since SHARE1=0).
+    ``key_words`` = the effective AES-256 key (8 words; DUT ``SHARE0 ^ SHARE1``).
     ``pt_words``  = DATA_IN_0..3 (4 words). Returns DATA_OUT_0..3 (4 words).
     Word<->byte packing is little-endian, matching the AES register convention.
     """
@@ -214,7 +214,7 @@ def aes_encrypt_words(mode: str, key_words: list[int], pt_words: list[int],
                       iv_words: list[int] | None = None) -> list[int]:
     """Encrypt in OpenTitan AES register words. ``mode`` in {ecb,cbc,ctr}.
 
-    ``key_words`` = KEY_SHARE0 words (4/6/8 for AES-128/192/256; SHARE1=0 SW key).
+    ``key_words`` = the effective key (4/6/8 words for AES-128/192/256; DUT ``SHARE0 ^ SHARE1``).
     ``pt_words`` = DATA_IN words (a multiple of 4). ``iv_words`` = IV_0..3 for
     CBC/CTR (ignored for ECB). Returns DATA_OUT words. Word<->byte packing is
     little-endian, matching the register convention.

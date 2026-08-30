@@ -7,7 +7,7 @@
  * @file km_drbg_sampler.sv
  * @brief DRBG sampler -- bridges KM CPU AXI4-Lite reads to a DRBG AXI-Stream.
  *
- * @details Mapped at base 0x0000_F000.  A CPU read of the DATA register
+ * @details Mapped at base 0x0001_5000.  A CPU read of the DATA register
  *          either returns a prefetched random word or initiates a new DRBG
  *          request via the AXI-Stream handshake.  Configurable timeout
  *          (CFG.TIMEOUT) protects against DRBG stalls during active reads.
@@ -31,7 +31,7 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
     input  logic   cold_rst_ni,   // Cold reset: AASD
     input  logic   warm_rst_ni,   // Warm reset: fully synchronous
 
-    // AXI4-Lite Slave (from crossbar, base 0x0000_F000)
+    // AXI4-Lite Slave (from crossbar, base 0x0001_5000)
     input  axil_req_t axil_req_i,
     output axil_resp_t axil_resp_o,
 
@@ -45,8 +45,8 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
 
     `include "prim_assert.sv"
 
-    /** @brief Register block address width (4 bits, word-aligned). */
-    localparam int unsigned ADDR_W = 4;
+    /** @brief Register block address width, from the generated register map. */
+    localparam int unsigned ADDR_W = KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
 
     //--------------------------------------------------------------------------
     // Register block AXI (flat) and hwif

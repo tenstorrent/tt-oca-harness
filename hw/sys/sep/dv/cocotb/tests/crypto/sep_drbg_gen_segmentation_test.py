@@ -70,6 +70,10 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
             "KM never handshook a genbits word"
         )
         assert await self.wait_km_consumed_word(), "KM never consumed a genbits word"
+        # The non-zero poll above only says the KM CPU reached its store. Compare
+        # the stored word against the word the DUT delivered on the AXIS endpoint,
+        # so the SRAM landing is a value check and not a liveness marker.
+        self.check_km_sram_word_matches_consumed()
 
         # Keep draining until several Generate commands have had time to finish.
         # At glen=4 the usual block budget spans multiple commands, so this is
@@ -110,4 +114,4 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
 
         # Bit-exactness across those Update boundaries is the actual regression
         # guard for the demand-driven golden.
-        sb.report()
+        assert sb.report()

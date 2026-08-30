@@ -17,9 +17,10 @@ transitions as well as disable security features. Tokens are:
 
 The tokens directly affect the life cycle state machine processing and
 fuse sensing. so token processing is naturally done in the OTP
-Controller. Tokens are entered via the JTAG port and captured in a
-serial register for match processing described in the next section. The
-serial register has the following important properties:
+Controller. Tokens are entered via the JTAG port into a dedicated
+eight-word register array per token, held in the eFuse MMR block, for
+match processing described in the next section. Those arrays have the
+following important properties:
 
 * Non-scannable
 * Non-resetable
@@ -63,8 +64,8 @@ as passwords. We have tokens:
 ** Digest SEC_DIS_TOKEN_DIGEST in hardware gates (global)
 
 The separate security disable token SEC_DIS_TOKEN overrides the entire
-LC control mechanism; the resulting feature control follows the SEC_DIS /
-SECURE_TM rules in the Lifecycle Controller chapter. This feature is an
+LC control mechanism; the resulting feature control follows the SEC_DIS
+rules in the Lifecycle Controller chapter. This feature is an
 _emergency fallback_ intended to enable A0 silicon debugging and shall
 be permanently disabled in subsequent A1/B0 revisions via metal mask
 only ECO.
@@ -72,13 +73,15 @@ only ECO.
 The tokens are not directly compared with an internal value stored in
 OTP but instead first hashed using the SHA2-256 cryptographic hash
 algorithm. OTP holds the hash value, also known as the TOKEN_DIGEST. The
-OTP controller shall have a local, dedicated SHA256 hardware accelerator
-unit to perform the hashing of the input token, entered via JTAG.
+OTP controller has a local, dedicated SHA256 hardware accelerator unit
+per token to perform the hashing of the input token.
 
-token_match = (SHA256(token[255:0]) == <NAME>_TOKEN_DIGEST[255:0]
+token_match = (SHA256(token[255:0]) == <NAME>_TOKEN_DIGEST[255:0])
 
-The above token matching logic is purely combinational and input values
-are never stored in any downstream, potentially scannable registers.
+The comparison itself is purely combinational, and neither the presented
+token nor the expected digest is ever stored in a scannable register.
+The SHA256 engine ahead of it is sequential and holds the computed digest
+until the next hash is started; see <<token-match-sequence>>.
 
 The stored secrets are very security sensitive so special care must be
 taken when provisioning them in the chiplet. OTP_secret[255:0] is a
@@ -96,21 +99,72 @@ unlock the chip when the OTP fuse sensing logic is non-functional but we
 still need to unlock the chip. If we were to rely on the non-functioning
 OTP, we would be unable to unlock the chip.
 
-The actual matching logic as a vulnerable attack point via FIB or fault
+[[token-match-sequence]]
+===== Token Match Sequence
+
+Each token has its own eight-word array in the eFuse MMR block, its own
+SHA256 engine and its own set of comparators. JTAG:
+
+. writes the 256-bit token as eight 32-bit words to `RMA_SIP_TOKEN_I`,
+`RMA_CHIPLET_TOKEN_I` or `SEC_DISABLE_TOKEN_I`
+. writes the matching go bit in `TOKEN_EOP`, which pulses the hash start
+. polls `RMA_SIP_TOKEN_MATCH`, `RMA_CHIPLET_TOKEN_MATCH` or
+`SEC_DISABLE_TOKEN_MATCH` for the 6-bit result
+
+Starting a hash clears that token's digest-valid bit, so the comparators
+report idle rather than a stale result while a digest is in flight.
+
+The two RMA comparisons additionally wait for fuse sensing to complete,
+because their expected digests come from the OTP shadow registers. The
+SEC_DIS comparison does not, because its expected digest comes from
+gates. That is what lets SEC_DIS unlock a part whose fuse sensing is
+broken.
+
+[[token-matching-countermeasures]]
+===== Matching Logic Countermeasures
+
+The actual matching logic is a vulnerable attack point via FIB or fault
 injection. We protect this by using triple-redundant matching logic on
 fully differential signals resulting in a 6-bit output as illustrated
-below. The SHA256 hashing engine is also protected with redundancy
-coding of sensitive internal state. Any internally detected errors are
-signalled on the output error port.
+below.
 
-Note that this is not a majority vote scheme i.e. all three comparators
-must return the same result. If a mismatch is detected, this may
-indicate a tampering attack and an alarm interrupt must be raised.
-Furthermore, if an error is detected in the SHA256 hashing engine or the
-OTP shadow register memory bank, then matching will always return a
-failure code on all three redundant outputs.
+This is not a majority vote scheme. While a comparison is in flight two
+invariants must both hold: every comparator must drive a genuine
+differential pair, and all three comparators must agree with each other.
+Together these admit only the match and mismatch codes, so a fault
+manifests as one of two conditions:
 
-image::SEP_Token_Matching.png[SEP_Token_Matching,scaledwidth=90.0%]
+* a comparator whose differential pair collapsed, both rails at the same
+value
+* comparators that disagree with each other, which is the case a majority
+vote would wave through as a match
+
+Either one raises a redundancy fault, which may indicate a tampering
+attack. The fault forces the error code onto all six output bits, so
+every downstream feature gate fails closed, and it sets the sticky bit
+for that token in the `TOKEN_MATCH_FAULT` register. The three sticky bits are
+combined into a single interrupt to the SEP CPU on PIC source 39; see
+ifdef::backend-html5[]
+xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-cpu-interrupt-vector-map>>
+endif::backend-pdf[]
+for the full slot map. Firmware reads the register to identify which
+comparators faulted. The fault bits are software-read-only and clear only on
+reset, so a fault cannot be hidden by retrying with a valid token and the PIC
+source stays asserted. Firmware must mask PIC source 39 after it has observed
+the fault; there is no write-one-to-clear that drops the line, and an unmasked
+handler re-enters.
+
+The detector does not catch a common-mode fault. If all three comparators flip
+the same way they still agree and each still drives a legal differential pair,
+so the output is a legal match or mismatch code and no sticky bit is set.
+Invert of a match is a legal mismatch; invert of a mismatch is a legal match
+(fail-open). "Any deviation" here means a collapsed pair or a disagreement
+between instances, not full coverage of every possible fault.
+
+image::SEP_Token_Processing.png[SEP_Token_Processing,scaledwidth=90.0%]
 
 The 6-bit matching signal is distributed as is to each individual point
 of use i.e. logic where individual features are enabled or disabled.
@@ -124,13 +178,6 @@ Error = 6’b111111
 [[post-token-matching-handling]]
 ===== Post Token Matching Handling
 
-After a token matching operation has completed and a LC state transition
-operation has been performed, the following takes place:
-
-disable all \{Debug, DFT, Functional} features making system inert
-if token match successful:
-initiate OTP LC state update operation
-
-Note that the above procedure takes place regardless whether the token
-match and LC state transition is successful or not.
-
+A token match does not by itself change the life cycle state. It
+authorizes a change, and the state is then updated by one of two paths
+described in _Fuse Controller (OTP)_ in this chapter.

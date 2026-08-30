@@ -24,7 +24,7 @@ See the [README](README.md) for vendor import conventions, register-generation f
 
 1. Create a topic branch off `main` for your change.
 2. Make focused commits that compile and pass relevant checks where possible.
-3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan. Add `Fixes #N` when the PR closes an issue.
+3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan, but the daily curator will normalize the title to `scope: summary` format and repair any missing template sections. Add `Fixes #N` when the PR closes an issue.
 4. Be responsive to review feedback.
 
 Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/contributing/`](doc/contributing/).
@@ -80,7 +80,8 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
-`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on pull
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, `lint-tcl`, and
+`regen-regs` on pull
 requests and on pushes to `main` (`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
 artifacts; jobs report through `.github/actions/reviewdog-report`.
 
@@ -96,6 +97,19 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
+| `regen-regs` | — (job fails on a dirty tree) | `make regen-regs regen-regs-adoc regen-regs-html` |
+
+The `regen-regs` gate regenerates every register block's collateral from the RDLs
+and fails if the working tree changes, so the committed `**/regs/gen/` outputs
+(SystemVerilog, C headers, Python, RAL, IP-XACT, AsciiDoc, HTML) always match a
+fresh run. It is peakrdl-only (no bender or `nonfree/`), so a plain checkout
+reproduces it. To fix a failure, run the local command above and commit the
+result:
+
+```
+make regen-regs regen-regs-adoc regen-regs-html
+git status --porcelain   # expect no output
+```
 
 Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the tools on
 `PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
@@ -110,7 +124,7 @@ Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the 
 
 ## Reporting Issues
 
-Open a [new issue](https://github.com/tenstorrent/tt-oca-harness/issues/new/choose) and pick Bug, Task, or Feature. Choose Workstream, Subsystem, and Component from the lists. Priority and Target release are optional.
+Open a [new issue](https://github.com/tenstorrent/tt-oca-harness/issues/new/choose) and pick Bug, Task, or Feature. All fields — Workstream, Subsystem, Component, Priority, and Target release — are required. If you target the current release (v0.5.0), the milestone is set automatically.
 
 For security vulnerabilities, do not open a public issue. Follow the process in [SECURITY.md](SECURITY.md).
 

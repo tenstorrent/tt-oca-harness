@@ -140,7 +140,6 @@ module jtag_ptap
     output sep_otp_axil_req_t       axil_sep_otp_jtag_req_o,
     input  sep_otp_axil_resp_t      axil_sep_otp_jtag_resp_i
 );
-
     //--------------------------------------------------------------------------
     // Internal Signals
     //--------------------------------------------------------------------------
@@ -175,7 +174,6 @@ module jtag_ptap
     jtag_scan_ctrl_t smc_otp_2axi_caps_reg_scan_ctrl;  // SMC_OTP_JTAG2AXI_CAPS register scan control
     jtag_scan_ctrl_t sep_otp_2axi_caps_reg_scan_ctrl;  // SEP_OTP_JTAG2AXI_CAPS register scan control
     jtag_scan_ctrl_t smc_2axi_caps_reg_scan_ctrl;      // SMC_JTAG2AXI_CAPS register scan control
-    jtag_scan_ctrl_t general_tdr_scan_ctrl;            // General TDR scan control
     jtag_scan_ctrl_t smc_otp_jtag2axi_scan_ctrl;       // SMC OTP jtag2axi scan control
     jtag_scan_ctrl_t sep_otp_jtag2axi_scan_ctrl;       // SEP OTP jtag2axi scan control
     jtag_scan_ctrl_t smc_jtag2axi_scan_ctrl;           // SMC Fabric jtag2axi scan control
@@ -192,7 +190,6 @@ module jtag_ptap
     logic smc_otp_2axi_caps_reg_scan_out;  // SMC_OTP_JTAG2AXI_CAPS register scan chain
     logic sep_otp_2axi_caps_reg_scan_out;  // SEP_OTP_JTAG2AXI_CAPS register scan chain
     logic smc_2axi_caps_reg_scan_out;      // SMC_JTAG2AXI_CAPS register scan chain
-    logic general_tdr_scan_out;            // General TDR scan chain output
 
     logic persistence_mode;   // TMP persistence mode (from TMP controller)
     logic bypass_escape_bit;  // Bypass escape enable bit (from TMP status register)

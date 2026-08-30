@@ -159,7 +159,10 @@ module sep_crypto #(
     output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
 
     // Locked Field Access Interrupt
-    output logic                               locked_field_access_interrupt_o
+    output logic                               locked_field_access_interrupt_o,
+
+    // Token Comparator Redundancy Fault Interrupt
+    output logic                               token_match_fault_o
 );
 
     /////////////////////////
@@ -244,7 +247,12 @@ module sep_crypto #(
     logic csrng_write, csrng_read, edn_write, edn_read;
     logic entropy_src_write, entropy_src_read, trng_write, trng_read;
     logic abr_write, abr_read;  // Adams Bridge PQC
+    logic aw_is_burst, ar_is_burst;
     logic [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL-1:0] aw_select, ar_select;
+
+    // check if the transaction is a burst transactions to reject all bursts commands to CSR space
+    assign aw_is_burst = (|sep_crypto_axi_req_i.aw.len);
+    assign ar_is_burst = (|sep_crypto_axi_req_i.ar.len);
 
     always_comb begin
         otbn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::otbn_rule.start_addr) &
@@ -308,7 +316,9 @@ module sep_crypto #(
             (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::abr_rule.end_addr);
 
         // Port mapping follows sep_crypto_axi_port_e
-        if (abr_write) begin
+        if (aw_is_burst) begin
+            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
+        end else if (abr_write) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
         end else if (trng_write) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
@@ -336,7 +346,9 @@ module sep_crypto #(
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
         end
 
-        if (abr_read) begin
+        if (ar_is_burst) begin
+            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
+        end else if (abr_read) begin
             ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
         end else if (trng_read) begin
             ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
@@ -607,6 +619,31 @@ module sep_crypto #(
     end
 `endif
 
+    // Break the B-channel combinational loop between the sep_crypto demux's
+    // round-robin B arbiter and the VeeR axi4_to_ahb bridge inside the ABR wrapper.
+    
+    sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_cut;
+    sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_cut;
+
+    axi_cut #(
+        .Bypass     (1'b1),   // AW/W/AR/R: combinational passthrough
+        .BypassB    (1'b0),   // B: registered - this is what cuts the loop
+        .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+        .w_chan_t   (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+        .b_chan_t   (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+        .ar_chan_t  (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+        .r_chan_t   (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
+    ) u_abr_b_cut (
+        .clk_i,
+        .rst_ni     (sep_reset_ni),
+        .slv_req_i  (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
+        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+        .mst_req_o  (abr_axi_req_cut),
+        .mst_resp_i (abr_axi_resp_cut)
+    );
+
     // Same package parameters feed the ABR SRAM instances in sep_ip_integration;
     // abr_top and its memories must be configured identically.
     sep_crypto_abr_wrapper #(
@@ -615,9 +652,10 @@ module sep_crypto #(
     ) u_sep_crypto_abr_wrapper_s3c_scan (
         .clk_i,
         .rst_ni                (sep_reset_ni),
-        // Control/status path: ABR AXI aperture off the sep_crypto demux
-        .abr_axi_req_i         (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
-        .abr_axi_resp_o        (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+        // Control/status path: ABR AXI aperture off the sep_crypto demux, via the
+        // B-channel cut above.
+        .abr_axi_req_i         (abr_axi_req_cut),
+        .abr_axi_resp_o        (abr_axi_resp_cut),
         // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
         .abr_key_axil_req_i    (abr_key_axil_req),
         .abr_key_axil_resp_o   (abr_key_axil_resp),
@@ -806,7 +844,9 @@ module sep_crypto #(
         .sep_efuse_token_match_sip_debug_o(sep_efuse_token_match_sip_debug_o),
         .sep_efuse_token_match_chiplet_debug_o(sep_efuse_token_match_chiplet_debug_o),
 
-        .locked_field_access_interrupt_o       (locked_field_access_interrupt_o)
+        .locked_field_access_interrupt_o       (locked_field_access_interrupt_o),
+
+        .token_match_fault_o                   (token_match_fault_o)
     );
 
     sep_lifecycle_ctrl #(
@@ -837,8 +877,9 @@ module sep_crypto #(
     // LC state and demotion state arrive already differentially encoded from
     // their respective sources (shadow register and LCC output).
     // The four 256-bit secret fields (chiplet_uid, class_key, sip_uid, sys_uid)
-    // are dual-rail encoded here at the source (Sep->KM boundary) using
-    // prim_diff_encode_multi so that any fault on the wire is detectable.
+    // and the three 256-bit public identity fields (sep_chiplet_id, sep_sip_id,
+    // sep_sys_id) are dual-rail encoded here at the source (Sep->KM boundary)
+    // using prim_diff_encode_multi so that any fault on the wire is detectable.
     // Encoded format: data_o = {~value[255:0], value[255:0]} (512 bits total).
 
     km_intf_pkg::km_otp_data_t km_otp_data;
@@ -849,7 +890,7 @@ module sep_crypto #(
     assign km_otp_data.demotion_state_1 = lcc_demote_state_1_o;
     assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
-    // Dual-rail encode all four 256-bit KM-routed OTP fields.
+    // Dual-rail encode every 256-bit KM-routed OTP field.
     // OutputFlop=0: purely combinational encode (no pipeline latency).
     prim_diff_encode_multi #(
         .Width      (256),
@@ -889,6 +930,37 @@ module sep_crypto #(
         .rst_ni (rst_ni),
         .data_i (shadow_regs_o.fields.sys_uid.uid),
         .data_o (km_otp_data.sys_uid)
+    );
+
+    // The SEP_*_ID fuses are not in the efuse map yet, so encode a zero value.
+    prim_diff_encode_multi #(
+        .Width      (256),
+        .OutputFlop (1'b0)
+    ) u_sep_chiplet_id_enc (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .data_i (256'b0),
+        .data_o (km_otp_data.sep_chiplet_id)
+    );
+
+    prim_diff_encode_multi #(
+        .Width      (256),
+        .OutputFlop (1'b0)
+    ) u_sep_sip_id_enc (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .data_i (256'b0),
+        .data_o (km_otp_data.sep_sip_id)
+    );
+
+    prim_diff_encode_multi #(
+        .Width      (256),
+        .OutputFlop (1'b0)
+    ) u_sep_sys_id_enc (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .data_i (256'b0),
+        .data_o (km_otp_data.sep_sys_id)
     );
 
 
@@ -1323,10 +1395,10 @@ module sep_crypto #(
 
     key_manager #(
         .ROM_SIZE_BYTES       (16384),
-        .SRAM_SIZE_BYTES      (16384),
+        .SRAM_SIZE_BYTES      (32768),
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-        .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)
+        .OTP_EFUSE_REMAP_BASE (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
     ) u_key_manager_s3c_scan (
         .clk_i              (clk_i),
         // Cold reset: SEP system cold reset (AASD) resets the entire KM.

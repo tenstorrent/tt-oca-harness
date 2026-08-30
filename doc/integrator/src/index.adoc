@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.2
-:revdate: 2026-08-13
+:revnumber: 0.0.3
+:revdate: 2026-08-21
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -39,6 +39,66 @@ Processor (SEP). The subsections below describe each subsystem's interfaces
 independently, followed by the <<smu-composition,SMU Composition>> section that
 explains how they are wired together inside the SMU and how to select between the
 `smu.sv` logic-level core and the `smu_wrapper.sv` reference integration.
+
+[[address-map-integration]]
+=== Address Map Integration
+
+The OCAH address map has three levels, and the assignment contract splits across
+the integrator, SEP firmware, and SMC firmware. Assign and program them from this
+section; the deeper subsystem and crossbar sections referenced below give the
+per-block detail.
+
+* *Chiplet envelope (integrator).* The SoC/chiplet address map assigns each
+  subsystem a global base and reserved size, and the adopter's fabric decoder
+  routes those ranges to the SMU. The SMU crossbar preserves offsets and does not
+  constrain envelope size, so the integrator owns non-overlap and containment at
+  the SoC level.
+* *SEP and SMC chiplet apertures (firmware).* Each subsystem exposes a
+  chiplet-visible aperture whose base and size are programmable at runtime.
+  Inbound transactions to an aperture are remapped global-to-local before they
+  reach the subsystem.
+* *Local-alias views (fixed in RTL).* Internally each subsystem addresses its
+  own resources through a fixed local map: the SMC at `0xC000_0000` (see
+  <<smc-address-map-integration>>), the SEP through its own local map. These are
+  RTL-fixed and not integrator-assigned.
+
+.Address-map assignment contract
+[width="100%",cols="26%,20%,54%",options="header"]
+|=======================================================================
+|Level |Owner |Assigned / programmed by
+|Chiplet envelope |Integrator |SoC/chiplet address map + adopter fabric decode
+|SEP chiplet aperture |SEP firmware |`SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
+(the `sep_cpu_ctrl` CSRs)
+|SMC chiplet aperture |SMC firmware |`GLOBAL_BASE` / `REGION_SIZE` (the SMC CPU
+Control CSRs at `0xC001_0000`)
+|SEP / SMC local view |Fixed (RTL) |Offsets within each subsystem's local map
+(SMC local base `0xC000_0000`)
+|=======================================================================
+
+Programming order and constraints: firmware programs the SEP and SMC aperture
+CSRs during early boot, *before any cross-subsystem AXI traffic is issued*, and
+must keep the two apertures non-overlapping and inside the chiplet envelope the
+integrator assigned. The full runtime crossbar behaviour and the exact CSR
+plumbing are in <<smu-firmware-programming-order>> under <<smu-composition>>.
+
+[[address-map-collateral]]
+==== Register collateral
+
+The machine-readable address map ships in the repository tree; integrators
+consume it from the release checkout or tarball rather than a separate package:
+
+* System tops: `hw/sys/<sys>/regs/<sys>.rdl` (e.g. `hw/sys/sep/regs/sep.rdl`,
+  `hw/sys/smc/regs/smc.rdl`).
+* IP blocks: `hw/ip/<ip>/regs/<ip>.rdl`.
+* Vendored blocks: `vendor/.../overlay/regs/<ip>/regs/<ip>.rdl` or
+  `vendor/.../overlay/rdl/<ip>.rdl`.
+* Generated outputs per block: `<block>/regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/`
+  — C headers, SystemVerilog packages, Python models, UVM RAL, documentation, and
+  IEEE 1685-2014 IP-XACT component descriptions.
+
+For the architecture-level responsibility split between the integrator, firmware,
+and the internal SEP/SMC maps, see
+xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
 
 [[smc-integration]]
 === System Management Controller (SMC) Integration
@@ -112,17 +172,17 @@ The SMC fabric uses three registers in the CPU Control block
 (`0xC001_0000`) to distinguish local from remote addresses:
 
 * `LOCAL_BASE` (read-only, fixed at `0xC000_0000`): The local alias
-  base. Together with the fixed 16 MiB `LOCAL_ALIAS_REGION_SIZE`, this
-  is the address space the SMC CPU and internal fabric use to access SMC
-  resources.
+  base. Together with `REGION_SIZE`, this is the address space the SMC
+  CPU and internal fabric use to access SMC resources.
 * `GLOBAL_BASE` (read-write, defaults to `0x4000_0000`): The
   system-level base address. Firmware must program this during early boot
   to match the adopter's system address assignment, enabling the SMC to
   issue outbound transactions using global system addresses.
-* `REGION_SIZE` (read-write, currently resets to `0x0100_0000` /
-  16 MiB): The size of the SMC global aperture used by SMU-level routing
-  and SEP-to-SMC decode. The SMC input fabric's local/global split uses
-  the fixed `LOCAL_ALIAS_REGION_SIZE` parameter in RTL.
+* `REGION_SIZE` (read-write, resets to `0x0100_0000` / 16 MiB): The size
+  of both the local alias window and the global aperture. It sizes the
+  SMC input fabric's local/global split as well as SMU-level routing and
+  SEP-to-SMC decode. Firmware must not program it to zero, and must keep
+  `LOCAL_BASE + REGION_SIZE` inside the 32-bit SMC-local address space.
 
 For full details on alias remapping and outbound routing, see the SMC
 Fabric documentation (`hw/sys/smc/doc/fabric.adoc`).
@@ -823,6 +883,7 @@ quasi-static CSR fields need no clock-domain crossing. The crossbar's
 address arithmetic is done on 57-bit widened sums; `ext_out` covers
 `0x0000_8000_0000` up to the top of the 56-bit address space.
 
+[[smu-firmware-programming-order]]
 ===== Firmware programming order
 
 Firmware must program `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE` and
@@ -1703,6 +1764,68 @@ This section is currently under development. Content will be added to describe
 SMN integration procedures, network topology, and management interfaces.
 ====
 
+[[project-defines]]
+== Project Defines
+
+Compile-time defines that apply across OCAH rather than to a single block.
+
+[[simulation-define]]
+=== `SIMULATION`
+
+`SIMULATION` selects the verification view of OCAH RTL. Set it on every
+simulation compile and on no other kind of build:
+
+[source,shell]
+----
++define+SIMULATION   # VCS, Xcelium
+-DSIMULATION         # Verilator, Icarus
+----
+
+OCAH's own DV flows set it; a compile driven by an adopter's testbench does not.
+
+[WARNING]
+====
+Do not let `SIMULATION` reach synthesis, formal, or a gate-level flow. It
+enables `initial` blocks, `$readmemh`, `$random` and DPI exports; a tool that
+skips those rather than rejecting them yields a netlist that does not
+correspond to the RTL you verified.
+====
+
+Without the define, these testbench hooks are not compiled in and the plusargs
+are silently ignored:
+
+[cols="<40%,<60%",options="header"]
+|===
+|Plusarg |Effect
+
+|`+skip_fuse_sense`
+|`efuse_shadow_regs` reports fuse sense complete immediately rather than
+sensing the bank through the adopter's SHIM.
+
+|`+smc_shadow_reg_preload=<file>`,
+`+sep_shadow_reg_preload=<file>`
+|Loads the shadow registers from a hex image. Takes effect only alongside
+`+skip_fuse_sense`.
+
+|`+rom_bin64=<file>`, `+rom_hex=<file>`
+|Preloads `OCAH4CORECluster_rom_ext`, the SMC CPU ROM simulation model. Applies
+only to integrations that use the reference memory swaps.
+|===
+
+The define also zeroes the RMA and security-disable token and digest bits in
+`efuse_token_processing` at time 0, which have no reset and otherwise power up
+X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
+`$error` on non-UVM runs.
+
+Three models it enables make simulation deliberately non-deterministic:
+`gdffsync` in the entropy source injects metastability on the second
+synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
+equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+`prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
+other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
+test are therefore not identical unless the simulator seed is fixed; record the
+seed with any failure you intend to reproduce.
+
 [[prim-cell-replacement]]
 == Prim Cell Replacement and Don't-Touch Constraints
 
@@ -1742,6 +1865,7 @@ rule below. The reference mapping uses these names:
 |`d0nt_stdbuf`    |Size only   |`prim_stdbuf`
 |`d0nt_stdinv`    |Size only   |`prim_flop_*sync_*` reset inverter
 |`d0nt_an`        |Size only   |`prim_and2`
+|`d0nt_ao222`     |Size only   |`prim_ao222`
 |`d0nt_wrap_sync` |Size only   |`prim_flop_*sync_*` synchronizer flops
 |===
 
