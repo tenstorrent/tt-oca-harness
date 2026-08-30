@@ -1333,10 +1333,10 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   (stack, `.data`, `.bss`) is actually overwritten.  No stack pointer or
   memory-resident variable is accessed during or after this step.
 
-. *Clear GPRs.*  All general-purpose registers except the jump target
-  (`x5`) are cleared to zero.  `x5` is cleared last because it carries the
-  target, and the jump is `jalr zero, 0(x5)`, which discards the link address
-  into `x0` rather than writing `x5`.  Mutable firmware therefore lands with
+. *Clear GPRs.*  The entry address is loaded into `x5` first, and every other
+  general-purpose register is then cleared to zero.  `x5` is never cleared: the
+  jump is `jalr zero, 0(x5)`, which writes the link address to `x0` and so
+  discards it rather than writing `x5`.  Mutable firmware therefore lands with
   every register zeroed except `x5`, which still holds its own entry address.
   Two further registers are used momentarily after the bulk clear, to arm SRAM
   execution mode below, and are re-zeroed before the jump.
