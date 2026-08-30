@@ -277,7 +277,7 @@ controller/target FSMs, and physical layer interface</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>Each I3C instance occupies 0x500 bytes of address space (11-bit addressing),
+<p>Each I3C instance occupies 0x1000 bytes of address space (12-bit addressing),
 allowing software to access multiple controllers through a unified AXI4-Lite
 interface.</p>
 </div>
@@ -351,23 +351,26 @@ hierarchical sections:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>I3CBase</strong> (0x00-0x6C): Core controller configuration including HC_CONTROL,
+<p><strong>I3CBase</strong> (0x00-0x68): Core controller configuration including HC_CONTROL,
 PRESENT_STATE, INTR_STATUS, RESET_CONTROL, and section offset pointers</p>
 </li>
 <li>
-<p><strong>PIOControl</strong> (0x80-0xAC): Programmable I/O interface with command/response/data
+<p><strong>PIOControl</strong> (0x80-0xB0): Programmable I/O interface with command/response/data
 ports and threshold configuration registers</p>
 </li>
 <li>
-<p><strong>I3C_EC</strong> (Extended Capabilities, 0x100+): Standby controller configuration,
-recovery interface, target transaction interface</p>
+<p><strong>I3C_EC</strong> (Extended Capabilities, 0x100-0x3A0): Secure Firmware Recovery
+Interface (0x100-0x168), Standby Controller Mode (0x180-0x1C0), Target
+Transaction Interface (0x200-0x290), SoC Management Interface (0x300-0x390),
+Controller Config (0x398-0x39C), and Termination (0x3A0)</p>
 </li>
 <li>
-<p><strong>DAT</strong> (0x300-0x3FC): Device Address Table with 128 entries mapping dynamic
-addresses to device characteristics</p>
+<p><strong>DAT</strong> (0x400-0x7FF): Device Address Table, 128-entry address window
+(2 DWORDs per entry) mapping device indexes to dynamic addresses</p>
 </li>
 <li>
-<p><strong>DCT</strong> (0x400-0x4FC): Device Configuration Table with device-specific parameters</p>
+<p><strong>DCT</strong> (0x800-0xFFF): Device Characteristic Table, 128-entry address window
+(4 DWORDs per entry) holding device-specific characteristics</p>
 </li>
 </ul>
 </div>
@@ -653,8 +656,8 @@ data/space before starting transaction (prevents underflow/overflow)</p>
 </li>
 <li>
 <p><strong>FetchDAT</strong>: Look up target device dynamic address from Device Address Table
-using dev_idx field from command descriptor. DAT provides 7-bit dynamic address,
-IBI enable status, and device characteristics pointer.</p>
+using dev_idx field from command descriptor. DAT provides the dynamic address,
+IBI accept/reject configuration, and auto-command settings.</p>
 </li>
 <li>
 <p><strong>BroadcastAddr</strong>: Transmit I3C broadcast address (0x7E) + Write bit + T-bit
@@ -1013,7 +1016,7 @@ idle, reducing IBI response latency by up to milliseconds in active systems.</p>
 <p>Verify address exists in DAT (valid target)</p>
 </li>
 <li>
-<p>Check DAT.IBI_EN flag (IBI enabled for this device)</p>
+<p>Check DAT.IBI_REJECT flag (IBIs from this device are NACKed when set)</p>
 </li>
 </ul>
 </div>
@@ -1023,10 +1026,10 @@ idle, reducing IBI response latency by up to milliseconds in active systems.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Accept (ACK)</strong>: DAT.IBI_EN=1 AND IBI Queue not full</p>
+<p><strong>Accept (ACK)</strong>: DAT.IBI_REJECT=0 AND DAT.IBI_PAYLOAD=1 AND IBI Queue not full</p>
 </li>
 <li>
-<p><strong>Reject (NACK)</strong>: DAT.IBI_EN=0 OR IBI Queue full</p>
+<p><strong>Reject (NACK)</strong>: DAT.IBI_REJECT=1 OR DAT.IBI_PAYLOAD=0 OR IBI Queue full</p>
 </li>
 </ul>
 </div>
@@ -1036,13 +1039,11 @@ idle, reducing IBI response latency by up to milliseconds in active systems.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Payload length from DAT.IBI_PAYLOAD_SIZE (device-specific)</p>
+<p>DAT.IBI_PAYLOAD indicates the device sends a mandatory data byte
+(e.g., sensor threshold value)</p>
 </li>
 <li>
 <p>Maximum 255 bytes per I3C spec</p>
-</li>
-<li>
-<p>Some devices have mandatory data byte (e.g., sensor threshold value)</p>
 </li>
 </ul>
 </div>
@@ -1336,31 +1337,38 @@ broadcast.</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="device-address-table-dat-and-device-configuration-table-dct"><a class="anchor" href="#device-address-table-dat-and-device-configuration-table-dct"></a><a class="link" href="#device-address-table-dat-and-device-configuration-table-dct">Device Address Table (DAT) and Device Configuration Table (DCT)</a></h6>
+<h6 id="device-address-table-dat-and-device-characteristic-table-dct"><a class="anchor" href="#device-address-table-dat-and-device-characteristic-table-dct"></a><a class="link" href="#device-address-table-dat-and-device-characteristic-table-dct">Device Address Table (DAT) and Device Characteristic Table (DCT)</a></h6>
 <div class="paragraph">
-<p><strong>DAT (Device Address Table)</strong>: 128-entry table mapping device indexes to
-dynamic addresses. Each entry contains:
-* 7-bit dynamic address
-* Static address (for SETDASA correlation)
-* IBI enable flag
-* DCT index pointer</p>
+<p><strong>DAT (Device Address Table)</strong>: 64-bit entries mapping device indexes to dynamic
+addresses. Each entry contains:
+* DYNAMIC_ADDRESS[23:16]: dynamic address; only the low 7 bits are driven onto
+the bus, hardware appends RnW and computes the ENTDAA parity bit
+* STATIC_ADDRESS[6:0]: static address (for SETDASA correlation)
+* IBI_REJECT[13]: NACK IBIs from this device (active high - clear to accept)
+* IBI_PAYLOAD[12]: device sends a mandatory data byte with its IBI
+* CRR_REJECT[14], TS[15], RING_ID[28:26], DEV_NACK_RETRY_CNT[30:29], DEVICE[31]
+* AUTOCMD_MASK/VALUE/MODE/HDR_CODE[58:32]: auto-command configuration</p>
 </div>
 <div class="paragraph">
 <p>Software populates DAT during device enumeration. Hardware reads DAT during
 command processing to translate dev_idx to target address.</p>
 </div>
 <div class="paragraph">
-<p><strong>DCT (Device Configuration Table)</strong>: 128-entry table with device-specific
+<p><strong>DCT (Device Characteristic Table)</strong>: 128-bit entries with device-specific
 characteristics:
-* Bus Characteristics Register (BCR): Device role, limitations
-* Device Characteristics Register (DCR): Device type classification
-* Max Write Length (MWL) / Max Read Length (MRL)
-* IBI payload size
-* Push-Pull support flag</p>
+* PID_HI[31:0] / PID_LO[47:32]: 48-bit Provisioned ID
+* DCR[71:64]: Device Characteristics Register - device type classification
+* BCR[79:72]: Bus Characteristics Register - device role, limitations
+* DYNAMIC_ADDRESS[103:96]: address assigned during ENTDAA</p>
 </div>
 <div class="paragraph">
-<p>DCT entries are typically populated from device GETPID/GETBCR/GETDCR CCC
-responses during initialization.</p>
+<p>Hardware populates DCT during ENTDAA from the PID/BCR/DCR each target emits.</p>
+</div>
+<div class="paragraph">
+<p><strong>Depth</strong>: both tables expose a 128-entry address window, and DAT_SECTION_OFFSET /
+DCT_SECTION_OFFSET advertise TABLE_SIZE=127, but the physical memories are
+<code>DAT_DEPTH</code>/<code>DCT_DEPTH</code> = 16 entries deep (i3c_defines.svh). Only indexes 0-15
+are backed by storage.</p>
 </div>
 </div>
 <div class="sect5">
@@ -1492,11 +1500,11 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 </li>
 <li>
 <p><strong>DAT Section</strong> (0x400-0x7FF): Device Address Table, 128-entry address window
-(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=32 (usable index 0-31)</p>
+(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=16 (usable index 0-15)</p>
 </li>
 <li>
-<p><strong>DCT Section</strong> (0x800-0xFFF): Device Configuration Table, 128-entry address window
-(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=32 (usable index 0-31)</p>
+<p><strong>DCT Section</strong> (0x800-0xFFF): Device Characteristic Table, 128-entry address window
+(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)</p>
 </li>
 </ul>
 </div>

@@ -218,11 +218,11 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 </li>
 <li>
 <p><strong>DAT Section</strong> (0x400-0x7FF): Device Address Table, 128-entry address window
-(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=32 (usable index 0-31)</p>
+(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=16 (usable index 0-15)</p>
 </li>
 <li>
-<p><strong>DCT Section</strong> (0x800-0xFFF): Device Configuration Table, 128-entry address window
-(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=32 (usable index 0-31)</p>
+<p><strong>DCT Section</strong> (0x800-0xFFF): Device Characteristic Table, 128-entry address window
+(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)</p>
 </li>
 </ul>
 </div>
