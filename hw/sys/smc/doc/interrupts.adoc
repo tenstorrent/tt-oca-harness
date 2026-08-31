@@ -98,8 +98,7 @@ human-readable; implementation signal names are called out in the
 |`[255:0]`
 |`[31:0]`
 |External interrupts
-|Integration-defined external interrupt inputs (e.g. the PVT temperature
-interrupt, which has no dedicated pin and enters through this bus)
+|Integration-defined external interrupt inputs
 |`hw/sys/smc/rtl/smc_base.sv` synchronizes `ext_interrupts_i` to `clk_smc`
 (`prim_sync3 u_ext_interrupts_sync3`) and drives
 `cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk`.

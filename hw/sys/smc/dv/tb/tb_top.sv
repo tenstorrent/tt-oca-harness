@@ -160,9 +160,8 @@ module smc_uvm_top
     output logic tb_telemetry_irq_any /*verilator public_flat_rw*/,
     // eFuse locked-shadow access (smc_peripherals peripheral_interrupts[27]).
     output logic tb_efuse_locked_access_irq /*verilator public_flat_rw*/,
-    // PVT temperature interrupt. No dedicated pin any more: it enters through
-    // the general ext_interrupts_i bus (TB uses bit 1). Synced observe is
-    // smc_base.ext_interrupts_smc_clk[1]. Idle 0.
+    // PVT temperature interrupt. Enters through ext_interrupts_i bus (TB uses bit 1).
+    // Synced observe is smc_base.ext_interrupts_smc_clk[1]. Idle 0.
     input  wire logic tb_temp_interrupt_i /*verilator public_flat_rw*/,
     output logic      tb_temp_interrupt_irq /*verilator public_flat_rw*/,
     // One bit of product ext_interrupts_i (wrapper width 256). Idle 0.
