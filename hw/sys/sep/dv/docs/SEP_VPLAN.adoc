@@ -2721,7 +2721,7 @@ an always-property; it is not one.
 |CHK-DELIVER
 |Each source's interrupt reaches the CPU and its handler runs. This also *carries the source-to-PIC-id map*: with fast interrupt redirect the hardware jumps to the vector table entry indexed by the claim id, so the handler at index N running is the controller having claimed N. There is deliberately no separate map check — see <<audit>>.
 |CHK-ONEHOT
-|Triggering one source does not fire a neighbour. Every selected PIC source stays interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy rather than masking IRQEN).
+|Triggering one source does not fire another *selected* source. Every selected PIC source stays interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy rather than masking IRQEN). Sources outside the per-seed selection are not observed, so this is not a claim about the full aggregator.
 |CHK-IP-RW1C
 |Event-type sources and the mailbox clear by write-one-to-clear of `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and the ISR writes INTR_TEST=0 (and W1C `STATUS`). The witness is the IP state bit re-read as 0 inside the handler.
 |CHK-PIC-COMPLETE
@@ -3000,7 +3000,8 @@ deferred rather than covered.
 |CHK-WARM-RECOVER
 |Both banks are writable again after the reset releases.
 |CHK-COLD-REINIT
-|A cold reset clears the cold bank too.|CHK-WARM-CLEAR / CHK-WARM-RETAIN
+|A cold reset clears the cold bank too.
+|CHK-WARM-CLEAR / CHK-WARM-RETAIN
 |The warm-reset scratch bank clears while the cold bank retains its value across the same event — the pair that makes the domain split real.
 |===
 *Independence limit*: the front-door and back-door values are not independent —
@@ -3020,7 +3021,9 @@ reset landed.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: `dbg_rstb_i` vs the CPU reset observable: independent assert/release.
+*Objective*: the CPU and system reset observables are released at rest, and the
+CPU observable is live under a real reset source. `dbg_rstb_i` isolation is not
+claimed: the pin has no netlist path to either observable in this build.
 
 *Test Procedure*:
 
