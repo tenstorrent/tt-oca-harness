@@ -108,6 +108,22 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# KMAC CFG.sideload register control plus the SW-key datapath around it, on the
+# CPU path. Fixed-vector KMAC-128 (cSHAKE, SW entropy), a determinism repeat, a
+# fail-closed sideload=1 START (ErrKeyNotValid without a keymgr allow-path), and
+# the SW-key repeat after CMD.err_processed recovery, which must reproduce the
+# Phase 2 digest. The recovery leg is what needs the CPU: it depends on the
+# CFG_REGWEN ordering and on not gating STATE reads off a sticky kmac_done.
+name = "sep_kmac_key_sideload_test"
+module = "cpu.sep_kmac_key_sideload_test"
+firmware = "kmac_key_sideload_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "crypto", "kmac", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Standalone KMAC-family mode x strength breadth (RAND-REP). no_cpu direct-AXI walk
 # over SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256; SepKmacCfg
 # is SSOT for CFG+KEY_LEN+PREFIX+key+msg and the Keccak golden. KMAC masking reseeds
