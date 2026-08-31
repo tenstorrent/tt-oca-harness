@@ -80,10 +80,11 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
-`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, `lint-tcl`, and
-`regen-regs` on pull
-requests and on pushes to `main` (`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
-artifacts; jobs report through `.github/actions/reviewdog-report`.
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
+`lint-python`, `format-c`, `lint-tcl`, and `regen-regs` on pull requests and
+pushes to `main` (`lint-sv-verible` is temporarily disabled). Setup jobs share
+`bender`, Verilator, and reviewdog artifacts; jobs report through
+`.github/actions/reviewdog-report`.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -94,7 +95,9 @@ Scheduled and manually dispatched pipelines always run in full.
 | CI job | Reviewdog check(s) | Local command |
 |---|---|---|
 | `lint-sv-slang` | `lint-sv-slang/smu`, `lint-sv-slang/aou` | `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl` |
+| `lint-sv-verilator` | `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu` | `make lint-verilator-all [BLOCK=<block>]` |
 | `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
+| `lint-python` | `lint-python` | `make lint-python` and `make format-python-check` |
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
 | `regen-regs` | — (job fails on a dirty tree) | `make regen-regs regen-regs-adoc regen-regs-html` |
@@ -115,6 +118,31 @@ Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the 
 `PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
 `./scripts/docker-run.sh eda-run make …` command. CI installs slang `v11.0` and verible
 `v0.0-4080-ga0a8d8eb` natively via `setup-tools`.
+
+Ruff checks first-party Python under `tools/`, `scripts/`, `hw/`, and
+`.github/`. Generated register models, vendored sources, submodules,
+`nonfree/`, and build output are excluded. Run `make lint-python-fix` to apply
+safe lint fixes and `make format-python` to format files in place; CI uses only
+the non-modifying `lint-python` and `format-python-check` commands.
+
+### Optional pre-commit checks
+
+The repository provides optional, check-only hooks for staged Python, C/C++,
+and Tcl files. They run Ruff, clang-format, tclfmt, and tclint from the locked
+uv environment, plus Git's whitespace/conflict-marker check. The hooks do not
+modify or stage files.
+
+```bash
+make hooks-install    # explicit opt-in for this clone
+make hooks-run        # check currently staged files without installing
+make hooks-run-all    # check every eligible tracked file
+make hooks-uninstall
+```
+
+Installation uses pre-commit's standard local `.git/hooks/pre-commit`
+launcher. It does not change `core.hooksPath`, and no setup or checkout command
+installs it automatically. CI remains authoritative whether or not a
+contributor enables the hook.
 
 ## Submitting Changes
 
