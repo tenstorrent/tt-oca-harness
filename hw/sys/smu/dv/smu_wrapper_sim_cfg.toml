@@ -116,11 +116,10 @@ sources = [
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
-  # SMC CPU-memory DV hooks. smc_ip_integration now instantiates the memory
-  # macros itself (smc_cpu_mem_integration.sv was removed), and this module
-  # binds into it for the ROM/scratch image backdoors, the read/write counters
-  # and the firmware mailbox. hw/sys/smc/dv carries the same entry; without it
-  # the wrapper environment silently loses those hooks.
+  # SMC CPU-memory DV hooks: the ROM and scratch image backdoors, the access
+  # counters and the firmware mailbox. Binds into smc_ip_integration, which
+  # holds the memory macros. hw/sys/smc/dv carries the same entry; without it
+  # this environment has none of those hooks.
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # SEP=1 key_manager pulls picorv32; Bender package files are not always
   # on the smu_wrapper closure — mirror sep_sim_cfg.toml.

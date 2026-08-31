@@ -5,8 +5,8 @@
 Two firmwares again, but unlike smu_sep_bidirect the SEP is the primary and the
 SMC does not boot on its own: the SMC image is placed in SMC SRAM by the
 testbench (`+smc_scratch_ram_hex`, the 72-bit .ecc.hex that
-hw/top/smc_cpu_mem_integration.sv backdoors into the scratch banks), and the SEP
-firmware then
+hw/sys/smc/dv/models/smc_cpu_mem_dv.sv backdoors into the scratch banks), and
+the SEP firmware then
 
   * programs its SMU aperture and inbound window so SMC->SEP writes are routable,
   * opens its outbound egress window over the SEP->SMC region,

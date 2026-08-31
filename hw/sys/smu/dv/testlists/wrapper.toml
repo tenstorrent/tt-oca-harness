@@ -254,11 +254,10 @@ args = [
 # drives real AXI and gets real responses on the boundary it was given.
 #
 # Unblocking means loading the scratch image AFTER that initialisation instead
-# of at time zero -- the stripe load lives in hw/sys/smc/dv/models/
-# smc_cpu_mem_dv.sv. This also looks like the decisive cause behind
-# smu_sep_smc_xbar_test's "SEP never sees the cookie", which is attributed
-# there to the missing sys-inbound path to CPU-private RAM; that attribution
-# may be incomplete.
+# of at time zero; the stripe load lives in
+# hw/sys/smc/dv/models/smc_cpu_mem_dv.sv. smu_sep_smc_xbar_test reads a cookie
+# out of the same RAM and so depends on the same lifetime, on top of its own
+# routing blocker.
 [[tests]]
 name = "smu_sep_ext_axi_test"
 module = "smu_sep_ext_axi_test"
@@ -461,11 +460,8 @@ args = [
 # smc_4core_cpu.sv / smc_cpu_wrapper.sv and leaves smc.sv as a port with the
 # memory macros hanging off it inside smc_ip_integration. smc.sv exposes no AXI
 # aperture onto that RAM, so a master arriving through sys-inbound has no path
-# to it. Re-confirmed against the current hierarchy, in which those macros moved
-# out of the testbench and into smc_ip_integration: the move relocates the
-# memories, it does not create a path to them, and the symptom is unchanged
-# (image preloaded, "bank0 nonzero=41", SEP still spinning on the cookie read).
-# sep_smc_interop and sep_smc_mbox_irq use the same
+# to it: the image loads ("bank0 nonzero=41") and the SEP still spins on the
+# cookie read. sep_smc_interop and sep_smc_mbox_irq use the same
 # sep_smc_bringup_from_sram helper and are blocked identically.
 [[tests]]
 name = "smu_sep_smc_xbar_test"
