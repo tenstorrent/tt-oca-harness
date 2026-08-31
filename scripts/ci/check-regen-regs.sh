@@ -27,6 +27,15 @@ check_clean() {
   return 1
 }
 
+is_preserved_output() {
+  local tree=$1
+  local path=$2
+
+  [[ $(git -C "$tree" rev-parse --show-toplevel) == "$ROOT" ]] &&
+    [[ "$path" == "hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv" ||
+      "$path" == "hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv" ]]
+}
+
 for tree in "$@"; do
   git -C "$tree" rev-parse --is-inside-work-tree >/dev/null
   check_clean "$tree"
@@ -35,9 +44,14 @@ done
 # The Make clean target removes every currently declared output and ignored
 # build artifact. Deleting any remaining tracked register outputs additionally
 # proves that obsolete files, which are no longer Make targets, are not retained.
+# The eFuse-bank SV is deliberately hand-edited and classified as external RTL,
+# so it is the sole generated-derived output preserved across this check.
 make ocah-regen-regs-clean
 for tree in "$@"; do
   while IFS= read -r -d '' path; do
+    if is_preserved_output "$tree" "$path"; then
+      continue
+    fi
     rm -f -- "$tree/$path"
   done < <(
     git -C "$tree" ls-files -z -- \
