@@ -276,10 +276,7 @@ module efuse_shadow_regs
   fuse_command_req_t fuse_command_req_d;
 
   logic [LC_STATE_WIDTH-1:0] lc_state_cur;
-  logic                      lc_state_is_prod;
   logic [LC_STATE_WIDTH-1:0] lc_state_candidate;
-  logic [LC_STATE_WIDTH-1:0] lc_state_intended_dest;
-  logic                      lc_state_write_allowed;
 
   // Combinationally compute the next raw LC_STATE value for each write path,
   // then feed it through the differential encoder so the always_ff can store
@@ -287,76 +284,61 @@ module efuse_shadow_regs
   always_comb begin
       lc_state_raw_d = '0;
       lc_state_candidate = '0;
-      lc_state_intended_dest = '0;
-      lc_state_write_allowed = 1'b0;
       lc_state_cur = '0;
-      lc_state_is_prod = 1'b0;
       if (HAS_LC_STATE) begin
           lc_state_raw_d = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
           lc_state_candidate = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
+          // If skip_fuse_sense is enabled, use the preload data for the LC state
           if (sim_skip_fuse_sense && !fuse_sense_done) begin
               lc_state_raw_d = shadow_reg_preload[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
-          end else if (!fuse_sense_done && !security_disable_i) begin
+          end
+          // If fuse sense is not done and security is not disabled, use the fuse command response for the LC state
+          else if (!fuse_sense_done && !security_disable_i) begin
+              // If the fuse command response is valid, not in error, and the response is targeting the LC state word, use the data for the LC state
               if (fuse_command_resp.valid && !fuse_command_resp.status &&
                   words_received_q < efuse_word_counter_t'(NumShadowWords) &&
                   words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) begin
                   lc_state_raw_d = fuse_command_resp.data[LC_STATE_WIDTH-1:0];
               end else begin
                   // Keep default: lc_state_raw_d already set at line 225
+                  // Aka dont change the LC state while still completing fuse sensing
               end
           end else begin
-              // LC state transition enforcement:
-              //   PROD_END and RMA_CHIPLET are terminal — no W1S updates.
-              //   From PROD, bit[2] and bit[3] are blocked (per-bit gating).
-              //   bit[2] (RMA_CHIPLET) requires bit[1] (RMA_SIP) already established.
-              lc_state_cur     = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
-              lc_state_is_prod = (lc_state_cur == efuse_pkg::LC_PROD);
+              // LC state transition enforcement. A write may target any encoding,
+              // valid or not; only the token gates constrain the destination:
+              //   bit[1] (RMA_SIP) requires the SIP token to match.
+              //   bit[2] (RMA_CHIPLET) requires the chiplet token to match and a previous RMA_SIP token match
 
-              if (lc_state_cur inside {efuse_pkg::LC_PROD_END,
-                                       efuse_pkg::LC_RMA_CHIP_0,
-                                       efuse_pkg::LC_RMA_CHIP_1}) begin
+              // An encoding outside the spec's set is terminal.
+              lc_state_cur = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
+
+              if (efuse_pkg::is_invalid_lc_state(lc_state_cur)) begin
                   lc_state_raw_d = lc_state_cur;
-              end else if (apb_req_from_ac.psel) begin
+              end
+              // If there is a request to the shadow registers, check if the request is a write to the LC state
+              else if (apb_req_from_ac.psel) begin
+                  // If the request is a write to the LC state, check if the write is allowed
                   if (apb_req_from_ac.pwrite && !write_locked &&
                       write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) begin
-                      // Pre-check: validate W1S intended destination atomically
-                      // before applying per-bit token gating.
-                      lc_state_intended_dest = lc_state_cur |
-                          apb_req_from_ac.pwdata[LC_STATE_WIDTH-1:0];
-                      lc_state_write_allowed =
-                          efuse_pkg::is_valid_lc_state(lc_state_intended_dest);
-
-                      if (lc_state_write_allowed) begin
-                          lc_state_candidate[0] = apb_req_from_ac.pwdata[0] |
-                                              shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][0];
-                          lc_state_candidate[1] = (rma_sip_token_match_i == TOKEN_MATCH_CODE)
-                              ? (apb_req_from_ac.pwdata[1] | shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][1])
-                              : shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][1];
-                          lc_state_candidate[2] = (lc_state_is_prod || !lc_state_cur[1])
-                              ? shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][2]
-                              : (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)
-                                  ? (apb_req_from_ac.pwdata[2] | shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][2])
-                                  : shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][2];
-                          lc_state_candidate[3] = lc_state_is_prod
-                              ? shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][3]
-                              : (apb_req_from_ac.pwdata[3] |
-                                 shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][3]);
-                          lc_state_raw_d = efuse_pkg::is_valid_lc_state(lc_state_candidate)
-                              ? lc_state_candidate : lc_state_cur;
-                      end
+                      lc_state_candidate[0] = apb_req_from_ac.pwdata[0] | lc_state_cur[0];
+                      lc_state_candidate[1] = (rma_sip_token_match_i == TOKEN_MATCH_CODE)
+                          ? (apb_req_from_ac.pwdata[1] | lc_state_cur[1])
+                          : lc_state_cur[1];
+                      lc_state_candidate[2] = (lc_state_cur[1] &&
+                                               (rma_chiplet_token_match_i == TOKEN_MATCH_CODE))
+                          ? (apb_req_from_ac.pwdata[2] | lc_state_cur[2])
+                          : lc_state_cur[2];
+                      lc_state_candidate[3] = apb_req_from_ac.pwdata[3] | lc_state_cur[3];
+                      lc_state_raw_d = lc_state_candidate;
                   end
               end else if (shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) begin
-                  // Transient RMA: block CHIPLET token set unless RMA_SIP (bit[1]) already established
-                  if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && !lc_state_is_prod && lc_state_cur[1]) begin
+                  // Transient RMA applies the same token gates as the APB path.
+                  if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && lc_state_cur[1]) begin
                       lc_state_raw_d[2] = 1'b1;
                   end else if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE) begin
-                      // CHIPLET matched but guard failed — block, don't fall through
+                      // CHIPLET matched but RMA_SIP is not established — block, don't fall through
                   end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE) begin
                       lc_state_raw_d[1] = 1'b1;
-                  end
-                  // Reject if transient update would produce an invalid state (e.g. 0x0 -> 0x4).
-                  if (!efuse_pkg::is_valid_lc_state(lc_state_raw_d)) begin
-                      lc_state_raw_d = lc_state_cur;
                   end
               end
           end
