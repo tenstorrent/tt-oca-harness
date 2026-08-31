@@ -4,7 +4,8 @@
 
 OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
-  * verifies SW_RESET_N default 0x1E;
+  * verifies SW_RESET_N default 0x3E and that pulsing each crypto/TRNG reset bit
+    clears the corresponding probe CSRs;
   * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
     NMI (count == 2);
   * exercises the WDT bark -> NMI, pet, disable-freeze, and re-bark; then lets the

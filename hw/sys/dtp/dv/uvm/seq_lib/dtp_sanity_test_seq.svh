@@ -14,7 +14,7 @@
 //     patterns (checked here from the DR_SCAN item responses);
 //   * clean scan-path returns to Run-Test/Idle, final Test-Logic-Reset via
 //     five consecutive TMS=1 cycles;
-//   * named TAP-contract evidence through env.m_jtag_checker (issue #3296):
+//   * named TAP-contract evidence through env.m_jtag_checker:
 //     reset-to-TLR, TLR-selects-IDCODE, IDCODE value/stability/marker, and
 //     reconstructed scan lengths. +DTP_JTAG_TAP_CHECKER_NEGATIVE is the
 //     documented negative-validation hook: it arms a deliberately WRONG
