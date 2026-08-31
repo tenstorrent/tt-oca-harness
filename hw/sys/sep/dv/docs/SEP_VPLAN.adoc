@@ -2461,8 +2461,6 @@ here.
 
 *VIP / Model*: ocah_axi_vip, entropy golden
 
-*Testlist*: `system.toml`
-
 *Randomization*: RANDCFG — extra pops past the watermark, and one unique-dead offset, from the run seed (`SepEntropyPoolCfg`).
 
 *Objective*: Every seed walks the high-bit mirrors of the three live registers (the offsets that catch a truncated decode).
@@ -3516,8 +3514,6 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip
 
-*Testlist*: `system.toml`
-
 *Randomization*: RANDCFG — three seeds (`reseed = 3`). The seed varies the block order, the complement-vs-ones order and every touch value, never which registers are swept: the cell set is identical on every seed, so coverage is not seed-dependent. Reseeding is what exposes a register that accepts one mask-legal value and refuses another. The reset walk is the inventory after reasoned skips. Full-mask write-lands is 19 registers; 32 inbound START/END use the wrap model.
 
 *Objective*: `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
@@ -3563,8 +3559,6 @@ both lock flavours of one seed-selected spare.
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
-
-*Testlist*: `system.toml`
 
 *Randomization*: RANDCFG — every (register x ordering) cell runs on every seed, and every (ordering x size) cell with it. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs.
 
@@ -3612,8 +3606,6 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip
 
-*Testlist*: `system.toml`
-
 *Randomization*: RANDCFG -- every (register x ordering) cell runs on every seed. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs.
 
 *Objective*: The same ordering contract as `sep_axi_order_sweep_test`, driven from the SMN inbound master instead of the CPU-LSU splice. Both masters reach the same eleven IP block adapters, so an adapter that mishandles a channel ordering has to be caught from either. This path also grants a W-first handshake: the CPU-LSU register adapters hold WREADY until AW, so a W-first presentation is accepted same-cycle there, while the inbound path accepts W before AW.
@@ -3657,8 +3649,6 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip
 
-*Testlist*: `system.toml`
-
 *Randomization*: RANDCFG — the size and lane axes are walked exhaustively rather than seeded, so every AxSIZE at every legal lane offset runs on every seed and no run can issue zero narrow writes. The seed varies the data.
 
 *Objective*: A write narrower than the bus beat must change only the byte lanes its strobe selects (IHI 0022 A3.4.3), and a memory window must return the data that was written to it. A stage that widens the strobe, or writes the whole beat, changes bytes the master never asked for; only a data compare sees it, because the response is OKAY either way.
@@ -3696,8 +3686,6 @@ both lock flavours of one seed-selected spare.
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
-
-*Testlist*: `system.toml`
 
 *Randomization*: RANDCFG — every directed anchor that falls outside all crossbar routes runs on every seed, plus seed-selected addresses from the reserved rows. Anchors and rows the crossbar routes are skipped with a counted reason, and a row that could not yield its full quota is reported in the per-row shortfall line.
 
@@ -3737,8 +3725,6 @@ both lock flavours of one seed-selected spare.
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
-
-*Testlist*: `system.toml`
 
 *Randomization*: RANDCFG — the twelve directed wrap offsets on every seed, plus two seed-selected dead offsets per block window.
 
@@ -3826,8 +3812,6 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip, entropy golden
 
-*Testlist*: `crypto.toml`
-
 *Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed.
 
 *Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the FIFO live across the lock. Scope: health-test *quality* stays Phase 3.
@@ -3875,8 +3859,6 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip, entropy golden
 
-*Testlist*: `crypto.toml`
-
 *Randomization*: RAND-NONE — directed persistent-failure trip.
 
 *Objective*: A short window plus stuck forced noise trips `ALERT_THRESHOLD`.
@@ -3917,8 +3899,6 @@ both lock flavours of one seed-selected spare.
 *Run mode*: `no_cpu`; omit `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
-
-*Testlist*: `efuse_lcc.toml`
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
@@ -3967,8 +3947,6 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip
 
-*Testlist*: `system.toml`
-
 *Randomization*: RANDCFG — region and source page from the run seed; the dest is `CLOCK_GATE_CTRL` so the offset is determined and non-vacuous.
 
 *Objective*: Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, `axi_alias_remap`).
@@ -4006,8 +3984,6 @@ both lock flavours of one seed-selected spare.
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_vault.parhex`
 
 *VIP / Model*: ocah_axi_vip, KM path / golden
-
-*Testlist*: `km.toml`
 
 *Randomization*: RANDCFG — slot and SRAM lock region from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
 
@@ -4060,8 +4036,6 @@ unparked.
 
 *Bucket*: Key Manager vault
 
-*Testlist*: not enrolled
-
 *Objective*: the KM mailbox command set is this vehicle's surface — generate,
 transfer, revoke-or-shred, and illegal-to-error. The sideload KATs prove only
 that a consumer can consume a key; none of them exercises the command interface
@@ -4093,8 +4067,6 @@ command returns the documented error and does not change key state.
 *Phase*: 2 (parked — not coded)
 
 *Bucket*: Key Manager vault
-
-*Testlist*: not enrolled
 
 *Objective*: each mode of the KM CRC engine produces the value an independently
 written host-side model produces. The engine has no register interface, so the
@@ -4145,8 +4117,6 @@ the register description.
 *Phase*: 2 (parked — not coded)
 
 *Bucket*: Key Manager vault
-
-*Testlist*: not enrolled
 
 *Objective*: the key-policy vault scrambler transforms both the stored word and
 the address mapping while enabled, and the vault returns the logical word
