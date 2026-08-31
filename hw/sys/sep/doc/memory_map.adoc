@@ -70,7 +70,7 @@ unit, so an address that owns no register cannot alias onto one.
 |0x1080_0000 |0x1080_0FFF |4 kB |DMA |DMA CSR
 |0x1080_1000 |0x1080_1FFF |4 kB |WDT |Watchdog Timer
 |0x1080_2000 |0x1080_2FFF |4 kB |SRB |Dual Scratch Register Banks
-|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM and crypto accelerators)
+|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM, the crypto accelerators and the TRNG)
 |0x1080_3008 |0x108F_FFFF |1,043 kB |_RSV_ |reserved
 |0x1090_0000 |0x1090_FFFF |64kB |OTBN |Public Key processor memory and CSR
 |0x1091_0000 |0x1091_0FFF |4 kB |AES |Block Cipher

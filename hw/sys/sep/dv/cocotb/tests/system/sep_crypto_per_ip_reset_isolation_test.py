@@ -45,6 +45,9 @@ Isolation proof (both directions, then the remaining isolated bits):
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY at its
                     reset value. Drain-before-reset is not claimed.
+  * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
+                    TRNG-only reset, so resetting the entropy complex does not
+                    reach the accelerator domains.
 
 reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
 COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -82,6 +85,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     RESP_OKAY, RESP_DECERR, HMAC_DIGEST_RESET, RST_HMAC,
     SW_RESET_N_DEFAULT,
 )
+from seq_lib.sep_sw_reset_seq import SepSwReset
 
 # Directed known vectors (RAND-NONE).
 HMAC_MSG = [0x6A6F6232, 0xDEADBEEF, 0x0BADF00D, 0xFEEDFACE]
@@ -392,7 +396,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         sw_final = await self.rst.read_back()
         assert sw_final == SW_RESET_N_DEFAULT, (
             f"SW_RESET_N=0x{sw_final:08x} after domain walk, expected default "
-            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac released)"
+            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac/trng released)"
         )
 
         # score_sinks={"aes": "observe", "kmac": "observe"} sets a >=1-beat
@@ -403,7 +407,30 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "sep_drbg_scoreboard report failed (CHK5_aes/kmac beat floor or CHK1..CHK4)"
         )
 
+        # ---- TRNG-only reset must leave idle neighbours untouched ------------
+        # The entropy complex resets as one domain, so pulsing only its bit must
+        # not reach the accelerators. Both results are re-established here: the
+        # domain walk above secure-wiped AES and cleared HMAC. The scoreboard's
+        # FIFO drainer is an ESRC CSR client and is already stopped, which is the
+        # same quiesce firmware owes the TRNG before requesting its reset.
+        h_digest = await self._run_hmac()
+        c_block = await self._run_aes()
+
+        trng_rst = SepSwReset(self)
+        await trng_rst.park("trng")
+        await ClockCycles(cocotb.top.clk_i, 40)
+        assert await self.hmac.read_digest() == h_digest, (
+            "HMAC held DIGEST was disturbed by a TRNG-only reset"
+        )
+        assert await self.aes.read_data_out() == c_block, (
+            "AES held DATA_OUT was disturbed by a TRNG-only reset"
+        )
+        await trng_rst.release("trng")
+        self.logger.info(
+            "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "
+            "the shared entropy-complex reset")
+
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
-            "(HMAC<->AES, KMAC, OTBN; SW_RESET_N=0x%08x; entropy-backed: "
-            "CHK5_aes/kmac beats reported)", sw_final)
+            "(HMAC<->AES, KMAC, OTBN, TRNG neighbours; SW_RESET_N=0x%08x; "
+            "entropy-backed: CHK5_aes/kmac beats reported)", sw_final)

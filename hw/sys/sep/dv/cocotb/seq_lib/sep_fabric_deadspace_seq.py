@@ -78,13 +78,12 @@ class DeadWindow:
     # CLEARED in the DUT, so the "restore" destroys the live status it claims to
     # put back.
     #
-    # LIMITATION: populated for entropy_src only. The other nine windows come from
-    # iter_addrs() (the Python header), which does not carry woclr/onwrite -- see
-    # hw/common/regs/classify.mk. spi_controller ERROR_STATUS and the km_mailbox
-    # status_reg / irq_status_reg are W1C and are still written back by restore().
-    # Closing that needs hw/sys/sep/regs and hw/ip/key_manager/regs added to
-    # OCAH_REG_JSON_BLOCKS. restore() runs only after a probe already FAILED, so
-    # the corruption is confined to a run that is reporting a failure.
+    # LIMITATION: populated for entropy_src only. Its leaf Python header opts into
+    # generated field-access metadata. The other nine windows still need that
+    # metadata enabled and wired here; until then, W1C registers such as
+    # spi_controller ERROR_STATUS and km_mailbox status_reg / irq_status_reg are
+    # written back by restore(). restore() runs only after a probe already failed,
+    # so the corruption is confined to a run that is already reporting failure.
     write_destructive: frozenset[int] = frozenset()
 
     @property
