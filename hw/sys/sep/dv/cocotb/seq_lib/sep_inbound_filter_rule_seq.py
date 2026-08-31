@@ -36,6 +36,8 @@ governing the granule.
 
 from __future__ import annotations
 
+from sep_reg_meta import indexed_block_count, sym
+
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
@@ -74,9 +76,11 @@ BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_SLVERR = 2
 RESP_DECERR = 3
-# sep_pkg.sv INBOUND_FILTER_NUM_FILTERS. disable_all() must clear every entry
+# Entry count from the generated export, not a literal: the bank is an RDL
+# array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
+# goes stale the moment the array changes. disable_all() must clear every entry
 # or a leftover allow window survives a walk that assumes it cleared them.
-INFILT_N_ENTRIES = 16
+INFILT_N_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
 WALK_ENTRIES = (0, 7)
 ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
 # Non-zero FILTER_CONFIG.src_id and a distinct AXI user[3:0] for the mismatch

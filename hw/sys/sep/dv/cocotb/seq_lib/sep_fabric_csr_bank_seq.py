@@ -35,6 +35,7 @@ from sep_reg_meta import SEP_CPU_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from sep_reg_meta import SEP_CPU_CTRL, indexed_block_count, sym
 
 # --- fabric clock ungate ------------------------------------------------------
 # Derived from the generated SystemRDL export, never hardcoded.
@@ -96,8 +97,10 @@ FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, excl
 # Bank sizes (entries) for index randomization.
 ALIAS_REGIONS = 16
 REMAP_REGIONS = 16
-INFILT_ENTRIES = 8
-OUTFILT_ENTRIES = 16
+# Both banks are RDL arrays; take the counts from the export so this sweep and
+# the filter-rule sweep cannot disagree about how many entries exist.
+INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
+OUTFILT_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 
 
 class SepFabricCsrCfg:

@@ -371,6 +371,46 @@ def block_names() -> list[str]:
     return names
 
 
+def indexed_block_count(prefix: str) -> int:
+    """How many ``<prefix>_<n>_`` blocks the generated header declares.
+
+    The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
+    count belongs to the register export, not to a sequence. Two sweeps that
+    each carry their own literal will disagree the moment the array changes, and
+    the one that is short simply never reaches the tail entries: a sweep that
+    selects from 16 of 32 entries reports a clean pass over half the bank.
+
+    Indices must be contiguous from zero. A gap means the header and the RDL
+    disagree, and a sweep built on the count would silently skip the hole.
+    """
+    found = set()
+    marker = "_REG_MAP_BASE_ADDR"
+    for name in vars(sep_reg):
+        if not name.endswith(marker):
+            continue
+        stem = name[: -len(marker)]
+        if not stem.startswith(prefix + "_"):
+            continue
+        tail = stem[len(prefix) + 1:]
+        if tail.endswith("_"):
+            tail = tail[:-1]
+        if tail.isdigit():
+            found.add(int(tail))
+    if not found:
+        raise KeyError(
+            f"no {prefix}_<n> blocks in the generated register header "
+            f"({_GEN_PY}/sep_reg.py); check the prefix or regenerate"
+        )
+    if found != set(range(len(found))):
+        missing = sorted(set(range(max(found) + 1)) - found)
+        raise KeyError(
+            f"{prefix} block indices are not contiguous from 0: "
+            f"{len(found)} found, missing {missing}"
+        )
+    return len(found)
+
+
 def block_size(block: str) -> int:
     """Allocated byte size of ``block`` from ``<BLOCK>_REG_MAP_SIZE``."""
     key = f"{block}_REG_MAP_SIZE"
