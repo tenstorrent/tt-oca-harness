@@ -54,6 +54,14 @@
 #define LE_INTR_STATUS_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+
+#define LE_INTR_ENABLE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+
+#define LE_INTR_TEST_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 #define LE_LOG_CTRL0_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
@@ -108,6 +116,39 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+
+    //--------------------------------------------------------------------------
+    // Positive control for the terminal "INTR_STATUS & 0x11 == 0" check.
+    //
+    // On its own that check passes identically on a DUT whose error bits can
+    // never set -- it cannot tell "no error occurred" from "this status can
+    // never report one". INTR_TEST exists precisely to drive the bits from
+    // software, so use it: prove both bits CAN set, clear them, and only then
+    // let the end-of-test zero mean something.
+    //
+    // Bit positions come from the generated map, not literals.
+    {
+        const uint32_t both = LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm
+                            | LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm;
+        uint32_t s;
+        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, both);
+        write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, both);
+        s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & both;
+        if (s != both) {
+            info_msg_hex32_s(0, "FAIL: INTR_TEST did not set both status bits, got=", s);
+            test_fail(0);
+        }
+        info_msg_hex32_s(0, "  positive control: INTR_TEST set status=", s);
+        /* Mask before W1C: while ENABLE is set the level source re-latches. */
+        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, both);
+        s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & both;
+        if (s != 0u) {
+            info_msg_hex32_s(0, "FAIL: could not clear the positive control, left=", s);
+            test_fail(0);
+        }
+        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, both);
+    }
 
     //--------------------------------------------------------------------------
     // For each entry, trigger SLOT_SIZE bytes, verify the read-back stream
