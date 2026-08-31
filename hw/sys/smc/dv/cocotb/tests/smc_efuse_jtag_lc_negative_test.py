@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
+from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:
@@ -65,6 +66,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         packed = pack_lc_state(LC_PROD)
         dut.tb_lc_state.value = packed
 
+        idle_axil_master_inputs(dut, "ej_axi")
         self.ejm = OcahAxiLiteMasterAgent.from_prefix(
             dut,
             "ej_axi",

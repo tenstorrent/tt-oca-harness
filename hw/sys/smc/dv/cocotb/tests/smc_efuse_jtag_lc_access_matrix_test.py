@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
+from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:
@@ -180,6 +181,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # Idle the JTAG-side eFuse master control and start at TEST_DEV.
         dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
 
+        idle_axil_master_inputs(dut, "ej_axi")
         self.ejm = OcahAxiLiteMasterAgent.from_prefix(
             dut,
             "ej_axi",

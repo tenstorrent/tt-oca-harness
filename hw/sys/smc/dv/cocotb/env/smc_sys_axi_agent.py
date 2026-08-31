@@ -12,6 +12,7 @@ from __future__ import annotations
 from enum import Enum
 
 import cocotb
+from cocotb.handle import Immediate
 from cocotb.triggers import RisingEdge, with_timeout
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 from pyuvm import (
@@ -59,6 +60,34 @@ async def await_reset_resolved(reset_signal, clock, label: str) -> None:
         f"clocks, so the VIP cannot tell whether it is in reset. Attaching anyway "
         f"would make it sample X handshake lines and fail somewhere less obvious."
     )
+
+
+# The request-side lines an AXI-Lite master drives. On this bench they are
+# inputs to the DUT wrapper, so nothing drives them until the bench does.
+_AXIL_MASTER_DRIVEN = ("awvalid", "wvalid", "arvalid", "bready", "rready")
+
+
+def idle_axil_master_inputs(dut, prefix: str) -> None:
+    """Park an AXI-Lite master's own request lines low before a VIP attaches.
+
+    The VIP only initialises VALID when its `_valid_init` is set, and zeroes it
+    otherwise only on seeing reset asserted. An agent built after reset has been
+    released hits neither path, so the line keeps whatever the bench left it at
+    -- for a top-level input nothing has driven yet, that is Z. The VIP then
+    samples its own VALID and cocotb raises out of the stream driver, before any
+    checker runs and naming no signal.
+
+    Measured on `ej_axi`: at the first clock edge after attach, `ej_axi_awready`
+    read 1 from the DUT while `ej_axi_awvalid` read Z. The undriven line is the
+    bench's, not the design's.
+
+    The write is immediate because the VIP reads these lines during
+    `from_prefix`, before a scheduled write would land.
+    """
+    for suffix in _AXIL_MASTER_DRIVEN:
+        signal = getattr(dut, f"{prefix}_{suffix}", None)
+        if signal is not None:
+            signal.value = Immediate(0)
 
 
 class SmcSysAxiOp(Enum):
