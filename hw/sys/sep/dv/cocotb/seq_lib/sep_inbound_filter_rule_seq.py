@@ -323,9 +323,15 @@ class SepInboundFilter(SepAxiRegDriver):
         return seq.resp_code
 
     async def lock_entry(self, entry: int) -> None:
-        """Write-once-set FILTER_CONFIG.locked (bit 63) of one entry."""
+        """Write-once-set FILTER_CONFIG.locked (bit 63) of one entry.
+
+        Same 32-bit hi-word poke as ``sep_fabric_csr_bank_seq.woset_probe``:
+        PeakRDL decodes FILTER_CONFIG only at offset 0, and the 64-bit AXI-Lite
+        converter aligns the +4 beat into WDATA[63:32].
+        """
         hi = INFILT_BASE + entry * FILTER_STRIDE + FILTER_CONFIG + 4
-        await self._wr(hi, 1 << FILTER_LOCKED_HI_BIT)
+        cur = await self._rd(hi)
+        await self._wr(hi, cur | (1 << FILTER_LOCKED_HI_BIT))
 
     async def disable_entry(self, entry: int) -> None:
         """Clear FILTER_CONFIG.lo for one entry (does not set the woset lock)."""
