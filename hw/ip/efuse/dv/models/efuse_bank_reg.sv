@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// PeakRDL-generated, HAND-EDITED: the EFUSE_BANK_REG storage process is plain
-// `always`, not `always_ff`, so efuse_bank_model's sim-only OTP preload can write
-// field_storage hierarchically at time 0. This file is hand-maintained in
-// hw/ip/efuse/dv/models/ and is not a regen output; regen-regs never touches it.
+// PeakRDL-generated originally, now maintained manually: the EFUSE_BANK_REG storage process is plain
+// `always`, not `always_ff`, so efuse_bank_model's sim-only preload function can write to it at time 0.
+// This file is not a regen output; regen-regs never touches it.
 module efuse_bank_reg (
         input wire clk,
         input wire arst_n,
