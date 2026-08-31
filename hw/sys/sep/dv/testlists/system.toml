@@ -352,6 +352,26 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Partial-lane read determinism. A read narrower than the 64-bit beat only
+# obligates the responder to drive the addressed byte lanes (a 32-bit CSR
+# leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every
+# non-addressed lane undriven), so the value handed back must be a pure
+# function of the addressed lanes: exact against an independent golden and
+# identical on re-read around a checked disturbing access. Complements
+# sep_axi_strobe_window_test (write-side masking): here the read extraction
+# is on trial. All 36 byte-run slices + all 14 aligned narrow-ARSIZE cells +
+# the all-zeros/all-ones CSR patterns run on every seed.
+name = "sep_axi_partial_lane_read_test"
+module = "system.sep_axi_partial_lane_read_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # AXI channel ordering, swept over the whole write-safe register inventory:
 # the three legal AW/W orderings at every register, crossed with the three
 # transfer sizes on the scratch words. Each block terminates AXI at its own

@@ -19,6 +19,8 @@ from cocotb.triggers import RisingEdge
 from cocotbext.axi import AxiBus, AxiMaster
 from cocotbext.axi.constants import AxiBurstType, AxiLockType, AxiProt
 
+from .ocah_axi_idle import drive_source_idle
+
 __all__ = ["OcahAxiMasterDriver", "OcahAxiIdCapture"]
 
 
@@ -141,6 +143,7 @@ class OcahAxiMasterDriver:
             max_burst_len=max_burst_len,
             **kwargs,
         )
+        self.init_signals()
         if timing is not None:
             self.set_timing(timing)
 
@@ -197,7 +200,18 @@ class OcahAxiMasterDriver:
         }
 
     def init_signals(self) -> None:
-        """Compatibility no-op; cocotbext-axi drives idle values at construction."""
+        """Drive the AW/W/AR payload signals to a deterministic 0 idle.
+
+        Called at construction (and idempotent), so the bus idles clean from
+        the moment the driver exists — the backend otherwise initializes
+        source payloads to X, which X-propagates into the DUT on 4-state
+        simulators until the first transaction.
+        """
+        drive_source_idle(
+            self._master.write_if.aw_channel,
+            self._master.write_if.w_channel,
+            self._master.read_if.ar_channel,
+        )
 
     async def wait_for_reset(self) -> None:
         """Wait until reset deassertion if a reset signal was provided."""

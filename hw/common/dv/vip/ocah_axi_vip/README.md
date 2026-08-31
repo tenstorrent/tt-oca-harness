@@ -37,6 +37,11 @@ environment):
 | `OcahAxiMonitor` / `OcahAxiLiteMonitor` | OCAH passive samplers that emit item dataclasses |
 | `OcahAxiChecker` | OCAH item-level protocol checker |
 
+Every driver zeroes its source-channel payload signals at construction
+(`init_signals()`, also callable explicitly), overriding the backend's all-X
+payload init so a bus idles clean from time 0 on 4-state simulators. No
+process-global cocotb or `cocotbext-axi` state is touched.
+
 ---
 
 ## When to use this wrapper vs the legacy VIPs
@@ -82,6 +87,7 @@ ocah_axi_vip/
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
     ocah_axi_results.py                 — result dataclasses + response-code helpers
+    ocah_axi_idle.py                    — construction-time 0-idle drive for source channels
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
   sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
@@ -148,7 +154,7 @@ master = OcahAxiMasterAgent(
 
 | Method | Returns | Notes |
 |---|---|---|
-| `master.init_signals()` | `None` | Drive all outputs to idle; call before first clock edge |
+| `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | Block until `aresetn` deasserts |
 | `await master.write(addr, data, *, strb, size, burst, id, prot)` | `int` (resp code) | Single-beat write |
 | `await master.read(addr, *, size, burst, id, prot)` | `int` (data) | Single-beat read |
@@ -193,7 +199,7 @@ master = OcahAxiLiteMasterAgent(
 
 | Method | Returns | Notes |
 |---|---|---|
-| `master.init_signals()` | `None` | |
+| `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | |
 | `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Compatibility helper |
 | `await master.read(addr, *, prot)` | `int` (data) | Compatibility helper |
