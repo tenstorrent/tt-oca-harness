@@ -91,7 +91,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self.cfg.axi_ram.write(addr, payload)
         self._mirror_model_preload("smc_axi", addr, payload)
 
-    # --- shared-VIP AXI scoreboard glue (issue #3295) -------------------------
+    # --- shared-VIP AXI scoreboard glue ---------------------------------------
     @property
     def axi_scoreboard(self):
         """The shared OcahAxiScoreboard, or None when the test did not opt in."""
@@ -271,7 +271,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         if not arm:
             return self.axi_resp_to_jtag_status(resp)
         # Arm the shared reference model and scoreboard credit so the injected
-        # non-OKAY is classified as EXPECTED (issue #3295). One credit covers
+        # non-OKAY is classified as EXPECTED. One credit covers
         # the single op; direction narrows when only one side is armed.
         # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
         # hook: it deliberately arms the WRONG response so the run must FAIL,

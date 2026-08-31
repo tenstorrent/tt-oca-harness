@@ -46,12 +46,13 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
+  # buses at the foot of tb_top. Assertion bodies are guarded by
+  # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
+  # empty module there and the rules are live only under VCS.
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
   "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
-  # POR initializer for prim_flop. exclude_files drops the vendored definition
-  # for every tool, so this is the single definition in the build -- no MODDUP,
-  # and no reliance on a last-wins or first-wins ordering rule.
-  "hw/sys/sep/dv/shims/prim/prim_flop.sv",
 ]
 # PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
 # aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
@@ -59,9 +60,6 @@ sources = [
 # Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
 exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
-  # Replaced by shims/prim/prim_flop.sv (one-shot POR until first edge). Unique path so
-  # abr_prim_flop.sv is not also dropped.
-  "prim_generic/rtl/prim_flop.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
 # the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
@@ -92,7 +90,8 @@ common_bender_targets = [
 # `sep_wrapper` adds hw/top/sep_{wrapper,ip_integration}.sv plus the vendored
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
-incdirs = ["hw/sys/sep/dv/tb"]
+# hw/common/assert carries ocah_assert.svh, included by the AXI protocol SVA.
+incdirs = ["hw/sys/sep/dv/tb", "hw/common/assert"]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
@@ -255,8 +254,8 @@ outputs = [
 # except {fw_target}, so use "$VAR" and $(...), never shell ${...}).
 #
 # The probe/fallback logic below is identical to [c_build.boot_rom]. The same
-# toolchain probe is duplicated in four argv blocks; a fix must be applied in
-# all four.
+# toolchain probe is duplicated in five argv blocks; a fix must be applied in
+# all five.
 #
 # pack-images runs into build_ot/ too, so non_secure_boot.bin -- the raw image the
 # cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
@@ -305,8 +304,8 @@ outputs = [
 # image, and the signed one is the DMA variant's business. The packed bytes are
 # drain-agnostic and land in the shared build/, so this does not rebuild them.
 #
-# The same toolchain probe is duplicated in four argv blocks; a fix must be
-# applied in all four. Folding it into a script under tools/dv/ would also
+# The same toolchain probe is duplicated in five argv blocks; a fix must be
+# applied in all five. Folding it into a script under tools/dv/ would also
 # retire the no-braces constraint.
 cwd = "."
 argv = [
@@ -321,6 +320,39 @@ outputs = [
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.sym",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
+]
+
+[c_build.km_rom_main]
+# Production Key Manager ROM (hw/ip/key_manager/dv/fw production/rom_main).
+# Not [c_build.default]: that template builds SEP EL2 TCM images via
+# hw/sys/sep/dv/fw. rom_main is rv32emc KM firmware, and it must be built with
+# ROM_KM_BOOT_WIPE_DEFAULT=0 / ROM_KM_UNREC_WIPE_DEFAULT=0 -- a default KM build
+# wipes SRAM at boot and halts before RESP_KM_READY. Those defines live in
+# cocotb/tests/km_fw/Makefile (stamp-guarded so a stale rom_boot.o cannot
+# silently re-enable the wipe), so argv drives that target rather than fw.mk
+# directly.
+#
+# Tests select it with `firmware = { name = "rom_main", mode = "km_rom_main" }`.
+# Both keys are required: mode selects this block, and the declared output is
+# what makes `--stage sim` fail with "firmware outputs missing" instead of
+# loading an empty KM ROM. The plusarg stays `+km_rom_hex=rom_main.rom.parhex`;
+# c_compile stages the basename into the sim CWD.
+#
+# The gitignored parhex is the built artifact. Do not commit it. The C source
+# is tracked under hw/ip/key_manager/dv/fw.
+#
+# Toolchain: $RISCV_TOOLCHAIN if set, else a local xPack install, else the
+# OCAH container via scripts/docker-run.sh. This block does not probe a
+# site toolchain path. argv goes through str.format() and rejects every
+# placeholder except {fw_target}, so use "$VAR" and $(...), never shell ${...}.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$KM_FW\" rom_main RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building KM rom_main in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$KM_FW\" rom_main; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex",
 ]
 
 [defaults]

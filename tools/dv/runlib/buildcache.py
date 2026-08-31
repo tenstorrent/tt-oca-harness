@@ -190,21 +190,16 @@ def vcs_simv_compile_deps(
     so without these extra deps ``make compile`` is existence-only and an edit to a file the
     filelist names is ignored. Verilator does not need this: ``Vtop__ver.d`` lists them already.
 
-    ``build_fingerprint`` hashes the filelist TEXT, so it moves when a path is added or removed
-    but not when a named file's CONTENT changes. The deps here are what cover content edits.
+    ``build_fingerprint`` hashes the combined filelist TEXT plus a content digest over the
+    files the bender filelist names, and the deps here cover content edits of the repo-local
+    sources for ``make``.
 
-    Covered: ``[build].top_file`` plus ``[build].sources`` and ``[build].stubs`` (the repo-local
-    override/additive sources -- ``tb_top.sv``, the mem responders, the protocol SVA).
-
-    NOT covered, and still needing ``--rebuild`` after an edit:
-
-    * the bender-generated filelist's own RTL: it arrives as a single ``-f`` line and
-      ``build_fingerprint`` hashes the filelist TEXT, so a content-only edit moves
-      neither the deps nor the fingerprint.
-
-    Headers under ``[build].incdirs`` ARE covered -- ``_vcs_local_sources`` globs them,
-    because an ``+incdir+`` has no file list of its own and an assertion-macro header is
-    edited far more often than the RTL that includes it.
+    Covered: ``[build].top_file`` plus everything ``_vcs_local_sources`` collects --
+    ``[build].sources`` and ``[build].stubs`` (the repo-local override/additive sources:
+    ``tb_top.sv``, the mem responders, the protocol SVA), the headers globbed from
+    ``[build].incdirs`` (an ``+incdir+`` has no file list of its own, and an assertion-macro
+    header is edited far more often than the RTL that includes it), and the RTL the
+    bender-generated filelist names, which otherwise arrives as a single ``-f`` line.
     """
     deps = [] if top_file is None else [top_file]
     deps.extend(local_sources)

@@ -19,7 +19,7 @@ from typing import Awaitable, Callable
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, with_timeout
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
 from pyuvm import ConfigDB, uvm_test
 
 # Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
@@ -221,6 +221,26 @@ class sep_base_test(uvm_test):
                 ",".join(engines), "on" if hold else "off",
             )
 
+    async def assert_cold_reset(self, dut) -> None:
+        """Assert ``rst_ni`` with a real falling edge, before any clock runs.
+
+        An async-reset flop is written ``always_ff @(posedge clk or negedge
+        rst_ni)``, so it only ever executes on an edge. Driving ``rst_ni`` low
+        from an undriven net gives the flops nothing to trigger on, and they
+        hold X for the whole run. Presenting 1 first makes the assertion a
+        genuine 1->0, so every async reset in the design fires and loads its
+        reset value.
+
+        No clock is running across this window, so nothing sequential advances.
+        The bus request nets are idled before this runs, because the reset
+        rules sample VALID against a low reset and an undriven net fails them
+        on stimulus that does not exist.
+        """
+        dut.rst_ni.value = 1
+        await Timer(1, units="ns")
+        dut.rst_ni.value = 0
+        await Timer(1, units="ns")
+
     async def release_no_cpu_reset(self, *, park: tuple[str, ...] = ()) -> None:
         """Clocks + ``rst_ni`` release, CPU held off. Does not wait for sense.
 
@@ -232,8 +252,8 @@ class sep_base_test(uvm_test):
         """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU held off)")
-        dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=False)
+        await self.assert_cold_reset(dut)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -349,8 +369,8 @@ class sep_base_test(uvm_test):
         """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU run, rst_vec=0x%x)", rst_vec)
-        dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
+        await self.assert_cold_reset(dut)
         # CPU boot: EL2 debug reset follows cold reset.
         self._set_if_exists(dut, "dbg_rstb_i", 0)
         self._jtag_sw_rst_hold(park, True)
