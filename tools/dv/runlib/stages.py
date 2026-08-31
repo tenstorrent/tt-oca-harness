@@ -2102,6 +2102,17 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
         )
     else:
         print(f"# cocotb {{payload['tool']}} build skipped: pre-built during elaborate", flush=True)
+        # `runner.build()` is what normally populates the runner's source
+        # lists, and Xcelium's `_test_command` concatenates all three to decide
+        # whether any VHDL source needs `-vhpi`. On the pre-built path build()
+        # never runs, so those attributes are absent and `test()` raises with an
+        # AttributeError before the simulator is ever launched. Only the missing
+        # ones are filled, so a cocotb version that does set them keeps its own
+        # values. Empty is the correct value here: this flow compiles from a
+        # file list rather than from runner sources, and has no VHDL.
+        for _src_attr in ("_sources", "_vhdl_sources", "_verilog_sources"):
+            if not hasattr(runner, _src_attr):
+                setattr(runner, _src_attr, [])
 
     runner.test(
         hdl_toplevel=payload["top_module"],
