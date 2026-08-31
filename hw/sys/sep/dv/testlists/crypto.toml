@@ -175,9 +175,11 @@ args = ["+skip_fuse_sense"]
 # KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
 # bit-exact routing is a Phase 2 claim, not this test.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
-# oscillators under Verilator. rom_main.rom.parhex from tracked source.
+# oscillators under Verilator. c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_drbg_real_sink_multi_km_aes_test"
 module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["drbg", "entropy", "crypto", "multi_sink", "subsystem"]

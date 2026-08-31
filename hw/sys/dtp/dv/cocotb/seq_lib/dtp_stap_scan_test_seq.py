@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""STAP/3DCR scan scenarios for GH issue #3213."""
+"""STAP/3DCR scan scenarios."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             )
 
     async def run_stap_select(self, stap: str) -> None:
-        self.log_banner(f"GH #3213 STAP selection: {stap}")
+        self.log_banner(f"STAP selection: {stap}")
         prefix = self.stap_signal_prefix(stap)
         watch = (f"{prefix}_tdo_oen", f"{prefix}_tms")
         disable_field = STAP_DISABLE[stap]
@@ -172,7 +172,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
     )
 
     async def run_ext_stap_scan(self) -> None:
-        self.log_banner("GH #3213 extended STAP scan interface")
+        self.log_banner("extended STAP scan interface")
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.enable")
         window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
         _, enabled = await self.shift_dr_observe(0x2, 2, context="ext.enabled_shift")
@@ -240,7 +240,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.assert_equal("config_hold.ptap_trst_cleared", trst_cleared & 0x3, 0x0)
 
     async def run_config_hold(self) -> None:
-        self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")
+        self.log_banner("PTAP/STAP CONFIG_HOLD behavior")
         # Seeded per-pass order: each self-contained sub-case starts with its
         # own 3DCR write and reset, so each loop proves a different sequencing
         # of preserve/clear behavior.
@@ -259,7 +259,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         )
 
     async def run_tms_hold(self) -> None:
-        self.log_banner("GH #3213 STAP TMS_HOLD behavior")
+        self.log_banner("STAP TMS_HOLD behavior")
         # Seeded per-pass STAP order: each loop walks the ports differently.
         staps = list(STAP_ORDER)
         self.rng("tms_hold_order").shuffle(staps)

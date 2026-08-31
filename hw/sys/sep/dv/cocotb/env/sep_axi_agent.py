@@ -88,6 +88,10 @@ class SepAxiItem(uvm_sequence_item):
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
+        # Per-beat responses. resp_code is the worst of these, which cannot say
+        # HOW MANY beats carried an error -- a caller crediting a monitor per
+        # beat needs the list.
+        self.resp_list: tuple[int, ...] = ()
         self.timed_out: bool = False
 
     def __str__(self) -> str:
@@ -183,6 +187,7 @@ class SepAxiDriver(uvm_driver):
         item.timed_out = result.timed_out
         item.resp_ok = result.ok
         item.resp_code = result.resp
+        item.resp_list = tuple(getattr(result, "resp_list", ()) or ())
         if result.timed_out:
             self.logger.info(
                 "AXI %s @ 0x%08x timed out (allowed by this sequence)",

@@ -19,5 +19,59 @@ import dtp_seq_lib_pkg::*;
 
 `include "dtp_base_test.svh"
 `include "dtp_sanity_test.svh"
+
+// Basic-JTAG instruction-family scenarios.
+`include "dtp_jtag_bypass_test.svh"
+`include "dtp_jtag_inv_bypass_test.svh"
+`include "dtp_jtag_zero_length_bypass_test.svh"
+`include "dtp_jtag_idcode_test.svh"
+`include "dtp_jtag_undef_instr_test.svh"
+`include "dtp_jtag_runbist_test.svh"
+`include "dtp_jtag_sample_preload_test.svh"
+`include "dtp_jtag_extest_test.svh"
+`include "dtp_jtag_intest_test.svh"
+`include "dtp_jtag_clamp_test.svh"
+`include "dtp_jtag_clamp_hold_test.svh"
+`include "dtp_jtag_clamp_release_test.svh"
+`include "dtp_jtag_highz_test.svh"
+`include "dtp_jtag_ac_extest_train_test.svh"
+`include "dtp_jtag_ac_extest_pulse_test.svh"
+`include "dtp_jtag_trst_test.svh"
+`include "dtp_jtag_trst_por_independence_test.svh"
+`include "dtp_jtag_tlr_reset_test.svh"
+
+// JTAG2AXI single-op scenarios.
 `include "dtp_jtag2axi_smc_otp_axi_single_write_read_test.svh"
 `include "dtp_jtag2axi_smc_axi_single_write_read_test.svh"
+
+// SMC-fabric JTAG2AXI scenarios.
+`include "dtp_jtag2axi_smc_axi_single_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_single_write_data_verify_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_no_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test.svh"
+`include "dtp_jtag2axi_smc_axi_random_ops_test.svh"
+`include "dtp_jtag2axi_smc_axi_write_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test.svh"
+`include "dtp_jtag2axi_smc_axi_read_random_ops_test.svh"
+`include "dtp_jtag2axi_smc_axi_read_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_single_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_single_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_security_gating_test.svh"
+
+// Adopter overlay hook: an external (non-OSS) build may append vendor-
+// specific test classes -- e.g. a commercial-VIP overlay -- by defining
+// DTP_OVERLAY_TESTS to the quoted name of an include file on its own
+// include path. Never defined by the OSS flists.
+`ifdef DTP_OVERLAY_TESTS
+`include `DTP_OVERLAY_TESTS
+`endif

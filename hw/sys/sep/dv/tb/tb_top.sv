@@ -460,8 +460,9 @@ module sep_uvm_top
     // Cocotb drives rst_ni after time 0. Until then the input wire is Z, and
     // PeakRDL immediate asserts in an always_ff else treat `if (~arst_n)` as
     // false when arst_n is X/Z. Hold 0 until the port is a known 0/1, then
-    // follow. Combined with shims/prim/prim_flop.sv so prim_rst_sync is 0
-    // without a reset *edge* (already-0 rst_ni produces none).
+    // follow. The bring-up presents rst_ni high before asserting it, so the
+    // assertion is a real falling edge and every async-reset flop loads its
+    // reset value (sep_base_test.assert_cold_reset).
     // An X/Z on the port AFTER cocotb has driven it is a testbench defect, not
     // the bring-up window: latching the last good level would hide it for the
     // rest of the run, so it fails here instead. rst_n_driven marks the window
@@ -478,63 +479,31 @@ module sep_uvm_top
         end
     end
 
-    // OpenTitan concurrent SVAs (ROM noXOnCsI, SPI speed/CSID) evaluate at 0 fs
-    // on X operands before any clock. VCS reports those as `started at 0fs`.
-    // Hold every assertion class off across that window; re-enable well before
-    // cocotb releases reset (~20 cycles). PeakRDL always_ff immediates at 0 fs
-    // are handled by rst_n_int + prim_flop POR ($assertcontrol loses that race).
+    // Assertion classes held off, and why each is not a DUT contract here.
     //
-    // The window is ONE femtosecond, and that bound is load-bearing.
-    // `OCAH_OT_ASSERT_INIT_NET` is `initial begin #1ps; assert(...)`
-    // (prim_assert_standard_macros.svh:40-46) -- it evaluates once, at 1 ps, so
-    // any window reaching 1 ps disables that whole class for the run and
-    // $assertcontrol(3) cannot bring it back. `timescale is 1ps/1fs (see the top
-    // of this file), so 1 fs is representable and nothing outlives it.
+    // AssertConnected_A: 408 instances across three subtrees (403 entropy_source,
+    // 4 axis_edn_crypto, 1 axis_edn_pool). It asks whether a hardened counter's
+    // err_o reaches an OpenTitan alert, so it cannot fail on DUT behaviour. It is
+    // ASSERT_INIT_NET -- an immediate assert in `initial #1ps`, with no clock and
+    // no reset -- so `disable iff` cannot gate it and the scope is the only knob.
     //
-    // At #1fs the 0 fs firings are gone and 408 `at time 1000 fs` remain, which
-    // is what shows rst_n_int + the prim_flop POR fix the 0 fs class on their
-    // own. A wider window suppresses both and leaves a clean log with two
-    // possible explanations.
+    // ~23 do not apply: their err_o is wired and reaches escalation and irq_o, and
+    // SEP's entropy_source has no alert output for the OT convention to test. The
+    // declarative escape is EnableAlertTriggerSVA(0) at those instantiations.
+    //
+    // The other 385 are a real defect: the counters raise err_o into a net
+    // nothing reads. A green run is therefore NOT evidence that a glitched
+    // health-test counter would be reported. The SPI assertions in this subtree
+    // are armed only during reset, so they judge nothing after it.
+    //
+    // Scope is by subtree because these are generate-loop instances with no single
+    // name to target, which also disables every other assertion under those three
+    // blocks -- so the one OCAH contract in the set is re-armed by name below.
 `ifndef VERILATOR
     initial begin
-        $assertcontrol(4, 31);
-        #1fs;
-        $assertcontrol(3, 31);
-        // AssertConnected_A, suppressed by name and subtree -- NOT by widening
-        // the window above. It is ASSERT_INIT_NET (`initial #1ps; assert(...)`),
-        // so any window reaching 1 ps kills it for the whole run and hides the
-        // 0 fs class along with it. This is the only assertion class held off.
-        //
-        // 408 instances fire: 403 under u_entropy_source_s3c_scan, 4 under
-        // u_axis_edn_crypto_s3c_scan, 1 under u_axis_edn_pool_s3c_scan. The
-        // check asks whether the counter's err_o was wired to an OpenTitan
-        // alert, so it cannot fail on DUT behaviour. Two different reasons sit
-        // behind it:
-        //
-        // ~23 instances -- NOT APPLICABLE. Their err_o is wired and reaches
-        // escalation and the interrupt (entropy_source.sv:1000 es_cntr_err ->
-        // :1083 local_escalate_i -> err_bus -> irq_o). SEP's entropy_source has
-        // no alert output at all -- 12 ports, none of them alert_tx_o -- so the
-        // OT alert convention the assertion tests does not apply to this block
-        // yet. An alert block is future work. The declarative fix is
-        // EnableAlertTriggerSVA(0) at those instantiations, which is the escape
-        // the assertion itself offers; suppressing here is the interim.
-        //
-        // 385 instances -- REAL DEFECT, and independent of alerts. Their err_o
-        // drives a net nothing reads: entropy_health_test declares
-        // repcnt/apt/markov_count_err and exposes no error output port at all,
-        // so a detected fault cannot leave the module. The ~23 above prove the
-        // point -- no alert block, yet they still reach escalation and irq_o.
-        // Filed as a separate RTL issue for the ESRC/EDN owner.
-        //
-        // A green run is therefore NOT evidence that a glitched health-test
-        // counter would be reported. Delete these three lines when the 385 are
-        // wired AND the alert convention is settled for this block.
-        // Scoped by subtree because the 408 are generate-loop instances with no
-        // single name to target. The cost is every other assertion under those
-        // three blocks, so the one OCAH-authored contract in the set is armed
-        // again immediately below. Re-arm by the assertion's own hierarchical
-        // name, never by re-enabling a parent instance, or the 408 return.
+        // Remove these three once the counters are wired and the alert
+        // convention is settled for this block. Re-arm by an assertion's own
+        // hierarchical name, never by re-enabling a parent instance.
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
@@ -548,8 +517,7 @@ module sep_uvm_top
         // on every hash beat, so it is not a contract on those instances. HMAC
         // and DMA use MultimodeEn=1 and keep the check. $assertoff scopes are
         // resolved from this module, so these are downward XMRs (a module-name
-        // scope does not resolve). Applied after the 2 ps global re-enable so
-        // $assertcontrol(3, 31) does not turn these back on.
+        // scope does not resolve).
         $assertoff(0, `SEP_ESRC
             .u_sha256_whitener.u_sha2.gen_sha256_logic.u_prim_sha2_256
             .ValidDigestModeFlag_A);
@@ -985,8 +953,9 @@ module sep_uvm_top
     // fall back to the CWD default filename (mirrors the retired tb_*_responder
     // load order: tests that stage a committed hex into the sim CWD without a
     // plusarg still get it -- e.g. sep_boot_rom_smoke_test relies on the default
-    // sep_boot_rom.hex). The $fopen existence guard leaves the default fill intact
-    // when the file is absent.
+    // sep_boot_rom.hex). A missing default file leaves the default fill intact.
+    // A named `+km_rom_hex` file must exist: $readmemh of an absent path leaves
+    // the KM ROM empty and the firmware never posts ready.
     initial begin : backdoor_image_loads
         string img;
         int    fd;
@@ -1012,7 +981,13 @@ module sep_uvm_top
             end
         end
         if ($value$plusargs("km_rom_hex=%s", img)) begin
+            fd = $fopen(img, "r");
+            if (fd == 0) begin
+                $fatal(1, "[tb_backdoor_mem] +km_rom_hex=%s is not readable", img);
+            end
+            $fclose(fd);
             $readmemh(img, `SEP_IPI.u_km_rom.mem);
+            $display("[tb_backdoor_mem] KM ROM image loaded (%0s)", img);
         end else begin
             fd = $fopen("km_rom.parhex", "r");
             if (fd != 0) begin
@@ -1624,6 +1599,194 @@ module sep_uvm_top
     assign s_axi_rlast   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.last;
     assign s_axi_ruser   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.user;
     assign s_axi_rvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.r_valid;
+
+    // ------------------------------------------------------------------
+    // AXI protocol checkers (hw/common/dv/vip/ocah_axi_vip/sva).
+    //
+    // Passive readers on the two TB-driven AXI4 buses. They assert the AMBA
+    // IHI 0022 rules the VIP implements: handshake stability, VALID held
+    // until READY, X/Z hygiene, burst and size legality, WRAP alignment, the
+    // 4KB boundary, WLAST position, WSTRB lane legality, response-before-
+    // request ordering, and ID outstanding tracking. They drive nothing.
+    //
+    // Both buses carry TB-sourced stimulus, so a failure here is a stimulus
+    // bug in the VIP or a sequence rather than a DUT bug. That is the value:
+    // it stops an illegal transaction being blamed on the DUT.
+    //
+    // Assertion bodies are guarded by OCAH_INC_ASSERT (hw/common/assert),
+    // which Verilator does not define, so both instances elaborate to empty
+    // modules there and cost nothing. The rules are live under VCS.
+    //
+    // m_axi ties en_i high: it is TB-driven in both run modes. s_axi is gated
+    // by the run mode, for the reason stated at its instance. A test that needs
+    // a further suppression window drives a TB signal here, never drops the
+    // instance.
+    // ------------------------------------------------------------------
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_m_axi_sva (                       // external SMN inbound master
+        .aclk    (clk_i),
+        .aresetn (rst_ni),
+        .en_i    (1'b1),
+        .awid    (m_axi_awid),
+        .awaddr  (m_axi_awaddr),
+        .awlen   (m_axi_awlen),
+        .awsize  (m_axi_awsize),
+        .awburst (m_axi_awburst),
+        .awlock  (m_axi_awlock),
+        .awprot  (m_axi_awprot),
+        .awvalid (m_axi_awvalid),
+        .awready (m_axi_awready),
+        .wdata   (m_axi_wdata),
+        .wstrb   (m_axi_wstrb),
+        .wlast   (m_axi_wlast),
+        .wvalid  (m_axi_wvalid),
+        .wready  (m_axi_wready),
+        .bid     (m_axi_bid),
+        .bresp   (m_axi_bresp),
+        .bvalid  (m_axi_bvalid),
+        .bready  (m_axi_bready),
+        .arid    (m_axi_arid),
+        .araddr  (m_axi_araddr),
+        .arlen   (m_axi_arlen),
+        .arsize  (m_axi_arsize),
+        .arburst (m_axi_arburst),
+        .arlock  (m_axi_arlock),
+        .arprot  (m_axi_arprot),
+        .arvalid (m_axi_arvalid),
+        .arready (m_axi_arready),
+        .rid     (m_axi_rid),
+        .rdata   (m_axi_rdata),
+        .rresp   (m_axi_rresp),
+        .rlast   (m_axi_rlast),
+        .rvalid  (m_axi_rvalid),
+        .rready  (m_axi_rready)
+    );
+
+    // The s_axi checker watches the CPU-LSU splice, which the TB drives only on
+    // the stub build. Under +cpu_boot the EL2 owns that bus, so the checker
+    // would be judging the core's own traffic rather than TB stimulus. Static
+    // initialisation resolves before any initial block, so the value is settled
+    // before the first assertion samples. m_axi stays armed in both modes: it is
+    // TB-driven throughout.
+    bit s_axi_sva_en = !$test$plusargs("cpu_boot");
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_s_axi_sva (                       // CPU LSU master (sep_cpu stub drive)
+        .aclk    (clk_i),
+        .aresetn (rst_ni),
+        .en_i    (s_axi_sva_en),
+        .awid    (s_axi_awid),
+        .awaddr  (s_axi_awaddr),
+        .awlen   (s_axi_awlen),
+        .awsize  (s_axi_awsize),
+        .awburst (s_axi_awburst),
+        .awlock  (s_axi_awlock),
+        .awprot  (s_axi_awprot),
+        .awvalid (s_axi_awvalid),
+        .awready (s_axi_awready),
+        .wdata   (s_axi_wdata),
+        .wstrb   (s_axi_wstrb),
+        .wlast   (s_axi_wlast),
+        .wvalid  (s_axi_wvalid),
+        .wready  (s_axi_wready),
+        .bid     (s_axi_bid),
+        .bresp   (s_axi_bresp),
+        .bvalid  (s_axi_bvalid),
+        .bready  (s_axi_bready),
+        .arid    (s_axi_arid),
+        .araddr  (s_axi_araddr),
+        .arlen   (s_axi_arlen),
+        .arsize  (s_axi_arsize),
+        .arburst (s_axi_arburst),
+        .arlock  (s_axi_arlock),
+        .arprot  (s_axi_arprot),
+        .arvalid (s_axi_arvalid),
+        .arready (s_axi_arready),
+        .rid     (s_axi_rid),
+        .rdata   (s_axi_rdata),
+        .rresp   (s_axi_rresp),
+        .rlast   (s_axi_rlast),
+        .rvalid  (s_axi_rvalid),
+        .rready  (s_axi_rready)
+    );
+
+    // ------------------------------------------------------------------
+    // Key Manager internal AXI-Lite, CPU side. SIGNED OFF 2026-08-30 by
+    // yenhenglai. Every access KM firmware makes to KPV, KMCSR, the DRBG
+    // sampler and the mailbox crosses this one port: the KM crossbar has a
+    // single slave port wired to the internal picorv32, so no testbench
+    // master can reach it.
+    //
+    // Bound rather than instantiated, so the port names resolve in the Key
+    // Manager's own scope. Passive: it needs no stimulus and adds none.
+    // IS_LITE=1 drops the burst, ID and exclusive rules an AXI-Lite port does
+    // not carry.
+    //
+    // Enabled only once the warm reset is a known 0 or 1. That reset is
+    // conditioned and synchronised, so it reads X until the first clock edge,
+    // and comparing VALID against a low reset has no meaning while the reset
+    // itself is unknown.
+    //
+    // This checks PROTOCOL, not data. A register that accepts a write, answers
+    // OKAY and stores nothing breaks no rule here, so a green run is not
+    // evidence that a KM register write landed.
+    bind key_manager ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_km_axil_sva (
+        .aclk    (clk_i),
+        .aresetn (rst_warm_sync_n),
+        // Names resolve in key_manager. The warm reset is conditioned and
+        // synchronised and the CPU's valids follow it, so both read X before
+        // the first edge; comparing VALID against a low reset says nothing
+        // while either is undefined.
+        .en_i    (!$isunknown(rst_warm_sync_n)
+                  && !$isunknown(cpu_axil_req.aw_valid)
+                  && !$isunknown(cpu_axil_req.ar_valid)),
+        .awid    (1'b0),
+        .awaddr  (cpu_axil_req.aw.addr),
+        .awlen   (8'd0),
+        .awsize  (3'd2),
+        .awburst (2'b01),
+        .awlock  (1'b0),
+        .awprot  (cpu_axil_req.aw.prot),
+        .awvalid (cpu_axil_req.aw_valid),
+        .awready (cpu_axil_resp.aw_ready),
+        .wdata   (cpu_axil_req.w.data),
+        .wstrb   (cpu_axil_req.w.strb),
+        .wlast   (1'b1),
+        .wvalid  (cpu_axil_req.w_valid),
+        .wready  (cpu_axil_resp.w_ready),
+        .bid     (1'b0),
+        .bresp   (cpu_axil_resp.b.resp),
+        .bvalid  (cpu_axil_resp.b_valid),
+        .bready  (cpu_axil_req.b_ready),
+        .arid    (1'b0),
+        .araddr  (cpu_axil_req.ar.addr),
+        .arlen   (8'd0),
+        .arsize  (3'd2),
+        .arburst (2'b01),
+        .arlock  (1'b0),
+        .arprot  (cpu_axil_req.ar.prot),
+        .arvalid (cpu_axil_req.ar_valid),
+        .arready (cpu_axil_resp.ar_ready),
+        .rid     (1'b0),
+        .rdata   (cpu_axil_resp.r.data),
+        .rresp   (cpu_axil_resp.r.resp),
+        .rlast   (1'b1),
+        .rvalid  (cpu_axil_resp.r_valid),
+        .rready  (cpu_axil_req.r_ready)
+    );
 
 `undef SEP_ESRC
 `undef SEP_DRBG
