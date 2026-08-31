@@ -742,11 +742,24 @@ module dtp_uvm_top
     assign u_tb_if.jtag_bsr_update_en  = jtag_bsr_update_en;
 
     // Lifecycle debug disables and clock-stop requests: sequences drive the
-    // typed dbg_disable_t through dtp_tb_if (init '1 = fail-closed, so the
-    // sanity test's behavior is unchanged; JTAG2AXI sequences clear the
-    // disables they need).
-    assign xtrig_clk_stop_req = '0;
+    // typed dbg_disable_t and the CLA clock-stop request vector through
+    // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
+    // quiescent; the debug-TDR sequences drive the requests they need).
+    assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
     assign dbg_disable        = u_tb_if.dbg_disable;
+
+    // Debug-TDR observables: DEBUG_CONTROL clock-stop / boot-stall outputs
+    // and the flattened IC_RESET slice outputs for the debug-TDR checks.
+    assign u_tb_if.stop_clks                = stop_clks;
+    assign u_tb_if.cla_clock_stop_en        = cla_clock_stop_en;
+    assign u_tb_if.jtag_boot_stall          = jtag_boot_stall;
+    assign u_tb_if.jtag_boot_stall_ovrd     = jtag_boot_stall_ovrd;
+    assign u_tb_if.jtag_ic_reset_smc_ovrd   = jtag_ic_reset_smc_ovrd;
+    assign u_tb_if.jtag_ic_reset_smc_ctrl_n = jtag_ic_reset_smc_ctrl_n;
+    assign u_tb_if.jtag_ic_reset_sep_ovrd   = jtag_ic_reset_sep_ovrd;
+    assign u_tb_if.jtag_ic_reset_sep_ctrl_n = jtag_ic_reset_sep_ctrl_n;
+    assign u_tb_if.jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext_ovrd;
+    assign u_tb_if.jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext_ctrl_n;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
     // answers JTAG2AXI OTP traffic. The slave interface carries

@@ -56,4 +56,21 @@ interface dtp_tb_if;
     logic [31:0] sep_otp_axil_wvalid_count;
     logic [31:0] sep_otp_axil_arvalid_count;
 
+    // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
+    // boot-stall outputs and the flattened IC_RESET slice outputs.
+    logic stop_clks;
+    logic cla_clock_stop_en;
+    logic jtag_boot_stall;
+    logic jtag_boot_stall_ovrd;
+    logic jtag_ic_reset_smc_ovrd;
+    logic jtag_ic_reset_smc_ctrl_n;
+    logic jtag_ic_reset_sep_ovrd;
+    logic jtag_ic_reset_sep_ctrl_n;
+    logic jtag_ic_reset_ext_ovrd;
+    logic jtag_ic_reset_ext_ctrl_n;
+
+    // CLA clock-stop request vector (driven by debug-TDR sequences; init
+    // quiescent so unrelated tests see no requests).
+    logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
+
 endinterface : dtp_tb_if

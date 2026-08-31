@@ -130,6 +130,20 @@ import ocah_axi_uvm_pkg::*;
 `include "dtp_jtag2axi_decode_error_mixed_test.svh"
 `include "dtp_jtag2axi_series_corner_all_bridges_test.svh"
 
+// Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
+`include "dtp_jtag_tmp_status_register_smoke_test.svh"
+`include "dtp_jtag_tmp_status_chrst_n_in_persistence_test.svh"
+`include "dtp_jtag_tmp_status_bypass_escape_test.svh"
+`include "dtp_jtag_ic_reset_test.svh"
+`include "dtp_dbg_jtag_caps_test.svh"
+`include "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test.svh"
+`include "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test.svh"
+`include "dtp_dbg_ctrl_clk_stop_random_clock_stop_test.svh"
+`include "dtp_dbg_ctrl_boot_stall_test.svh"
+`include "dtp_dbg_smc_jtag2axi_caps_test.svh"
+`include "dtp_dbg_smc_otp_jtag2axi_caps_test.svh"
+`include "dtp_dbg_sep_otp_jtag2axi_caps_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // DTP_OVERLAY_TESTS to the quoted name of an include file on its own
