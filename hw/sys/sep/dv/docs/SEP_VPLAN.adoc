@@ -19,7 +19,7 @@
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |31
-|Phase 2 test cases |41
+|Phase 2 test cases |45
 |Phase 3 |T.B.D. (new UVM bench)
 |===
 
@@ -279,6 +279,10 @@ feature has no legal knob space (a strap, a single named handshake).
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact.
+|`sep_trng_reset_recovery_test`
+|no_cpu, +skip_fuse_sense, +esrc_noise_force
+|ocah_axi_vip, entropy golden
+|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three AXI ports to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated ports answer DECERR while the external CSR responder and source-select stay outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -620,7 +624,11 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Per-IP `SW_RESET_N` isolation
 |PROVEN
-|`sep_crypto_per_ip_reset_isolation_test` (includes in-window DECERR). Drain-before-reset is Phase 3.
+|`sep_crypto_per_ip_reset_isolation_test` (includes in-window DECERR). Drain-before-reset is proven for the shared TRNG domain in the row below; for the four accelerator domains it stays Phase 3.
+
+|Coordinated TRNG reset and ordered recovery
+|PROVEN
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three AXI ports to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external CSR and source-select staying outside the domain, and the JTAG hold/release pair.
 
 |Clock-gate CSR
 |PROVEN
@@ -1223,7 +1231,7 @@ starved it to a handful of writes fails.
 |CHK-B
 |`CMD_KEY_TRANSFER` succeeds with OTBN as destination.
 |CHK-ISO
-|Only the Key Manager and OTBN are out of reset during the transfer; the other three engines are parked.The reset-control readback that records this is `SW_RESET_N=0x03`.
+|Only the Key Manager and OTBN are out of reset during the transfer; the other three engines are parked.The reset-control readback that records this is `SW_RESET_N=0x23`: the TRNG bit stays released, and the check is a mask over the four engine bits rather than an equality.
 |CHK-C
 |The OTBN program loads, executes to idle, and reports no error bits.
 |CHK-F
@@ -1518,7 +1526,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-B
 |The transfer to AES succeeds.
 |CHK-ISO
-|Only the Key Manager and AES are released during the transfer.The reset-control readback that records this is `SW_RESET_N=0x05`.
+|Only the Key Manager and AES are released during the transfer.The reset-control readback that records this is `SW_RESET_N=0x25`: the TRNG bit stays released, and the check is a mask over the engine bits rather than an equality.
 |CHK-NEG
 |The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
 |CHK-F
@@ -1852,7 +1860,7 @@ reaches its wait before the interrupt fires.
 *Test Procedure*:
 
 [arabic]
-. Check the software reset register default. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The firmware then probes each engine's per-IP reset wire: assert the bit, confirm the engine's register goes to its reset value, release, confirm it is writable again.
+. Check the software reset register default, which is `0x3E`: the Key Manager is held and OTBN, AES, HMAC, KMAC and the TRNG come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
 . Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts.
 . Configure the watchdog with small bark and bite thresholds; enable.
 . On the first bark the handler clears and disables; confirm the count is frozen non-zero, pet returns it to zero, and it stays zero while disabled.
@@ -1876,7 +1884,9 @@ reaches its wait before the interrupt fires.
 |CHK-BITE
 |The bite reset request reaches the real output pin.
 |CHK-SWRST-DEFAULT
-|The software reset register holds its specified default.
+|The software reset register holds its specified default of `0x3E`.
+|CHK-SWRST-WIRE
+|Pulsing each per-IP bit, the shared TRNG bit included, returns that domain's probe register to its reset value and leaves the neighbouring domains untouched.
 |===
 *Sim scaling and timing requirement*: watchdog thresholds are reduced for
 simulation, as in the non-maskable-interrupt test. A settling delay is required
@@ -2297,8 +2307,76 @@ one word and parks, which is enough for the legality check to execute.
 *Scope limit*: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays at
 its reset default (a different mechanism) and is not claimed.
 
-*Not claimed*: drain-before-reset. The `CHK-ISOLATE-*` rows cover in-window
-DECERR and sibling OKAY only.
+*Not claimed*: drain-before-reset for these four domains. The `CHK-ISOLATE-*`
+rows cover in-window DECERR and sibling OKAY only. The shared TRNG domain does
+claim it, in <<sep_trng_reset_recovery_test>>.
+
+
+'''''
+
+[[sep_trng_reset_recovery_test]]
+===== `sep_trng_reset_recovery_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+
+*VIP / Model*: ocah_axi_vip, entropy golden
+
+*Objective*: Proves the one `SW_RESET_N` bit that resets ESRC, CSRNG and EDN
+together behaves as a single coordinated domain: the reset waits for all three
+AXI ports to isolate, the entropy pool scrubs whatever it held, the external
+source path stays outside the domain, and recovery admits only fresh entropy.
+
+*Test Procedure*:
+
+[arabic]
+. Bring the internal chain up and fill the fabric entropy pool through
+  ESRC → CSRNG → EDN, recording the pool level and that `FIPS_LOCK` is set.
+. Select every external-source mux leg and sample the external TRNG CSR
+  response, establishing the pre-reset baseline for the paths that must survive.
+. Hold every entropy consumer (KM, OTBN, AES, KMAC), then request the TRNG reset
+  while concurrent reads are in flight on all three internal CSR ports.
+. Through the reset, observe the isolate probe, the fate of the in-flight
+  accesses, and the pool's packer depth.
+. With the domain in reset, read the three internal ports, the external CSR and
+  the source-select register; then exercise the JTAG reset pair to hold and
+  release the same coordinated reset.
+. Reinitialize ESRC, CSRNG and EDN with consumers still held, require a fresh
+  seed and fresh pool progress, and only then restore the consumer resets.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-TRNG-FILL
+|The initial DRBG produces genbits and `FIPS_LOCK` reads set, so the pool level the later checks compare against is real entropy rather than a reset default.
+|CHK-TRNG-ISOLATE-ALL
+|While the reset is requested the isolate probe reads all three ports isolated. This is the drain-before-reset evidence: the reset does not assert until ESRC, CSRNG and EDN have all reported isolated.
+|CHK-TRNG-DRAIN
+|Every in-flight pre-reset access completes either OKAY or DECERR — never SLVERR and never a hang — and at least one completes OKAY, so accepted traffic provably drained rather than being dropped.
+|CHK-TRNG-PACKER
+|The entropy pool's packer depth is zero, so a half-packed word does not survive the reset.
+|CHK-TRNG-DECERR
+|All three internal CSR ports answer DECERR while isolated.
+|CHK-TRNG-EXTERNAL
+|The external TRNG CSR response is unchanged from its pre-reset baseline and the source-select register still reads all legs selected, so neither is inside the reset domain.
+|CHK-TRNG-JTAG
+|The JTAG override holds the coordinated reset asserted and releases it again, the same pair used for the other domains.
+|CHK-TRNG-CONSUMERS-HELD
+|The `SW_RESET_N` readback shows the four consumers still held and the TRNG bit released, so the recovery ordering is observed rather than assumed.
+|CHK-TRNG-CSR-RESET
+|After the reset `FIPS_LOCK` is clear, the CSRNG and EDN interrupt enables read zero, and reserved ESRC `CTRL[0]` reads zero and ignores writes — the domain returned to its register-map reset rather than partially.
+|CHK-TRNG-STALE
+|A pop from the empty pool does not answer OKAY and returns zero data, so pre-reset entropy cannot be read back.
+|CHK-TRNG-FRESH
+|ESRC produces a fresh seed, `FIPS_LOCK` sets again, and a pool read succeeds, all before the consumer resets are restored to their saved value.
+|===
+
+*Why the pool is checked from outside the domain*: the entropy pool's AXI
+responder is not in the TRNG reset domain, which is what makes the scrub
+observable at all — the port stays live while its contents are invalidated.
 
 
 '''''
@@ -3337,7 +3415,6 @@ both lock flavours of one seed-selected spare.
 
 [arabic]
 . Every supported selector arms on MODULE_ENABLE 0→1.
-. Every supported selector arms on `CTRL.RESET`; the selector survives.
 . Changing the selector does not re-arm. An unsupported value becomes `REPCNT_HI`.
 . A low watermark falls once `HEALTH_TEST_CTRL.ENABLE` is allowed.
 
@@ -3348,10 +3425,6 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-ARM-MEN
 |Each supported selector arms to `0x0000` (high) or `0xFFFF` (low) on MODULE_ENABLE 0→1.
-|CHK-ARM-RST
-|The same arm values on `CTRL.RESET`.
-|CHK-SEL-PERSIST
-|`HT_WATERMARK_NUM` survives a `CTRL.RESET` pulse.
 |CHK-NO-REARM
 |A selector write leaves `HT_WATERMARK` at the entry value.
 |CHK-UNSUPPORTED
@@ -3678,8 +3751,8 @@ both lock flavours of one seed-selected spare.
 |The same field rejects a poke after `LOCK=1`.
 |CHK-LOCK-W1S
 |Write-0 leaves `FIPS_LOCK.LOCK=1`.
-|CHK-RESET-HOLD
-|`CTRL.RESET` does not clear the lock.
+|CHK-CTRL-RSVD
+|Writing reserved `CTRL[0]` leaves `FIPS_LOCK.LOCK=1`.
 |CHK-RST-NI
 |`rst_ni` clears the lock and a later write succeeds.
 |CHK-FIFO-LIVE
@@ -4043,10 +4116,10 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |===
 |Item |Count
 |Phase 1 tests |31
-|Phase 2 tests |41
-|Cocotb total |72
+|Phase 2 tests |45
+|Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |40 in-scope (see <<iconic-scorecard>>)
+|Iconic scorecard rows |41 in-scope (see <<iconic-scorecard>>)
 |===
 
 === Regression Groups

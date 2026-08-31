@@ -7,18 +7,18 @@ helper keeps a shadow of the register so a test can release / park individual
 engines without a read-modify-write race, the way the reference consume base sequence
 releases KM first and the target crypto engine later.
 
-The shadow is seeded with the HW reset default
-(hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl): km_sw_rst_n=0 (held), otbn/aes/hmac/kmac=1 (released) => 0x1E.
+The shadow is seeded with the generated HW reset default:
+km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng=1 (released) => 0x3E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
 must park() them explicitly; do not rely on a wrong all-parked assumption.
 
-Bit map (hw/sys/sep/rtl/sep_reset_ctrl.sv: SW_RESET_N fields):
-  km=0, otbn=1, aes=2, hmac=3, kmac=4
+Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
+  km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5
 """
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_RESET_CTRL, sym
 
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -31,10 +31,11 @@ SW_RESET_N_BIT = {
     "aes": 2,
     "hmac": 3,
     "kmac": 4,
+    "trng": 5,
 }
 
-# HW reset default: km held (0), otbn/aes/hmac/kmac released (1) -> 0x1E.
-SW_RESET_N_RESET_DEFAULT = 0x1E
+# HW reset default: km held; otbn/aes/hmac/kmac/trng released.
+SW_RESET_N_RESET_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 
 
 class SepSwReset:
@@ -44,7 +45,7 @@ class SepSwReset:
         self.test = test
         self.addr = addr
         self.log = logger if logger is not None else test.logger
-        self.value = SW_RESET_N_RESET_DEFAULT  # km held, crypto released (0x1E)
+        self.value = SW_RESET_N_RESET_DEFAULT
 
     async def _write(self) -> None:
         seq = SepAxiAccessSeq("sw_reset_n", op=SepAxiOp.WRITE, addr=self.addr, wdata=self.value)
@@ -78,3 +79,32 @@ class SepSwReset:
             self.value &= ~(1 << SW_RESET_N_BIT[eng])
         await self._write()
         self.log.info("SW_RESET_N parked %s -> 0x%08x", ",".join(engines), self.value)
+
+    async def begin_trng_recovery(
+        self, *, reset_km: bool, release_trng: bool = True
+    ) -> int:
+        """Quiesce consumers, reset TRNG, and leave consumers held.
+
+        The caller must next run ``SepEsrcConfigSeq(reset_trng=False)``, start
+        generators, enable EDN, and observe fresh endpoint/pool progress before
+        calling :meth:`restore_after_trng_reinit`. Set ``release_trng=False`` to
+        inspect behavior while the coordinated reset remains asserted; release
+        it explicitly with ``release("trng")`` before reinitialization.
+        """
+        saved = await self.read_back()
+        self.value = saved
+        consumers = ["aes", "kmac", "otbn"]
+        if reset_km:
+            consumers.append("km")
+
+        await self.park(*consumers)
+        await self.park("trng")
+        if release_trng:
+            await self.release("trng")
+        return saved
+
+    async def restore_after_trng_reinit(self, saved_sw_reset_n: int) -> None:
+        """Restore consumer reset state after fresh entropy progress is proven."""
+        self.value = saved_sw_reset_n
+        await self._write()
+        self.log.info("SW_RESET_N restored consumers -> 0x%08x", self.value)

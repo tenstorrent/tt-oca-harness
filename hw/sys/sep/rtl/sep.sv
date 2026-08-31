@@ -349,6 +349,7 @@ module sep
     edn_pkg::edn_rsp_t entropy_pool_edn_rsp;
     logic entropy_pool_low;
     logic entropy_pool_fill_stall;
+    logic trng_entropy_clear;
 
     logic [31:1] nmi_vec;
 
@@ -800,6 +801,7 @@ module sep
         // Native EDN endpoint routed to the fabric-level entropy-pool FIFO
         .entropy_pool_edn_req_i                 (entropy_pool_edn_req),
         .entropy_pool_edn_rsp_o                 (entropy_pool_edn_rsp),
+        .trng_entropy_clear_o                   (trng_entropy_clear),
 
         // External TRNG AXI-Lite passthrough
         .ext_trng_axil_req_o                    (ext_trng_axil_req_o),
@@ -843,6 +845,7 @@ module sep
         .aes_sw_rst_ni                          (sep_sw_rst_no.aes),
         .hmac_sw_rst_ni                         (sep_sw_rst_no.hmac),
         .kmac_sw_rst_ni                         (sep_sw_rst_no.kmac),
+        .trng_sw_rst_ni                         (sep_sw_rst_no.trng),
 
         .lcc_demote_state_1_o                   (lcc_demote_state_1_o),
         .lcc_demote_state_2_o                   (lcc_demote_state_2_o),
@@ -915,6 +918,7 @@ module sep
     sep_entropy_fifo u_entropy_fifo (
         .clk_i                    (clk_i),
         .rst_ni                   (rst_ni),
+        .entropy_clear_i          (trng_entropy_clear),
 
         .test_en_i                (test_en_i),
 
