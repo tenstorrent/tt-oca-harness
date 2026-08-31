@@ -561,7 +561,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |KM sideload consume (AES/HMAC/KMAC/OTBN)
 |PROVEN
-|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`
+|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key, and post-error recovery, are Phase 3.
 
 |KM mailbox command set
 |GAP
@@ -1630,6 +1630,10 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK1..CHK3
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |===
+
+*Not claimed*: fail-closed `CFG.sideload=1` START with no valid Key Manager key
+(`ErrKeyNotValid`), and a later software-key digest after `CMD.err_processed`
+recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 
 '''''
 
@@ -4223,6 +4227,9 @@ Holding notes (candidates, not an execute list)::
 
 |Named coverage / negative matrices
 |`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`, and similar deferred names
+
+|KMAC sideload fail-closed + recovery
+|`CFG.sideload=1` START with no valid Key Manager key must fail closed (`ErrKeyNotValid`). `CMD.err_processed` returns the engine to idle with `CFG_REGWEN` open, and the next software-key operation reproduces the pre-error digest. KEY_VALID gating and stale-key reject sit on the same card. Valid-key consume stays with `sep_km_kmac_sideload_kat_test`.
 |===
 
 Nothing in this section is scheduled work until the UVM bench exists.
