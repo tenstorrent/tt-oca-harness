@@ -31,11 +31,13 @@ class dtp_env extends uvm_env;
     ocah_axi_config m_smc_axi_cfg;
     ocah_axi_env m_smc_axi_env;
 
-    // Active shared-VIP slave agent: the memory-backed responder answering
-    // the SMC OTP AXI-Lite port (replaces the plain-SV RAM responder module;
-    // sequences program error injection via m_smc_otp_slave_agent.seq).
+    // Active shared-VIP slave agents: the memory-backed responders answering
+    // the SMC OTP AXI-Lite port and the SMC fabric AXI4 port (sequences
+    // program error injection and backdoor memory via each agent's seq).
     ocah_axi_slave_config m_smc_otp_slave_cfg;
     ocah_axi_slave_agent  m_smc_otp_slave_agent;
+    ocah_axi_slave_config m_smc_axi_slave_cfg;
+    ocah_axi_slave_agent  m_smc_axi_slave_agent;
 
     virtual dtp_tb_if tb_vif;
 
@@ -107,6 +109,22 @@ class dtp_env extends uvm_env;
                                                    "slave_cfg", m_smc_otp_slave_cfg);
         m_smc_otp_slave_agent =
             ocah_axi_slave_agent::type_id::create("m_smc_otp_slave_agent", this);
+
+        m_smc_axi_slave_cfg = ocah_axi_slave_config::type_id::create("m_smc_axi_slave_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_axi_slave_vif",
+                                                      m_smc_axi_slave_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `smc_axi_slave_vif` not found in uvm_config_db")
+        m_smc_axi_slave_cfg.protocol   = OCAH_AXI_PROTO_AXI4;
+        m_smc_axi_slave_cfg.addr_width = 56;
+        m_smc_axi_slave_cfg.data_width = 64;
+        m_smc_axi_slave_cfg.id_width   = 2;
+        m_smc_axi_slave_cfg.mem_bytes  = 65536;
+        m_smc_axi_slave_cfg.name_tag   = "dtp_smc_axi_slave";
+        uvm_config_db#(ocah_axi_slave_config)::set(this, "m_smc_axi_slave_agent*",
+                                                   "slave_cfg", m_smc_axi_slave_cfg);
+        m_smc_axi_slave_agent =
+            ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);

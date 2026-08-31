@@ -7,9 +7,11 @@
 // shared ocah_jtag_if, which carries generic JTAG pins only.
 //
 // The JTAG2AXI additions (issue #3295) carry the test-drivable lifecycle
-// debug disables, AXI responder error controls, the SVA suppress knob, and
-// mirrors of the tb_top request-activity pulse counters, so sequences never
-// reach into tb_top hierarchy directly.
+// debug disables, the SVA suppress knobs, and mirrors of the tb_top
+// request-activity pulse counters, so sequences never reach into tb_top
+// hierarchy directly. Both AXI responders are shared ocah_axi_vip UVM slave
+// agents; error injection is programmed through their slave sequences, not
+// TB error ports.
 
 interface dtp_tb_if;
 
@@ -19,6 +21,17 @@ interface dtp_tb_if;
 
     // Driven by the DUT top (jtag_tap_pkg::tap_state_e, one-hot).
     logic [15:0] tap_state;
+
+    // Driven by the DUT top: decoded-IR one-hot observable
+    // (jtag_inst_reg_pkg::jtag_instruction_decoded_e) for CHK-IR-DECODE.
+    jtag_inst_reg_pkg::jtag_instruction_decoded_e inst_decoded;
+
+    // Driven by the DUT top: boundary-scan chain control observables for the
+    // basic-JTAG instruction checks (issue #1342 mirroring).
+    logic jtag_bsr_select;
+    logic jtag_bsr_shift_en;
+    logic jtag_bsr_capture_en;
+    logic jtag_bsr_update_en;
 
     // Lifecycle debug disables (sep_lifecycle_ctrl_pkg::dbg_disable_t,
     // active-high: 1 = interface disabled). Init '1 = fail-closed, matching
@@ -31,15 +44,6 @@ interface dtp_tb_if;
 
     // Runtime enable for the shared JTAG protocol SVA checker.
     logic jtag_sva_en = 1'b1;
-
-    // SMC fabric AXI4 responder error controls (beat-aligned address match).
-    // The SMC OTP AXI-Lite port has no error ports here: its responder is the
-    // ocah_axi_vip UVM slave agent, programmed via ocah_axi_slave_sequence.
-    logic        smc_axi_err_arm      = 1'b0;
-    logic [55:0] smc_axi_err_addr     = '0;
-    logic [1:0]  smc_axi_err_resp     = 2'b00;
-    logic        smc_axi_err_on_read  = 1'b0;
-    logic        smc_axi_err_on_write = 1'b0;
 
     // Request-activity pulse-counter mirrors (driven by tb_top).
     logic [31:0] smc_axi_awvalid_count;

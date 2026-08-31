@@ -733,6 +733,14 @@ module dtp_uvm_top
     assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
     assign u_tb_if.tap_state = jtag_ptap_state;
 
+    // Decoded-IR and boundary-scan control observables (issue #1342): the
+    // basic-JTAG instruction checks read these through dtp_tb_if.
+    assign u_tb_if.inst_decoded        = jtag_ptap_inst_decoded;
+    assign u_tb_if.jtag_bsr_select     = jtag_bsr_select;
+    assign u_tb_if.jtag_bsr_shift_en   = jtag_bsr_shift_en;
+    assign u_tb_if.jtag_bsr_capture_en = jtag_bsr_capture_en;
+    assign u_tb_if.jtag_bsr_update_en  = jtag_bsr_update_en;
+
     // Lifecycle debug disables and clock-stop requests: sequences drive the
     // typed dbg_disable_t through dtp_tb_if (init '1 = fail-closed, so the
     // sanity test's behavior is unchanged; JTAG2AXI sequences clear the
@@ -789,52 +797,60 @@ module dtp_uvm_top
     assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
     assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
-    // SMC fabric AXI4 responder: drives the previously-undriven m_axi_*
-    // response inputs so JTAG2AXI fabric traffic completes in the UVM flow.
-    ocah_axi_ram_responder #(
-        .ADDR_WIDTH (56),
-        .DATA_WIDTH (64),
-        .ID_WIDTH   (2)
-    ) u_smc_axi_responder (
-        .clk_i          (clk_i),
-        .rst_ni         (rst_n_i),
-        .awid           (m_axi_awid),
-        .awaddr         (m_axi_awaddr),
-        .awlen          (m_axi_awlen),
-        .awsize         (m_axi_awsize),
-        .awburst        (m_axi_awburst),
-        .awprot         (m_axi_awprot),
-        .awvalid        (m_axi_awvalid),
-        .awready        (m_axi_awready),
-        .wdata          (m_axi_wdata),
-        .wstrb          (m_axi_wstrb),
-        .wlast          (m_axi_wlast),
-        .wvalid         (m_axi_wvalid),
-        .wready         (m_axi_wready),
-        .bid            (m_axi_bid),
-        .bresp          (m_axi_bresp),
-        .bvalid         (m_axi_bvalid),
-        .bready         (m_axi_bready),
-        .arid           (m_axi_arid),
-        .araddr         (m_axi_araddr),
-        .arlen          (m_axi_arlen),
-        .arsize         (m_axi_arsize),
-        .arburst        (m_axi_arburst),
-        .arprot         (m_axi_arprot),
-        .arvalid        (m_axi_arvalid),
-        .arready        (m_axi_arready),
-        .rid            (m_axi_rid),
-        .rdata          (m_axi_rdata),
-        .rresp          (m_axi_rresp),
-        .rlast          (m_axi_rlast),
-        .rvalid         (m_axi_rvalid),
-        .rready         (m_axi_rready),
-        .err_arm_i      (u_tb_if.smc_axi_err_arm),
-        .err_addr_i     (u_tb_if.smc_axi_err_addr),
-        .err_resp_i     (u_tb_if.smc_axi_err_resp),
-        .err_on_read_i  (u_tb_if.smc_axi_err_on_read),
-        .err_on_write_i (u_tb_if.smc_axi_err_on_write)
-    );
+    // SMC fabric AXI4 responder: the shared ocah_axi_vip UVM slave agent
+    // (same pattern as the SMC OTP port) answers JTAG2AXI fabric traffic.
+    // The slave interface carries the connection: the TB wires only the
+    // master-driven signals in, and the agent's driver procedurally drives
+    // the responder-side signals, routed back to the DUT below. Error
+    // injection and backdoor memory access are programmed by sequences via
+    // the agent's ocah_axi_slave_sequence, not TB error ports.
+    ocah_axi_if u_smc_axi_slave_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_smc_axi_slave_if.awid     = 16'(m_axi_awid);
+    assign u_smc_axi_slave_if.awaddr   = 64'(m_axi_awaddr);
+    assign u_smc_axi_slave_if.awlen    = m_axi_awlen;
+    assign u_smc_axi_slave_if.awsize   = m_axi_awsize;
+    assign u_smc_axi_slave_if.awburst  = m_axi_awburst;
+    assign u_smc_axi_slave_if.awlock   = m_axi_awlock;
+    assign u_smc_axi_slave_if.awcache  = m_axi_awcache;
+    assign u_smc_axi_slave_if.awprot   = m_axi_awprot;
+    assign u_smc_axi_slave_if.awqos    = m_axi_awqos;
+    assign u_smc_axi_slave_if.awregion = m_axi_awregion;
+    assign u_smc_axi_slave_if.awuser   = 16'(m_axi_awuser);
+    assign u_smc_axi_slave_if.awvalid  = m_axi_awvalid;
+    assign u_smc_axi_slave_if.wdata    = m_axi_wdata;
+    assign u_smc_axi_slave_if.wstrb    = m_axi_wstrb;
+    assign u_smc_axi_slave_if.wlast    = m_axi_wlast;
+    assign u_smc_axi_slave_if.wuser    = 16'(m_axi_wuser);
+    assign u_smc_axi_slave_if.wvalid   = m_axi_wvalid;
+    assign u_smc_axi_slave_if.bready   = m_axi_bready;
+    assign u_smc_axi_slave_if.arid     = 16'(m_axi_arid);
+    assign u_smc_axi_slave_if.araddr   = 64'(m_axi_araddr);
+    assign u_smc_axi_slave_if.arlen    = m_axi_arlen;
+    assign u_smc_axi_slave_if.arsize   = m_axi_arsize;
+    assign u_smc_axi_slave_if.arburst  = m_axi_arburst;
+    assign u_smc_axi_slave_if.arlock   = m_axi_arlock;
+    assign u_smc_axi_slave_if.arcache  = m_axi_arcache;
+    assign u_smc_axi_slave_if.arprot   = m_axi_arprot;
+    assign u_smc_axi_slave_if.arqos    = m_axi_arqos;
+    assign u_smc_axi_slave_if.arregion = m_axi_arregion;
+    assign u_smc_axi_slave_if.aruser   = 16'(m_axi_aruser);
+    assign u_smc_axi_slave_if.arvalid  = m_axi_arvalid;
+    assign u_smc_axi_slave_if.rready   = m_axi_rready;
+
+    // Responder-side signals: agent driver -> DUT response inputs.
+    assign m_axi_awready = u_smc_axi_slave_if.awready;
+    assign m_axi_wready  = u_smc_axi_slave_if.wready;
+    assign m_axi_bid     = u_smc_axi_slave_if.bid[1:0];
+    assign m_axi_bresp   = u_smc_axi_slave_if.bresp;
+    assign m_axi_buser   = '0;
+    assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid;
+    assign m_axi_arready = u_smc_axi_slave_if.arready;
+    assign m_axi_rid     = u_smc_axi_slave_if.rid[1:0];
+    assign m_axi_rdata   = u_smc_axi_slave_if.rdata;
+    assign m_axi_rresp   = u_smc_axi_slave_if.rresp;
+    assign m_axi_rlast   = u_smc_axi_slave_if.rlast;
+    assign m_axi_ruser   = '0;
+    assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid;
 
     // Shared-VIP monitor interfaces (default/maximum parameterization so the
     // UVM layer sees one `virtual ocah_axi_if` type; geometry lives in cfg).
@@ -1085,6 +1101,7 @@ module dtp_uvm_top
         uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_axil_vif", u_smc_otp_axil_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_slave_vif", u_smc_otp_slave_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_axi_slave_vif", u_smc_axi_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
         run_test();
     end

@@ -31,10 +31,12 @@ class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
         dtp_jtag2axi_single_op_seq seq;
         phase.raise_objection(this, "dtp_jtag2axi_smc_axi_single_write_read_test running");
         seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
-        seq.tb_vif       = m_env.tb_vif;
-        seq.target_name  = "smc_axi";
-        seq.axi_cfg      = m_env.m_smc_axi_cfg;
-        seq.axi_evidence = m_env.m_smc_axi_env.m_checker;
+        seq.tb_vif        = m_env.tb_vif;
+        seq.target_name   = "smc_axi";
+        seq.axi_cfg       = m_env.m_smc_axi_cfg;
+        seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
+        seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
+        seq.slave_seq     = m_env.m_smc_axi_slave_agent.seq;
         seq.start(m_env.m_jtag_env.m_sequencer);
         phase.drop_objection(this, "dtp_jtag2axi_smc_axi_single_write_read_test done");
     endtask

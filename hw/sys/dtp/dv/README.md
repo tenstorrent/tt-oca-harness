@@ -195,10 +195,70 @@ DTP_BASIC_JTAG_TEST_LOOPS=32 DTP_RANDOM_COUNT=10 \
 DTP_JTAG2AXI_TEST_LOOPS=32 python3 tools/dv/run_dv.py --dut dtp --items functional
 ```
 
-The SV-UVM flow follows the same floor: `dtp_sanity_test` runs 16 randomized
-TMS stress walks (`+DTP_RAND_WALKS=<n>` overrides) and the JTAG2AXI single-op
-scenario runs 16 randomized write+readback passes
-(`+DTP_JTAG2AXI_RANDOM_OPS=<n>` overrides).
+The SV-UVM flow follows the same floor with the same knob names as plusargs:
+every looped UVM test runs at least 16 scenario passes
+(`dtp_base_test.MinDefaultLoops`), each pass seeded `+ntb_random_seed` + loop
+index, resolved specific-first exactly like the cocotb environment knobs:
+
+```bash
+# Suite-wide, group, and per-test loop counts (plusarg twins of the env vars)
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items basic_jtag \
+  --plusarg +DTP_TEST_LOOPS=1
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items basic_jtag \
+  --plusarg +DTP_BASIC_JTAG_TEST_LOOPS=32 --plusarg +DTP_RANDOM_COUNT=10
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_extest_test \
+  --plusarg +DTP_JTAG_EXTEST_TEST_LOOPS=4
+```
+
+`dtp_sanity_test` additionally runs 16 randomized TMS stress walks
+(`+DTP_RAND_WALKS=<n>` overrides) and the JTAG2AXI single-op scenario runs 16
+randomized write+readback passes (`+DTP_JTAG2AXI_RANDOM_OPS=<n>` overrides).
+
+### Porting a scenario to the SV-UVM framework (`uvm =` dual mapping)
+
+One VPLAN scenario, two implementations: the testlist entry's `module`
+binding map carries both, and the same `--items` name selects either flow.
+To port a cocotb scenario:
+
+1. **Sequence** — add `uvm/seq_lib/<name>_seq.svh` mirroring the cocotb
+   `seq_lib/<name>_seq.py` semantics on the shared VIP stimulus API. Extend
+   `dtp_jtag_cmd_lib_seq` for instruction-family scenarios (per-pass family
+   evidence + scan-builder cross-checks) or `dtp_jtag2axi_base_test_seq` for
+   bridge scenarios (single/series ops, responder backdoor, error arming).
+   Start `body()` with `seed_scenario_rng()` so every pass replays from
+   `--seed`. Add the `` `include `` to `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
+2. **Test** — add `uvm/tests/<name>.svh` (file = class = scenario name)
+   extending `dtp_base_test`: override `create_scenario_seq()` and the
+   loop-count plusarg name hooks, arm the checker evidence the scenario
+   owns (required `CHK-*` IDs; `jtag_require_checks` /
+   `cfg.require_checks`), and plumb scenario handles in
+   `plumb_scenario_seq()`. Add the `` `include `` to `uvm/tests/dtp_tests.sv`.
+3. **Testlist** — change the scenario's entry to
+   `module = { cocotb = "<name>", uvm = "<name>" }`; the `uvm` value drives
+   `+UVM_TESTNAME`.
+4. **Qualify** — the group's VCS run must be green at the 16-iteration floor,
+   and each checker's negative hook must FAIL when armed (below).
+
+Checker-arming conventions: every ported test declares the evidence that
+must land (required IDs), and each evidence path has a documented negative
+hook proven to fail a run when the expectation is corrupted:
+
+```bash
+# SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
+  --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
+
+# Instruction-family checker negative validation: corrupted family
+# expectations (decoded IR, loopback, bypass delay) must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_extest_test \
+  --plusarg +DTP_JTAG_FAMILY_CHECKER_NEGATIVE
+
+# AXI scoreboard negative validation: arming the wrong expected response for
+# an injected error must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_axi_error_single_write_test \
+  --plusarg +DTP_AXI_SCOREBOARD_NEGATIVE
+```
 
 PASS/FAIL is classified by the global parser registry in
 `hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from
