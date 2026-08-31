@@ -144,6 +144,22 @@ import ocah_axi_uvm_pkg::*;
 `include "dtp_dbg_smc_otp_jtag2axi_caps_test.svh"
 `include "dtp_dbg_sep_otp_jtag2axi_caps_test.svh"
 
+// Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
+`include "dtp_ijtag_sib_all_off_test.svh"
+`include "dtp_ijtag_sib_all_on_test.svh"
+`include "dtp_ijtag_sib_random_test.svh"
+`include "dtp_ijtag_dft_test.svh"
+`include "dtp_ijtag_dfd_test.svh"
+`include "dtp_3dcr_stap_sel_ds_test.svh"
+`include "dtp_3dcr_stap_sel_smc_test.svh"
+`include "dtp_3dcr_stap_sel_sep_test.svh"
+`include "dtp_3dcr_stap_sel_extra_test.svh"
+`include "dtp_ext_stap_scan_test.svh"
+`include "dtp_3dcr_config_hold_test.svh"
+`include "dtp_3dcr_tms_hold_test.svh"
+`include "dtp_scan_dbg_disable_matrix_test.svh"
+`include "dtp_jtag2axi_dbg_disable_matrix_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // DTP_OVERLAY_TESTS to the quoted name of an include file on its own

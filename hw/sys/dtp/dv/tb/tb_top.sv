@@ -761,6 +761,34 @@ module dtp_uvm_top
     assign u_tb_if.jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext_ovrd;
     assign u_tb_if.jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext_ctrl_n;
 
+    // Scan-network observables: iJTAG SIB scan controls, STAP forwarding
+    // pins, and the extended STAP host scan controls for the scan-scenario
+    // temporal windows.
+    assign u_tb_if.jtag_dft_secure_select     = jtag_dft_secure_select;
+    assign u_tb_if.jtag_dft_secure_shift_en   = jtag_dft_secure_shift_en;
+    assign u_tb_if.jtag_dft_secure_capture_en = jtag_dft_secure_capture_en;
+    assign u_tb_if.jtag_dft_secure_update_en  = jtag_dft_secure_update_en;
+    assign u_tb_if.jtag_dft_select            = jtag_dft_select;
+    assign u_tb_if.jtag_dft_shift_en          = jtag_dft_shift_en;
+    assign u_tb_if.jtag_dft_capture_en        = jtag_dft_capture_en;
+    assign u_tb_if.jtag_dft_update_en         = jtag_dft_update_en;
+    assign u_tb_if.jtag_dfd_select            = jtag_dfd_select;
+    assign u_tb_if.jtag_dfd_shift_en          = jtag_dfd_shift_en;
+    assign u_tb_if.jtag_dfd_capture_en        = jtag_dfd_capture_en;
+    assign u_tb_if.jtag_dfd_update_en         = jtag_dfd_update_en;
+    assign u_tb_if.jtag_stap_io_tms           = jtag_stap_io_tms;
+    assign u_tb_if.jtag_stap_io_tdo_oen       = jtag_stap_io_tdo_oen;
+    assign u_tb_if.jtag_stap_smc_tms          = jtag_stap_smc_tms;
+    assign u_tb_if.jtag_stap_smc_tdo_oen      = jtag_stap_smc_tdo_oen;
+    assign u_tb_if.jtag_stap_sep_tms          = jtag_stap_sep_tms;
+    assign u_tb_if.jtag_stap_sep_tdo_oen      = jtag_stap_sep_tdo_oen;
+    assign u_tb_if.jtag_stap_extra0_tms       = jtag_stap_extra0_tms;
+    assign u_tb_if.jtag_stap_extra0_tdo_oen   = jtag_stap_extra0_tdo_oen;
+    assign u_tb_if.jtag_stap_host_select      = jtag_stap_host_select;
+    assign u_tb_if.jtag_stap_host_shift_en    = jtag_stap_host_shift_en;
+    assign u_tb_if.jtag_stap_host_capture_en  = jtag_stap_host_capture_en;
+    assign u_tb_if.jtag_stap_host_update_en   = jtag_stap_host_update_en;
+
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
     // answers JTAG2AXI OTP traffic. The slave interface carries
     // the connection: the TB wires only the master-driven signals in, and the

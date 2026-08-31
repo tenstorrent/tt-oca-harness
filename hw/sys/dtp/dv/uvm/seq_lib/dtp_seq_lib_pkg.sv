@@ -76,4 +76,12 @@ package dtp_seq_lib_pkg;
     `include "dtp_dbg_smc_otp_jtag2axi_caps_test_seq.svh"
     `include "dtp_dbg_sep_otp_jtag2axi_caps_test_seq.svh"
 
+    // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
+    `include "dtp_scan_ref_model.svh"
+    `include "dtp_scan_base_test_seq.svh"
+    `include "dtp_ijtag_scan_test_seq.svh"
+    `include "dtp_stap_scan_test_seq.svh"
+    `include "dtp_dbg_disable_scan_matrix_test_seq.svh"
+    `include "dtp_dbg_disable_jtag2axi_matrix_test_seq.svh"
+
 endpackage : dtp_seq_lib_pkg
