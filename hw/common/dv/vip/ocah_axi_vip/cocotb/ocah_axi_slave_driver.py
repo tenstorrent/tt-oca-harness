@@ -20,8 +20,6 @@ from cocotbext.axi.axi_ram import AxiRamRead, AxiRamWrite
 from cocotbext.axi.constants import AxiBurstType, AxiProt, AxiResp
 from cocotbext.axi.memory import Memory
 
-from .ocah_axi_idle import drive_source_idle
-
 __all__ = ["OcahAxiSlaveDriver", "OcahFaultMixin"]
 
 
@@ -313,10 +311,16 @@ class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
 
         Called at construction (and idempotent), so the response channels
         idle clean from the moment the responder exists — the backend
-        otherwise initializes source payloads to X, which X-propagates into
-        the DUT on 4-state simulators until the first response.
+        otherwise initializes source payloads to X (``StreamSource._init_x``),
+        which X-propagates into the DUT on 4-state simulators until the first
+        response. Handshake signals stay owned by the backend, which already
+        drives valid low at construction.
         """
-        drive_source_idle(self.write_if.b_channel, self.read_if.r_channel)
+        for channel in (self.write_if.b_channel, self.read_if.r_channel):
+            handshake = {id(channel.valid), id(channel.ready)}
+            for handle in channel.bus._signals.values():
+                if id(handle) not in handshake:
+                    handle.setimmediatevalue(0)
 
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs):

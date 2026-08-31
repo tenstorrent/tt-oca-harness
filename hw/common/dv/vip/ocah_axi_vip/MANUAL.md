@@ -41,7 +41,6 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi_monitor.py` | Passive item-producing bus monitors (side-neutral) |
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
 | `cocotb/ocah_axi_results.py` | Result dataclasses and response-code helpers |
-| `cocotb/ocah_axi_idle.py` | Construction-time 0-idle drive for backend source channels (side-neutral) |
 | `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
 Tests always drive a side through its `*Sequence` class — usually

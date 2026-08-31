@@ -16,8 +16,6 @@ from typing import Any
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from cocotbext.axi.constants import AxiProt
 
-from .ocah_axi_idle import drive_source_idle
-
 __all__ = ["OcahAxiLiteMasterDriver"]
 
 
@@ -94,14 +92,20 @@ class OcahAxiLiteMasterDriver:
 
         Called at construction (and idempotent), so the bus idles clean from
         the moment the driver exists — the backend otherwise initializes
-        source payloads to X, which X-propagates into the DUT on 4-state
-        simulators until the first transaction.
+        source payloads to X (``StreamSource._init_x``), which X-propagates
+        into the DUT on 4-state simulators until the first transaction.
+        Handshake signals stay owned by the backend, which already drives
+        valid low at construction.
         """
-        drive_source_idle(
+        for channel in (
             self._master.write_if.aw_channel,
             self._master.write_if.w_channel,
             self._master.read_if.ar_channel,
-        )
+        ):
+            handshake = {id(channel.valid), id(channel.ready)}
+            for handle in channel.bus._signals.values():
+                if id(handle) not in handshake:
+                    handle.setimmediatevalue(0)
 
     async def wait_for_reset(self) -> None:
         """Wait until reset deassertion if a reset signal was provided."""

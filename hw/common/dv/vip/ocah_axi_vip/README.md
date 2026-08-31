@@ -87,7 +87,6 @@ ocah_axi_vip/
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
     ocah_axi_results.py                 — result dataclasses + response-code helpers
-    ocah_axi_idle.py                    — construction-time 0-idle drive for source channels
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
   sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
