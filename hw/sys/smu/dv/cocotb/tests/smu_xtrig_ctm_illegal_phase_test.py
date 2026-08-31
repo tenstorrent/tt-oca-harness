@@ -15,10 +15,8 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
-
-from smu_base_test import smu_base_test
-
 from env import cocotb_compat as _cocotb_compat
+from smu_base_test import smu_base_test
 
 _cocotb_compat.apply()
 
@@ -96,6 +94,4 @@ class smu_xtrig_ctm_illegal_phase_test(smu_base_test):
         dut.xtrig_ctm_dst_req.value = 0
         await _settle()
 
-        self.logger.info(
-            "smu_xtrig_ctm_illegal_phase_test: pin-only abort/double-req OK"
-        )
+        self.logger.info("smu_xtrig_ctm_illegal_phase_test: pin-only abort/double-req OK")

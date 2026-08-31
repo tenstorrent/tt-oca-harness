@@ -164,9 +164,7 @@ class OcahAxiRefModel:
         """
         lo = int(address)
         hi = lo + int(nbytes)
-        return any(
-            region.blocked and region.overlaps(lo, hi) for region in self._regions
-        )
+        return any(region.blocked and region.overlaps(lo, hi) for region in self._regions)
 
     # ------------------------------------------------------------------
     # Prediction (stateful; update order: resolve resp, then commit memory)

@@ -19,9 +19,7 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
 # Small non-zero threshold so irq fires well before the VIP AXI timeout.
 _THR = 0x10
@@ -88,9 +86,7 @@ class smc_hang_detector_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("HANG_SYS_OFF", HANG_DET_SYS_AXI_CTRL, 0)
         await self.csr_write("HANG_DATA_OFF", HANG_DET_DATA_ACCEL_CTRL, 0)
         await self.csr_write("HANG_SEP_THR", HANG_DET_SEP_AXI_TIMEOUT, _THR)
-        thr = await self.csr_read(
-            "HANG_SEP_THR_RB", HANG_DET_SEP_AXI_TIMEOUT, expected=_THR
-        )
+        thr = await self.csr_read("HANG_SEP_THR_RB", HANG_DET_SEP_AXI_TIMEOUT, expected=_THR)
         assert (thr & HANG_DET_THR_VALUE) == _THR, (
             f"SEP threshold readback 0x{thr:x} want 0x{_THR:x}"
         )
@@ -112,9 +108,7 @@ class smc_hang_detector_timeout_test_seq(SmcCsrSeq):
 
         async def _expect_fire() -> None:
             cocotb.log.info("CHK-HANG-TIMEOUT-AR: SEP_IN AR accepted under r_hold")
-            await self._await_irq(
-                dut, "tb_axi_hang_irq_sep", 1, _IRQ_BOUND, "SEP_TIMEOUT_FIRE"
-            )
+            await self._await_irq(dut, "tb_axi_hang_irq_sep", 1, _IRQ_BOUND, "SEP_TIMEOUT_FIRE")
             assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 1
             assert self._bit(dut.tb_axi_hang_irq_sys, "tb_axi_hang_irq_sys") == 0
             assert self._bit(dut.tb_axi_hang_irq_data, "tb_axi_hang_irq_data") == 0
@@ -124,9 +118,7 @@ class smc_hang_detector_timeout_test_seq(SmcCsrSeq):
             )
 
         await self._hold_read_until(dut, "STALL_RD", _expect_fire)
-        await self._await_irq(
-            dut, "tb_axi_hang_irq_sep", 0, _IRQ_BOUND, "SEP_TIMEOUT_DROP"
-        )
+        await self._await_irq(dut, "tb_axi_hang_irq_sep", 0, _IRQ_BOUND, "SEP_TIMEOUT_DROP")
         assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 0
         self.drop_ok = True
         cocotb.log.info("CHK-HANG-TIMEOUT-DROP: sep=0 OR=0 after R completion")

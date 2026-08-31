@@ -28,22 +28,14 @@ _HOST_ADDR = 0x08
 _TARGET_ADDR = 0x50
 _NOTIFY_DATA16 = 0xBEEF
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-I2C0_WRAP_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-)
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
 I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
 I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
 I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 0)
-I2C0_FIFO_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0
-)
-I2C0_TARGET_ID = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0
-)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
+I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0)
 I2C0_ACQDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", 0)
 I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
 I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
@@ -133,24 +125,18 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
         )
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
+        await self.csr_write("CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
         await self.csr_write("I2C0_WRAP_ENABLE", I2C0_WRAP_CTRL, I2C_WRAP_ENABLE)
         await self.wait_i2c0_lsio_ready("I2C0_HOSTNOTIFY_WRAP")
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
-        await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_ALL_RST
-        )
+        await self.csr_write("I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_ALL_RST)
         await self.csr_write(
             "I2C0_TARGET_ID_HOST",
             I2C0_TARGET_ID,
             _pack_target_id(_HOST_ADDR, 0x7F),
         )
-        await self.csr_write(
-            "I2C0_ENABLETARGET", I2C0_CTRL, I2C_CTRL_ENABLETARGET
-        )
+        await self.csr_write("I2C0_ENABLETARGET", I2C0_CTRL, I2C_CTRL_ENABLETARGET)
         await ClockCycles(cocotb.top.clk_smc_i, 20)
         await self._drain_acq()
 
@@ -183,18 +169,15 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
                 f"DUT Host Notify address ACQ mismatch: {addr_bytes}"
             )
         # Payload may be pure DATA entries, or DATA after START.
-        matched = (
-            data_bytes[:3] == list(expected_payload)
-            or data_bytes[-3:] == list(expected_payload)
+        matched = data_bytes[:3] == list(expected_payload) or data_bytes[-3:] == list(
+            expected_payload
         )
         assert matched, (
             f"DUT Host Notify data ACQ mismatch: got {[hex(x) for x in data_bytes]}, "
             f"expected {[hex(x) for x in expected_payload]}"
         )
         if not any(s == I2C_ACQ_SIG_STOP for s, _ in entries):
-            cocotb.log.warning(
-                "DUT Host Notify: STOP not in ACQDATA (payload gate still OK)"
-            )
+            cocotb.log.warning("DUT Host Notify: STOP not in ACQDATA (payload gate still OK)")
 
         await self.csr_write("I2C0_CTRL_DISABLE", I2C0_CTRL, 0)
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

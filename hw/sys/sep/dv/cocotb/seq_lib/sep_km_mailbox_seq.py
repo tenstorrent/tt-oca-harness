@@ -21,12 +21,11 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.sep_axi_agent import SepAxiOp
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- mailbox register map (SEP/host side) ---------------------------------
@@ -89,8 +88,11 @@ def _payload_bytes(words: list[int]) -> bytes:
 
 def build_header(cmd_id: int, seq_num: int, payload_len: int) -> int:
     crc = crc8_rohc(bytes([seq_num & 0xFF, cmd_id & 0xFF, payload_len & 0xFF]))
-    return ((crc & 0xFF) << 24) | ((payload_len & 0xFF) << 16) | ((cmd_id & 0xFF) << 8) | (
-        seq_num & 0xFF
+    return (
+        ((crc & 0xFF) << 24)
+        | ((payload_len & 0xFF) << 16)
+        | ((cmd_id & 0xFF) << 8)
+        | (seq_num & 0xFF)
     )
 
 
@@ -107,9 +109,9 @@ class SepKmMailbox:
         self.test = test
         self.base = base
         self.log = logger if logger is not None else test.logger
-        self.seq_num = 0       # next outbound command sequence number
-        self._resp_seq = 0     # next expected response sequence; the firmware bumps
-                               # rom_resp_seq_num on EVERY frame, incl. boot RESP_KM_READY
+        self.seq_num = 0  # next outbound command sequence number
+        self._resp_seq = 0  # next expected response sequence; the firmware bumps
+        # rom_resp_seq_num on EVERY frame, incl. boot RESP_KM_READY
 
     # --- raw register access ----------------------------------------------
     async def _wr(self, offset: int, data: int) -> None:
@@ -183,7 +185,7 @@ class SepKmMailbox:
                 f"payload_len={payload_len} implies {exp_words} (frame={[hex(w) for w in words]})"
             )
         if payload_len > 0:
-            payload = words[1:1 + payload_len]
+            payload = words[1 : 1 + payload_len]
             exp_c32 = crc32c(_payload_bytes(payload))
             got_c32 = words[1 + payload_len]
             if got_c32 != exp_c32:
@@ -273,21 +275,32 @@ class SepKmMailbox:
         tready = _rd("km_entropy_tready_o")
         seed_v = _rd("drbg_seed_valid_o")
         genbits = _rd("drbg_genbits_vld_o")
-        parts = [f"km_rom_req_count={rom}", f"km_sram_write_count={sram_wr}",
-                 f"km_sram_req_count={sram_rq}",
-                 f"km_entropy_tvalid={tvalid}", f"km_entropy_tready={tready}",
-                 f"drbg_seed_valid={seed_v}", f"drbg_genbits_vld={genbits}"]
+        parts = [
+            f"km_rom_req_count={rom}",
+            f"km_sram_write_count={sram_wr}",
+            f"km_sram_req_count={sram_rq}",
+            f"km_entropy_tvalid={tvalid}",
+            f"km_entropy_tready={tready}",
+            f"drbg_seed_valid={seed_v}",
+            f"drbg_genbits_vld={genbits}",
+        ]
         if rom == 0:
-            parts.append("=> KM CPU NEVER FETCHED: it is still in reset "
-                         "(SW_RESET_N bit0) or unclocked, so no ROM image can help")
+            parts.append(
+                "=> KM CPU NEVER FETCHED: it is still in reset "
+                "(SW_RESET_N bit0) or unclocked, so no ROM image can help"
+            )
         elif rom and not sram_wr:
-            parts.append("=> KM fetched but never wrote SRAM: suspect the loaded "
-                         "ROM image (+km_rom_hex) or an early fault")
+            parts.append(
+                "=> KM fetched but never wrote SRAM: suspect the loaded "
+                "ROM image (+km_rom_hex) or an early fault"
+            )
         elif rom and not tvalid:
-            parts.append("=> KM is running but EDN never presented a word on its lane "
-                         "(tvalid=0): rom_drbg_init() is spinning on STATUS.drbg_ready, "
-                         "which mirrors this tvalid. The stall is EDN->KM routing, NOT "
-                         "the KM firmware and NOT CFG.TIMEOUT")
+            parts.append(
+                "=> KM is running but EDN never presented a word on its lane "
+                "(tvalid=0): rom_drbg_init() is spinning on STATUS.drbg_ready, "
+                "which mirrors this tvalid. The stall is EDN->KM routing, NOT "
+                "the KM firmware and NOT CFG.TIMEOUT"
+            )
         return " ".join(parts)
 
     async def wait_km_ready(self, *, timeout: int = 8_000, poll_cycles: int = 50) -> None:
@@ -314,13 +327,14 @@ class SepKmMailbox:
                 f"expected RESP_KM_READY (0x{KM_RESP_KM_READY:02x}), got 0x{resp_id:02x} "
                 f"(frame={[hex(w) for w in words]})"
             )
-        self.log.info("KM firmware booted: RESP_KM_READY received (%s)",
-                      self._km_boot_evidence())
+        self.log.info("KM firmware booted: RESP_KM_READY received (%s)", self._km_boot_evidence())
 
     async def key_generate(self, *, dest: int, req_size: int, timeout: int = 200_000) -> int:
         """CMD_KEY_GENERATE; returns the (nonzero) key handle. ``req_size`` is
         word_count-1 (11 -> 12 words / 384b)."""
-        seq = await self.send_command(KM_CMD_KEY_GENERATE, [req_size & 0xFFFF_FFFF, dest & 0xFFFF_FFFF])
+        seq = await self.send_command(
+            KM_CMD_KEY_GENERATE, [req_size & 0xFFFF_FFFF, dest & 0xFFFF_FFFF]
+        )
         rc, arg = await self.recv_resp_cmd(KM_CMD_KEY_GENERATE, seq, timeout=timeout)
         if rc != KM_RC_SUCCESS:
             raise AssertionError(f"CMD_KEY_GENERATE failed rc={rc}")
@@ -349,7 +363,9 @@ class SepKmMailbox:
 
     async def key_transfer(self, *, handle: int, dest: int, timeout: int = 200_000) -> int:
         """CMD_KEY_TRANSFER; returns the signed return code (0 = success)."""
-        seq = await self.send_command(KM_CMD_KEY_TRANSFER, [handle & 0xFFFF_FFFF, dest & 0xFFFF_FFFF])
+        seq = await self.send_command(
+            KM_CMD_KEY_TRANSFER, [handle & 0xFFFF_FFFF, dest & 0xFFFF_FFFF]
+        )
         rc, _arg = await self.recv_resp_cmd(KM_CMD_KEY_TRANSFER, seq, timeout=timeout)
         await self.check_outbound_empty("POST-KEY-TRANSFER")
         self.log.info("KM CMD_KEY_TRANSFER ok: handle=0x%02x dest=0x%02x rc=%d", handle, dest, rc)

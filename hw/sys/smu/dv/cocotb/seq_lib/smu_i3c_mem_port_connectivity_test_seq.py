@@ -27,9 +27,7 @@ from seq_lib.smu_jtag_helpers import (
 PERIPH_DESTS = (
     (
         "UART",
-        smc_indexed_addr(
-            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR", 0
-        ),
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR", 0),
     ),
     (
         "I2C",
@@ -88,18 +86,12 @@ class smu_i3c_mem_port_connectivity_test_seq:
         for dest, addr in PERIPH_DESTS:
             st, rdata = await self._j2a_rd32(jtag, addr, dest)
             if st == J2A_STATUS_DECERR:
-                raise AssertionError(
-                    f"S1 dest={dest} @0x{addr:08x} DECERR (not delivered)"
-                )
+                raise AssertionError(f"S1 dest={dest} @0x{addr:08x} DECERR (not delivered)")
             if st != J2A_STATUS_SUCCESS:
                 raise AssertionError(
-                    f"S1 dest={dest} @0x{addr:08x} status={st} "
-                    f"(want SUCCESS, not DECERR)"
+                    f"S1 dest={dest} @0x{addr:08x} status={st} (want SUCCESS, not DECERR)"
                 )
-            self._log(
-                f"dest={dest} addr=0x{addr:08x} delivery status=SUCCESS "
-                f"rdata=0x{rdata:08x}"
-            )
+            self._log(f"dest={dest} addr=0x{addr:08x} delivery status=SUCCESS rdata=0x{rdata:08x}")
             self.observed.append(dest)
 
         if len(self.observed) != len(PERIPH_DESTS):
@@ -112,7 +104,4 @@ class smu_i3c_mem_port_connectivity_test_seq:
         self._log(f"CHK-SUB-AXIL-LOCAL-S1: {cells} observed=OKAY at consumer")
         sb.expect_eq("CHK-SUB-AXIL-LOCAL-S1", len(self.observed), len(PERIPH_DESTS))
         self.s1_ok = True
-        self._log(
-            "PASS FAB_SMC_031 smu_i3c_mem_port_connectivity_test "
-            f"observed={self.observed}"
-        )
+        self._log(f"PASS FAB_SMC_031 smu_i3c_mem_port_connectivity_test observed={self.observed}")

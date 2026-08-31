@@ -34,7 +34,13 @@ class dtp_jtag_clamp_hold_test_seq(dtp_debug_tdr_base_test_seq):
             await self.expect_decoded_instruction(DtpJtagInstr.CLAMP_HOLD)
             status = await self.read_tmp_status()
             decoded = self.log_tmp_status("After CLAMP_HOLD", status)
-            self.family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", decoded["persistence"], 1, context="CLAMP_HOLD")
+            self.family_check(
+                "CHK-TMP-PERSIST",
+                "TMP_STATUS.persistence",
+                decoded["persistence"],
+                1,
+                context="CLAMP_HOLD",
+            )
 
             await self.load_ir(DtpJtagInstr.BYPASS_3F)
             status = await self.read_tmp_status()
@@ -50,13 +56,25 @@ class dtp_jtag_clamp_hold_test_seq(dtp_debug_tdr_base_test_seq):
             await self.load_ir(DtpJtagInstr.CLAMP_RELEASE)
             status = await self.read_tmp_status()
             decoded = self.log_tmp_status("After CLAMP_RELEASE", status)
-            self.family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", decoded["persistence"], 0, context="CLAMP_RELEASE")
+            self.family_check(
+                "CHK-TMP-PERSIST",
+                "TMP_STATUS.persistence",
+                decoded["persistence"],
+                0,
+                context="CLAMP_RELEASE",
+            )
 
         self.log_step(3, "Confirm TAP reset leaves TMP persistence clear")
         await self.reset_to_tlr()
         status = await self.read_tmp_status()
         decoded = self.log_tmp_status("After TAP reset", status)
-        self.family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", decoded["persistence"], 0, context="TAP reset")
+        self.family_check(
+            "CHK-TMP-PERSIST",
+            "TMP_STATUS.persistence",
+            decoded["persistence"],
+            0,
+            context="TAP reset",
+        )
 
         self.log_summary("CLAMP_HOLD TMP persistence complete", patterns=len(patterns))
         await self.finalize_family_checker()

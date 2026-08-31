@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_jtag2axi_smc_rw_matrix_test_seq import (
     smu_dtp_jtag2axi_smc_rw_matrix_test_seq,
 )
@@ -18,8 +17,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_dtp_jtag2axi_smc_rw_matrix_test "
-            "TierC JTAG2AXI-RW-MATRIX SEP=0 JTAG"
+            "DUT_TAG=BARE smu_dtp_jtag2axi_smc_rw_matrix_test TierC JTAG2AXI-RW-MATRIX SEP=0 JTAG"
         )
         seq = smu_dtp_jtag2axi_smc_rw_matrix_test_seq(self)
         await seq.run()

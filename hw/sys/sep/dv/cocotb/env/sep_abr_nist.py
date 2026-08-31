@@ -13,10 +13,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_HEADER = (
-    Path(__file__).resolve().parents[2]
-    / "fw" / "tests" / "common" / "abr_nist_vectors.h"
-)
+_HEADER = Path(__file__).resolve().parents[2] / "fw" / "tests" / "common" / "abr_nist_vectors.h"
 
 
 def _load_u32_array(name: str) -> list[int]:

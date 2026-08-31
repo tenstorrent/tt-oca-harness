@@ -35,8 +35,8 @@ BEU_PLIC_ENABLE_OFFSET = 0x18
 BEU_EXPECTED = {
     0: (0x4000_0000, 0x0100_0000, 0x1F00_0000),
     1: (0x4000_0000, 0x0100_0000, 0x1F00_0000),
-    2: (0x0,         0x0,         0x0),
-    3: (0x0,         0x0,         0x0),
+    2: (0x0, 0x0, 0x0),
+    3: (0x0, 0x0, 0x0),
 }
 
 
@@ -45,12 +45,11 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
         for core in range(BEU_CORES):
             base = BEU_CORE_BASE + core * BEU_CORE_STRIDE
             cause, enable, plic_en = BEU_EXPECTED[core]
-            await self.csr_read(f"CORE{core}_BEU_CAUSE", base + BEU_CAUSE_OFFSET,
-                                expected=cause)
-            await self.csr_read(f"CORE{core}_BEU_ENABLE", base + BEU_ENABLE_OFFSET,
-                                expected=enable)
+            await self.csr_read(f"CORE{core}_BEU_CAUSE", base + BEU_CAUSE_OFFSET, expected=cause)
+            await self.csr_read(f"CORE{core}_BEU_ENABLE", base + BEU_ENABLE_OFFSET, expected=enable)
             await self.csr_read(
-                f"CORE{core}_BEU_PLIC_ENABLE", base + BEU_PLIC_ENABLE_OFFSET,
+                f"CORE{core}_BEU_PLIC_ENABLE",
+                base + BEU_PLIC_ENABLE_OFFSET,
                 expected=plic_en,
             )
         assert self.accesses == BEU_CORES * 3, "cluster BEU sweep count mismatch"

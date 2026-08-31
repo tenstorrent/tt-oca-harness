@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 from env.dtp_tap_device import (
-    DTP_OTP_ADDR_WIDTH,
-    DTP_OTP_DATA_WIDTH,
     DTP_JTAG2AXI_RD_PL_DEPTH,
     DTP_JTAG2AXI_WR_PL_DEPTH,
+    DTP_OTP_ADDR_WIDTH,
+    DTP_OTP_DATA_WIDTH,
 )
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq

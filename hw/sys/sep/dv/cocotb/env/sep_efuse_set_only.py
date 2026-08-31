@@ -94,7 +94,9 @@ class SepEfuseSetOnlyCfg:
 
     @staticmethod
     def _draw_field(
-        rng: SepSeededRng, name: str, used_mask: int,
+        rng: SepSeededRng,
+        name: str,
+        used_mask: int,
     ) -> SepEfuseSetOnlyField:
         fld = SepEfuseImage.field(name)
         word_idx = rng.randrange(fld.n_words)

@@ -15,18 +15,33 @@ import re
 from pathlib import Path
 
 from env.sep_seeded_rng import SepSeededRng
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 _SEP_RTL = Path(__file__).resolve().parents[3] / "rtl"
 _REPO = Path(__file__).resolve().parents[6]
 _PKG = _SEP_RTL / "sep_crypto_pkg.sv"
 _UVM = (
-    _REPO / "vendor" / "chipsalliance" / "adams-bridge" / "upstream"
-    / "src" / "abr_top" / "rtl" / "abr_reg_uvm.sv"
+    _REPO
+    / "vendor"
+    / "chipsalliance"
+    / "adams-bridge"
+    / "upstream"
+    / "src"
+    / "abr_top"
+    / "rtl"
+    / "abr_reg_uvm.sv"
 )
 _PARAMS = (
-    _REPO / "vendor" / "chipsalliance" / "adams-bridge" / "upstream"
-    / "src" / "abr_top" / "rtl" / "abr_params_pkg.sv"
+    _REPO
+    / "vendor"
+    / "chipsalliance"
+    / "adams-bridge"
+    / "upstream"
+    / "src"
+    / "abr_top"
+    / "rtl"
+    / "abr_params_pkg.sv"
 )
 
 
@@ -193,7 +208,7 @@ def _selftest() -> None:
     assert ABR_SEED - ABR_BASE == 0x58
     assert ABR_PUBKEY - ABR_BASE == 0x1000
     assert ABR_ERROR_INTR - ABR_INTR == 0x14
-    assert ABR_ERROR_TRIG - ABR_INTR == 0x1c
+    assert ABR_ERROR_TRIG - ABR_INTR == 0x1C
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D

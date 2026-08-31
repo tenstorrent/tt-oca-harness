@@ -27,8 +27,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
             cla_clock_stop_en=cla_clock_stop_en,
         )
         self.log.info(
-            "%s write DEBUG_CONTROL=0x%02x boot_ovrd=%d boot_stall=%d "
-            "jtag_stop=%d cla_stop_en=%d",
+            "%s write DEBUG_CONTROL=0x%02x boot_ovrd=%d boot_stall=%d jtag_stop=%d cla_stop_en=%d",
             context,
             value,
             boot_stall_ovrd,
@@ -43,9 +42,13 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
 
         readback = await self.read_debug_control(shift_value=value)
         decoded = self.log_debug_control(f"{context} readback", readback)
-        self.assert_equal("DEBUG_CONTROL.boot_stall_ovrd", decoded["boot_stall_ovrd"], boot_stall_ovrd, context)
+        self.assert_equal(
+            "DEBUG_CONTROL.boot_stall_ovrd", decoded["boot_stall_ovrd"], boot_stall_ovrd, context
+        )
         self.assert_equal("DEBUG_CONTROL.boot_stall", decoded["boot_stall"], boot_stall, context)
-        self.assert_equal("DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context)
+        self.assert_equal(
+            "DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context
+        )
         self.assert_equal(
             "DEBUG_CONTROL.cla_clock_stop_en",
             decoded["cla_clock_stop_en"],

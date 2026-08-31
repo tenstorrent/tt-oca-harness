@@ -11,7 +11,6 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from . import smc_addr_map as _addr
-from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
 _LOG = logging.getLogger(__name__)
 
@@ -102,9 +101,7 @@ async def count_gated_rising(dut, gated_clk_name: str, smc_cycles: int) -> int:
     return edges["n"]
 
 
-async def count_enabled_at_smc_rise(
-    dut, gated_clk_name: str, smc_cycles: int
-) -> int:
+async def count_enabled_at_smc_rise(dut, gated_clk_name: str, smc_cycles: int) -> int:
     """Count how many of ``smc_cycles`` successive clk_smc rising edges sample gated==1.
 
     Same-domain free-running gated clocks (test_en bypass / disable_cg) sample 1
@@ -232,8 +229,7 @@ async def wait_gated_off(
             last_toggle_at = cyc + idle_observe
     diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
     raise AssertionError(
-        f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} "
-        f"hyst={hyst} {diag}"
+        f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} hyst={hyst} {diag}"
     )
 
 

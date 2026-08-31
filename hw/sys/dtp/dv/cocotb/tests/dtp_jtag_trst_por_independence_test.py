@@ -3,7 +3,6 @@
 """DTP POR/TRST independence test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_trst_por_independence_test_seq import (
     dtp_jtag_trst_por_independence_test_seq,
