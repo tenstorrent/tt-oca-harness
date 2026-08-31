@@ -48,15 +48,17 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
 
-        # KM must be out of reset to sink the genbits, same as the smoke test.
-        await self.start_seq(sep_km_release_seq("km_release"))
-
         # The delta from the smoke test. glen feeds GENERATE_CMD and the golden;
         # program_boot_generate also writes BOOT_GEN_CMD, which is the command
         # BOOT_REQ actually issues (reset glen=4095). SepEntropyCfg is frozen.
         cfg = SepEntropyCfg(glen=SEGMENTATION_GLEN, program_boot_generate=True)
 
         await self.bring_up_entropy(cfg=cfg, strict=True)
+
+        # Release KM after the shared TRNG reset, matching the smoke test.
+        # SepEsrcConfigSeq preserves the reset register's hardware default while
+        # pulsing the TRNG bit, and that default keeps KM held.
+        await self.start_seq(sep_km_release_seq("km_release"))
 
         # Concurrent FIFO_RDATA drain after the last bring-up write, matching the
         # e2e smoke. Without it the entropy FIFO fills, the chain stalls, and only
