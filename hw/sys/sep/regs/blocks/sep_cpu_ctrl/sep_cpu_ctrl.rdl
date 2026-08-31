@@ -419,16 +419,47 @@ addrmap sep_cpu_ctrl {
                 resetting the peripherals), so a bit read as set immediately after boot may
                 describe a fault from before that reset rather than a new one.";
 
-        field { sw = r; hw = w; desc = "AES register bridge error.";  } aes  [0:0] = 0x0;
-        field { sw = r; hw = w; desc = "HMAC register bridge error."; } hmac [1:1] = 0x0;
-        field { sw = r; hw = w; desc = "KMAC register bridge error."; } kmac [2:2] = 0x0;
-        field { sw = r; hw = w; desc = "OTBN register bridge error."; } otbn [3:3] = 0x0;
-        field { sw = r; hw = w; desc = "CSRNG register bridge error (DRBG CSRNG path).";
+        field {
+            sw = r;
+            hw = w;
+            desc = "AES register bridge error.";
+        } aes [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "HMAC register bridge error.";
+        } hmac [1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "KMAC register bridge error.";
+        } kmac [2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "OTBN register bridge error.";
+        } otbn [3:3] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "CSRNG register bridge error (DRBG CSRNG path).";
         } csrng [4:4] = 0x0;
-        field { sw = r; hw = w; desc = "EDN register bridge error (DRBG EDN path).";
-        } edn   [5:5] = 0x0;
-        field { sw = r; hw = w; desc = "Watchdog timer register bridge error.";
-        } wdt   [6:6] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "EDN register bridge error (DRBG EDN path).";
+        } edn [5:5] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Watchdog timer register bridge error.";
+        } wdt [6:6] = 0x0;
     };
 
     reg PERIPH_BUS_ERR_CLEAR {
@@ -442,27 +473,54 @@ addrmap sep_cpu_ctrl {
                 latches.";
 
         // One 1-bit field per block: singlepulse requires width 1.
-        field { sw = w; hw = r; singlepulse = true;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.";
-        } aes  [0:0] = 0x0;
-        field { sw = w; hw = r; singlepulse = true;
+        } aes [0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.";
         } hmac [1:1] = 0x0;
-        field { sw = w; hw = r; singlepulse = true;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.";
         } kmac [2:2] = 0x0;
-        field { sw = w; hw = r; singlepulse = true;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.";
         } otbn [3:3] = 0x0;
-        field { sw = w; hw = r; singlepulse = true;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.";
         } csrng [4:4] = 0x0;
-        field { sw = w; hw = r; singlepulse = true;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.";
-        } edn   [5:5] = 0x0;
-        field { sw = w; hw = r; singlepulse = true;
+        } edn [5:5] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.";
-        } wdt   [6:6] = 0x0;
+        } wdt [6:6] = 0x0;
     };
 
     // ----------------------------------------------
