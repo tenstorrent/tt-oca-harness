@@ -447,7 +447,7 @@ module smc_internal_regs
 		.SpillAr     (1'b1),
 		.SpillR      (1'b0)
 	) inbound_filter_axil_demux (
-		.clk_i            (clk_smc_i),
+		.clk_i            (inbound_filter_clk),
 		.rst_ni           (rst_primary_smc_clk_ni),
 		.test_i           (test_en_i),
 		.slv_req_i        (axil_inbound_filter_ctrl_req_i),
@@ -489,7 +489,7 @@ module smc_internal_regs
 				.SpillAr     (1'b1),
 				.SpillR      (1'b0)
 			) inbound_filter_axi_lite_demux (
-				.clk_i            (clk_smc_i),
+				.clk_i            (inbound_filter_clk),
 				.rst_ni           (rst_primary_smc_clk_ni),
 				.test_i           (test_en_i),
 				.slv_req_i        (inbound_filter_axi_lite_reqs[f]),
@@ -504,7 +504,7 @@ module smc_internal_regs
 
 			// Filter control register
 			filter_ctrl_reg inbound_filter_ctrl_reg (
-				.clk            (clk_smc_i),
+				.clk            (inbound_filter_clk),
 				.arst_n         (rst_primary_smc_clk_ni),
 
 				.s_axil_awready (filter_reg_resp.aw_ready),
@@ -539,7 +539,7 @@ module smc_internal_regs
 				.axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
 				.axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
 			) err_slv (
-				.clk_i       (clk_smc_i),
+				.clk_i       (inbound_filter_clk),
 				.rst_ni      (rst_primary_smc_clk_ni),
 				.axil_req_i  (locked_reg_req),
 				.axil_resp_o (locked_reg_resp)
