@@ -4260,7 +4260,8 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |45
 |Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |41 in-scope (see <<iconic-scorecard>>)
+|Iconic scorecard rows |44 in-scope: 40 PROVEN, 1 PARTIAL, 3 GAP (see <<iconic-scorecard>>)
+|Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
 |===
 
 === Regression Groups
