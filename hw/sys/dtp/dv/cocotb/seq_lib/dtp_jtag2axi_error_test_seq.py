@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI error and error-path security scenarios for GH issue #3212."""
+"""JTAG2AXI error and error-path security scenarios."""
 
 from __future__ import annotations
 
