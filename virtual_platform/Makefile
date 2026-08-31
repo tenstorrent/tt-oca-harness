@@ -553,7 +553,7 @@ $(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(O
 # would be silently skipped. The configure sentinel is an order-only prereq so
 # configure still runs exactly once.
 vp-build: | $(VP_BUILD_DIR)/Makefile check-cxx
-	echo "[VP] Building sep-vp (incremental, via CMake)..."
+	@echo "[VP] Building sep-vp (incremental, via CMake)..."
 	$(MAKE) -C $(VP_BUILD_DIR) -j$(NPROC) sep-vp
 	echo "[VP] Built: $(SEP_VP_BIN)"
 
