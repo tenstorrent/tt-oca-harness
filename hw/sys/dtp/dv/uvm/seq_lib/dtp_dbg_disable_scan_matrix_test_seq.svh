@@ -70,9 +70,9 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     // the model's gated-update semantics.
     protected task check_stap_row(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                                   string context_s);
-        int unsigned all_sib[int];
+        int all_sib[int];
         dtp_stap_3dcr_state_t all_payloads[int];
-        int unsigned no_sib[int];
+        int no_sib[int];
         dtp_stap_3dcr_state_t no_pl[int];
         string watch[$];
         bit gates[DtpStapCount];

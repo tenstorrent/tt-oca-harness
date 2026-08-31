@@ -251,7 +251,7 @@ class dtp_stap_3dcr_model;
     );
         layout_entry_t layout[$];
         int unsigned bit_pos;
-        int unsigned no_sib[int];
+        int no_sib[int];
         dtp_stap_3dcr_state_t no_pl[int];
         bit g[DtpStapCount];
         bit value;

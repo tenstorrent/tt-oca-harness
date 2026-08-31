@@ -335,7 +335,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
         input  string     context_s,
         output bit [63:0] captured
     );
-        int unsigned no_sib[int];
+        int no_sib[int];
         dtp_stap_3dcr_state_t no_pl[int];
         stap_chain_write(d, -1, -1, no_sib, no_pl, context_s, captured);
     endtask

@@ -57,9 +57,9 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         sep_lifecycle_ctrl_pkg::dbg_disable_t d,
         string                                context_s
     );
-        int unsigned sib_en[int];
+        int sib_en[int];
         dtp_stap_3dcr_state_t payloads[int];
-        int unsigned no_sib[int];
+        int no_sib[int];
         dtp_stap_3dcr_state_t no_pl[int];
         bit [63:0] unused;
         sib_en[stap] = 1;
@@ -78,8 +78,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         int unsigned neighbor = (stap + 1) % DtpStapCount;
         int unsigned edges;
         int unsigned counts[string];
-        int unsigned no_sib[int];
-        int unsigned iso_sib[int];
+        int no_sib[int];
+        int iso_sib[int];
         dtp_stap_3dcr_state_t no_pl[int];
         dtp_stap_3dcr_state_t iso_pl[int];
         bit [63:0] captured, unused;
