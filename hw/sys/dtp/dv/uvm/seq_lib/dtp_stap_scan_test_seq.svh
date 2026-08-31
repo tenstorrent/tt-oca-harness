@@ -293,8 +293,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                                 $sformatf("tms_hold.%s.window",
                                           stap_name(stap)));
             `uvm_info(get_type_name(), $sformatf(
-                "tms_hold.%s sampled TMS high %0d/%0d cycles (OSS loopback: "
-                "polarity is state-dependent; log only)",
+                {"tms_hold.%s sampled TMS high %0d/%0d cycles (OSS loopback: ",
+                 "polarity is state-dependent; log only)"},
                 stap_name(stap), counts[{prefix, "_tms"}], edges), UVM_LOW)
         end
     endtask
