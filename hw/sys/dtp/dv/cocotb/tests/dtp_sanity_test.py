@@ -20,6 +20,6 @@ class dtp_sanity_test(dtp_base_test):
             dtp_sanity_test_seq,
             "sanity_seq",
             specific_env="DTP_SANITY_TEST_LOOPS",
-            default_loops=4,
+            default_loops=16,
             random_walks=self.env_int("DTP_SANITY_RANDOM_WALKS", 16),
         )

@@ -157,7 +157,8 @@ module efuse_bank_reg (
             field_combo.EFUSE_BANK_REG[i0].dout.next = next_c;
             field_combo.EFUSE_BANK_REG[i0].dout.load_next = load_next_c;
         end
-        always_ff @(posedge clk) begin
+        // HAND-EDITED: `always`, not `always_ff` -- see header comment.
+        always @(posedge clk) begin
             if(field_combo.EFUSE_BANK_REG[i0].dout.load_next) begin
                 field_storage.EFUSE_BANK_REG[i0].dout.value <= field_combo.EFUSE_BANK_REG[i0].dout.next;
             end

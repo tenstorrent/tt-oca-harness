@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import cocotb
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -99,7 +99,7 @@ class smu_sys_in_filter_window_edge_test_seq:
         data_v, resp_v = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="edge VERSION_LO OKAY",
         )
@@ -111,7 +111,7 @@ class smu_sys_in_filter_window_edge_test_seq:
         _, resp_s = await await_smn_resp(
             master,
             SCRATCH_COLD_ADDR,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="edge SCRATCH_COLD OKAY",
         )
@@ -123,22 +123,22 @@ class smu_sys_in_filter_window_edge_test_seq:
         sb.expect_eq(
             "CHK-AXI-FILTER-OKAY edge VERSION_LO",
             resp_v,
-            AxiResp.OKAY,
+            RESP_OKAY,
             evidence="AXI_FILTER_OKAY",
         )
-        sb.expect_eq("CHK-FILTER-EDGE-SCRATCH", resp_s, AxiResp.OKAY)
+        sb.expect_eq("CHK-FILTER-EDGE-SCRATCH", resp_s, RESP_OKAY)
 
         lo_data, resp_lo = await await_smn_resp(
             master,
             below,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label=f"edge below WDT 0x{below:08x}",
         )
         hi_data, resp_hi = await await_smn_resp(
             master,
             above,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label=f"edge above GPIO 0x{above:08x}",
         )
@@ -159,5 +159,5 @@ class smu_sys_in_filter_window_edge_test_seq:
             f"CHK-FILTER-EDGE-OUT below=0x{below:08x} data=0x{lo_poison:08x} "
             f"above=0x{above:08x} data=0x{hi_poison:08x} DECERR+filter-poison"
         )
-        sb.expect_eq("CHK-FILTER-EDGE-BELOW", resp_lo, AxiResp.DECERR)
-        sb.expect_eq("CHK-FILTER-EDGE-ABOVE", resp_hi, AxiResp.DECERR)
+        sb.expect_eq("CHK-FILTER-EDGE-BELOW", resp_lo, RESP_DECERR)
+        sb.expect_eq("CHK-FILTER-EDGE-ABOVE", resp_hi, RESP_DECERR)

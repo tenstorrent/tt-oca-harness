@@ -26,9 +26,10 @@ enabled and fetches its first instruction from the SEP ROM.
 Every fuse field has two lock bits in the LOCKS field: one write-lock bit and
 one read-lock bit. When the write-lock bit is set to 1, the corresponding fuse
 field can no longer be programmed, and its shadow register is no longer
-writable. When the read-lock bit is set to 1, the shadow register of the
-corresponding fuse field is readable neither by software nor by JTAG. The read
-lock is effective only for fuse fields that are software-visible.
+writable. When the read-lock bit is set to 1, neither the shadow register nor
+the corresponding OTP field is readable by software or by JTAG. The lock field is
+itself the exception: LOCK has no lock-bit pair, and no lock bit may write-lock
+or read-lock LOCKS or LOCKS_SPARE.
 
 The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
@@ -66,12 +67,17 @@ programming never needs to configure the programming voltage.
 
 * Programming a fuse does not update its shadow register until the next fuse
 sensing occurs.
-* The shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
-non-scannable. Any register on the path from these registers to the TAP
-test-enable or fuse write-enable signals is likewise non-scannable.
-* When SECURE_TM is 1 (see the Test Mode section), the shadow registers of
-LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update. Other fuse
-fields may optionally follow the same rule.
+* The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
+LC_STATE, SIP_DIS, and SYS_DIS are non-scannable. Any register on the path
+from these registers to the feature control outputs or the fuse write-enable
+signals is likewise non-scannable.
+* When SECURE_TM is 1 (see the Test Mode section), the shadow registers of LOCK
+(both the LOCKS and LOCKS_SPARE windows), LC_STATE, SIP_DIS, and SYS_DIS shall
+be blocked from any update, from every source -- software, JTAG, and TRoot.
+This list is normative and exhaustive: these are the fields whose perturbation
+could enable a feature that a DIS vector or the lifecycle state has disabled.
+An implementation may block further fields, but no other requirement in this
+specification depends on it.
 
 To prevent test patterns from accidentally or maliciously changing or reading
 out the fuse values:
@@ -95,7 +101,9 @@ field is split across two RDL registers because PeakRDL requires power-of-2
 * `LOCKS_SPARE` (32-bit `@0x8`): slots 32–39 in bits [15:0]; slot 40 (SIGNATURE_REVOKE) in bits [17:16]; slots 41–47 (unassigned) in bits [31:18]
 
 Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 41 lockable fields (slots 0–40). When write-locked, the corresponding
+There are 41 lockable fields (slots 0–40). LOCK is not one of them: *_the 96-bit
+lock field has no lock-bit pair of its own_*, and no lock bit may write-lock or
+read-lock `LOCKS` or `LOCKS_SPARE`. When write-locked, the corresponding
 shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
 _always_ able to read the fuses in order to populate the shadow registers.
@@ -479,7 +487,7 @@ register map is reported in <<sep-detailed-register-map>>.
 [[sep-reset-controller]]
 ==== SEP Reset Controller
 
-The SEP Reset Controller provides software-controllable resets for the Key Manager and crypto accelerators. It is accessible via AXI4-Lite at base address `0x10A5_0000` within the System Peripherals crossbar.
+The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
@@ -491,11 +499,12 @@ The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` wi
 |2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
+|5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
 |=======================================================================
 
-On power-up, `SW_RESET_N` resets to `0x1E`: KM is held in reset, while OTBN,
-AES, HMAC, and KMAC are released. The SEP host firmware writes `1` to release an
-IP from reset and writes `0` to assert its software reset.
+On power-up, `SW_RESET_N` resets to `0x3E`: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes `1` to
+release an IP from reset and writes `0` to request its software reset.
 
 Inside `sep_reset_ctrl`, each bit is ANDed with `sep_reset_n` and then passed
 through a per-IP JTAG override mux (`jtag_sep_reset_ctrl_i`). The `sep_reset_n`
@@ -509,6 +518,30 @@ requests: `sep_crypto_axi_isolate` first isolates the accelerator's AXI port,
 draining outstanding transactions and terminating new ones with DECERR, and only
 then asserts the reset. The isolation is held for the duration of the reset and
 released when the software bit deasserts.
+
+[[sep-trng-reset]]
+===== Resetting the TRNG
+
+The TRNG reset bit controls one reset domain containing the entropy source,
+CSRNG, EDN, their AXI converters, the DRBG endpoint state, and both post-mux EDN
+adapters. Because ESRC, CSRNG, and EDN occupy three independent demux ports, a
+shared coordinator requests isolation on all three and does not assert the TRNG
+reset until all three report isolated. On release, reset is removed while the
+ports remain isolated for one cycle, then all three ports reopen together.
+
+The fabric entropy-pool AXI responder is not reset, so accesses remain
+responsive. While the TRNG reset is active, its pending EDN request, half-packed
+word, FIFO contents, and fill-stall state are synchronously cleared.
+
+Consumers are not part of the reset coordinator. Native EDN requests receive no
+acknowledgement while the post-mux adapter is clearing, remain asserted, and are
+serviced with fresh entropy after the chain restarts. The Key Manager
+AXI-Stream leg stalls in the same way. Software may wait for consumers to become
+idle and hold them in reset when policy requires aborting in-flight operations,
+but this is not required to assert the TRNG reset. Following reset release,
+software reprograms ESRC, waits for startup health testing, locks the certified
+configuration, instantiates CSRNG, and enables EDN.
+Consumers are released only after fresh endpoint/pool progress is observed.
 
 // Additive cross-reference: canonical OTP/eFuse IP documentation
 // is maintained by SMC and can be found at:

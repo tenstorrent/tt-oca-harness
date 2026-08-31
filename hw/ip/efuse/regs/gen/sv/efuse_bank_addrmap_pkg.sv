@@ -14,4 +14,4 @@ endfunction
 localparam longint unsigned EFUSE_BANK_EFUSE_BANK_REG_NUM = 64'h400;
 
 
-endpackage;
+endpackage

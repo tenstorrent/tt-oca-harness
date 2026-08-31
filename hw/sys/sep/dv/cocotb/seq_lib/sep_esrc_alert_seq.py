@@ -62,7 +62,7 @@ class SepEsrcAlert(SepAxiRegDriver):
     async def leave_alert_hang(self) -> None:
         await self._wr(
             ESRC_CTRL,
-            ENTROPY_SOURCE.value("CTRL", RESET=0, MODULE_ENABLE=0),
+            ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0),
         )
 
     async def w1c_alert(self) -> None:

@@ -20,7 +20,7 @@ schema_version = 1
 # their blocker details next to the test names.
 
 # ----- SEP=1 real SEP under SMU -----
-# BLOCKER (#3582 residual, OSS wrapper 2026-07-23): at SEP CPU reset release
+# BLOCKER (SEP IFU / boot-ROM fetch, OSS wrapper 2026-07-23): at SEP CPU reset release
 # mpc_reset_run_req=1 / cla=0 / clocks run, but IFU never asserts
 # sep_boot_rom_req (boot_rom_reqs=0, o_cpu_halt_status=X, traces=0). Same
 # class as commercial cleanup disposition (SMU_DV_CLEANUP_PLAN.md §27).
@@ -239,7 +239,7 @@ tags = ["deferred", "sep", "sep_probe", "interop"]
 
 # ----- Real SMC/SEP interop -----
 # BLOCKER (commercial Manual_SMU_Blocked_SEP_Exec + OSS):
-#   1. #3582 SEP IFU / boot-ROM fetch (no retire) — gates all real dual-fw tests.
+#   1. SEP IFU / boot-ROM fetch (no retire) — gates all real dual-fw tests.
 #   2. SEP mailbox demux/select-to-port mapping — SMC-to-SEP mailbox AW/W can
 #      reach `sep_system_peripherals.mailbox_axil_req` but returns SLVERR /
 #      no FIFO push (sep_mailbox_b_err=1).
@@ -443,7 +443,7 @@ tags = [
 # tags = ["deferred", "fabric", "depth", "planned", "no_force"]
 
 # smu_axi_filter_out_instance_matrix_test → fabric.toml (S1 DECODE; S2/S3 deferred)
-# local_fabric_reg_bar_wr_test → fabric.toml (FAB_SMC_032 J2A delivery)
+# smu_fabric_reg_bar_wr_test → fabric.toml (FAB_SMC_032 J2A delivery)
 
 # smu_axi_alias_remap_manager_scope_test → fabric.toml (FAB_SMC_018 S3; S1/S2/S4/S5 deferred)
 
@@ -453,8 +453,8 @@ tags = [
 # tags = ["deferred", "fabric", "depth", "planned", "no_force"]
 
 # [[tests]]
-# name = "local_fabric_reg_bar_wr_test"
-# module = "local_fabric_reg_bar_wr_test"
+# name = "smu_fabric_reg_bar_wr_test"
+# module = "smu_fabric_reg_bar_wr_test"
 # tags = ["deferred", "fabric", "depth", "planned", "no_force"]
 
 [[tests]]
@@ -510,10 +510,10 @@ name = "smc_cpu_multicore_sanity_test"
 module = "smc_cpu_multicore_sanity_test"
 tags = ["deferred", "smc", "depth"]
 
-# smc_mailbox_sanity_test → smc.toml (outbound-0 STATUS/IRQEN J2A)
+# smu_smc_mailbox_sanity_test → smc.toml (outbound-0 STATUS/IRQEN J2A)
 # [[tests]]
-# name = "smc_mailbox_sanity_test"
-# module = "smc_mailbox_sanity_test"
+# name = "smu_smc_mailbox_sanity_test"
+# module = "smu_smc_mailbox_sanity_test"
 # tags = ["deferred", "smc", "depth"]
 
 [[tests]]
@@ -712,7 +712,7 @@ tags = ["deferred", "dtp", "sep1"]
 
 # ----- Policy 2026-07-29: no Force / no TB placeholder -----
 # BLOCKER: needs_real_lcc + sep1 — SEP=0 ties sep_feat_ctrl='0' (gen_no_sep);
-# J2A cannot ungate without SEP=1 eFuse→LCC→feat_ctrl (#3538). No Force.
+# J2A cannot ungate without SEP=1 eFuse→LCC→feat_ctrl. No Force.
 # Do not enroll in sep0_all / phase1.
 
 
@@ -731,23 +731,23 @@ name = "smc_efuse_secure_tm_force_test"
 module = "smc_efuse_secure_tm_force_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
+# smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
 # [[tests]]
-# name = "smc_gpio_strap_sanity_test"
-# module = "smc_gpio_strap_sanity_test"
+# name = "smu_smc_gpio_strap_sanity_test"
+# module = "smu_smc_gpio_strap_sanity_test"
 # tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_mailbox_int_test → promoted to testlists/smc.toml (SMU_ALL_004 r8 EXT.S2)
+# smu_smc_mailbox_int_test → promoted to testlists/smc.toml (SMU_ALL_004 r8 EXT.S2)
 
 [[tests]]
 name = "smc_reset_unit_wdt_scratch_test"
 module = "smc_reset_unit_wdt_scratch_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
+# smu_smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
 # [[tests]]
-# name = "smc_wdt_sanity_test"
-# module = "smc_wdt_sanity_test"
+# name = "smu_smc_wdt_sanity_test"
+# module = "smu_smc_wdt_sanity_test"
 # tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
 [[tests]]
@@ -755,10 +755,10 @@ name = "smc_wdt_scratch_double_pulse_test"
 module = "smc_wdt_scratch_double_pulse_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
+# smu_smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
 # [[tests]]
-# name = "smc_wdt_timeout_irq_test"
-# module = "smc_wdt_timeout_irq_test"
+# name = "smu_smc_wdt_timeout_irq_test"
+# module = "smu_smc_wdt_timeout_irq_test"
 # tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
 [[tests]]

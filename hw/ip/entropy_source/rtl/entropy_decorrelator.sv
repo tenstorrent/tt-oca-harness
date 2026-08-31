@@ -81,6 +81,9 @@ module entropy_decorrelator #(
                 entropy_byte_valid_o  <= 1'b0;
             end
         end else begin
+            // Keep the divider primed from the programmed value while idle so
+            // configuration writes made before enable govern the first sample.
+            clk_divider          <= sample_clk_div_i;
             entropy_byte_valid_o <= 1'b0;
         end
     end

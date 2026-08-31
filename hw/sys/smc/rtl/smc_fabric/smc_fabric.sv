@@ -23,6 +23,7 @@ module smc_fabric
     // Configuration
     input  smc_pkg::smc_axi_addr_t                              global_base_addr_i,
     input  smc_pkg::smc_axi_addr_t                              local_base_addr_i,
+    input  logic [31:0]                                         region_size_i,
 
     // Clock Gating
     input  logic									            ob_filter_axi_cg_en_i,
@@ -139,6 +140,7 @@ module smc_fabric
 
         .global_base_addr_i         (global_base_addr_i),
         .local_base_addr_i          (local_base_addr_i),
+        .region_size_i              (region_size_i),
         .axi_in_jtag_req_i          (axi_in_jtag_req_i),
         .axi_in_jtag_resp_o         (axi_in_jtag_resp_o),
         .axi_in_mmio_req_i          (axi_in_mmio_req_i),
@@ -191,6 +193,7 @@ module smc_fabric
         .rst_ni                             (rst_ni),
         .test_en_i                          (test_en_i),
         .local_base_addr_i                  (local_base_addr_i),
+        .region_size_i                      (region_size_i),
         .input_axi_req_i                    (filtered_sys_axi_out_req),
         .input_axi_rsp_o                    (filtered_sys_axi_out_resp),
         .sep_in_axi_req_i                   (sep_axi_id_remap_req),

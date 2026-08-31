@@ -31,7 +31,7 @@ class DtpEnvCfg(uvm_object):
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
         self.jtag2axi_responders = {}
-        # Shared AXI checker adoption (issue #3295): opt-in per test via
+        # Shared AXI checker adoption: opt-in per test via
         # dtp_base_test.use_axi_scoreboard. Populated by DtpAxiScoreboard
         # (scoreboard/models) and DtpAxiAgent (monitors/watchers).
         self.axi_scoreboard_enabled = False

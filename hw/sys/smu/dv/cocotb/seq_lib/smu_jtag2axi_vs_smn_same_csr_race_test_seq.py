@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -99,7 +99,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         await await_smn_resp(
             master,
             SCRATCH_COLD_ADDR,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="pre-race SCRATCH SMN ready",
         )
@@ -144,11 +144,11 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         await t_s
         if j_result.get("st") != J2A_STATUS_SUCCESS:
             raise AssertionError(f"race J2A write status={j_result.get('st')}")
-        if s_result.get("resp") != AxiResp.OKAY:
+        if s_result.get("resp") != RESP_OKAY:
             raise AssertionError(f"race SMN write resp={s_result.get('resp')}")
         self.s2_ok = True
         sb.expect_eq("CHK-J2ASMN-WR-J", j_result["st"], J2A_STATUS_SUCCESS)
-        sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], AxiResp.OKAY)
+        sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], RESP_OKAY)
 
         await ClockCycles(dut.clk_smu_i, 64)
         st_r, jdata = await jtag2axi_single_read(
@@ -164,7 +164,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         s_val, s_resp = await axi_read32_resp_bounded(
             master, SCRATCH_COLD_ADDR, label="post-race SMN read"
         )
-        if s_resp != AxiResp.OKAY:
+        if s_resp != RESP_OKAY:
             raise AssertionError(f"post-race SMN read resp={s_resp}")
         s_val = int(s_val) & 0xFFFF_FFFF
         if j_val != s_val:
@@ -197,7 +197,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         v_smn, v_resp = await axi_read32_resp_bounded(
             master, VERSION_LO, label="post-race SMN VERSION"
         )
-        if v_resp != AxiResp.OKAY or (int(v_smn) & 0xFFFF_FFFF) != VERSION_LO_RESET:
+        if v_resp != RESP_OKAY or (int(v_smn) & 0xFFFF_FFFF) != VERSION_LO_RESET:
             raise AssertionError(
                 f"post-race SMN VERSION resp={v_resp} data=0x{int(v_smn):08x}"
             )

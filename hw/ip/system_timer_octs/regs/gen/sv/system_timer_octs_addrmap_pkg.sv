@@ -19,4 +19,4 @@ localparam longint unsigned SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR = 64'h1C;
 localparam longint unsigned SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR = 64'h20;
 
 
-endpackage;
+endpackage

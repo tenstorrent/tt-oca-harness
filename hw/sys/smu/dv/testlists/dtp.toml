@@ -52,7 +52,7 @@ tags = ["dtp", "xtrig", "phase1"]
 run_modes = ["dtp"]
 
 # SMU_ALL_007: RST-PRIMARY.S1/S2 + CTM.S2/S3 on bare tb_top SEP=0.
-# Distinct from wrapper.toml smu_sep_smoke_test (SEP=1 / #3582 blocked).
+# Distinct from wrapper.toml smu_sep_smoke_test (SEP=1 / SEP-IFU blocked).
 [[tests]]
 name = "smu_sep_smoke_test"
 module = "smu_sep_smoke_test"

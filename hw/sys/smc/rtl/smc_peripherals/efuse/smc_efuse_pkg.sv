@@ -14,8 +14,8 @@
 package smc_efuse_pkg;
   import smc_top_addrmap_pkg::*;
 
-  function automatic longint unsigned efuse_offset(input longint unsigned addr);
-    return addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR;
+  function automatic int unsigned efuse_offset(input longint unsigned addr);
+    return int'(addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
   endfunction
 
   // Shadow register layout preserved from the legacy generated sub-block header.

@@ -1,13 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/*
- * DV-TESTCASE-CONTRACT: SMC_I2C_005 ANCHOR: smc_i2c_target_sanity_test
- * DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256:
- * 5c972994c38c327359c4bcd5203212319aceeb4b4e34308f503a5869797e28e4 DV-TESTCASE-CONTRACT-SOURCE:
- * hw/sys/smc/dv/tb/doc/testplan/i2c/dv_vplan_gen/SMC_I2C_VPLAN_DETAIL.md @ artifact_revision 1 ENV:
- * c-fw
- */
+/* DV-TESTCASE-CONTRACT: SMC_I2C_005 ANCHOR: smc_i2c_target_sanity_test ENV: c-fw */
 
 /**
  * @file i2c_target_sanity.c

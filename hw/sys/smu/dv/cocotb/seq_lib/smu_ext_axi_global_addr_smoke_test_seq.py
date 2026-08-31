@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from cocotbext.axi import AxiProt, AxiResp
+from ocah_axi_vip import PROT_PRIVILEGED, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -60,7 +60,7 @@ PATTERN_G2L = 0x5A5A5678
 PATTERN_S2 = 0xDEADBEEF
 
 AXI_TIMEOUT_NS = 200_000
-SECURE_PROT = int(AxiProt.PRIVILEGED)
+SECURE_PROT = PROT_PRIVILEGED
 FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
 
@@ -111,15 +111,17 @@ class smu_ext_axi_global_addr_smoke_test_seq:
     async def _axi_rw32(self, master, addr: int, *, write: bool, wdata: int = 0):
         async def _do():
             if write:
-                beat = await master.write(
+                result = await master.write_bytes_result(
                     addr,
                     wdata.to_bytes(4, "little"),
-                    prot=AxiProt(SECURE_PROT),
+                    prot=SECURE_PROT,
+                    check_response=False,
                 )
-                return None, beat.resp
-            beat = await master.read(addr, 4, prot=AxiProt(SECURE_PROT))
-            val = int.from_bytes(bytes(beat.data)[:4], "little")
-            return val, beat.resp
+                return None, result.resp
+            result = await master.read_bytes_result(
+                addr, 4, prot=SECURE_PROT, check_response=False
+            )
+            return result.data & 0xFFFF_FFFF, result.resp
 
         try:
             return await with_timeout(_do(), AXI_TIMEOUT_NS, "ns")
@@ -138,7 +140,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
                 master, addr, write=write, wdata=wdata
             )
             last, last_val = resp, val
-            if resp == AxiResp.OKAY:
+            if resp == RESP_OKAY:
                 self._log(f"FILTER_READY {label} poll={poll}")
                 return val, resp
             await ClockCycles(self.dut.clk_smu_i, FILTER_READY_STEP)
@@ -213,7 +215,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
             wdata=0,
             label="S1_L2G_GLOBAL_RD",
         )
-        if resp != AxiResp.OKAY or val != PATTERN_L2G:
+        if resp != RESP_OKAY or val != PATTERN_L2G:
             raise AssertionError(
                 f"write_local_read_global got=0x{val:08x}/{resp_name(resp)} "
                 f"want=0x{PATTERN_L2G:08x}/OKAY"
@@ -249,7 +251,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
             wdata=0,
             label="S2_GLOBAL_RD",
         )
-        if resp2 != AxiResp.OKAY or val2 != PATTERN_S2:
+        if resp2 != RESP_OKAY or val2 != PATTERN_S2:
             raise AssertionError(
                 f"S2 offset_preserved got=0x{val2:08x}/{resp_name(resp2)} "
                 f"want=0x{PATTERN_S2:08x}/OKAY @0x{global_addr_2:08x}"

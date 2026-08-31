@@ -72,7 +72,7 @@ _PROTOCOL_VIP_TESTS = {
     "smc_sideband_protocol_smoke_test": SmcProtocolVipKind.SIDEBAND,
     "smc_sideband_avsbus_octs_bfm_test": SmcProtocolVipKind.SIDEBAND,
     "smc_octs_dual_sync_test": SmcProtocolVipKind.SIDEBAND,
-    "octs_sanity_test": SmcProtocolVipKind.SIDEBAND,
+    "smc_octs_sanity_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_sanity_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_status_depth_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_clock_config_proxy_test": SmcProtocolVipKind.SIDEBAND,

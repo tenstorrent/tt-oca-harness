@@ -39,6 +39,15 @@ Isolation proof (both directions, then the remaining isolated bits):
                     a secure wipe, so DMEM retention across that pulse is not
                     claimed. KM (bit 0) stays held at the reset default and is
                     not claimed.
+  * CHK-ISOLATE-*   while HMAC's SW_RESET_N is held, the same DIGEST_0 address
+                    that just returned OKAY + the golden digest returns DECERR
+                    on read; a write to HMAC CFG also DECERR; AES DATA_OUT_0
+                    on the sibling port stays OKAY; SW_RESET_N readback shows
+                    the HMAC bit low; after release DIGEST_0 is OKAY at its
+                    reset value. Drain-before-reset is not claimed.
+  * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
+                    TRNG-only reset, so resetting the entropy complex does not
+                    reach the accelerator domains.
 
 reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
 COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -65,15 +74,18 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
-from seq_lib.sep_hmac_seq import SepHmac
-from seq_lib.sep_aes_seq import SepAes
+from seq_lib.sep_hmac_seq import SepHmac, HMAC_CFG, HMAC_DIGEST_0
+from seq_lib.sep_aes_seq import SepAes, AES_DATA_OUT_0
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from env.sep_kmac_golden import kmac_family_words
 from seq_lib.sep_otbn_seq import SepOtbn, OTBN_LOAD_CHECKSUM_RESET, OTBN_DMEM_RESULT_LO
 from sep_reg_meta import KMAC
 from seq_lib.sep_crypto_reset_iso_seq import (
     SepCryptoResetIso, ENG_HMAC, ENG_AES, ENG_KMAC, ENG_OTBN,
+    RESP_OKAY, RESP_DECERR, HMAC_DIGEST_RESET, RST_HMAC,
+    SW_RESET_N_DEFAULT,
 )
+from seq_lib.sep_sw_reset_seq import SepSwReset
 
 # Directed known vectors (RAND-NONE).
 HMAC_MSG = [0x6A6F6232, 0xDEADBEEF, 0x0BADF00D, 0xFEEDFACE]
@@ -86,7 +98,6 @@ OTBN_DMEM_MARK = 0xD3E00D3E
 KMAC_STATUS_RESET = KMAC.reset32("STATUS")
 
 _ZERO_DIGEST = [0] * 8
-_ZERO_BLOCK = [0] * 4
 
 
 def sha256_digest_words(msg_words: list[int]) -> list[int]:
@@ -250,6 +261,74 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.logger.info(
             "CHK-REVERSE PASS: HMAC reset cleared its own DIGEST; AES DATA_OUT intact")
 
+        # ---- Isolate window: HMAC held in reset; same DIGEST_0 must DECERR --
+        # Re-establish a live HMAC result so the pre-window beat is OKAY + the
+        # golden (an unmapped address cannot produce OKAY -> DECERR -> OKAY).
+        # AES still holds C from Case B; that is the sibling-OKAY witness.
+        h_digest = await self._run_hmac()
+        pre = await self.rst.probe(HMAC_DIGEST_0)
+        assert pre.resp_code == RESP_OKAY and pre.rdata == h_digest[0], (
+            f"isolate pre-window HMAC DIGEST_0 resp={pre.resp_code} "
+            f"rdata=0x{pre.rdata:08x}, expected OKAY + 0x{h_digest[0]:08x}"
+        )
+        self.logger.info(
+            "CHK-ISOLATE-PRE PASS: HMAC DIGEST_0 OKAY with live golden 0x%08x",
+            h_digest[0])
+
+        await self.rst.assert_reset(ENG_HMAC.rst_bit)
+        await ClockCycles(cocotb.top.clk_i, 8)
+        sw = await self.rst.read_back()
+        assert (sw >> RST_HMAC) & 1 == 0, (
+            f"SW_RESET_N HMAC bit still released after isolate request: 0x{sw:08x}"
+        )
+        self.logger.info(
+            "CHK-ISOLATE-LANDED PASS: SW_RESET_N=0x%08x HMAC bit held", sw)
+
+        self.env.axi_monitor.arm_expected_decerr(1)
+        iso_rd = await self.rst.probe(HMAC_DIGEST_0, expect_error=True)
+        assert iso_rd.resp_code == RESP_DECERR and not iso_rd.timed_out, (
+            f"in-window HMAC DIGEST_0 read resp={iso_rd.resp_code} "
+            f"timed_out={iso_rd.timed_out}, expected DECERR (not hang/OKAY/SLVERR)"
+        )
+        self.logger.info(
+            "CHK-ISOLATE-DECERR PASS: HMAC DIGEST_0 read -> DECERR (resp=%d)",
+            iso_rd.resp_code)
+
+        self.env.axi_monitor.arm_expected_decerr(1)
+        iso_wr = await self.rst.probe(
+            HMAC_CFG, write=True, wdata=0x1, expect_error=True)
+        assert iso_wr.resp_code == RESP_DECERR and not iso_wr.timed_out, (
+            f"in-window HMAC CFG write resp={iso_wr.resp_code} "
+            f"timed_out={iso_wr.timed_out}, expected DECERR"
+        )
+        self.logger.info(
+            "CHK-ISOLATE-WR PASS: HMAC CFG write -> DECERR (resp=%d)",
+            iso_wr.resp_code)
+
+        sib = await self.rst.probe(AES_DATA_OUT_0)
+        assert sib.resp_code == RESP_OKAY and sib.rdata == c_block[0], (
+            f"in-window sibling AES DATA_OUT_0 resp={sib.resp_code} "
+            f"rdata=0x{sib.rdata:08x}, expected OKAY + 0x{c_block[0]:08x}"
+        )
+        self.logger.info(
+            "CHK-ISOLATE-SIBLING PASS: AES DATA_OUT_0 OKAY 0x%08x in HMAC window",
+            sib.rdata)
+
+        await self.rst.release_resets()
+        await ClockCycles(cocotb.top.clk_i, 40)
+        post = await self.rst.probe(HMAC_DIGEST_0)
+        assert post.resp_code == RESP_OKAY, (
+            f"post-release HMAC DIGEST_0 resp={post.resp_code}, expected OKAY"
+        )
+        assert post.rdata == HMAC_DIGEST_RESET, (
+            f"post-release HMAC DIGEST_0=0x{post.rdata:08x}, "
+            f"expected reset 0x{HMAC_DIGEST_RESET:08x}"
+        )
+        self.logger.info(
+            "CHK-ISOLATE-REOPEN PASS: HMAC DIGEST_0 OKAY after release")
+        self.logger.info(
+            "CHK-ISOLATE-RESET-DEFAULT PASS: rdata=0x%08x", post.rdata)
+
         # Remaining SW_RESET_N bits that this DUT isolates: KMAC and OTBN.
         # KM (bit 0) stays held at the reset default -- a different mechanism.
         h_digest = await self._run_hmac()
@@ -314,22 +393,44 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "(held 0x%08x -> 0x%08x); DMEM 0x%08x held across AES neighbour reset",
             mark, otbn_after, dmem_mark)
 
-        self.logger.info(
-            "CHK-SW-RESET-BITS PASS: AES/HMAC/KMAC/OTBN domains walked; KM held")
+        sw_final = await self.rst.read_back()
+        assert sw_final == SW_RESET_N_DEFAULT, (
+            f"SW_RESET_N=0x{sw_final:08x} after domain walk, expected default "
+            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac/trng released)"
+        )
 
-        # Close out the entropy evidence this test asked for. bring_up_entropy was
-        # called with score_sinks={"aes": "observe"}, which forks the crypto-EDN sink
-        # monitor and sets a >=1-beat floor for CHK5_aes -- but nothing evaluated it:
-        # report() was never called, so no CHK5_aes line reached the log and the
-        # "entropy-backed" claim in the line below had no enforced evidence behind it.
-        # A requested check that is never reported is indistinguishable from one that
-        # was never requested.
+        # score_sinks={"aes": "observe", "kmac": "observe"} sets a >=1-beat
+        # floor for those sinks; report() is what evaluates it.
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report(), (
             "sep_drbg_scoreboard report failed (CHK5_aes/kmac beat floor or CHK1..CHK4)"
         )
 
+        # ---- TRNG-only reset must leave idle neighbours untouched ------------
+        # The entropy complex resets as one domain, so pulsing only its bit must
+        # not reach the accelerators. Both results are re-established here: the
+        # domain walk above secure-wiped AES and cleared HMAC. The scoreboard's
+        # FIFO drainer is an ESRC CSR client and is already stopped, which is the
+        # same quiesce firmware owes the TRNG before requesting its reset.
+        h_digest = await self._run_hmac()
+        c_block = await self._run_aes()
+
+        trng_rst = SepSwReset(self)
+        await trng_rst.park("trng")
+        await ClockCycles(cocotb.top.clk_i, 40)
+        assert await self.hmac.read_digest() == h_digest, (
+            "HMAC held DIGEST was disturbed by a TRNG-only reset"
+        )
+        assert await self.aes.read_data_out() == c_block, (
+            "AES held DATA_OUT was disturbed by a TRNG-only reset"
+        )
+        await trng_rst.release("trng")
+        self.logger.info(
+            "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "
+            "the shared entropy-complex reset")
+
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
-            "(HMAC<->AES, KMAC, OTBN; KM held; entropy-backed: CHK5_aes/kmac beats reported)")
+            "(HMAC<->AES, KMAC, OTBN, TRNG neighbours; SW_RESET_N=0x%08x; "
+            "entropy-backed: CHK5_aes/kmac beats reported)", sw_final)

@@ -22,10 +22,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from re import compile
 
 from .compat import UTC
 from .config import (
     CANONICAL_STAGES,
+    OverlayFrameworkMismatch,
     as_str_list,
     cocotb_cfg,
     default_target_name,
@@ -190,6 +192,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--run-mode",
         metavar="NAME",
         help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
+    )
+    common.add_argument(
+        "--overlay",
+        metavar="PATH",
+        help=(
+            "Adopter overlay config applied append-only on top of the merged DUT view "
+            "(extra build sources/incdirs/source_lists, target defines/flags, [sim].args); "
+            "also read from OCAH_DV_OVERLAY, never auto-activated"
+        ),
     )
 
     actions = parser.add_argument_group("Actions And Introspection")
@@ -669,13 +680,30 @@ def validate_all(root: Path) -> tuple[dict[str, Flow], dict[str, Any], dict[str,
     return duts, simulators, policies, executors
 
 
-def cmd_validate_configs(root: Path) -> int:
+def adopter_overlay_path(args: Any) -> Path | None:
+    """The adopter overlay selected by ``--overlay`` (wins) or ``OCAH_DV_OVERLAY``; else None.
+
+    A relative path resolves against the invocation directory, like any other CLI path. The
+    overlay is never inferred from the tree — only these two explicit channels activate it.
+    """
+    text = getattr(args, "overlay", None) or os.environ.get("OCAH_DV_OVERLAY", "").strip()
+    if not text:
+        return None
+    return Path(text).expanduser().resolve()
+
+
+def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
     """Validate every config and print a per-DUT summary.
 
     Unlike the run path (which fails fast), this reports every DUT's status in one pass so a user
-    sees all config problems at once instead of fixing them one re-run at a time.
+    sees all config problems at once instead of fixing them one re-run at a time. With an adopter
+    overlay active, every framework view is validated WITH the overlay applied; views excluded by
+    the overlay's `frameworks` guard fall back to their base validation and say so.
     """
-    print(f"Validating configs in {repo_rel(root, configs_root(root))}\n")
+    print(f"Validating configs in {repo_rel(root, configs_root(root))}")
+    if overlay is not None:
+        print(f"Adopter overlay: {repo_rel(root, overlay)}")
+    print()
 
     # The registries are structural: per-flow validation cannot run without them, so a failure here
     # is reported on its own and stops the report.
@@ -709,9 +737,18 @@ def cmd_validate_configs(root: Path) -> int:
         for label, fw in views:
             rows += 1
             try:
-                view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                suffix = ""
+                if overlay is not None:
+                    try:
+                        view = resolve_dut(root, name, framework=fw, adopter_overlay=overlay)
+                        suffix = " [+overlay]"
+                    except OverlayFrameworkMismatch:
+                        view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                        suffix = " [overlay skipped: frameworks guard]"
+                else:
+                    view = flow if fw is None else resolve_dut(root, name, framework=fw)
                 validate_flow(view, root, simulators, policies, executors)
-                print(f"  {label:<16} OK")
+                print(f"  {label:<16} OK{suffix}")
             except ConfigError as exc:
                 failures += 1
                 print(f"  {label:<16} FAIL: {exc}")
@@ -966,7 +1003,10 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     flow: Flow | None = None
     if args.dut:
         try:
-            flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
+            flow = resolve_dut(
+                root, args.dut, mode=args.mode, framework=args.framework,
+                adopter_overlay=adopter_overlay_path(args),
+            )
             validate_flow(flow, root, simulators, policies, executors)
         except ConfigError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
@@ -1032,14 +1072,44 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def list_flows(flows: dict[str, Flow]) -> None:
-    for flow in sorted(flows.values(), key=lambda item: item.name):
-        tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
-        if flow.license == "required-commercial":
-            tool += " (licensed)"
-        frameworks = ",".join(flow.frameworks) or flow.framework or "-"
-        print(f"{flow.name:<16} {flow.kind:<3} {frameworks:<12} {tool:<20} {flow.description}")
 
+def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
+    BOLD = "\033[1m"
+    NORMAL = "\033[0m"
+    SELECT_BEGIN = BOLD
+    SELECT_END = NORMAL
+
+    # If using ANSI codes, these confuse fstring alignment, so must align manually
+    ANSI_RE = compile(r'\033\[[0-9;]*m')
+    def align(txt: str, width: int) -> str:
+        return txt + ' ' * max(0, width-len(ANSI_RE.sub('', txt)))
+
+    def format_selected_licensed(value:str, selected:bool, unlicensed:bool):
+        return ((f"{SELECT_BEGIN}{value}{SELECT_END}" if selected else value) if unlicensed else (f"{SELECT_BEGIN}{value} (licensed){SELECT_END}" if selected else value+" (licensed)"))
+
+    print(f"{BOLD}{'NAME':<12} {'KIND':<4} {'FRAMEWORKS':<14} {'TOOLS':<46} {'DESCRIPTION'}{NORMAL}")
+    freesims = {name: not bool(attrs["license_env"]) for name, attrs in simulators.items()}
+    freeframeworks:dict[str,bool] = {}
+    frameworkTools:dict[str,list[str]] = {"":[]}
+    for sim, free in freesims.items():
+        for framework in simulators[sim]['frameworks']:
+            freeframeworks[framework] = free or freeframeworks.get(framework, False)
+            frameworkTools[framework] = frameworkTools.get(framework, []) + [sim]
+    for flow in sorted(flows.values(), key=lambda item: item.name):
+        spill = False
+        frameworks = { framework: format_selected_licensed(framework, (flow.framework and framework==flow.framework) or (not flow.framework and framework==flow.default_framework), freeframeworks[framework]) for framework in sorted(flow.frameworks, key=lambda x : (0,0) if x==flow.default_framework else (1,str.lower(x)))
+        } or {"":"-"}
+        for framework, label in frameworks.items():
+            toolArr = list(set(flow.tools) & set(frameworkTools[framework]))
+            defaultTool = flow.default_tool if flow.default_tool in toolArr else toolArr[0] if len(toolArr) else ""
+            toolsArr = [
+                format_selected_licensed(tool, tool==defaultTool, freesims[tool])
+                for tool in sorted(toolArr, key=lambda x : (0,0) if x==flow.default_tool else (1,str.lower(x)))
+            ] or ["-"]
+            tools = ("/".join(toolsArr))
+
+            print(f"{(flow.name if not spill else ''):<12} {flow.kind if not spill else ' '+chr(8627):<4} {align(label,14)} {align(tools,46)} {flow.description if not spill else ''}")
+            spill = True
 
 def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
     """Scenario count per implemented framework — the binding-matrix summary."""
@@ -1421,6 +1491,13 @@ def expand_items(
     for name in requested:
         if name in catalog.groups:
             members = catalog.groups[name]
+            # Catalog loading already rejects unresolved members; this keeps directly
+            # constructed catalogs on the same contract instead of a downstream KeyError.
+            missing = [member for member in members if member not in catalog.tests]
+            if missing:
+                raise ConfigError(
+                    f"group `{name}` references missing test(s): {', '.join(missing)}"
+                )
         elif name in catalog.tests:
             members = [name]
         else:
@@ -1585,7 +1662,9 @@ def target_plan(
     ordered: list[str] = []
     seen: set[str] = set()
     for item in items:
-        test = catalog.tests[item]
+        test = catalog.tests.get(item)
+        if test is None:
+            raise ConfigError(f"selected item `{item}` is not a test in the catalog")
         target = resolved_target_name(sim_cfg, test)
         target_by_item[item] = target
         if target not in seen:
@@ -2514,7 +2593,7 @@ def main(argv: list[str] | None = None) -> int:
         # Diagnostics report their own findings (and must not be pre-empted by the fail-fast
         # validate_all below), so dispatch them first.
         if args.validate_configs:
-            return cmd_validate_configs(root)
+            return cmd_validate_configs(root, adopter_overlay_path(args))
         if args.doctor:
             return cmd_doctor(root, args)
 
@@ -2522,7 +2601,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.list:
             if args.dut:
-                flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
+                flow = resolve_dut(
+                    root, args.dut, mode=args.mode, framework=args.framework,
+                    adopter_overlay=adopter_overlay_path(args),
+                )
                 validate_flow(flow, root, simulators, policies, executors)
                 if args.json:
                     list_flow_detail_json(flow, root)
@@ -2531,7 +2613,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.json:
                 list_flows_json(root, duts)
             else:
-                list_flows(duts)
+                list_flows(duts, simulators)
             return 0
 
         if not args.dut:
@@ -2541,7 +2623,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.dut not in duts:
             raise ConfigError(f"unknown DUT `{args.dut}`")
-        flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
+        flow = resolve_dut(
+            root, args.dut, mode=args.mode, framework=args.framework,
+            adopter_overlay=adopter_overlay_path(args),
+        )
         validate_flow(flow, root, simulators, policies, executors)
         return run_flow(root=root, flow=flow, simulators=simulators, policies=policies, args=args)
     except ConfigError as exc:

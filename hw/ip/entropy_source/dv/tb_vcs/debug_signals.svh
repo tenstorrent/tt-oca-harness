@@ -17,10 +17,9 @@
 /* verilator lint_off UNUSED */
 logic [31:0] debug_component_id;
 logic [31:0] debug_ctrl;
-logic        debug_ctrl_reset;           // CTRL.RESET bit
+logic        debug_ctrl_reserved_0;      // Reserved bit 0, reads zero
 logic        debug_ctrl_autotune_enable; // CTRL.AUTOTUNE_ENABLE bit
 logic [9:0]  debug_ctrl_downsample_rate; // CTRL.DOWNSAMPLE_RATE field
-logic [31:0] debug_status;
 logic [31:0] debug_debug_ctrl;
 logic [31:0] debug_intr_status;
 logic [31:0] debug_intr_enable;
@@ -30,10 +29,8 @@ logic [31:0] debug_health_test_ctrl;
 logic [31:0] debug_markov_thresholds;
 logic [31:0] debug_health_test_status;
 logic [31:0] debug_repetition_count;
-logic [31:0] debug_apt_proportion_1bit;  // Issue #1014: new APT proportion registers
-logic [31:0] debug_apt_proportion_2bit;
-logic [31:0] debug_apt_proportion_3bit;
-logic [31:0] debug_apt_proportion_4bit;
+logic [31:0] debug_apt_proportion_1bit;
+logic [31:0] debug_apt_proportion_lo;
 logic [31:0] debug_ring_osc_enable;
 logic [31:0] debug_ring_osc_tune;
 logic [31:0] debug_ring_osc_ctrl;
@@ -64,25 +61,25 @@ logic [7:0]  debug_decorr_refmodel_bytes_11;
 assign debug_component_id = 32'h0;  // Not accessible in reg_out interface
 
 // Flatten CTRL register
-assign debug_ctrl[0]      = dut.reg_out.CTRL.RESET.value;
-assign debug_ctrl[3:1]    = 3'h0;
+assign debug_ctrl[0]      = 1'b0;
+assign debug_ctrl[1] = dut.reg_out.CTRL.MODULE_ENABLE.value;
+assign debug_ctrl[3:2] = 2'h0;
 assign debug_ctrl[4]      = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
-assign debug_ctrl[15:5]   = 11'h0;
+assign debug_ctrl[7:5] = 3'h0;
+assign debug_ctrl[8] = dut.reg_out.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
+assign debug_ctrl[15:9] = 7'h0;
 assign debug_ctrl[25:16]  = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
-assign debug_ctrl[31:26]  = 6'h0;
+assign debug_ctrl[27:26] = 2'h0;
+assign debug_ctrl[28] = dut.reg_out.CTRL.SHA256_WHITENING_ENABLE.value;
+assign debug_ctrl[31:29] = 3'h0;
 
 // CTRL register individual fields (for easier Verdi visualization)
-assign debug_ctrl_reset           = dut.reg_out.CTRL.RESET.value;
+assign debug_ctrl_reserved_0      = 1'b0;
 assign debug_ctrl_autotune_enable = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
 assign debug_ctrl_downsample_rate = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
 
-// Flatten STATUS register
-assign debug_status[0]    = dut.reg_in.STATUS.RSVD.next;
-assign debug_status[31:1] = 31'h0;
-
 // Flatten DEBUG_CTRL register
-assign debug_debug_ctrl[5:0]   = dut.reg_out.DEBUG_CTRL.SELECT_SIGNAL.value;
-assign debug_debug_ctrl[7:6]   = 2'h0;
+assign debug_debug_ctrl[7:0] = dut.reg_out.DEBUG_CTRL.SELECT_SIGNAL.value;
 assign debug_debug_ctrl[10:8]  = dut.reg_out.DEBUG_CTRL.SELECT_FREQ_DIV.value;
 assign debug_debug_ctrl[31:11] = 21'h0;
 
@@ -105,34 +102,28 @@ assign debug_fifo_status[31:21]   = 11'h0;
 // Flatten FIFO_RDATA register
 assign debug_fifo_rdata[31:0]     = dut.reg_in.FIFO_RDATA.rd_data;
 
-// Flatten HEALTH_TEST_CTRL register (Issue #1014: PROPORTION_LIMIT moved to separate registers)
+// Flatten HEALTH_TEST_CTRL register
 assign debug_health_test_ctrl[7:0]   = dut.reg_out.HEALTH_TEST_CTRL.ENABLE.value;
 assign debug_health_test_ctrl[15:8]  = dut.reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value;
-assign debug_health_test_ctrl[31:16] = 16'h0;  // Reserved (PROPORTION_LIMIT removed in Issue #1014)
+assign debug_health_test_ctrl[31:16] = 16'h0;
 
 // Flatten MARKOV_TEST_PROB_THRESHOLDS register
-assign debug_markov_thresholds[7:0]   = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value;
-assign debug_markov_thresholds[15:8]  = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value;
-assign debug_markov_thresholds[23:16] = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_00_THRESHOLD.value;
-assign debug_markov_thresholds[31:24] = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_11_THRESHOLD.value;
+assign debug_markov_thresholds[15:0]  = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value;
+assign debug_markov_thresholds[31:16] = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value;
 
 // Flatten HEALTH_TEST_STATUS register
 assign debug_health_test_status[7:0]  = dut.reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next;
 assign debug_health_test_status[31:8] = 24'h0;
 
 // Flatten REPETITION_TEST_COUNT register
-assign debug_repetition_count[7:0]  = dut.reg_in.REPETITION_TEST_COUNT.REPETITION_COUNT.next;
-assign debug_repetition_count[31:8] = 24'h0;
+assign debug_repetition_count[15:0] = dut.reg_in.REPETITION_TEST_COUNT.REPETITION_COUNT.next;
+assign debug_repetition_count[31:16] = 16'h0;
 
-// Flatten APT_PROPORTION_*BIT registers (Issue #1014: new separate proportion limit registers)
-assign debug_apt_proportion_1bit[9:0]   = dut.reg_out.APT_PROPORTION_1BIT.LIMIT.value;
-assign debug_apt_proportion_1bit[31:10] = 22'h0;
-assign debug_apt_proportion_2bit[9:0]   = dut.reg_out.APT_PROPORTION_2BIT.LIMIT.value;
-assign debug_apt_proportion_2bit[31:10] = 22'h0;
-assign debug_apt_proportion_3bit[9:0]   = dut.reg_out.APT_PROPORTION_3BIT.LIMIT.value;
-assign debug_apt_proportion_3bit[31:10] = 22'h0;
-assign debug_apt_proportion_4bit[9:0]   = dut.reg_out.APT_PROPORTION_4BIT.LIMIT.value;
-assign debug_apt_proportion_4bit[31:10] = 22'h0;
+// Flatten APT high and low limit registers.
+assign debug_apt_proportion_1bit[15:0] = dut.reg_out.APT_PROPORTION_1BIT.LIMIT.value;
+assign debug_apt_proportion_1bit[31:16] = 16'h0;
+assign debug_apt_proportion_lo[15:0] = dut.reg_out.APT_PROPORTION_LO.LIMIT.value;
+assign debug_apt_proportion_lo[31:16] = 16'h0;
 
 // Flatten RING_OSC_ENABLE register
 assign debug_ring_osc_enable[11:0]  = dut.reg_out.RING_OSC_ENABLE.ENABLE.value;
@@ -150,9 +141,7 @@ assign debug_ring_osc_ctrl[31:12] = 20'h0;
 
 // Flatten DECORRELATOR_CTRL register
 assign debug_decorrelator_ctrl[11:0]  = dut.reg_out.DECORRELATOR_CTRL.BYPASS.value;
-assign debug_decorrelator_ctrl[15:12] = 4'h0;
-assign debug_decorrelator_ctrl[23:16] = dut.reg_out.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value;
-assign debug_decorrelator_ctrl[31:24] = 8'h0;
+assign debug_decorrelator_ctrl[31:12] = dut.reg_out.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value;
 
 // Flatten DECORRELATOR_MASK register
 assign debug_decorrelator_mask[7:0]   = dut.reg_out.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;

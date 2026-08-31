@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC fabric JTAG2AXI read-side scenarios for GH issue #3210."""
+"""SMC fabric JTAG2AXI read-side scenarios."""
 
 from __future__ import annotations
 
@@ -35,7 +35,8 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner("SMC_AXI_SINGLE_OP Single Write-Read")
         await self.reset_tap()
         addr = DEFAULT_AXI_ADDR + 0x400
-        data = DEFAULT_AXI_DATA
+        # Seeded per-pass payload: each loop writes and reads back different data.
+        data = self.rng("smc_axi_single_wr_rd").getrandbits(64)
         write_item = await self.write_single_and_check(addr, data, context="single_wr_rd.write")
         read_item = await self.read_single_and_check(addr, data, context="single_wr_rd.read")
         self.status = (
@@ -227,7 +228,8 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(title)
         await self.reset_tap()
         addr = DEFAULT_AXI_ADDR + 0x500
-        data = 0xABCD_EF01_2345_6789
+        # Seeded per-pass payload for the baseline/restore reads.
+        data = self.rng("smc_axi_read_gate").getrandbits(64)
         self.write_mem_int(addr, data, 3)
         self.log_step(1, "Establish baseline read and AXI activity")
         before = await self.axi_activity_counts()

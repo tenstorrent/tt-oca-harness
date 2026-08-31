@@ -4,6 +4,7 @@
 * xref:index.adoc[Starting with OCAH]
 * Starting as a user
 ** xref:dependencies.adoc[Dependencies]
+** xref:setup.adoc[Environment Setup]
 ** xref:workflows.adoc[Workflows]
 ** xref:guidelines.adoc[Guidelines]
 * Starting as a contributor
@@ -12,4 +13,3 @@
 ** xref:defects.adoc[Defect Reporting]
 ** xref:documentation.adoc[Documentation]
 ** xref:code_of_conduct.adoc[Code of Conduct]
-
