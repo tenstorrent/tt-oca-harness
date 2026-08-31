@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import Enum
 
 import cocotb
-from cocotb.triggers import with_timeout
+from cocotb.triggers import RisingEdge, with_timeout
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 from pyuvm import (
     ConfigDB,
@@ -27,6 +27,38 @@ try:
     from cocotb.result import SimTimeoutError
 except ImportError:
     from cocotb.triggers import SimTimeoutError
+
+
+# How long a DUT-generated reset is given to take a defined value before the VIP
+# is attached to it. The reset tree settles within a few clocks of the cold reset
+# being applied; this is generous enough not to be a tuning knob and short enough
+# that a reset which never resolves is reported rather than waited on forever.
+_RESET_RESOLVE_CYCLES = 200
+
+
+async def await_reset_resolved(reset_signal, clock, label: str) -> None:
+    """Hold until `reset_signal` reads 0 or 1 rather than X.
+
+    The VIP decides whether it is in reset by evaluating this signal, and an X
+    reads as de-asserted. It then starts sampling handshake lines that are
+    themselves X, and cocotb raises `Cannot convert Logic('X') to bool` out of
+    the stream driver before the test has run a single check.
+
+    The resets these agents watch are DUT outputs, not the cold reset the bench
+    drives, so they are X until the reset tree has propagated. On a two-state
+    simulator every signal is resolved from time 0 and this returns on the first
+    look; on a four-state one it defers attachment until the tree has settled,
+    which still lands well before reset is released.
+    """
+    for _ in range(_RESET_RESOLVE_CYCLES):
+        if reset_signal.value.is_resolvable:
+            return
+        await RisingEdge(clock)
+    raise AssertionError(
+        f"{label} reset never took a defined value within {_RESET_RESOLVE_CYCLES} "
+        f"clocks, so the VIP cannot tell whether it is in reset. Attaching anyway "
+        f"would make it sample X handshake lines and fail somewhere less obvious."
+    )
 
 
 class SmcSysAxiOp(Enum):
@@ -97,6 +129,9 @@ class SmcSysAxiDriver(uvm_driver):
 
     async def run_phase(self) -> None:
         dut = cocotb.top
+        await await_reset_resolved(
+            dut.rst_primary_smc_clk_no, dut.clk_smc_i, self.bus_name
+        )
         self.axi = OcahAxiMasterAgent.from_prefix(
             dut,
             self.bus_prefix,
