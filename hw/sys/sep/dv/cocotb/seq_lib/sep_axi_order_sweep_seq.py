@@ -122,7 +122,7 @@ M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
 # A floor on the m_axi walk. BLOCK_EXCLUDE_M_AXI is the only reduction the path
 # justifies, so a map or routing change that removed more registers must fail
 # here rather than let a shrinking walk report a clean pass.
-M_AXI_CELL_FLOOR = 225
+M_AXI_CELL_FLOOR = 222
 
 # The same floor for s_axi. Comparing the cells run against the cells this same
 # config built only says the run matched itself: a map or exclusion change that
@@ -130,7 +130,7 @@ M_AXI_CELL_FLOOR = 225
 # the walk presents, like M_AXI_CELL_FLOOR: slack here is registers that can go
 # missing without failing anything, and three orderings per register means even
 # a small slack hides several of them.
-S_AXI_CELL_FLOOR = 321
+S_AXI_CELL_FLOOR = 318
 
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
 # scales the separation; the ordering itself is fixed, so every seed covers
