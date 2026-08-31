@@ -52,10 +52,13 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq(dtp_debug_tdr_base_test_seq):
         )
 
         self.log_step(5, "Check normal BYPASS scan routing after escape")
-        await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, 0xA5A5, width=16)
+        # Seeded per-pass pattern: repeated loops shift different data through
+        # the recovered BYPASS path instead of one constant.
+        bypass_pattern = self.rng("tmp_bypass_escape").getrandbits(16)
+        await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, bypass_pattern, width=16)
         self.log_summary(
             "TMP BYPASS_ESCAPE complete",
             held=f"0b{held:02b}",
             released=f"0b{released:02b}",
-            bypass_pattern="0xA5A5",
+            bypass_pattern=f"0x{bypass_pattern:04x}",
         )

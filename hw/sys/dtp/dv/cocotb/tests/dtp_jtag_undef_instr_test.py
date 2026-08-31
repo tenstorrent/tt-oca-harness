@@ -17,6 +17,6 @@ class dtp_jtag_undef_instr_test(dtp_base_test):
             dtp_jtag_undef_instr_test_seq,
             "jtag_undef_instr_seq",
             specific_env="DTP_JTAG_UNDEF_INSTR_TEST_LOOPS",
-            default_loops=4,
+            default_loops=16,
             group_env="DTP_BASIC_JTAG_TEST_LOOPS",
         )

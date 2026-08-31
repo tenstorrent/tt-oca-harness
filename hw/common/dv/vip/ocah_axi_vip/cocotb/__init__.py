@@ -153,7 +153,13 @@ except ModuleNotFoundError as exc:
     OcahAxiLiteProtocolWatcher = _unavailable_class("OcahAxiLiteProtocolWatcher", "cocotb")
     OcahAxiWatchFinding = None
 
+from .ocah_axi_timing import AxiTimingProfile, apply_profile, clear_profile
+
 __all__ = [
+    # Per-channel timing control (AW/W ordering, response backpressure)
+    "AxiTimingProfile",
+    "apply_profile",
+    "clear_profile",
     # Master side (AXI4 and AXI4-Lite)
     "OcahAxiMasterAgent",
     "OcahAxiMasterConfig",
