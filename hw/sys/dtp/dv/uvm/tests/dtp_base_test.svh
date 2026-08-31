@@ -144,6 +144,11 @@ class dtp_base_test extends uvm_test;
             seq.scenario_seed = seed + idx;
             seq.random_count  = rcount;
             seq.loop_index    = idx;
+            // Fresh scan-reconstruction window per pass: the builder's
+            // bounded history would otherwise saturate across the 16-pass
+            // floor and freeze the newest-scan-length evidence on a stale
+            // item (the cocotb flow likewise starts a fresh monitor per pass).
+            m_env.m_scan_builder.clear_history();
             plumb_scenario_seq(seq);
             `uvm_info(get_type_name(), $sformatf(
                 "scenario pass %0d/%0d: %s scenario_seed=%0d random_count=%0d",
