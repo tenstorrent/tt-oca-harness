@@ -1064,6 +1064,29 @@ source ID.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">Traffic Filter Decode</a></h5>
+<div class="paragraph">
+<p>Both SEP filters are instances of the common <code>axi_filter_wrap</code> block. The
+inbound filter has 16 entries and the outbound filter has 32; each entry
+is one <code>filter_ctrl</code> register triple (<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
+<code>END_ADDR</code>). Both carry 56-bit addresses on a 64-bit data bus, both
+enable NS and source ID matching, and both block traffic that matches no
+entry.</p>
+</div>
+<div class="paragraph">
+<p>The inbound filter is bypassed in its entirety, admitting all inbound
+traffic, while SEP-scope debug is enabled; see
+<a href="#feature-control-vector-definition">Disable Vector Format (SIP_DIS / SYS_DIS)</a> for the <code>SEP_DBG</code> control. The
+outbound filter has no bypass and is always in effect.</p>
+</div>
+<div class="paragraph">
+<p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
+address range granule and its widening direction, and the response
+returned to a blocked initiator&#8201;&#8212;&#8201;is common to SEP and SMC. It is
+documented once with the IP in <a href="#axi-traffic-filter">AXI Traffic Filter</a>.</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">Address Remapping</a></h5>
 <div class="paragraph">
 <p>Sixteen remap regions are available, each supported by an address
@@ -1202,6 +1225,253 @@ action required by SEP.</p></td>
 <img src="_images/SEP_System.png" alt="SEP_System">
 </div>
 </div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="axi-traffic-filter"><a class="anchor" href="#axi-traffic-filter"></a><a class="link" href="#axi-traffic-filter">AXI Traffic Filter</a></h3>
+<div class="paragraph">
+<p>The AXI traffic filter (<code>axi_filter_wrap</code>) is the common address and
+attribute filter used on the inbound and outbound AXI paths of both SEP
+and SMC. This section describes the decode algorithm, which is identical
+in every instance; the subsystem chapters describe where each instance
+sits in their fabric and how firmware is expected to program it.</p>
+</div>
+<div class="paragraph">
+<p>A filter holds a configurable number of independent entries. Each entry
+is one <code>filter_ctrl</code> register triple&#8201;&#8212;&#8201;<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
+<code>END_ADDR</code>&#8201;&#8212;&#8201;and every entry is evaluated against every transaction.</p>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-instances"><a class="anchor" href="#axi-traffic-filter-instances"></a><a class="link" href="#axi-traffic-filter-instances">Instances</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Traffic filter instances</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 12%;">
+<col style="width: 12%;">
+<col style="width: 14%;">
+<col style="width: 20%;">
+<col style="width: 22%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Entries</th>
+<th class="tableblock halign-left valign-top">Address</th>
+<th class="tableblock halign-left valign-top">Data bus</th>
+<th class="tableblock halign-left valign-top">Unmatched traffic</th>
+<th class="tableblock halign-left valign-top">Bypass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP inbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">While SEP-scope debug is
+enabled</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP outbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC inbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC outbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permitted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>NS and source ID matching are enabled on all four instances. Group ID
+matching is disabled at build time on all four, so the <code>group_id</code> field
+has no effect.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-decode"><a class="anchor" href="#axi-traffic-filter-decode"></a><a class="link" href="#axi-traffic-filter-decode">Match, Then Permit</a></h4>
+<div class="paragraph">
+<p>Decode is two distinct steps, and the difference between them governs
+what happens when entries overlap.</p>
+</div>
+<div class="paragraph">
+<p>First, every entry is evaluated in parallel to produce a <strong>match</strong>. An
+entry matches only when all of the following hold:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>entry_enabled</code> is 1. A disabled entry never matches.</p>
+</li>
+<li>
+<p>The transaction address falls inside the entry&#8217;s address range, after
+the granule widening described below.</p>
+</li>
+<li>
+<p><code>prot[1]</code> equals <code>allow_ns</code>. This is an equality test, not a
+permission grant: an entry with <code>allow_ns = 0</code> matches secure
+transactions only, and an entry with <code>allow_ns = 1</code> matches non-secure
+transactions only.</p>
+</li>
+<li>
+<p>The transaction&#8217;s source ID equals <code>src_id</code>, or <code>src_id</code> is 0, which
+is a wildcard matching any source ID.</p>
+</li>
+<li>
+<p><code>allow_burst</code> is 1, or the transaction is a single beat (<code>AxLEN</code> = 0).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Second, the <strong>lowest-numbered</strong> matching entry wins, and only that entry&#8217;s
+permission bit is consulted: <code>read_allowed</code> for AR, <code>write_allowed</code> for
+AW. If the bit is clear, the transaction is blocked. If no entry matches
+at all, the outcome is the instance&#8217;s unmatched-traffic policy from the
+table above.</p>
+</div>
+<div class="paragraph">
+<p>The two steps therefore fail differently:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A transaction that <strong>fails a match condition</strong> on an entry falls through
+to the remaining entries, and a higher-numbered entry can still admit
+it. A non-secure transaction, a burst, or a foreign source ID is not
+denied by an entry that rejects it; it simply does not select that
+entry.</p>
+</li>
+<li>
+<p>A transaction that <strong>matches</strong> the lowest-numbered entry but finds its
+permission bit clear is blocked outright. Higher-numbered entries are
+never examined, even if one of them would have permitted the access.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Entry index is thus a strict priority and the first match ends the
+search, so program the most specific policy at the lowest index and the
+broader fallback policy above it.</p>
+</div>
+<div class="paragraph">
+<p>Writes and reads are decoded independently: the AW channel and the AR
+channel each run the full decode against their own address, burst
+length, <code>prot[1]</code> and source ID, so a write and a read to the same
+address may select different entries.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-granule"><a class="anchor" href="#axi-traffic-filter-granule"></a><a class="link" href="#axi-traffic-filter-granule">Address Range Granule</a></h4>
+<div class="paragraph">
+<p>Address comparison ignores the low address bits, so a filter range
+always covers a whole number of granules. <code>allow_burst</code> selects the
+granule:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>allow_burst = 1</code>: the granule is 4 KB and address bits [11:0] are
+ignored.</p>
+</li>
+<li>
+<p><code>allow_burst = 0</code>: the granule is the data bus width&#8201;&#8212;&#8201;8 bytes on
+every instance in the table above&#8201;&#8212;&#8201;and address bits [2:0] are
+ignored.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>START_ADDR</code> consequently widens <strong>down</strong> to the base of its granule and
+<code>END_ADDR</code> widens <strong>up</strong> to the top of its granule, so a range is never
+narrower than one granule. Programming <code>START_ADDR</code> equal to <code>END_ADDR</code>,
+or any range shorter than the granule, still admits the whole granule,
+and a range that straddles a granule boundary admits both granules.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Granule widening examples</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>allow_burst</code></th>
+<th class="tableblock halign-left valign-top"><code>START_ADDR</code></th>
+<th class="tableblock halign-left valign-top"><code>END_ADDR</code></th>
+<th class="tableblock halign-left valign-top">Addresses admitted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1002</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000</code>-<code>0x1FFF</code>, one 4 KB granule</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000</code>-<code>0x1FFF</code>, two 4 KB granules</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2000</code>-<code>0x2FFF</code>, already granule-aligned</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1002</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000</code>-<code>0x1007</code>, one 8-byte granule</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Hardware writes the widened values back into <code>START_ADDR</code> and <code>END_ADDR</code>
+when both land in the same granule, so reading back the first example
+above returns <code>0x1000</code> and <code>0x1FFF</code>. When the programmed range spans more
+than one granule the write-back does not fire and read-back returns the
+programmed values unchanged, even though address matching still widens
+them. Firmware must not treat read-back as the effective range; derive
+the effective range from the granule instead.</p>
+</div>
+<div class="paragraph">
+<p>Widening only ever enlarges a range, so a range programmed tighter than
+the granule opens more address space than the programmed numbers
+suggest. Size protected regions in whole granules, and prefer
+<code>allow_burst = 0</code> for entries that must guard an object smaller than
+4 KB.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-blocked"><a class="anchor" href="#axi-traffic-filter-blocked"></a><a class="link" href="#axi-traffic-filter-blocked">Blocked Transactions</a></h4>
+<div class="paragraph">
+<p>A blocked transaction is not dropped. It is steered to an AXI error
+subordinate that terminates it with a <code>DECERR</code> response on <code>BRESP</code> or
+<code>RRESP</code>, so the initiator always receives a response and the fabric
+never stalls on a filter denial.</p>
 </div>
 </div>
 </div>
@@ -10723,7 +10993,7 @@ feature is enabled and False (F) indicates that it is disabled. The disable vect
 the corresponding feature, and 1&#8217;b1 disables it.</p>
 </div>
 <table id="feature-control-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Per-LC-state feature control profile</caption>
+<caption class="title">Table 3. Per-LC-state feature control profile</caption>
 <colgroup>
 <col style="width: 13%;">
 <col style="width: 7%;">

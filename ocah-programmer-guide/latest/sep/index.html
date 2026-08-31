@@ -1067,6 +1067,29 @@ source ID.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">Traffic Filter Decode</a></h5>
+<div class="paragraph">
+<p>Both SEP filters are instances of the common <code>axi_filter_wrap</code> block. The
+inbound filter has 16 entries and the outbound filter has 32; each entry
+is one <code>filter_ctrl</code> register triple (<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
+<code>END_ADDR</code>). Both carry 56-bit addresses on a 64-bit data bus, both
+enable NS and source ID matching, and both block traffic that matches no
+entry.</p>
+</div>
+<div class="paragraph">
+<p>The inbound filter is bypassed in its entirety, admitting all inbound
+traffic, while SEP-scope debug is enabled; see
+<a href="#feature-control-vector-definition">Disable Vector Format (SIP_DIS / SYS_DIS)</a> for the <code>SEP_DBG</code> control. The
+outbound filter has no bypass and is always in effect.</p>
+</div>
+<div class="paragraph">
+<p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
+address range granule and its widening direction, and the response
+returned to a blocked initiator&#8201;&#8212;&#8201;is common to SEP and SMC. It is
+documented once with the IP in <a href="#axi-traffic-filter">AXI Traffic Filter</a>.</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">Address Remapping</a></h5>
 <div class="paragraph">
 <p>Sixteen remap regions are available, each supported by an address
@@ -1209,7 +1232,254 @@ action required by SEP.</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-memory-map"><a class="anchor" href="#sep-memory-map"></a><a class="link" href="#sep-memory-map">1.4. Memory Map</a></h3>
+<h3 id="axi-traffic-filter"><a class="anchor" href="#axi-traffic-filter"></a><a class="link" href="#axi-traffic-filter">1.4. AXI Traffic Filter</a></h3>
+<div class="paragraph">
+<p>The AXI traffic filter (<code>axi_filter_wrap</code>) is the common address and
+attribute filter used on the inbound and outbound AXI paths of both SEP
+and SMC. This section describes the decode algorithm, which is identical
+in every instance; the subsystem chapters describe where each instance
+sits in their fabric and how firmware is expected to program it.</p>
+</div>
+<div class="paragraph">
+<p>A filter holds a configurable number of independent entries. Each entry
+is one <code>filter_ctrl</code> register triple&#8201;&#8212;&#8201;<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
+<code>END_ADDR</code>&#8201;&#8212;&#8201;and every entry is evaluated against every transaction.</p>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-instances"><a class="anchor" href="#axi-traffic-filter-instances"></a><a class="link" href="#axi-traffic-filter-instances">1.4.1. Instances</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Traffic filter instances</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 12%;">
+<col style="width: 12%;">
+<col style="width: 14%;">
+<col style="width: 20%;">
+<col style="width: 22%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Entries</th>
+<th class="tableblock halign-left valign-top">Address</th>
+<th class="tableblock halign-left valign-top">Data bus</th>
+<th class="tableblock halign-left valign-top">Unmatched traffic</th>
+<th class="tableblock halign-left valign-top">Bypass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP inbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">While SEP-scope debug is
+enabled</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP outbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC inbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC outbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permitted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>NS and source ID matching are enabled on all four instances. Group ID
+matching is disabled at build time on all four, so the <code>group_id</code> field
+has no effect.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-decode"><a class="anchor" href="#axi-traffic-filter-decode"></a><a class="link" href="#axi-traffic-filter-decode">1.4.2. Match, Then Permit</a></h4>
+<div class="paragraph">
+<p>Decode is two distinct steps, and the difference between them governs
+what happens when entries overlap.</p>
+</div>
+<div class="paragraph">
+<p>First, every entry is evaluated in parallel to produce a <strong>match</strong>. An
+entry matches only when all of the following hold:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>entry_enabled</code> is 1. A disabled entry never matches.</p>
+</li>
+<li>
+<p>The transaction address falls inside the entry&#8217;s address range, after
+the granule widening described below.</p>
+</li>
+<li>
+<p><code>prot[1]</code> equals <code>allow_ns</code>. This is an equality test, not a
+permission grant: an entry with <code>allow_ns = 0</code> matches secure
+transactions only, and an entry with <code>allow_ns = 1</code> matches non-secure
+transactions only.</p>
+</li>
+<li>
+<p>The transaction&#8217;s source ID equals <code>src_id</code>, or <code>src_id</code> is 0, which
+is a wildcard matching any source ID.</p>
+</li>
+<li>
+<p><code>allow_burst</code> is 1, or the transaction is a single beat (<code>AxLEN</code> = 0).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Second, the <strong>lowest-numbered</strong> matching entry wins, and only that entry&#8217;s
+permission bit is consulted: <code>read_allowed</code> for AR, <code>write_allowed</code> for
+AW. If the bit is clear, the transaction is blocked. If no entry matches
+at all, the outcome is the instance&#8217;s unmatched-traffic policy from the
+table above.</p>
+</div>
+<div class="paragraph">
+<p>The two steps therefore fail differently:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A transaction that <strong>fails a match condition</strong> on an entry falls through
+to the remaining entries, and a higher-numbered entry can still admit
+it. A non-secure transaction, a burst, or a foreign source ID is not
+denied by an entry that rejects it; it simply does not select that
+entry.</p>
+</li>
+<li>
+<p>A transaction that <strong>matches</strong> the lowest-numbered entry but finds its
+permission bit clear is blocked outright. Higher-numbered entries are
+never examined, even if one of them would have permitted the access.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Entry index is thus a strict priority and the first match ends the
+search, so program the most specific policy at the lowest index and the
+broader fallback policy above it.</p>
+</div>
+<div class="paragraph">
+<p>Writes and reads are decoded independently: the AW channel and the AR
+channel each run the full decode against their own address, burst
+length, <code>prot[1]</code> and source ID, so a write and a read to the same
+address may select different entries.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-granule"><a class="anchor" href="#axi-traffic-filter-granule"></a><a class="link" href="#axi-traffic-filter-granule">1.4.3. Address Range Granule</a></h4>
+<div class="paragraph">
+<p>Address comparison ignores the low address bits, so a filter range
+always covers a whole number of granules. <code>allow_burst</code> selects the
+granule:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>allow_burst = 1</code>: the granule is 4 KB and address bits [11:0] are
+ignored.</p>
+</li>
+<li>
+<p><code>allow_burst = 0</code>: the granule is the data bus width&#8201;&#8212;&#8201;8 bytes on
+every instance in the table above&#8201;&#8212;&#8201;and address bits [2:0] are
+ignored.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>START_ADDR</code> consequently widens <strong>down</strong> to the base of its granule and
+<code>END_ADDR</code> widens <strong>up</strong> to the top of its granule, so a range is never
+narrower than one granule. Programming <code>START_ADDR</code> equal to <code>END_ADDR</code>,
+or any range shorter than the granule, still admits the whole granule,
+and a range that straddles a granule boundary admits both granules.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Granule widening examples</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>allow_burst</code></th>
+<th class="tableblock halign-left valign-top"><code>START_ADDR</code></th>
+<th class="tableblock halign-left valign-top"><code>END_ADDR</code></th>
+<th class="tableblock halign-left valign-top">Addresses admitted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1002</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000</code>-<code>0x1FFF</code>, one 4 KB granule</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000</code>-<code>0x1FFF</code>, two 4 KB granules</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2000</code>-<code>0x2FFF</code>, already granule-aligned</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1002</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000</code>-<code>0x1007</code>, one 8-byte granule</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Hardware writes the widened values back into <code>START_ADDR</code> and <code>END_ADDR</code>
+when both land in the same granule, so reading back the first example
+above returns <code>0x1000</code> and <code>0x1FFF</code>. When the programmed range spans more
+than one granule the write-back does not fire and read-back returns the
+programmed values unchanged, even though address matching still widens
+them. Firmware must not treat read-back as the effective range; derive
+the effective range from the granule instead.</p>
+</div>
+<div class="paragraph">
+<p>Widening only ever enlarges a range, so a range programmed tighter than
+the granule opens more address space than the programmed numbers
+suggest. Size protected regions in whole granules, and prefer
+<code>allow_burst = 0</code> for entries that must guard an object smaller than
+4 KB.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="axi-traffic-filter-blocked"><a class="anchor" href="#axi-traffic-filter-blocked"></a><a class="link" href="#axi-traffic-filter-blocked">1.4.4. Blocked Transactions</a></h4>
+<div class="paragraph">
+<p>A blocked transaction is not dropped. It is steered to an AXI error
+subordinate that terminates it with a <code>DECERR</code> response on <code>BRESP</code> or
+<code>RRESP</code>, so the initiator always receives a response and the fabric
+never stalls on a filter denial.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-memory-map"><a class="anchor" href="#sep-memory-map"></a><a class="link" href="#sep-memory-map">1.5. Memory Map</a></h3>
 <div class="paragraph">
 <p>SEP uses 32-bit addressing. The following table outlines the SEP CPU&#8217;s
 logical view of the SEP-local address space. External masters use the
@@ -1620,7 +1890,7 @@ unit, so an address that owns no register cannot alias onto one.</p>
 </table>
 </div>
 <div class="sect2">
-<h3 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">1.5. Detailed Register Map</a></h3>
+<h3 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">1.6. Detailed Register Map</a></h3>
 <div class="paragraph">
 <p>The following register tables are generated from the SEP register description
 (RDL) sub-blocks under <code>hw/sys/sep/regs/</code>, plus the eFuse MMR and Entropy Source
@@ -1628,7 +1898,7 @@ IP blocks under <code>hw/ip/efuse/regs/</code> and <code>hw/ip/entropy_source/re
 corresponds to a unit in the SEP memory map above.</p>
 </div>
 <div class="sect3">
-<h4 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">1.5.1. CPU Control and Interrupts</a></h4>
+<h4 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">1.6.1. CPU Control and Interrupts</a></h4>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1944,7 +2214,7 @@ corresponds to a unit in the SEP memory map above.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="reset-and-lifecycle"><a class="anchor" href="#reset-and-lifecycle"></a><a class="link" href="#reset-and-lifecycle">1.5.2. Reset and Lifecycle</a></h4>
+<h4 id="reset-and-lifecycle"><a class="anchor" href="#reset-and-lifecycle"></a><a class="link" href="#reset-and-lifecycle">1.6.2. Reset and Lifecycle</a></h4>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -2011,7 +2281,7 @@ corresponds to a unit in the SEP memory map above.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">1.5.3. Scratch and eFuse</a></h4>
+<h4 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">1.6.3. Scratch and eFuse</a></h4>
 <div class="paragraph">
 <p>The eFuse MMR block is an IP-level block (<code>hw/ip/efuse/regs/</code>); its register map
 is generated from the IP RDL rather than the SEP aggregate.</p>
@@ -2552,7 +2822,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="timers"><a class="anchor" href="#timers"></a><a class="link" href="#timers">1.5.4. Timers</a></h4>
+<h4 id="timers"><a class="anchor" href="#timers"></a><a class="link" href="#timers">1.6.4. Timers</a></h4>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -2665,7 +2935,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cryptographic-accelerators"><a class="anchor" href="#cryptographic-accelerators"></a><a class="link" href="#cryptographic-accelerators">1.5.5. Cryptographic Accelerators</a></h4>
+<h4 id="cryptographic-accelerators"><a class="anchor" href="#cryptographic-accelerators"></a><a class="link" href="#cryptographic-accelerators">1.6.5. Cryptographic Accelerators</a></h4>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -3197,7 +3467,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="entropy-source"><a class="anchor" href="#entropy-source"></a><a class="link" href="#entropy-source">1.5.6. Entropy Source</a></h4>
+<h4 id="entropy-source"><a class="anchor" href="#entropy-source"></a><a class="link" href="#entropy-source">1.6.6. Entropy Source</a></h4>
 <div class="paragraph">
 <p>The entropy source is an IP-level block (<code>hw/ip/entropy_source/regs/</code>) that
 feeds the DRBG. Its register map is generated from the IP RDL rather than the
@@ -3782,7 +4052,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="drbg-csrng-and-edn"><a class="anchor" href="#drbg-csrng-and-edn"></a><a class="link" href="#drbg-csrng-and-edn">1.5.7. DRBG (CSRNG and EDN)</a></h4>
+<h4 id="drbg-csrng-and-edn"><a class="anchor" href="#drbg-csrng-and-edn"></a><a class="link" href="#drbg-csrng-and-edn">1.6.7. DRBG (CSRNG and EDN)</a></h4>
 <div class="paragraph">
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <a href="#drbg">Architecture</a>). Their register maps are reported here.</p>
@@ -4171,7 +4441,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="key-manager"><a class="anchor" href="#key-manager"></a><a class="link" href="#key-manager">1.5.8. Key Manager</a></h4>
+<h4 id="key-manager"><a class="anchor" href="#key-manager"></a><a class="link" href="#key-manager">1.6.8. Key Manager</a></h4>
 <div class="paragraph">
 <p>The generated maps live with the IP.</p>
 </div>
@@ -6823,7 +7093,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="secure-dma"><a class="anchor" href="#secure-dma"></a><a class="link" href="#secure-dma">1.5.9. Secure DMA</a></h4>
+<h4 id="secure-dma"><a class="anchor" href="#secure-dma"></a><a class="link" href="#secure-dma">1.6.9. Secure DMA</a></h4>
 <div class="paragraph">
 <p>The secure DMA controller register map follows.</p>
 </div>
@@ -7063,7 +7333,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="spi-controller"><a class="anchor" href="#spi-controller"></a><a class="link" href="#spi-controller">1.5.10. SPI Controller</a></h4>
+<h4 id="spi-controller"><a class="anchor" href="#spi-controller"></a><a class="link" href="#spi-controller">1.6.10. SPI Controller</a></h4>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
@@ -7236,7 +7506,7 @@ register map follows.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cpu-subsystem"><a class="anchor" href="#cpu-subsystem"></a><a class="link" href="#cpu-subsystem">1.6. CPU Subsystem</a></h3>
+<h3 id="cpu-subsystem"><a class="anchor" href="#cpu-subsystem"></a><a class="link" href="#cpu-subsystem">1.7. CPU Subsystem</a></h3>
 <div class="paragraph">
 <p>SEP uses the 32-bit RISC-V
 <a href="https://github.com/chipsalliance/Cores-VeeR-EL2">VeeR EL2 CPU</a> as its
@@ -7246,7 +7516,7 @@ Programmer’s Reference Manual</a> provides the details required for
 programming the CPU.</p>
 </div>
 <div class="sect3">
-<h4 id="cpu-feature-summary"><a class="anchor" href="#cpu-feature-summary"></a><a class="link" href="#cpu-feature-summary">1.6.1. CPU Feature Summary</a></h4>
+<h4 id="cpu-feature-summary"><a class="anchor" href="#cpu-feature-summary"></a><a class="link" href="#cpu-feature-summary">1.7.1. CPU Feature Summary</a></h4>
 <div class="ulist">
 <ul>
 <li>
@@ -7317,7 +7587,7 @@ interrupts</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuration-straps"><a class="anchor" href="#configuration-straps"></a><a class="link" href="#configuration-straps">1.6.2. Configuration Straps</a></h4>
+<h4 id="configuration-straps"><a class="anchor" href="#configuration-straps"></a><a class="link" href="#configuration-straps">1.7.2. Configuration Straps</a></h4>
 <div class="paragraph">
 <p>There shall be a minimum of 8 static configuration straps (preferably
 16) which are associated with the GPIO interface pins. Note that the
@@ -7334,7 +7604,7 @@ recovery mode versus normal mode.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.6.3. Reset Vector</a></h4>
+<h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.7.3. Reset Vector</a></h4>
 <div class="paragraph">
 <p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
 debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
@@ -7350,7 +7620,7 @@ failure analysis flows that execute from a memory other than the Boot ROM.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">1.6.4. Boot ROM</a></h4>
+<h4 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">1.7.4. Boot ROM</a></h4>
 <div class="paragraph">
 <p>The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
 first code running on the SEP host upon power on. It has the following
@@ -7380,7 +7650,7 @@ and will use OTP as the backup storage.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.6.5. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
+<h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.7.5. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
 <div class="paragraph">
 <p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
 SEP system into a runnable state after power on reset (PoR) and running
@@ -7547,7 +7817,7 @@ against fault attacks.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">1.6.6. Dual Scratch Register Banks</a></h4>
+<h4 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">1.7.6. Dual Scratch Register Banks</a></h4>
 <div class="paragraph">
 <p>There shall be two sets of 16 x 32-bit scratch register banks
 instantiated at the SEP top level. Both are designed as simple SystemRDL
@@ -7579,7 +7849,7 @@ reset by a signal from the Watchdog Timer (WDT).</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">1.6.7. Direct Memory Access Controller (DMA)</a></h4>
+<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">1.7.7. Direct Memory Access Controller (DMA)</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA
@@ -7735,7 +8005,7 @@ streaming interfaces</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">1.6.8. Alarm Aggregation Processor (AGP)</a></h4>
+<h4 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">1.7.8. Alarm Aggregation Processor (AGP)</a></h4>
 <div class="paragraph">
 <p><em>Note that this module will not be implemented in the first generation
 SEP and will be deferred to the second generation. The AGP use case is
@@ -7766,7 +8036,7 @@ SEP</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1.7. Interrupts</a></h3>
+<h3 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1.8. Interrupts</a></h3>
 <div class="paragraph">
 <p>The SEP integrates a VeeR EL2 core with a built-in
 <strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
@@ -7783,7 +8053,7 @@ tied to zero inside the core. Firmware programs source <code>N</code> by writing
 <code>meipl[N]</code> and <code>meie[N]</code> CSR entries and reading/clearing <code>meip[N]</code>.</p>
 </div>
 <div class="sect3">
-<h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.7.1. SEP CPU Interrupt Vector Map</a></h4>
+<h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.8.1. SEP CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
 <p>The PIC supports 255 external sources. Slots 1–39 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
@@ -8014,7 +8284,7 @@ handler re-enters.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.7.2. Non-PIC Interrupt Paths</a></h4>
+<h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.8.2. Non-PIC Interrupt Paths</a></h4>
 <div class="paragraph">
 <p>Three CPU interrupt pins bypass the EL2 PIC entirely.</p>
 </div>
@@ -8043,7 +8313,7 @@ external signal; those remain functional.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">1.7.3. Register Interfaces</a></h4>
+<h4 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">1.8.3. Register Interfaces</a></h4>
 <div class="paragraph">
 <p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
 related registers) is documented with the full SEP address map in
@@ -8052,7 +8322,7 @@ related registers) is documented with the full SEP address map in
 </div>
 </div>
 <div class="sect2">
-<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1.8. Cryptographic Subsystem</a></h3>
+<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1.9. Cryptographic Subsystem</a></h3>
 <div class="paragraph">
 <p>The cryptographic subsystem is composed of hardware and software. The
 hardware subsystem has a number of accelerators interconnected by two
@@ -8135,7 +8405,7 @@ is covered without per-register marking. The marked roots in <code>sep_crypto</c
 infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 </div>
 <div class="sect3">
-<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.8.1. HMAC-SHA2</a></h4>
+<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.9.1. HMAC-SHA2</a></h4>
 <div class="paragraph">
 <p>The HMAC component is based on the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
@@ -8173,7 +8443,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.8.2. OTBN PKA Public Key Accelerator</a></h4>
+<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.9.2. OTBN PKA Public Key Accelerator</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
@@ -8295,7 +8565,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.8.3. AES Cipher</a></h4>
+<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.9.3. AES Cipher</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
@@ -8357,7 +8627,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.8.4. KMAC-SHA3</a></h4>
+<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.9.4. KMAC-SHA3</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
@@ -8396,7 +8666,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.8.5. Adams Bridge Post-Quantum Accelerator (ABR)</a></h4>
+<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.9.5. Adams Bridge Post-Quantum Accelerator (ABR)</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
@@ -8492,7 +8762,7 @@ source, so unlike the other accelerators they do not appear in
 </div>
 </div>
 <div class="sect3">
-<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.8.6. True Random Number Generator (TRNG)</a></h4>
+<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.9.6. True Random Number Generator (TRNG)</a></h4>
 <div class="paragraph">
 <p>Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high
@@ -8699,7 +8969,7 @@ integer width</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.8.7. Fuse Controller (OTP)</a></h4>
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.9.7. Fuse Controller (OTP)</a></h4>
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
@@ -9339,7 +9609,7 @@ here.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">1.9. Peripheral Subsystem</a></h3>
+<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">1.10. Peripheral Subsystem</a></h3>
 <div class="paragraph">
 <p>SEP will primarily rely on external serial IO peripherals resident in
 the SMC complex. SEP has an AXI4 extension port which has unfettered
@@ -9363,7 +9633,7 @@ to the SEP BL0 functionality.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">1.9.1. Serial Peripheral Interface (SPI)</a></h4>
+<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">1.10.1. Serial Peripheral Interface (SPI)</a></h4>
 <div class="paragraph">
 <p>SEP will have one SPI host to support access to external NOR flash
 devices which are the primary BL1 image source. Modern devices are MT35
@@ -9441,7 +9711,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">1.9.2. Watchdog Timer (WDT)</a></h4>
+<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">1.10.2. Watchdog Timer (WDT)</a></h4>
 <div class="paragraph">
 <p>The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
@@ -9467,7 +9737,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.9.3. SEP Reset Controller</a></h4>
+<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.10.3. SEP Reset Controller</a></h4>
 <div class="paragraph">
 <p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
 </div>
@@ -9585,7 +9855,7 @@ Consumers are released only after fresh endpoint/pool progress is observed.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1.9.4. Token Processing</a></h4>
+<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1.10.4. Token Processing</a></h4>
 <div class="paragraph">
 <p>Maintaining a known, measurable state of the SEP system is a core
 requirement to ensure trust and security. Consequently, changing the
@@ -9851,7 +10121,7 @@ described in <em>Fuse Controller (OTP)</em> in this chapter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1.9.5. Security Disable (SEC_DIS)</a></h4>
+<h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1.10.5. Security Disable (SEC_DIS)</a></h4>
 <div class="paragraph">
 <p>Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
 silicon. On deassertion of power-on reset, the fuse sense logic runs before
@@ -9929,7 +10199,7 @@ post-layout extracted netlist with <strong><em>gate-level simulation</em></stron
 </div>
 </div>
 <div class="sect3">
-<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1.9.6. Life Cycle Controller (LCC)</a></h4>
+<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1.10.6. Life Cycle Controller (LCC)</a></h4>
 <div class="paragraph">
 <p>The Life Cycle Controller (LCC) supports multiple security domains in
 chiplet-based systems. It manages the device life cycle: it decodes the
@@ -10726,7 +10996,7 @@ feature is enabled and False (F) indicates that it is disabled. The disable vect
 the corresponding feature, and 1&#8217;b1 disables it.</p>
 </div>
 <table id="feature-control-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Per-LC-state feature control profile</caption>
+<caption class="title">Table 3. Per-LC-state feature control profile</caption>
 <colgroup>
 <col style="width: 13%;">
 <col style="width: 7%;">
@@ -11412,7 +11682,7 @@ in a future revision of this specification.
 </div>
 </div>
 <div class="sect2">
-<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1.10. Test Mode Entry</a></h3>
+<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1.11. Test Mode Entry</a></h3>
 <div class="paragraph">
 <p>Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
 latched when SEP fuse sensing is done if SEC_DIS is not asserted.

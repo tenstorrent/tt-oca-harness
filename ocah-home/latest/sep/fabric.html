@@ -481,6 +481,29 @@ source ID.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">Traffic Filter Decode</a></h5>
+<div class="paragraph">
+<p>Both SEP filters are instances of the common <code>axi_filter_wrap</code> block. The
+inbound filter has 16 entries and the outbound filter has 32; each entry
+is one <code>filter_ctrl</code> register triple (<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
+<code>END_ADDR</code>). Both carry 56-bit addresses on a 64-bit data bus, both
+enable NS and source ID matching, and both block traffic that matches no
+entry.</p>
+</div>
+<div class="paragraph">
+<p>The inbound filter is bypassed in its entirety, admitting all inbound
+traffic, while SEP-scope debug is enabled; see
+<a href="#feature-control-vector-definition">[feature-control-vector-definition]</a> for the <code>SEP_DBG</code> control. The
+outbound filter has no bypass and is always in effect.</p>
+</div>
+<div class="paragraph">
+<p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
+address range granule and its widening direction, and the response
+returned to a blocked initiator&#8201;&#8212;&#8201;is common to SEP and SMC. It is
+documented once with the IP in <a href="#axi-traffic-filter">[axi-traffic-filter]</a>.</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">Address Remapping</a></h5>
 <div class="paragraph">
 <p>Sixteen remap regions are available, each supported by an address
