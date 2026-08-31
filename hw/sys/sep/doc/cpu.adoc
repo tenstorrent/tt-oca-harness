@@ -101,56 +101,33 @@ and will use OTP as the backup storage.
 
 The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
 SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1. Below is a summary of the
-steps involved.
+the first stage of external firmware AKA BL1.
 
-* SEP initialization
-** Read configuration strap values from GPIO registers
-** Determine boot options, if any
-* Configure CPU CSRs
-** PMP
-* Configure peripherals
-** SPI host controller
-** OTP controller
-** DMA controller
-** HMAC-SHA256
-* Start C runtime and execute the following boot tasks
-* Load second stage bootloader firmware BL1
-** Instruct SPI host controller to fetch BL1 firmware from an attached
-external SPI flash memory device. Stream image from SPI to TCM memory
-via DMA controller.
-* Verify integrity of BL1 firmware image via RSA digital signature
-verification algorithm
-** Read manifest and extract firmware signature, RSA public key (n, e)
-and OTP personality mask
-** Run SHA256 firmware to generate the hash digest ``h'' of \{BL1
-firmware, OTP fuse profile}
-** Configure OTBN PK cryptographic accelerator image and parameters
-*** Extract the RSA3k digital signature verification firmware from BL0
-and load into the OTBN Imem, i.e. the instruction memory
-*** Provision the BL1 manifest's public key (n, e) into Key Manager via
-software write port.
-**** Exponent e is expected to be a short value such as 2**16+1, so we
-don't need 3k bits even if RSA3k is being used, only 17 bits
-**** Modulus n would still be the full 3k bits for RSA3k
-** Run RSA firmware to verify the BL1 signature stored in its manifest
-using its public key also stored in the manifest
-** Compare hash digest ``h'' with the decrypted signature. This is to
-guard against fault attacks.
-*** Read decrypted signature from OTBN Dmem.
-*** Remove any padding from digest (e.g. PKCS#1) to produce h'
-*** Perform comparison PASS := (h==h')
-**** Repeat this operation at least twice with a random delay in between
-and only pass verification check if individual checks pass. This is a
-guard against fault injection attacks.
-* Anti-rollback checks are completed at this point: security version of
-manifest is compared to security version in OTP
-* Verification of the integrity of SEP / SMC BL1 payload image based on
-payload hash/length
-* Execution unlock logic in the CPU PMP to enable BL1 code execution if
-hash comparisons have passed.
-** Failure to complete any of the above checks will result in processor
-entering fail loop requiring a reset event to exit
+The complete boot flow is specified in <<sep-rom-boot-arch>>, which is
+normative: CPU initialization, PMP fencing, fuse and lifecycle
+evaluation, SMC synchronization, boot-source selection, manifest and
+payload validation, secure boot, demotion, attestation and hand-off,
+with requirement identifiers and an implementation-status matrix. The
+summary below exists to place the ROM in the context of this chapter; it
+is deliberately not a second description of the same flow, because two
+would drift.
+
+* SEP initialization -- read configuration straps, determine boot options
+* Configure CPU CSRs (PMP) and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
+* Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
+* Validate it. Under secure boot this means authorizing the root key
+against a trust anchor the device holds -- a ROM-embedded digest or an
+OTP hash bank -- before any public-key operation, then checking
+revocation and anti-rollback, then verifying an RSA-3072 signature on
+OTBN
+* Load the payload it describes, decrypting it when the manifest says so,
+and verify its hashes -- over the ciphertext before decryption and the
+plaintext after
+* Select BL1 from the payload table of contents, unlock execution in the
+CPU PMP, and jump
+* Failure of any check ends the boot. A failure the backup manifest slot
+recovers from is a warning; exhausting every slot is an error, after
+which the processor enters a fail loop requiring a reset to exit
 
 Future versions of the SEP will also have additional hardware redundancy
 by running the CPU in Dual Core Lock Step. This will further protect
