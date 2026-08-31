@@ -168,6 +168,65 @@ def _vcs_top_file(root: Path, build: dict[str, Any]) -> Path | None:
     return repo_path(root, rel)
 
 
+def _bender_filelist_sources(root: Path, build: dict[str, Any]) -> list[Path]:
+    """The source files named inside the generated ``[build].bender_filelist``.
+
+    The bender filelist holds one path per line, plus ``//`` comments and the
+    ``+incdir+`` / ``+define+`` options `generate_filelist` passes through. Only the plain
+    paths are source files, so option and comment lines are skipped. Order is preserved and
+    duplicates are dropped. An empty list is returned when the DUT declares no bender
+    filelist or the file is not generated yet.
+    """
+    rel = str(build.get("bender_filelist") or "").strip()
+    if not rel:
+        return []
+    filelist = repo_path(root, rel)
+    if not filelist.is_file():
+        return []
+    seen: set[Path] = set()
+    sources: list[Path] = []
+    for line in filelist.read_text(encoding="utf-8", errors="replace").splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith(("//", "#", "+", "-")):
+            continue
+        path = repo_path(root, entry)
+        if path not in seen:
+            seen.add(path)
+            sources.append(path)
+    return sources
+
+
+def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
+    """One digest over the CONTENT of every file the bender filelist names.
+
+    ``build_fingerprint`` hashes the combined filelist TEXT, which names the bender filelist
+    as a single ``-f`` line. That text is blind both to a path added or removed inside the
+    bender filelist and to a content-only edit of a file it names, so the digest here is what
+    makes vendored or DUT RTL move the build identity. Each entry contributes its
+    repo-relative path (so the digest does not move when the same tree is built
+    from a different checkout) and the SHA-256 of its bytes; a path that does
+    not resolve contributes ``<missing>`` so a deleted file still moves the
+    digest instead of failing the build.
+
+    Cost is one read of the named sources -- about 900 files and 11 MB for SEP, ~0.3 s.
+    """
+    sources = _bender_filelist_sources(root, build)
+    if not sources:
+        return []
+    digest = hashlib.sha256()
+    for path in sources:
+        digest.update((repo_rel(root, path) or str(path)).encode("utf-8"))
+        digest.update(b"\0")
+        try:
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1 << 20), b""):
+                    digest.update(chunk)
+        except OSError:
+            digest.update(b"<missing>")
+        digest.update(b"\0")
+    return [f"bender_sources={len(sources)}:{digest.hexdigest()[:16]}"]
+
+
 def _vcs_local_sources(root: Path, build: dict[str, Any]) -> list[Path]:
     """The repo-local files the generated filelist names, for VCS ``simv`` dep tracking.
 
@@ -181,10 +240,9 @@ def _vcs_local_sources(root: Path, build: dict[str, Any]) -> list[Path]:
     and a missed dep there is the exact shape of a stale-``simv`` pass -- the build reports
     up to date and the previous binary runs.
 
-    STILL NOT COVERED: the RTL the bender filelist names. It reaches VCS as one ``-f``
-    line, and ``build_fingerprint`` hashes the filelist TEXT, so a file whose path is
-    unchanged but whose CONTENT changed moves neither. Editing vendored or DUT RTL
-    therefore needs ``--rebuild``.
+    The RTL the bender filelist names is covered too, through
+    `_bender_filelist_sources`: it reaches VCS as one ``-f`` line, so without the
+    per-file deps an edit to vendored or DUT RTL leaves ``simv`` up to date.
     """
     paths = [
         repo_path(root, value)
@@ -196,6 +254,7 @@ def _vcs_local_sources(root: Path, build: dict[str, Any]) -> list[Path]:
         if incdir.is_dir():
             for pattern in ("*.svh", "*.vh"):
                 paths.extend(sorted(incdir.glob(pattern)))
+    paths.extend(_bender_filelist_sources(root, build))
     seen: set[Path] = set()
     unique: list[Path] = []
     for path in paths:
@@ -1451,6 +1510,7 @@ def _cocotb_build_info(
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
+            *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
         ],
@@ -2284,6 +2344,7 @@ def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: ar
         extra=[
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, compile_target),
+            *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
         ],
     )
@@ -2476,6 +2537,7 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
         extra=[
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, compile_target),
+            *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
         ],
     )
