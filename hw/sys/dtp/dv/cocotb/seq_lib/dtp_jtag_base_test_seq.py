@@ -30,7 +30,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     """Helpers for TAP FSM navigation, scan loopback, and BYPASS checks."""
 
     # Optional shared-VIP checker; when attached, TAP resets and every raw TMS
-    # step also emit reference-model named evidence (issue tt-oca-hw#3296).
+    # step also emit reference-model named evidence.
     tap_checker: OcahJtagChecker | None = None
     # Optional passive scan monitor; when started, load_ir/shift_dr record the
     # sequence's own scan intent so finalize can cross-check the pin-level

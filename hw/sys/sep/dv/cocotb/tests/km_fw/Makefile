@@ -17,7 +17,9 @@ all: $(PARHEX)
 # PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0 disable the boot/unrecoverable-fault SRAM
 # shred so rom_main's SRAM-scrambler cold-boot does not trip a parity fault --
 # matching the OCAH subsystem tb. The output is gitignored (not a committed blob).
-# Requires the rv32emc/ilp32e toolchain on PATH.
+# SEP DV tests that boot this image declare
+# `firmware = { name = "rom_main", mode = "km_rom_main" }` so run_dv.py
+# c_compile drives this target. Requires the rv32emc/ilp32e toolchain on PATH.
 #
 # The firmware is in-tree at hw/ip/key_manager/dv/fw and builds through the shared
 # DV firmware engine, the same one SEP's own firmware uses; the entry point is

@@ -128,7 +128,7 @@ async def csr_access_test(dut):
 
     log.info("Writing to CTRL register...")
     ctrl_wr = ENTROPY_SOURCE_CTRL_reg_u()
-    ctrl_wr.f.reset = 1
+    ctrl_wr.f.module_enable = 0
     await reg_write(dut, CTRL_REG_ADDR, ctrl_wr.val)
 
     log.info("Reading back from CTRL register...")

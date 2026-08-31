@@ -3,7 +3,7 @@
 
 schema_version = 1
 
-# SMC fabric JTAG2AXI scenarios for DTP issue #3210.
+# SMC fabric JTAG2AXI scenarios.
 # The legacy aggregate tests are compatibility aliases for the scenario-specific
 # single_write/single_write_read tests: selectable by explicit --items name or
 # --tag legacy only, and members of no group, so regressions run each scenario
@@ -27,7 +27,7 @@ run_modes = ["functional", "jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_single_write_test"
-module = "dtp_jtag2axi_smc_axi_single_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_test", uvm = "dtp_jtag2axi_smc_axi_single_write_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["jtag2axi"]
@@ -35,7 +35,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_single_write_data_verify_test"
-module = "dtp_jtag2axi_smc_axi_single_write_data_verify_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_data_verify_test", uvm = "dtp_jtag2axi_smc_axi_single_write_data_verify_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["jtag2axi"]
@@ -43,7 +43,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_series_write_incr_test"
-module = "dtp_jtag2axi_smc_axi_series_write_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_incr_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -51,7 +51,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_series_write_no_incr_test"
-module = "dtp_jtag2axi_smc_axi_series_write_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_no_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_no_incr_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -59,7 +59,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test"
-module = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test", uvm = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -67,7 +67,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_random_ops_test"
-module = "dtp_jtag2axi_smc_axi_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_random_ops_test", uvm = "dtp_jtag2axi_smc_axi_random_ops_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -75,7 +75,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_write_security_gating_test"
-module = "dtp_jtag2axi_smc_axi_write_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_write_security_gating_test", uvm = "dtp_jtag2axi_smc_axi_write_security_gating_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -91,7 +91,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_series_write_read_incr_test"
-module = "dtp_jtag2axi_smc_axi_series_write_read_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_incr_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -99,7 +99,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test"
-module = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -107,7 +107,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test"
-module = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -115,7 +115,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_read_random_ops_test"
-module = "dtp_jtag2axi_smc_axi_read_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_read_random_ops_test", uvm = "dtp_jtag2axi_smc_axi_read_random_ops_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -123,7 +123,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_read_security_gating_test"
-module = "dtp_jtag2axi_smc_axi_read_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_read_security_gating_test", uvm = "dtp_jtag2axi_smc_axi_read_security_gating_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -131,7 +131,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test"
-module = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test", uvm = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -147,7 +147,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_single_write_test"
-module = "dtp_jtag2axi_smc_axi_error_single_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_single_write_test", uvm = "dtp_jtag2axi_smc_axi_error_single_write_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -155,7 +155,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_single_read_test"
-module = "dtp_jtag2axi_smc_axi_error_single_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_single_read_test", uvm = "dtp_jtag2axi_smc_axi_error_single_read_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -163,7 +163,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test"
-module = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test", uvm = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -171,7 +171,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test"
-module = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test", uvm = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -179,7 +179,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_series_incr_write_test"
-module = "dtp_jtag2axi_smc_axi_error_series_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_write_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_write_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -187,7 +187,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_series_incr_read_test"
-module = "dtp_jtag2axi_smc_axi_error_series_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_read_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_read_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -195,7 +195,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test"
-module = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -203,7 +203,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test"
-module = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
@@ -211,7 +211,7 @@ run_modes = ["jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_error_security_gating_test"
-module = "dtp_jtag2axi_smc_axi_error_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_security_gating_test", uvm = "dtp_jtag2axi_smc_axi_error_security_gating_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]

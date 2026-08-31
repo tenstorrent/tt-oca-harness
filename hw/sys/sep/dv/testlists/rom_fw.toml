@@ -12,7 +12,7 @@ schema_version = 1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
 #
 # OWNERSHIP: these exercise ROM firmware, not the ROM macro. They are not
-# contracted in docs/SEP_VPLAN.adoc. ROM *hardware*
+# contracted in hw/sys/sep/dv/docs/SEP_VPLAN.adoc. ROM *hardware*
 # coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
 # `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
 # four names are graded.

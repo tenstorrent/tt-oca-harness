@@ -5,7 +5,7 @@
 // dtp_sanity_test_seq on the shared ocah_jtag_vip agent's sequencer, then
 // asserts full FSM state/edge closure via the env checker (this scenario's
 // closure obligation — the per-cycle legality check is always on). Also
-// arms the JTAG TAP-contract named evidence (issue #3296): required CHK-*
+// arms the JTAG TAP-contract named evidence: required CHK-*
 // IDs finalize through env.m_jtag_checker in check_phase.
 
 class dtp_sanity_test extends dtp_base_test;
