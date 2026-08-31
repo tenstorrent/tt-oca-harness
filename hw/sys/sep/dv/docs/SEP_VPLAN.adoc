@@ -2579,6 +2579,12 @@ stall-duration / recovery stress are not exercised here.
 |With `allow_burst=1` and the same two-page window, a 2-beat INCR write is OKAY and the poke lands on a CPU-LSU readback. START/END stay the programmed range.
 |CHK-BURST-TO-SINGLE
 |A filter-allowed 2-beat INCR (AxLEN=1) becomes two AXI-Lite singles on the system-CSR bridge (`u_system_csr_a2l_1`): AR/AW at start and start+4. A denied AxLEN=1 produces zero Lite handshakes (filter before the converter). `hw/sys/sep/doc/fabric.adoc`: convert burst to single.
+|CHK-PAGE-WIDEN
+|A same-page `allow_burst=1` window grants the whole 4 KB page, measured on the bus rather than in a register mirror: an external access to an address inside the granted page but outside the programmed `START..END` answers OKAY for read and write and carries the staged value. The hardware-adjusted `START_ADDR`/`END_ADDR` readback is the setup step showing the rewrite took effect; a CSR mirror is not evidence of what the filter passes. `axi_filter_wrap.sv` widens a same-granule window outward, and the direction is unstated in the architecture documents — see <<known-limitations>> and the specification question this entry cannot settle.
+|CHK-PAGE-BOUND
+|The 4 KB grant stops at both page edges. Under a scratch-page grant an access one page below is refused; with that page granted instead it answers OKAY while the scratch address turns DECERR. Both probes are proven reachable first, so neither refusal can be a decode hole rather than a filter decision. This is the security contract: 4 KB is the block pitch for the DMA CSR, watchdog and scratch-bank blocks, so a page-crossing grant would reach a neighbouring block.
+|CHK-CONFIG-LOCK
+|`FILTER_CONFIG.locked` freezes `allow_burst`. Once locked, clearing `allow_burst` and clearing `locked` both answer SLVERR, the field keeps its value, and the frozen granule still grants the widened page. The freeze is not in the register block -- `locked` is a W1S bit with no write-enable over other fields -- but in `sep_system_csr.sv`, where a per-entry demux routes a locked entry's writes to an error slave while reads pass through. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
 |===
 *Scope*: the walk is the first and last inbound-filter entries, two address
 windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
@@ -3512,7 +3518,7 @@ both lock flavours of one seed-selected spare.
 
 *Testlist*: `system.toml`
 
-*Randomization*: RANDCFG — block order and complement-vs-ones order come from the run seed. The reset walk is the inventory after reasoned skips. Full-mask write-lands is 19 registers; 32 inbound START/END use the wrap model.
+*Randomization*: RANDCFG — three seeds (`reseed = 3`). The seed varies the block order, the complement-vs-ones order and every touch value, never which registers are swept: the cell set is identical on every seed, so coverage is not seed-dependent. Reseeding is what exposes a register that accepts one mask-legal value and refuses another. The reset walk is the inventory after reasoned skips. Full-mask write-lands is 19 registers; 32 inbound START/END use the wrap model.
 
 *Objective*: `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
 
@@ -3540,7 +3546,7 @@ both lock flavours of one seed-selected spare.
 |CHK-RESERVED
 |Reserved bits (`mask_all` minus `mask`) read back 0. Counted only where the register has a non-zero reserved field: 1 of the 51 (`SEP_NMI_VEC`, reserved `0x1`).
 |CHK-BLOCK-TOUCH
-|One export RW storage register per other major IP (`TOUCH_BLOCKS`): write seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. Candidates exclude W1C/status/enable/key/GO. The register is seed-selected only where the block offers more than one candidate (DMA 14, SPI 4, WDT 4); AES, HMAC, KMAC, OTBN and both mailboxes have exactly one, so those picks are fixed. Four of the fixed picks are `INTR_ENABLE`, the generated interrupt shim -- block decode and storage evidence, not evidence about the engine.
+|Every side-effect-free export RW storage register — 130 of the 865-register inventory, not one per IP: write a seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. The gate is the per-register safety predicate AND the side-effect predicate; the second is required, because the first admits registers whose write drops live beats. `TOUCH_BLOCKS` is retained as the anti-vacuity list, so the sweep still fails if any of those nine IPs stops offering a candidate. Excluded registers each carry a tallied reason and the sweep accounts for all 865. Not storage, and each found by widening: hardware-owned status and state-machine observability words, the CSRNG reseed counters, an identity register, two read ports, `ENTROPY_SOURCE.FIPS_LOCK` (a sticky lock whose write froze the block and made later configuration writes in the same run look like failures), and two selectors that refuse a random mask-legal value — `HT_WATERMARK_NUM`, whose unsupported encodings sanitize, and `NOISE_OBS_CTRL`, whose mask contains a write-only singlepulse field.
 |CHK-RANDCFG
 |The whole seed-built configuration ran in one invocation: the reset, write and TOUCH_BLOCKS walks each covered every register the cfg named. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
 |===
