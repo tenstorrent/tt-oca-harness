@@ -102,19 +102,22 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after TLR->RTI step");
     endtask
 
-    // One status-poll scan's duration in system-clock cycles (shift plus
-    // TAP navigation, at the fixed TCK:sys ratio).
+    // One status-poll scan's duration in system-clock cycles: the DR shift
+    // plus ~8 TCK of TAP navigation (the VIP's measured poll cadence — an
+    // overestimate here silently pushes the settle point past the
+    // MaxStatusPolls completion bound).
     protected function int unsigned poll_scan_sys_cycles(j2a_target_t t);
-        return (single_op_len(t) + 32) * TckSysRatio;
+        return (single_op_len(t) + 8) * TckSysRatio;
     endfunction
 
     // READY stall sized in status-poll units, so the operation stays
     // outstanding into the polls and the bridge reports BUSY_OR_FULL before
     // the settled status. The responder applies an AW+W stall's two channel
-    // patterns back to back, so the settle point lands near 2*scans polls —
-    // callers cap scans so completion stays inside the MaxStatusPolls
-    // budget (the cocotb pause generators run phase-free in parallel and
-    // can afford a larger scan budget there).
+    // patterns back to back and the AW pattern's phase adds up to one more
+    // stall window, so the settle point lands near 2*scans polls — callers
+    // cap scans at 5 so completion stays inside the MaxStatusPolls=16
+    // budget with margin (the cocotb pause generators run phase-free in
+    // parallel and can afford a larger scan budget there).
     protected function int unsigned stall_beyond_polls(j2a_target_t t,
                                                        int unsigned scans);
         return scans * poll_scan_sys_cycles(t) + $urandom_range(64, 16);
@@ -219,7 +222,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
             // into the status polls, so the bridge reports BUSY_OR_FULL
             // before the settled status; the seeded scan budget spreads the
             // settle point across the early-poll and late-poll classes.
-            int unsigned scans = ($urandom_range(1) == 0) ? 2 : 6;
+            int unsigned scans = ($urandom_range(1) == 0) ? 2 : 5;
             int unsigned stall = stall_beyond_polls(t, scans);
             bit [63:0] boundary_addr = 64'h1_0000 - size_bytes(size);
             bit [63:0] boundary_data = rand_data(t) & data_mask(size);
