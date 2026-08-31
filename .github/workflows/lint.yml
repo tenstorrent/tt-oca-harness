@@ -155,11 +155,10 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: aou_diags.rdjson.json, format: rdjson, name: lint-sv-slang/aou }
 
-  # Regenerates every register block's collateral from the RDLs and fails if the
-  # working tree changes: the committed gen/ outputs must match a fresh run.
-  # Register regen is peakrdl-only (no bender), so this needs uv but not
-  # setup-tools. `git status --porcelain` (not `git diff --exit-code`) so new
-  # untracked gen files also fail the check.
+  # Deletes and regenerates every register block's collateral from the RDLs,
+  # then fails if the working tree changes. The shared checker forces every
+  # recipe, removes obsolete tracked outputs, validates Python/JSON artifacts,
+  # and uses git status so new files also fail the check.
   regen-regs:
     needs: [diff-class]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -171,13 +170,5 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-      - name: Regenerate register collateral
-        run: make ocah-regen-regs ocah-regen-regs-adoc ocah-regen-regs-html
-      - name: Fail if regeneration changed the tree
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::Register collateral is stale. Run 'make regen-regs regen-regs-adoc regen-regs-html' and commit the result."
-            git status --porcelain
-            git diff
-            exit 1
-          fi
+      - name: Verify regenerated register collateral
+        run: bash scripts/ci/check-regen-regs.sh .
