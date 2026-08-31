@@ -234,14 +234,15 @@ def inbound_addr_expected(name: str, written: int) -> int:
     Models ``axi_filter_wrap`` allow_burst=0: when START and END share a
     beat, START[2:0] clears and END[2:0] sets; otherwise the write lands.
 
-    This is an RTL-behaviour lock, not a specification check. The same-beat
-    widen appears in no architecture document -- neither
-    ``hw/sys/sep/doc/fabric.adoc`` nor ``hw/sys/sep/doc/memory_map.adoc``
-    describes it -- so this compare pins what the RTL does today and fails
-    loudly if it changes. It cannot tell a correct widen from a window
-    over-grant, because nothing states which is intended. The sibling
-    allow_burst=1 4 KB widen is the same open question and is not modelled
-    here. Resolve the specification before treating either as proven.
+    This is an RTL-behaviour lock, not a specification check.
+    ``filter_ctrl.rdl`` says the field is "adjusted to align" with the data
+    width, and the architecture documents do not cover the widen at all, so
+    nothing states the *direction*. Aligning START down and END up grants more
+    than software asked for, which is the security-relevant half for an
+    access-control window. This compare therefore pins what the RTL does today
+    and fails loudly if it changes; it cannot tell a correct widen from a
+    window over-grant. The sibling allow_burst=1 4 KB widen is the same open
+    question and is not modelled here.
     """
     written &= 0xFFFF_FFFF
     peer = _INBOUND_PEER_RESET[name]
