@@ -39,6 +39,9 @@ module jtag_tap_ctrlr
     // Internal signals
     //--------------------------------------------------------------------------
     tap_state_e current_state_q, next_state;
+    logic [$bits(tap_state_e)-1:0] current_state_q_bits;
+
+    assign current_state_q = tap_state_e'(current_state_q_bits);
 
     // TMS reset counter for fault state recovery (IEEE 1149.1 compliance)
     logic [2:0] tms_reset_counter_q, tms_reset_counter_d;
@@ -61,7 +64,7 @@ module jtag_tap_ctrlr
         .clk_i  (client_tap_ctrl_i.tck),
         .rst_ni (client_tap_ctrl_i.trst_n),
         .d_i    (next_state),
-        .q_o    (current_state_q)
+        .q_o    (current_state_q_bits)
     );
 
     prim_flop #(

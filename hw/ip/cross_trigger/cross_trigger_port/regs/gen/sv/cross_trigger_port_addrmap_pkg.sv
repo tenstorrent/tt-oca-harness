@@ -13,4 +13,4 @@ localparam longint unsigned CROSS_TRIGGER_PORT_STATUS_BASE_ADDR = 64'h4;
 localparam longint unsigned CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR = 64'h8;
 
 
-endpackage;
+endpackage

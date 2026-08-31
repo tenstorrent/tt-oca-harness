@@ -60,12 +60,9 @@ SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
 # LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
 # 4-bit raw code in [3:0] and the FSM differential-encodes it.
 #
-# Derived, never written down. This index moved 2 -> 3 when LOCKS_SPARE was inserted
-# ahead of LC_STATE, and every hardcoded copy of it in this environment then pointed
-# at LOCKS_SPARE while still claiming to read the lifecycle state -- which the shadow
-# checkers could not flag, because a wrong-but-self-consistent differential pair looks
-# exactly like a healthy one. Read it out of the generated map so the map is the only
-# place it is stated.
+# Derived, never written down. Read the index out of the generated map so a
+# hardcoded word offset cannot silently point at a neighbour field (a wrong but
+# self-consistent differential pair still looks healthy to a shadow checker).
 LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 LC_RAW_WIDTH = 4
 # efuse_pkg::lc_state_raw_e — only these 7 codes are legal.
@@ -266,7 +263,7 @@ class SepEfuseImage:
     def load(self, path: str | Path) -> "SepEfuseImage":
         """Load a preload file, auto-detecting the format: a per-bit reference suite
         ``*.preload`` (one 0/1 per line) vs a 256-word hex image."""
-        toks = Path(path).read_text().split()
+        toks = Path(path).read_text(encoding="utf-8").split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:
             return self.load_preload_bits(path)
         return self.load_hex(path)
@@ -279,7 +276,7 @@ class SepEfuseImage:
         works because only the LC_STATE word's [3:0] (== the raw nibble) is significant.
         """
         path = Path(path)
-        words = [int(tok, 16) for tok in path.read_text().split()]
+        words = [int(tok, 16) for tok in path.read_text(encoding="utf-8").split()]
         if len(words) > NUM_FUSE_WORDS:
             raise ValueError(f"{path}: {len(words)} words > {NUM_FUSE_WORDS}")
         self.words = [0] * NUM_FUSE_WORDS
@@ -291,7 +288,7 @@ class SepEfuseImage:
         """Load a reference-suite OTP ``*.preload`` (one bit per line, LSB-first) as the
         golden, packing 32 bits/word to match the fuse-array word layout."""
         path = Path(path)
-        bits = [c for c in path.read_text().split() if c in ("0", "1")]
+        bits = [c for c in path.read_text(encoding="utf-8").split() if c in ("0", "1")]
         self.words = [0] * NUM_FUSE_WORDS
         for bit_idx, c in enumerate(bits):
             if c == "1":

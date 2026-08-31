@@ -47,7 +47,6 @@ from sep_base_test import sep_base_test
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
-from seq_lib.sep_sw_reset_seq import SepSwReset
 
 # (mode, sec/strength, output bytes, key_bits[kmac only], customization S)
 CELLS = [
@@ -71,11 +70,10 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
     """Standalone KMAC-family SHA3/SHAKE/cSHAKE/KMAC x strengths (no_cpu, SW key)."""
 
     async def run_scenario(self) -> None:
-        await self.bring_up_no_cpu()
-        # Park every other crypto-EDN client so CHK5_kmac golden routing is
-        # in-order (one live sink). KMAC stays released for the masking reseed.
-        self.swrst = SepSwReset(self)
-        await self.swrst.park("otbn", "aes", "hmac")
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac"))
+        # Every other crypto-EDN client JTAG-held across rst_ni release, then parked in SW_RESET_N so CHK5_kmac golden
+        # routing is in-order (one live sink). KMAC stays released for the
+        # masking reseed.
         await self.bring_up_entropy(
             strict=True, score_km=False, score_sinks={"kmac": "golden"})
         self.start_fifo_drain()
@@ -87,10 +85,10 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.logger.info("KMAC mode/strength breadth KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. The former guard compared
-        # `walked` against a product of file-scope constants -- it asserted its
-        # own arithmetic. Distinct results additionally show the cells really did
-        # program different configurations.
+        # output, not on the loop's own trip count. Comparing `walked` only to a
+        # product of file-scope constants asserts the test's own arithmetic.
+        # Distinct results additionally show the cells programmed different
+        # configurations.
         results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
             results[f"{mode}-{sec}-{outb}"] = await self._run_cell(

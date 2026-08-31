@@ -4,9 +4,7 @@
 /*
  * fabric_output_remap_micro_optimization_test
  *
- * Goal: output_remap 89.83% -> 90%+ (needs only 0.17% improvement)
  * Strategy: Micro boundary-case fill-in; focus on the last untouched toggle bits
- * Priority: highest (easiest to close)
  *
  * Focus on finest boundary conditions and untouched corner cases
  */
@@ -171,8 +169,7 @@ static int test_parallel_micro_stress(void) {
 
 int main(void) {
     printf("Output Remap Micro-Optimization Test\n");
-    printf("Goal: 89.83%% -> 90%%+ (needs 0.17%% improvement)\n");
-    printf("Focus: Micro boundary-case fill-in; focus on the last untouched toggle bits\n\n");
+    printf("Focus: boundary-case and residual field-toggle coverage\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
@@ -207,7 +204,6 @@ int main(void) {
     }
 
     printf("\n=== OUTPUT REMAP MICRO-OPTIMIZATION TEST PASSED ===\n");
-    printf("Expected improvement: 89.83%% -> 90%%+ coverage\n");
 
     test_pass("fabric_output_remap_micro_optimization_test");
     return TEST_PASS;

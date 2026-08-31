@@ -7,6 +7,8 @@
 [WARNING]
 ====
 This section is currently under development.
+
+- Need to finalise flow for verilator lint?
 ====
 
 This document specifies the development methodology for this project.
@@ -28,63 +30,124 @@ make generate_filelist
 
 === Simulation and Testing
 
-==== Simulation with Verilator
-
 We will use open source tools as much as possible and hence will focus
 on using Verilator for unit tests. Verilator has comprehensive
 SystemVerilog (SV) support and is widely used in industry.
 
-Verilator ingests the RTL code along with the test code written in C/C++
-to generate a program which is compiled and run with gcc. Writing tests
-in C/C++ has many benefits:
-
-* high performance, typically better than commercial simulators
-* incorporate third party reference code for ciphers as an example
-* incorporate code for analysis
-* enable development of emulation systems for firmware developers
-* can be migrated to DPI based DV environments for sign-off verification
-
 ==== Testbench and Test Sequence
 
-Verilator is our main simulation engine, and we have several choices on
-how to create unit test benches and sequences for IP components and the
-SEP subsystem:
-
-* Plain _vanilla_ SystemVerilog
-* C/C++
-* Python with cocotb
-
-The VeeR EL2 CPU which is used in SEP has cocotb based testbenches,
-while Caliptra uses mostly C with Verilator. Either choice will be fine
-and it is _TBD_ which one we shall emphasize.
-
-We expect that chip integrators and TT verification engineers will use
-UVM in their verification flows. The UVM flow is however not in scope
-for the open source release of the OCAH project currently. We _may_
-release the UVM verification infrastructure to assist teams in full chip
-integration efforts, but that remains TBD.
-
-Antmicro has recently released a code coverage dashboard tool which
-works with Verilator. This _may_ be used in the verification flows, but
-is TBD based on future evaluations.
-
-The testbench is run and configured using a Python script. Run the
-following command to see all available options:
+Most components use Cocotb Python tests. The DTP also has a nonfree UVM
+test workflow using VCS. The testbench is run and configured using a Python
+script. Run the following command to see all available options:
 
 ```bash
-python3 tools/dv/run_dv.py --help
+./tools/dv/run_dv.py --help
+usage: run_dv.py [options]
+
+Native OSS DV/FV launcher for listing DUTs, validating configs, and running simulation or formal flows.
+
+options:
+...
 ```
+
+If you want to manage python dependencies yourself, rather than through `uv`, the environment variable `OCAH_DV_SKIP_UV=1`
+may be set, in which case the system Python installation will be used.
+
+To check that all testsuites are configured properly, run the following:
+
+```bash
+./tools/dv/run_dv.py --validate-configs
+Validating configs in hw/common/dv/configs
+
+  simulators.toml  OK
+  executors.toml   OK
+  parsers.toml     OK
+  dtp              OK
+  dtp_uvm          OK
+  sep              OK
+  smc_wrapper      OK
+  smu              OK
+  smu_wrapper      OK
+
+Result: 6 DUT(s): 6 OK, 0 FAILED
+```
+
+Use the `--doctor` flag to check the testbench environment for an individual
+configuration - note that while this will check for the presence of optional
+proprietary tools, these remain entirely optional.
+
+```bash
+./tools/dv/run_dv.py --doctor --dut sep
+configs : OK
+checking: DUT `sep` (would run with: verilator)
+
+python/package:
+  python                   OK       3.11.15
+  shared dv package        OK       0.1.0
+  cocotb                   OK       2.0.1
+  pyuvm                    OK       4.0.1
+  cocotbext-axi            OK       0.1.28
+  cocotbext-jtag           OK       0.4.0
+  cocotbext-i2c            OK       0.1.2
+  namespace bridge         OK       /home/daniel/Repos/TT_nix_wrapper/tt-oca-harness/build/dv/python
+  namespace PYTHONPATH     OK       /home/daniel/Repos/TT_nix_wrapper/tt-oca-harness/build/dv/python
+  import ocah_axi_vip      OK       import OK
+  import sep               OK       import OK
+  import sep.cocotb.env    OK       import OK
+
+  tool       binary       status                     licenses
+  verilator  verilator    found: /nix/store/hiyac264333480jfax3374g1mp6nckv7-verilator-5.050/bin/verilator none needed
+  xcelium    xrun         MISSING from PATH          0/2 env set  (optional)
+  vcs        vcs          MISSING from PATH          0/2 env set  (optional)
+
+Result: required tool `verilator` is available
+```
+
+Having selected a Device to Test with the `--dut` flag, use `--list` to
+print the available tests and testlists for the device.
+
+```bash
+./tools/dv/run_dv.py --dut sep --list
+name       : sep
+kind       : dv
+framework  : cocotb
+root       : hw/sys/sep/dv
+tools      : verilator, xcelium, vcs
+default    : verilator
+stages     : ...
+tests      : ...
+groups     : all=... cpu=... no_cpu=... sanity=...
+```
+
+To run an individual set of tests, list them using the `--items` flag.
+
+```bash
+./tools/dv/run_dv.py --dut smc_wrapper --items octs_sanity_test smc_axil_idle_test
+...
+```
+
+This may similarly be used to run preconfigured test groups.
+
+Further options, including seeds and regressions are available, consult the `--help`
+flag to see usage.
 
 ==== Visual Debugging and Waveform Viewer
 
-We have two open source choices: the older GTKWave and Surfer. Surfer is
-the more modern of the two and runs in either the browser or standalone.
-It is under active development and has many nice features such as
-facilities for writing protocol interpreters so that we have mnemonic
-displays for things like opcodes instead of just raw binary or hex.
+When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
+travelling between components. For this, a wave trace may be generated and inspected. To
+generate a trace, use the `--waves` argument.
 
-Surfer binaries are available on MacOS, Linux and Windows, but can also
-run in the browser which is very convenient.
+```bash
+./tools/dv/run_dv.py --waves ...
+...
+```
+
+We use https://surfer-project.org/[Surfer] for viewing wave traces, but if you prefer a
+different program, the program suggested may be overridden with `--wave-viewer-binary`.
+
+To automatically open your chosen viewer on test completion, use the `--open-waves` flag.
+
+The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wave traces for failing tests.
 
 ==== References
 
@@ -103,19 +166,59 @@ formatting. They also enforce a consistent code style.
 
 ==== Verilog Style and Lint checking with Verible
 
+To run the verible linter on all SystemVerilog files, use the following command:
+
+```bash
+make lint-sv-verible
+```
+
+To apply the verible formatter, use the following:
+
+```bash
+make format-sv
+```
+
+The need for the above may be checked with `make format-sv-check`.
+
+==== Verilog Linting with Verilator
+
 TODO
 
 ==== Verilog Style and Lint checking with Slang
 
-TODO
+To run the slang linter on all SystemVerilog files, use the following command:
 
-==== TCL Script Style and Lint with Tclint
+```bash
+make lint-slang-all
+```
 
-TODO
+==== TCL Script Style, Lint and Format with Tclint
 
-==== C/C++ Style and Link with Clang-Format
+To lint the TCL scripts in the repository, we use the package `tclint`.
+This may be managed by `uv` - run `uv sync` to install, or to use a system installed version, set `OCAH_TCLINT_SKIP_UV=1`.
 
-TODO
+To lint, use the following command:
+
+```bash
+make lint-tcl
+```
+
+To then run the formatter and style checker, use the following, whose changes may first be checked with `make format-tcl-check`:
+
+```bash
+make format-tcl
+```
+
+==== C/C++ Style and Format with Clang-Format
+
+The C/C++ Firmware files included in each component are checked and formatted with `clang-format`.
+As with `tclint` above, this may be managed by `uv`, but `OCAH_CLANG_FORMAT_SKIP_UV=1` may be set to use a system installation.
+
+```bash
+make format-c
+```
+
+To check for errors without modifying files, use `make format-c-check`.
 
 ==== References
 

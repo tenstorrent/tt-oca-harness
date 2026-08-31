@@ -201,7 +201,9 @@ class OcahAxiLiteMasterSequence:
             self.timeout_ns = int(kwargs["timeout_ns"])
         unsupported = set(kwargs) - {"timeout_cycles", "timeout_ns"}
         if unsupported:
-            self.log.warning("%s: ignored unsupported cocotbext config keys %s", self.name, sorted(unsupported))
+            raise ValueError(
+                f"{self.name}: unsupported cocotbext config keys {sorted(unsupported)}"
+            )
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level transaction counters."""

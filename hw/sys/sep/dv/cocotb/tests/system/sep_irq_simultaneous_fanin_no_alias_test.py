@@ -127,13 +127,12 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             len(sources), [s.agg_idx for s in sources], vec & REGION_MASK,
         )
 
-        # The anti-alias property is proven by the EXACT-equality poll above, not by a
-        # separate check. A former CHK-ANTI-ALIAS assert required
-        # `(vec & REGION_MASK) & ~want == 0`; since the poll only returns when
-        # `vec & REGION_MASK == want & REGION_MASK`, and want & REGION_MASK is a subset
-        # of want, that expression is identically zero -- it could not fail for any DUT
-        # behaviour. A real aggregator smear lights a neighbour bit, which breaks the
-        # poll's equality and times it out. That is where the proof actually lives.
+        # The anti-alias property is proven by the EXACT-equality poll above, not
+        # by a separate mask computation. `(vec & REGION_MASK) & ~want == 0` is
+        # identically zero once the poll has returned with
+        # `vec & REGION_MASK == want & REGION_MASK`, so it cannot fail. A real
+        # aggregator smear lights a neighbour bit, which breaks the poll's
+        # equality and times it out — that is where the proof lives.
         self.logger.info(
             "CHK-ANTI-ALIAS PASS: no non-driven bit in [%d:%d] is set (mask=0x%08x)",
             REGION_LO, REGION_HI, REGION_MASK,

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import cocotb
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -95,7 +95,7 @@ class smu_sys_in_filter_program_jtag_test_seq:
         pre_data, pre_resp = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label="pre-program VERSION_LO DECERR",
         )
@@ -108,7 +108,7 @@ class smu_sys_in_filter_program_jtag_test_seq:
         self._log(
             f"CHK-FILTER-PROG-PRE-DECERR data=0x{int(pre_data) & 0xFFFF_FFFF:08x}"
         )
-        sb.expect_eq("CHK-FILTER-PROG-PRE-DECERR", pre_resp, AxiResp.DECERR)
+        sb.expect_eq("CHK-FILTER-PROG-PRE-DECERR", pre_resp, RESP_DECERR)
 
         await program_inbound0_window(
             jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="PROG"
@@ -144,7 +144,7 @@ class smu_sys_in_filter_program_jtag_test_seq:
         post_data, post_resp = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="post-program VERSION_LO OKAY",
         )
@@ -160,14 +160,14 @@ class smu_sys_in_filter_program_jtag_test_seq:
         sb.expect_eq(
             "CHK-AXI-FILTER-OKAY post VERSION_LO",
             post_resp,
-            AxiResp.OKAY,
+            RESP_OKAY,
             evidence="AXI_FILTER_OKAY",
         )
 
         out_data, out_resp = await await_smn_resp(
             master,
             WDT_CTRL_ADDR,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label="WDT outside window DECERR",
         )
@@ -180,4 +180,4 @@ class smu_sys_in_filter_program_jtag_test_seq:
         self._log(
             f"CHK-FILTER-PROG-OUT-DECERR WDT poison=0x{int(out_data) & 0xFFFF_FFFF:08x}"
         )
-        sb.expect_eq("CHK-FILTER-PROG-OUT-DECERR", out_resp, AxiResp.DECERR)
+        sb.expect_eq("CHK-FILTER-PROG-OUT-DECERR", out_resp, RESP_DECERR)

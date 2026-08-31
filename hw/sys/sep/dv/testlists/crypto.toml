@@ -44,9 +44,9 @@ args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.par
 
 [[tests]]
 # Shared HT_WATERMARK arming (not the ESRC->DRBG datapath). RANDCFG walks every
-# supported selector on MODULE_ENABLE and CTRL.RESET; seed picks the illegal
-# selector and the low-mode fall. HEALTH_TEST_CTRL.ENABLE stays 0 on arming
-# legs. +skip_fuse_sense; +esrc_noise_force only for the fall window.
+# supported selector on MODULE_ENABLE; seed picks the illegal selector and the
+# low-mode fall. HEALTH_TEST_CTRL.ENABLE stays 0 on arming legs.
+# +skip_fuse_sense; +esrc_noise_force only for the fall window.
 name = "sep_esrc_ht_watermark_arming_test"
 module = "crypto.sep_esrc_ht_watermark_arming_test"
 seed = 1
@@ -58,8 +58,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class every
-# seed; lock sequencing is directed. Write-0 leaves LOCK=1. CTRL.RESET does
-# not clear; rst_ni does. Observe FIFO stays writable. +skip_fuse_sense.
+# seed; lock sequencing is directed. Write-0 leaves LOCK=1; hardware reset
+# clears it. Observe FIFO stays writable. +skip_fuse_sense.
 name = "sep_esrc_fips_lock_test"
 module = "crypto.sep_esrc_fips_lock_test"
 seed = 1
@@ -159,9 +159,11 @@ args = ["+skip_fuse_sense"]
 # KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
 # bit-exact routing is a Phase 2 claim, not this test.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
-# oscillators under Verilator. rom_main.rom.parhex from tracked source.
+# oscillators under Verilator. c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_drbg_real_sink_multi_km_aes_test"
 module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["drbg", "entropy", "crypto", "multi_sink", "subsystem"]
@@ -201,3 +203,19 @@ tags = ["drbg", "entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
+# (sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR). Software-written seed only.
+# Public key matches the vendored ACVP vector; one seed-bit flip must
+# change the key. PIC [34] low / [35] high on completion. RANDCFG: masking
+# entropy and flip bit from the run seed. Sign/verify, ML-KEM, and the
+# key-vault seed path are not claimed. no_cpu; +skip_fuse_sense.
+name = "sep_abr_mldsa_keygen_kat_test"
+module = "crypto.sep_abr_mldsa_keygen_kat_test"
+seed = 1
+timeout_sec = 7200
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]

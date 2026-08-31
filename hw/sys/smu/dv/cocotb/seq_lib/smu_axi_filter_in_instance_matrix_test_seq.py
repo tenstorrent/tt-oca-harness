@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from cocotbext.axi import AxiProt, AxiResp
+from ocah_axi_vip import PROT_NONSECURE, PROT_PRIVILEGED, RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -58,8 +58,8 @@ _IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR"
 AXI_TIMEOUT_NS = 200_000
 FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
-SECURE_PROT = int(AxiProt.PRIVILEGED)  # 0x1 — prot[1]=0
-NS_PROT = int(AxiProt.PRIVILEGED | AxiProt.NONSECURE)  # 0x3
+SECURE_PROT = PROT_PRIVILEGED  # 0x1 — prot[1]=0
+NS_PROT = PROT_PRIVILEGED | PROT_NONSECURE  # 0x3
 
 PROBE_WDT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
 PROBE_VERSION = SMC_CHIP_CONFIG_VERSION_LO
@@ -128,16 +128,18 @@ class smu_axi_filter_in_instance_matrix_test_seq:
     ):
         async def _do():
             if write:
-                beat = await master.write(
+                result = await master.write_bytes_result(
                     addr,
                     wdata.to_bytes(4, "little"),
-                    prot=AxiProt(prot),
+                    prot=prot,
                     user=user,
+                    check_response=False,
                 )
-                return None, beat.resp
-            beat = await master.read(addr, 4, prot=AxiProt(prot), user=user)
-            val = int.from_bytes(bytes(beat.data), "little")
-            return val, beat.resp
+                return None, result.resp
+            result = await master.read_bytes_result(
+                addr, 4, prot=prot, user=user, check_response=False
+            )
+            return result.data, result.resp
 
         try:
             return await with_timeout(_do(), AXI_TIMEOUT_NS, "ns")
@@ -268,7 +270,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         )
         self.default_block_rd = rd_resp
         self.default_block_wr = wr_resp
-        if rd_resp != AxiResp.DECERR or wr_resp != AxiResp.DECERR:
+        if rd_resp != RESP_DECERR or wr_resp != RESP_DECERR:
             raise AssertionError(
                 f"S4 pre-CSR default block want DECERR/DECERR "
                 f"got {resp_name(rd_resp)}/{resp_name(wr_resp)}"
@@ -319,7 +321,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_WDT,
             prot=SECURE_PROT,
             user=FILTER_SRC_ID,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S2_inst0_admit",
         )
         _v, bad = await self._axi_rw(
@@ -329,7 +331,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=FILTER_SRC_ID + 9,
             write=False,
         )
-        if bad != AxiResp.DECERR:
+        if bad != RESP_DECERR:
             raise AssertionError(
                 f"S2 inst0 wrong src want DECERR got {resp_name(bad)}"
             )
@@ -347,7 +349,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_VERSION,
             prot=SECURE_PROT,
             user=INST1_SRC,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S2_inst1_admit",
         )
         _v, cross = await self._axi_rw(
@@ -357,7 +359,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=FILTER_SRC_ID,
             write=False,
         )
-        if cross != AxiResp.DECERR:
+        if cross != RESP_DECERR:
             raise AssertionError(
                 f"S2 cross (inst0 src on inst1 window) want DECERR got {resp_name(cross)}"
             )
@@ -384,7 +386,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_CPU_SCRATCH,
             prot=SECURE_PROT,
             user=INST3_SRC,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S3_all_match",
         )
         _v, addr_fail = await self._axi_rw(
@@ -394,7 +396,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=INST3_SRC,
             write=False,
         )
-        if addr_fail != AxiResp.DECERR:
+        if addr_fail != RESP_DECERR:
             raise AssertionError(
                 f"S3 addr_fail want DECERR got {resp_name(addr_fail)}"
             )
@@ -405,7 +407,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=INST3_SRC + 3,
             write=False,
         )
-        if src_fail != AxiResp.DECERR:
+        if src_fail != RESP_DECERR:
             raise AssertionError(
                 f"S3 srcid_fail want DECERR got {resp_name(src_fail)}"
             )
@@ -416,7 +418,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=INST3_SRC,
             write=False,
         )
-        if prot_fail != AxiResp.DECERR:
+        if prot_fail != RESP_DECERR:
             raise AssertionError(
                 f"S3 prot_fail want DECERR got {resp_name(prot_fail)}"
             )
@@ -443,7 +445,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_VERSION,
             prot=SECURE_PROT,
             user=0,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S5_admit_rd",
         )
         await self._await_resp(
@@ -451,7 +453,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_VERSION,
             prot=SECURE_PROT,
             user=0,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S5_admit_wr",
             write=True,
             wdata=0x0230_A002,

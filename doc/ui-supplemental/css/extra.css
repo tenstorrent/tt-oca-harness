@@ -560,3 +560,16 @@
     background: var(--oca-green) !important;
     color: #ffffff !important;
 }
+
+/* %autowidth tables get Asciidoctor's `fit-content` class, so this avoids
+   table overrunning.  */
+.tableblock.fit-content {
+    width: 100% !important;
+    table-layout: fixed;
+}
+
+.tableblock.fit-content td,
+.tableblock.fit-content th {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}

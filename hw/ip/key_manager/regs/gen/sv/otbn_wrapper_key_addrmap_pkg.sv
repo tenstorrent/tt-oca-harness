@@ -19,4 +19,4 @@ localparam longint unsigned OTBN_WRAPPER_KEY_KEY_SHARE1_NUM = 64'hC;
 localparam longint unsigned OTBN_WRAPPER_KEY_KEY_CTRL_BASE_ADDR = 64'h60;
 
 
-endpackage;
+endpackage

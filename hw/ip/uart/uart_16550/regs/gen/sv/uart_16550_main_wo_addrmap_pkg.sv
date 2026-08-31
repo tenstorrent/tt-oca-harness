@@ -12,4 +12,4 @@ localparam longint unsigned UART_16550_MAIN_WO_THR_BASE_ADDR = 64'h0;
 localparam longint unsigned UART_16550_MAIN_WO_FCR_BASE_ADDR = 64'h8;
 
 
-endpackage;
+endpackage

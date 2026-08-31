@@ -746,14 +746,14 @@ module jtag2axi #(
         unique case ({write_complete, b_handshake})
             2'b10: write_outstanding_d = write_outstanding_q + 2'd1;
             2'b01: write_outstanding_d = write_outstanding_q - 2'd1;
-            default: ;
+            default: write_outstanding_d = write_outstanding_q;
         endcase
 
         read_outstanding_d = read_outstanding_q;
         unique case ({ar_handshake, r_last_handshake})
             2'b10: read_outstanding_d = read_outstanding_q + 2'd1;
             2'b01: read_outstanding_d = read_outstanding_q - 2'd1;
-            default: ;
+            default: read_outstanding_d = read_outstanding_q;
         endcase
 
         orphan_b_count_d = orphan_b_count_q;
@@ -764,7 +764,7 @@ module jtag2axi #(
                           b_handshake && (orphan_b_count_q != '0)})
                 2'b10: orphan_b_count_d = orphan_b_count_q + 2'd1;
                 2'b01: orphan_b_count_d = orphan_b_count_q - 2'd1;
-                default: ;
+                default: orphan_b_count_d = orphan_b_count_q;
             endcase
         end
 
@@ -776,7 +776,7 @@ module jtag2axi #(
                           r_last_handshake && (orphan_r_count_q != '0)})
                 2'b10: orphan_r_count_d = orphan_r_count_q + 2'd1;
                 2'b01: orphan_r_count_d = orphan_r_count_q - 2'd1;
-                default: ;
+                default: orphan_r_count_d = orphan_r_count_q;
             endcase
         end
     end

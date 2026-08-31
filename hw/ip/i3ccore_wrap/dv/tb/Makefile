@@ -77,7 +77,7 @@ ifeq ($(SIM),vcs)
     COMPILE_ARGS += -lca +rad -kdb +nospecify
     COMPILE_ARGS += -debug_access+r+w+cbk -debug_access+thread+class+cbkd+dmpt+dmpf+idents_db
     COMPILE_ARGS += -l vcs.log
-    COMPILE_ARGS += +define+SIM +define+VCS +define+COMMON_CELLS_ASSERTS_OFF +define+I3C_USE_AXI_LITE
+    COMPILE_ARGS += +define+VCS +define+COMMON_CELLS_ASSERTS_OFF +define+I3C_USE_AXI_LITE
     COMPILE_ARGS += +lint=PCWM +warn=noCWUC +warn=noUII-L -error:IWNF:1 +lint=TFIPC-L
     COMPILE_ARGS += +incdir+$(PWD)
 

@@ -5,8 +5,8 @@
 RANDCFG: every seed walks the documented locked field classes. Continuous
 knobs (which legal pre-lock value and which rejected poke) come from the
 run seed. ``SepEsrcFipsLockCfg`` is the SSOT for both programming and
-the post-lock golden. Observe FIFOs stay writable. ``CTRL.RESET`` does
-not clear the lock; ``rst_ni`` does.
+the post-lock golden. Observe FIFOs stay writable. Retired ``CTRL[0]``
+is RAZ/WI; the shared TRNG reset and ``rst_ni`` clear the lock.
 """
 
 from __future__ import annotations
@@ -84,10 +84,10 @@ class SepEsrcFipsLockCfg:
                 "CTRL.SHA256",
                 ESRC_CTRL,
                 ENTROPY_SOURCE.value(
-                    "CTRL", RESET=0, MODULE_ENABLE=1,
+                    "CTRL", MODULE_ENABLE=1,
                     SHA256_WHITENING_ENABLE=sha_pre),
                 ENTROPY_SOURCE.value(
-                    "CTRL", RESET=0, MODULE_ENABLE=1,
+                    "CTRL", MODULE_ENABLE=1,
                     SHA256_WHITENING_ENABLE=1),
                 SHA256_BIT,
                 ENTROPY_SOURCE.reset("CTRL"),
@@ -156,10 +156,10 @@ class SepEsrcFipsLock(SepAxiRegDriver):
     async def try_unlock(self) -> None:
         await self._wr(ESRC_FIPS_LOCK, 0)
 
-    async def pulse_ctrl_reset(self) -> None:
+    async def poke_reserved_ctrl_bit(self) -> tuple[int, int]:
         cur = await self._rd(ESRC_CTRL)
         await self._wr(ESRC_CTRL, cur | 0x1)
-        await self._wr(ESRC_CTRL, cur & ~0x1)
+        return cur, await self._rd(ESRC_CTRL)
 
     async def write_obs_enable(self, enable: int) -> None:
         await self._wr(ESRC_BIW_OBS_CTRL, enable & 0x1)
