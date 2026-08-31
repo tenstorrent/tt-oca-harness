@@ -12,7 +12,7 @@
 //
 // Both shapes expand the same signal list, dtp_tb_signal_list.svh, through
 // the DTP_TB_* macros defined just below -- each TB signal is declared in
-// exactly one place and the two shapes cannot drift apart (issue #1133).
+// exactly one place and the two shapes cannot drift apart.
 //
 // Exposes the DTP DUT's primary JTAG TAP at pin level so the TB BFM can
 // drive it, plus system clock/reset. The JTAG TAP FSM lives *inside* `dtp`
@@ -535,6 +535,175 @@ module dtp_uvm_top
         .xtrig_ctp_ack_out_din_en_o       (xtrig_ctp_ack_out_din_en)
     );
 
+    // ------------------------------------------------------------------
+    // Functional coverage (DTP_FCOV.adoc): shared by both tb shapes. The
+    // module carries Verilator-safe cover-property points plus
+    // commercial-only covergroups internally.
+    // ------------------------------------------------------------------
+    dtp_fcov u_dtp_fcov (
+        .tck_i          (jtag_tck),
+        .tms_i          (jtag_tms),
+        .tdi_i          (jtag_tdi),
+        .tdo_i          (jtag_tdo),
+        .trst_ni        (jtag_trst),
+        .tap_state_i    (jtag_ptap_state),
+        .inst_decoded_i (jtag_ptap_inst_decoded),
+        .dbg_disable_i  (dbg_disable)
+    );
+
+    // JTAG2AXI / OTP bridge coverage. The completed-response boundary comes
+    // from each bridge's TCK-domain bookkeeping via hierarchical references
+    // (the cocotb Verilator build compiles with --public-flat-rw; VCS
+    // resolves them natively); bus-timing bins use the flat AXI pins.
+    dtp_jtag2axi_fcov u_dtp_jtag2axi_fcov (
+        .tck_i             (jtag_tck),
+        .trst_ni           (jtag_trst),
+        .clk_i             (clk_i),
+        .rst_ni            (rst_n_i),
+        .tap_state_i       (jtag_ptap_state),
+        .inst_decoded_i    (jtag_ptap_inst_decoded),
+        .dbg_disable_i     (dbg_disable),
+
+        .smc_axi_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.last_single_op_status_tclk),
+        .smc_axi_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk),
+        .smc_axi_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_op_tclk),
+        .smc_axi_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_addr_tclk),
+        .smc_axi_size_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_axi_size_tclk),
+        .smc_axi_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_tx_wstrb_tclk),
+        .smc_axi_awvalid_i (m_axi_awvalid),
+        .smc_axi_awready_i (m_axi_awready),
+        .smc_axi_wvalid_i  (m_axi_wvalid),
+        .smc_axi_wready_i  (m_axi_wready),
+        .smc_axi_bvalid_i  (m_axi_bvalid),
+        .smc_axi_bready_i  (m_axi_bready),
+        .smc_axi_arvalid_i (m_axi_arvalid),
+        .smc_axi_arready_i (m_axi_arready),
+        .smc_axi_rvalid_i  (m_axi_rvalid),
+        .smc_axi_rready_i  (m_axi_rready),
+
+        .smc_otp_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.last_single_op_status_tclk),
+        .smc_otp_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk),
+        .smc_otp_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_op_tclk),
+        .smc_otp_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_addr_tclk),
+        .smc_otp_size_i    ({1'b0, u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_axi_size_tclk}),
+        .smc_otp_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_tx_wstrb_tclk),
+        .smc_otp_awvalid_i (smc_otp_axil_awvalid),
+        .smc_otp_awready_i (smc_otp_axil_awready),
+        .smc_otp_wvalid_i  (smc_otp_axil_wvalid),
+        .smc_otp_wready_i  (smc_otp_axil_wready),
+        .smc_otp_bvalid_i  (smc_otp_axil_bvalid),
+        .smc_otp_bready_i  (smc_otp_axil_bready),
+        .smc_otp_arvalid_i (smc_otp_axil_arvalid),
+        .smc_otp_arready_i (smc_otp_axil_arready),
+        .smc_otp_rvalid_i  (smc_otp_axil_rvalid),
+        .smc_otp_rready_i  (smc_otp_axil_rready),
+
+        .sep_otp_status_i  (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.last_single_op_status_tclk),
+        .sep_otp_pending_i (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk),
+        .sep_otp_op_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_op_tclk),
+        .sep_otp_addr_i    (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_addr_tclk),
+        .sep_otp_size_i    ({1'b0, u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_axi_size_tclk}),
+        .sep_otp_wstrb_i   (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_tx_wstrb_tclk),
+        .sep_otp_awvalid_i (sep_otp_axil_awvalid),
+        .sep_otp_awready_i (sep_otp_axil_awready),
+        .sep_otp_wvalid_i  (sep_otp_axil_wvalid),
+        .sep_otp_wready_i  (sep_otp_axil_wready),
+        .sep_otp_bvalid_i  (sep_otp_axil_bvalid),
+        .sep_otp_bready_i  (sep_otp_axil_bready),
+        .sep_otp_arvalid_i (sep_otp_axil_arvalid),
+        .sep_otp_arready_i (sep_otp_axil_arready),
+        .sep_otp_rvalid_i  (sep_otp_axil_rvalid),
+        .sep_otp_rready_i  (sep_otp_axil_rready)
+    );
+
+    // Debug-TDR coverage (TMP / IC_RESET / DEBUG_CONTROL / CAPS): flattened
+    // TDR outputs plus the TMP unit and clock-stop contributions through
+    // hierarchical references.
+    dtp_debug_tdr_fcov u_dtp_debug_tdr_fcov (
+        .tck_i                 (jtag_tck),
+        .tdi_i                 (jtag_tdi),
+        .tdo_i                 (jtag_tdo),
+        .trst_ni               (jtag_trst),
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .tap_state_i           (jtag_ptap_state),
+        .inst_decoded_i        (jtag_ptap_inst_decoded),
+        .ic_reset_smc_ovrd_i   (jtag_ic_reset_smc_ovrd),
+        .ic_reset_smc_ctrl_n_i (jtag_ic_reset_smc_ctrl_n),
+        .ic_reset_sep_ovrd_i   (jtag_ic_reset_sep_ovrd),
+        .ic_reset_sep_ctrl_n_i (jtag_ic_reset_sep_ctrl_n),
+        .ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
+        .ic_reset_ext_ctrl_n_i (jtag_ic_reset_ext_ctrl_n),
+        .boot_stall_ovrd_i     (jtag_boot_stall_ovrd),
+        .boot_stall_i          (jtag_boot_stall),
+        .stop_clks_i           (stop_clks),
+        .cla_clock_stop_en_i   (cla_clock_stop_en),
+        .clk_stop_req_i        (xtrig_clk_stop_req),
+        .tmp_state_i           (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.tmp_state_q_bits),
+        .tmp_status_reg_i      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_status_reg.u_jtag_tmp_status_reg.tmp_status_reg_q),
+        .tmp_escape_cond_i     (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_tmp_controller.u_jtag_tmp.bypass_escape_condition),
+        .jtag_clock_stop_i     (u_dut.jtag_clock_stop),
+        .cla_clock_stop_i      (u_dut.cla_clock_stop)
+    );
+
+    // Scan-network coverage (iJTAG SIBs / STAP 3DCR): flattened chain
+    // controls plus each STAP's stored 3DCR state through hierarchical
+    // references (sel_int is the stored select before the security gate).
+    dtp_scan_fcov u_dtp_scan_fcov (
+        .tck_i                  (jtag_tck),
+        .trst_ni                (jtag_trst),
+        .tap_state_i            (jtag_ptap_state),
+        .inst_decoded_i         (jtag_ptap_inst_decoded),
+        .dbg_disable_i          (dbg_disable),
+        .dft_secure_select_i    (jtag_dft_secure_select),
+        .dft_secure_shift_en_i  (jtag_dft_secure_shift_en),
+        .dft_select_i           (jtag_dft_select),
+        .dft_shift_en_i         (jtag_dft_shift_en),
+        .dfd_select_i           (jtag_dfd_select),
+        .dfd_shift_en_i         (jtag_dfd_shift_en),
+        .stap_io_tdo_oen_i      (jtag_stap_io_tdo_oen),
+        .stap_smc_tdo_oen_i     (jtag_stap_smc_tdo_oen),
+        .stap_sep_tdo_oen_i     (jtag_stap_sep_tdo_oen),
+        .stap_extra_tdo_oen_i   (jtag_stap_extra0_tdo_oen),
+        .stap_io_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel),
+        .stap_io_sel_int_i      (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.stap_sel_int),
+        .stap_io_tms_hold_i     (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.tms_hold),
+        .stap_io_config_hold_i  (u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.config_hold),
+        .stap_smc_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel),
+        .stap_smc_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.stap_sel_int),
+        .stap_smc_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.tms_hold),
+        .stap_smc_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_smc_dbg.u_stap_smc_dbg.config_hold),
+        .stap_sep_sel_i         (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel),
+        .stap_sep_sel_int_i     (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.stap_sel_int),
+        .stap_sep_tms_hold_i    (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.tms_hold),
+        .stap_sep_config_hold_i (u_dut.u_jtag_intf_unit.gen_stap_sep_dbg.u_stap_sep_dbg.config_hold),
+        .stap_extra_sel_i       (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel),
+        .stap_extra_sel_int_i   (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.stap_sel_int),
+        .stap_extra_tms_hold_i  (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.tms_hold),
+        .stap_extra_config_hold_i (u_dut.u_jtag_intf_unit.gen_extra_staps.gen_extra_stap[0].u_stap_extra.config_hold)
+    );
+
+    // Cross-trigger coverage (CTP / CTM): CSR-write decode plus the
+    // cross-trigger GPIO and matrix handshake pins, all in the system-clock
+    // domain. The SV-UVM shape ties these inputs quiescent, so the bins
+    // collect only where the stimulus exists (the cocotb flow today).
+    dtp_xtrig_fcov u_dtp_xtrig_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_i),
+        .axil_awaddr_i         (xtrig_axil_awaddr),
+        .axil_awvalid_i        (xtrig_axil_awvalid),
+        .axil_awready_i        (xtrig_axil_awready),
+        .axil_wdata_i          (xtrig_axil_wdata),
+        .axil_wvalid_i         (xtrig_axil_wvalid),
+        .axil_wready_i         (xtrig_axil_wready),
+        .ctm_src_req_i         (xtrig_ctm_src_req),
+        .ctm_dst_req_i         (xtrig_ctm_dst_req),
+        .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
+        .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
+        .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
+        .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
+    );
+
 `ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
@@ -564,6 +733,14 @@ module dtp_uvm_top
     assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
     assign u_tb_if.tap_state = jtag_ptap_state;
 
+    // Decoded-IR and boundary-scan control observables: the
+    // basic-JTAG instruction checks read these through dtp_tb_if.
+    assign u_tb_if.inst_decoded        = jtag_ptap_inst_decoded;
+    assign u_tb_if.jtag_bsr_select     = jtag_bsr_select;
+    assign u_tb_if.jtag_bsr_shift_en   = jtag_bsr_shift_en;
+    assign u_tb_if.jtag_bsr_capture_en = jtag_bsr_capture_en;
+    assign u_tb_if.jtag_bsr_update_en  = jtag_bsr_update_en;
+
     // Lifecycle debug disables and clock-stop requests: sequences drive the
     // typed dbg_disable_t through dtp_tb_if (init '1 = fail-closed, so the
     // sanity test's behavior is unchanged; JTAG2AXI sequences clear the
@@ -572,7 +749,7 @@ module dtp_uvm_top
     assign dbg_disable        = u_tb_if.dbg_disable;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
-    // answers JTAG2AXI OTP traffic (issue #3295). The slave interface carries
+    // answers JTAG2AXI OTP traffic. The slave interface carries
     // the connection: the TB wires only the master-driven signals in, and the
     // agent's driver procedurally drives the responder-side signals, routed
     // back to the DUT below. Error injection is programmed by sequences via
@@ -620,52 +797,60 @@ module dtp_uvm_top
     assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
     assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
-    // SMC fabric AXI4 responder: drives the previously-undriven m_axi_*
-    // response inputs so JTAG2AXI fabric traffic completes in the UVM flow.
-    ocah_axi_ram_responder #(
-        .ADDR_WIDTH (56),
-        .DATA_WIDTH (64),
-        .ID_WIDTH   (2)
-    ) u_smc_axi_responder (
-        .clk_i          (clk_i),
-        .rst_ni         (rst_n_i),
-        .awid           (m_axi_awid),
-        .awaddr         (m_axi_awaddr),
-        .awlen          (m_axi_awlen),
-        .awsize         (m_axi_awsize),
-        .awburst        (m_axi_awburst),
-        .awprot         (m_axi_awprot),
-        .awvalid        (m_axi_awvalid),
-        .awready        (m_axi_awready),
-        .wdata          (m_axi_wdata),
-        .wstrb          (m_axi_wstrb),
-        .wlast          (m_axi_wlast),
-        .wvalid         (m_axi_wvalid),
-        .wready         (m_axi_wready),
-        .bid            (m_axi_bid),
-        .bresp          (m_axi_bresp),
-        .bvalid         (m_axi_bvalid),
-        .bready         (m_axi_bready),
-        .arid           (m_axi_arid),
-        .araddr         (m_axi_araddr),
-        .arlen          (m_axi_arlen),
-        .arsize         (m_axi_arsize),
-        .arburst        (m_axi_arburst),
-        .arprot         (m_axi_arprot),
-        .arvalid        (m_axi_arvalid),
-        .arready        (m_axi_arready),
-        .rid            (m_axi_rid),
-        .rdata          (m_axi_rdata),
-        .rresp          (m_axi_rresp),
-        .rlast          (m_axi_rlast),
-        .rvalid         (m_axi_rvalid),
-        .rready         (m_axi_rready),
-        .err_arm_i      (u_tb_if.smc_axi_err_arm),
-        .err_addr_i     (u_tb_if.smc_axi_err_addr),
-        .err_resp_i     (u_tb_if.smc_axi_err_resp),
-        .err_on_read_i  (u_tb_if.smc_axi_err_on_read),
-        .err_on_write_i (u_tb_if.smc_axi_err_on_write)
-    );
+    // SMC fabric AXI4 responder: the shared ocah_axi_vip UVM slave agent
+    // (same pattern as the SMC OTP port) answers JTAG2AXI fabric traffic.
+    // The slave interface carries the connection: the TB wires only the
+    // master-driven signals in, and the agent's driver procedurally drives
+    // the responder-side signals, routed back to the DUT below. Error
+    // injection and backdoor memory access are programmed by sequences via
+    // the agent's ocah_axi_slave_sequence, not TB error ports.
+    ocah_axi_if u_smc_axi_slave_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_smc_axi_slave_if.awid     = 16'(m_axi_awid);
+    assign u_smc_axi_slave_if.awaddr   = 64'(m_axi_awaddr);
+    assign u_smc_axi_slave_if.awlen    = m_axi_awlen;
+    assign u_smc_axi_slave_if.awsize   = m_axi_awsize;
+    assign u_smc_axi_slave_if.awburst  = m_axi_awburst;
+    assign u_smc_axi_slave_if.awlock   = m_axi_awlock;
+    assign u_smc_axi_slave_if.awcache  = m_axi_awcache;
+    assign u_smc_axi_slave_if.awprot   = m_axi_awprot;
+    assign u_smc_axi_slave_if.awqos    = m_axi_awqos;
+    assign u_smc_axi_slave_if.awregion = m_axi_awregion;
+    assign u_smc_axi_slave_if.awuser   = 16'(m_axi_awuser);
+    assign u_smc_axi_slave_if.awvalid  = m_axi_awvalid;
+    assign u_smc_axi_slave_if.wdata    = m_axi_wdata;
+    assign u_smc_axi_slave_if.wstrb    = m_axi_wstrb;
+    assign u_smc_axi_slave_if.wlast    = m_axi_wlast;
+    assign u_smc_axi_slave_if.wuser    = 16'(m_axi_wuser);
+    assign u_smc_axi_slave_if.wvalid   = m_axi_wvalid;
+    assign u_smc_axi_slave_if.bready   = m_axi_bready;
+    assign u_smc_axi_slave_if.arid     = 16'(m_axi_arid);
+    assign u_smc_axi_slave_if.araddr   = 64'(m_axi_araddr);
+    assign u_smc_axi_slave_if.arlen    = m_axi_arlen;
+    assign u_smc_axi_slave_if.arsize   = m_axi_arsize;
+    assign u_smc_axi_slave_if.arburst  = m_axi_arburst;
+    assign u_smc_axi_slave_if.arlock   = m_axi_arlock;
+    assign u_smc_axi_slave_if.arcache  = m_axi_arcache;
+    assign u_smc_axi_slave_if.arprot   = m_axi_arprot;
+    assign u_smc_axi_slave_if.arqos    = m_axi_arqos;
+    assign u_smc_axi_slave_if.arregion = m_axi_arregion;
+    assign u_smc_axi_slave_if.aruser   = 16'(m_axi_aruser);
+    assign u_smc_axi_slave_if.arvalid  = m_axi_arvalid;
+    assign u_smc_axi_slave_if.rready   = m_axi_rready;
+
+    // Responder-side signals: agent driver -> DUT response inputs.
+    assign m_axi_awready = u_smc_axi_slave_if.awready;
+    assign m_axi_wready  = u_smc_axi_slave_if.wready;
+    assign m_axi_bid     = u_smc_axi_slave_if.bid[1:0];
+    assign m_axi_bresp   = u_smc_axi_slave_if.bresp;
+    assign m_axi_buser   = '0;
+    assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid;
+    assign m_axi_arready = u_smc_axi_slave_if.arready;
+    assign m_axi_rid     = u_smc_axi_slave_if.rid[1:0];
+    assign m_axi_rdata   = u_smc_axi_slave_if.rdata;
+    assign m_axi_rresp   = u_smc_axi_slave_if.rresp;
+    assign m_axi_rlast   = u_smc_axi_slave_if.rlast;
+    assign m_axi_ruser   = '0;
+    assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid;
 
     // Shared-VIP monitor interfaces (default/maximum parameterization so the
     // UVM layer sees one `virtual ocah_axi_if` type; geometry lives in cfg).
@@ -916,6 +1101,7 @@ module dtp_uvm_top
         uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_axil_vif", u_smc_otp_axil_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_slave_vif", u_smc_otp_slave_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_axi_slave_vif", u_smc_axi_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
         run_test();
     end

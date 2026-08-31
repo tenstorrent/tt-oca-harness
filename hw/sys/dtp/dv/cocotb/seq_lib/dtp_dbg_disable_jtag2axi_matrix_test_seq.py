@@ -81,6 +81,9 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
             data=data,
             wstrb=self.target_full_wstrb(target, size),
             size=size,
+            # Gated attempt: the write must never reach the bus, so no strobe
+            # credit may be armed for it.
+            arm_strobes=False,
         )
         await self.expect_no_target_activity(target, 8, context=f"{context}.no_activity")
         self.assert_equal(
