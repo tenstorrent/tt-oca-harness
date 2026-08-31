@@ -153,10 +153,11 @@ module smc_uvm_top
     output logic tb_mailbox_irq_any /*verilator public_flat_rw*/,
     output logic tb_avsbus_irq /*verilator public_flat_rw*/,
     output logic tb_telemetry_irq_any /*verilator public_flat_rw*/,
-    // eFuse locked-shadow access (smc_peripherals peripheral_interrupts[28]).
+    // eFuse locked-shadow access (smc_peripherals peripheral_interrupts[27]).
     output logic tb_efuse_locked_access_irq /*verilator public_flat_rw*/,
-    // PVT temperature interrupt pin (smc_wrapper.temp_interrupt_i).
-    // Routes to peripheral_interrupts[27]. Idle 0.
+    // PVT temperature interrupt. No dedicated pin any more: it enters through
+    // the general ext_interrupts_i bus (TB uses bit 1). Synced observe is
+    // smc_base.ext_interrupts_smc_clk[1]. Idle 0.
     input  wire logic tb_temp_interrupt_i /*verilator public_flat_rw*/,
     output logic      tb_temp_interrupt_irq /*verilator public_flat_rw*/,
     // One bit of product ext_interrupts_i (wrapper width 256). Idle 0.
@@ -1224,8 +1225,8 @@ module smc_uvm_top
         .wdt_second_timeout_o       (),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
-        .ext_interrupts_i           ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1){1'b0}},
-                                       tb_ext_interrupt_0_i}),
+        .ext_interrupts_i           ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-2){1'b0}},
+                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .fuse_sense_done_o,
@@ -1233,11 +1234,8 @@ module smc_uvm_top
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (~tb_hold_ext_boot),
         .sep_security_disable_i     (1'b0),
-        .temp_interrupt_i           (tb_temp_interrupt_i),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (),
-        .ras_bank_chip_o            (),
-        .ras_bank_instance_o        (),
         .ndmreset_request_i         (tb_ndmreset_request),
         .ndmreset_process_o         (tb_ndmreset_process),
         .ext_mailbox_interrupts_o   (),
@@ -1363,8 +1361,8 @@ module smc_uvm_top
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];
-    assign tb_efuse_locked_access_irq = u_dut.u_smc.peripheral_interrupts[28];
-    assign tb_temp_interrupt_irq = u_dut.u_smc.peripheral_interrupts[27];
+    assign tb_efuse_locked_access_irq = u_dut.u_smc.peripheral_interrupts[27];
+    assign tb_temp_interrupt_irq = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[1];
     assign tb_ext_interrupt_0_sync = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[0];
     assign tb_ss0_warm_reset_n = ss_reset_ctrl[0].warm_reset_n;
     assign tb_ndmreset_irq = u_dut.u_smc.peripheral_interrupts[11];

@@ -727,13 +727,6 @@ supporting single and quad modes. The controller's own interrupt leaves the
 module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
 output is needed.
 
-The `spi_irq_i` input is a separate SPI interrupt request routed to the SEP
-PIC. Adopters that replace or supplement the internal SPI host with an external
-SPI controller connect that controller's interrupt here; adopters that use only
-the internal controller may loop back the `irq` field of `sep_io_spi_req_o` or,
-if a mux over multiple SPI sources is needed, drive the selected interrupt from
-their own integration logic. Tie the input low when unused.
-
 ==== Bring-Up Considerations
 
 The SEP boot sequence begins after the SMC completes fuse sensing and releases
@@ -1518,15 +1511,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`ext_boot_seq_done_i` |input |1 |SMU external port
 |===
 
-===== PVT
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`temp_interrupt_i` |input |1 |SMU external port
-|===
-
 ===== Lifecycle State
 
 [cols="<30%,<10%,<20%,<40%",options="header"]
@@ -1535,16 +1519,6 @@ the SEP-to-SMC dedicated AXI connection.
 
 |`lc_state_o` |output |[2*LC_STATE_WIDTH-1:0] |SEP lifecycle state when `SEP=1`, else `8'hf0`; ported through SMU
 |`lc_sigint_err_o` |output |1 |SEP lifecycle integrity error when `SEP=1`, else SMC `efuse_lc_sigint_err`
-|===
-
-===== RAS Bank Settings
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`ras_bank_chip_o` |output |[3:0] |SMU external port
-|`ras_bank_instance_o` |output |[3:0] |SMU external port
 |===
 
 ===== Mailbox Interrupts

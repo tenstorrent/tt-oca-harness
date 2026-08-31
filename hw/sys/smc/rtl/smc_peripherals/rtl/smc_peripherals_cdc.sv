@@ -47,7 +47,7 @@ module smc_peripherals_cdc
     // not required for debug observation.
     input       logic [smc_config_pkg::NUM_I2C-1:0][3:0]            i2c_debug_periph_clk_i,
     output      logic [smc_config_pkg::NUM_I2C-1:0][3:0]            i2c_debug_smc_clk_o,
-    
+
     // UART AXI-Lite CDC (SMC -> Periph)
     input       smc_pkg::smc_axil_32_32_req_t                      axil_uart_req_smc_clk_i,
     output      smc_pkg::smc_axil_32_32_resp_t                     axil_uart_resp_smc_clk_o,
@@ -82,10 +82,6 @@ module smc_peripherals_cdc
     // AVSBus Interrupt CDC (Periph -> SMC)
     input       logic                                              avsbus_irq_periph_clk_i,
     output      logic                                              avsbus_irq_smc_clk_o,
-
-    // Temp Interrupt CDC (Ref clk -> SMC)
-    input       logic                                              temp_interrupt_i,
-    output      logic                                              temp_interrupt_smc_clk_o,
 
     // Clock gate enable CDC (SMC clk -> Periph clk)
     input       logic                                              i2c_cg_en_smc_clk_i,
@@ -288,7 +284,7 @@ module smc_peripherals_cdc
     // Periph clk -> SMC clk   //
     ////////////////////////////
 
-    // Note: for RDC analysis, these not having a reset condition right create unnessasry errors 
+    // Note: for RDC analysis, these not having a reset condition right create unnessasry errors
 
     // For MTBF (mean time between failures) calculation to hold true, inputs to synchronizers should be void of combinational logic
     // This is motivated by NON_STATIC_COMBO_IN_CROSSING from CDC Violations report
@@ -296,7 +292,7 @@ module smc_peripherals_cdc
     logic [smc_config_pkg::NUM_I2C-1:0]  i2c_irqs_periph_clk_flopped;
     logic [smc_config_pkg::NUM_I3C-1:0]  i3c_irqs_periph_clk_flopped;
     logic [smc_config_pkg::NUM_UART-1:0] uart_enable_periph_clk_flopped;
-    // UART eventually combines: uart_irq_smc_clk | uart_err_smc_clk | log_engine_irq_smc_clk into one interrupt line. 
+    // UART eventually combines: uart_irq_smc_clk | uart_err_smc_clk | log_engine_irq_smc_clk into one interrupt line.
     logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_periph_clk_flopped;
     logic                                avsbus_irq_periph_clk_flopped;
     logic [smc_config_pkg::NUM_I2C-1:0][3:0]                          i2c_debug_periph_clk_flopped;
@@ -331,20 +327,9 @@ module smc_peripherals_cdc
         tel_cg_en_smc_clk_flopped  <= tel_cg_en_smc_clk_i;
     end
 
-    //////////////////////////////////////////////
-    // Temp Interrupt Source Flop               //
-    // Ref clk domain -> sync to SMC clk       //
-    //////////////////////////////////////////////
-
-    logic temp_interrupt_ref_clk_flopped;
-
-    always_ff @(posedge clk_ref_i) begin
-        temp_interrupt_ref_clk_flopped <= temp_interrupt_i;
-    end
-
     generate
         if (SYNC_STAGES == 2) begin : gen_sync2
-        
+
             // I2C Enable
             prim_sync2 #(
                 .WIDTH (smc_config_pkg::NUM_I2C)
@@ -403,13 +388,6 @@ module smc_peripherals_cdc
                 .i_clk (clk_smc_i),
                 .i_d   (avsbus_irq_periph_clk_flopped),
                 .o_q   (avsbus_irq_smc_clk_o)
-            );
-
-            // Temp Interrupt (Ref clk -> SMC)
-            prim_sync2 u_temp_interrupt_sync (
-                .i_clk (clk_smc_i),
-                .i_d   (temp_interrupt_ref_clk_flopped),
-                .o_q   (temp_interrupt_smc_clk_o)
             );
 
             // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)
@@ -506,13 +484,6 @@ module smc_peripherals_cdc
                 .i_clk (clk_smc_i),
                 .i_d   (avsbus_irq_periph_clk_flopped),
                 .o_q   (avsbus_irq_smc_clk_o)
-            );
-
-            // Temp Interrupt (Ref clk -> SMC)
-            prim_sync3 u_temp_interrupt_sync (
-                .i_clk (clk_smc_i),
-                .i_d   (temp_interrupt_ref_clk_flopped),
-                .o_q   (temp_interrupt_smc_clk_o)
             );
 
             // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)

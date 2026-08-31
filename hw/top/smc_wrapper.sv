@@ -110,13 +110,8 @@ module smc_wrapper (
 
     input  logic                                             sep_security_disable_i,
 
-    input  logic                                             temp_interrupt_i,
-
     input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]             lc_state_i,
     output logic                                             lc_sigint_err_o,
-
-    output logic [3:0]                                       ras_bank_chip_o,
-    output logic [3:0]                                       ras_bank_instance_o,
 
     input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]   ndmreset_request_i,
     output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]   ndmreset_process_o,

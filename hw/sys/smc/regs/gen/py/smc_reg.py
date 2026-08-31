@@ -147,7 +147,7 @@ SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_ADDR = 0xC0002898
 SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_OFFSET = 0x0000001C
 SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_ADDR = 0xC000289C
 SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_BASE_ADDR = 0xC0002900
-SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE = 0x00000014
+SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE = 0x00000010
 SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET = 0x00000000
 SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_ADDR = 0xC0002900
 SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_OFFSET = 0x00000004
@@ -156,8 +156,6 @@ SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET = 0x00000008
 SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR = 0xC0002908
 SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET = 0x0000000C
 SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR = 0xC000290C
-SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_REG_OFFSET = 0x00000010
-SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_REG_ADDR = 0xC0002910
 SMC_MISC_WRAP_NDM_RESET_REG_MAP_BASE_ADDR = 0xC0002A00
 SMC_MISC_WRAP_NDM_RESET_REG_MAP_SIZE = 0x0000000C
 SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_OFFSET = 0x00000000
@@ -5980,35 +5978,6 @@ class CHIP_CONFIG_LC_STATE_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(CHIP_CONFIG_LC_STATE_reg_u, self).__init__(*args, **kwargs)
         self.val = CHIP_CONFIG_LC_STATE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-CHIP_CONFIG_RAS_BANK_INFO_REG_DEFAULT = 0x00000000
-class CHIP_CONFIG_RAS_BANK_INFO_reg_t(Structure):
-    _fields_ = [
-        ('bank_chip', c_uint8, 4),
-        ('bank_instance', c_uint8, 4),
-    ]
-
-CHIP_CONFIG_RAS_BANK_INFO_REG_DEFAULT = 0x00000000
-
-class CHIP_CONFIG_RAS_BANK_INFO_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', CHIP_CONFIG_RAS_BANK_INFO_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(CHIP_CONFIG_RAS_BANK_INFO_reg_u, self).__init__(*args, **kwargs)
-        self.val = CHIP_CONFIG_RAS_BANK_INFO_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

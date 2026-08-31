@@ -24,7 +24,7 @@ _DRAIN = 8
 
 
 class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
-    """CHIPLET_ID lock IRQ via lifted peripheral_interrupts[28]."""
+    """CHIPLET_ID lock IRQ via lifted peripheral_interrupts[27]."""
 
     def __init__(self, name: str = "smc_efuse_locked_access_interrupt_test_seq") -> None:
         super().__init__(name)

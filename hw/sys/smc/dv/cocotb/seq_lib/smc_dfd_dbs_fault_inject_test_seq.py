@@ -15,7 +15,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Keep a diagnostic CSR touch so the test still exercises SEP_IN.
-RAS_BANK_INFO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR")
+VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 
 class smc_dfd_dbs_fault_inject_test_seq(SmcCsrSeq):
@@ -25,7 +25,7 @@ class smc_dfd_dbs_fault_inject_test_seq(SmcCsrSeq):
         dut = cocotb.top
         clk = dut.clk_smc_i
 
-        await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)
+        await self.csr_read("VERSION_LO", VERSION_LO)
 
         dut.tb_dfd_fault_inject.value = 0
         await ClockCycles(clk, 5)

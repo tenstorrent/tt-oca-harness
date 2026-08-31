@@ -316,8 +316,6 @@ cool reset, cleared on cold)
 
 |`CHIP_CONFIG_LC_STATE` |0xC000_290C |RO |Lifecycle-state fuses
 
-|`CHIP_CONFIG_RAS_BANK_INFO` |0xC000_2910 |RO |RAS bank/instance info
-
 |`NDMRESET_PROCESS` |0xC000_2A04 |RO |NDM reset process bitmap
 
 |`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |RO |Cluster count for NDM reset
@@ -596,16 +594,16 @@ the sample window. |1. Read `CLOCK_GATE_CONTROL` (0xC001_0030) —
 snapshot `V0`2. Read `CHIP_CONFIG_VERSION_LO` (0xC000_2900), expect
 **0x0001_00A0**3. Read `CHIP_CONFIG_VERSION_HI` (0xC000_2904)4. Read
 `CHIP_CONFIG_CHIP_ID` (0xC000_2908)5. Read `CHIP_CONFIG_LC_STATE`
-(0xC000_290C)6. Read `CHIP_CONFIG_RAS_BANK_INFO` (0xC000_2910)7. Reread
+(0xC000_290C)6. Reread
 `CLOCK_GATE_CONTROL`, verify *equals `V0`* (no gating drift) |[ ]
-`CHIP_CONFIG_VERSION_LO` = 0x0001_00A0[ ] All 5 CHIP_CONFIG_* reads
+`CHIP_CONFIG_VERSION_LO` = 0x0001_00A0[ ] All 4 CHIP_CONFIG_* reads
 OKAY[ ] `CLOCK_GATE_CONTROL` unchanged across the read window[ ]
-`accesses == len(CHIP_CONFIG_READS) + 2 == 7` (5 chip_config reads + 2
+`accesses == len(CHIP_CONFIG_READS) + 2 == 6` (4 chip_config reads + 2
 clock-gate reads)[ ] No UVM_ERROR |`CLOCK_GATE_CONTROL`
 (0xC001_0030)`CHIP_CONFIG_VERSION_LO`
 (0xC000_2900)`CHIP_CONFIG_VERSION_HI` (0xC000_2904)`CHIP_CONFIG_CHIP_ID`
 (0xC000_2908)`CHIP_CONFIG_LC_STATE`
-(0xC000_290C)`CHIP_CONFIG_RAS_BANK_INFO` (0xC000_2910)
+(0xC000_290C)
 
 |TC_SMC_P0_013 |*smc_avsbus_sanity_test* |P0 |AVSBus sideband bounded
 precheck — attempts reads on 5 AVSBus status registers via
@@ -624,15 +622,15 @@ hang[ ] No UVM_ERROR |`AVS_READBACK` (0xC000_8004)`AVS_DEBUG_READBACK`
 (0xC000_8024)`AVS_FIFOS_STATUS` (0xC000_8028)
 
 |TC_SMC_P0_014 |*smc_dbs_idle_test* |P0 |ECC/RAS + DFD/DBS diagnostic
-representative — reads 5 safe RAS/debug CSRs to prove diagnostic
+representative — reads 4 safe RAS/debug CSRs to prove diagnostic
 observability out of reset. Alias wrapper backed by
-`smc_ecc_dfd_dbs_sanity_test_seq`. |1. Read `CHIP_CONFIG_RAS_BANK_INFO`
-(0xC000_2910)2. Read `NDMRESET_PROCESS` (0xC000_2A04)3. Read
-`NDMRESET_CLUSTER_COUNT` (0xC000_2A08)4. Read `CPU_DEBUG_CTRL`
-(0xC001_0208)5. Read `CPU_DEBUG_BUS_MUX` (0xC001_0210) |[ ] All 5
-diagnostic CSR reads OKAY[ ] `accesses == len(DIAGNOSTIC_READS) == 5`[ ]
+`smc_ecc_dfd_dbs_sanity_test_seq`. |1. Read `NDMRESET_PROCESS`
+(0xC000_2A04)2. Read
+`NDMRESET_CLUSTER_COUNT` (0xC000_2A08)3. Read `CPU_DEBUG_CTRL`
+(0xC001_0208)4. Read `CPU_DEBUG_BUS_MUX` (0xC001_0210) |[ ] All 4
+diagnostic CSR reads OKAY[ ] `accesses == len(DIAGNOSTIC_READS) == 4`[ ]
 Diagnostic observability bounded[ ] No UVM_ERROR
-|`CHIP_CONFIG_RAS_BANK_INFO` (0xC000_2910)`NDMRESET_PROCESS`
+|`NDMRESET_PROCESS`
 (0xC000_2A04)`NDMRESET_CLUSTER_COUNT` (0xC000_2A08)`CPU_DEBUG_CTRL`
 (0xC001_0208)`CPU_DEBUG_BUS_MUX` (0xC001_0210)
 |=======================================================================

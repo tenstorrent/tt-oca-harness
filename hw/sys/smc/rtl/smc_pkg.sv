@@ -304,8 +304,6 @@ package smc_pkg;
 	/////////////////////
 
 	localparam int unsigned LC_STATE_WIDTH = 4;
-	localparam int unsigned RAS_BANK_CHIP_WIDTH = 4;
-	localparam int unsigned RAS_BANK_INSTANCE_WIDTH = 4;
 	localparam int unsigned NUM_MAILBOXES = 32;
 	localparam int unsigned MAILBOX_DEPTH = 2;
 

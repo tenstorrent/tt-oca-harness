@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""temp_interrupt_i to peripheral_interrupts[27] after CDC. Analog PVT not claimed."""
+"""Temp interrupt via ext_interrupts_i[1] to ext_interrupts_smc_clk after CDC. Analog PVT not claimed."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
-# Extra ref flop + prim_sync2/3 into clk_smc. Fail-closed poll ceiling.
+# prim_sync3 into clk_smc. Fail-closed poll ceiling.
 _IRQ_BOUND = 64
 
 
 class smc_temp_interrupt_test_seq(SmcCsrSeq):
-    """Pulse product temp pin; IRQ[27] must follow 0→1→0."""
+    """Pulse temp bit on ext_interrupts_i; synced observe must follow 0→1→0."""
 
     def __init__(self, name: str = "smc_temp_interrupt_test_seq") -> None:
         super().__init__(name)

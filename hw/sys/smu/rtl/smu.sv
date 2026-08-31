@@ -219,16 +219,9 @@ module smu #(
     output logic  skip_mem_repair_o,
     input  logic  ext_boot_seq_done_i,
 
-    // PVT
-    input  logic  temp_interrupt_i,
-
     // Lifecycle State (driven by SEP)
     output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,
     output logic                                  lc_sigint_err_o,
-
-    // RAS Bank Settings
-    output logic [3:0]  ras_bank_chip_o,
-    output logic [3:0]  ras_bank_instance_o,
 
     // NDM Reset signals
     input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_request_i,
@@ -328,9 +321,6 @@ module smu #(
     input  km_intf_pkg::km_rom_mem_rsp_t   sep_km_rom_mem_rsp_i,
     output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
     input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,
-
-    // External SPI interrupt
-    input  logic                        spi_irq_i,
 
     output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,
     input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,
@@ -756,11 +746,8 @@ module smu #(
         .skip_mem_repair_o                   (skip_mem_repair_o),
         .ext_boot_seq_done_i                 (ext_boot_seq_done_i),
         .sep_security_disable_i              (sep_security_disable),
-        .temp_interrupt_i                    (temp_interrupt_i),
         .lc_state_i                          (sep_lc_state),
         .lc_sigint_err_o                     (efuse_lc_sigint_err),
-        .ras_bank_chip_o                     (ras_bank_chip_o),
-        .ras_bank_instance_o                 (ras_bank_instance_o),
         .ndmreset_request_i                  (ndmreset_request_i),
         .ndmreset_process_o                  (ndmreset_process_o),
         .ext_mailbox_interrupts_o            (ext_mailbox_interrupts_o),
@@ -949,8 +936,6 @@ module smu #(
 
             .sep_io_spi_req_o              (sep_io_spi_req),
             .sep_io_spi_rsp_i              (sep_io_spi_rsp),
-
-            .spi_irq_i                     (spi_irq_i),
 
             .lc_state_o                    (sep_lc_state),
             .dbg_disable_o                 (sep_dbg_disable),

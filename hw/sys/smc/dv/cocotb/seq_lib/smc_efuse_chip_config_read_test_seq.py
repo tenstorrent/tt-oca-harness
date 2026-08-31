@@ -7,7 +7,7 @@ from __future__ import annotations
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# VERSION_LO=0x000100A0 / VERSION_HI=0 / CHIP_ID=0 / RAS_BANK_INFO=0 all trace to
+# VERSION_LO=0x000100A0 / VERSION_HI=0 / CHIP_ID=0 / all trace to
 # chip_config.rdl reset constants (identical on Verilator and VCS) -> G3
 # spec-anchored decode + reset-value check. LC_STATE (smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0xC) is left
 # decode-only (expected=None): it is simulator-divergent in the OSS bench
@@ -17,8 +17,7 @@ CHIP_CONFIG_EFUSE_READS = [
     ("VERSION_LO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR"), 0x0001_00A0),
     ("VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x4, 0),
     ("CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x8, 0x0),
-    ("LC_STATE", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0xC, None),
-    ("RAS_BANK_INFO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"), 0x0),
+    ("LC_STATE", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0xC, None)
 ]
 
 

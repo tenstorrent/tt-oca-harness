@@ -1381,7 +1381,7 @@ Strap assignments in this range:
           <ipxact:registerFile>
             <ipxact:name>chip_config</ipxact:name>
             <ipxact:addressOffset>'h100</ipxact:addressOffset>
-            <ipxact:range>'h14</ipxact:range>
+            <ipxact:range>'h10</ipxact:range>
             <ipxact:register>
               <ipxact:name>VERSION_LO</ipxact:name>
               <ipxact:addressOffset>'h0</ipxact:addressOffset>
@@ -1452,35 +1452,6 @@ Strap assignments in this range:
                 <ipxact:bitWidth>8</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
                 <ipxact:access>read-only</ipxact:access>
-              </ipxact:field>
-            </ipxact:register>
-            <ipxact:register>
-              <ipxact:name>RAS_BANK_INFO</ipxact:name>
-              <ipxact:addressOffset>'h10</ipxact:addressOffset>
-              <ipxact:size>32</ipxact:size>
-              <ipxact:field>
-                <ipxact:name>bank_chip</ipxact:name>
-                <ipxact:description>Chiplet type ID</ipxact:description>
-                <ipxact:bitOffset>0</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>4</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-              <ipxact:field>
-                <ipxact:name>bank_instance</ipxact:name>
-                <ipxact:description>Chiplet instance ID</ipxact:description>
-                <ipxact:bitOffset>4</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>4</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
           </ipxact:registerFile>

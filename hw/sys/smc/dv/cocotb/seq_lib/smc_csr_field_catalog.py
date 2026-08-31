@@ -40,8 +40,6 @@ CSR_FIELD_CATALOG = {
                                           SmcCsrAccessKind.RO_STATIC, 0),
     "CHIP_CONFIG_CHIP_ID": SmcCsrField("CHIP_CONFIG_CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x8,
                                        SmcCsrAccessKind.RO_STATIC, None),
-    "CHIP_CONFIG_RAS_BANK_INFO": SmcCsrField("CHIP_CONFIG_RAS_BANK_INFO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-                                            SmcCsrAccessKind.RO_STATIC, None),
     "NDM_RESET_STATUS": SmcCsrField("NDM_RESET_STATUS", 0xC000_2A00,
                                     SmcCsrAccessKind.RO_STATUS, None),
 }
