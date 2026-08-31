@@ -117,51 +117,66 @@ class ocah_axi_slave_driver extends uvm_component;
     // honoring the per-channel bounded READY-stall pattern (cfg.*_stall_cycles
     // nonzero = READY low for N sampled edges, high for one, repeating until
     // the handshake lands — so a pending VALID completes within N+1 cycles).
-    // Stall 0 keeps the assert-and-hold behavior. All three return at the
-    // handshake edge (mon_cb holds that beat's sampled values) or on reset
-    // deassertion — callers re-check aresetn.
+    // Stall 0 keeps the assert-and-hold behavior. The knob is re-evaluated
+    // every pattern iteration, so a stall enabled while the responder is
+    // already parked waiting for VALID still takes effect before the next
+    // handshake (the cocotb pause generators likewise apply immediately).
+    // All three return at the handshake edge (mon_cb holds that beat's
+    // sampled values) or on reset deassertion — callers re-check aresetn.
 
     protected task accept_aw();
-        if (cfg.aw_stall_cycles == 0) begin
-            cfg.vif.awready <= 1'b1;
-            do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
-                !(cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready));
-            cfg.vif.awready <= 1'b0;
-            return;
-        end
         forever begin
-            cfg.vif.awready <= 1'b0;
-            repeat (cfg.aw_stall_cycles) begin
+            if (cfg.aw_stall_cycles == 0) begin
+                cfg.vif.awready <= 1'b1;
                 @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) begin
+                    cfg.vif.awready <= 1'b0;
+                    return;
+                end
+                if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) begin
+                    cfg.vif.awready <= 1'b0;
+                    return;
+                end
+            end else begin
+                cfg.vif.awready <= 1'b0;
+                repeat (cfg.aw_stall_cycles) begin
+                    @(cfg.vif.mon_cb);
+                    if (!cfg.vif.aresetn) return;
+                end
+                cfg.vif.awready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                cfg.vif.awready <= 1'b0;
                 if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) return;
             end
-            cfg.vif.awready <= 1'b1;
-            @(cfg.vif.mon_cb);
-            cfg.vif.awready <= 1'b0;
-            if (!cfg.vif.aresetn) return;
-            if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) return;
         end
     endtask
 
     protected task accept_ar();
-        if (cfg.ar_stall_cycles == 0) begin
-            cfg.vif.arready <= 1'b1;
-            do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
-                !(cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready));
-            cfg.vif.arready <= 1'b0;
-            return;
-        end
         forever begin
-            cfg.vif.arready <= 1'b0;
-            repeat (cfg.ar_stall_cycles) begin
+            if (cfg.ar_stall_cycles == 0) begin
+                cfg.vif.arready <= 1'b1;
                 @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) begin
+                    cfg.vif.arready <= 1'b0;
+                    return;
+                end
+                if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) begin
+                    cfg.vif.arready <= 1'b0;
+                    return;
+                end
+            end else begin
+                cfg.vif.arready <= 1'b0;
+                repeat (cfg.ar_stall_cycles) begin
+                    @(cfg.vif.mon_cb);
+                    if (!cfg.vif.aresetn) return;
+                end
+                cfg.vif.arready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                cfg.vif.arready <= 1'b0;
                 if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) return;
             end
-            cfg.vif.arready <= 1'b1;
-            @(cfg.vif.mon_cb);
-            cfg.vif.arready <= 1'b0;
-            if (!cfg.vif.aresetn) return;
-            if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) return;
         end
     endtask
 
@@ -169,22 +184,23 @@ class ocah_axi_slave_driver extends uvm_component;
     // caller lowers it after the last beat); with a stall pattern, each
     // beat gets its own low-for-N / high-for-one window.
     protected task accept_w();
-        if (cfg.w_stall_cycles == 0) begin
-            cfg.vif.wready <= 1'b1;
-            do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
-                !(cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready));
-            return;
-        end
         forever begin
-            cfg.vif.wready <= 1'b0;
-            repeat (cfg.w_stall_cycles) begin
+            if (cfg.w_stall_cycles == 0) begin
+                cfg.vif.wready <= 1'b1;
                 @(cfg.vif.mon_cb);
                 if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
+            end else begin
+                cfg.vif.wready <= 1'b0;
+                repeat (cfg.w_stall_cycles) begin
+                    @(cfg.vif.mon_cb);
+                    if (!cfg.vif.aresetn) return;
+                end
+                cfg.vif.wready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
             end
-            cfg.vif.wready <= 1'b1;
-            @(cfg.vif.mon_cb);
-            if (!cfg.vif.aresetn) return;
-            if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
         end
     endtask
 
