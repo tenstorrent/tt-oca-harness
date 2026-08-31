@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// JTAG2AXI single-op scenario for the DTP SV-UVM flow (issue #3295), run
+// JTAG2AXI single-op scenario for the DTP SV-UVM flow, run
 // against one target ("smc_otp" AXI-Lite or "smc_axi" AXI4):
 //
 //   1. reset + TAP reset + clearing the lifecycle debug disables;

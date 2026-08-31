@@ -3,7 +3,7 @@
 //
 // Composable JTAG command library for the DTP instruction-family scenarios —
 // the SV analogue of the cocotb seq_lib/dtp_jtag_cmd_lib_seq.py +
-// dtp_jtag_base_test_seq.py family layer (issue #1341).
+// dtp_jtag_base_test_seq.py family layer.
 //
 // Every family helper (bypass delay, inverted/zero-length bypass, BSR
 // loopback, decoded-IR compare, TMP_STATUS reads) records named CHK-*
@@ -176,7 +176,7 @@ class dtp_jtag_cmd_lib_seq extends dtp_jtag_base_test_seq;
     endtask
 
     // CHK-BSR-SELECT: the boundary-scan chain select observable after an IR
-    // load (issue #1342 mirroring); scenarios assert the VPLAN-expected
+    // load; scenarios assert the VPLAN-expected
     // value for their instruction.
     function void check_bsr_select(bit expected, string context_s);
         family_check("CHK-BSR-SELECT", "jtag_bsr_select",

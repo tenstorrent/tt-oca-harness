@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMC fabric JTAG2AXI write-side scenarios (issue #1343) — the SV analogue
+// SMC fabric JTAG2AXI write-side scenarios — the SV analogue
 // of the cocotb dtp_jtag2axi_smc_axi_wr_test_seq. One parameterized
 // sequence, one run_* task per VPLAN scenario, dispatched on `scenario`:
 //

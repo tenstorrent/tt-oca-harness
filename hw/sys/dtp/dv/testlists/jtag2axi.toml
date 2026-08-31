@@ -3,7 +3,7 @@
 
 schema_version = 1
 
-# SMC fabric JTAG2AXI scenarios for DTP issue #3210.
+# SMC fabric JTAG2AXI scenarios.
 # The legacy aggregate tests are compatibility aliases for the scenario-specific
 # single_write/single_write_read tests: selectable by explicit --items name or
 # --tag legacy only, and members of no group, so regressions run each scenario

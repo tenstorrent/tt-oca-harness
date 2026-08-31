@@ -14,7 +14,7 @@ class dtp_env extends uvm_env;
     ocah_jtag_master_env          m_jtag_env;
     dtp_tap_fsm_checker    m_fsm_checker;
 
-    // Shared JTAG named-evidence checker + scan reconstruction (issue #3296).
+    // Shared JTAG named-evidence checker + scan reconstruction.
     // Always built: the FSM checker's aggregate CHK-TAP-STATE lands on every
     // test; required-ID/zero-check rejection is armed only by JTAG-contract
     // tests via jtag_require_checks.
@@ -22,7 +22,7 @@ class dtp_env extends uvm_env;
     ocah_jtag_scan_builder m_scan_builder;
     bit                    jtag_require_checks;
 
-    // Passive shared-VIP AXI observation (issue #3295): one cfg+env per
+    // Passive shared-VIP AXI observation: one cfg+env per
     // observed JTAG2AXI port. Always built (compile/runtime coverage on every
     // test); zero-check rejection is armed only by AXI-traffic tests via
     // cfg.require_checks.

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// JTAG2AXI helper base sequence for the DTP SV-UVM flow (issues #3295,
-// #1343) — the SV analogue of the cocotb dtp_jtag2axi_base_test_seq.
+// JTAG2AXI helper base sequence for the DTP SV-UVM flow — the SV analogue
+// of the cocotb dtp_jtag2axi_base_test_seq.
 //
 // Geometry and DR layouts mirror cocotb env/dtp_types.py exactly:
 //   SINGLE_OP DR (LSB-first): OP[2] | SIZE | WSTRB | DATA | ADDR

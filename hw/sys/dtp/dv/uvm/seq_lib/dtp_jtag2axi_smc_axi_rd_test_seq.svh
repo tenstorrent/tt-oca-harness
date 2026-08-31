@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMC fabric JTAG2AXI read-side scenarios (issue #1343) — the SV analogue of
+// SMC fabric JTAG2AXI read-side scenarios — the SV analogue of
 // the cocotb dtp_jtag2axi_smc_axi_rd_test_seq. One parameterized sequence
 // runs one focused scenario per pass, selected by `scenario`:
 //

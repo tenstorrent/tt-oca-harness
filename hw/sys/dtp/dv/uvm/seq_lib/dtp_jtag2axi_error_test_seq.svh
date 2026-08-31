@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// JTAG2AXI error and error-path security scenarios for the DTP SV-UVM flow
-// (issue #1343) — the SV analogue of the cocotb dtp_jtag2axi_error_test_seq.
+// JTAG2AXI error and error-path security scenarios for the DTP SV-UVM flow —
+// the SV analogue of the cocotb dtp_jtag2axi_error_test_seq.
 // One parameterized sequence, selected by `scenario`, against the target
 // named by `target_name` (SMC fabric in this flow; the OTP ports join with
 // their responder bring-up):

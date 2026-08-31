@@ -6,7 +6,7 @@
 // used by the FSM reference-model checks. Deliberately separate from the
 // shared ocah_jtag_if, which carries generic JTAG pins only.
 //
-// The JTAG2AXI additions (issue #3295) carry the test-drivable lifecycle
+// The JTAG2AXI additions carry the test-drivable lifecycle
 // debug disables, the SVA suppress knobs, and mirrors of the tb_top
 // request-activity pulse counters, so sequences never reach into tb_top
 // hierarchy directly. Both AXI responders are shared ocah_axi_vip UVM slave
@@ -27,7 +27,7 @@ interface dtp_tb_if;
     jtag_inst_reg_pkg::jtag_instruction_decoded_e inst_decoded;
 
     // Driven by the DUT top: boundary-scan chain control observables for the
-    // basic-JTAG instruction checks (issue #1342 mirroring).
+    // basic-JTAG instruction checks.
     logic jtag_bsr_select;
     logic jtag_bsr_shift_en;
     logic jtag_bsr_capture_en;

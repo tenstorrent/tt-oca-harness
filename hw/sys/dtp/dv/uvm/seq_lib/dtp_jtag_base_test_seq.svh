@@ -27,13 +27,13 @@ class dtp_jtag_base_test_seq extends ocah_jtag_master_sequence;
     // driver, which drives trst_n only while executing a TAP_RESET item.
     virtual ocah_jtag_if jtag_vif;
 
-    // Optional shared-VIP evidence handles (issue #3296): when plumbed, TAP
+    // Optional shared-VIP evidence handles: when plumbed, TAP
     // resets, TLR walks, BYPASS latency, and reconstructed scan lengths also
     // emit named CHK-* evidence through env.m_jtag_checker.
     ocah_jtag_checker      evidence;
     ocah_jtag_scan_builder scan_builder;
 
-    // Looped-scenario contract (issue #1341): the test's looped runner sets
+    // Looped-scenario contract: the test's looped runner sets
     // scenario_seed = base seed (+ntb_random_seed) + loop index and
     // random_count (+DTP_RANDOM_COUNT) before each start(); body() calls
     // seed_scenario_rng() first so every pass draws a distinct, replayable

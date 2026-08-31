@@ -6,7 +6,7 @@
 // and only when the global UVM_ERROR/UVM_FATAL counts are both zero (uvm-log
 // parser contract); never from sequence or scoreboard code mid-run.
 //
-// Looped-scenario contract (issue #1341, cocotb start_looped_seq parity):
+// Looped-scenario contract (cocotb start_looped_seq parity):
 // every looped scenario runs at least MinDefaultLoops passes, each pass with
 // its own scenario seed (+ntb_random_seed base + loop index) so directed
 // scenarios re-prove back-to-back recovery and randomized scenarios add

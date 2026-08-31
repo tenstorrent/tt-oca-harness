@@ -23,14 +23,14 @@ package dtp_seq_lib_pkg;
     `include "uvm_macros.svh"
 
     import ocah_jtag_uvm_pkg::*;
-    import ocah_axi_uvm_pkg::*;   // shared AXI cfg/evidence handles (issue #3295)
+    import ocah_axi_uvm_pkg::*;   // shared AXI cfg/evidence handles
     import jtag_tap_pkg::*;       // DUT one-hot tap_state_e for scan-path checks
     import jtag_inst_reg_pkg::*;
 
     `include "dtp_jtag_base_test_seq.svh"
     `include "dtp_jtag_cmd_lib_seq.svh"
 
-    // Basic-JTAG instruction-family scenarios (issue #1342).
+    // Basic-JTAG instruction-family scenarios.
     `include "dtp_jtag_bypass_test_seq.svh"
     `include "dtp_jtag_inv_bypass_test_seq.svh"
     `include "dtp_jtag_zero_length_bypass_test_seq.svh"
@@ -52,7 +52,7 @@ package dtp_seq_lib_pkg;
 
     `include "dtp_sanity_test_seq.svh"
 
-    // JTAG2AXI bridge scenarios (issues #3295, #1343).
+    // JTAG2AXI bridge scenarios.
     `include "dtp_jtag2axi_base_test_seq.svh"
     `include "dtp_jtag2axi_single_op_seq.svh"
     `include "dtp_jtag2axi_smc_axi_wr_test_seq.svh"

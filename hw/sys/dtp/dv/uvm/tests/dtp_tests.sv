@@ -20,7 +20,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_base_test.svh"
 `include "dtp_sanity_test.svh"
 
-// Basic-JTAG instruction-family scenarios (issue #1342).
+// Basic-JTAG instruction-family scenarios.
 `include "dtp_jtag_bypass_test.svh"
 `include "dtp_jtag_inv_bypass_test.svh"
 `include "dtp_jtag_zero_length_bypass_test.svh"
@@ -40,11 +40,11 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag_trst_por_independence_test.svh"
 `include "dtp_jtag_tlr_reset_test.svh"
 
-// JTAG2AXI single-op scenarios (issue #3295).
+// JTAG2AXI single-op scenarios.
 `include "dtp_jtag2axi_smc_otp_axi_single_write_read_test.svh"
 `include "dtp_jtag2axi_smc_axi_single_write_read_test.svh"
 
-// SMC-fabric JTAG2AXI scenarios (issue #1343).
+// SMC-fabric JTAG2AXI scenarios.
 `include "dtp_jtag2axi_smc_axi_single_write_test.svh"
 `include "dtp_jtag2axi_smc_axi_single_write_data_verify_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_incr_test.svh"

@@ -12,7 +12,7 @@
 //
 // Both shapes expand the same signal list, dtp_tb_signal_list.svh, through
 // the DTP_TB_* macros defined just below -- each TB signal is declared in
-// exactly one place and the two shapes cannot drift apart (issue #1133).
+// exactly one place and the two shapes cannot drift apart.
 //
 // Exposes the DTP DUT's primary JTAG TAP at pin level so the TB BFM can
 // drive it, plus system clock/reset. The JTAG TAP FSM lives *inside* `dtp`
@@ -733,7 +733,7 @@ module dtp_uvm_top
     assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
     assign u_tb_if.tap_state = jtag_ptap_state;
 
-    // Decoded-IR and boundary-scan control observables (issue #1342): the
+    // Decoded-IR and boundary-scan control observables: the
     // basic-JTAG instruction checks read these through dtp_tb_if.
     assign u_tb_if.inst_decoded        = jtag_ptap_inst_decoded;
     assign u_tb_if.jtag_bsr_select     = jtag_bsr_select;
@@ -749,7 +749,7 @@ module dtp_uvm_top
     assign dbg_disable        = u_tb_if.dbg_disable;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
-    // answers JTAG2AXI OTP traffic (issue #3295). The slave interface carries
+    // answers JTAG2AXI OTP traffic. The slave interface carries
     // the connection: the TB wires only the master-driven signals in, and the
     // agent's driver procedurally drives the responder-side signals, routed
     // back to the DUT below. Error injection is programmed by sequences via

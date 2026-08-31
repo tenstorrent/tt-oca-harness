@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_single_write_read_test — issue #3295: JTAG2AXI
+// dtp_jtag2axi_smc_otp_axi_single_write_read_test: JTAG2AXI
 // single-op traffic on the SMC OTP AXI-Lite port through the shared
 // ocah_axi_vip passive env — randomized write/readback, armed SLVERR/DECERR
 // classified as EXPECTED, security-gating no-activity, and required CHK-*

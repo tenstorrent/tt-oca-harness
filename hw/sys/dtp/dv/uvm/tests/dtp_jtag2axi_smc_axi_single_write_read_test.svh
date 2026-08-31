@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_single_write_read_test — issue #3295 Phase B: the
+// dtp_jtag2axi_smc_axi_single_write_read_test: the
 // same single-op scenario on the SMC fabric AXI4 manager port (132-bit wide
 // TDR scans, 64-bit data, ID-tagged bursts observed by the shared monitor).
 
