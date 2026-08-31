@@ -356,6 +356,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |Inter-block reserved space: rows marked `_RSV_` in `hw/sys/sep/doc/memory_map.adoc` allocate nothing, so an access there must not answer OKAY. The refusal expectation comes from the map, never from the RTL. The crossbar decode table is parsed both as a logged cross-check and as a stimulus filter: an address the crossbar routes is left out of the probe set, because whether the fabric must refuse a routed-but-reserved span is an open specification question. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
 |===
 
+[[phase2-mailbox-irq-pic]]
 ===== Mailbox, IRQ, PIC
 
 [cols="2,2,2,4",options="header"]
@@ -391,6 +392,7 @@ feature has no legal knob space (a strap, a single named handshake).
 
 [cols="2,2,2,4",options="header"]
 |===
+
 |Test Case |Run mode |VIP / Model |Description
 |`sep_spi_ot_dma_tx_test`
 |cpu
@@ -400,15 +402,13 @@ feature has no legal knob space (a strap, a single named handshake).
 |cpu
 |ocah_axi_vip, ocah_spi_vip, CPU FW
 |JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check.
-|`sep_spi_ot_host_csr_irq_rand_test`
-|no_cpu, +skip_fuse_sense
-|ocah_axi_vip, ocah_spi_vip
-|OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
 |The mode and width walk is directed.
 |===
+
+Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
 
 ===== Memory, boot, reset, WDT, clock
 
@@ -445,15 +445,12 @@ feature has no legal knob space (a strap, a single named handshake).
 
 [cols="2,2,2,4",options="header"]
 |===
+
 |Test Case |Run mode |VIP / Model |Description
 |`sep_efuse_program_lock_matrix_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |Program × lock on a legal spare field.
-|`sep_locked_field_access_irq_path_test`
-|no_cpu, +skip_fuse_sense
-|ocah_axi_vip
-|Stage the spare field's lock bits in the OTP image (same spare-slot geometry as <<sep_efuse_program_lock_matrix_test>>), sense at `LC_PROD`, then access the *shadow* aperture.
 |`sep_lcc_demote_feat_ctrl_matrix_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -462,10 +459,6 @@ feature has no legal knob space (a strap, a single named handshake).
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |Standalone RMA token matrix plus the token-comparator redundancy fault path.
-|`sep_efuse_token_match_fault_pic_test`
-|cpu, +skip_fuse_sense
-|ocah_axi_vip, CPU FW
-|Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 39, reads the SEC_DISABLE sticky bit, and masks `meie[39]` so the level-high line does not re-enter.
 |`sep_efuse_set_only_monotonicity_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -475,6 +468,8 @@ feature has no legal knob space (a strap, a single named handshake).
 |ocah_axi_vip
 |A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
 |===
+
+Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_locked_field_access_irq_path_test>> and <<sep_efuse_token_match_fault_pic_test>> reach eFuse state, but their contract is the IRQ/PIC delivery path. They are graded there so each test has one owning bucket.
 
 ===== Key Manager vault
 
@@ -2011,6 +2006,8 @@ the injection point is real logic and is golden-checked.
 
 *Phase*: 2
 
+*Bucket*: Crypto and entropy
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 
 *VIP / Model*: ocah_axi_vip
@@ -2044,6 +2041,8 @@ the injection point is real logic and is golden-checked.
 ===== `sep_hmac_sha_variant_rand_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
@@ -2082,6 +2081,8 @@ on this path.
 ===== `sep_kmac_mode_strength_rand_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 
@@ -2123,6 +2124,8 @@ NIST samples.
 ===== `sep_crypto_edn_multisink_arbitration_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`, 3 seeds
 
@@ -2168,6 +2171,8 @@ custody chain is explicit.
 ===== `sep_crypto_edn_round_robin_grant_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 
@@ -2215,6 +2220,8 @@ scored (`rom_main` KM). This test uses golden routing.
 
 *Phase*: 2
 
+*Bucket*: Crypto and entropy
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force +km_rom_hex=km_rom_entropy.parhex`
 
 *VIP / Model*: ocah_axi_vip, entropy golden
@@ -2257,6 +2264,8 @@ one word and parks, which is enough for the legality check to execute.
 ===== `sep_crypto_per_ip_reset_isolation_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 
@@ -2318,6 +2327,8 @@ claim it, in <<sep_trng_reset_recovery_test>>.
 ===== `sep_trng_reset_recovery_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 
@@ -2386,6 +2397,8 @@ observable at all — the port stays live while its contents are invalidated.
 
 *Phase*: 2
 
+*Bucket*: Crypto and entropy
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -2443,6 +2456,8 @@ here.
 ===== `sep_entropy_pool_aperture_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
 
@@ -2520,6 +2535,8 @@ stall-duration / recovery stress are not exercised here.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), *real PROD fuse sense* — no `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -2581,6 +2598,8 @@ filter only ever sees `tx_len==0`.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
 *VIP / Model*: ocah_axi_vip
@@ -2624,6 +2643,8 @@ immediate neighbour, and nothing records which indices a regression covered.
 
 *Phase*: 2
 
+*Bucket*: Mailbox, IRQ, PIC
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
 *VIP / Model*: ocah_axi_vip
@@ -2660,6 +2681,8 @@ immediate neighbour, and nothing records which indices a regression covered.
 ===== `sep_irq_simultaneous_fanin_no_alias_test`
 
 *Phase*: 2
+
+*Bucket*: Mailbox, IRQ, PIC
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
@@ -2698,6 +2721,8 @@ an always-property; it is not one.
 ===== `sep_pic_irq_source_map_delivery_test`
 
 *Phase*: 2
+
+*Bucket*: Mailbox, IRQ, PIC
 
 *Run mode*: `cpu`, firmware `pic_irq_source_map_test`, `+skip_fuse_sense`
 
@@ -2741,6 +2766,8 @@ poll and yields the same pass.
 
 *Phase*: 2
 
+*Bucket*: SPI and DMA
+
 *Run mode*: `cpu`, firmware `spi_ot_dma_tx_test`, 3 seeds
 
 *VIP / Model*: ocah_axi_vip, ocah_spi_vip, CPU FW
@@ -2778,6 +2805,8 @@ poll and yields the same pass.
 ===== `sep_spi_ot_flash_cmd_rand_test`
 
 *Phase*: 2
+
+*Bucket*: SPI and DMA
 
 *Run mode*: `cpu`, firmware `spi_ot_flash_cmd_test`, 3 seeds
 
@@ -2825,6 +2854,8 @@ hole.
 
 *Phase*: 2
 
+*Bucket*: Mailbox, IRQ, PIC
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
 *VIP / Model*: ocah_axi_vip, ocah_spi_vip
@@ -2864,6 +2895,8 @@ hole.
 
 *Phase*: 2
 
+*Bucket*: Memory, boot, reset, WDT, clock
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -2902,6 +2935,8 @@ deferred rather than covered.
 ===== `sep_dma_basic_test`
 
 *Phase*: 2
+
+*Bucket*: SPI and DMA
 
 *Run mode*: `cpu`, firmware `dma_basic_test`, 3 seeds
 
@@ -2945,6 +2980,8 @@ deferred rather than covered.
 
 *Phase*: 2
 
+*Bucket*: Memory, boot, reset, WDT, clock
+
 *Run mode*: `cpu`, firmware `rom_lsu_read_test`
 
 *VIP / Model*: ocah_axi_vip, CPU FW
@@ -2976,6 +3013,8 @@ deferred rather than covered.
 ===== `sep_warm_cold_reset_scratch_test`
 
 *Phase*: 2
+
+*Bucket*: Memory, boot, reset, WDT, clock
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
@@ -3017,6 +3056,8 @@ reset landed.
 
 *Phase*: 2
 
+*Bucket*: Memory, boot, reset, WDT, clock
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -3047,6 +3088,8 @@ claimed: the pin has no netlist path to either observable in this build.
 ===== `sep_wdt_aon_timer_internals_test`
 
 *Phase*: 2
+
+*Bucket*: Memory, boot, reset, WDT, clock
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
@@ -3085,6 +3128,8 @@ claimed: the pin has no netlist path to either observable in this build.
 
 *Phase*: 2
 
+*Bucket*: Crypto and entropy
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 
 *VIP / Model*: ocah_axi_vip
@@ -3116,6 +3161,8 @@ claimed: the pin has no netlist path to either observable in this build.
 ===== `sep_clock_gate_control_test`
 
 *Phase*: 2
+
+*Bucket*: Memory, boot, reset, WDT, clock
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
@@ -3150,6 +3197,8 @@ per-IP clock gate.
 
 *Phase*: 2
 
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
 
 *VIP / Model*: ocah_axi_vip
@@ -3182,6 +3231,8 @@ per-IP clock gate.
 ===== `sep_locked_field_access_irq_path_test`
 
 *Phase*: 2
+
+*Bucket*: Mailbox, IRQ, PIC
 
 *Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`
 
@@ -3249,6 +3300,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
 
 *VIP / Model*: ocah_axi_vip
@@ -3287,6 +3340,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_efuse_rma_token_rand_test`
 
 *Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
 
@@ -3344,6 +3399,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Mailbox, IRQ, PIC
+
 *Run mode*: `cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip, CPU FW
@@ -3376,6 +3433,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -3407,6 +3466,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_esrc_ht_watermark_arming_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
 
@@ -3444,6 +3505,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_reg_bit_bash_rand_test`
 
 *Phase*: 2
+
+*Bucket*: Fabric and remap
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
@@ -3491,6 +3554,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -3537,6 +3602,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -3554,7 +3621,24 @@ both lock flavours of one seed-selected spare.
 . Program the inbound filter from the CPU-LSU side: the filter denies by default, so five allow windows are opened over the swept extent. The window bounds follow `traffic_filter.sv`, which compares `addr[AW-1:3]` inclusively on an 8-byte granule.
 . Walk the cells exactly as the CPU-LSU sweep does.
 
-*Checkers*: as `sep_axi_order_sweep_test` -- CHK-ORDER-LAND, CHK-ORDER-DISPLACE, CHK-ORDER-XSIZE, CHK-ORDER-STIM, CHK-COVERAGE, CHK-RANDCFG.
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ORDER-LAND
+|The written value is in the register after the ordering write, compared on the readback rather than on the response, so an adapter that answers OKAY while dropping the data fails. Every cell must produce a data compare; a cell that could not run is named with its reason and the count then fails the test.
+|CHK-ORDER-DISPLACE
+|The next write in the block lands on the register it addresses and the swept register does not change when its neighbour is written, so a pending flag left set by the ordering cannot commit the following W handshake to the wrong target. The follow-on value is derived from what the neighbour currently holds with one software-usable bit flipped. The required witness count is the number of cells whose block offers a neighbour.
+|CHK-ORDER-XSIZE
+|All nine (ordering x size) cells produced a data compare, so the write lands at every transfer size and not only at the bus width.
+|CHK-ORDER-STIM
+|Each cell presented the ordering it requested, read off the AW/W valid assertions rather than taken from the configured profile. On this path a W-first presentation is accepted before AW, which is the inbound adapter's own contract and is logged rather than treated as a stimulus failure — the opposite of the CPU-LSU register adapters, which hold WREADY until AW and answer W-first same-cycle.
+|CHK-COVERAGE
+|The cell count is asserted against a floor and the verdict logged, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count, with every skipped register counted under its reason — including the sixteen `INBOUND_FILTER_CTRL` blocks this path cannot sweep. A silent skip would let a shrinking sweep keep reporting PASS.
+|CHK-RANDCFG
+|The cell count for the seed is logged against the configured total, so a shrunken sweep is visible.
+|===
 
 *Scope*: the sixteen `INBOUND_FILTER_CTRL` blocks are not swept here and are counted in the skip tally. Those CSRs are the filter the access is passing through, so writing one mid-walk would reprogram the path under the test and measure filter behaviour rather than adapter ordering. They are swept in full on `sep_axi_order_sweep_test`, whose bus has no inbound filter. No allow window covers the filter CSR bank, so the ownership hole `sep_fabric_inbound_filter_rule_matrix_test` asserts stays shut.
 
@@ -3562,6 +3646,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_axi_strobe_window_test`
 
 *Phase*: 2
+
+*Bucket*: Fabric and remap
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
@@ -3601,6 +3687,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -3639,6 +3727,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_fabric_deadspace_decode_test`
 
 *Phase*: 2
+
+*Bucket*: Fabric and remap
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
@@ -3683,6 +3773,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
 *Run mode*: `no_cpu`; omit `+skip_fuse_sense` so the shadow bank is live
 
 *VIP / Model*: ocah_axi_vip
@@ -3723,6 +3815,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_esrc_fips_lock_test`
 
 *Phase*: 2
+
+*Bucket*: Crypto and entropy
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
@@ -3771,6 +3865,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Crypto and entropy
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
 
 *VIP / Model*: ocah_axi_vip, entropy golden
@@ -3811,6 +3907,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_sec_dis_override_test`
 
 *Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
 
 *Run mode*: `no_cpu`; omit `+skip_fuse_sense`
 
@@ -3859,6 +3957,8 @@ both lock flavours of one seed-selected spare.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
@@ -3896,6 +3996,8 @@ both lock flavours of one seed-selected spare.
 ===== `sep_km_key_policy_vault_test`
 
 *Phase*: 2
+
+*Bucket*: Key Manager vault
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_vault.parhex`
 
@@ -3950,6 +4052,19 @@ unparked.
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
 
+*Phase*: 2 (parked — not coded)
+
+*Bucket*: Key Manager vault
+
+*Testlist*: not enrolled
+
+*Objective*: the KM mailbox command set is this vehicle's surface — generate,
+transfer, revoke-or-shred, and illegal-to-error. The sideload KATs prove only
+that a consumer can consume a key; none of them exercises the command interface
+that produces, moves and destroys one. Grade: GAP, not coded.
+
+*Test Procedure*: T.B.D. — yet to code.
+
 *Randomization*: RAND-REP — generate / transfer / revoke-or-shred /
 illegal-to-error every seed; mailbox operands from the run seed.
 
@@ -3970,6 +4085,19 @@ command returns the documented error and does not change key state.
 ===== `sep_km_crc_pcpi_kat_test`
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, dedicated KM ROM image
+
+*Phase*: 2 (parked — not coded)
+
+*Bucket*: Key Manager vault
+
+*Testlist*: not enrolled
+
+*Objective*: each mode of the KM CRC engine produces the value an independently
+written host-side model produces. The engine has no register interface, so the
+proof has to come from KM firmware issuing the PCPI custom-0 instruction.
+Grade: GAP, not coded.
+
+*Test Procedure*: T.B.D. — yet to code.
 
 *Randomization*: RANDCFG — the vector set, from the run seed.
 
@@ -4009,6 +4137,18 @@ the register description.
 ===== `sep_km_kpv_scrambler_test`
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, dedicated KM ROM image
+
+*Phase*: 2 (parked — not coded)
+
+*Bucket*: Key Manager vault
+
+*Testlist*: not enrolled
+
+*Objective*: the key-policy vault scrambler transforms both the stored word and
+the address mapping while enabled, and the vault returns the logical word
+unmodified while disabled. Grade: GAP, not coded.
+
+*Test Procedure*: T.B.D. — yet to code.
 
 *Randomization*: RANDCFG — the scrambler key, the target slot and word, and the
 plaintext, from the run seed.
