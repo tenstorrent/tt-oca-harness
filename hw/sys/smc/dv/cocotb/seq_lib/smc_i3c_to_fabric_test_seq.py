@@ -247,7 +247,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         )
 
         # --- Enable the real I3C core, observe the pads, restore -------------
-        # Round-3 FIND-008 established that the pad-level idle-zero compares were
+        # that the pad-level idle-zero compares were
         # unfalsifiable partly because no test ever enabled the core. This leg
         # enables it through the RDL-declared HC_CONTROL.BUS_ENABLE and holds it
         # enabled across the pad observation, so what the helper records is the

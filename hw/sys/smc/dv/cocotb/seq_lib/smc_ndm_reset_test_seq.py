@@ -32,9 +32,12 @@ NDM_CLUSTERS = smc_addr(
 #   * "Number of NDM Clusters supported. Can be read to mask the
 #     ndmreset_request register" -- so driving every request line high must
 #     make NDMRESET_REQUEST read exactly the count's mask, no more and no less.
-# The second property is what makes the count fail-capable against the DUT: a
-# count that disagrees with the number of implemented request bits fails it,
-# whichever of the two is wrong.
+# The scope of the second property is bounded by the bench: the TB can only
+# drive the request lines it declares, so the leg proves that every request
+# line the bench can drive reaches NDMRESET_REQUEST and that the bits above the
+# reported count read zero. It detects a count that over-reports the request
+# bits the DUT actually implements; it cannot detect a DUT that implements more
+# request bits than the bench drives.
 _NDM_CLUSTER_COUNT_MASK = 0xFF          # ndm_reset.rdl ndmreset_cluster_count[7:0]
 _NDM_MAX_CLUSTERS = 32                  # ndm_reset.rdl "Supports up to 32 CPU Clusters"
 _PIN_BOUND = 64
@@ -45,9 +48,9 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_ndm_reset_test_seq") -> None:
         super().__init__(name)
-        # Measured, not "did we get here": the test module gates on these.
+        # Measured values, published for the testcase module's zero-activity
+        # guard and for the evidence tokens.
         self.cluster_count: int | None = None
-        self.request_port_width: int | None = None
         self.all_request_readback: int | None = None
         self.bits_swept: list[int] = []
 
@@ -105,7 +108,6 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             f"lines the DUT says exist"
         )
         self.cluster_count = count
-        self.request_port_width = port_width
 
         req0 = await self.csr_read("NDM_REQUEST_IDLE", NDM_REQUEST, expected=0)
         proc0 = await self.csr_read("NDM_PROCESS_IDLE", NDM_PROCESS, expected=0)
@@ -119,17 +121,16 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         # ndmreset_request register" -- made falsifiable: with every request
         # line driven high, NDMRESET_REQUEST must read exactly that mask.
         #
-        # The STIMULUS is deliberately all-ones across the whole TB port rather
-        # than `all_mask`. When both the drive and the expectation were derived
-        # from `count`, a CSR that UNDER-reported (say 2 on a 4-line part) drove
-        # 0x3, read back 0x3 and passed -- the under-report was invisible. With
-        # every physical line driven, the readback reports how many request bits
-        # actually reach the register, so `expected=all_mask` now fails in BOTH
-        # directions: an over-report fails because the extra bits read 0, and an
-        # under-report fails because an extra line shows up
-        # ([INDEPENDENT-EXPECTED-MODEL] -- both sides of this compare are now
-        # DUT-sourced, the CSR count against the CSR request reflection, rather
-        # than a DUT value against a TB literal).
+        # The STIMULUS is all-ones across the whole TB port, independent of
+        # `count`. Deriving the drive value from `count` as well would make the
+        # leg blind in one direction: a CSR that under-reports would drive only
+        # the bits it claims, read them back and pass. Driving every line the
+        # bench has makes the readback report how many request bits reach the
+        # register, so `expected=all_mask` separates a count that over-reports
+        # (extra bits read 0) from one that matches. Both sides of the compare
+        # are DUT-sourced -- the CSR count against the CSR request reflection --
+        # rather than a DUT value against a TB literal
+        # ([INDEPENDENT-EXPECTED-MODEL]).
         all_mask = (1 << count) - 1
         drive_all = (1 << len(dut.tb_ndmreset_request.value)) - 1
         dut.tb_ndmreset_request.value = drive_all
@@ -146,10 +147,11 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             "expected count -- this testcase does not claim the count is "
             "correct). TB observation port tb_ndmreset_request is %d bits "
             "(tb_top.sv:149 hard-coded [3:0], an RTL mirror, NOT the DUT's "
-            "parameterised port). With ALL %d physical lines driven high, "
-            "NDMRESET_REQUEST read exactly 0x%x == (1<<%d)-1, so the count "
-            "agrees with the request bits that actually reach the register in "
-            "both directions",
+            "parameterised port). With ALL %d bench-driven lines high, "
+            "NDMRESET_REQUEST read exactly 0x%x == (1<<%d)-1, so every request "
+            "line the bench drives reaches the register and bits above the "
+            "reported count read zero. Request bits beyond the bench's port "
+            "width are outside this leg's reach",
             count, port_width, drive_all.bit_count(),
             self.all_request_readback, count,
         )

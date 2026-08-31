@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_locked_access_interrupt_test_seq import (
@@ -18,24 +19,35 @@ class smc_efuse_locked_access_interrupt_test(smc_base_test):
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
+        sb = self.env.scoreboard
+        before = sb.sys_axi_value_checks_seen
         seq = smc_efuse_locked_access_interrupt_test_seq("efuse_lock_irq_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # WHERE THE TEETH ARE. The `*_ok` flags are set unconditionally after
-        # their legs, and every leg either raises or compares with `expected=`,
-        # so all of them are literal True at this line: the assert they used to
-        # feed could not fail on anything the DUT did
-        # ([NO-ALWAYS-PASS-CHECKER]).
+
+        # The fail-capable proof lives in the sequence: the interrupt edge counts
+        # are exact, the locked read is compared by the scoreboard against an
+        # expectation stated before the access, and the non-disclosure assert is
+        # independent of the sentinel. None of that is restated here.
         #
-        # The fail-capable content is in the sequence: the locked read must return
-        # the SPEC blocked-read signature 0xBADCAB1E
-        # (hw/ip/efuse/doc/architecture.adoc:299), enforced by the
-        # scoreboard, and `_count_edges_during` must see at least one edge on
-        # the real interrupt net `peripheral_interrupts[28]`.
-        #
-        # What is kept is the one thing not implied upstream: that every leg
-        # actually ran. A refactor that made a bounded wait non-raising, or a
-        # leg quietly skipped, fails here.
-        legs = {"unlock": seq.unlock_ok, "wrlock": seq.wrlock_ok,
-                "rdlock": seq.rdlock_ok}
-        missing = [k for k, v in legs.items() if not v]
-        assert not missing, f"efuse lock irq legs that did not run: {missing}"
+        # What this gate adds is a quantity the sequence does not produce: the
+        # number of exact rdata compares the SCOREBOARD booked on its own
+        # analysis path. The scoreboard increments it only after `got == exp`
+        # passed, so a leg that silently lost its `expected=`, or an analysis
+        # port that came unbound, drops the delta below the floor and fails here
+        # while every sequence-side assert still passes.
+        _EXPECTED_VALUE_CHECKS = 2  # LOCKS_PRE (asset word) + CHIPLET_ID_LOCK_RD
+        measured = sb.sys_axi_value_checks_seen - before
+        assert measured >= _EXPECTED_VALUE_CHECKS, (
+            f"scoreboard booked only {measured} SEP_IN AXI exact-value compares "
+            f"for this scenario, expected at least {_EXPECTED_VALUE_CHECKS} "
+            f"(LOCKS reset word, read-locked CHIPLET_ID read)"
+        )
+        cocotb.log.info(
+            "CHK-EFUSE-LOCK-SCOREBOARD: %d >= %d exact-value compares booked by "
+            "the scoreboard; measured IRQ edges unlock=%d wr=%d rd=%d",
+            measured,
+            _EXPECTED_VALUE_CHECKS,
+            seq.unlock_edges,
+            seq.wr_edges,
+            seq.rd_edges,
+        )

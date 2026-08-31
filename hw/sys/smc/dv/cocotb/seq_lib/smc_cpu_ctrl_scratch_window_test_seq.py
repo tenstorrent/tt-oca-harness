@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import cpu_ctrl_u32, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Addresses come from the generated map, not from literals: a hardcoded base
@@ -29,14 +29,26 @@ SCRATCH_WRITES = [
 #
 # Safe to clobber here: this testcase never boots a core (it issues CSR traffic
 # only), and every row is restored before the sequence ends.
+#
+# Read by symbol from `hw/sys/smc/regs/gen/c/blocks/cpu_ctrl.h`, the same
+# generated header the addresses come from, so the goldens cannot drift out of
+# step with the RDL ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+DUMMY_ROM_COUNT = 4
 DUMMY_ROM_RESETS = {
-    0: 0x0145_0513_0000_0517,
-    1: 0xFFF0_0693_3055_1073,
-    2: 0x1050_0073_3046_B073,
-    3: 0x0000_0000_FFDF_F06F,
+    _i: cpu_ctrl_u32(f"CPU_CTRL__DUMMY_ROM_{_i}__DUMMY_ROM_WORD_{_i}_reset")
+    for _i in range(DUMMY_ROM_COUNT)
 }
-# DUMMY_ROM_NULL[4] @0x2A0 is plain padding scratch, reset 0.
+# DUMMY_ROM_NULL[4] @0x2A0 is plain padding scratch.
 DUMMY_ROM_NULL_COUNT = 4
+DUMMY_ROM_NULL_RESET = cpu_ctrl_u32(
+    "CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_reset"
+)
+# At least one row must be non-trivially non-zero, or the sweep degenerates into
+# reading zeroes back off registers that a dead or unmapped window could also
+# fabricate ([NO-ZERO-ACTIVITY-PASS]).
+assert sum(1 for _v in DUMMY_ROM_RESETS.values() if _v) >= 3, (
+    f"DUMMY_ROM resets are no longer discriminating: {DUMMY_ROM_RESETS}"
+)
 _ROM_PROBE = 0xA5A5_5A5A_C3C3_3C3C
 # CORE_RESET_PULSE_COUNT is deliberately NOT swept: cpu_ctrl.rdl gives it
 # `sw = ['r','rw']` / `hw = ['r','w']`, i.e. it carries hardware-driven fields
@@ -50,16 +62,37 @@ class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_cpu_ctrl_scratch_window_test_seq") -> None:
         super().__init__(name)
+        #: (addr, pattern) pairs whose write/readback the scoreboard compared
+        self.scratch_proven: list[tuple[int, int]] = []
+        #: reset word read back from DUMMY_ROM_0 after the probe was restored
+        self.rom0_restored: int | None = None
 
     async def body(self) -> None:
         saved = []
         for name, addr, pattern in SCRATCH_WRITES:
             old_value = await self.csr_read(f"{name}_SAVE", addr)
             saved.append((name, addr, old_value))
+            # `csr_write_readback` sets `item.expected` on the readback, so the
+            # compare is booked by the scoreboard; the pair is recorded here
+            # only after that readback returned.
             await self.csr_write_readback(name, addr, pattern)
+            self.scratch_proven.append((addr, pattern))
 
         for name, addr, value in reversed(saved):
             await self.csr_restore(name, addr, value)
+
+        # Named token for the window this testcase is named for. Emitted only
+        # after every write/readback and every restore-readback above returned,
+        # each of which the scoreboard value-compared ([EVIDENCE-TOKEN-CONDITIONAL]).
+        cocotb.log.info(
+            "CHK-CPU-CTRL-SCRATCH: %d CPU_CTRL SCRATCH register(s) written and "
+            "read back exactly (%s), then restored to the word each held before "
+            "(%s); all %d compares booked by the scoreboard",
+            len(self.scratch_proven),
+            ", ".join(f"0x{a:08x}<-0x{p:08x}" for a, p in self.scratch_proven),
+            ", ".join(f"0x{a:08x}=0x{v:08x}" for _n, a, v in saved),
+            len(self.scratch_proven) * 2,
+        )
 
         await self._dummy_rom_sweep()
 
@@ -87,15 +120,18 @@ class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):
                 f"DUMMY_ROM_{idx}_RB", addr, expected=_ROM_PROBE, length=8
             )
             await self.csr_write(f"DUMMY_ROM_{idx}_RESTORE", addr, reset, length=8)
-            await self.csr_read(
+            restored = await self.csr_read(
                 f"DUMMY_ROM_{idx}_RESTORE_RB", addr, expected=reset, length=8
             )
+            if idx == 0:
+                self.rom0_restored = restored
         for idx in range(DUMMY_ROM_NULL_COUNT):
             addr = smc_indexed_addr(
                 "SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", idx
             )
             await self.csr_read(
-                f"DUMMY_ROM_NULL_{idx}_RESET", addr, expected=0, length=8
+                f"DUMMY_ROM_NULL_{idx}_RESET", addr,
+                expected=DUMMY_ROM_NULL_RESET, length=8,
             )
         cocotb.log.info(
             "CHK-CPU-CTRL-DUMMY-ROM: %d DUMMY_ROM registers read at their "

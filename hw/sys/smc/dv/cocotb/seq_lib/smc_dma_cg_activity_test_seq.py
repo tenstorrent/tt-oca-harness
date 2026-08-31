@@ -919,8 +919,12 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert fence_terms == expected_p2_pre_pass, (
             f"P2 NONVAC fence order wrong: {fence_terms}"
         )
+        # The token is written under the SAME name the testcase gate requires
+        # (`CHK-NONVAC-P2`), so each required name resolves to exactly one
+        # greppable line in the kept log and the P1 and P2 fences do not share a
+        # spelling ([EVIDENCE-TOKEN-CONDITIONAL]).
         p2_nonvac_line = (
-            f"CHK-NONVAC: SETUP < ACTIVITY-BASELINE < {sweep_fence} < "
+            f"CHK-NONVAC-P2: SETUP < ACTIVITY-BASELINE < {sweep_fence} < "
             "RACE-REASSERT-EARLY < RACE-REASSERT-LAST < PASS"
         )
         cocotb.log.info("%s", p2_nonvac_line)
@@ -961,7 +965,8 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
                 f"last toggle not within hyst window: last_toggle={last_toggle} "
                 f"quiet_at={quiet_at} hyst={HYST_CYCLES}"
             )
-        # Print the measured last_toggle (FIND-005); -1 means already gated at enable.
+        # Carry the measured last_toggle, not the bound it was compared against;
+        # -1 means the clock was already gated when CG was enabled.
         self._emit_chk(
             "CHK-DMA-GATE-OFF",
             f"CHK-DMA-GATE-OFF: last_toggle_within_hyst={last_toggle} "
@@ -1009,11 +1014,23 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert resume_after_busy <= 1, (
             f"resume not within 1 cycle of frontend wakeup: delta={resume_after_busy}"
         )
-        edges = await self._count_gated_rising(4)
-        assert edges >= 2, f"clock not continuously toggling after frontend wakeup: {edges}"
+        # Free-running claim, graded at the same strength as the other three
+        # activity windows in this testcase (`edges == 0` over 16 idle cycles,
+        # per-cycle over the backend-only window, `>= IDLE_OBSERVE - 1` with
+        # gating disabled). One edge of slack covers clk_smc_i/gated-clk phase
+        # alignment at the window boundary; anything looser -- `>= 2 of 4` --
+        # is also satisfied by a clock resuming at half rate or re-gating inside
+        # the window, which is not what this token claims ([EXACT-EXPECTATION]).
+        wakeup_window = 4
+        edges = await self._count_gated_rising(wakeup_window)
+        assert edges >= wakeup_window - 1, (
+            f"clock not continuously toggling after frontend wakeup: "
+            f"{edges} rising edge(s) in a {wakeup_window}-cycle window"
+        )
         self._emit_chk(
             "CHK-DMA-WAKEUP-FRONTEND",
-            f"CHK-DMA-WAKEUP-FRONTEND: resume_within_1cyc=1 resume_cyc={resume_after_busy} "
+            f"CHK-DMA-WAKEUP-FRONTEND: resume_cyc={resume_after_busy} "
+            f"(bound 1) then edges={edges}/{wakeup_window} free-running "
             f"start_id={start_task_id}",
         )
         self._mark_fence("frontend-wakeup-observed")

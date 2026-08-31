@@ -64,6 +64,9 @@
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
 
+/* Re-latch/settle window for the ENABLE-gating arms. Bounded so a
+ * never-latching source fails instead of spinning. */
+#define RELATCH_POLLS 2000u
 #define BIT_FETCH_ERR (1u << 0)
 #define BIT_WRITE_ERR (1u << 4)
 #define LE_INTR_TEST_OFF \
@@ -75,6 +78,26 @@
 static void fail_at(const char *msg) {
     info_msg_s(0, msg);
     test_fail(0); // noreturn
+}
+
+/* Clear level-interrupt status bits and PROVE they cleared.
+ *
+ * A `for (i<100) { W1C; if clear break; }` loop cannot clear these bits while
+ * INTR_ENABLE is set: with the source stuck asserted, INTR_STATUS.next
+ * re-latches every cycle and the W1C never sticks, so such a loop exhausts and
+ * reports nothing. Mask first (which gates `next` to 0), then W1C, then read
+ * back and fail. Returns the mask that was restored to INTR_ENABLE.
+ */
+static void clear_intr_or_fail(uint64_t le_base, uint32_t bits,
+                               uint32_t restore_enable, const char *where) {
+    write_reg(le_base + LE_INTR_ENABLE_OFF, 0u);   /* gate next to 0 */
+    write_reg(le_base + LE_INTR_STATUS_OFF, bits); /* W1C */
+    uint32_t left = read_reg(le_base + LE_INTR_STATUS_OFF) & bits;
+    if (left != 0u) {
+        info_msg_hex32_s(0, "FAIL: W1C left status bits set, mask=", left);
+        fail_at(where);
+    }
+    write_reg(le_base + LE_INTR_ENABLE_OFF, restore_enable);
 }
 
 int main(void) {
@@ -161,14 +184,34 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // ENABLE=0 → status must NOT re-latch
+    // ENABLE gating: positive arm first, then the negative one.
+    //
+    // The negative check alone ("ENABLE=0 and the bit stays clear") passes
+    // identically on a DUT whose source is dead -- nothing would latch under
+    // any setting. So first prove the source is live: with ENABLE=1 the
+    // stuck log_fetch_err MUST re-latch the status bit. Only then does
+    // ENABLE=0 keeping it clear mean anything.
     //--------------------------------------------------------------------------
-    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR); // clear stale
-    for (volatile int i = 0; i < 200; i++) {
+    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
+                       "FAIL: could not clear before ENABLE-gating check");
+    {   /* positive arm: ENABLE=1, source stuck -> must re-latch */
+        uint32_t t = RELATCH_POLLS;
+        while (t > 0u &&
+               (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
+            t--;
+        }
+        if (t == 0u) {
+            fail_at("FAIL: ENABLE=1 but stuck log_fetch_err never re-latched "
+                    "(source dead -> the ENABLE=0 check below proves nothing)");
+        }
     }
-    if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) != 0u) {
-        fail_at("FAIL: ENABLE=0 but status latched (gating broken)");
+    /* negative arm: mask, clear, and it must stay clear */
+    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, 0u,
+                       "FAIL: could not clear before ENABLE=0 check");
+    for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) != 0u) {
+            fail_at("FAIL: ENABLE=0 but status latched (gating broken)");
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -179,9 +222,15 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: sustained DECERR fetch on large region");
 
-    // Re-enable error path
-    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);
+    // Re-arming INTR_ENABLE and then W1C cannot stick while the source is
+    // stuck, which would let the poll below return on its first iteration
+    // reading the bit scenario A left set, whether or not the 0x1000-byte
+    // region produced a single AXI beat. Clear it the only way that works
+    // (mask, W1C, read back) and fail if it did not clear, so the poll starts
+    // from a status this code has proven to be 0.
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
+    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
+                       "FAIL: scenario B could not start from a clear status");
 
     // Bigger region — 4 KB unmapped, slot 0 = 256 bytes per entry. Engine
     // will fetch 64 beats × 4 bytes (or however the AXI handshake unfolds),
@@ -203,12 +252,11 @@ int main(void) {
             fail_at("FAIL: scenario B: large-region DECERR not detected");
         }
     }
-    // Abort + W1C clear
+    // Abort, then clear provably: a W1C loop with INTR_ENABLE still set can
+    // only exhaust.
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    for (int i = 0; i < 100; i++) {
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) break;
-    }
+    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, 0u,
+                       "FAIL: scenario B status would not clear after abort");
 
     //--------------------------------------------------------------------------
     // SCENARIO C (v013) — log_write FSM error path, write to BAD addr.
@@ -257,28 +305,36 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
 
+    // There is deliberately no bounded poll for BIT_WRITE_ERR here. By the
+    // analysis above it can never succeed -- the fetch DECERRs first, so the
+    // write master is never engaged -- so such a poll could only ever expire
+    // into a warning. A wait that can neither fail nor pass is not a check.
+    //
+    // What this scenario does still exercise, and the only thing it claims:
+    // the fetch-error path with WRITE_ERR unmasked, i.e. the INTR_ENABLE
+    // WRITE datapath and the log_write FSM IDLE/REQ arms. Assert that much.
     {
-        // Short bounded poll: WRITE_ERR will not latch (fetch errors first; the
-        // write is never reached). WARN-not-fail — the fetch-error path + the
-        // log_write FSM IDLE/REQ arms are still exercised. Keep the poll short
-        // so the non-latch can never spin into the cocotb watchdog.
-        uint32_t timeout = 2000u;
-        while (timeout > 0u &&
-               (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_WRITE_ERR) == 0u) {
-            timeout--;
+        uint32_t t = RELATCH_POLLS;
+        while (t > 0u &&
+               (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
+            t--;
         }
-        if (timeout == 0u) {
-            info_msg_hex32_s(0, "WARN: scenario C: WRITE_ERR not latched (status=",
-                             read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF));
+        if (t == 0u) {
+            fail_at("FAIL: scenario C: fetch DECERR did not latch with "
+                    "WRITE_ERR also unmasked");
+        }
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_WRITE_ERR) != 0u) {
+            fail_at("FAIL: scenario C: WRITE_ERR latched, but no write was "
+                    "issued (fetch errors first) -- expectation is stale");
         }
     }
-    // Abort + clear
+    // The real log_write_err term stays uncovered by firmware stimulus; it
+    // needs a TB-level fabric write-error injector. Tracked as a coverage gap,
+    // NOT silently warned about here.
+    // Abort, then clear provably.
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    for (int i = 0; i < 100; i++) {
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & (BIT_FETCH_ERR | BIT_WRITE_ERR)) == 0u)
-            break;
-    }
+    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR | BIT_WRITE_ERR, 0u,
+                       "FAIL: scenario C status would not clear after abort");
 
     //--------------------------------------------------------------------------
     // SCENARIO D (v004) — fetch error on replica [1] to exercise the
@@ -313,11 +369,9 @@ int main(void) {
         }
     }
     write_reg(WRAP1_LE_BASE + LE_CTRL_OFF, 0u);
-    for (int i = 0; i < 100; i++) {
-        write_reg(WRAP1_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);
-        if ((read_reg(WRAP1_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) break;
-    }
-    write_reg(WRAP1_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
+    // Same clear-and-prove sequence for replica[1].
+    clear_intr_or_fail(WRAP1_LE_BASE, BIT_FETCH_ERR, 0u,
+                       "FAIL: scenario D: replica[1] status would not clear");
     write_reg(WRAP1_CTRL_REG, 0u);
 
     // Cleanup (wrap0)

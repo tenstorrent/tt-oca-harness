@@ -106,12 +106,20 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
 
         # Positive control taken. Now assert DFT bypass.
         dut.tb_test_en_i.value = 1
-        await ClockCycles(dut.clk_smc_i, 4)
+        # Bounded settle, not a magic delay: poll for the first SMC rise that
+        # samples the DMA gated clock enabled, then start the counted window
+        # from there. The bound is the same GATE_OFF_TIMEOUT_SMC the gated-off
+        # waits use, and expiry RAISES with the last observed state, so a bypass
+        # that never takes effect fails here rather than being absorbed by a
+        # longer wait ([NO-BLIND-DELAY-SYNC]).
+        bypass_seen_at = await cg.wait_enabled(
+            dut, "tb_dma_gated_clk", timeout_smc=GATE_OFF_TIMEOUT_SMC,
+            diag_names=("tb_dma_cg_en", "tb_dma_gater_busy", "tb_test_en_i"),
+        )
         # Exact every-cycle via per-SMC-rise sample (avoids edge-counter ±1 races).
         edges = await cg.count_enabled_at_smc_rise(
             dut, "tb_dma_gated_clk", IDLE_OBSERVE
         )
-        dma_every = int(edges == IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"DMA clock gated under test_en_i: edges={edges} window={IDLE_OBSERVE}"
         )
@@ -119,8 +127,8 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
             self.chk_seen,
             "CHK-DFT-BYPASS-DMA",
             f"CHK-DFT-BYPASS-DMA: gated_off_at_smc_cycle={dma_off_at} with "
-            f"test_en_i=0, then toggles_every_cycle={dma_every} edges={edges} "
-            f"window={IDLE_OBSERVE} test_en_i=1",
+            f"test_en_i=0, then enabled again {bypass_seen_at} smc cycle(s) "
+            f"after test_en_i=1 and edges={edges} of window={IDLE_OBSERVE}",
         )
         cg.mark_fence(self.fence, "dma-bypass-observed")
 
@@ -146,7 +154,6 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         zreg = await cg.count_enabled_at_smc_rise(
             dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
         )
-        z_every = int(zaxi == IDLE_OBSERVE and zreg == IDLE_OBSERVE)
         assert zaxi == IDLE_OBSERVE, (
             f"axi_clk gated under test_en_i: edges={zaxi} window={IDLE_OBSERVE} "
             f"(this clock WAS observed gated off at smc cycle {zaxi_off_at} "
@@ -163,7 +170,6 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
             "CHK-DFT-BYPASS-ZEROER: "
             f"axi gated_off_at_smc_cycle={zaxi_off_at} reg "
             f"gated_off_at_smc_cycle={zreg_off_at} with test_en_i=0, then "
-            f"axi_and_reg_toggles_every_cycle={z_every} "
             f"axi_edges={zaxi} reg_edges={zreg} window={IDLE_OBSERVE} test_en_i=1",
         )
         cg.mark_fence(self.fence, "zeroer-bypass-observed")

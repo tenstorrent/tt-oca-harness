@@ -90,6 +90,12 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
+# The read-lock precondition of this scenario is supplied by this asset (word 0
+# sets CHIPLET_ID_READ_LOCK), so it is named here rather than inherited silently
+# from the bench-wide default in smc_sim_cfg.toml.
+args = [
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+]
 
 # BFM: ext_boot_seq_done hold keeps fuse_reset_n low after sense (G6).
 [[tests]]

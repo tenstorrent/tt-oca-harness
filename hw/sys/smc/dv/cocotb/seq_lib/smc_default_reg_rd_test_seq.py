@@ -150,8 +150,8 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         # construction: `value_checks` is bumped only after a `got == exp`
         # compare actually ran, and EXPECTED_VALUE_COMPARES is an independent
         # literal, so a catalog regression that stopped supplying expectations
-        # fails here instead of shrinking the expectation with it (round-3
-        # FIND-001). Note what min_csr_accesses in tests/smc_default_reg_rd_test.py
+        # fails here instead of shrinking the expectation with it.
+        # Note what min_csr_accesses in tests/smc_default_reg_rd_test.py
         # does and does not cover: it floors the number of READS, not the number
         # of value compares -- the compare floor is this assert plus the
         # scoreboard-sourced floor in that same test.

@@ -4,11 +4,48 @@
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
-# From avsbus_controller.sv one-hot state_t (bit0=RESET ... bit3=IDLE).
-AVS_STATE_IDLE = 0x8
+# PROVENANCE. The AVS FSM state encoding has no SPEC table: `avsbus_controller`'s
+# architecture document (hw/ip/avsbus_controller/doc/architecture.adoc:249-277)
+# names the protocol states but publishes no codes, and the RDL exports no
+# state field -- `AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE` is a separate one-bit
+# status, not this bus. The one authoritative in-tree source is the `state_t`
+# enum in the RTL, so the map is PARSED from it rather than transcribed into a
+# literal here. A compare built on it therefore cannot detect a wrong encoding
+# -- it moves with the RTL -- but it also cannot silently rot out of step with
+# it, and the parse fails loudly if the enum is renamed or removed.
+_AVSBUS_RTL = (
+    Path(__file__).resolve().parents[6]
+    / "hw" / "ip" / "avsbus_controller" / "rtl" / "avsbus_controller.sv"
+)
+_STATE_ENUM_RE = re.compile(
+    r"typedef\s+enum\s+logic\s*\[16:0\]\s*\{(.*?)\}\s*state_t\s*;", re.S
+)
+_STATE_ROW_RE = re.compile(r"(AVS_\w+)\s*=\s*17'b([01]{17})")
+
+
+@lru_cache(maxsize=1)
+def avs_state_map() -> dict[int, str]:
+    """One-hot code -> state name, parsed from ``avsbus_controller.sv``'s state_t."""
+    text = _AVSBUS_RTL.read_text(encoding="utf-8")
+    body = _STATE_ENUM_RE.search(text)
+    if body is None:
+        raise RuntimeError(f"state_t enum not found in {_AVSBUS_RTL}")
+    out = {int(bits, 2): name for name, bits in _STATE_ROW_RE.findall(body.group(1))}
+    if not out:
+        raise RuntimeError(f"no AVS_* state rows parsed from {_AVSBUS_RTL}")
+    return out
+
+
+AVS_STATE_IDLE = next(
+    code for code, name in avs_state_map().items() if name == "AVS_IDLE"
+)
 
 
 async def check_sideband_observability() -> None:
@@ -63,23 +100,30 @@ async def check_sideband_observability() -> None:
         f"configure no interrupt source"
     )
 
-    # (3) The FSM must still be in IDLE. NOTE ON PROVENANCE: AVS_STATE_IDLE is
-    # transcribed from `avsbus_controller.sv`'s one-hot `state_t`, not from a
-    # spec table, so this compare CANNOT detect a wrong encoding -- it would
-    # move with the RTL. What it does detect is the FSM having left IDLE and not
+    # (3) The FSM must still be in IDLE. The encoding is RTL-sourced (see the
+    # provenance note at `avs_state_map`), so this compare cannot detect a wrong
+    # encoding. What it does detect is the FSM having left IDLE and not
     # returned, or having advanced as a side effect of a CSR probe that is not
-    # supposed to launch a transaction.
+    # supposed to launch a transaction. The sampled code is also required to be
+    # a state the enum declares at all, which a decode to an undeclared one-hot
+    # bit fails.
+    states = avs_state_map()
+    assert state in states, (
+        f"AVSBus FSM state debug 0x{state:x} is not any code declared by "
+        f"`state_t`: {sorted(hex(c) for c in states)}"
+    )
     assert state == AVS_STATE_IDLE, (
-        f"AVSBus FSM is in state 0x{state:x}, expected IDLE 0x{AVS_STATE_IDLE:x} "
-        f"after CSR probes only (encoding is RTL-sourced; see comment)"
+        f"AVSBus FSM is in {states[state]} (0x{state:x}), expected AVS_IDLE "
+        f"(0x{AVS_STATE_IDLE:x}) after CSR probes only"
     )
 
     cocotb.log.info(
         "CHK-SIDEBAND-OBSERVABILITY: avs_irq=%d telemetry_irq=%d "
-        "avs_state=0x%x (one-hot, %d bit set) -- IRQ aggregates quiescent and "
-        "FSM in IDLE; the is_resolvable guards above are 4-state-only and are "
-        "no-ops on this Verilator run",
-        avs_irq, tel_irq, state, onehot_bits,
+        "avs_state=0x%x=%s (one-hot, %d bit set, 1 of %d codes declared by "
+        "avsbus_controller.sv state_t) -- IRQ aggregates quiescent and FSM in "
+        "IDLE; the is_resolvable guards above are 4-state-only and are no-ops "
+        "on this Verilator run",
+        avs_irq, tel_irq, state, states[state], onehot_bits, len(states),
     )
 
 

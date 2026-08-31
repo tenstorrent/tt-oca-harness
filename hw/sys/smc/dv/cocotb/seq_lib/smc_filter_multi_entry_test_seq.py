@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap round 2: filter multi-entry sweep.
+"""Filter multi-entry sweep (testlist group ``p1_coverage_gap_r2``).
 
-RTL exposes 16 inbound + 16 outbound filter entries. Round-1
-Entry 0 of each was previously the only covered slot; this sweep covers all 16.
+RTL exposes 16 inbound + 16 outbound filter entries; this sweep covers every
+one of the 32 slots rather than entry 0 of each direction.
 
 Each of the 32 slots is proven *individually discriminable*, not merely
 "a window that answers 0x3000": every slot gets a signature value unique to

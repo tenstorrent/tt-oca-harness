@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 from smc_base_test import smc_base_test
 from seq_lib.smc_gpio_filter_access_sep_test_seq import (
@@ -13,27 +14,37 @@ from seq_lib.smc_gpio_filter_access_sep_test_seq import (
 
 @pyuvm.test()
 class smc_gpio_filter_access_sep_test(smc_base_test):
-    """GPIO0/1 ACCESS_FILTER: AxPROT=1 allow, AxPROT=0 error-slave."""
+    """GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write)."""
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
+        sb = self.env.scoreboard
+        before = sb.sys_axi_value_checks_seen
         seq = smc_gpio_filter_access_sep_test_seq("gpio_filter_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # WHERE THE TEETH ARE. The `*_ok` flags are set unconditionally after
-        # their legs, and every leg either raises or compares with `expected=`,
-        # so all of them are literal True at this line: the assert they used to
-        # feed could not fail on anything the DUT did
-        # ([NO-ALWAYS-PASS-CHECKER]).
+
+        # The allow/deny proof is in the sequence: each denied access is compared
+        # against the AXI DECERR encoding and the error-slave data signature, and
+        # each allowed access carries an `expected=` the scoreboard enforces.
+        # None of that is restated here.
         #
-        # The fail-capable content is in the sequence: the filter's allow leg must
-        # return OKAY with the programmed value and the deny leg must return a
-        # non-OKAY response on the SAME address, both scoreboard-enforced.
-        #
-        # What is kept is the one thing not implied upstream: that every leg
-        # actually ran. A refactor that made a bounded wait non-raising, or a
-        # leg quietly skipped, fails here.
-        legs = {"pre": seq.pre_ok, "priv": seq.priv_ok,
-                "unpriv": seq.unpriv_ok, "gpio1": seq.gpio1_ok}
-        missing = [k for k, v in legs.items() if not v]
-        assert not missing, f"gpio filter legs that did not run: {missing}"
+        # This gate carries a quantity the sequence does not produce -- the
+        # number of exact rdata compares the SCOREBOARD booked on its own
+        # analysis path, incremented only after `got == exp` passed. A leg that
+        # lost its `expected=`, or an analysis port that came unbound, drops the
+        # delta below the floor and fails here while every sequence-side assert
+        # still passes.
+        _EXPECTED_VALUE_CHECKS = 4  # GPIO0 pre / priv / priv-write readback, GPIO1 priv
+        measured = sb.sys_axi_value_checks_seen - before
+        assert measured >= _EXPECTED_VALUE_CHECKS, (
+            f"scoreboard booked only {measured} SEP_IN AXI exact-value compares "
+            f"for this scenario, expected at least {_EXPECTED_VALUE_CHECKS}"
+        )
+        cocotb.log.info(
+            "CHK-GPIO-FILTER-SCOREBOARD: %d >= %d exact-value compares booked; "
+            "denied-access response codes observed: %s",
+            measured,
+            _EXPECTED_VALUE_CHECKS,
+            seq.denied_resps,
+        )

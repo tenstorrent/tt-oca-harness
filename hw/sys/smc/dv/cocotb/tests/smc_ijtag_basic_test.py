@@ -28,7 +28,7 @@ class smc_ijtag_basic_test(smc_base_test):
         # asserts them against MIN_CPU_JTAG_TCK_EDGES inside the helper. Before
         # round 3 the JTAG scans on this record had NO activity floor at all --
         # `min_csr_accesses` below counts SEP_IN AXI CSR traffic from
-        # smc_ijtag_basic_test_seq, which is unrelated to the TAP (FIND-006).
+        # smc_ijtag_basic_test_seq, which is unrelated to the TAP.
         tck_edges = await check_cpu_jtag_pin_vip()
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,

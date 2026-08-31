@@ -169,11 +169,12 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         self._read_outcomes: dict[int, set[bool]] = {}
         self._write_outcomes: set[bool] = set()
 
-        # Resolve the white-box decode probe ONCE, up front, and record whether
-        # it is usable. Where it resolves the decode comparison runs unguarded
-        # in every iteration; where it does not, the fact is logged as a
-        # WARNING naming the missing scope -- never as an INFO line that reads
-        # like a passing check ([NO-DISABLED-CHECKER]).
+        # Resolve the white-box decode probe ONCE, up front. Failing to resolve
+        # it is a testcase FAILURE, not a skipped leg: the three wrapper signals
+        # are published read-only by `hw/sys/smc/dv/tb/smc_public_scope.vlt`, so
+        # an unresolvable handle means that publication or the wrapper hierarchy
+        # changed, and the decode cross-check below would then silently stop
+        # running while the docstring still claims it ([NO-DISABLED-CHECKER]).
         self._lc_probe = self._resolve_lc_probe()
 
         # Idle the JTAG-side eFuse master control and start at TEST_DEV.
@@ -277,27 +278,24 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
     # --- lifecycle drive + optional white-box decode cross-check -------------
 
     def _resolve_lc_probe(self):
-        """Resolve the wrapper decode handle once, or say why it is missing."""
+        """Resolve the wrapper decode handle once; an unresolvable path fails."""
         node = cocotb.top
         for part in _LC_PROBE_PATH:
-            node = getattr(node, part, None)
-            if node is None:
-                cocotb.log.warning(
-                    "lc-decode cross-check DISABLED: %s is not published to "
-                    "cocotb in this build (stopped at '%s'). Verilator scopes "
-                    "cocotb access to smc_uvm_top only "
-                    "(hw/sys/smc/dv/tb/smc_public_scope.vlt), so this leg needs "
-                    "either a 4-state run or a tb_top.sv observation port for "
-                    "lc_state_smc_raw / lc_sigint_err / is_prod_or_rma_sip. "
-                    "The lifecycle decode is still proven at the product "
-                    "boundary by the block/allow matrix below (the SIGINT row "
-                    "vs TEST_DEV separates lc_sigint_err, PROD/RMA_SOP vs "
-                    "PROD_END separates is_prod_or_rma_sip), but the internal "
-                    "signals themselves are NOT checked in this run.",
-                    ".".join(_LC_PROBE_PATH),
-                    part,
-                )
-                return None
+            nxt = getattr(node, part, None)
+            assert nxt is not None, (
+                f"lc-decode cross-check handle {'.'.join(_LC_PROBE_PATH)} does "
+                f"not resolve (stopped at '{part}'). "
+                "hw/sys/smc/dv/tb/smc_public_scope.vlt must keep publishing "
+                "lc_state_smc_raw / lc_sigint_err / is_prod_or_rma_sip on "
+                "smc_efuse_wrapper for this leg to run; without them the "
+                "decode comparison in _set_lc_state would never execute."
+            )
+            node = nxt
+        for var in _LC_PROBE_VARS:
+            assert getattr(node, var, None) is not None, (
+                f"lc-decode cross-check signal '{var}' is not published on "
+                f"{'.'.join(_LC_PROBE_PATH)}"
+            )
         cocotb.log.info(
             "lc-decode cross-check ENABLED on %s", ".".join(_LC_PROBE_PATH)
         )
@@ -308,9 +306,6 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         dut.tb_lc_state.value = pack_lc_state(raw, sigint=sigint)
         # Settle the diff decode + the access-control demux spill registers.
         await ClockCycles(dut.clk_smc_i, 20)
-
-        if self._lc_probe is None:
-            return
 
         # SPEC-derived expectation for the wrapper's decoded lifecycle state.
         # Not a transcription of the wrapper's decode expression: the raw value

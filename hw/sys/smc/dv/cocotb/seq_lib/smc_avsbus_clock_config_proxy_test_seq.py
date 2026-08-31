@@ -11,9 +11,10 @@ The proof is a two-sided, same-run experiment on one variable
 * **Negative leg** -- with the gate SET, the same three reads must fail to
   answer within a bound DERIVED from that measurement
   (``_GATED_BOUND_FACTOR`` x the slowest healthy round-trip, floored at
-  ``_MIN_GATED_BOUND_NS``).  The old fixed 50 ns bound was *shorter* than a
-  healthy CSR round-trip in the same run (52-56 ns), so it held on a fully
-  awake AVSBus -- it measured latency, not decode ([NO-ALWAYS-PASS-CHECKER]).
+  ``_MIN_GATED_BOUND_NS``). A fixed bound shorter than a healthy CSR round-trip
+  would hold on a fully awake AVSBus -- it would measure latency, not decode
+  ([NO-ALWAYS-PASS-CHECKER]) -- which is why the bound is measured, and why the
+  same-bound ungated control below shows a responsive window satisfies it.
 
 Nothing here asserts the sequence's own access counters: reachability is
 carried by ``assert_reachable_or_gated`` (scoreboard cross-check) and the value
@@ -28,7 +29,9 @@ from cocotb.utils import get_sim_time
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+# Resolved from the generated map, so the offset within SMC_BASE_CONFIG follows
+# the RDL rather than a literal that has to be re-checked by hand.
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 AVS_CG_EN = 1 << 10
 AVSBUS_TIMEOUT_READS = [
     ("AVS_CFG_0", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR")),
@@ -46,8 +49,9 @@ _UNGATED_PROBE_BOUND_NS = 4000
 _GATED_BOUND_FACTOR = 4
 _MIN_GATED_BOUND_NS = 400
 
-# 13 before the same-bound ungated control was added; that loop issues one
-# read per AVS_CFG window (3), so the directed-stimulus floor rises to 16.
+# Directed-stimulus floor. Composition: 7 CLOCK_GATE_CONTROL accesses (save,
+# write + readback ungated, write + readback gated, restore write + readback)
+# plus one read per AVS_CFG window in each of the three probe loops (3 x 3 = 9).
 EXPECTED_ACCESSES = 16
 # Value-checked reads: the ungated CLOCK_GATE_CONTROL readback, the gated
 # readback, and the restore readback.

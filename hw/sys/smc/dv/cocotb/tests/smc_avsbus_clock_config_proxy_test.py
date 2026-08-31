@@ -34,20 +34,18 @@ class smc_avsbus_clock_config_proxy_test(smc_base_test):
             f"AVS_CFG windows: {seq.ungated_latencies_ns}"
         )
         healthy = max(seq.ungated_latencies_ns.values())
-        # `gated_bound_ns > healthy` was asserted here. It is
-        # `max(400, 4*healthy) > healthy`, which has NO counterexample for any
-        # non-negative healthy -- true by construction because the bound is
-        # DERIVED from `healthy`, so it could not fail on any RTL, while its
-        # message claimed it guarded the negative leg against holding on an
-        # awake AVSBus ([NO-ALWAYS-PASS-CHECKER]). The guard it described is
-        # structural, not checkable.
+        # No arithmetic on `gated_bound_ns` belongs here. The bound is
+        # `max(400, 4*healthy)`, so any compare of it against `healthy` is true
+        # by construction for every non-negative measurement and could not fail
+        # on any RTL ([NO-ALWAYS-PASS-CHECKER]).
         #
-        # What IS checkable, and was missing: that the negative leg's own
-        # timeout mechanism and bound do not expire on a responsive window. The
-        # sequence now runs `csr_short_timeout` at exactly `gated_bound_ns` on
-        # all three addresses while UNGATED; a `csr_short_timeout` that expired
-        # unconditionally would previously have made the whole negative leg
-        # pass vacuously.
+        # The checkable property is that the negative leg's bound does not
+        # expire on a RESPONSIVE window. The sequence reads all three addresses
+        # UNGATED with a neutral `csr_read_bounded` set to exactly
+        # `gated_bound_ns` and requires each to answer; this gate carries that
+        # count. A bound too tight to be met by a live window would make the
+        # gated leg's timeouts say nothing about clock gating, and it fails
+        # inside the sequence before reaching here.
         assert seq.ungated_same_bound_ok == n, (
             f"the same-bound ungated control covered "
             f"{seq.ungated_same_bound_ok}/{n} AVS_CFG windows, so the gated "

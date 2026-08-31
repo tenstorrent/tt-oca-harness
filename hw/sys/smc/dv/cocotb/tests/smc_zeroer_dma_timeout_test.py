@@ -6,7 +6,7 @@ Provenance: this test is enrolled against ``smc_zeroer_dma_timeout_test`` in
 ``hw/sys/smc/dv/docs/SMC_VPLAN.adoc`` (row "Zeroer / DMA / utility", P1-16
 ``zeroer_dma_utility``).
 
-NO DV-CARD RECORD-SHA256 IS CLAIMED HERE. The header previously carried
+NO DV-CARD RECORD-SHA256 IS CLAIMED HERE. No header is stamped here; one citing
 ``DV-CARD: SMC_006 / RECORD-SHA256: 8434b588... / DV-CARD-SOURCE:
 hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1``. That file does not
 exist anywhere in the repository and SMC_VPLAN.adoc defines no ``SMC_006`` id and
@@ -60,8 +60,8 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
             # `SmcCsrSeq.timeouts` is bumped only by `csr_read_bounded` /
             # `csr_short_timeout` (seq_lib/smc_csr_seq_utils.py); this sequence
             # calls neither, so `seq.timeouts` was structurally 0 and printing it
-            # advertised a statistic never taken ([NO-DUMMY-DEAD-CODE], round-3
-            # FIND-103). The sequence's own bounded wait
+            # advertised a statistic never taken ([NO-DUMMY-DEAD-CODE])
+            # . The sequence's own bounded wait
             # (`_wait_for_zeroer_write`) raises on expiry, so
             # [TIMEOUT-MUST-FAIL] is carried there, not by this field.
             timeouts=None,

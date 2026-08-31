@@ -8,12 +8,21 @@ DV-CARD: SMC_CG_P2_002 ANCHOR: smc_zeroer_axiclk_cg_test
 The P2 card extends this same anchor (additive): the P1 steps/checkers above are
 UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1
 grade); the P2 extension below (_p2_extension) adds the busy-to-idle
-back-to-back trigger race, called once at the end of body(). Per SF-005
-(answered): trigger at same-cycle/after the busy falling edge MUST start and
-complete the follow-on op (scored); trigger while still busy (1-cycle-before,
-genuine overlap) is evidence-only -- no pass/fail asserted on that protocol
-outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
-protocol-outcome verdict.
+back-to-back trigger race, called once at the end of body().
+
+Two verdicts are applied to the swept cells, and BOTH are applied at all three
+timings. The retained tokens carry a `*_scored` field per cell so the log states
+the verdict that actually ran:
+
+* COMPLETION -- the follow-on op must start and complete a write to its own
+  destination `P2_DEST_OP2`, at every swept timing including the
+  1-cycle-before overlap (`completion_scored=1`).
+* MID-BUSY GLITCH -- while zeroer_busy_o==1 for either operation,
+  axi_clk_enable must stay asserted, at every swept timing
+  (`mid_busy_glitch_scored=1`).
+
+The one carve-out is neither of those: a deassert gap STRICTLY BETWEEN the two
+busy pulses is permitted and logged, never scored -- see below.
 
 CHK-ZEROER-AXICLK-NOGLITCH is scoped to the busy spans, not to the whole
 busy-to-idle boundary. Requiring zero axi_clk_enable deassert across that whole
@@ -27,8 +36,7 @@ deassert -- no mid-busy glitch -- at all 3 swept timings, with no carve-out for
 this half of the checker. A deassert gap STRICTLY BETWEEN the two busy pulses,
 caused by the multi-write trigger protocol's turnaround latency, is PERMITTED
 and must be LOGGED (start cycle, end cycle, duration) at each swept timing --
-never scored as a failure. CHK-ZEROER-AXICLK-COMPLETION follows SF-005:
-same-cycle/1-after scored, 1-before evidence-only.
+never scored as a failure.
 `_p2_race_cell` below implements this split by classifying every deasserted
 (enable==0) sample as either "mid-busy" (busy==1 at that sample -- fail_on
 scope) or "inter-busy gap" (busy==0, strictly between op1's busy-fall and
@@ -155,6 +163,18 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         sig = self._dut().tb_output_axi_write_count
         assert sig.value.is_resolvable
         return int(sig.value)
+
+    def _last_write_addr(self) -> int:
+        """AW address of the most recently B-responded output-AXI write.
+
+        `tb_top.sv:1076-1077` latches the counter and this address together on
+        the same B handshake, so pairing them attributes a counted write to the
+        destination it went to. A bare counter increment cannot: the counter is
+        shared by every write on the output port, so op1's own response
+        satisfies `count > start` even if op2 never wrote anything
+        ([EXACT-EXPECTATION]).
+        """
+        return int(self._dut().tb_output_axi_last_addr.value)
 
     async def _wait_zeroer_idle(self) -> None:
         dut = self._dut()
@@ -402,6 +422,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         completed = False
         write_addr_phase_seen = False
         followon_used = 0
+        completion_addr = -1
         for _ in range(P2_FOLLOWON_BOUND_SMC):
             followon_used += 1
             if timeline[-1][0] == 1:
@@ -411,7 +432,10 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
                 and timeline[-1][0] == 0
                 and self._write_count() > start_writes2
             ):
-                completed = True
+                # ATTRIBUTED completion: the write that was counted must be the
+                # one op2 issued, identified by its own destination address.
+                completion_addr = self._last_write_addr()
+                completed = completion_addr == P2_DEST_OP2
                 break
             await _step()
 
@@ -434,8 +458,8 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
 
         # op2's own busy-reassertion edge, if observed within this cell's
         # captured timeline -- the boundary that separates "mid-busy" (still
-        # in fail_on scope, rev2 unchanged) from "strictly between the two
-        # busy pulses" (rev2 AMENDMENT: permitted, logged, never scored).
+        # in scoring scope) from "strictly between the two busy pulses"
+        # (permitted, logged, never scored).
         op2_rise_idx = next(
             (i for i in range(fall_idx, len(timeline)) if timeline[i][0] == 1),
             None,
@@ -469,18 +493,18 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         # (op2_resume_idx..last_busy_idx). A deassert sample here means
         # axi_clk_enable==0 WHILE zeroer_busy_o==1 (post turn-on) for one of
         # the two operations -- exactly what CHK-ZEROER-AXICLK-NOGLITCH's
-        # rev2 fail_on still forbids at every swept timing, no carve-out.
+        # scored claim forbids at every swept timing, no carve-out.
         mid_busy_ranges = [range(resume_idx, fall_idx)]
         if op2_resume_idx is not None:
             mid_busy_ranges.append(range(op2_resume_idx, last_busy_idx + 1))
         glitches = [
             i for rng in mid_busy_ranges for i in rng if timeline[i][1] == 0
         ]
-        # NOTE: a real mid-busy glitch here is a DUT/RTL finding (rev2's
-        # NOGLITCH fail_on applies to the mid-busy segment at every swept
-        # timing, no carve-out -- SF-005's evidence-only carve-out is scoped
-        # to CHK-ZEROER-AXICLK-COMPLETION's protocol-outcome verdict only,
-        # per the card). Do NOT raise here: the card's own fail_on also
+        # NOTE: a real mid-busy glitch here is a DUT/RTL finding (the
+        # NOGLITCH claim applies to the mid-busy segment at every swept
+        # timing, no carve-out -- the evidence-only carve-out is scoped to the
+        # 1-cycle-before cell's mid-busy outcome alone, per the module
+        # docstring). Do NOT raise here: the card's own fail_on also
         # independently fails the checker if "any of the 3 required cells
         # [is] not observed in the retained log", so aborting mid-sweep on
         # the first violation would trade one honest failure mode for a
@@ -496,7 +520,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             else ""
         )
 
-        # Inter-busy deassert gap: rev2 AMENDMENT -- axi_clk_enable is
+        # Inter-busy deassert gap: axi_clk_enable is
         # PERMITTED to deassert strictly between op1's busy-fall (fall_idx)
         # and op2's busy-reassert (op2_rise_idx), for the duration of the
         # documented multi-write configure-then-trigger protocol's
@@ -518,13 +542,17 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             else 0
         )
 
-        scored = target_offset in (0, 1)
+        # The completion verdict is applied at every swept timing, including the
+        # 1-cycle-before overlap; the token's `completion_scored=1` field says
+        # so, so the retained evidence describes the verdict that ran.
         completion_detail = ""
-        if scored and not completed:
+        if not completed:
             completion_detail = (
-                f"{label}: follow-on op did not begin+complete within "
-                f"{P2_FOLLOWON_BOUND_SMC} cycles (write_addr_phase_seen="
-                f"{write_addr_phase_seen} writes_now={self._write_count()} "
+                f"{label}: follow-on op did not begin+complete a write to "
+                f"0x{P2_DEST_OP2:x} within {P2_FOLLOWON_BOUND_SMC} cycles "
+                f"(write_addr_phase_seen={write_addr_phase_seen} "
+                f"last_write_addr=0x{completion_addr:x} "
+                f"writes_now={self._write_count()} "
                 f"start_writes2={start_writes2} last_busy={timeline[-1][0]})"
             )
 
@@ -539,9 +567,9 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             "inter_busy_gap_duration": inter_busy_gap_duration,
             "write_addr_phase_seen": int(write_addr_phase_seen),
             "completed": int(completed),
+            "completion_addr": completion_addr,
             "completion_detail": completion_detail,
             "writes_delta": self._write_count() - start_writes2,
-            "scored": int(scored),
             # MEASURED margins against the two bounded waits in this cell.
             "trial_cycles_used": trial_used,
             "followon_cycles_used": followon_used,
@@ -589,7 +617,8 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
                 f"{label}(offset={r['observed_offset']},mid_busy_glitches={r['glitches']},"
                 f"inter_busy_gap_start={r['inter_busy_gap_start']},"
                 f"inter_busy_gap_end={r['inter_busy_gap_end']},"
-                f"inter_busy_gap_duration={r['inter_busy_gap_duration']})"
+                f"inter_busy_gap_duration={r['inter_busy_gap_duration']},"
+                f"mid_busy_glitch_scored=1)"
                 for label, r in results.items()
             ),
         )
@@ -598,8 +627,10 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             "CHK-ZEROER-AXICLK-COMPLETION",
             "CHK-ZEROER-AXICLK-COMPLETION: " + " ".join(
                 f"{label}(write_addr_phase_seen={r['write_addr_phase_seen']},"
-                f"completed={r['completed']},writes_delta={r['writes_delta']},"
-                f"scored={r['scored']})"
+                f"completed={r['completed']},"
+                f"last_write_addr=0x{r['completion_addr']:x},"
+                f"expected_dest=0x{P2_DEST_OP2:x},"
+                f"writes_delta={r['writes_delta']},completion_scored=1)"
                 for label, r in results.items()
             ),
         )

@@ -241,6 +241,30 @@ async def wait_gated_off(
     )
 
 
+async def wait_enabled(
+    dut,
+    gated_clk_name: str,
+    *,
+    timeout_smc: int,
+    diag_names: tuple[str, ...] = (),
+) -> int:
+    """Wait until a gated clock samples enabled again; return the cycle it did.
+
+    The event-driven counterpart to :func:`wait_gated_off`, for the settle
+    between driving a bypass/enable and starting a counted window. Expiry is a
+    FAILURE with the last observed state of ``diag_names``, never a pass
+    ([TIMEOUT-MUST-FAIL]), so it cannot be used as a blind delay.
+    """
+    for cyc in range(timeout_smc):
+        if await count_gated_rising(dut, gated_clk_name, 1) > 0:
+            return cyc + 1
+    diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
+    raise AssertionError(
+        f"TIMEOUT waiting {gated_clk_name} to become enabled within "
+        f"{timeout_smc} smc cycle(s): {diag}"
+    )
+
+
 async def measure_regate_delay(
     dut,
     gated_clk_name: str,

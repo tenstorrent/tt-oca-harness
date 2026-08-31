@@ -26,7 +26,7 @@ black-boxed core, and against a core whose pad driver is broken. That is exactly
 the shape policy ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` prohibits, so the levels
 are **recorded, not asserted**, and no ``CHK-`` token claims them as checks.
 
-The round-3 closure condition offered two branches. **Branch (b) applies, and
+**Branch (b) applies, and
 here is why (a) does not.** The "core is never enabled" half is now fixed --
 ``smc_i3c_to_fabric_test_seq`` writes the RDL-declared
 ``HC_CONTROL.BUS_ENABLE`` and value-compares the readback, and this helper runs
@@ -200,7 +200,7 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
         "recorded, not compared: an idle == 0 expectation on "
         "tb_i3c0_{scl,sda}_dut_low has no positive control in this testbench, so "
         "it would also pass on a dead pad driver "
-        "([NEGATIVE-NEEDS-POSITIVE-CONTROL]). Round-3 FIND-008 branch (b) "
+        "([NEGATIVE-NEEDS-POSITIVE-CONTROL]). "
         "applies: the core IS enabled here and its HC_CONTROL.BUS_ENABLE "
         "readback is value-checked, but a DUT-driven low needs queued I3C bus "
         "traffic, which hw/sys/smc/dv/README.md:11-15 defers (I3C real-core "

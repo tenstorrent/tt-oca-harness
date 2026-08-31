@@ -11,12 +11,15 @@ implied:
 
 * 8-bit beats and the assembly into packets -- ``doc/interface.adoc:59,69``
   ("8-bit data beats", "Data Width: 8 bits per beat") and
-  ``doc/architecture.adoc:56``; ``NUM_BEATS_PER_PACKET`` is the RTL parameter
-  (``rtl/telemetry_receiver.sv:134``).
-* ``probe_id`` at bits ``[60:56]`` -- ``rtl/telemetry_receiver.sv:77-80``,
+  ``doc/architecture.adoc:56``; ``NUM_BEATS_PER_PACKET`` is the RTL localparam
+  ``TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH``
+  (``rtl/telemetry_receiver_pkg.sv:51``), used at
+  ``rtl/telemetry_receiver.sv:134``.
+* ``probe_id`` at bits ``[60:56]`` -- ``rtl/telemetry_receiver.sv:77-81``,
   ``get_telemetry_probe_id`` returns ``telemetry_packets[0][60:56]``.
-* ``last_packet`` at bit 63 -- the ``telemetry_packet_t`` field used at
-  ``rtl/telemetry_receiver.sv:137``.
+* ``last_packet`` at bit 63 -- it is the most significant field of the 64-bit
+  packed ``telemetry_packet_t`` (``rtl/telemetry_receiver_pkg.sv:60-63``), read
+  at ``rtl/telemetry_receiver.sv:139``.
 
 The prose in ``doc/architecture.adoc:43-45,56-60`` describes probe IDs and
 last-packet boundaries but gives no bit positions, so no spec-level source for
@@ -64,6 +67,15 @@ _TELEMETRY_REG_TYPES = (
     ("TELEMETRY_COUNTER_VLDS", 0x0),
 )
 _TELEMETRY_RECEIVERS = 3
+# Receivers 1 and 2 take no ATB stimulus, so a reset sweep alone would leave
+# their entire claim at "mapped, and at reset". Each therefore also takes a
+# write/readback/restore on INTR_ENABLE, whose two writable fields are
+# `MISSING_LAST[0]` and `BUFFER_THRESHOLD[4]` (telemetry_receiver.rdl:127-141),
+# giving the pattern below. A window that decodes but does not store, or one
+# that returns a bus default, fails the readback
+# ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+_INTR_ENABLE_WRITABLE = 0x11
+_QUIET_RECEIVERS = (1, 2)
 
 TELEMETRY_READS = [
     (
@@ -110,6 +122,29 @@ _COUNTERS = [0x11223344, 0x55667788]
 
 
 _ATB_READY_BOUND = 64
+# Bound for the INTR_TEST-to-IRQ and IRQ-clear observations. No stated
+# INTR_TEST-to-`telemetry_irq_any` latency exists in the IP documentation, so
+# this is a generous ceiling on a bounded poll, not a settling delay: the poll
+# returns on the level it is waiting for and raises with the last observed level
+# on expiry, and the cycles it actually consumed are carried in the evidence
+# token ([NO-BLIND-DELAY-SYNC]).
+_IRQ_POLL_BOUND = 64
+
+
+async def _await_irq_level(dut, want: int, label: str) -> int:
+    """Poll tb_telemetry_irq_any for `want`; raise on expiry. Returns cycles."""
+    last = int(dut.tb_telemetry_irq_any.value)
+    if last == want:
+        return 0
+    for cyc in range(1, _IRQ_POLL_BOUND + 1):
+        await RisingEdge(dut.clk_smc_i)
+        last = int(dut.tb_telemetry_irq_any.value)
+        if last == want:
+            return cyc
+    raise AssertionError(
+        f"{label}: tb_telemetry_irq_any stayed {last} for {_IRQ_POLL_BOUND} "
+        f"clk_smc_i cycles, want {want}"
+    )
 
 
 async def _atb_write_beat(dut, value: int, *, beat: int = -1) -> None:
@@ -174,13 +209,39 @@ async def _send_telemetry_message(dut, probe_id: int, counter_values: list[int])
 class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_telemetry_receiver_csr_test_seq") -> None:
         super().__init__(name)
-        self.telemetry_irq_ok: bool = False
-        self.telemetry_atb_ok: bool = False
+        # Values the run measured, published for the testcase module's record.
+        self.probe_id_readback: int | None = None
+        self.status_non_empty: int | None = None
+        self.irq_rise_cycles: int | None = None
+        self.irq_fall_cycles: int | None = None
+        self.quiet_receivers_proved: list[int] = []
 
     async def body(self) -> None:
         dut = cocotb.top
         for name, addr, expected in TELEMETRY_READS:
             await self.csr_read(name, addr, expected=expected)
+
+        # Receivers 1/2: one behavioural leg each, so the claim for them is not
+        # limited to "the window decodes and reads its reset values".
+        for rx in _QUIET_RECEIVERS:
+            addr = smc_indexed_addr(
+                "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
+                "INTR_ENABLE_BASE_ADDR",
+                rx,
+            )
+            await self.csr_write(
+                f"TELEMETRY_{rx}_INTR_ENABLE_WR", addr, _INTR_ENABLE_WRITABLE
+            )
+            await self.csr_read(
+                f"TELEMETRY_{rx}_INTR_ENABLE_RB",
+                addr,
+                expected=_INTR_ENABLE_WRITABLE,
+            )
+            await self.csr_write(f"TELEMETRY_{rx}_INTR_ENABLE_RESTORE", addr, 0)
+            await self.csr_read(
+                f"TELEMETRY_{rx}_INTR_ENABLE_RESTORE_RB", addr, expected=0
+            )
+            self.quiet_receivers_proved.append(rx)
 
         status = await self.csr_read("TELEMETRY_0_STATUS", _TELEMETRY_0_STATUS)
         assert status & _STATUS_EMPTY, (
@@ -199,24 +260,34 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
             _CLOCK_GATE_CONTROL,
             cg & ~_TELEMETRY_CG_EN,
         )
-        await ClockCycles(dut.clk_smc_i, 8)
+        # The readback is the completion handshake for the ungate: it is a real
+        # AXI round trip with an exact expectation, so nothing here stands in
+        # for a fixed settling delay ([NO-BLIND-DELAY-SYNC]).
+        await self.csr_read(
+            "CLOCK_GATE_CONTROL_TELEMETRY_UNGATE_RB",
+            _CLOCK_GATE_CONTROL,
+            expected=cg & ~_TELEMETRY_CG_EN,
+        )
 
         # --- U4-6a: INTR_TEST -> tb_telemetry_irq_any
         irq_before = int(dut.tb_telemetry_irq_any.value)
+        assert irq_before == 0, (
+            f"tb_telemetry_irq_any is already {irq_before} before INTR_TEST is "
+            f"written; the rise observed below could not be attributed to it"
+        )
         await self.csr_write(
             "TELEMETRY_0_INTR_ENABLE", _TELEMETRY_0_INTR_ENABLE, _INTR_MISSING_LAST
         )
         await self.csr_write(
             "TELEMETRY_0_INTR_TEST", _TELEMETRY_0_INTR_TEST, _INTR_MISSING_LAST
         )
-        await ClockCycles(dut.clk_smc_i, 8)
-        irq_after = int(dut.tb_telemetry_irq_any.value)
+        self.irq_rise_cycles = await _await_irq_level(dut, 1, "INTR_TEST rise")
         intr_st = await self.csr_read(
             "TELEMETRY_0_INTR_STATUS_POST", _TELEMETRY_0_INTR_STATUS
         )
-        assert irq_after == 1, (
-            f"tb_telemetry_irq_any not asserted after INTR_TEST "
-            f"(before={irq_before} after={irq_after} INTR_STATUS=0x{intr_st:08x})"
+        assert intr_st & _INTR_MISSING_LAST, (
+            f"tb_telemetry_irq_any rose but TELEMETRY_0 INTR_STATUS does not "
+            f"carry MISSING_LAST: 0x{intr_st:08x}"
         )
         await self.csr_write(
             "TELEMETRY_0_INTR_STATUS_W1C",
@@ -224,11 +295,7 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
             _INTR_MISSING_LAST,
         )
         await self.csr_write("TELEMETRY_0_INTR_ENABLE_OFF", _TELEMETRY_0_INTR_ENABLE, 0)
-        await ClockCycles(dut.clk_smc_i, 8)
-        assert int(dut.tb_telemetry_irq_any.value) == 0, (
-            "tb_telemetry_irq_any stuck high after clear"
-        )
-        self.telemetry_irq_ok = True
+        self.irq_fall_cycles = await _await_irq_level(dut, 0, "INTR_STATUS clear")
 
         # --- U4-6b: ATB message -> STATUS.~EMPTY + PROBE_ID
         assert hasattr(dut, "tb_telemetry0_atvalid"), (
@@ -251,14 +318,26 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         assert (probe & 0x1F) == _PROBE_ID, (
             f"PROBE_ID mismatch: got 0x{probe:x}, expected 0x{_PROBE_ID:x}"
         )
+        self.probe_id_readback = probe & 0x1F
+        self.status_non_empty = status
         # Pop the message so the buffer is clean for later tests.
         await self.csr_write("TELEMETRY_0_BUFFER_POP", _TELEMETRY_0_CTRL, 0x1)
         await ClockCycles(dut.clk_smc_i, 4)
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
-        self.telemetry_atb_ok = True
+        # Every field below is a value this run read back or counted, not a
+        # module constant restated ([EVIDENCE-TOKEN-CONDITIONAL]).
         cocotb.log.info(
-            "Telemetry U4-6 PASS: INTR_TEST IRQ + ATB msg probe_id=0x%02X "
-            "(STATUS was non-empty)",
-            _PROBE_ID,
+            "CHK-TELEMETRY-RECEIVER-CSR: receiver 0 framed probe_id read back "
+            "0x%02X from TELEMETRY_PROBE_ID and STATUS read 0x%08x (EMPTY "
+            "clear) after the ATB message; INTR_TEST raised "
+            "tb_telemetry_irq_any %d clk_smc_i cycle(s) after the write and "
+            "the W1C cleared it %d cycle(s) after; receivers %s each stored and "
+            "restored INTR_ENABLE=0x%02x",
+            self.probe_id_readback,
+            self.status_non_empty,
+            self.irq_rise_cycles,
+            self.irq_fall_cycles,
+            ",".join(str(r) for r in self.quiet_receivers_proved),
+            _INTR_ENABLE_WRITABLE,
         )

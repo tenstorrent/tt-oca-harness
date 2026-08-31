@@ -33,7 +33,7 @@ class smc_i2c_p0_timeout_test(smc_base_test):
             # fail ([NO-ALWAYS-PASS-CHECKER]). It was left at 27 -- the
             # pre-sweep figure -- after the timeout/FIFO CSR sweep added 23
             # accesses (4 registers x 5, plus 3 for the TARGET_NACK_COUNT rclr
-            # pair). Corrected to 50 so it at least records the real stimulus.
+            # pair).
             # The fail-capable content is the sweep's `expected=` compares and
             # the rclr two-sided read, both scoreboard-enforced.
             min_csr_accesses=50,

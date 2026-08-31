@@ -109,8 +109,8 @@ NDMRESET_CLUSTER_COUNT_WR_PATTERN = (
 # declares ``reg DEBUG_BUS_MUX { regwidth = 0x40; }`` with fields running to
 # ``Muxselseg7[63:58]``. It is therefore read 8 bytes wide so the whole declared
 # reset is compared; a 4-byte read left ``Muxselseg2[33:28]``..``Muxselseg7``
-# unsampled while the token read as a whole-register default check (round-3
-# FIND-004). Every field in that register resets to 0x0 in the RDL.
+# unsampled while the token read as a whole-register default check.
+# Every field in that register resets to 0x0 in the RDL.
 _DEBUG_BUS_MUX_BYTES = 8
 
 # Value-compared diagnostic reads, identical on Verilator and VCS. Every

@@ -53,7 +53,7 @@ ZEROER_CTRL_STATUS_START = reg_field_pack(
 #                     holds the 1 that S3 wrote to arm the completion interrupt.
 #                     Until round 3 this write was fire-and-forget: nothing ever
 #                     read CTRL_STATUS back, so "the interrupt is armed" was an
-#                     unverified claim (FIND-102).
+#                     unverified claim.
 #   STATUS[32] = 0  -- the field carries BUSY (see the polarity note below) and
 #                     by the time this read is issued the operation is
 #                     independently proven finished -- the responder counted the
