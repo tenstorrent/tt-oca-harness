@@ -935,7 +935,7 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 <div class="sect3">
 <h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">2.3. SEP Reset Controller</a></h4>
 <div class="paragraph">
-<p>The SEP Reset Controller provides software-controllable resets for the Key Manager and crypto accelerators. It is accessible via AXI4-Lite at base address <code>0x10A5_0000</code> within the System Peripherals crossbar.</p>
+<p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
 </div>
 <div class="paragraph">
 <p>The controller contains a single 64-bit register <code>SW_RESET_N</code> at offset <code>0x0</code> with the following fields:</p>
@@ -993,12 +993,19 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KMAC reset (0=assert, 1=release)</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">trng_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>On power-up, <code>SW_RESET_N</code> resets to <code>0x1E</code>: KM is held in reset, while OTBN,
-AES, HMAC, and KMAC are released. The SEP host firmware writes <code>1</code> to release an
-IP from reset and writes <code>0</code> to assert its software reset.</p>
+<p>On power-up, <code>SW_RESET_N</code> resets to <code>0x3E</code>: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes <code>1</code> to
+release an IP from reset and writes <code>0</code> to request its software reset.</p>
 </div>
 <div class="paragraph">
 <p>Inside <code>sep_reset_ctrl</code>, each bit is ANDed with <code>sep_reset_n</code> and then passed
@@ -1014,6 +1021,33 @@ requests: <code>sep_crypto_axi_isolate</code> first isolates the accelerator&#82
 draining outstanding transactions and terminating new ones with DECERR, and only
 then asserts the reset. The isolation is held for the duration of the reset and
 released when the software bit deasserts.</p>
+</div>
+<div class="sect4">
+<h5 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">Resetting the TRNG</a></h5>
+<div class="paragraph">
+<p>The TRNG reset bit controls one reset domain containing the entropy source,
+CSRNG, EDN, their AXI converters, the DRBG endpoint state, and both post-mux EDN
+adapters. Because ESRC, CSRNG, and EDN occupy three independent demux ports, a
+shared coordinator requests isolation on all three and does not assert the TRNG
+reset until all three report isolated. On release, reset is removed while the
+ports remain isolated for one cycle, then all three ports reopen together.</p>
+</div>
+<div class="paragraph">
+<p>The fabric entropy-pool AXI responder is not reset, so accesses remain
+responsive. While the TRNG reset is active, its pending EDN request, half-packed
+word, FIFO contents, and fill-stall state are synchronously cleared.</p>
+</div>
+<div class="paragraph">
+<p>Consumers are not part of the reset coordinator. Native EDN requests receive no
+acknowledgement while the post-mux adapter is clearing, remain asserted, and are
+serviced with fresh entropy after the chain restarts. The Key Manager
+AXI-Stream leg stalls in the same way. Software may wait for consumers to become
+idle and hold them in reset when policy requires aborting in-flight operations,
+but this is not required to assert the TRNG reset. Following reset release,
+software reprograms ESRC, waits for startup health testing, locks the certified
+configuration, instantiates CSRNG, and enables EDN.
+Consumers are released only after fresh endpoint/pool progress is observed.</p>
+</div>
 </div>
 </div>
 </div>

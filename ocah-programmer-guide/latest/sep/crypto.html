@@ -87,7 +87,25 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#smc">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html#sep">SEP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#cpu-bring-up">CPU Bring-Up</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#ocah-trng-bring-up">OCAH TRNG Bring-Up</a>
+  </li>
+</ul>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -233,7 +251,9 @@ sideload structures expected by the OpenTitan cores.</p>
 <p>Alerts from all crypto components are collected by 11 <code>prim_alert_receiver</code>
 instances within <code>sep_crypto</code> and aggregated into a single <code>crypto_alert_o</code>
 output. Each accelerator has its own independent software-controllable reset,
-gated with the system reset through the SEP Reset Controller.</p>
+gated with the system reset through the SEP Reset Controller; the entropy
+source, CSRNG, and EDN share a single one. See <a href="#sep-trng-reset">[sep-trng-reset]</a> for the
+constraints that apply to that shared reset.</p>
 </div>
 <div class="paragraph">
 <p>The crypto complex uses whole-instance Class 2 scan boundaries so all
@@ -687,9 +707,10 @@ fan-out;</p>
 <li>
 <p>endpoint <code>[2]</code> feeds the fabric-level entropy-pool FIFO (<code>u_entropy_fifo</code> in
 <code>sep.sv</code>) through <code>u_axis_edn_pool_s3c_scan</code>. The pool generates two
-dedicated interrupts: PIC source 37 (<code>entropy_pool_low</code>, pool level below
-watermark) and source 38 (<code>entropy_pool_fill_stall</code>, fill path not making
-progress). See <a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>.</p>
+dedicated interrupts: SEP IRQ 37 (<code>entropy_pool_low</code>, pool level below
+watermark) and IRQ 38 (<code>entropy_pool_fill_stall</code>, fill path not making
+progress). PIC source ids are assigned in <a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>,
+which is authoritative; quote it rather than restating the numbers here.</p>
 </li>
 </ul>
 </div>
@@ -701,11 +722,33 @@ raises <code>rnd_fips_chk_fail</code> on a non-FIPS ack — observe the correct
 provenance of the bits they are receiving.</p>
 </div>
 <div class="paragraph">
+<p>The internal entropy complex uses one software-reset request,
+<code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code>. It covers ESRC, CSRNG, EDN, all
+three CSR conversion paths, DRBG endpoint queues, and the two post-mux EDN
+adapters. A coordinator drains and isolates the independent ESRC, CSRNG, and
+EDN AXI ports before asserting the shared reset. The fabric entropy pool
+remains AXI-accessible but synchronously scrubs pending requests, partially
+packed data, FIFO contents, and stall state.</p>
+</div>
+<div class="paragraph">
+<p>There is no atomic reset boundary across the entropy consumers. Alarm recovery
+stops new TRNG CSR traffic before asserting the TRNG reset. A native EDN request
+already in flight stalls while the adapter clears and resumes with fresh entropy
+after reinitialization; the Key Manager AXI-Stream leg stalls similarly.
+Firmware may wait for consumers to become idle and reset them when policy
+requires aborting their operations, but consumer reset is not required by the
+TRNG reset coordinator. After release, firmware fully reinitializes ESRC, CSRNG, and
+EDN and waits for fresh entropy progress before releasing consumers. The
+post-mux adapters reset even when an external source is selected, so an
+external stream is interrupted and cleanly restarted; the external TRNG CSR
+passthrough itself is unaffected.</p>
+</div>
+<div class="paragraph">
 <p>The Class 2 entropy boundary starts at
 <code>u_trng_wrapper_s3c_scan</code>, whose sequencer, 128-bit release stage, and stream
 FIFOs retain seed material. Its vendor core remains covered by its delivered
-DFT view. In <code>sep_crypto</code>, <code>u_entropy_source_s3c_scan</code> covers the entropy FIFO
-and SHA-256 whitener, <code>u_drbg_s3c_scan</code> covers CSRNG/EDN and endpoint state,
+DFT view. In <code>sep_crypto.u_sep_trng</code>, <code>u_entropy_source_s3c_scan</code> covers the
+entropy FIFO and SHA-256 whitener, <code>u_drbg_s3c_scan</code> covers CSRNG/EDN and endpoint state,
 and <code>u_axis_edn_crypto_s3c_scan</code> covers staging outside the DRBG root. The
 combinational source-selection muxes are not scan assets.</p>
 </div>

@@ -87,7 +87,25 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#smc">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html#sep">SEP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#cpu-bring-up">CPU Bring-Up</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#ocah-trng-bring-up">OCAH TRNG Bring-Up</a>
+  </li>
+</ul>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -330,10 +348,10 @@ flops and avoids fragile per-register marking.</p>
 <p><code>sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan</code></p>
 </li>
 <li>
-<p><code>sep_crypto.u_entropy_source_s3c_scan</code></p>
+<p><code>sep_crypto.u_sep_trng.u_entropy_source_s3c_scan</code></p>
 </li>
 <li>
-<p><code>sep_crypto.u_drbg_s3c_scan</code></p>
+<p><code>sep_crypto.u_sep_trng.u_drbg_s3c_scan</code></p>
 </li>
 <li>
 <p><code>sep_crypto.u_axis_edn_crypto_s3c_scan</code></p>

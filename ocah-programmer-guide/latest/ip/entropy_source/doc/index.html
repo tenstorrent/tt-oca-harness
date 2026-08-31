@@ -87,7 +87,25 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../index.html#smc">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html#sep">SEP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#cpu-bring-up">CPU Bring-Up</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#ocah-trng-bring-up">OCAH TRNG Bring-Up</a>
+  </li>
+</ul>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -230,7 +248,7 @@ statistical requirements specified by the BSI agency.</p>
 <p>Health tests operate at two levels. Each of the 12 <code>entropy_generator</code> instances runs an 8-bit <code>entropy_health_test</code> on its individual decorrelated output. At the top level, a second 32-bit <code>entropy_health_test</code> instance monitors the post-BIW (or post-bypass) stream.</p>
 </div>
 <div class="paragraph">
-<p>The health test wrapper instantiates three OpenTitan-derived test modules. The repetition count test (<code>entropy_src_repcnt_ht</code>) tracks consecutive identical values per bit lane and flags when a threshold is exceeded. The adaptive proportion test (<code>entropy_src_adaptp_ht</code>) accumulates per-bit ones counts within a configurable window and compares against high thresholds. The Markov test (<code>entropy_src_markov_ht</code>) counts bit-pair transitions and compares to high and low thresholds at window boundaries. Window synchronization is driven by a <code>prim_count</code> counter in the <code>entropy_generator_complex</code>.</p>
+<p>The health test wrapper instantiates three OpenTitan-derived test modules. The repetition count test (<code>entropy_src_repcnt_ht</code>) tracks consecutive identical values per bit lane and flags when a threshold is exceeded. The adaptive proportion test (<code>entropy_src_adaptp_ht</code>) accumulates per-bit ones counts within a configurable window and compares the maximum and minimum lane counts against high and low thresholds. The Markov test (<code>entropy_src_markov_ht</code>) counts bit-pair transitions and compares to high and low thresholds at window boundaries. Window synchronization is driven by a <code>prim_count</code> counter in the <code>entropy_generator_complex</code>.</p>
 </div>
 <div class="paragraph">
 <p>Health test thresholds, enable bits, and window sizes are all programmable through the CSR interface. Test status is reported as an 8-bit vector where bit 0 indicates a repetition count failure, bit 3 an adaptive proportion failure, and bits 4-5 Markov high/low failures.</p>
@@ -242,13 +260,13 @@ statistical requirements specified by the BSI agency.</p>
 <p><code>HT_WATERMARK</code> is one shared register whose source and maximum/minimum direction are selected by <code>HT_WATERMARK_NUM</code>; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.</p>
 </div>
 <div class="paragraph">
-<p>The shared watermark is armed by a <code>CTRL.MODULE_ENABLE</code> 0-to-1 transition or by a <code>CTRL.RESET</code> pulse. High modes (<code>REPCNT_HI</code>, <code>APT_HI</code>, and <code>MARKOV_HI</code>) arm to <code>0x0000</code>; low modes (<code>APT_LO</code> and <code>MARKOV_LO</code>) arm to <code>0xFFFF</code>. The selector persists across <code>CTRL.RESET</code>, allowing the synchronous clear to use the selected mode. Software that needs a deterministic baseline must write <code>HT_WATERMARK_NUM</code> before the arming event. With the reset-default <code>MODULE_ENABLE=1</code>, the power-on enable pulse performs the first mode-aware arm automatically.</p>
+<p>The shared watermark is armed by a <code>CTRL.MODULE_ENABLE</code> 0-to-1 transition. High modes (<code>REPCNT_HI</code>, <code>APT_HI</code>, and <code>MARKOV_HI</code>) arm to <code>0x0000</code>; low modes (<code>APT_LO</code> and <code>MARKOV_LO</code>) arm to <code>0xFFFF</code>. A hardware reset restores the selector and watermark together. Software that needs a deterministic baseline must write <code>HT_WATERMARK_NUM</code> before toggling <code>MODULE_ENABLE</code>. With the reset-default <code>MODULE_ENABLE=1</code>, the power-on enable pulse performs the first mode-aware arm automatically.</p>
 </div>
 </div>
 <div class="sect4">
 <h5 id="persistent-failure-and-alerthang"><a class="anchor" href="#persistent-failure-and-alerthang"></a><a class="link" href="#persistent-failure-and-alerthang">Persistent Failure and AlertHang</a></h5>
 <div class="paragraph">
-<p>The health-test subsystem includes a persistent-failure path that halts entropy output when failures persist beyond a programmed threshold. A saturating counter (<code>ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT</code>) records one count per health-test window in which any test failed; a mid-window failure of the continuous repetition-count test is captured and counted once for that window. When the counter reaches <code>ALERT_THRESHOLD.THRESHOLD</code> (default 4, i.e. four failing windows, locked by <code>FIPS_LOCK</code>), <code>alert_thresh_fail</code> is asserted and the main FSM transitions through <code>AlertState</code> into <code>AlertHang</code>, halting entropy output. <code>AlertHang</code> persists until the FSM is reset — by a hardware reset (<code>rst_ni</code>), the <code>CTRL.RESET</code> soft reset, or clearing <code>CTRL.MODULE_ENABLE</code>. The event sets <code>MAIN_SM_STATUS.ALERT</code> and raises <code>INTR_STATUS.PERSISTENT_FAILURE</code>. The sticky <code>MAIN_SM_STATUS.ALERT</code> and <code>MAIN_SM_STATUS.ERR</code> status bits are cleared either by writing 1 (W1C) or by a <code>CTRL.RESET</code> soft reset, so that a firmware-issued reset returns the status to a consistent state alongside the FSM it reflects.</p>
+<p>The health-test subsystem includes a persistent-failure path that halts entropy output when failures persist beyond a programmed threshold. A saturating counter (<code>ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT</code>) records one count per health-test window in which any test failed; a mid-window failure of the continuous repetition-count test is captured and counted once for that window. When the counter reaches <code>ALERT_THRESHOLD.THRESHOLD</code> (default 4, i.e. four failing windows, locked by <code>FIPS_LOCK</code>), <code>alert_thresh_fail</code> is asserted and the main FSM transitions through <code>AlertState</code> into <code>AlertHang</code>, halting entropy output. <code>AlertHang</code> persists until the FSM is reset by <code>rst_ni</code> or software clears <code>CTRL.MODULE_ENABLE</code>. The event sets <code>MAIN_SM_STATUS.ALERT</code> and raises <code>INTR_STATUS.PERSISTENT_FAILURE</code>. The sticky <code>MAIN_SM_STATUS.ALERT</code> and <code>MAIN_SM_STATUS.ERR</code> status bits are cleared by writing 1 (W1C) or by the full entropy-source reset.</p>
 </div>
 <div class="paragraph">
 <p>Setting <code>ALERT_THRESHOLD.THRESHOLD</code> to zero disables the comparator, leaving the counter accumulating without ever asserting <code>alert_thresh_fail</code>.</p>
@@ -267,6 +285,45 @@ statistical requirements specified by the BSI agency.</p>
 </div>
 <div class="paragraph">
 <p>The FIFO output drives the <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports. These connect to the DRBG ingress path and to the distribution network for entropy consumers such as cryptographic accelerators.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="reset"><a class="anchor" href="#reset"></a><a class="link" href="#reset">Reset</a></h5>
+<div class="paragraph">
+<p>The entropy source <code>rst_ni</code> input resets its register block, health-test/FSM
+state, conditioning pipeline, counters, and FIFOs. Reserved <code>CTRL[0]</code> reads as
+zero and ignores writes.</p>
+</div>
+<div class="paragraph">
+<p>At SEP integration level, <code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code> requests a
+shared reset of the entropy source and DRBG. Hardware first drains and isolates
+the ESRC, CSRNG, and EDN AXI ports, then asserts the common reset. This is a
+full-IP reset: all entropy-source CSRs and <code>FIPS_LOCK</code> return to reset values.
+Post-mux EDN adapters and the fabric entropy pool remain in the POR reset domain;
+they synchronously clear buffered entropy while the internal reset is active.
+After reset release, <code>MODULE_ENABLE</code> returning to one produces the normal
+enable pulse and restarts startup health testing before entropy is released.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="debug-observation-pin"><a class="anchor" href="#debug-observation-pin"></a><a class="link" href="#debug-observation-pin">Debug Observation Pin</a></h5>
+<div class="paragraph">
+<p><code>DEBUG_CTRL.SELECT_SIGNAL</code> routes one of 256 internal signals to the
+<code>signal_monitor_o</code> output, and <code>DEBUG_CTRL.SELECT_FREQ_DIV</code> divides it down for
+external observation. Some selections expose entropy ahead of conditioning: the
+raw per-generator noise bits, the compressed 32-bit entropy stream, and the
+uncompressed per-generator entropy bytes.</p>
+</div>
+<div class="paragraph">
+<p>Neither field is covered by <code>FIPS_LOCK</code>, and that is deliberate. The lock
+freezes the certified health-test configuration; it does not govern what is
+routed to an observation pin. Gating the pin is therefore an integration-time
+decision rather than a property of this block. SEP leaves <code>signal_monitor_o</code>
+unconnected and false-paths the port in synthesis, so the signal stops inside
+the block and no further gating is required there. An integration that routes
+the pin off-chip, for example muxed onto a GPIO, owns restricting <code>DEBUG_CTRL</code>
+to the lifecycle or debug-enable states in which observing pre-conditioning
+entropy is acceptable.</p>
 </div>
 </div>
 </div>
