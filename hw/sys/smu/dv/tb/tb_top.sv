@@ -115,7 +115,7 @@ module smu_uvm_top
     output logic            tb_tel_atready /*verilator public_flat_rw*/,
     output logic            tb_tel_afvalid /*verilator public_flat_rw*/,
 
-    // Flat external SMN AXI subordinate (cocotbext-axi master drives this)
+    // Flat external SMN AXI subordinate (the shared ocah_axi_vip master drives this)
     input  wire logic [7:0]   s_axi_awid,
     input  wire logic [55:0]  s_axi_awaddr,
     input  wire logic [7:0]   s_axi_awlen,
@@ -356,8 +356,8 @@ module smu_uvm_top
     assign tb_tel_afvalid = tel_afvalid[0];
 
     // Trace mem idle responses
-    dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
+    trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
+    trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
     assign trc_resp = '0;
 
     // eFuse shim idle response
@@ -384,30 +384,54 @@ module smu_uvm_top
     assign jtag_ptap_inst_decoded    = 32'(ptap_inst);
 
     // CPU ROM/scratch/L1$ — same macros as smc_wrapper / smu_wrapper TB.
-    smc_cpu_mem_integration u_smc_cpu_mem (
-        .clk_i   (clk_smu_i),
-        .rst_ni  (rst_cold_ni),
-        .rom_req_i (smc_rom_req),
-        .rom_rsp_o (smc_rom_rsp),
-        .scratch_ram_req_i (smc_scratch_ram_req),
-        .scratch_ram_rsp_o (smc_scratch_ram_rsp),
-        .l1_icache_tag_req_i (smc_l1_icache_tag_req),
-        .l1_icache_tag_rsp_o (smc_l1_icache_tag_rsp),
-        .l1_icache_data_req_i (smc_l1_icache_data_req),
-        .l1_icache_data_rsp_o (smc_l1_icache_data_rsp),
-        .l1_dcache_tag_req_i (smc_l1_dcache_tag_req),
-        .l1_dcache_tag_rsp_o (smc_l1_dcache_tag_rsp),
-        .l1_dcache_data_req_i (smc_l1_dcache_data_req),
-        .l1_dcache_data_rsp_o (smc_l1_dcache_data_rsp),
-        .rom_read_count_o (),
-        .scratch_ram_read_count_o (),
-        .scratch_ram_write_count_o (),
-        .dcache_data_write_count_o (),
-        .fw_mailbox_o (),
-        .fw_mailbox_valid_o (),
-        .ecc_inject_sbe_i (1'b0),
-        .ecc_inject_dbe_i (1'b0),
-        .scratch0_inject_fire_o ()
+    // Bare `smu` exposes the CPU memory ports (smc_ip_integration lives in
+    // smu_wrapper, not here), so terminate them with the macros directly.
+    localparam int unsigned MEM_CFG_WIDTH = 11;
+    logic [MEM_CFG_WIDTH-1:0] smc_scratch_ram_cfg [NUM_SRAM_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_icache_tag_cfg  [NUM_ICACHE_TAG_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_icache_data_cfg [NUM_ICACHE_DATA_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_dcache_tag_cfg  [NUM_DCACHE_TAG_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_dcache_data_cfg [NUM_DCACHE_DATA_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_rom_cfg;
+
+    for (genvar i = 0; i < NUM_SRAM_BANKS; i++) begin : gen_smc_scratch_cfg
+        assign smc_scratch_ram_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_ICACHE_TAG_BANKS; i++) begin : gen_smc_itag_cfg
+        assign smc_icache_tag_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_ICACHE_DATA_BANKS; i++) begin : gen_smc_idata_cfg
+        assign smc_icache_data_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_DCACHE_TAG_BANKS; i++) begin : gen_smc_dtag_cfg
+        assign smc_dcache_tag_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_DCACHE_DATA_BANKS; i++) begin : gen_smc_ddata_cfg
+        assign smc_dcache_data_cfg[i] = '0;
+    end
+    assign smc_rom_cfg = '0;
+
+    OCAH4CORECluster_mems #(
+        .MEM_CFG_WIDTH (MEM_CFG_WIDTH)
+    ) u_smc_cpu_mem (
+        .rom_req            (smc_rom_req),
+        .rom_rsp            (smc_rom_rsp),
+        .scratch_ram_req    (smc_scratch_ram_req),
+        .scratch_ram_rsp    (smc_scratch_ram_rsp),
+        .l1_icache_tag_req  (smc_l1_icache_tag_req),
+        .l1_icache_tag_rsp  (smc_l1_icache_tag_rsp),
+        .l1_icache_data_req (smc_l1_icache_data_req),
+        .l1_icache_data_rsp (smc_l1_icache_data_rsp),
+        .l1_dcache_tag_req  (smc_l1_dcache_tag_req),
+        .l1_dcache_tag_rsp  (smc_l1_dcache_tag_rsp),
+        .l1_dcache_data_req (smc_l1_dcache_data_req),
+        .l1_dcache_data_rsp (smc_l1_dcache_data_rsp),
+        .icache_tag_cfg_i   (smc_icache_tag_cfg),
+        .icache_data_cfg_i  (smc_icache_data_cfg),
+        .dcache_tag_cfg_i   (smc_dcache_tag_cfg),
+        .dcache_data_cfg_i  (smc_dcache_data_cfg),
+        .scratch_ram_cfg_i  (smc_scratch_ram_cfg),
+        .rom_cfg_i          (smc_rom_cfg)
     );
 
     // Macro AXI-Lite activity (OR of aw/w/ar valid). Boundary resp left open —

@@ -21,12 +21,12 @@ from sep_reg_meta import ENTROPY_SOURCE
 
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "crossbars" / "sep_local_axi_xbar.sv"
+_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
 _FIFO = Path(__file__).resolve().parents[3] / "rtl" / "sep_entropy_fifo.sv"
 
 
 def _xbar_entropy_fifo_base() -> int:
-    text = _XBAR.read_text()
+    text = _XBAR.read_text(encoding="utf-8")
     m = re.search(r"entropy_fifo\.main:\s*0x([0-9A-Fa-f]+)", text)
     if not m:
         raise RuntimeError(f"entropy_fifo.main base not found in {_XBAR}")
@@ -34,7 +34,7 @@ def _xbar_entropy_fifo_base() -> int:
 
 
 def _fifo_param(name: str) -> int:
-    text = _FIFO.read_text()
+    text = _FIFO.read_text(encoding="utf-8")
     m = re.search(rf"parameter int unsigned {name}\s*=\s*(\d+)", text)
     if not m:
         raise RuntimeError(f"{name} not found in {_FIFO}")

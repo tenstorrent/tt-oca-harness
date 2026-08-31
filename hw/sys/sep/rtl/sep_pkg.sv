@@ -460,6 +460,7 @@ package sep_pkg;
     /////////////////////////////////////
 
     typedef struct packed {
+        logic trng;
         logic kmac;
         logic hmac;
         logic aes;
@@ -647,6 +648,11 @@ package sep_pkg;
 
     // JTAG SEP Reset Control
     typedef struct packed {
+        // jtag_ptap sizes the SEP IC_RESET slice from $bits(type)/2 and maps the
+        // ovrd and val sub-structs independently by packed bit index. TRNG sits
+        // at each sub-struct's MSB, so it takes the new top port and the
+        // existing port indices keep their TDR positions.
+        logic trng_jtag_rst_n_ovrd;
         logic sep_reset_n_ovrd;
         logic kmac_jtag_rst_n_ovrd;
         logic hmac_jtag_rst_n_ovrd;
@@ -656,6 +662,7 @@ package sep_pkg;
     } jtag_sep_reset_ctrl_ovrd_t;
 
     typedef struct packed {
+        logic trng_jtag_rst_n_val;
         logic sep_reset_n_val;
         logic kmac_jtag_rst_n_val;
         logic hmac_jtag_rst_n_val;

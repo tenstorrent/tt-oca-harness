@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import cocotb
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -81,12 +81,12 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         _, pre = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label="pre-program VERSION_LO DECERR",
         )
         self.s1_ok = True
-        sb.expect_eq("CHK-FILTER-SHRINK-PRE-DECERR", pre, AxiResp.DECERR)
+        sb.expect_eq("CHK-FILTER-SHRINK-PRE-DECERR", pre, RESP_DECERR)
 
         await program_inbound0_window(
             jtag, 0, PASS_ALL_END, scoreboard=sb, tag="WIDE"
@@ -94,7 +94,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         data_w, resp_w = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="wide VERSION_LO OKAY",
         )
@@ -106,14 +106,14 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         _, resp_wdt = await await_smn_resp(
             master,
             WDT_CTRL_ADDR,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="wide WDT OKAY",
         )
         self.s2_ok = True
         self._log("CHK-FILTER-SHRINK-WIDE VERSION_LO+WDT OKAY")
-        sb.expect_eq("CHK-FILTER-SHRINK-WIDE-VER", resp_w, AxiResp.OKAY)
-        sb.expect_eq("CHK-FILTER-SHRINK-WIDE-WDT", resp_wdt, AxiResp.OKAY)
+        sb.expect_eq("CHK-FILTER-SHRINK-WIDE-VER", resp_w, RESP_OKAY)
+        sb.expect_eq("CHK-FILTER-SHRINK-WIDE-WDT", resp_wdt, RESP_OKAY)
 
         await program_inbound0_window(
             jtag, NARROW_START, NARROW_END, scoreboard=sb, tag="NARROW"
@@ -121,14 +121,14 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         _, resp_n = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="narrow VERSION_LO OKAY",
         )
         wdt_data, resp_wdt2 = await await_smn_resp(
             master,
             WDT_CTRL_ADDR,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label="narrow WDT DECERR",
         )
@@ -138,14 +138,14 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
             )
         self.s3_ok = True
         self._log("CHK-FILTER-SHRINK-NARROW VERSION_LO OKAY WDT DECERR")
-        sb.expect_eq("CHK-FILTER-SHRINK-NARROW-VER", resp_n, AxiResp.OKAY)
-        sb.expect_eq("CHK-FILTER-SHRINK-NARROW-WDT", resp_wdt2, AxiResp.DECERR)
+        sb.expect_eq("CHK-FILTER-SHRINK-NARROW-VER", resp_n, RESP_OKAY)
+        sb.expect_eq("CHK-FILTER-SHRINK-NARROW-WDT", resp_wdt2, RESP_DECERR)
 
         await clear_inbound0_config(jtag, scoreboard=sb)
         clr_data, resp_clr = await await_smn_resp(
             master,
             VERSION_LO,
-            AxiResp.DECERR,
+            RESP_DECERR,
             clk=dut.clk_smu_i,
             label="cleared VERSION_LO DECERR",
         )
@@ -158,6 +158,6 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         sb.expect_eq(
             "CHK-AXI-FILTER-OKAY cleared VERSION_LO DECERR",
             resp_clr,
-            AxiResp.DECERR,
+            RESP_DECERR,
             evidence="AXI_FILTER_OKAY",
         )

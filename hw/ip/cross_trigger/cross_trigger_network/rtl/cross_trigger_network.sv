@@ -72,6 +72,10 @@ module cross_trigger_network
     output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_out_din_en_o
 );
 
+    // Tie off unused signals to satisfy lint
+    logic unused_ct_acks;
+    assign unused_ct_acks = ^{ctp_ack_out_din_i, ctm_src_ack_i};
+
     //--------------------------------------------------------------------------
     // Local Parameters
     //--------------------------------------------------------------------------

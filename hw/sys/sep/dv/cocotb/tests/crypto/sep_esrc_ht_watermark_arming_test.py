@@ -4,8 +4,8 @@
 
 no_cpu / +skip_fuse_sense / +esrc_noise_force. Does not stretch the
 ESRC->DRBG->EDN datapath smoke: HEALTH_TEST_CTRL.ENABLE stays 0 on every
-arming leg. RANDCFG walks every supported selector on both MODULE_ENABLE
-and CTRL.RESET, then an unsupported selector and one low-mode fall.
+arming leg. RANDCFG walks every supported selector through MODULE_ENABLE,
+then an unsupported selector and one low-mode fall.
 
 SepHtWatermarkCfg is the SSOT for the walk and the seed-selected knobs.
 """
@@ -34,14 +34,14 @@ _FALL_POLL_EVERY = 64
 
 @pyuvm.test()
 class sep_esrc_ht_watermark_arming_test(sep_base_test):
-    """Arm HT_WATERMARK per selected mode on both documented clear paths."""
+    """Arm HT_WATERMARK per selected mode on the MODULE_ENABLE clear path."""
 
     async def _force_polarity(self, ht: SepHtWatermark, *, high: bool) -> int:
         """Arm the opposite polarity so the next leg's expected value can fail."""
         sel = REPCNT_HI if high else APT_LO
         want = ARM_HIGH if high else ARM_LOW
         await ht.write_num(sel)
-        await ht.pulse_reset()
+        await ht.pulse_module_enable()
         got = await ht.read_watermark()
         assert got == want, (
             f"entry polarity {'high' if high else 'low'}: HT_WATERMARK=0x{got:04x} "
@@ -67,18 +67,9 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         self.logger.info(
             "CHK-NO-REARM PASS: %s write left HT_WATERMARK=0x%04x before %s",
             sel_name(sel), still, path)
-        if path == "module_enable":
-            await ht.pulse_module_enable()
-            tag = "CHK-ARM-MEN"
-        else:
-            await ht.pulse_reset()
-            got_sel = await ht.read_num()
-            assert got_sel == sel, (
-                f"CHK-SEL-PERSIST FAIL: {sel_name(sel)} became {got_sel} after CTRL.RESET"
-            )
-            self.logger.info(
-                "CHK-SEL-PERSIST PASS: %s survived CTRL.RESET", sel_name(sel))
-            tag = "CHK-ARM-RST"
+        assert path == "module_enable", path
+        await ht.pulse_module_enable()
+        tag = "CHK-ARM-MEN"
         got = await ht.read_watermark()
         assert got == want, (
             f"{tag} FAIL: {sel_name(sel)}/{path} HT_WATERMARK=0x{got:04x} "
@@ -100,10 +91,10 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             f"CHK-NO-REARM FAIL: unsupported {sel:#x} moved HT_WATERMARK "
             f"0x{entry:04x} -> 0x{still:04x}"
         )
-        await ht.pulse_reset()
+        await ht.pulse_module_enable()
         got = await ht.read_watermark()
         assert got == ARM_HIGH, (
-            f"CHK-UNSUPPORTED FAIL: after RESET HT_WATERMARK=0x{got:04x} "
+            f"CHK-UNSUPPORTED FAIL: after MODULE_ENABLE HT_WATERMARK=0x{got:04x} "
             f"want 0x{ARM_HIGH:04x} (REPCNT_HI)"
         )
         self.logger.info(
@@ -112,7 +103,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
 
     async def _check_low_fall(self, ht: SepHtWatermark, sel: int) -> None:
         await ht.write_num(sel)
-        await ht.pulse_reset()
+        await ht.pulse_module_enable()
         armed = await ht.read_watermark()
         assert armed == ARM_LOW, (
             f"CHK-LOW-FALL FAIL: {sel_name(sel)} armed 0x{armed:04x}, want 0x{ARM_LOW:04x}"

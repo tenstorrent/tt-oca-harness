@@ -23,7 +23,7 @@ import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer, with_timeout
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 
 from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO
 from seq_lib.smu_axi_helpers import (
@@ -212,7 +212,7 @@ class smu_axi_external_port_connectivity_test_seq:
             master, self.IN_PROBE, wdata, self.WRITE_ID
         )
         # Path reached SMC: BlockByDefault → DECERR, or programmed → OKAY.
-        if wresp not in (AxiResp.OKAY, AxiResp.DECERR):
+        if wresp not in (RESP_OKAY, RESP_DECERR):
             raise AssertionError(
                 f"inbound BRESP unexpected {resp_name(wresp)} "
                 f"(expect OKAY|DECERR proving SMC path)"
@@ -225,7 +225,7 @@ class smu_axi_external_port_connectivity_test_seq:
         rdata, rresp, r_arid, r_rid = await self._axi_read_bounded(
             master, self.IN_PROBE, self.READ_ID
         )
-        if rresp not in (AxiResp.OKAY, AxiResp.DECERR):
+        if rresp not in (RESP_OKAY, RESP_DECERR):
             raise AssertionError(
                 f"inbound RRESP unexpected {resp_name(rresp)} "
                 f"(expect OKAY|DECERR proving SMC path)"
@@ -235,7 +235,7 @@ class smu_axi_external_port_connectivity_test_seq:
                 f"inbound RID mismatch: rid=0x{r_rid:x} arid=0x{self.READ_ID:x}"
             )
         # When BlockByDefault DECERR, err_slv poison confirms SMC consumer.
-        if rresp == AxiResp.DECERR:
+        if rresp == RESP_DECERR:
             poison = rdata & 0xFFFF_FFFF
             if poison != SMC_FILTER_POISON_LO:
                 raise AssertionError(

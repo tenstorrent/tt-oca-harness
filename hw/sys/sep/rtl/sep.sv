@@ -346,6 +346,7 @@ module sep
     edn_pkg::edn_rsp_t entropy_pool_edn_rsp;
     logic entropy_pool_low;
     logic entropy_pool_fill_stall;
+    logic trng_entropy_clear;
 
     logic [31:1] nmi_vec;
 
@@ -440,7 +441,7 @@ module sep
     // Added demux to reroute eFuse shim traffic from xbar external to efuse_wrapper
 
     localparam logic [31:0] EFUSE_SHIM_BASE =
-        och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR;
+        32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
 
     localparam int unsigned NUM_EXT_DEMUX_PORTS = 2;
     typedef enum logic [$clog2(NUM_EXT_DEMUX_PORTS)-1:0] {
@@ -676,7 +677,7 @@ module sep
         .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
         .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
-        .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
+        .MEM_BASE_ADDR    (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)),
         .NUM_BANKS        (1)
     ) u_sram_memory_interface (
         .clk_i                (clk_i),
@@ -747,7 +748,7 @@ module sep
         .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
         .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
-        .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR),
+        .MEM_BASE_ADDR    (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)),
         .NUM_BANKS        (1)
     ) u_boot_rom_memory_interface (
         .clk_i                (clk_i),
@@ -797,6 +798,7 @@ module sep
         // Native EDN endpoint routed to the fabric-level entropy-pool FIFO
         .entropy_pool_edn_req_i                 (entropy_pool_edn_req),
         .entropy_pool_edn_rsp_o                 (entropy_pool_edn_rsp),
+        .trng_entropy_clear_o                   (trng_entropy_clear),
 
         // External TRNG AXI-Lite passthrough
         .ext_trng_axil_req_o                    (ext_trng_axil_req_o),
@@ -840,6 +842,7 @@ module sep
         .aes_sw_rst_ni                          (sep_sw_rst_no.aes),
         .hmac_sw_rst_ni                         (sep_sw_rst_no.hmac),
         .kmac_sw_rst_ni                         (sep_sw_rst_no.kmac),
+        .trng_sw_rst_ni                         (sep_sw_rst_no.trng),
 
         .lcc_demote_state_1_o                   (lcc_demote_state_1_o),
         .lcc_demote_state_2_o                   (lcc_demote_state_2_o),
@@ -912,6 +915,7 @@ module sep
     sep_entropy_fifo u_entropy_fifo (
         .clk_i                    (clk_i),
         .rst_ni                   (rst_ni),
+        .entropy_clear_i          (trng_entropy_clear),
 
         .test_en_i                (test_en_i),
 
@@ -1039,7 +1043,7 @@ module sep
     assign lsio_trigger[$bits(lsio_trigger)-1:1] = '0;
 
     sep_dma_wrap #(
-        .SECURE_DMA_REG_MAP_BASE_ADDR (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
+        .SECURE_DMA_REG_MAP_BASE_ADDR (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR)),
         .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
         .AlertSkewCycles        (1'b0),
         .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)

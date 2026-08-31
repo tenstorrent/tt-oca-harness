@@ -14,7 +14,7 @@
 //     patterns (checked here from the DR_SCAN item responses);
 //   * clean scan-path returns to Run-Test/Idle, final Test-Logic-Reset via
 //     five consecutive TMS=1 cycles;
-//   * named TAP-contract evidence through env.m_jtag_checker (issue #3296):
+//   * named TAP-contract evidence through env.m_jtag_checker:
 //     reset-to-TLR, TLR-selects-IDCODE, IDCODE value/stability/marker, and
 //     reconstructed scan lengths. +DTP_JTAG_TAP_CHECKER_NEGATIVE is the
 //     documented negative-validation hook: it arms a deliberately WRONG
@@ -24,9 +24,16 @@
 class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_sanity_test_seq)
 
-    localparam int unsigned RandWalks = 2;
+    // 16 seeded walks meet the suite-wide minimum-iteration floor; override
+    // per run with +DTP_RAND_WALKS=<n>.
     localparam int unsigned RandWalkSteps = 64;
-    localparam int unsigned GotoHops = 8;
+    localparam int unsigned GotoHops = 16;
+
+    protected function int unsigned rand_walks();
+        int unsigned count;
+        if (!$value$plusargs("DTP_RAND_WALKS=%d", count) || count == 0) count = 16;
+        return count;
+    endfunction
 
     function new(string name = "dtp_sanity_test_seq");
         super.new(name);
@@ -65,14 +72,15 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     // Randomized raw-TMS stress walks (reproducible via +ntb_random_seed;
     // every choice logged, every step model-checked by the env checker).
     task run_random_walks();
-        for (int unsigned w = 0; w < RandWalks; w++) begin
+        int unsigned walks = rand_walks();
+        for (int unsigned w = 0; w < walks; w++) begin
             bit [RandWalkSteps-1:0] tms_bits, tdi_bits;
             bit tms[], tdi[];
             if (!std::randomize(tms_bits, tdi_bits))
                 `uvm_fatal(get_type_name(), "randomize() failed for TMS stress walk")
             `uvm_info(get_type_name(), $sformatf(
                 "random TMS stress walk %0d/%0d: tms=0x%016h tdi=0x%016h",
-                w + 1, RandWalks, tms_bits, tdi_bits), UVM_LOW)
+                w + 1, walks, tms_bits, tdi_bits), UVM_LOW)
             tms = new[RandWalkSteps];
             tdi = new[RandWalkSteps];
             for (int unsigned i = 0; i < RandWalkSteps; i++) begin
@@ -163,7 +171,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
         `uvm_info(get_type_name(), $sformatf(
             {"DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK ",
              "latency + IDCODE + scan path; seed=%0d (+ntb_random_seed) rand_walks=%0dx%0d steps"},
-            seed_val, RandWalks, RandWalkSteps), UVM_LOW)
+            seed_val, rand_walks(), RandWalkSteps), UVM_LOW)
 
         // Power-on/system reset sequencing, then TAP reset (VPLAN 0.1 step 1).
         sys_reset();

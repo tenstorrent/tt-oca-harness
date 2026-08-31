@@ -123,6 +123,9 @@ bypass and let the RTL fuse-sense FSM finish against the generic eFuse model.
 Production Boot ROM firmware tests belong to the ROM-FW owner and need extra
 build steps — see
 [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc#_boot_rom_firmware_builds).
+Key Manager `rom_main` tests declare
+`firmware = { name = "rom_main", mode = "km_rom_main" }` so `c_compile` builds
+the gitignored `rom_main.rom.parhex`.
 
 ## Layout
 
