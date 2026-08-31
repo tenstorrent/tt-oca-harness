@@ -193,10 +193,17 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
             check_stap_row(d, row_labels[r]);
         end
 
-        // The all_disabled row ran last: release everything without reset
-        // and prove no gated open attempt sticks (a delayed replay would
-        // show a SIB select pulse here), then a sanctioned all-clear row
-        // recovers.
+        // Delayed-replay proof (the check_stored_sib_across_gate pattern):
+        // close every SIB with a sanctioned write first — the SIB scan
+        // registers RETAIN sanctioned configuration under a gate, so a SIB
+        // left open by an earlier row legitimately re-arms on release and
+        // is not a replay — then attempt a fully-gated open of all three,
+        // release without reset, and prove no select pulses (a gated open
+        // attempt that stuck would assert here).
+        enable_all_debug();
+        program_ijtag_sibs(3'b000, "release.close");
+        set_dbg_disable_full(scan_mask_from_bits('1));
+        program_ijtag_sibs(3'b111, "release.gated_open_attempt");
         enable_all_debug();
         for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++)
             quiet.push_back({ijtag_prefix(sib), "_select"});
