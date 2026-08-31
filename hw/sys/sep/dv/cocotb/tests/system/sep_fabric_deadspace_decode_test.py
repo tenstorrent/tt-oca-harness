@@ -74,6 +74,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
 
         refused = 0
         burst_fails: list[str] = []
+        beat_fails: list[str] = []
         aliased = 0
         accepted = 0
         fails: list[str] = []
@@ -111,6 +112,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # the same rule as the wrap anchors above.
         burst_audited: list[str] = []
         burst_skipped: list[str] = []
+        beat_audited: list[str] = []
+        beat_discriminating: list[str] = []
+        beat_skipped: list[str] = []
         for win in cfg.windows.values():
             # A window whose dead space starts on a 4KB boundary cannot be
             # entered by a legal burst, and one with no live words before it
@@ -123,7 +127,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 burst_skipped.append(f"{win.name}: no live words before it")
                 continue
             burst_audited.append(win.name)
-            start, resps, timed_out, words, singles = await dead.burst_across_extent(win)
+            start, resps, timed_out, words, singles, beat_resps = \
+                await dead.burst_across_extent(win)
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
                 where = "in-extent" if start + 4 * i < win.dead_lo else "PAST"
                 self.logger.info(
@@ -153,11 +158,46 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     f"no beat response is evidence"
                 )
                 continue
-            # The master reports one response for the burst, not one per beat
-            # (`normalize_resp_list` wraps a scalar), so the aggregate is the
-            # only refusal evidence available here. It still fails a fabric
-            # that answers the whole burst OKAY while refusing the same address
-            # as a single beat.
+            # Per-beat refusal, read off the bus. The master collapses a read
+            # burst to one response, so `resps` cannot say WHICH beats were
+            # refused; the monitor keeps each beat's RRESP in order.
+            #
+            # The rule is one-directional. `memory_map.adoc` requires that an
+            # access past the extent never reaches the unit, so no beat past it
+            # may answer OKAY. It does not require the beats inside the extent
+            # to be served: refusing the whole burst is legal AXI and is the
+            # more conservative answer, so a window that answers every beat
+            # non-OKAY is recorded, not failed. Asserting the other direction
+            # would fail a fabric for being stricter than the specification.
+            if beat_resps:
+                self.logger.info(
+                    "deadspace beat-audit: %s per-beat RRESP=%s",
+                    win.name, beat_resps)
+                for i, r in enumerate(beat_resps):
+                    addr = start + 4 * i
+                    if addr >= win.dead_lo and r == RESP_OKAY:
+                        beat_fails.append(
+                            f"{win.name} beat{i} 0x{addr:08x} is past the "
+                            f"extent but answered OKAY inside the burst "
+                            f"beginning 0x{start:08x}"
+                        )
+                beat_audited.append(win.name)
+                # A window that serves its in-extent beats and refuses only the
+                # tail is the only shape that proves the refusal is per beat
+                # rather than per burst. Without at least one, this checker has
+                # shown that nothing past an extent is served, but not that the
+                # fabric can tell the beats apart.
+                if all(r == RESP_OKAY for i, r in enumerate(beat_resps)
+                       if start + 4 * i < win.dead_lo):
+                    beat_discriminating.append(win.name)
+            else:
+                beat_skipped.append(
+                    f"{win.name}: the bus monitor captured no {len(words)}-beat "
+                    f"RRESP sequence for the burst at 0x{start:08x}"
+                )
+
+            # The aggregate still fails a fabric that answers the whole burst
+            # OKAY while refusing the same address as a single beat.
             worst = max(resps) if resps else RESP_OKAY
             for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i
@@ -242,9 +282,33 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         self.logger.info(
             "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
             "that ends past its allocated extent (%s); %d not auditable (%s)",
-            len(burst_audited),
-            len(cfg.windows),
-            ", ".join(burst_audited),
-            len(burst_skipped),
-            "; ".join(burst_skipped) or "none",
+            len(burst_audited), len(cfg.windows), ", ".join(burst_audited),
+            len(burst_skipped), "; ".join(burst_skipped) or "none")
+
+        for line in beat_fails:
+            self.logger.error("CHK-DEADSPACE-BEAT FAIL: %s", line)
+        if beat_fails:
+            raise AssertionError(
+                f"CHK-DEADSPACE-BEAT FAIL: {len(beat_fails)} beat(s) answered "
+                f"against the extent rule inside a burst"
+            )
+        assert beat_audited, (
+            "CHK-DEADSPACE-BEAT FAIL: no burst yielded a per-beat response "
+            "vector, so per-beat refusal has no evidence here ("
+            + "; ".join(beat_skipped) + ")"
         )
+        assert beat_discriminating, (
+            "CHK-DEADSPACE-BEAT FAIL: every audited window refused its whole "
+            "burst, so nothing past an extent was served but the fabric was "
+            "never shown to tell one beat from another"
+        )
+        self.logger.info(
+            "CHK-DEADSPACE-BEAT PASS: %d window(s) served no beat past the "
+            "extent (%s), of which %d served their in-extent beats and refused "
+            "only the tail (%s) -- refusal is per beat, not per burst; the rest "
+            "refused the whole burst, which is legal and stricter. %d without a "
+            "vector (%s). Read bursts only: one BRESP covers a write burst, so "
+            "per-beat write refusal is not observable at the protocol level.",
+            len(beat_audited), ", ".join(beat_audited),
+            len(beat_discriminating), ", ".join(beat_discriminating) or "none",
+            len(beat_skipped), "; ".join(beat_skipped) or "none")

@@ -82,6 +82,8 @@ class SepAxiMonitor(uvm_component):
         self.r_beats = 0
         self.b_resps = 0
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
+        # Ordered RRESP capture window; None when closed. See start_beat_capture.
+        self._beat_capture: list[int] | None = None
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
         # Write-channel ordering. VALID assertion is the stimulus this bench
@@ -96,6 +98,28 @@ class SepAxiMonitor(uvm_component):
         self.last_write_stim: str | None = None
         self.last_write_hs: str | None = None
         self.expected_decerr_seen = 0
+
+    def start_beat_capture(self) -> None:
+        """Record the ordered RRESP of every following R beat until taken.
+
+        The tally answers how many beats carried each code; it cannot answer
+        WHICH beat carried which, and a per-beat extent rule needs the order.
+        The AXI master collapses a read burst to one response (the cocotbext
+        beat loop keeps the last non-OKAY RRESP), so the ordered sequence has to
+        come from the bus.
+
+        The caller owns quiescence: any R beat on this bus while capture is open
+        is appended, so a capture spanning unrelated traffic returns a sequence
+        longer than the burst. Compare the length against the beats issued and
+        treat a mismatch as no evidence rather than as a verdict.
+        """
+        self._beat_capture = []
+
+    def take_beat_capture(self) -> list[int]:
+        """Return the captured RRESP sequence and close the window."""
+        captured = self._beat_capture or []
+        self._beat_capture = None
+        return captured
 
     def arm_expected_decerr(self, n: int = 1) -> None:
         """Tolerate the next ``n`` DECERR beats on this bus as intentional.
@@ -199,6 +223,8 @@ class SepAxiMonitor(uvm_component):
                 self.r_beats += 1
                 code = _resp(sig["rresp"]) if sig["rresp"] is not None else None
                 self.resp_tally[code if code in (0, 1, 2, 3) else None] += 1
+                if self._beat_capture is not None:
+                    self._beat_capture.append(code)
                 # All-X only fails on a *successful* response (an error beat may
                 # legitimately carry X data).
                 if code in (0, 1) and _is_all_x(sig["rdata"]):

@@ -354,12 +354,19 @@ class SepDeadspace:
         DECERR and never reaches the unit.
 
         Returns the start address, the responses the master reported, the
-        timeout flag, the four beats, and a single-beat read of each of the same
-        addresses. The responses cover the burst, not one entry per beat.
+        timeout flag, the four beats, a single-beat read of each of the same
+        addresses, and the per-beat response vector the passive monitor observed.
+
+        The master collapses a read burst to one response: the cocotbext-axi
+        beat loop keeps the last non-OKAY RRESP and discards the rest, so
+        ``seq.resp_list`` cannot say which beats were refused. The passive
+        monitor records every R beat separately and publishes the whole vector
+        at RLAST, so the per-beat contract is read from there instead.
         """
         beats = 4  # two live beats, then two past the extent
         start = win.dead_lo - 4 * (beats // 2)
         mon = self.test.env.axi_monitor
+        mon.start_beat_capture()
         # The later beats land in dead space, so a correct fabric answers this
         # burst with an error. Credit those beats and hand back whatever the
         # fabric did not use: without the credit the monitor reports a correct
@@ -376,7 +383,19 @@ class SepDeadspace:
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
-        used = sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        # Per-beat responses come from the monitor; the master has only the
+        # collapsed one. Match on the burst's own start address so an unrelated
+        # read published in the same window cannot be mistaken for this one.
+        captured = mon.take_beat_capture()
+        # Only a sequence exactly as long as the burst is evidence: a shorter one
+        # means beats were not observed, a longer one means unrelated traffic
+        # shared the window, and neither can be read as a per-beat verdict.
+        mon_resps = list(captured) if len(captured) == beats else []
+        # Credit from the per-beat vector when it is available: the collapsed
+        # response can only ever account for one refused beat, so crediting from
+        # it releases beats the fabric did refuse.
+        used = (sum(1 for r in mon_resps if r == RESP_DECERR) if mon_resps
+                else sum(1 for r in seq.resp_list if r == RESP_DECERR))
         if beats > used:
             mon.release_expected_decerr(beats - used)
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
@@ -392,7 +411,8 @@ class SepDeadspace:
             if past and r != RESP_DECERR:
                 mon.release_expected_decerr(1)
             singles.append((r, d))
-        return start, list(seq.resp_list), seq.timed_out, words, singles
+        return (start, list(seq.resp_list), seq.timed_out, words, singles,
+                mon_resps)
 
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
