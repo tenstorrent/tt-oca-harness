@@ -27,7 +27,7 @@ ocah_reg_stamp = python3 "$(OCAH_ROOT)/tools/regs/stamp_spdx.py"
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
 ocah_reg_run_cheader  = "$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical 2>&1 | tee "$(5)"
-ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(call ocah_reg_regblock_opts,$(1)) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(5)"
+ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)"$(if $(strip $(5)), --rename "$(strip $(5))") -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(call ocah_reg_regblock_opts,$(1)) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(6)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
 # produces a compact summary table + per-register field tables (table captions,
 # no per-register headings). This replaces the old peakrdl-markdown -> pandoc
@@ -112,8 +112,8 @@ define ocah_reg_sv_plain_rule
 $(call ocah_reg_sv_stamp,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1)"
-	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_gen,$(1))/sv,$(call ocah_reg_name,$(1)),$(call ocah_reg_build,$(1))/peakrdl_sv.log)'
-	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg.sv" "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg_pkg.sv"
+	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_gen,$(1))/sv,$(call ocah_reg_sv_model,$(1)),$(call ocah_reg_sv_rename,$(1)),$(call ocah_reg_build,$(1))/peakrdl_sv.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_sv_model,$(1))_reg.sv" "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_sv_model,$(1))_reg_pkg.sv"
 	@touch "$$@"
 
 $(call ocah_reg_sv_outputs,$(1)): $(call ocah_reg_sv_stamp,$(1))
