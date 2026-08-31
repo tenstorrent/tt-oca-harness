@@ -266,7 +266,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_crypto_edn_multisink_arbitration_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|The strongest entry in Phase 2.
+|Two crypto sinks draw EDN entropy concurrently and both complete correctly: each AES fork block matches its golden bit-exact and the KMAC digest matches its own, while both are shown to have taken real post-adapter EDN beats inside the contention window. An AES-alone baseline in which KMAC takes zero beats is the control that keeps the both-beats check from passing vacuously.
 |`sep_crypto_edn_round_robin_grant_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -298,11 +298,11 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_esrc_ht_watermark_arming_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|The ESRC → DRBG → EDN datapath row already owns CHK1–CHK4 and stays where it is; do not stretch `sep_esrc_e2e_smoke_test` into this.
+|Health-test watermark arming: each supported selector arms to `0x0000` high or `0xFFFF` low on `MODULE_ENABLE` 0->1, a selector write leaves `HT_WATERMARK` at the entry value, and an illegal selector resolves to `REPCNT_HI`. Scope: the ESRC → DRBG → EDN datapath row owns CHK1–CHK4 and stays where it is.
 |`sep_esrc_fips_lock_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Health-test *quality* stays Phase 3.
+|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the FIFO live across the lock. Scope: health-test *quality* stays Phase 3.
 |`sep_esrc_alert_delivery_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -404,7 +404,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|The mode and width walk is directed.
+|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, and one invalid-opcode error with recovery. The mode and width walk is directed.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
@@ -477,7 +477,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_key_policy_vault_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|Seal stays on the parked command-set vehicle.
+|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. Scope: seal stays on the parked command-set vehicle.
 |===
 
 [[iconic-scorecard]]
@@ -2129,7 +2129,7 @@ NIST samples.
 
 *VIP / Model*: ocah_axi_vip, entropy golden
 
-*Objective*: The strongest entry in Phase 2.
+*Objective*: Two crypto sinks draw EDN entropy concurrently and both complete correctly: each AES fork block matches its golden bit-exact and the KMAC digest matches its own, while both are shown to have taken real post-adapter EDN beats inside the contention window. An AES-alone baseline in which KMAC takes zero beats is the control that keeps the both-beats check from passing vacuously.
 
 *Test Procedure*:
 
@@ -2940,7 +2940,7 @@ deferred rather than covered.
 
 *VIP / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: The mode and width walk is directed.
+*Objective*: Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, and one invalid-opcode error with recovery. The mode and width walk is directed.
 
 *Test Procedure*:
 
@@ -3471,7 +3471,7 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip, entropy golden
 
-*Objective*: The ESRC → DRBG → EDN datapath row already owns CHK1–CHK4 and stays where it is; do not stretch `sep_esrc_e2e_smoke_test` into this.
+*Objective*: Health-test watermark arming: each supported selector arms to `0x0000` high or `0xFFFF` low on `MODULE_ENABLE` 0->1, a selector write leaves `HT_WATERMARK` at the entry value, and an illegal selector resolves to `REPCNT_HI`. Scope: the ESRC → DRBG → EDN datapath row owns CHK1–CHK4 and stays where it is.
 
 *Test Procedure*:
 
@@ -3824,7 +3824,7 @@ both lock flavours of one seed-selected spare.
 
 *Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed.
 
-*Objective*: Health-test *quality* stays Phase 3.
+*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the FIFO live across the lock. Scope: health-test *quality* stays Phase 3.
 
 *Test Procedure*:
 
@@ -4005,7 +4005,7 @@ both lock flavours of one seed-selected spare.
 
 *Randomization*: RANDCFG — slot and SRAM lock region from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
 
-*Objective*: Seal stays on the parked command-set vehicle.
+*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. Scope: seal stays on the parked command-set vehicle.
 
 *Test Procedure*:
 
