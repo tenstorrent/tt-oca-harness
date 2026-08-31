@@ -52,5 +52,8 @@ interface dtp_tb_if;
     logic [31:0] smc_otp_axil_awvalid_count;
     logic [31:0] smc_otp_axil_wvalid_count;
     logic [31:0] smc_otp_axil_arvalid_count;
+    logic [31:0] sep_otp_axil_awvalid_count;
+    logic [31:0] sep_otp_axil_wvalid_count;
+    logic [31:0] sep_otp_axil_arvalid_count;
 
 endinterface : dtp_tb_if
