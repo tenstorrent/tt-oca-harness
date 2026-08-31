@@ -199,9 +199,29 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
     "CLEAR_INTR": "trigger",
 }
 
+# Entropy-complex CSRs the export marks rw but hardware owns or a lock guards.
+# Found by widening the touch to every side-effect-free register: 17 of them
+# refused a masked write and the readback held the hardware value.
+# ``FIPS_LOCK`` is the dangerous one -- the touch SET it, could not restore it,
+# and every later ENTROPY_SOURCE config write in the same run was then refused
+# because the lock had frozen the block. A sticky lock must never be a storage
+# touch: it changes the machine under the rest of the sweep.
+_TOUCH_DENY_SUFFIX_HW: dict[str, str] = {
+    "_STS": "hw-driven status",
+    "_SM_STATE": "hw state observability",
+    "COMPONENT_ID": "read-only identity exported rw",
+    "GENBITS_VLD": "hw-driven valid",
+    "INT_STATE_VAL": "windowed read port, not storage",
+}
+
+_TOUCH_DENY_PREFIX_HW: dict[str, str] = {
+    "RESEED_COUNTER_": "hw-driven counter",
+}
+
 # Exact names: W1C / status / enable-ish multi-field CSRs that are still
 # export-rw but do not behave as plain storage under a random ``x``.
 _TOUCH_DENY_NAME: dict[str, str] = {
+    "FIPS_LOCK": "sticky lock; setting it freezes the block for the rest of the run",
     "CTRL": "trigger",
     "CFG": "multi-field encoding",
     "INTR_STATE": "W1C status",
@@ -307,6 +327,12 @@ def touch_reason(info: RegInfo) -> str | None:
         return why
     for frag, reason in _TOUCH_DENY_SUBSTR.items():
         if frag in info.name:
+            return reason
+    for suffix, reason in _TOUCH_DENY_SUFFIX_HW.items():
+        if info.name == suffix or info.name.endswith(suffix):
+            return reason
+    for prefix, reason in _TOUCH_DENY_PREFIX_HW.items():
+        if info.name.startswith(prefix):
             return reason
     return None
 
