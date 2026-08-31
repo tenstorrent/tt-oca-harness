@@ -286,7 +286,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
+|ML-DSA-87 key generation through the ABR register aperture: identity and reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -392,7 +392,6 @@ feature has no legal knob space (a strap, a single named handshake).
 
 [cols="2,2,2,4",options="header"]
 |===
-
 |Test Case |Run mode |VIP / Model |Description
 |`sep_spi_ot_dma_tx_test`
 |cpu
@@ -430,7 +429,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_cpu_dbg_reset_independence_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|`dbg_rstb_i` vs the CPU reset observable: independent assert/release.
+|Both reset observables are released at rest, and the CPU observable drops and restores under a real reset source, so it is live rather than stuck at one. `dbg_rstb_i` isolation is not claimed: the pin has no netlist path to either observable in this build.
 |`sep_wdt_aon_timer_internals_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -445,7 +444,6 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 
 [cols="2,2,2,4",options="header"]
 |===
-
 |Test Case |Run mode |VIP / Model |Description
 |`sep_efuse_program_lock_matrix_test`
 |no_cpu, real fuse sense
