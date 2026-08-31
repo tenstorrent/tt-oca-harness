@@ -308,8 +308,7 @@ module efuse_shadow_regs
               // LC state transition enforcement:
               //   PROD_END and RMA_CHIPLET are terminal — no W1S updates.
               //   From PROD, bit[2] and bit[3] are blocked (per-bit gating).
-              //   bit[0] is frozen once bit[1] (RMA_SIP) is set.
-              //   bit[2] (RMA_CHIPLET) requires bit[1] already established.
+              //   bit[2] (RMA_CHIPLET) requires bit[1] (RMA_SIP) already established.
               lc_state_cur     = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
               lc_state_is_prod = (lc_state_cur == efuse_pkg::LC_PROD);
 
@@ -328,10 +327,8 @@ module efuse_shadow_regs
                           efuse_pkg::is_valid_lc_state(lc_state_intended_dest);
 
                       if (lc_state_write_allowed) begin
-                          lc_state_candidate[0] = lc_state_cur[1]
-                              ? shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][0]
-                              : (apb_req_from_ac.pwdata[0] |
-                                 shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][0]);
+                          lc_state_candidate[0] = apb_req_from_ac.pwdata[0] |
+                                              shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][0];
                           lc_state_candidate[1] = (rma_sip_token_match_i == TOKEN_MATCH_CODE)
                               ? (apb_req_from_ac.pwdata[1] | shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][1])
                               : shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][1];

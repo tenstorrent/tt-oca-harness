@@ -76,10 +76,6 @@ module efuse_guard
       else if ((program_target_addr_i == (LC_STATE_BIT_POSITION + 2)) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
         pro_read_intf_lock_lc_state_write = 1'b1;
       end
-      else if ((program_target_addr_i == LC_STATE_BIT_POSITION) &&
-               shadow_regs_i.values[efuse_pkg::SHADOW_IDX_LC_STATE][1]) begin
-        pro_read_intf_lock_lc_state_write = 1'b1;
-      end
     end
     if(HAS_LC_STATE) begin
       // SEP
