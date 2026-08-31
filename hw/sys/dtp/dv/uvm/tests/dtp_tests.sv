@@ -67,3 +67,11 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test.svh"
 `include "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test.svh"
 `include "dtp_jtag2axi_smc_axi_error_security_gating_test.svh"
+
+// Adopter overlay hook: an external (non-OSS) build may append vendor-
+// specific test classes -- e.g. a commercial-VIP overlay -- by defining
+// DTP_OVERLAY_TESTS to the quoted name of an include file on its own
+// include path. Never defined by the OSS flists.
+`ifdef DTP_OVERLAY_TESTS
+`include `DTP_OVERLAY_TESTS
+`endif

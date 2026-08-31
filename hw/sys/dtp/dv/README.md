@@ -264,6 +264,47 @@ PASS/FAIL is classified by the global parser registry in
 `hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from
 `results.xml`, so a clean simulator exit alone is not enough.
 
+### Overlaying a commercial VIP (`DTP_OVERLAY_TESTS`)
+
+The SV-UVM testbench can host a commercial protocol VIP as a passive
+overlay: an adopter-side build variation that adds vendor protocol monitors
+to the stock tests without editing this tree. The seam is the
+`DTP_OVERLAY_TESTS` compile hook at the end of `uvm/tests/dtp_tests.sv` —
+define it to the quoted name of an include file on the overlay's own
+include path and that file compiles into the test manifest. The OSS flists
+never define it, so the open-source build is unchanged.
+
+An overlay is three adopter-owned files, kept outside this repository
+(vendor VIP collateral cannot be committed here):
+
+1. **Wiring top** — a second elaboration top that taps the observed port's
+   pins (e.g. `dtp_uvm_top.m_axi_*`, the SMC fabric AXI4 manager port) into
+   the vendor interface with continuous assigns, as a pure observer, and
+   publishes the virtual interface through `uvm_config_db`. Nothing in the
+   overlay may drive DUT or responder signals.
+2. **Overlay test** — the hook's include file: a class extending any stock
+   test (e.g. `dtp_jtag2axi_smc_axi_single_write_test`) whose `build_phase`
+   additionally creates the vendor env in passive mode, configured to the
+   observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
+   2-bit ID). The stock scenario, evidence arming, and looped runner are
+   inherited unchanged, so the in-repo `CHK-*` checkers and the vendor
+   monitor run side by side on the same traffic.
+3. **Vendor package compile unit** — the vendor library analyzed into the
+   same work library before `dtp_uvm_compile.f`, then both tops elaborated
+   (`dtp_uvm_top` plus the wiring top).
+
+Synopsys VIP (svt) integration notes for the AMBA AXI suite: every analysis
+step, including the UVM library pre-analysis, must carry the same
+`+define+UVM_PACKER_MAX_BYTES` value the suite expects, or the suite exits
+fatally at time zero; the suite package's compile unit must see
+`uvm_macros.svh` before the suite package (include the macros header, not
+`uvm_pkg.sv`, which resolves to a simulator wrapper) so the suite's
+methodology detection engages; `DESIGNWARE_HOME` points at the VIP
+installation root, with the suite's include and source directories on the
+include path. A healthy overlaid run shows the vendor license checkout and
+the vendor monitor's transaction tracking alongside the unchanged `CHK-*`
+evidence and the `UVM TEST PASSED` banner.
+
 ## Scope
 
 This DTP public bring-up now includes the 19-test Smoke and Basic JTAG group:
