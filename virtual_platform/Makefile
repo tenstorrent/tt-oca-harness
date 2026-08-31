@@ -411,7 +411,7 @@ define REFUSE_NON_LOCAL
 case "$(1)" in $(LOCAL_DIR)/*) ;; *) echo "[VP] refusing to build into non-local prefix $(1)" >&2; exit 1;; esac
 endef
 
-ifeq (SYSTEMC_HOME,SYSTEMC_LOCAL)
+ifeq ($(SYSTEMC_HOME),$(SYSTEMC_LOCAL))
 $(SYSTEMC_SENTINEL): | $(SYSTEMC_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building SystemC $(SYSTEMC_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(SYSTEMC_HOME))
@@ -426,10 +426,13 @@ $(SYSTEMC_SENTINEL): | $(SYSTEMC_TARBALL) $(LOCAL_DIR) check-cxx
 	make install
 else
 $(SYSTEMC_SENTINEL):
-	@echo Using External SystemC: $(SYSTEMC_HOME)
+	@test -e "$@" 2>/dev/null || {\
+		echo "[VP] ERROR: external SystemC at $(SYSTEMC_HOME) has no \`include/systemc.h\`" >&2; \
+		exit 1; }
+	@echo "[VP] Using External SystemC: $(SYSTEMC_HOME)"
 endif
 
-ifeq (BOOST_ROOT,BOOST_LOCAL)
+ifeq ($(BOOST_ROOT),$(BOOST_LOCAL))
 $(BOOST_SENTINEL): | $(BOOST_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building Boost $(BOOST_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(BOOST_ROOT))
@@ -445,10 +448,13 @@ $(BOOST_SENTINEL): | $(BOOST_TARBALL) $(LOCAL_DIR) check-cxx
 	  link=static threading=multi variant=release cxxstd=17 -j$(NPROC)
 else
 $(BOOST_SENTINEL):
-	@echo Using External Boost: $(BOOST_ROOT)
+	@test -e "$@" || {\
+	    echo "[VP] ERROR: external Boost at $(BOOST_ROOT) has no \`include/boost/version.hpp\`" >&2; \
+		exit 1; }
+	@echo "[VP] Using External Boost: $(BOOST_ROOT)"
 endif
 
-ifeq (OPENSSL_ROOT,OPENSSL_LOCAL)
+ifeq ($(OPENSSL_ROOT),$(OPENSSL_LOCAL))
 $(OPENSSL_SENTINEL): | $(OPENSSL_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building OpenSSL $(OPENSSL_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(OPENSSL_ROOT))
@@ -460,10 +466,13 @@ $(OPENSSL_SENTINEL): | $(OPENSSL_TARBALL) $(LOCAL_DIR) check-cxx
 	make install_sw
 else
 $(OPENSSL_SENTINEL):
-	@echo Using External OpenSSL: $(OPENSSL_ROOT)
+	@test -e "$@" || {\
+	    echo "[VP] ERROR: external OpenSSL at $(OPENSSL_ROOT) has no \`include/openssl/ssl.h\`" >&2; \
+		exit 1; }
+	@echo "[VP] Using External OpenSSL: $(OPENSSL_ROOT)"
 endif
 
-ifeq (CCI_HOME,CCI_LOCAL)
+ifeq ($(CCI_HOME),$(CCI_LOCAL))
 # CCI links against SystemC and Boost, so both must be resolved first (order-only:
 # their timestamps are irrelevant, their existence is the contract).
 $(CCI_SENTINEL): | $(CCI_TARBALL) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(LOCAL_DIR) check-cxx
@@ -483,7 +492,10 @@ $(CCI_SENTINEL): | $(CCI_TARBALL) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(LOCAL_
 	cmake --install build
 else
 $(CCI_SENTINEL): $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL)
-	@echo Using External CCI: $(CCI_HOME)
+	@test -e "$@" || {\
+	    echo "[VP] ERROR: external CCI at $(CCI_HOME) has no \`lib/libcci.a\`" >&2; \
+		exit 1; }
+	@echo "[VP] Using External CCI: $(CCI_HOME)"
 endif
 
 # =============================================================================
