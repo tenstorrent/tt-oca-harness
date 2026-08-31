@@ -355,7 +355,7 @@ sources:
   - target: any(sep, smc)
     files:
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
-      - hw/ip/efuse/regs/gen/sv/efuse_bank_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
   - target: sep
@@ -432,7 +432,7 @@ sources:
       - hw/ip/drbg/rtl/drbg_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
@@ -704,7 +704,7 @@ sources:
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
