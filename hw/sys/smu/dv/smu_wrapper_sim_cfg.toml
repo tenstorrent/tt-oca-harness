@@ -76,9 +76,10 @@ incdirs = [
 ]
 # Licensed/vendor sim collateral pulled by the sep×simulation bender slice is
 # not part of the OSS wrapper hierarchy — mirror the smu/sep OSS excludes.
-# Stale foundry path keep-listed (file absent in OSS tree). Real SEP=1 TCM
-# blocker is foundry ram_* cells inside hw/sys/sep/rtl/sep_tcm_wrapper.sv.
-# DV sep_tcm_wrapper shim REMOVED (policy: no placeholder).
+# Stale foundry path keep-listed (file absent in OSS tree). SEP=1 needs no TCM
+# shim: the ram_<DEPTH>x39 ICCM/DCCM macros that hw/sys/sep/rtl/sep_tcm_wrapper.sv
+# instantiates are already supplied by the upstream VeeR mem_lib.sv on the
+# sep_el2 Bender closure, and tb_wrapper_top.sv backdoors their ram_core arrays.
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -103,8 +104,24 @@ stubs = [
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  # pulp axi_sim_mem: SEP-standard VIP for SMN outbound (not a custom placeholder).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # axi_cut (+ its spill_register deps) registers the ext_out channels at the
+  # boundary, ahead of the synchronous slave in tb_wrapper_top.sv. Two things it
+  # buys: the crossbar's ext_out aw_valid does not settle until late in the
+  # cycle, and the cut makes every request channel edge-aligned and stable for
+  # a whole cycle; and it breaks the combinational path across the boundary so
+  # the terminator's ready is not in the crossbar's timing cone.
+  #
+  # Outbound (ext_out) boundary terminator, shared with the bare smu TB.
+  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
+  "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
+  "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
+  # SMC CPU-memory DV hooks. smc_ip_integration now instantiates the memory
+  # macros itself (smc_cpu_mem_integration.sv was removed), and this module
+  # binds into it for the ROM/scratch image backdoors, the read/write counters
+  # and the firmware mailbox. hw/sys/smc/dv carries the same entry; without it
+  # the wrapper environment silently loses those hooks.
+  "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # SEP=1 key_manager pulls picorv32; Bender package files are not always
   # on the smu_wrapper closure — mirror sep_sim_cfg.toml.
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",
@@ -120,6 +137,15 @@ sources = [
 [build.verilator]
 public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
+
+[coverage.verilator]
+# Line / branch (--coverage-line), expression, and SVL user coverage. Toggle is
+# deliberately absent, matching smu_sim_cfg.toml and sep_sim_cfg.toml: on these
+# models toggle points are ~95% of the coverage database (~0.5 GB per test leaf)
+# and the costliest instrumentation at sim time. Without it the same regression
+# stays in the low GB range and fits standard CI runner disk. This replaces the
+# simulator default `--coverage`, which would enable every form including toggle.
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [build.options]
 build_jobs = 8
@@ -168,6 +194,97 @@ outputs = [
   "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
 ]
 
+# Real SEP DV firmware, built by the SEP fw engine rather than this DV root's
+# build_firmware.py. That engine links against picolibc + libsep.a, which the
+# host toolchain does not carry, so the build runs in the OCAH toolchain
+# container (scripts/docker-run.sh auto-selects podman, else docker).
+#
+# PREREQUISITE: the container image must exist -- `./scripts/docker-run.sh build`.
+# On hosts whose $HOME is small, point podman storage elsewhere first, e.g.
+#   export XDG_DATA_HOME=<big-fs>/podman/share XDG_RUNTIME_DIR=<big-fs>/podman/run
+#
+# Unlike the smu/dv/fw images, these are `objcopy -O verilog` hex (an @0 record
+# plus space-separated bytes). Both forms are byte-wide $readmemh input, so the
+# tb_wrapper_top.sv TCM loader reads either without change.
+# Shared by every real-SEP-firmware test: one build, every image staged. Adding
+# a P2 anchor means appending its TEST= to the argv and its images to outputs,
+# not cloning this table.
+#
+# Two producers. The SEP boot-ROM trampoline, SMC arm ROM and efuse preloads
+# come from this DV root's freestanding builder; the TCM images come from the
+# container. The trampoline jumps to 0xC000_0000, which is each image's _start.
+[c_build.sep_dv_fw]
+cwd = "."
+argv = [
+  "bash",
+  "-c",
+  "python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_smoke && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_boot_health && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_sanity && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_modules && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_efuse && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_wdt && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_dma && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_bidirect && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_remap && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=rom_no_tcm_preload_mem_init && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_spi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_xbar && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_notify && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=hello_world && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_lcc_flow && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_entropy_bringup && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_aes && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_otbn && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smc_sep_xbar && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_bidirect && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_ext_axi",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_sanity/sep_smu_sanity.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_sanity/sep_smu_sanity.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_sanity/sep_smu_sanity.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_modules/sep_smu_modules.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_modules/sep_smu_modules.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_modules/sep_smu_modules.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_efuse/sep_smu_efuse.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_efuse/sep_smu_efuse.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_efuse/sep_smu_efuse.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt/sep_smu_wdt.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt/sep_smu_wdt.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt/sep_smu_wdt.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_dma/sep_smu_dma.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_dma/sep_smu_dma.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_dma/sep_smu_dma.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_bidirect/sep_smu_bidirect.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_bidirect/sep_smu_bidirect.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_bidirect/sep_smu_bidirect.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_remap/sep_smu_remap.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_remap/sep_smu_remap.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_remap/sep_smu_remap.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/rom_no_tcm_preload_mem_init/rom_no_tcm_preload_mem_init.vmem",
+  "hw/sys/sep/dv/fw/build/tests/rom_no_tcm_preload_mem_init/rom_no_tcm_preload_mem_init.rom_only.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_spi/sep_smu_spi.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_spi/sep_smu_spi.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_spi/sep_smu_spi.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smc_xbar/sep_smc_xbar.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smc_xbar/sep_smc_xbar.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smc_xbar/sep_smc_xbar.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smc_notify/sep_smc_notify.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smc_notify/sep_smc_notify.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smc_notify/sep_smc_notify.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/hello_world/hello_world.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/hello_world/hello_world.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_lcc_flow/sep_smu_lcc_flow.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_lcc_flow/sep_smu_lcc_flow.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_lcc_flow/sep_smu_lcc_flow.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_entropy_bringup/sep_smu_entropy_bringup.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_entropy_bringup/sep_smu_entropy_bringup.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_entropy_bringup/sep_smu_entropy_bringup.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_aes/sep_smu_aes.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_aes/sep_smu_aes.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_aes/sep_smu_aes.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_otbn/sep_smu_otbn.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_otbn/sep_smu_otbn.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_otbn/sep_smu_otbn.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smc_sep_xbar/smc_sep_xbar.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smc_sep_xbar/smc_sep_xbar.sram.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_ext_axi_arm/smu_sep_ext_axi_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/smu_sep_bidirect_arm/smu_sep_bidirect_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
 [c_build.sep_smoke]
 cwd = "."
 argv = [
@@ -211,6 +328,18 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   # SEP shadow array is 256×32b (8Kb); do not reuse the 768-word SMC preload.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+# Same as sep_rtl but WITHOUT a SEP shadow-register preload, so a test can
+# supply its own. Verilator's $value$plusargs returns the first match, so a
+# per-test +sep_shadow_reg_preload appended after the run-mode one would lose;
+# the run mode has to leave the plusarg unset instead.
+[run_modes.sep_rtl_no_shadow]
+description = "Real-SEP wrapper with the SEP shadow preload left to the test"
+timeout_sec = 3600
+args = [
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [targets.default]
