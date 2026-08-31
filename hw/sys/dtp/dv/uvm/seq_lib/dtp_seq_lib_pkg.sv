@@ -58,5 +58,6 @@ package dtp_seq_lib_pkg;
     `include "dtp_jtag2axi_smc_axi_wr_test_seq.svh"
     `include "dtp_jtag2axi_smc_axi_rd_test_seq.svh"
     `include "dtp_jtag2axi_error_test_seq.svh"
+    `include "dtp_jtag2axi_robustness_test_seq.svh"
 
 endpackage : dtp_seq_lib_pkg

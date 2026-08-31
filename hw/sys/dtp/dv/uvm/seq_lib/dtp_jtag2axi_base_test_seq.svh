@@ -717,6 +717,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
             aw = tb_vif.smc_otp_axil_awvalid_count;
             w  = tb_vif.smc_otp_axil_wvalid_count;
             ar = tb_vif.smc_otp_axil_arvalid_count;
+        end else if (t.name == "sep_otp") begin
+            aw = tb_vif.sep_otp_axil_awvalid_count;
+            w  = tb_vif.sep_otp_axil_wvalid_count;
+            ar = tb_vif.sep_otp_axil_arvalid_count;
         end else begin
             aw = tb_vif.smc_axi_awvalid_count;
             w  = tb_vif.smc_axi_wvalid_count;

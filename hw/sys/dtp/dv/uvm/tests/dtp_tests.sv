@@ -68,6 +68,18 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test.svh"
 `include "dtp_jtag2axi_smc_axi_error_security_gating_test.svh"
 
+// Cross-bridge JTAG2AXI robustness scenarios (all three bridges).
+`include "dtp_jtag2axi_robustness_base_test.svh"
+`include "dtp_jtag2axi_backpressure_aw_before_w_test.svh"
+`include "dtp_jtag2axi_backpressure_long_stall_test.svh"
+`include "dtp_jtag2axi_backpressure_abort_at_data_w_test.svh"
+`include "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test.svh"
+`include "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test.svh"
+`include "dtp_jtag2axi_decode_error_decerr_write_test.svh"
+`include "dtp_jtag2axi_decode_error_decerr_read_test.svh"
+`include "dtp_jtag2axi_decode_error_mixed_test.svh"
+`include "dtp_jtag2axi_series_corner_all_bridges_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // DTP_OVERLAY_TESTS to the quoted name of an include file on its own
