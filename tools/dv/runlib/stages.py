@@ -1077,9 +1077,36 @@ def _render_run_test_args(
     ctx = {"seed": str(seed)}
     if repo_root is not None:
         ctx["repo_root"] = str(repo_root)
+    return _last_plusarg_wins(
+        [
+            *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
+            *_render_list(list(test.args or []), ctx),
+        ]
+    )
+
+
+def _last_plusarg_wins(rendered: list[str]) -> list[str]:
+    """Drop all but the final `+key=value` for each key, in place.
+
+    A testlist entry is more specific than the run mode it runs under, so when
+    both set the same plusarg the entry is meant to override. `$value$plusargs`
+    returns the *first* match, so leaving both on the command line hands the win
+    to the run mode and the entry's value never reaches the design -- an
+    override that reads as effective and is not. Whether that is visible depends
+    on the simulator, because nothing reports the discarded one.
+
+    Only `+key=value` forms are collapsed; bare flags and non-plusarg arguments
+    keep every occurrence and their relative order.
+    """
+    final_at: dict[str, int] = {}
+    for index, arg in enumerate(rendered):
+        if arg.startswith("+") and "=" in arg:
+            final_at[arg.split("=", 1)[0]] = index
     return [
-        *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
-        *_render_list(list(test.args or []), ctx),
+        arg
+        for index, arg in enumerate(rendered)
+        if not (arg.startswith("+") and "=" in arg)
+        or final_at[arg.split("=", 1)[0]] == index
     ]
 
 
