@@ -131,6 +131,11 @@ class dtp_env extends uvm_env;
         m_xtrig_axi_cfg.data_width = 32;
         m_xtrig_axi_cfg.id_width   = 0;
         m_xtrig_axi_cfg.name_tag   = "dtp_xtrig_axil";
+        // Monitor + coverage only: the memory-shadow ref-model/scoreboard
+        // pairing cannot describe the XTRIG CSR block (volatile status
+        // reads, reset-cleared selects, DECERR on unmapped decode); CSR
+        // read/response checking is owned by the XTRIG sequences' evidence.
+        m_xtrig_axi_cfg.en_scoreboard = 1'b0;
         uvm_config_db#(ocah_axi_config)::set(this, "m_xtrig_axi_env*", "cfg",
                                           m_xtrig_axi_cfg);
         m_xtrig_axi_env = ocah_axi_env::type_id::create("m_xtrig_axi_env", this);
