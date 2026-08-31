@@ -132,6 +132,7 @@ class OcahAxiMasterDriver:
 
         self.log = logging.getLogger(name)
         self._bus, self._clock, self._reset = self._resolve_bus_clock_reset(axi4_intf, clock, reset)
+        timing = kwargs.pop("timing", None)
         self._master = AxiMaster(
             self._bus,
             self._clock,
@@ -140,6 +141,8 @@ class OcahAxiMasterDriver:
             max_burst_len=max_burst_len,
             **kwargs,
         )
+        if timing is not None:
+            self.set_timing(timing)
 
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs: Any) -> "OcahAxiMasterDriver":
