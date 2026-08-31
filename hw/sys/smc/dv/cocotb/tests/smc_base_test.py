@@ -145,6 +145,15 @@ _MODEL_ARTIFACTS: dict[str, tuple[str, str | None]] = {
     "xcelium": ("xrun_snapshot", "xrun_build.log"),
 }
 
+# A simulator reports the name of its executable, which is not always the tool
+# key above: Xcelium runs as `xmsim`. Map the reported names onto keys instead of
+# loosening the substring match below, so a simulator nobody has registered still
+# fails rather than resolving to whichever key happens to share a few letters.
+_SIM_NAME_ALIASES: dict[str, str] = {
+    "xmsim": "xcelium",
+    "ncsim": "xcelium",
+}
+
 _MODEL_IDENTITY_DONE: list[str] = []
 
 
@@ -162,6 +171,9 @@ def _sim_tool() -> str:
         "[BUILD-MODEL-IDENTITY] cocotb.SIM_NAME is empty: the run cannot name "
         "the simulator it is executing in, so it cannot name the model either"
     )
+    for alias, tool in _SIM_NAME_ALIASES.items():
+        if alias in name:
+            return tool
     for tool in _MODEL_ARTIFACTS:
         if tool in name:
             return tool
