@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Cross-bridge JTAG2AXI robustness scenarios for GH issue #3212."""
+"""Cross-bridge JTAG2AXI robustness scenarios."""
 
 from __future__ import annotations
 

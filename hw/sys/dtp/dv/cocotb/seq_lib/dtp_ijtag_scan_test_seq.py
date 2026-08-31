@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""iJTAG SIB/DFT/DFD scan scenarios for GH issue #3213."""
+"""iJTAG SIB/DFT/DFD scan scenarios."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         await self.check_ijtag_pattern(pattern, dbg_disable=dbg_disable, context=context)
 
     async def run_sib_all_off(self) -> None:
-        self.log_banner("GH #3213 iJTAG SIB all-off")
+        self.log_banner("iJTAG SIB all-off")
         await self.check_pattern(0b000, context="all_off.nominal")
         # Seeded per-pass disable mask: with every SIB closed, any lifecycle
         # gating state must leave the outcome identical (closed stays closed).
@@ -84,7 +84,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG all-off", pattern="0b000", chain_len=3)
 
     async def run_sib_all_on(self) -> None:
-        self.log_banner("GH #3213 iJTAG SIB all-on")
+        self.log_banner("iJTAG SIB all-on")
         await self.check_pattern(0b111, context="all_on.nominal")
         gate_vectors = [
             ("secure", 0b111, {"dft_secure": 1}),
@@ -98,7 +98,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG all-on", gate_vectors=len(gate_vectors), chain_len=3)
 
     async def run_sib_random(self) -> None:
-        self.log_banner("GH #3213 iJTAG SIB deterministic and random sweep")
+        self.log_banner("iJTAG SIB deterministic and random sweep")
         for pattern in range(8):
             await self.check_pattern(pattern, context=f"sweep.pattern_{pattern:03b}")
         rng = self.rng("dtp_ijtag_sib_random")
@@ -114,7 +114,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG random", exhaustive_patterns=8, random_iterations=16)
 
     async def run_dft(self) -> None:
-        self.log_banner("GH #3213 iJTAG DFT secure/non-secure access")
+        self.log_banner("iJTAG DFT secure/non-secure access")
         # Non-secure DFT only.
         await self.check_pattern(0b010, context="dft.nonsecure_only")
         # Secure DFT only.
@@ -135,7 +135,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG DFT", gate_cases=len(gate_cases))
 
     async def run_dfd(self) -> None:
-        self.log_banner("GH #3213 iJTAG DFD access and direct-disable gate")
+        self.log_banner("iJTAG DFD access and direct-disable gate")
         await self.check_pattern(0b001, context="dfd.enabled")
         await self.check_pattern(0b001, dbg_disable={"dfd": 1}, context="dfd.gated")
         rng = self.rng("dtp_ijtag_dfd")
