@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC fabric JTAG2AXI write-side scenarios for GH issue #3210."""
+"""SMC fabric JTAG2AXI write-side scenarios."""
 
 from __future__ import annotations
 

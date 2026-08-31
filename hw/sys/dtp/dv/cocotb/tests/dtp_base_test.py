@@ -28,7 +28,7 @@ from env.dtp_env_cfg import DtpEnvCfg
 class dtp_base_test(uvm_test):
     """Shared DTP test: env build, clock/reset bring-up, scenario hook."""
 
-    # Shared-VIP AXI scoreboard adoption (issue #3295): opt-in per test.
+    # Shared-VIP AXI scoreboard adoption: opt-in per test.
     # Tests that enable it declare the CHK-* IDs that must execute and the
     # minimum compared-transaction count per JTAG2AXI stream.
     use_axi_scoreboard = False

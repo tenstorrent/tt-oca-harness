@@ -14,7 +14,7 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test(dtp_base_test):
     # Shared AXI checker: passive bus monitors + reference model compare every
     # observed transaction; the required evidence IDs and per-stream minimum
     # compared-transaction counts below make a silent no-op run fail at
-    # finalization (issue #3295 adoption).
+    # finalization.
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",

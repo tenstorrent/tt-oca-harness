@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP AXI-Lite JTAG2AXI scenarios for GH issue #3211."""
+"""OTP AXI-Lite JTAG2AXI scenarios."""
 
 from __future__ import annotations
 

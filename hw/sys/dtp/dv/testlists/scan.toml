@@ -3,7 +3,7 @@
 
 schema_version = 1
 
-# STAP, 3DCR, and iJTAG scan scenarios for DTP issue #3213.
+# STAP, 3DCR, and iJTAG scan scenarios.
 
 [[tests]]
 name = "dtp_ijtag_sib_all_off_test"

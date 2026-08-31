@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Single source of truth for the dtp_uvm_top TB signals, shared by the
-// cocotb and SV-UVM shapes of tb_top.sv (issue #1133). Each signal is
+// cocotb and SV-UVM shapes of tb_top.sv. Each signal is
 // declared exactly once here and expanded by tb_top.sv into the shape the
 // compile selects:
 //
