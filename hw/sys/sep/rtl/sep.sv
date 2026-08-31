@@ -64,6 +64,11 @@ module sep
 
         output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
+        // CPU lockstep control/status (inert unless the core is built with
+        // RV_LOCKSTEP_ENABLE)
+        input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+        output sep_pkg::sep_lockstep_status_t lockstep_status_o,
+
         input logic [31:1] jtag_id,
 
         // Interrupt inputs
@@ -245,15 +250,6 @@ module sep
     logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
     logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_write_filter_hit_debug,  inbound_read_filter_hit_debug;
 
-  `ifdef RV_LOCKSTEP_ENABLE
-    logic cpu_disable_corruption_detection;
-    logic cpu_lockstep_err_injection_en;
-    logic cpu_corruption_detected;
-
-    // Not currently used; tie off.
-    assign cpu_disable_corruption_detection = '0;
-    assign cpu_lockstep_err_injection_en = '0;
-  `endif
 
     // Bridge structs for AXI4 wrappers (slaves)
     sep_pkg::sep_32_64_3_12_axi_req_t  smn_inbound_to_sep_axi_req;
@@ -648,11 +644,8 @@ module sep
         .dec_tlu_perfcnt2               (cpu_dec_tlu_perfcnt2),
         .dec_tlu_perfcnt3               (cpu_dec_tlu_perfcnt3),
 
-      `ifdef RV_LOCKSTEP_ENABLE
-        .disable_corruption_detection_i (cpu_disable_corruption_detection),
-        .lockstep_err_injection_en_i    (cpu_lockstep_err_injection_en),
-        .corruption_detected_o          (cpu_corruption_detected),
-      `endif
+        .lockstep_ctrl_i                (lockstep_ctrl_i),
+        .lockstep_status_o              (lockstep_status_o),
 
         // TCM interface ports (pass-through to sep_wrapper)
         .sep_cpu_tcm_req_o              (sep_cpu_tcm_req_o),

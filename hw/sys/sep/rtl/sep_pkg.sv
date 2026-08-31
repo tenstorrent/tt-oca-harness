@@ -337,6 +337,19 @@ package sep_pkg;
 
     typedef el2_trace_pkt_t sep_cpu_trace_t;
 
+    // VeeR lockstep control/status. These are carried unconditionally through the
+    // hierarchy above sep_cpu so the port footprint does not change with
+    // RV_LOCKSTEP_ENABLE; sep_cpu zeroes the status and sinks the control when the
+    // core is built without lockstep.
+    typedef struct packed {
+        logic disable_corruption_detection;
+        logic err_injection_en;
+    } sep_lockstep_ctrl_t;
+
+    typedef struct packed {
+        logic corruption_detected;
+    } sep_lockstep_status_t;
+
     // TCM (ICCM/DCCM) memory interface types
     // Request struct: from CPU to TCM macros (active-high signals from EL2 core)
     typedef struct packed {
