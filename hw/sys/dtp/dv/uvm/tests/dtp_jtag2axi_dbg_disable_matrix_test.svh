@@ -37,11 +37,6 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
         return seq;
     endfunction
 
-    // The 16 seeded rows inside one pass are the iteration floor.
-    virtual function int unsigned default_loops();
-        return 1;
-    endfunction
-
     virtual function string specific_loops_plusarg();
         return "DTP_JTAG2AXI_DBG_DISABLE_MATRIX_TEST_LOOPS";
     endfunction

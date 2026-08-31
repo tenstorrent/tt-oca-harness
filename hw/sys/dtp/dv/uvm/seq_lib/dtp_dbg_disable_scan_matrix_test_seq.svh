@@ -7,10 +7,12 @@
 // the all-clear and all-disabled boundary masks, and seeded multi-hot
 // masks. Every row drives the full disable vector, then proves each
 // resource's allowed/blocked outcome with temporal windows and chain
-// readbacks: all three iJTAG SIBs requested open follow their gates, all
-// four STAPs configured in one composed pass either forward or stay
-// quiet with the gated 3DCR update ignored, and the extended host scan
-// interface follows stap_host. After the all_disabled row, releasing
+// readbacks: all three iJTAG SIBs requested open follow their gates; the
+// four STAPs are configured ungated in one composed pass, then the row
+// mask is asserted — gated ports stop forwarding (tms parked at the
+// stored tms_hold) and ignore a clearing update while ungated ports
+// accept it, and the extended host scan interface follows stap_host.
+// After the all_disabled row, releasing
 // every gate without reset must not replay any gated open attempt, and a
 // sanctioned all-clear row recovers.
 //
@@ -64,14 +66,21 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
         check_ijtag_pattern(3'b111, d, {context_s, ".ijtag"});
     endtask
 
-    // Configure all four STAPs in one composed pass; each port's outcome
-    // (forwarding vs quiet+parked-low) follows its disable, the extended
-    // host scan interface follows stap_host, and the chain readback matches
-    // the model's gated-update semantics.
+    // Configure all four STAPs UNGATED in one composed pass, then assert
+    // the row mask (the pattern the standalone stap_sel scenarios prove):
+    // each port's outcome under the mask (forwarding vs quiet with tms
+    // parked at the stored tms_hold=1) follows its disable, a gated
+    // clearing update is ignored while ungated ports accept it (chain
+    // readback against the model's gated-update semantics), and the
+    // extended host scan interface follows stap_host. Configuring under
+    // the gate instead couples stored 3DCR state across rows through the
+    // chain's IR-scan-time client updates, so the row mask is asserted
+    // only after the configuration is established.
     protected task check_stap_row(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                                   string context_s);
         int all_sib[int];
         dtp_stap_3dcr_state_t all_payloads[int];
+        dtp_stap_3dcr_state_t clear_payloads[int];
         int no_sib[int];
         dtp_stap_3dcr_state_t no_pl[int];
         string watch[$];
@@ -82,7 +91,8 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
         dtp_stap_3dcr_model::gates(d, gates);
         for (int unsigned s = 0; s < DtpStapCount; s++) begin
             all_sib[s] = 1;
-            all_payloads[s] = '{1'b1, 1'b1, 1'b1};
+            all_payloads[s]   = '{1'b1, 1'b1, 1'b1};
+            clear_payloads[s] = '{1'b0, 1'b0, 1'b0};
             watch.push_back({stap_prefix(s), "_tdo_oen"});
             watch.push_back({stap_prefix(s), "_tms"});
         end
@@ -91,32 +101,26 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
         watch.push_back("jtag_stap_host_capture_en");
         watch.push_back("jtag_stap_host_update_en");
 
+        // Establish the configuration with every gate clear.
+        enable_all_debug();
         stap_chain_flush({context_s, ".flush"});
-        stap_chain_write(d, 1, 1, all_sib, no_pl,
+        stap_chain_write('0, 1, 1, all_sib, no_pl,
                          {context_s, ".open_sibs"}, unused);
-        stap_chain_write(d, -1, -1, no_sib, all_payloads,
+        stap_chain_write('0, -1, -1, no_sib, all_payloads,
                          {context_s, ".write_3dcrs"}, unused);
+
+        // Assert the row mask and observe under it.
+        set_dbg_disable_full(d);
         start_scan_window(watch);
         stap_chain_maintain(d, {context_s, ".observe"}, captured);
         stop_scan_window(edges, counts);
         family_check("CHK-SCAN-WIN", "window edges nonvacuous",
                      64'(edges > 0), 64'd1, {context_s, ".window"});
 
-        for (int unsigned s = 0; s < DtpStapCount; s++) begin
-            string prefix = stap_prefix(s);
-            int unsigned tdo_oen = counts[{prefix, "_tdo_oen"}];
-            int unsigned tms     = counts[{prefix, "_tms"}];
-            if (gates[s]) begin
-                // Gated: the 3DCR write was ignored, so the port never
-                // forwards and tms parks at the reset tms_hold=0.
-                family_check("CHK-SCAN-WIN", {prefix, "_tdo_oen gated quiet"},
-                             64'(tdo_oen), 64'd0, context_s);
-                family_check("CHK-SCAN-WIN", {prefix, "_tms parked low"},
-                             64'(tms), 64'd0,
-                             $sformatf("%s edges=%0d", context_s, edges));
-            end else
-                check_stap_forwarding(edges, counts, s, 1'b1, context_s);
-        end
+        // Gated ports stop forwarding with tms parked at the stored
+        // tms_hold=1; ungated ports keep forwarding.
+        for (int unsigned s = 0; s < DtpStapCount; s++)
+            check_stap_forwarding(edges, counts, s, ~gates[s], context_s);
 
         if (d.stap_host) begin
             family_check("CHK-SCAN-WIN", "stap_host select gated quiet",
@@ -133,9 +137,21 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
             family_check("CHK-SCAN-WIN", "stap_host shift_en active",
                          64'(counts["jtag_stap_host_shift_en"] > 0), 64'd1, context_s);
         end
-
         check_stap_chain_readback(captured, d, {context_s, ".readback"});
+
+        // Gated clearing update: ignored on gated ports, accepted on
+        // ungated ones — the readback proves per-port gating exactly.
+        stap_chain_write(d, -1, -1, no_sib, clear_payloads,
+                         {context_s, ".gated_clear_attempt"}, unused);
+        stap_chain_maintain(d, {context_s, ".gated_clear_readback"}, captured);
+        check_stap_chain_readback(captured, d,
+                                  {context_s, ".gated_clear_readback"});
+
+        // Cleanup with every gate clear so no stored 3DCR state couples
+        // into the next row, then restore the row mask for the caller.
+        enable_all_debug();
         stap_chain_flush({context_s, ".cleanup"});
+        set_dbg_disable_full(d);
     endtask
 
     task body();

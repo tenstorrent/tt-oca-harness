@@ -24,11 +24,6 @@ class dtp_scan_dbg_disable_matrix_test extends dtp_base_test;
         return seq;
     endfunction
 
-    // The 16 seeded rows inside one pass are the iteration floor.
-    virtual function int unsigned default_loops();
-        return 1;
-    endfunction
-
     virtual function string specific_loops_plusarg();
         return "DTP_SCAN_DBG_DISABLE_MATRIX_TEST_LOOPS";
     endfunction
