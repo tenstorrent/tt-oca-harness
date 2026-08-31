@@ -222,6 +222,15 @@ _TOUCH_DENY_PREFIX_HW: dict[str, str] = {
 # export-rw but do not behave as plain storage under a random ``x``.
 _TOUCH_DENY_NAME: dict[str, str] = {
     "FIPS_LOCK": "sticky lock; setting it freezes the block for the rest of the run",
+    # Both refuse a random mask-legal value by design, and both are documented.
+    # HT_WATERMARK_NUM.WATERMARK_NUM carries `encode = WATERMARK_TEST`:
+    # "Unsupported values are sanitized to REPCNT_HI", so a legal encoding lands
+    # and any other reads back 0. NOISE_OBS_CTRL holds FLUSH[1:1], `sw = w` and
+    # `singlepulse`, inside the software-usable mask -- a value with bit 1 set
+    # pulses the flush and self-clears -- and its LANE_SEL sanitizes an
+    # out-of-range lane to 0.
+    "HT_WATERMARK_NUM": "enumerated selector; an unsupported value sanitizes",
+    "NOISE_OBS_CTRL": "write-only singlepulse field inside the mask",
     "CTRL": "trigger",
     "CFG": "multi-field encoding",
     "INTR_STATE": "W1C status",
