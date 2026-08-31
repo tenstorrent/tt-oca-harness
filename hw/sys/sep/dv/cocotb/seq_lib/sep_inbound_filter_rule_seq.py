@@ -345,6 +345,7 @@ class SepInboundFilter(SepAxiRegDriver):
     async def program_rule(
         self, cfg: SepInboundFilterCfg, *, read_allowed: bool, write_allowed: bool,
         allow_burst: bool = False, end_addr: int | None = None,
+        expect_page_widen: bool = False,
     ) -> None:
         """Program the inbound filter entry.
 
@@ -352,8 +353,29 @@ class SepInboundFilter(SepAxiRegDriver):
         sets the programmed range explicitly: the burst-allow checker spans two
         4 KB pages so the wrap page-widen does not fire, and the widen checkers
         keep START and END in one page so it does.
+
+        ``expect_page_widen`` must be set to program ``allow_burst=1`` with
+        START and END inside one 4 KB page. Hardware then widens the range to
+        the whole page (``axi_filter_wrap.sv``), so the entry grants every
+        address in it -- in the SEP CSR region a page is a whole block. A
+        caller that wants a narrow window and sets ``allow_burst`` by habit gets
+        the page silently, and the CSR readback shows the widened bounds as if
+        they were asked for. Requiring the opt-in makes that a test failure
+        instead. The widen direction is unstated in the architecture documents;
+        see the specification question tracked against this behaviour.
         """
         end = cfg.allow_addr if end_addr is None else end_addr
+        if allow_burst and not expect_page_widen:
+            if (cfg.allow_addr >> 12) == (end >> 12):
+                raise AssertionError(
+                    f"CHK-WIDEN-GUARD: entry {cfg.entry} programs "
+                    f"0x{cfg.allow_addr:08x}..0x{end:08x} with allow_burst=1 "
+                    f"inside page 0x{cfg.allow_addr >> 12:05x}; hardware widens "
+                    f"this to 0x{cfg.allow_addr & ~0xFFF:08x}.."
+                    f"0x{(end & ~0xFFF) | 0xFFF:08x} and the entry grants the "
+                    "whole page. Pass expect_page_widen=True if that is "
+                    "intended, or keep START and END in different pages."
+                )
         await self._wr(cfg.start_addr_reg, cfg.allow_addr)
         await self._wr(cfg.start_addr_reg + 4, 0)
         await self._wr(cfg.end_addr_reg, end)

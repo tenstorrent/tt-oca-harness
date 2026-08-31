@@ -349,7 +349,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         async def program_widen() -> None:
             await self.filt.program_rule(
                 cell, read_allowed=True, write_allowed=True,
-                allow_burst=True, end_addr=wcfg.window_end)
+                allow_burst=True, end_addr=wcfg.window_end,
+                expect_page_widen=True)
 
         await restage()
         await self.filt.disable_all()
@@ -446,7 +447,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         adj_cell = SepInboundFilterCfg(entry=wcfg.entry, allow_addr=adj, allow_value=0)
         await self.filt.program_rule(
             adj_cell, read_allowed=True, write_allowed=False,
-            allow_burst=True, end_addr=adj + GRANULE_BYTES - 1)
+            allow_burst=True, end_addr=adj + GRANULE_BYTES - 1,
+            expect_page_widen=True)
         resp, _ = await self._ext_read(adj)
         assert resp == RESP_OKAY, (
             f"CHK-PAGE-BOUND: 0x{adj:08x} resp={resp} with its own page granted, "
