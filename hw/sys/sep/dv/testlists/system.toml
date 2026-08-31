@@ -294,11 +294,13 @@ args = ["+skip_fuse_sense"]
 # Reset walk is the inventory after reasoned skips (not every OFFSET
 # symbol). Full-mask write-lands is 19 registers (8 scratch-cold +
 # 8 scratch-warm + 3 CPU_CTRL); 32 inbound START/END use the wrap model.
-# TOUCH_BLOCKS picks one storage RW per other major IP.
+# The masked storage touch covers every register that is plain storage and
+# whose write has no side effect, entropy complex CSRs included.
 # no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["csr", "register", "system", "subsystem"]
 run_modes = ["no_cpu"]
