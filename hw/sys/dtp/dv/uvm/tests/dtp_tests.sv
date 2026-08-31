@@ -16,6 +16,9 @@
 `include "uvm_macros.svh"
 import dtp_env_pkg::*;
 import dtp_seq_lib_pkg::*;
+// Shared AXI VIP types referenced by test-class signatures (e.g. the
+// robustness tests' add_required_axi_ids(ocah_axi_config) hook).
+import ocah_axi_uvm_pkg::*;
 
 `include "dtp_base_test.svh"
 `include "dtp_sanity_test.svh"
