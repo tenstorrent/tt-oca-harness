@@ -43,6 +43,10 @@ module entropy_generator_complex #(
     output      logic [7:0]              generator_10_test_status_o,
     output      logic [7:0]              generator_11_test_status_o,
 
+    // OR of every per-lane health-test counter-disagreement error and the
+    // shared window counter's own; see entropy_health_test.count_err_o.
+    output      logic                    count_err_o,
+
     input       logic [NRINGS-1:0]       jitter_ro_enable_i,
     input       logic [NRINGS-1:0]       jitter_ro_detune_i,
     input       logic [NRINGS-1:0]       jitter_ro_auto_tune_enable_i,
@@ -60,13 +64,10 @@ module entropy_generator_complex #(
     // are disabled so the main_sm boot gate can complete its boot window.
     input       logic                    module_enable_i,
 
-    input       logic [7:0]              health_test_enable_i,
+    input       logic [2:0]              health_test_enable_i,
     input       logic [7:0]              health_test_repetition_limit_i,
     input       logic [15:0]             health_test_proportion_limit_1bit_i,
     input       logic [15:0]             health_test_proportion_limit_lo_i,
-    input       logic [9:0]              health_test_proportion_limit_2bit_i,
-    input       logic [9:0]              health_test_proportion_limit_3bit_i,
-    input       logic [9:0]              health_test_proportion_limit_4bit_i,
     input       logic [15:0]             health_test_markov_prob_01_threshold_i,
     input       logic [15:0]             health_test_markov_prob_10_threshold_i,
     input       logic [15:0]             health_test_window_size_i,
@@ -149,6 +150,8 @@ module entropy_generator_complex #(
     logic        window_wrap_pulse;
     logic        health_test_enable;
 
+    logic [NRINGS-1:0] generator_count_err;
+
     logic [7:0] biw_entropy [4];
     logic [31:0] biw_data;
     logic        biw_valid;
@@ -179,6 +182,8 @@ module entropy_generator_complex #(
 
     assign biw_data  = {biw_entropy[0], biw_entropy[1], biw_entropy[2], biw_entropy[3]};
     assign biw_valid = |entropy_byte_valid;
+
+    assign count_err_o = window_cntr_err | (|generator_count_err);
 
     assign entropy_stream_o       = biw_data;
     assign entropy_stream_valid_o = biw_valid;
@@ -239,16 +244,14 @@ module entropy_generator_complex #(
             .repetition_limit_i         (health_test_repetition_limit_i),
             .proportion_limit_1bit_i    (health_test_proportion_limit_1bit_i),
             .proportion_limit_lo_i      (health_test_proportion_limit_lo_i),
-            .proportion_limit_2bit_i    (health_test_proportion_limit_2bit_i),
-            .proportion_limit_3bit_i    (health_test_proportion_limit_3bit_i),
-            .proportion_limit_4bit_i    (health_test_proportion_limit_4bit_i),
             .markov_prob_01_threshold_i (health_test_markov_prob_01_threshold_i),
             .markov_prob_10_threshold_i (health_test_markov_prob_10_threshold_i),
             .window_wrap_pulse_i        (window_wrap_pulse),
             .noise_bit_monitor_o        (noise_bit_monitor_o          [i]),
             .test_status_o              (test_status                  [i]),
             .entropy_byte_o             (decorrelator_entropy_bytes   [i]),
-            .entropy_byte_valid_o       (entropy_byte_valid           [i])
+            .entropy_byte_valid_o       (entropy_byte_valid           [i]),
+            .count_err_o                (generator_count_err          [i])
         );
     end : g_ecmplx
 

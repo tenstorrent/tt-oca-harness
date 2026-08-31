@@ -948,6 +948,8 @@ sources:
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
       - hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv
       - hw/sys/sep/rtl/sep_crypto_axi_isolate.sv
+      - hw/sys/sep/rtl/sep_crypto_trng_axi_isolate.sv
+      - hw/sys/sep/rtl/sep_trng.sv
       # =====================================================================
       # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
       #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9

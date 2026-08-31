@@ -104,8 +104,8 @@ The current SEP implementation has exactly 10 Class 2a RTL scan roots:
 * `sep_crypto.aes_wrapper_s3c_scan`
 * `sep_crypto.kmac_wrapper_s3c_scan`
 * `sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan`
-* `sep_crypto.u_entropy_source_s3c_scan`
-* `sep_crypto.u_drbg_s3c_scan`
+* `sep_crypto.u_sep_trng.u_entropy_source_s3c_scan`
+* `sep_crypto.u_sep_trng.u_drbg_s3c_scan`
 * `sep_crypto.u_axis_edn_crypto_s3c_scan`
 * `sep_crypto.u_key_manager_s3c_scan`
 * `u_trng_wrapper_s3c_scan`

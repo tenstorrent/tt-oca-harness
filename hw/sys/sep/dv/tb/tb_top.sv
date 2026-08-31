@@ -76,6 +76,7 @@ module sep_uvm_top
     input  wire logic jtag_aes_rst_hold_i,
     input  wire logic jtag_hmac_rst_hold_i,
     input  wire logic jtag_kmac_rst_hold_i,
+    input  wire logic jtag_trng_rst_hold_i,
     // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
     // pair onto the LCC decoder input (signed off -- no legal OTP image can present
     // one). See the force block below.
@@ -349,6 +350,13 @@ module sep_uvm_top
     output logic              pool_edn_ack_o,        // entropy_pool_edn_rsp_o.edn_ack
     output logic [31:0]       pool_edn_bus_o,        // entropy_pool_edn_rsp_o.edn_bus
     output logic              pool_edn_fips_o,       // entropy_pool_edn_rsp_o.edn_fips
+    // Observation-only depth of the fabric pool's 32->64 packer. Used to
+    // trigger a TRNG reset with exactly one pre-reset 32-bit half-word cached.
+    output logic [1:0]        entropy_pool_packer_depth_o,
+    // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
+    // completion bits, used to prove reset cannot precede the slowest drain.
+    output logic              trng_gated_rst_n_probe_o,
+    output logic [2:0]        trng_axi_isolated_probe_o,
     // IP-interrupt aggregator: observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
@@ -396,6 +404,11 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     `define SEP_CORE u_dut.u_sep
     `define SEP_IPI  u_dut.u_sep_ip_integration
+    // The entropy complex sits below sep_crypto inside sep_trng, which owns the
+    // shared TRNG reset. Naming that level once means a hierarchy change is made
+    // here rather than at every entropy probe and assertion scope below.
+    `define SEP_ESRC `SEP_CORE.sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
+    `define SEP_DRBG `SEP_CORE.sep_crypto.u_sep_trng.u_drbg_s3c_scan
 
     // ------------------------------------------------------------------
     // Idle / benign tie-off nets for the unused external ports.
@@ -427,6 +440,8 @@ module sep_uvm_top
             (jtag_hmac_rst_hold_i === 1'b1);
         jtag_sep_reset_ctrl_drive.ovrd.kmac_jtag_rst_n_ovrd =
             (jtag_kmac_rst_hold_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.ovrd.trng_jtag_rst_n_ovrd =
+            (jtag_trng_rst_hold_i === 1'b1);
     end
     // TEST_EN strap is a real DUT input (sep_straps_i.test_straps.test_en). The
     // rest of the strap struct stays idle-0. Not a force.
@@ -520,14 +535,14 @@ module sep_uvm_top
         // three blocks, so the one OCAH-authored contract in the set is armed
         // again immediately below. Re-arm by the assertion's own hierarchical
         // name, never by re-enabling a parent instance, or the 408 return.
-        $assertoff(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan);
+        $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
         // The only OCAH assertion under those subtrees, and reachable stimulus:
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
-        $asserton(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.FipsWindowFloor_A);
+        $asserton(0, `SEP_ESRC.FipsWindowFloor_A);
         // SHA-256-only prim_sha2_32 (MultimodeEn=0) ties inner digest_mode_i to
         // SHA2_None. ValidDigestModeFlag_A requires {SHA2_256, SHA2_384, SHA2_512}
         // on every hash beat, so it is not a contract on those instances. HMAC
@@ -535,10 +550,10 @@ module sep_uvm_top
         // resolved from this module, so these are downward XMRs (a module-name
         // scope does not resolve). Applied after the 2 ps global re-enable so
         // $assertcontrol(3, 31) does not turn these back on.
-        $assertoff(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan
+        $assertoff(0, `SEP_ESRC
             .u_sha256_whitener.u_sha2.gen_sha256_logic.u_prim_sha2_256
             .ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan
+        $assertoff(0, `SEP_ESRC
             .u_sha256_whitener.u_sha2.gen_sha256_logic.u_prim_sha2_256.u_pad
             .ValidDigestModeFlag_A);
         $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
@@ -665,7 +680,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
     // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT (3):
-    // sep_crypto binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
+    // sep_crypto.u_sep_trng binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
     // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Width 2 truncates
     // that bind; sep_crypto.sv's g_drbg_endpoint_mux_width_check catches it under
@@ -1230,6 +1245,13 @@ module sep_uvm_top
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
     // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
+    assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
+    assign trng_gated_rst_n_probe_o = `SEP_CORE.sep_crypto.u_sep_trng.trng_gated_rst_n;
+    assign trng_axi_isolated_probe_o = {
+        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.edn_isolated,
+        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.csrng_isolated,
+        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.esrc_isolated
+    };
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1389,7 +1411,7 @@ module sep_uvm_top
     // smoke asserts this matches esrc_noise_o[0] -> proves the force took (not
     // vacuous).
     assign esrc_noise_active_o =
-        `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
+        `SEP_ESRC.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
     // exact node the SR flop samples -- matching the reference UVM noise injection
@@ -1397,17 +1419,18 @@ module sep_uvm_top
     // `noise_bit` wire instead lets the SR flop sample a different scheduling point
     // under Verilator, so the decorrelator golden cannot reproduce the RTL output.
     // RE-ISSUE the force every clock: a `force` in an `initial` block snapshots the
-    // RHS once at t=0 (Verilator), so it would hold the stale value; the posedge
-    // re-force re-captures the current driven bit so noise_i tracks it.
+    // RHS once at t=0 (Verilator), so it would hold the stale value. Update on the
+    // falling edge so noise_i is stable before the decorrelator samples it on the
+    // rising edge; forcing on that same rising edge creates an ordering race.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
-    force `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
+    force `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
     // Plain `always` (NOT always_ff): `force` is a procedural continuous override,
     // not a flop assignment, so always_ff semantics do not apply.
     // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
     // active in noise-injection runs) and each test is its own elaboration, so the force
     // cannot leak into another test; it is simply torn down when the sim ends.
-    always @(posedge clk_i) begin
+    always @(negedge clk_i) begin
         if ($test$plusargs("esrc_noise_force")) begin
             `ESRC_NOISE_FORCE(0);  `ESRC_NOISE_FORCE(1);  `ESRC_NOISE_FORCE(2);
             `ESRC_NOISE_FORCE(3);  `ESRC_NOISE_FORCE(4);  `ESRC_NOISE_FORCE(5);
@@ -1459,39 +1482,39 @@ module sep_uvm_top
 `undef OTBN_URND_REQ
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
-    assign esrc_ro_enable_o     = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.jitter_ro_enable_i;
-    assign esrc_decor_bytes_o   = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.entropy_stream_uncompressed_o;
-    // Raw 29-bit decorrelator shift register per lane. ff_stage resets ONLY on the
-    // hardware rst_ni (CTRL.RESET zeroes the SAMPLE, not the SR), and decor_bytes_o
-    // lags the true SR reset by a full divider period -- so the golden cannot derive
+    assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
+    assign esrc_decor_bytes_o   = `SEP_ESRC.u_generator_complex.entropy_stream_uncompressed_o;
+    // Raw 29-bit decorrelator shift register per lane. ff_stage and the sampled
+    // byte now share the full entropy-source rst_ni. decor_bytes_o still lags the
+    // true SR reset by a full divider period, so the golden cannot derive
     // the SR phase from decor_bytes_o alone. The scoreboard seeds its golden SR from
     // this exact state once shifting is live, then free-runs the CHK1..CHK5 chain.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed XMR.
 `define ESRC_DECOR_SR(i) \
     assign esrc_decor_sr_o[29*(i) +: 29] = \
-        `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.ff_stage
+        `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.ff_stage
     `ESRC_DECOR_SR(0);  `ESRC_DECOR_SR(1);  `ESRC_DECOR_SR(2);
     `ESRC_DECOR_SR(3);  `ESRC_DECOR_SR(4);  `ESRC_DECOR_SR(5);
     `ESRC_DECOR_SR(6);  `ESRC_DECOR_SR(7);  `ESRC_DECOR_SR(8);
     `ESRC_DECOR_SR(9);  `ESRC_DECOR_SR(10); `ESRC_DECOR_SR(11);
 `undef ESRC_DECOR_SR
-    assign esrc_decor_valid_o   = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.entropy_stream_valid;
+    assign esrc_decor_valid_o   = `SEP_ESRC.entropy_stream_valid;
     // SHA-whitener input handshake: a BIW word is hashed only when the whitener is
     // in its input phase (sha_fifo_valid && sha_fifo_ready). During its SHA compute
     // + 8-word output phase it accepts nothing and the unconnected entropy_ready_o
     // means upstream decor samples are DROPPED -- so the chain golden must be fed a
     // sample ONLY on this strobe, else its SHA 16:1 blocks misframe after block 0.
-    assign esrc_whiten_push_o   = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_sha256_whitener.sha_fifo_valid
-                                & `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_sha256_whitener.sha_fifo_ready;
-    assign esrc_compress_vld_o  = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.entropy_stream_vld_o;
-    assign esrc_compress_data_o = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.entropy_stream_data_o;
-    assign drbg_seed_valid_o    = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
-    assign drbg_es_ack_o        = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_ack;
-    assign drbg_es_bits_o       = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_bits;
-    assign drbg_genbits_vld_o   = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
-    assign drbg_genbits_data_o  = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
-    assign drbg_genbits_fips_o  = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
-    assign drbg_gen_last_o      = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.gen_last_q;
+    assign esrc_whiten_push_o   = `SEP_ESRC.u_sha256_whitener.sha_fifo_valid
+                                & `SEP_ESRC.u_sha256_whitener.sha_fifo_ready;
+    assign esrc_compress_vld_o  = `SEP_ESRC.entropy_stream_vld_o;
+    assign esrc_compress_data_o = `SEP_ESRC.entropy_stream_data_o;
+    assign drbg_seed_valid_o    = `SEP_DRBG.u_csrng_seed_adapter.seed_queue_valid_o;
+    assign drbg_es_ack_o        = `SEP_DRBG.u_csrng.entropy_src_hw_if_i.es_ack;
+    assign drbg_es_bits_o       = `SEP_DRBG.u_csrng.entropy_src_hw_if_i.es_bits;
+    assign drbg_genbits_vld_o   = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
+    assign drbg_genbits_data_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
+    assign drbg_genbits_fips_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
+    assign drbg_gen_last_o      = `SEP_DRBG.u_csrng.u_csrng_core.gen_last_q;
     // Post-EXT_TRNG_SRC_SEL-mux: the entropy actually presented to the KM (proves
     // the internal-DRBG leg was selected, not ext_trng). tvalid && tready = the KM
     // consumed a genbits word.
@@ -1602,6 +1625,8 @@ module sep_uvm_top
     assign s_axi_ruser   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.user;
     assign s_axi_rvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.r_valid;
 
+`undef SEP_ESRC
+`undef SEP_DRBG
 `undef SEP_CORE
 `undef SEP_IPI
 

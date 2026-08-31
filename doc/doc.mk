@@ -12,9 +12,9 @@ ocah_doc_mk := 1
 OCAH_DOC_DIR ?= $(OCAH_ROOT)/doc
 # Documentation tools are expected on PATH. The project Docker image provides
 # Node/npm for Antora and asciidoctor-pdf for PDF builds.
-# @antora/lunr-extension powers search -- only # registered/active in the combined playbook
-# (antora-playbook.yml), harmless # to have available for the standalone per-product playbooks too.
-OCAH_ANTORA ?= npx -y -p @antora/cli@3.1 -p @antora/site-generator@3.1 -p @antora/lunr-extension@1.0.0-alpha.13 antora
+# @antora/lunr-extension powers combined-site search. asciidoctor-kroki 0.18
+# is the Antora 3-compatible release and renders inline diagrams during builds.
+OCAH_ANTORA ?= npx -y -p @antora/cli@3.1 -p @antora/site-generator@3.1 -p @antora/lunr-extension@1.0.0-alpha.13 -p asciidoctor-kroki@0.18.1 antora
 OCAH_ASCIIDOCTOR_PDF ?= asciidoctor-pdf
 OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
 OCAH_DOC_PDF_THEMESDIR ?= $(OCAH_DOC_DIR)
