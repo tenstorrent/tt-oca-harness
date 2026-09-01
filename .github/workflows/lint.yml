@@ -114,6 +114,9 @@ jobs:
       - name: Add tools to PATH
         run: |
           chmod +x ./bin/bender
+          # actions/upload-artifact zips (and download-artifact unzips) without
+          # preserving Unix permissions, so every file lands back at 644.
+          chmod +x ./verilator/bin/*
           echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/verilator/bin" >> "$GITHUB_PATH"
           sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
