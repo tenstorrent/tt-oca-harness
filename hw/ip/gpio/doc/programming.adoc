@@ -63,20 +63,55 @@ Setting up GPIO interrupt generation:
 
 Configuring GPIO for LSIO hardware control:
 
+Pad ownership is ranked in three levels. Software does not need to give the
+pad up for a hardware LSIO peripheral to take it:
+
+....
+1. Hardware LSIO (lsio_interface_select_i asserted, lsio_disable = 0)
+2. Register interface (interface_enable, or a DATA_CTRL_ENABLE.use_reg_* override)
+3. Software-forced LSIO (DATA_CTRL.lsio_select)
+....
+
+Letting a hardware LSIO peripheral drive the pad:
+
+....
+1. Ensure DATA_CTRL.lsio_disable = 0
+
+2. Nothing else is required. Once the peripheral asserts its select line it
+   takes the pad, whatever DATA_CTRL.interface_enable is set to.
+
+3. Monitor LSIO operation:
+   - Check DATA_CTRL.lsio_enable for LSIO request status
+   - Note this field reports the hardware select line, not which plane
+     currently owns the pad; the two differ when lsio_disable = 1
+....
+
+Forcing LSIO from software, with no hardware request on the pad:
+
 ....
 1. Disable register interface:
    - Set DATA_CTRL.interface_enable = 0
+   - Clear any DATA_CTRL_ENABLE.use_reg_* overrides
 
-2. Enable LSIO interface:
-   - Set DATA_CTRL.lsio_select = 1 (if forcing LSIO)
-   - Ensure DATA_CTRL.lsio_disable = 0
+2. Set DATA_CTRL.lsio_select = 1 and ensure DATA_CTRL.lsio_disable = 0
 
-3. Monitor LSIO operation:
-   - Check DATA_CTRL.lsio_enable for active status
-   - Hardware LSIO interface controls pad directly
-
-4. LSIO interface has priority over register control when active
+Unlike the hardware select line, this bit ranks *below* interface_enable, so
+the register interface must be off for it to take effect.
 ....
+
+Reclaiming a pad from LSIO:
+
+....
+1. Set DATA_CTRL.lsio_disable = 1
+   This gates both the hardware select line and lsio_select.
+
+2. Set DATA_CTRL.interface_enable = 1 and program core2pad / enable_rx_tx
+....
+
+Some pads have their select line tied permanently asserted in the integration
+(the I3C pads, and the isolate-request, boot-stall and cool-reset-out pads).
+On those, step 1 above is mandatory: interface_enable alone will not take the
+pad, because the hardware request outranks it.
 
 ====== Security Configuration
 

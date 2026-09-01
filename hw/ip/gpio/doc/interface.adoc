@@ -63,13 +63,17 @@ GPIO operation for protocol processing.
 
 ====== LSIO Protocol Specifications
 
-* *Selection Priority*: LSIO mode overrides register-driven control when
-active
+* *Selection Priority*: an asserted `lsio_interface_select_i` overrides
+register-driven control, including DATA_CTRL.interface_enable and the
+DATA_CTRL_ENABLE.use_reg_* per-field overrides. The software force bit
+DATA_CTRL.lsio_select ranks the other way, below the register interface;
+DATA_CTRL.lsio_disable gates both
 * *Enable Logic*: Active-low enables for both transmit and receive paths
 * *Data Latency*: Zero-cycle latency for data path when selected
 * *Mode Switching*: Immediate effect, no settling time required
-* *Status Reflection*: LSIO activity status available in
-DATA_CTRL.lsio_enable register
+* *Status Reflection*: hardware LSIO request status available in
+DATA_CTRL.lsio_enable register. The field tracks the hardware request line
+gated by lsio_disable, so it reads 0 during a software-forced LSIO
 
 ====== GPIO Pad Interface
 
