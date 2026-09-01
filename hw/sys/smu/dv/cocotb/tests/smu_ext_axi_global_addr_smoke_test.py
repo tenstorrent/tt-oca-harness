@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_ext_axi_global_addr_smoke_test_seq import (
     smu_ext_axi_global_addr_smoke_test_seq,
 )
@@ -18,11 +17,8 @@ class smu_ext_axi_global_addr_smoke_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_ext_axi_global_addr_smoke_test "
-            "TierA FAB_SMC_007 SEP=0 J2A+s_axi"
+            "DUT_TAG=BARE smu_ext_axi_global_addr_smoke_test TierA FAB_SMC_007 SEP=0 J2A+s_axi"
         )
         seq = smu_ext_axi_global_addr_smoke_test_seq(self)
         await seq.run()
-        assert seq.s1_ok and seq.s2_ok, (
-            f"global_addr incomplete s1={seq.s1_ok} s2={seq.s2_ok}"
-        )
+        assert seq.s1_ok and seq.s2_ok, f"global_addr incomplete s1={seq.s1_ok} s2={seq.s2_ok}"

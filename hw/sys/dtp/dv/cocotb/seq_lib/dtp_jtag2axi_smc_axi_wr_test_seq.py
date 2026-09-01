@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, DtpJtagInstr, pack_single_op
 
-from .dtp_jtag2axi_base_test_seq import AXI_MEM_SIZE, dtp_jtag2axi_base_test_seq
+from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 
 DEFAULT_AXI_ADDR = 0x40
 DEFAULT_AXI_DATA = 0x0123_4567_89AB_CDEF
@@ -105,9 +105,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             context="write_readback.read",
         )
         self.status = (
-            read_item.status
-            if read_item.status != DtpJtag2AxiStatus.SUCCESS
-            else write_item.status
+            read_item.status if read_item.status != DtpJtag2AxiStatus.SUCCESS else write_item.status
         )
         self.operation_count += 2
 

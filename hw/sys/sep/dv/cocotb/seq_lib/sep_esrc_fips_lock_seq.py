@@ -13,10 +13,11 @@ from __future__ import annotations
 
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import ENTROPY_SOURCE
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
-    DECOR_CTRL_DIV64,
     DECOR_CTRL_DIV8,
+    DECOR_CTRL_DIV64,
     ESRC_ALERT_THRESHOLD,
     ESRC_BIW_OBS_CTRL,
     ESRC_CTRL,
@@ -43,7 +44,13 @@ class SepEsrcFipsLockTarget:
     """One certified-configuration word: pre-lock value and rejected poke."""
 
     def __init__(
-        self, name: str, addr: int, pre: int, poke: int, mask: int, reset: int,
+        self,
+        name: str,
+        addr: int,
+        pre: int,
+        poke: int,
+        mask: int,
+        reset: int,
     ) -> None:
         self.name = name
         self.addr = addr
@@ -83,18 +90,14 @@ class SepEsrcFipsLockCfg:
             SepEsrcFipsLockTarget(
                 "CTRL.SHA256",
                 ESRC_CTRL,
-                ENTROPY_SOURCE.value(
-                    "CTRL", MODULE_ENABLE=1,
-                    SHA256_WHITENING_ENABLE=sha_pre),
-                ENTROPY_SOURCE.value(
-                    "CTRL", MODULE_ENABLE=1,
-                    SHA256_WHITENING_ENABLE=1),
+                ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1, SHA256_WHITENING_ENABLE=sha_pre),
+                ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1, SHA256_WHITENING_ENABLE=1),
                 SHA256_BIT,
                 ENTROPY_SOURCE.reset("CTRL"),
             ),
             SepEsrcFipsLockTarget(
-                "WINDOW", ESRC_HEALTH_TEST_WINDOW_SIZE, win_pre, win_poke,
-                WINDOW_MASK, 0x800),
+                "WINDOW", ESRC_HEALTH_TEST_WINDOW_SIZE, win_pre, win_poke, WINDOW_MASK, 0x800
+            ),
             SepEsrcFipsLockTarget(
                 "HT_ENABLE",
                 ESRC_HEALTH_TEST_CTRL,
@@ -104,27 +107,31 @@ class SepEsrcFipsLockCfg:
                 ENTROPY_SOURCE.reset("HEALTH_TEST_CTRL"),
             ),
             SepEsrcFipsLockTarget(
-                "DECOR", ESRC_DECORRELATOR_CTRL, decor_pre, decor_poke,
-                0xFFFF_F000, DECOR_CTRL_DIV64),
+                "DECOR",
+                ESRC_DECORRELATOR_CTRL,
+                decor_pre,
+                decor_poke,
+                0xFFFF_F000,
+                DECOR_CTRL_DIV64,
+            ),
             SepEsrcFipsLockTarget(
-                "RING_OSC", ESRC_RING_OSC_ENABLE, ring_pre, ring_poke,
-                0x00FF_FFFF, 0x00FF_FFFF),
+                "RING_OSC", ESRC_RING_OSC_ENABLE, ring_pre, ring_poke, 0x00FF_FFFF, 0x00FF_FFFF
+            ),
+            SepEsrcFipsLockTarget("RING_TUNE", ESRC_RING_OSC_TUNE, tune_pre, tune_poke, 0xFFF, 0),
             SepEsrcFipsLockTarget(
-                "RING_TUNE", ESRC_RING_OSC_TUNE, tune_pre, tune_poke, 0xFFF, 0),
-            SepEsrcFipsLockTarget(
-                "GEN0_DIV", ESRC_GEN0_SAMPLE_CLK, gen_div_pre, gen_div_poke, 0x1F, 0),
+                "GEN0_DIV", ESRC_GEN0_SAMPLE_CLK, gen_div_pre, gen_div_poke, 0x1F, 0
+            ),
             SepEsrcFipsLockTarget(
                 "FIFO_CHURN",
                 ESRC_FIFO_CTRL,
-                ENTROPY_SOURCE.value(
-                    "FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=1),
-                ENTROPY_SOURCE.value(
-                    "FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=0),
+                ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=1),
+                ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=0),
                 CHURN_BIT,
                 ENTROPY_SOURCE.reset("FIFO_CTRL"),
             ),
             SepEsrcFipsLockTarget(
-                "ALERT_THRESH", ESRC_ALERT_THRESHOLD, thresh_pre, 1, THRESH_MASK, 4),
+                "ALERT_THRESH", ESRC_ALERT_THRESHOLD, thresh_pre, 1, THRESH_MASK, 4
+            ),
         )
         self.obs_enable = 1
 

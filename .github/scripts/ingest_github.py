@@ -93,12 +93,17 @@ def _taxonomy_from_simple_yaml(path: Path) -> dict:
             continue
         if in_fields and line and not line.startswith(" "):
             break
-        if in_fields and line.startswith("    ") and not line.startswith("      ") and line.endswith(":"):
+        if (
+            in_fields
+            and line.startswith("    ")
+            and not line.startswith("      ")
+            and line.endswith(":")
+        ):
             current = line.strip()[:-1]
             fields[current] = []
             continue
         if in_fields and current and line.startswith("      - "):
-            fields[current].append(line[len("      - "):].strip())
+            fields[current].append(line[len("      - ") :].strip())
     return {"project": {"fields": fields}}
 
 
@@ -148,7 +153,15 @@ def field_catalog(token: str) -> tuple[str, dict[str, dict]]:
         token,
     )
     fields = gh_json(
-        ["project", "field-list", str(PROJECT_NUMBER), "--owner", PROJECT_OWNER, "--format", "json"],
+        [
+            "project",
+            "field-list",
+            str(PROJECT_NUMBER),
+            "--owner",
+            PROJECT_OWNER,
+            "--format",
+            "json",
+        ],
         token,
     )
     catalog: dict[str, dict] = {}
@@ -272,8 +285,15 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
         raise SystemExit("GITHUB_TOKEN is required")
 
     issue = gh_json(
-        ["issue", "view", str(number), "--repo", repo_full, "--json",
-         "title,body,url,labels,author,assignees,milestone"],
+        [
+            "issue",
+            "view",
+            str(number),
+            "--repo",
+            repo_full,
+            "--json",
+            "title,body,url,labels,author,assignees,milestone",
+        ],
         issue_token,
     )
     fields = taxonomy["project"]["fields"]
@@ -359,11 +379,25 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
 
     target_release = values.get("Target release")
     tr_map = taxonomy.get("release", {}).get("target_release_to_milestone", {})
-    if target_release in tr_map and not (issue.get("milestone") or {}).get("number") and not is_protected:
+    if (
+        target_release in tr_map
+        and not (issue.get("milestone") or {}).get("number")
+        and not is_protected
+    ):
         milestone_title = tr_map[target_release]
         try:
-            run(["gh", "issue", "edit", str(number), "--repo", repo_full,
-                 "--milestone", milestone_title])
+            run(
+                [
+                    "gh",
+                    "issue",
+                    "edit",
+                    str(number),
+                    "--repo",
+                    repo_full,
+                    "--milestone",
+                    milestone_title,
+                ]
+            )
             print("milestone", milestone_title)
         except subprocess.CalledProcessError as exc:
             print("milestone set failed:", exc.stderr, file=sys.stderr)
@@ -399,7 +433,16 @@ def assignee_logins(pr: dict) -> set[str]:
 
 def _comments_contain(repo_full: str, number: int, marker: str) -> bool:
     try:
-        text = run(["gh", "api", "--paginate", f"repos/{repo_full}/issues/{number}/comments", "-q", ".[].body"])
+        text = run(
+            [
+                "gh",
+                "api",
+                "--paginate",
+                f"repos/{repo_full}/issues/{number}/comments",
+                "-q",
+                ".[].body",
+            ]
+        )
     except subprocess.CalledProcessError:
         return False
     return marker in (text or "")
@@ -436,15 +479,29 @@ def _parent_issue_assignee(repo_full: str, number: int) -> str | None:
     )
     try:
         payload = gh_json(
-            ["api", "graphql", "-f", f"query={query}",
-             "-F", f"owner={owner}", "-F", f"name={repo}", "-F", f"number={number}"]
+            [
+                "api",
+                "graphql",
+                "-f",
+                f"query={query}",
+                "-F",
+                f"owner={owner}",
+                "-F",
+                f"name={repo}",
+                "-F",
+                f"number={number}",
+            ]
         )
         nodes = (
-            payload.get("data", {}).get("repository", {})
-            .get("issue", {}).get("trackedInIssues", {}).get("nodes") or []
+            payload.get("data", {})
+            .get("repository", {})
+            .get("issue", {})
+            .get("trackedInIssues", {})
+            .get("nodes")
+            or []
         )
         for parent in nodes:
-            for assignee in (parent.get("assignees", {}).get("nodes") or []):
+            for assignee in parent.get("assignees", {}).get("nodes") or []:
                 login = assignee.get("login")
                 if login and not login.endswith("[bot]"):
                     return login
@@ -460,7 +517,8 @@ def _assign_issue_mechanical(number: int, repo_full: str, issue: dict) -> None:
     author_login = (issue.get("author") or {}).get("login", "")
     body = issue.get("body") or ""
     mentions = {
-        m for m in re.findall(r"@([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)", body)
+        m
+        for m in re.findall(r"@([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)", body)
         if m != author_login and not m.endswith("[bot]")
     }
     login = reason = None
@@ -505,20 +563,27 @@ def request_pr_reviewer(number: int) -> None:
         "suggestedReviewers{isAuthor reviewer{login}}}}}"
     )
     pr_data = gh_json(
-        ["api", "graphql", "-f", f"query={query}",
-         "-F", f"owner={owner}", "-F", f"name={repo}", "-F", f"number={number}"]
+        [
+            "api",
+            "graphql",
+            "-f",
+            f"query={query}",
+            "-F",
+            f"owner={owner}",
+            "-F",
+            f"name={repo}",
+            "-F",
+            f"number={number}",
+        ]
     )
-    pr = (pr_data.get("data", {}).get("repository", {}).get("pullRequest") or {})
+    pr = pr_data.get("data", {}).get("repository", {}).get("pullRequest") or {}
     if pr.get("isDraft"):
         print("skip reviewer: PR is draft")
         return
     existing = {
         (n.get("requestedReviewer") or {}).get("login")
         for n in (pr.get("reviewRequests", {}).get("nodes") or [])
-    } | {
-        (n.get("author") or {}).get("login")
-        for n in (pr.get("reviews", {}).get("nodes") or [])
-    }
+    } | {(n.get("author") or {}).get("login") for n in (pr.get("reviews", {}).get("nodes") or [])}
     if existing - {None}:
         print("skip reviewer: reviewer already requested or reviewed")
         return
@@ -546,8 +611,18 @@ def request_pr_reviewer(number: int) -> None:
     except subprocess.CalledProcessError as exc:
         print("reviewer request failed:", exc.stderr, file=sys.stderr)
         return
-    run(["gh", "pr", "comment", str(number), "--repo", repo_full, "--body",
-         PR_REVIEW_COMMENT.format(login=login)])
+    run(
+        [
+            "gh",
+            "pr",
+            "comment",
+            str(number),
+            "--repo",
+            repo_full,
+            "--body",
+            PR_REVIEW_COMMENT.format(login=login),
+        ]
+    )
     print("reviewer requested", login)
 
 
@@ -702,9 +777,7 @@ Future
     assert wsc_from_title("[INVALID/SEP] Title", fields) == (None, None, None)
     assert wsc_from_title("freeform title", fields) == (None, None, None)
     assert (
-        title_with_prefix(
-            "[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General"
-        )
+        title_with_prefix("[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General")
         == "[RTL/OCAH] Use upstream versions of lc_*_pkg's"
     )
     assert (

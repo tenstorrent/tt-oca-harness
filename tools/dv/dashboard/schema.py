@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 SCHEMA_VERSION = "0.1"
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -108,7 +107,9 @@ def _merge_failure_buckets(results: list[dict[str, Any]]) -> list[dict[str, Any]
             for example in bucket.get("examples") or []:
                 if example and example not in entry["examples"] and len(entry["examples"]) < 5:
                     entry["examples"].append(example)
-    return sorted(merged.values(), key=lambda item: (-int(item["count"]), item["kind"], item["signature"]))
+    return sorted(
+        merged.values(), key=lambda item: (-int(item["count"]), item["kind"], item["signature"])
+    )
 
 
 def _category_summary(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -145,49 +146,54 @@ def _dut_status(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for result in sorted(results, key=lambda item: item.get("flow", "")):
         tests = result.get("tests", {})
-        regression = result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
-        categories = sorted({
-            str(test.get("category"))
-            for test in result.get("tests_detail") or []
-            if test.get("category")
-        })
+        regression = (
+            result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
+        )
+        categories = sorted(
+            {
+                str(test.get("category"))
+                for test in result.get("tests_detail") or []
+                if test.get("category")
+            }
+        )
         artifacts = result.get("artifacts", {})
         coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
         holes = (
-            coverage.get("holes_summary")
-            if isinstance(coverage.get("holes_summary"), dict)
-            else {}
+            coverage.get("holes_summary") if isinstance(coverage.get("holes_summary"), dict) else {}
         )
-        rows.append({
-            "flow": result.get("flow", ""),
-            "kind": result.get("kind", ""),
-            # One DUT can report several framework views (e.g. dtp cocotb + dtp uvm);
-            # the framework disambiguates rows that share a flow name.
-            "framework": result.get("framework", ""),
-            "tool": result.get("tool", ""),
-            "status": result.get("status", STATUS_UNKNOWN),
-            "tests_total": int(tests.get("total") or 0),
-            "tests_passing": int(tests.get("passing") or 0),
-            "tests_failing": int(tests.get("failing") or 0),
-            "tests_skipped": int(tests.get("skipped") or 0),
-            "tests_unknown": int(tests.get("unknown") or 0),
-            "pass_rate": tests.get("pass_rate"),
-            "category_count": len(categories),
-            "categories": categories,
-            "failed_tests": len(regression.get("failed_tests") or []),
-            "flaky_tests": len(regression.get("flaky_tests") or []),
-            "coverage_total_percent": coverage.get("total_percent"),
-            "coverage_status": coverage.get("status"),
-            "coverage_threshold": coverage.get("threshold"),
-            "coverage_threshold_met": coverage.get("threshold_met"),
-            "coverage_details_available": coverage.get("details_available"),
-            "coverage_open_holes": holes.get("open"),
-            "coverage_accepted_holes": holes.get("accepted"),
-            "coverage_unclassified_holes": holes.get("unclassified"),
-            "coverage_comparison_key": coverage.get("comparison_key"),
-            "report": artifacts.get("report") or artifacts.get("html") or "",
-            "run_dir": artifacts.get("run_dir") or (result.get("run_metadata") or {}).get("run_dir", ""),
-        })
+        rows.append(
+            {
+                "flow": result.get("flow", ""),
+                "kind": result.get("kind", ""),
+                # One DUT can report several framework views (e.g. dtp cocotb + dtp uvm);
+                # the framework disambiguates rows that share a flow name.
+                "framework": result.get("framework", ""),
+                "tool": result.get("tool", ""),
+                "status": result.get("status", STATUS_UNKNOWN),
+                "tests_total": int(tests.get("total") or 0),
+                "tests_passing": int(tests.get("passing") or 0),
+                "tests_failing": int(tests.get("failing") or 0),
+                "tests_skipped": int(tests.get("skipped") or 0),
+                "tests_unknown": int(tests.get("unknown") or 0),
+                "pass_rate": tests.get("pass_rate"),
+                "category_count": len(categories),
+                "categories": categories,
+                "failed_tests": len(regression.get("failed_tests") or []),
+                "flaky_tests": len(regression.get("flaky_tests") or []),
+                "coverage_total_percent": coverage.get("total_percent"),
+                "coverage_status": coverage.get("status"),
+                "coverage_threshold": coverage.get("threshold"),
+                "coverage_threshold_met": coverage.get("threshold_met"),
+                "coverage_details_available": coverage.get("details_available"),
+                "coverage_open_holes": holes.get("open"),
+                "coverage_accepted_holes": holes.get("accepted"),
+                "coverage_unclassified_holes": holes.get("unclassified"),
+                "coverage_comparison_key": coverage.get("comparison_key"),
+                "report": artifacts.get("report") or artifacts.get("html") or "",
+                "run_dir": artifacts.get("run_dir")
+                or (result.get("run_metadata") or {}).get("run_dir", ""),
+            }
+        )
     return rows
 
 
@@ -197,13 +203,9 @@ def _coverage_closure_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     details_available = 0
     threshold_failures = 0
     for result in sorted(results, key=lambda item: item.get("flow", "")):
-        coverage = (
-            result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
-        )
+        coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
         holes = (
-            coverage.get("holes_summary")
-            if isinstance(coverage.get("holes_summary"), dict)
-            else {}
+            coverage.get("holes_summary") if isinstance(coverage.get("holes_summary"), dict) else {}
         )
         available = bool(coverage.get("details_available"))
         details_available += int(available)
@@ -212,9 +214,7 @@ def _coverage_closure_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
             for outcome in coverage.get("policy_thresholds", [])
             if isinstance(outcome, dict)
         ]
-        failed_thresholds = sum(
-            1 for outcome in policy_thresholds if not outcome.get("met")
-        )
+        failed_thresholds = sum(1 for outcome in policy_thresholds if not outcome.get("met"))
         threshold_failures += failed_thresholds
         by_dut.append(
             {
@@ -256,9 +256,7 @@ def _coverage_closure_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
 def make_trend_point(summary: dict[str, Any]) -> dict[str, Any]:
     per_dut = []
     for result in summary.get("results") or []:
-        coverage = (
-            result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
-        )
+        coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
         per_dut.append(
             {
                 "flow": result.get("flow"),
@@ -286,9 +284,9 @@ def make_trend_point(summary: dict[str, Any]) -> dict[str, Any]:
             for result in summary.get("results") or []
         ],
     }
-    point_id = hashlib.sha256(
-        json.dumps(identity_payload, sort_keys=True).encode()
-    ).hexdigest()[:16]
+    point_id = hashlib.sha256(json.dumps(identity_payload, sort_keys=True).encode()).hexdigest()[
+        :16
+    ]
     return {
         "id": point_id,
         "generated_at": summary.get("generated_at"),
@@ -306,11 +304,13 @@ def update_history(prior: dict[str, Any] | None, summary: dict[str, Any]) -> dic
     point = make_trend_point(summary)
     points = [existing for existing in points if existing.get("id") != point["id"]]
     points.append(point)
-    history.update({
-        "schema_version": "0.2",
-        "generated_at": utc_now(),
-        "points": points,
-    })
+    history.update(
+        {
+            "schema_version": "0.2",
+            "generated_at": utc_now(),
+            "points": points,
+        }
+    )
     return history
 
 
@@ -399,7 +399,9 @@ def make_result_from_run_result(run_result: Any, repo_root: Path) -> dict[str, A
     failure_buckets = []
     if not run_result.passed and run_result.log_path is not None and run_result.log_path.exists():
         text = run_result.log_path.read_text(errors="replace")
-        signature = next((line.strip() for line in text.splitlines() if line.strip()), "backend command failed")
+        signature = next(
+            (line.strip() for line in text.splitlines() if line.strip()), "backend command failed"
+        )
         failure_buckets = [{"signature": signature, "count": 1}]
 
     return make_result(
@@ -447,7 +449,10 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         test_skipped += int(tests.get("skipped") or 0)
         test_unknown += int(tests.get("unknown") or 0)
         if result.get("tests_detail"):
-            detail_statuses = [str(test.get("status") or STATUS_UNKNOWN) for test in result.get("tests_detail") or []]
+            detail_statuses = [
+                str(test.get("status") or STATUS_UNKNOWN)
+                for test in result.get("tests_detail") or []
+            ]
             counts = _status_count(detail_statuses)
             # Prefer detailed skip/unknown counts when available; older collected records only had
             # total/passing/failing.
@@ -480,7 +485,9 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         "tests": {
             "total": test_total,
             "passing": test_passing,
-            "failing": test_failing if test_failing else max(test_total - test_passing - test_skipped - test_unknown, 0),
+            "failing": test_failing
+            if test_failing
+            else max(test_total - test_passing - test_skipped - test_unknown, 0),
             "skipped": test_skipped,
             "unknown": test_unknown,
             "pass_rate": pct(test_passing, test_total),
@@ -517,4 +524,3 @@ def write_json(data: dict[str, Any], path: Path) -> None:
 
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
-

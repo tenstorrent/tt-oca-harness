@@ -178,13 +178,11 @@ class SmuSepBootScoreboard(uvm_component):
             errors.append("SEP never executed in the ICCM range")
         if self.trace_count < self.MIN_TRACES:
             errors.append(
-                f"SEP retired {self.trace_count} instructions; "
-                f"minimum is {self.MIN_TRACES}"
+                f"SEP retired {self.trace_count} instructions; minimum is {self.MIN_TRACES}"
             )
         if len(self.pcs) < self.MIN_DISTINCT_PCS:
             errors.append(
-                f"SEP observed {len(self.pcs)} distinct PCs; "
-                f"minimum is {self.MIN_DISTINCT_PCS}"
+                f"SEP observed {len(self.pcs)} distinct PCs; minimum is {self.MIN_DISTINCT_PCS}"
             )
         if self.max_dccm_writes == 0:
             errors.append("SEP firmware never stored results into DCCM")

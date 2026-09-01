@@ -6,13 +6,20 @@ Comprehensive routing tests for Cross Trigger Matrix IP
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
+
 from test.test_base import (
-    start_clocks, init, init_axil,
-    AxiLiteMaster, write_ct_src_config, read_ct_src_config,
-    pulse_ct_dst, wait_for_ct_src_pulse, check_ct_src_low,
-    CT_DST_SELECT_MASK, NUM_CT_SRC
+    CT_DST_SELECT_MASK,
+    NUM_CT_SRC,
+    AxiLiteMaster,
+    init,
+    init_axil,
+    pulse_ct_dst,
+    read_ct_src_config,
+    start_clocks,
+    write_ct_src_config,
 )
+
 
 @cocotb.test()
 async def test_single_source_routing(dut):
@@ -46,21 +53,25 @@ async def test_single_source_routing(dut):
             await RisingEdge(dut.clk)
 
             # Verify pulse appears on CT_Src[src_idx]
-            assert (dut.ct_src.value >> src_idx) & 1 == 1, \
+            assert (dut.ct_src.value >> src_idx) & 1 == 1, (
                 f"CT_Src[{src_idx}] should pulse when CT_Dst[{dst_idx}] pulses"
+            )
 
             # Verify other CT_Src outputs don't pulse
             for other_src in range(4):
                 if other_src != src_idx:
-                    assert (dut.ct_src.value >> other_src) & 1 == 0, \
+                    assert (dut.ct_src.value >> other_src) & 1 == 0, (
                         f"CT_Src[{other_src}] should not pulse (only CT_Src[{src_idx}] configured)"
+                    )
 
             # Clear and wait
             await RisingEdge(dut.clk)
-            assert (dut.ct_src.value >> src_idx) & 1 == 0, \
+            assert (dut.ct_src.value >> src_idx) & 1 == 0, (
                 f"CT_Src[{src_idx}] should clear after pulse"
+            )
 
     dut._log.info("Single source routing test passed!")
+
 
 @cocotb.test()
 async def test_multi_source_or(dut):
@@ -112,6 +123,7 @@ async def test_multi_source_or(dut):
 
     dut._log.info("Multi-source OR test passed!")
 
+
 @cocotb.test()
 async def test_broadcast(dut):
     """Test broadcasting one CT_Dst to multiple CT_Src"""
@@ -141,6 +153,7 @@ async def test_broadcast(dut):
 
     dut._log.info("Broadcast test passed!")
 
+
 @cocotb.test()
 async def test_disable_output(dut):
     """Test that all-zero select disables CT_Src output"""
@@ -161,11 +174,13 @@ async def test_disable_output(dut):
         await pulse_ct_dst(dut, dst_idx, duration_cycles=1)
         await RisingEdge(dut.clk)
         # Verify CT_Src[0] remains low
-        assert (dut.ct_src.value & 0x1) == 0, \
+        assert (dut.ct_src.value & 0x1) == 0, (
             f"CT_Src[0] should remain low when disabled, even with CT_Dst[{dst_idx}] pulse"
+        )
         await RisingEdge(dut.clk)
 
     dut._log.info("Disable output test passed!")
+
 
 @cocotb.test()
 async def test_register_readback(dut):
@@ -189,7 +204,8 @@ async def test_register_readback(dut):
             # Read back
             expected = value & CT_DST_SELECT_MASK
             readback = await read_ct_src_config(dut, axil, src_idx)
-            assert readback == expected, \
+            assert readback == expected, (
                 f"CT_SRC[{src_idx}] readback mismatch: wrote 0x{value:08x}, expected 0x{expected:08x}, read 0x{readback:08x}"
+            )
 
     dut._log.info("Register readback test passed!")

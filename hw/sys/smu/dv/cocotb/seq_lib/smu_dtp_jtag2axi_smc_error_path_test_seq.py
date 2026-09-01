@@ -83,27 +83,20 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-J2A-ERROR-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
-        self._log(
-            f"CHK-J2A-ERROR-GATE-OPEN disable={gate} caps=0x{caps:04x}"
-        )
+        self._log(f"CHK-J2A-ERROR-GATE-OPEN disable={gate} caps=0x{caps:04x}")
         sb.expect_eq(
             "CHK-J2A-ERROR-GATE-OPEN",
             (gate, caps),
@@ -117,21 +110,15 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
                 f"data=0x{allow_data:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s2_ok = True
-        self._log(
-            f"CHK-J2A-ERROR-ALLOW @0x{VERSION_LO:08x} data=0x{allow_data:08x} "
-            f"status=SUCCESS"
-        )
+        self._log(f"CHK-J2A-ERROR-ALLOW @0x{VERSION_LO:08x} data=0x{allow_data:08x} status=SUCCESS")
         sb.expect_eq("CHK-J2A-ERROR-ALLOW", allow_data, VERSION_LO_RESET)
 
         hole_st, hole_data = await self._rd32(jtag, UNMAPPED, "UNMAPPED")
         if hole_st == J2A_STATUS_SUCCESS:
-            raise AssertionError(
-                f"unmapped @0x{UNMAPPED:08x} returned OKAY data=0x{hole_data:08x}"
-            )
+            raise AssertionError(f"unmapped @0x{UNMAPPED:08x} returned OKAY data=0x{hole_data:08x}")
         if hole_st != J2A_STATUS_DECERR:
             raise AssertionError(
-                f"unmapped @0x{UNMAPPED:08x} status={hole_st} "
-                f"want DECERR={J2A_STATUS_DECERR}"
+                f"unmapped @0x{UNMAPPED:08x} status={hole_st} want DECERR={J2A_STATUS_DECERR}"
             )
         if hole_data != SMC_AXI_ERR_SLV_POISON:
             raise AssertionError(
@@ -139,10 +126,7 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
                 f"want 0x{SMC_AXI_ERR_SLV_POISON:08x}"
             )
         self.s3_ok = True
-        self._log(
-            f"CHK-J2A-DECERR @0x{UNMAPPED:08x} status=DECERR "
-            f"poison=0x{hole_data:08x}"
-        )
+        self._log(f"CHK-J2A-DECERR @0x{UNMAPPED:08x} status=DECERR poison=0x{hole_data:08x}")
         sb.expect_eq(
             "CHK-J2A-DECERR",
             (hole_st, hole_data),
@@ -164,17 +148,13 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
 
         mask = smc_series_data_mask(SMC_DBG_AXSIZE_8B)
         want = SERIES_PAT & mask
-        wr_st = await jtag2axi_series_incr_write(
-            jtag, SERIES_ADDR, want, poll_limit=OTP_POLL
-        )
+        wr_st = await jtag2axi_series_incr_write(jtag, SERIES_ADDR, want, poll_limit=OTP_POLL)
         if wr_st != J2A_STATUS_SUCCESS:
             raise AssertionError(
                 f"SMC series INCR WR after DECERR @0x{SERIES_ADDR:08x} "
                 f"status={wr_st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
-        rd_st, got_ser = await jtag2axi_series_incr_read(
-            jtag, SERIES_ADDR, poll_limit=OTP_POLL
-        )
+        rd_st, got_ser = await jtag2axi_series_incr_read(jtag, SERIES_ADDR, poll_limit=OTP_POLL)
         got_ser &= mask
         if rd_st != J2A_STATUS_SUCCESS:
             raise AssertionError(
@@ -188,8 +168,7 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
             )
         self.s5_ok = True
         self._log(
-            f"CHK-J2A-ERROR-SERIES-INCR @0x{SERIES_ADDR:08x} "
-            f"data=0x{got_ser:016x} status=SUCCESS"
+            f"CHK-J2A-ERROR-SERIES-INCR @0x{SERIES_ADDR:08x} data=0x{got_ser:016x} status=SUCCESS"
         )
         sb.expect_eq("CHK-J2A-ERROR-SERIES-INCR", got_ser, want)
 

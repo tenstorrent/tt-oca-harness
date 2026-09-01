@@ -82,19 +82,17 @@ class smu_axi_filter_allow_ns_test_seq:
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
-    async def _axi_rw(
-        self, master, addr: int, *, prot, write: bool, wdata: int = 0
-    ):
+    async def _axi_rw(self, master, addr: int, *, prot, write: bool, wdata: int = 0):
         async def _do():
             if write:
                 result = await master.write_bytes_result(
-                    addr, wdata.to_bytes(4, "little"), prot=prot,
+                    addr,
+                    wdata.to_bytes(4, "little"),
+                    prot=prot,
                     check_response=False,
                 )
                 return None, result.resp
-            result = await master.read_bytes_result(
-                addr, 4, prot=prot, check_response=False
-            )
+            result = await master.read_bytes_result(addr, 4, prot=prot, check_response=False)
             return result.data, result.resp
 
         try:
@@ -120,9 +118,7 @@ class smu_axi_filter_allow_ns_test_seq:
         last = None
         last_data = None
         for poll in range(FILTER_READY_POLLS):
-            val, resp = await self._axi_rw(
-                master, addr, prot=prot, write=write, wdata=wdata
-            )
+            val, resp = await self._axi_rw(master, addr, prot=prot, write=write, wdata=wdata)
             last, last_data = resp, val
             if resp == want:
                 self._log(
@@ -139,24 +135,18 @@ class smu_axi_filter_allow_ns_test_seq:
         )
 
     async def _j2a_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A WR {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A WR {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(f"J2A WR {name} @0x{addr:08x} data=0x{data:x} status=SUCCESS")
 
     async def _j2a_rd(self, jtag, addr: int, name: str) -> int:
-        st, rdata = await jtag2axi_single_read(
-            jtag, addr, require_complete=True
-        )
+        st, rdata = await jtag2axi_single_read(jtag, addr, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A RD {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A RD {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(f"J2A RD {name} @0x{addr:08x} data=0x{rdata:x} status=SUCCESS")
         return int(rdata)
@@ -203,9 +193,7 @@ class smu_axi_filter_allow_ns_test_seq:
             )
             self._log(f"OBS smc_jtag2axi_security_disable={sec}")
             if sec != 0:
-                raise AssertionError(
-                    f"J2A still gated after TCK sync: security_disable={sec}"
-                )
+                raise AssertionError(f"J2A still gated after TCK sync: security_disable={sec}")
         except AttributeError as exc:
             self._log(f"OBS security_disable probe skipped: {exc}")
 
@@ -215,9 +203,7 @@ class smu_axi_filter_allow_ns_test_seq:
         self._log(f"OBS IDCODE=0x{idcode:08x}")
         sb.expect_eq("CHK-SMU-ALLOW-NS-J2A-READY", idcode, 0x1)
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
 
         probe = SMC_CHIP_CONFIG_VERSION_LO
         lo, hi = page_align_window(probe, probe)
@@ -253,17 +239,13 @@ class smu_axi_filter_allow_ns_test_seq:
             write=True,
             wdata=0xB5B50002,
         )
-        ns_rd, ns_rr = await self._axi_rw(
-            master, probe, prot=NONSECURE_PROT, write=False
-        )
+        ns_rd, ns_rr = await self._axi_rw(master, probe, prot=NONSECURE_PROT, write=False)
         if ns_rr != RESP_DECERR:
             raise AssertionError(
                 f"S1 NS read expected DECERR got {resp_name(ns_rr)} data=0x{ns_rd:08x}"
             )
         self.ns_block_ok = True
-        self._log(
-            "CHK-SMU-ALLOW-NS-S1: allow_ns=0 secure OKAY / NS DECERR on VERSION_LO"
-        )
+        self._log("CHK-SMU-ALLOW-NS-S1: allow_ns=0 secure OKAY / NS DECERR on VERSION_LO")
 
         # ---- S2: dual-slot admit both ----
         await self._program_inst(jtag, 0, lo, hi, CFG_SECURE_ONLY, "S2_I0")
@@ -284,13 +266,10 @@ class smu_axi_filter_allow_ns_test_seq:
             rd, rr = await self._axi_rw(master, probe, prot=prot, write=False)
             if rr != RESP_OKAY:
                 raise AssertionError(
-                    f"S2 {label} read expected OKAY got {resp_name(rr)} "
-                    f"data=0x{rd:08x}"
+                    f"S2 {label} read expected OKAY got {resp_name(rr)} data=0x{rd:08x}"
                 )
         self.dual_ok = True
-        self._log(
-            "CHK-SMU-ALLOW-NS-S2: dual-slot admits secure and NS prot on VERSION_LO"
-        )
+        self._log("CHK-SMU-ALLOW-NS-S2: dual-slot admits secure and NS prot on VERSION_LO")
 
         # ---- S3: clear → BlockByDefault ----
         await self._disable_inst(jtag, 1)
@@ -312,9 +291,7 @@ class smu_axi_filter_allow_ns_test_seq:
                     f"S3 {label} poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{rd:08x}"
                 )
         self.clear_ok = True
-        self._log(
-            "CHK-SMU-ALLOW-NS-S3: clear → DECERR+poison for secure and NS"
-        )
+        self._log("CHK-SMU-ALLOW-NS-S3: clear → DECERR+poison for secure and NS")
         sb.expect_eq("CHK-SMU-ALLOW-NS-S1", self.secure_ok and self.ns_block_ok, True)
         sb.expect_eq("CHK-SMU-ALLOW-NS-S2", self.dual_ok, True)
         sb.expect_eq("CHK-SMU-ALLOW-NS-S3", self.clear_ok, True)

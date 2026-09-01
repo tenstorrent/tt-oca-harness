@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_decode_error_decerr_read_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_test_seq
