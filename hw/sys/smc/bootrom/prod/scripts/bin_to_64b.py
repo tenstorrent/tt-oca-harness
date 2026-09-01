@@ -28,13 +28,13 @@ def convert_bin_to_64b_lines(data: bytes) -> list[str]:
     while i < n:
         # Low byte first (little-endian)
         b0 = data[i]
-        b1 = data[i+1] if i+1 < n else 0
-        b2 = data[i+2] if i+2 < n else 0
-        b3 = data[i+3] if i+3 < n else 0
-        b4 = data[i+4] if i+4 < n else 0
-        b5 = data[i+5] if i+5 < n else 0
-        b6 = data[i+6] if i+6 < n else 0
-        b7 = data[i+7] if i+7 < n else 0
+        b1 = data[i + 1] if i + 1 < n else 0
+        b2 = data[i + 2] if i + 2 < n else 0
+        b3 = data[i + 3] if i + 3 < n else 0
+        b4 = data[i + 4] if i + 4 < n else 0
+        b5 = data[i + 5] if i + 5 < n else 0
+        b6 = data[i + 6] if i + 6 < n else 0
+        b7 = data[i + 7] if i + 7 < n else 0
         word = (
             (b0 & 0xFF)
             | ((b1 & 0xFF) << 8)
@@ -51,7 +51,9 @@ def convert_bin_to_64b_lines(data: bytes) -> list[str]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Convert raw binary to 64-bit-per-line binary text (LE pack, MSB-left)")
+    ap = argparse.ArgumentParser(
+        description="Convert raw binary to 64-bit-per-line binary text (LE pack, MSB-left)"
+    )
     ap.add_argument("--input", required=True, help="Path to input raw binary (.bin)")
     ap.add_argument("--output", required=True, help="Path to output text file (.bin64)")
     args = ap.parse_args()
@@ -72,5 +74,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

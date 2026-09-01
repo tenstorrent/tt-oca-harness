@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .dtp_types import DTP_IR_WIDTH, DtpJtagInstr, JTAG2AXI_TARGETS
+from .dtp_types import DTP_IR_WIDTH, JTAG2AXI_TARGETS, DtpJtagInstr
 
 DTP_DEFAULT_IDCODE = 0x0000_0001
 DTP_BYPASS_LEN = 1
@@ -65,8 +65,8 @@ def pack_jtag_caps() -> int:
         | (1 << 12)  # CLAMP_INST_EN
         | (1 << 11)  # INTEST_INST_EN
         | (1 << 10)  # EXTEST_PULSE_EN
-        | (1 << 9)   # EXTEST_TRAIN_EN
-        | (1 << 8)   # BSR_INST_EN
+        | (1 << 9)  # EXTEST_TRAIN_EN
+        | (1 << 8)  # BSR_INST_EN
         | DTP_OCH_VER
     )
 

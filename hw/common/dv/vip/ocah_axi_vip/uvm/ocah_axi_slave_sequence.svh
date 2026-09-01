@@ -113,6 +113,22 @@ class ocah_axi_slave_sequence extends uvm_object;
     endfunction
 
     // ------------------------------------------------------------------
+    // Bounded READY backpressure (cocotb enable_backpressure parity):
+    // READY low for stall_cycles then high for one cycle, repeating, on
+    // each selected channel ("aw"/"w"/"ar") until disabled.
+    // ------------------------------------------------------------------
+
+    function void enable_backpressure(string channels[$], int unsigned stall_cycles);
+        check_bound();
+        responder.cfg.enable_backpressure(channels, stall_cycles);
+    endfunction
+
+    function void disable_backpressure();
+        check_bound();
+        responder.cfg.disable_backpressure();
+    endfunction
+
+    // ------------------------------------------------------------------
     // Statistics.
     // ------------------------------------------------------------------
 

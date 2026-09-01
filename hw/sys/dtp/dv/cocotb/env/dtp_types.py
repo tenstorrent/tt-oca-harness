@@ -88,8 +88,7 @@ class DtpJtagInstr(IntEnum):
 
 
 UNDEFINED_BYPASS_INSTRS = tuple(
-    DtpJtagInstr(value)
-    for value in [0x0F, *range(0x10, 0x18), *range(0x2D, 0x3D)]
+    DtpJtagInstr(value) for value in [0x0F, *range(0x10, 0x18), *range(0x2D, 0x3D)]
 )
 
 
@@ -278,9 +277,9 @@ class DtpJtag2AxiTargetCfg:
 # SMC fabric debug AXI geometry (dtp_pkg: ADDR=56, DATA=64).
 SMC_DBG_ADDR_WIDTH = 56
 SMC_DBG_DATA_WIDTH = 64
-SMC_DBG_SIZE_BITS = 2          # SCAN_CHAIN_SIZE_FIELD_WIDTH for 64-bit data
-SMC_DBG_WSTRB_BITS = 8         # DATA_WIDTH/8
-SMC_DBG_AXSIZE_8B = 3          # AXI awsize/arsize for a full 8-byte beat
+SMC_DBG_SIZE_BITS = 2  # SCAN_CHAIN_SIZE_FIELD_WIDTH for 64-bit data
+SMC_DBG_WSTRB_BITS = 8  # DATA_WIDTH/8
+SMC_DBG_AXSIZE_8B = 3  # AXI awsize/arsize for a full 8-byte beat
 
 # SINGLE_OP DR layout (LSB-first): OP[2] | SIZE | WSTRB | DATA | ADDR
 _OP_OFF = 0

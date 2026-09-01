@@ -14,7 +14,6 @@ class SmcGpioOp(Enum):
 
 
 class SmcGpioItem(uvm_sequence_item):
-
     def __init__(self, name: str = "SmcGpioItem") -> None:
         super().__init__(name)
         self.op: SmcGpioOp = SmcGpioOp.SAMPLE

@@ -14,19 +14,20 @@ address, so the DAT `dynamic_address` field and target address-match logic see a
 wider value space. The verify payload is random bytes. The private write on the
 re-assigned address is the built-in scoreboard.
 """
+
 import cocotb
-from i3c_test_base import make_env, bring_up_and_assign, DEFAULT_DYNAMIC_ADDR
-from i3c_rand import RandMgr, rand_i3c_addr, rand_bytes, rand_len
+from i3c_rand import RandMgr, rand_bytes, rand_i3c_addr, rand_len
+from i3c_test_base import DEFAULT_DYNAMIC_ADDR, bring_up_and_assign, make_env
 
 SETNEWDA_CCC = 0x88
 MWL = 64
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_setnewda(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="setnewda")              # seed logged; +seed/SEED override
+    r = RandMgr(name="setnewda")  # seed logged; +seed/SEED override
 
     # New dynamic address: legal, non-reserved, and != the SETDASA-assigned one.
     new_dyn = rand_i3c_addr(r, exclude={DEFAULT_DYNAMIC_ADDR})

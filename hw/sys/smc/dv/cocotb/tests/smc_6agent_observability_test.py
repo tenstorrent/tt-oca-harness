@@ -3,11 +3,11 @@
 """SMC OSS PyUVM 6-agent full observability test."""
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib._one_shot import _OneShot
 from seq_lib.smc_6agent_observability_test_seq import (
     smc_6agent_observability_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -18,6 +18,7 @@ class smc_6agent_observability_test(smc_base_test):
         async def _mk(sequencer):
             async def dispatch(item):
                 await _OneShot(item, "os").start(sequencer)
+
             return dispatch
 
         seq.dispatch_reset = await _mk(self.env.reset_agent.sequencer)

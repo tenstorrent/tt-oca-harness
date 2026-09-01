@@ -12,14 +12,12 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_base_test_seq import smc_base_test_seq
 
 
 class smc_powergood_glitch_test_seq(smc_base_test_seq):
-
     GLITCH_DURATION_REF_CYCLES = 8
     RECOVER_WAIT_REF_CYCLES = 500
 

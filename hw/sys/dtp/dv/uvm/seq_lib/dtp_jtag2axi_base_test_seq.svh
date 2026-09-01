@@ -107,6 +107,26 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
         return t;
     endfunction
 
+    static function j2a_target_t target_sep_otp();
+        j2a_target_t t;
+        t.name                          = "sep_otp";
+        t.single_op_instr               = jtag_inst_reg_pkg::SEP_OTP_AXI_SINGLE_OP_INSTR;
+        t.series_ctrl_instr             = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_CTRL_INSTR;
+        t.series_data_incr_instr        = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
+        t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+        t.series_data_with_status_instr =
+            jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+        t.addr_width      = 32;
+        t.data_width      = 32;
+        t.size_bits       = 2;
+        t.wstrb_bits      = 4;
+        t.default_size    = 2;
+        t.beat_bytes      = 4;
+        t.dbg_disable_mask = '0;
+        t.dbg_disable_mask.sep_otp_jtag2axi = 1'b1;
+        return t;
+    endfunction
+
     static function j2a_target_t target_smc_axi();
         j2a_target_t t;
         t.name                          = "smc_axi";
@@ -657,6 +677,20 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
         #20ns;
     endtask
 
+    // Bounded responder READY backpressure on the target under test (cocotb
+    // configure_target_backpressure parity; channel names are "aw"/"w"/"ar").
+    function void configure_target_backpressure(j2a_target_t t, string channels[$],
+                                                int unsigned stall_cycles);
+        `uvm_info(get_type_name(), $sformatf(
+            "%s configure backpressure channels=%p stall_cycles=%0d",
+            t.name, channels, stall_cycles), UVM_MEDIUM)
+        responder(t).enable_backpressure(channels, stall_cycles);
+    endfunction
+
+    function void clear_target_backpressure(j2a_target_t t);
+        responder(t).disable_backpressure();
+    endfunction
+
     // --- system-domain helpers ----------------------------------------------
     // The UVM harness clock is fixed at 100 MHz, so system-domain waits are
     // exact delays (sequences hold no clock handle).
@@ -683,6 +717,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
             aw = tb_vif.smc_otp_axil_awvalid_count;
             w  = tb_vif.smc_otp_axil_wvalid_count;
             ar = tb_vif.smc_otp_axil_arvalid_count;
+        end else if (t.name == "sep_otp") begin
+            aw = tb_vif.sep_otp_axil_awvalid_count;
+            w  = tb_vif.sep_otp_axil_wvalid_count;
+            ar = tb_vif.sep_otp_axil_arvalid_count;
         end else begin
             aw = tb_vif.smc_axi_awvalid_count;
             w  = tb_vif.smc_axi_wvalid_count;

@@ -30,21 +30,31 @@ The testbench configures internal CTPs with mixed modes:
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer, FallingEdge
-from test.test_base import (
-    start_clocks, init, init_axil, axil_write, axil_read, wait_cycles,
-    get_ctp_addr, get_ctm_src_config_addr,
-    CTP_REG_CONFIG, CTP_REG_STRETCH_MULT,
-    NUM_CTP, NUM_INT_CT, NUM_CTM_PORTS,
-    NUM_INT_CT_WIRE_OR, NUM_INT_CT_P2P,
-    is_internal_ct_wire_or, is_internal_ct_p2p,
-    AxiLiteMaster
-)
+from cocotb.triggers import RisingEdge
 
+from test.test_base import (
+    CTP_REG_CONFIG,
+    CTP_REG_STRETCH_MULT,
+    NUM_CTM_PORTS,
+    NUM_CTP,
+    NUM_INT_CT,
+    NUM_INT_CT_P2P,
+    NUM_INT_CT_WIRE_OR,
+    AxiLiteMaster,
+    axil_read,
+    axil_write,
+    get_ctm_src_config_addr,
+    get_ctp_addr,
+    init,
+    init_axil,
+    start_clocks,
+    wait_cycles,
+)
 
 # =============================================================================
 # External CTP Tests
 # =============================================================================
+
 
 @cocotb.test()
 async def test_external_ctp_wire_or_loopback(dut):
@@ -98,7 +108,9 @@ async def test_external_ctp_wire_or_loopback(dut):
 
         # Verify CTM configuration
         readback = await axil_read(dut, axil, ctm_src_addr)
-        assert readback == select_mask, f"CTP[{ctp_idx}] CTM config mismatch: 0x{readback:X} != 0x{select_mask:X}"
+        assert readback == select_mask, (
+            f"CTP[{ctp_idx}] CTM config mismatch: 0x{readback:X} != 0x{select_mask:X}"
+        )
 
         # Clear GPIO inputs
         dut.ctp_req_out_din.value = 0
@@ -209,8 +221,9 @@ async def test_external_ctp_p2p_loopback(dut):
         dut._log.info(f"  CTP[{ctp_idx}]: req_in=0x{trigger_mask:X}, req_out=0x{req_out_dout:X}")
 
         # Verify the output is set
-        assert (req_out_dout & expected_mask) != 0, \
+        assert (req_out_dout & expected_mask) != 0, (
             f"CTP[{ctp_idx}] P2P loopback failed: expected bit {ctp_idx} set in req_out 0x{req_out_dout:X}"
+        )
 
         # Clear input and complete handshake
         dut.ctp_req_in_din.value = 0
@@ -233,6 +246,7 @@ async def test_external_ctp_p2p_loopback(dut):
 # =============================================================================
 # Internal CT Tests
 # =============================================================================
+
 
 @cocotb.test()
 async def test_internal_ct_wire_or_loopback(dut):
@@ -266,7 +280,9 @@ async def test_internal_ct_wire_or_loopback(dut):
     await wait_cycles(dut, 10)
 
     dut._log.info("=== Internal CT Wire-OR Loopback Test Starting ===")
-    dut._log.info(f"Testing {NUM_INT_CT_WIRE_OR} internal CTs in Wire-OR mode (indices 0-{NUM_INT_CT_WIRE_OR-1})")
+    dut._log.info(
+        f"Testing {NUM_INT_CT_WIRE_OR} internal CTs in Wire-OR mode (indices 0-{NUM_INT_CT_WIRE_OR - 1})"
+    )
 
     if NUM_INT_CT_WIRE_OR == 0:
         dut._log.info("No internal CTs in Wire-OR mode configured, skipping test")
@@ -277,7 +293,9 @@ async def test_internal_ct_wire_or_loopback(dut):
         # Internal CTPs are indexed after external CTPs in CTM
         ctm_port_idx = NUM_CTP + int_ct_idx
 
-        dut._log.info(f"Testing Internal CT[{int_ct_idx}] Wire-OR (CTM port {ctm_port_idx}) loopback...")
+        dut._log.info(
+            f"Testing Internal CT[{int_ct_idx}] Wire-OR (CTM port {ctm_port_idx}) loopback..."
+        )
 
         # Configure CTM to route this internal CT back to itself
         ctm_src_addr = get_ctm_src_config_addr(ctm_port_idx)
@@ -307,7 +325,9 @@ async def test_internal_ct_wire_or_loopback(dut):
 
             if (ctm_src_req & expected_mask) != 0:
                 output_detected = True
-                dut._log.info(f"  Internal CT[{int_ct_idx}]: Output detected at cycle {cycle}, ctm_src_req=0x{ctm_src_req:X}")
+                dut._log.info(
+                    f"  Internal CT[{int_ct_idx}]: Output detected at cycle {cycle}, ctm_src_req=0x{ctm_src_req:X}"
+                )
                 break
 
             # Clear input after 5 cycles (short pulse for edge detection)
@@ -315,8 +335,9 @@ async def test_internal_ct_wire_or_loopback(dut):
                 dut.ctm_dst_req.value = 0
 
         # Verify output was detected
-        assert output_detected, \
+        assert output_detected, (
             f"Internal CT[{int_ct_idx}] Wire-OR loopback failed: output never detected on ctm_src_req"
+        )
 
         # Wait for pulse to complete
         await wait_cycles(dut, 10)
@@ -363,7 +384,9 @@ async def test_internal_ct_p2p_loopback(dut):
     await wait_cycles(dut, 10)
 
     dut._log.info("=== Internal CT Point-to-Point Loopback Test Starting ===")
-    dut._log.info(f"Testing {NUM_INT_CT_P2P} internal CTs in P2P mode (indices {NUM_INT_CT_WIRE_OR}-{NUM_INT_CT-1})")
+    dut._log.info(
+        f"Testing {NUM_INT_CT_P2P} internal CTs in P2P mode (indices {NUM_INT_CT_WIRE_OR}-{NUM_INT_CT - 1})"
+    )
 
     if NUM_INT_CT_P2P == 0:
         dut._log.info("No internal CTs in P2P mode configured, skipping test")
@@ -375,7 +398,9 @@ async def test_internal_ct_p2p_loopback(dut):
         # Internal CTPs are indexed after external CTPs in CTM
         ctm_port_idx = NUM_CTP + int_ct_idx
 
-        dut._log.info(f"Testing Internal CT[{int_ct_idx}] P2P (CTM port {ctm_port_idx}) full handshake...")
+        dut._log.info(
+            f"Testing Internal CT[{int_ct_idx}] P2P (CTM port {ctm_port_idx}) full handshake..."
+        )
 
         # Configure CTM to route this internal CT back to itself
         ctm_src_addr = get_ctm_src_config_addr(ctm_port_idx)
@@ -405,11 +430,12 @@ async def test_internal_ct_p2p_loopback(dut):
             ctm_dst_ack = int(dut.ctm_dst_ack.value)
             if (ctm_dst_ack & trigger_mask) != 0:
                 dst_ack_detected = True
-                dut._log.info(f"  Phase 2: ctm_dst_ack detected at cycle {cycle}, ctm_dst_ack=0x{ctm_dst_ack:X}")
+                dut._log.info(
+                    f"  Phase 2: ctm_dst_ack detected at cycle {cycle}, ctm_dst_ack=0x{ctm_dst_ack:X}"
+                )
                 break
 
-        assert dst_ack_detected, \
-            f"Internal CT[{int_ct_idx}] P2P: ctm_dst_ack never asserted"
+        assert dst_ack_detected, f"Internal CT[{int_ct_idx}] P2P: ctm_dst_ack never asserted"
 
         # === Phase 3: Wait for ctm_src_req (loopback through CTM) ===
         src_req_detected = False
@@ -418,17 +444,21 @@ async def test_internal_ct_p2p_loopback(dut):
             ctm_src_req = int(dut.ctm_src_req.value)
             if (ctm_src_req & trigger_mask) != 0:
                 src_req_detected = True
-                dut._log.info(f"  Phase 3: ctm_src_req detected at cycle {cycle}, ctm_src_req=0x{ctm_src_req:X}")
+                dut._log.info(
+                    f"  Phase 3: ctm_src_req detected at cycle {cycle}, ctm_src_req=0x{ctm_src_req:X}"
+                )
                 break
 
-        assert src_req_detected, \
+        assert src_req_detected, (
             f"Internal CT[{int_ct_idx}] P2P loopback failed: ctm_src_req never detected"
+        )
 
         # Verify ctm_src_req stays high (level-based)
         await wait_cycles(dut, 3)
         ctm_src_req = int(dut.ctm_src_req.value)
-        assert (ctm_src_req & trigger_mask) != 0, \
+        assert (ctm_src_req & trigger_mask) != 0, (
             f"Internal CT[{int_ct_idx}] P2P: ctm_src_req did not stay high"
+        )
 
         # === Phase 4: Assert ack to complete handshake ===
         dut._log.info(f"  Phase 4: Assert ctm_src_ack[{int_ct_idx}] to complete handshake")
@@ -436,21 +466,23 @@ async def test_internal_ct_p2p_loopback(dut):
         await wait_cycles(dut, 5)
 
         # === Phase 5: Clear request, verify handshake completes ===
-        dut._log.info(f"  Phase 5: Clear ctm_dst_req, verify handshake completion")
+        dut._log.info("  Phase 5: Clear ctm_dst_req, verify handshake completion")
         dut.ctm_dst_req.value = 0
         await wait_cycles(dut, 10)
 
         # Verify ctm_src_req clears after handshake
         ctm_src_req_after = int(dut.ctm_src_req.value)
         dut._log.info(f"  After handshake: ctm_src_req=0x{ctm_src_req_after:X}")
-        assert (ctm_src_req_after & trigger_mask) == 0, \
+        assert (ctm_src_req_after & trigger_mask) == 0, (
             f"Internal CT[{int_ct_idx}] P2P: ctm_src_req did not clear after handshake"
+        )
 
         # Verify ctm_dst_ack clears
         ctm_dst_ack_after = int(dut.ctm_dst_ack.value)
         dut._log.info(f"  After handshake: ctm_dst_ack=0x{ctm_dst_ack_after:X}")
-        assert (ctm_dst_ack_after & trigger_mask) == 0, \
+        assert (ctm_dst_ack_after & trigger_mask) == 0, (
             f"Internal CT[{int_ct_idx}] P2P: ctm_dst_ack did not clear after handshake"
+        )
 
         # Clear ack
         dut.ctm_src_ack.value = 0
@@ -466,6 +498,7 @@ async def test_internal_ct_p2p_loopback(dut):
 # =============================================================================
 # CTM Routing Tests
 # =============================================================================
+
 
 @cocotb.test()
 async def test_ctm_routing_matrix(dut):

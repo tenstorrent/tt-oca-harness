@@ -387,8 +387,7 @@ args = ["+cpu_boot"]
 # here -- the profile->DUT merge REPLACES that array, which would drop the profile flags.
 # Each target below therefore re-states the three SEP -Wno flags; the profile's
 # [target_defaults.default] is still inherited (selected_target uses it as the fallback
-# for every target name). +define+SYNTHESIS is re-stated there too, and is Verilator-only:
-# see [targets.default.tools.verilator].
+# for every target name).
 #
 # Compile targets keep the normal regression models explicit:
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
@@ -412,8 +411,8 @@ args = ["+cpu_boot"]
 # speedup.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
-# [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags
-# plus Verilator-only +define+SYNTHESIS; do NOT redefine [target_defaults.default].
+# [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags;
+# do NOT redefine [target_defaults.default].
 [targets.default]
 description = "cpu_all_live: full VeeR EL2 CPU; m_axi + j_axi always live (fallback for all cpu tests)"
 build_dir = "hw/sys/sep/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
@@ -427,13 +426,6 @@ defines = [
 
 [targets.default.tools.verilator]
 flags = [
-  # SYNTHESIS no-ops every `ifndef SYNTHESIS` concurrent-assertion / cover
-  # block (prim_assert.sv ASSERT/ASSUME, prim_alert_sender sequences, kmac
-  # sha3pad `##[1:$]`). Only Verilator cannot parse those, so the define is
-  # scoped to Verilator here rather than sitting in the tool-agnostic
-  # `defines` list -- there it also silenced every assertion under VCS and
-  # Xcelium, where they compile and fire correctly.
-  "+define+SYNTHESIS",
   # PeakRDL reg blocks reset their axil_resp_buffer struct-array via an NBA in a
   # for-loop (incl. the read-target sep_cpu_ctrl_reg) -> Verilator BLKLOOPINIT,
   # suppressed here (the loop-style reset is functionally correct for the read path).
@@ -462,7 +454,6 @@ sources = [
 
 [targets.rom_boot.tools.verilator]
 flags = [
-  "+define+SYNTHESIS",   # Verilator-only; see [targets.default.tools.verilator]
   "-Wno-BLKLOOPINIT",
   "-Wno-UNUSEDSIGNAL",
   "-Wno-UNUSEDPARAM",
@@ -486,5 +477,4 @@ sources = [
 ]
 
 [targets.lsu_stub_all_live.tools.verilator]
-# +define+SYNTHESIS is Verilator-only; see [targets.default.tools.verilator]
-flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "+define+SYNTHESIS"]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]

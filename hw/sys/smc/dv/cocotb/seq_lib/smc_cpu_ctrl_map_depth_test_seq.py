@@ -18,14 +18,30 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # revision mislabelled these as RESET_VECTOR_*/GLOBAL_BASE/LOCAL_BASE/REGION_SIZE
 # -- the audit corrected them to the real RDL register identities.)
 CPU_MAP_READS = [
-    ("GLOBAL_BASE",                          smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR"), 0x4000_0000),  # rdl base=0x4000_0000
-    ("LOCAL_BASE",                           smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR"), smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")),  # rdl base=smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
-    ("HANG_DET_DATA_ACCEL_CTRL",             smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR") + 0x40, 0x0),          # enable/irq_en/irq_test=0
-    ("HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD", smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR") + 0x48, 0x0000_1000), # rdl value[19:0]=0x1000
+    (
+        "GLOBAL_BASE",
+        smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR"),
+        0x4000_0000,
+    ),  # rdl base=0x4000_0000
+    (
+        "LOCAL_BASE",
+        smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR"),
+        smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR"),
+    ),  # rdl base=smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
+    (
+        "HANG_DET_DATA_ACCEL_CTRL",
+        smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR") + 0x40,
+        0x0,
+    ),  # enable/irq_en/irq_test=0
+    (
+        "HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD",
+        smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR") + 0x48,
+        0x0000_1000,
+    ),  # rdl value[19:0]=0x1000
     # 0xC001_0050 has no register in smc_base_config.rdl (last reg ends at 0x48);
     # it reads back 0x0 as reserved/open-bus space within the block window --
     # kept as a decode-reachability read, not a spec register value.
-    ("SMC_BASE_CONFIG_RSVD_0x50",            0xC001_0050, 0x0),
+    ("SMC_BASE_CONFIG_RSVD_0x50", 0xC001_0050, 0x0),
 ]
 
 

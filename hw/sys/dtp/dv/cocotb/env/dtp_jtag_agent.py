@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
+from ocah_jtag_vip import OcahJtagMasterDriver
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -18,8 +19,6 @@ from pyuvm import (
     uvm_driver,
     uvm_sequencer,
 )
-
-from ocah_jtag_vip import OcahJtagMasterDriver
 
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_tap_device import DtpTapDevice

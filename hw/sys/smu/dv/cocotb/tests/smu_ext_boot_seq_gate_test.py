@@ -11,7 +11,6 @@ import cocotb
 import pyuvm
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_ext_boot_seq_gate_test_seq import smu_ext_boot_seq_gate_test_seq
 from smu_base_test import smu_base_test
 
@@ -23,12 +22,8 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
     async def bring_up(self) -> None:
         """Clocks + cold release with boot gate held at 0 (card S1)."""
         dut = cocotb.top
-        cocotb.start_soon(
-            Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(
-            Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(
             Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
         )

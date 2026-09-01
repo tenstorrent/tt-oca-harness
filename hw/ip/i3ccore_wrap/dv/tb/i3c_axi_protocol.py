@@ -16,9 +16,10 @@ Note: uses QUEUE_THLD_CTRL @ 0x090, a confirmed RW register. The DAT region
 (0x400+) is NOT used here — it is external 64-bit SRAM, not a plain 32-bit
 scratch register, and an un-written entry reads X.
 """
+
 import cocotb
-from i3c_test_base import make_env, CTRL_BASE
 from i3c_rand import RandMgr
+from i3c_test_base import CTRL_BASE, make_env
 
 QUEUE_THLD_CTRL = 0x090
 HC_CONTROL = 0x004
@@ -33,10 +34,10 @@ def _rand_thld_pattern(r):
             return p
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_axi_protocol(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
-    r = RandMgr(name="axi_protocol")          # seed logged; +seed/SEED override
+    r = RandMgr(name="axi_protocol")  # seed logged; +seed/SEED override
 
     pattern = _rand_thld_pattern(r)
     # Mapped write / read-back round-trip
