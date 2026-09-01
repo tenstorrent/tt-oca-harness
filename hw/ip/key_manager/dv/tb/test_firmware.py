@@ -1507,8 +1507,7 @@ class TestbenchCommandHandler:
             fifo_clr = int(self.dut.tb_km_fifo_clr.value)
             inbound_empty = int(self.dut.u_key_manager.u_mailbox.inbound_empty.value)
             self.dut._log.info(
-                f"[TB CMD] KM READ_DATA AR handshake={ar_done} "
-                f"clr={fifo_clr} empty={inbound_empty}"
+                f"[TB CMD] KM READ_DATA AR handshake={ar_done} clr={fifo_clr} empty={inbound_empty}"
             )
             if not ar_done:
                 self.dut._log.error("[TB CMD] KM READ_DATA AR did not handshake on flush cycle")
