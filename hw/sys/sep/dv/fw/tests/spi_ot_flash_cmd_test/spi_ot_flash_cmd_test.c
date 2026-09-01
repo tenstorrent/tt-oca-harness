@@ -11,8 +11,15 @@
 // Flow: JEDEC, then WREN -> RDSR (WEL set) -> WRDI -> RDSR (WEL clear), then
 // WREN -> PAGE PROGRAM -> READ + verify == pattern -> FAST_READ, then neighbour
 // PAGE PROGRAM, then WREN -> SECTOR ERASE -> READ == 0xFF with neighbour intact.
-// ERROR_STATUS checked == 0. The BFM is instant-ready (no WIP bit); dual/quad
-// lanes are not modeled. Neither is a checker here.
+// Then the write-protect and status-register-2 breadth: RDSR proves the erase
+// cleared WIP and consumed WEL, a PAGE PROGRAM with WEL clear must NOT land, and
+// RDSR2 (0x35) must return SR2 rather than the SR1 value. ERROR_STATUS checked
+// == 0 across all of that. Finally the host error classes are provoked one at a
+// time (underflow, reserved CMD.SPEED, out-of-range CSID) and recovered.
+//
+// The flash model is instant-ready, so WIP is never observed set; the WIP check
+// is "a defined status with WIP clear", not a busy-then-idle waveform. Dual and
+// quad lanes are not modeled, so no checker here covers them.
 //
 // The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
 // pattern directly.
@@ -35,12 +42,12 @@
 #include "sep_spi.h"
 
 #define TIMEOUT 200000
-#define WIP_POLL_LIM 100000
 #define MAX_WORDS 16
 
 #define FLASH_CMD_WREN 0x06u
 #define FLASH_CMD_WRDI 0x04u
 #define FLASH_CMD_RDSR 0x05u
+#define FLASH_CMD_RDSR2 0x35u
 #define FLASH_CMD_JEDEC 0x9Fu
 #define FLASH_CMD_PP 0x02u
 #define FLASH_CMD_READ 0x03u
@@ -49,6 +56,10 @@
 #define FLASH_SR_WIP (1u << 0)
 #define FLASH_SR_WEL (1u << 1)
 #define FLASH_JEDEC_RX 0x0018BA20u
+
+// CMD.SPEED == 3 is reserved; the host must reject the segment rather than run
+// it (spi_controller.sv test_speed_inval).
+#define SPI_CMD_SPEED_RESERVED 3u
 
 // Non-ASCII sentinel that the cocotb test byte-searches for in the DTCM image to
 // locate this block (avoids needing the .map). Stored little-endian: DE C0 11 5A.
@@ -125,13 +136,19 @@ static int flash_rdsr_checked(uint8_t *out) {
     return 0;
 }
 
-static int flash_wip_wait(void) {
-    for (int i = 0; i < WIP_POLL_LIM; i++) {
-        uint8_t sr;
-        if (flash_rdsr_checked(&sr)) return -1;
-        if (!(sr & FLASH_SR_WIP)) return 0;
-    }
-    return -1;
+// RDSR2 (0x35). A separate device register from RDSR (0x05): the flash model
+// answers 0x35 from status_reg2 and 0x05 from status_reg1 | WEL
+// (hw/common/dv/vip/ocah_spi_vip/cocotb/ocah_spi_flash.py). Returns 0 and stores
+// the byte, or -1 if the controller never responded.
+static int flash_rdsr2(uint8_t *out) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_RDSR2);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
+    if (spi_wait_idle(TIMEOUT)) return -1;
+    *out = (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR) & 0xFF);
+    return 0;
 }
 
 static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwords) {
@@ -188,6 +205,46 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
         out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     }
     return 0;
+}
+
+// The OT SPI host holds its core disabled while ANY ERROR_STATUS bit is latched
+// (spi_controller.sv: en = en_sw & ~enb_error, enb_error = ERROR_STATUS.intr).
+// Recovery is CTRL.SW_RST -- which flushes the command queue and both data FIFOs,
+// so the segment that provoked the error cannot run on the bus once the core is
+// re-enabled -- followed by the W1C of ERROR_STATUS. Returns what ERROR_STATUS
+// still reads afterwards; 0 means the host is released.
+static uint32_t spi_err_recover(void) {
+    uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl | SPI_CONTROLLER__CTRL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CTRL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
+    return spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+}
+
+// Shared tail for the three error injections: ERROR_STATUS must read EXACTLY the
+// one bit the provoked class owns (no bit missing, no other class collaterally
+// latched), and the SW_RST + W1C recovery must leave it clear. Both values are
+// read back from the host, and both are compared against literals that do not
+// come from the injection.
+static int spi_err_expect(uint32_t expect_bm) {
+    int err = 0;
+    uint32_t es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (es != expect_bm) {
+        sep_mbx_puts("FAIL: ERROR_STATUS=");
+        sep_mbx_puthex(es);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(expect_bm);
+        sep_mbx_putc('\n');
+        err++;
+    }
+    uint32_t residual = spi_err_recover();
+    if (residual != 0) {
+        sep_mbx_puts("FAIL: ERROR_STATUS did not W1C-clear, residual=");
+        sep_mbx_puthex(residual);
+        sep_mbx_putc('\n');
+        err++;
+    }
+    return err;
 }
 
 int main(void) {
@@ -392,6 +449,93 @@ int main(void) {
         }
     }
 
+    // --- CHK-WIP / CHK-WEL-AUTOCLR: device status after the erase completed ---
+    // One RDSR carries two contracts. WIP: the device reports the erase complete.
+    // The model is instant-ready and never raises WIP, so this is "a defined
+    // status with WIP clear" -- it fails on a wedged status path, not on erase
+    // latency, and it is NOT a gate the readback above waited on. WEL: the erase
+    // must CONSUME the write-enable latch; a WEL left set leaves the device armed
+    // for a program nobody asked for, which CHK-WP-PP below then depends on.
+    uint8_t sr_post;
+    if (flash_rdsr_checked(&sr_post)) {
+        sep_mbx_puts("FAIL: CHK-WIP status read timed out after ERASE\n");
+        errors++;
+    } else {
+        if (sr_post & FLASH_SR_WIP) {
+            sep_mbx_puts("FAIL: CHK-WIP WIP still set after ERASE, sr=");
+            sep_mbx_puthex(sr_post);
+            sep_mbx_putc('\n');
+            errors++;
+        } else {
+            sep_mbx_puts("CHK-WIP PASS: RDSR returned a defined status with WIP clear "
+                         "after ERASE\n");
+        }
+        if (sr_post & FLASH_SR_WEL) {
+            sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR WEL still set after ERASE, sr=");
+            sep_mbx_puthex(sr_post);
+            sep_mbx_putc('\n');
+            errors++;
+        } else {
+            sep_mbx_puts("CHK-WEL-AUTOCLR PASS: SECTOR ERASE consumed the write-enable "
+                         "latch (RDSR WEL clear)\n");
+        }
+    }
+
+    // --- CHK-WP-PP: a PAGE PROGRAM issued with WEL clear must not land ---
+    // WEL is clear here (the erase above consumed it and CHK-WEL-AUTOCLR proved
+    // so), and the sector reads erased. A device that programmed anyway would
+    // return the pattern instead of 0xFF -- the readback is over the same SPI
+    // datapath as every other check, not an internal peek.
+    if (flash_page_program(addr, exp, nwords)) {
+        sep_mbx_puts("FAIL: CHK-WP-PP unprotected PAGE PROGRAM timeout\n");
+        return 1;
+    }
+    if (flash_read(addr, rd, nwords)) {
+        sep_mbx_puts("FAIL: CHK-WP-PP readback timeout\n");
+        return 1;
+    }
+    int wp_ok = 1;
+    for (uint32_t i = 0; i < nwords; i++) {
+        if (rd[i] != 0xFFFFFFFFu) {
+            sep_mbx_puts("FAIL: CHK-WP-PP word ");
+            sep_mbx_puthex(i);
+            sep_mbx_puts(" got ");
+            sep_mbx_puthex(rd[i]);
+            sep_mbx_puts(" -- PAGE PROGRAM landed with WEL clear\n");
+            errors++;
+            wp_ok = 0;
+        }
+    }
+    if (wp_ok) {
+        sep_mbx_puts("CHK-WP-PP PASS: PAGE PROGRAM with WEL clear left the sector "
+                     "erased (0xFF)\n");
+    }
+
+    // --- CHK-RDSR2: opcode 0x35 reads status register 2, not status register 1 ---
+    // Run it with WEL KNOWN set, so SR1 reads 0x02: a 0x35 that is decoded as (or
+    // aliased onto) 0x05 returns 0x02 and fails. SR2 has no WEL bit and reads 0x00.
+    if (flash_wren()) {
+        sep_mbx_puts("FAIL: WREN(rdsr2) timeout\n");
+        return 1;
+    }
+    uint8_t sr2 = 0;
+    if (flash_rdsr2(&sr2)) {
+        sep_mbx_puts("FAIL: CHK-RDSR2 status-2 read timed out\n");
+        errors++;
+    } else if (sr2 != 0x00u) {
+        sep_mbx_puts("FAIL: CHK-RDSR2 got ");
+        sep_mbx_puthex(sr2);
+        sep_mbx_puts(" exp 0 (0x35 must not return SR1, which reads 0x02 here)\n");
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-RDSR2 PASS: opcode 0x35 returned SR2 0x00 while WEL was set "
+                     "in SR1\n");
+    }
+    if (flash_wrdi()) {
+        sep_mbx_puts("FAIL: WRDI(rdsr2) timeout\n");
+        return 1;
+    }
+
     // --- CHK-NO-ERROR: the OT SPI host saw no error across the whole sequence ---
     uint32_t err = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err != 0) {
@@ -403,8 +547,94 @@ int main(void) {
         sep_mbx_puts("CHK-NO-ERROR PASS: OT SPI ERROR_STATUS==0\n");
     }
 
+    // --- Error paths: provoke each ERROR_STATUS class the host reports ---
+    // Everything above ran with ERROR_STATUS == 0, so these injections start from
+    // a clean latch. Each one must set EXACTLY its own bit and nothing else, and
+    // must be recoverable; the host keeps its core disabled until software clears
+    // the latch, so an unrecoverable error would strand every later transfer.
+
+    // CHK-ERR-UNDERFLOW: reading RXDATA with the RX FIFO empty
+    // (spi_controller.sv: error_underflow = rx_ready & ~rx_valid).
+    int rx_drain = TIMEOUT;
+    while (rx_drain-- > 0 && (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+                              SPI_CONTROLLER__STATUS__RXQD_bm) != 0) {
+        (void)spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    }
+    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+        SPI_CONTROLLER__STATUS__RXQD_bm) {
+        sep_mbx_puts("FAIL: CHK-ERR-UNDERFLOW RX FIFO would not drain; the empty-read "
+                     "injection cannot be set up\n");
+        return errors + 1;
+    }
+    (void)spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR); // the empty read
+    int uf_err = spi_err_expect(SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bm);
+    errors += uf_err;
+    if (uf_err == 0) {
+        sep_mbx_puts("CHK-ERR-UNDERFLOW PASS: RXDATA read with RXQD==0 latched only "
+                     "ERROR_STATUS.UNDERFLOW and W1C released it\n");
+    }
+
+    // CHK-ERR-CMDINVAL: a COMMAND segment with the reserved SPEED encoding
+    // (spi_controller.sv: test_speed_inval on CMD.SPEED == 3).
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 1, 0) |
+               (SPI_CMD_SPEED_RESERVED << SPI_CONTROLLER__CMD__SPEED_bp));
+    int ci_err = spi_err_expect(SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bm);
+    errors += ci_err;
+    if (ci_err == 0) {
+        sep_mbx_puts("CHK-ERR-CMDINVAL PASS: CMD.SPEED==3 latched only "
+                     "ERROR_STATUS.CMDINVAL and W1C released it\n");
+    }
+
+    // CHK-ERR-CSIDINVAL: an otherwise legal segment issued with CSID beyond the
+    // one chip-select this instance has (sep_io.sv NUM_CS=1; spi_controller.sv:
+    // test_csid_inval = CSID >= NUM_CS).
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 1u);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    uint32_t csid_es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u); // restore before recovery
+    int cs_err = 0;
+    if (csid_es != SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm) {
+        sep_mbx_puts("FAIL: CHK-ERR-CSIDINVAL ERROR_STATUS=");
+        sep_mbx_puthex(csid_es);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm);
+        sep_mbx_putc('\n');
+        cs_err++;
+    }
+    uint32_t csid_residual = spi_err_recover();
+    if (csid_residual != 0) {
+        sep_mbx_puts("FAIL: CHK-ERR-CSIDINVAL ERROR_STATUS did not W1C-clear, residual=");
+        sep_mbx_puthex(csid_residual);
+        sep_mbx_putc('\n');
+        cs_err++;
+    }
+    errors += cs_err;
+    if (cs_err == 0) {
+        sep_mbx_puts("CHK-ERR-CSIDINVAL PASS: CSID==1 with NUM_CS==1 latched only "
+                     "ERROR_STATUS.CSIDINVAL and W1C released it\n");
+    }
+
+    // CHK-ERR-RECOVER: the host runs real bus traffic again after the three
+    // injections. A host left disabled by a stuck ERROR_STATUS returns nothing
+    // here, so this is the positive proof that the recovery above is real and
+    // that the flushed bogus segments never reached the device.
+    uint32_t jedec_post = 0;
+    if (flash_jedec(&jedec_post)) {
+        sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC timeout after error injection\n");
+        errors++;
+    } else if ((jedec_post & 0x00FFFFFFu) != FLASH_JEDEC_RX) {
+        sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC got ");
+        sep_mbx_puthex(jedec_post);
+        sep_mbx_putc('\n');
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-ERR-RECOVER PASS: READ ID 0x9F -> 0x0018ba20 again after "
+                     "underflow/cmdinval/csidinval recovery\n");
+    }
+
     if (errors == 0) {
-        sep_mbx_puts("PASS: OT SPI flash program/read/erase/no-error all OK\n");
+        sep_mbx_puts("PASS: OT SPI flash program/read/erase/protect/error-path all OK\n");
     }
     return errors;
 }

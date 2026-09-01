@@ -100,8 +100,18 @@ class sep_dma_basic_test(sep_base_test):
 
     def _stage_dtcm(self) -> str:
         cfg = SepDmaBasicCfg.from_seed(self.random_seed())
-        assert cfg.src_off + _BUSY_LEN <= _SRAM_SIZE
-        assert cfg.dst_off + _BUSY_LEN <= _SRAM_SIZE
+        # The source and destination windows must not overlap, or a copy would
+        # read bytes it has already written and the golden compare would pass on
+        # a DMA that did nothing. The ranges the config draws from are disjoint
+        # today; this fails if either is widened into the other. Bounding each
+        # offset against the SRAM size would restate the randrange that produced
+        # it and could not fail.
+        src_hi = cfg.src_off + _BUSY_LEN
+        dst_hi = cfg.dst_off + _BUSY_LEN
+        assert src_hi <= cfg.dst_off or dst_hi <= cfg.src_off, (
+            f"DMA windows overlap: src 0x{cfg.src_off:x}..0x{src_hi:x} "
+            f"dst 0x{cfg.dst_off:x}..0x{dst_hi:x}"
+        )
         patched = os.path.join(os.getcwd(), "sep_dtcm_dma.hex")
         patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(

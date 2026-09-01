@@ -29,6 +29,8 @@ from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
+    INTR_TEST,
+    INTR_TEST_WKUP_EXPIRED,
     INTR_WKUP_EXPIRED,
     WDOG_BARK_THOLD,
     WDOG_BITE_THOLD,
@@ -41,6 +43,7 @@ from seq_lib.sep_wdt_aon_seq import (
     WKUP_COUNT_LO,
     WKUP_CTRL,
     WKUP_ENABLE,
+    WKUP_PRESCALER_SHIFT,
     WKUP_THOLD_HI,
     WKUP_THOLD_LO,
     SepWdtAon,
@@ -94,6 +97,21 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             waited += step
         return False, val
 
+    async def _poll_at_least(
+        self, addr: int, floor: int, *, timeout_cycles: int, step: int
+    ) -> tuple[bool, int]:
+        """Poll addr until the read value is >= floor or timeout (for AON-domain
+        writes that settle over a few clk_wdt cycles via the register CDC)."""
+        waited = 0
+        val = 0
+        while waited < timeout_cycles:
+            val = await self.wdt.read(addr)
+            if val >= floor:
+                return True, val
+            await ClockCycles(cocotb.top.clk_i, step)
+            waited += step
+        return False, val
+
     async def run_scenario(self) -> None:
         self.cfg_wdt = SepWdtCfg(self.random_seed())
         self.logger.info("WDT config: %s", self.cfg_wdt.summary())
@@ -111,7 +129,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         self.wdt = SepWdtAon(self)
 
         await self._chk_wkup_count()
+        await self._chk_wkup_prescale()
         await self._chk_wkup_expire()
+        await self._chk_intr_test()
         await self._chk_wdog_pet()
         await self._chk_regwen_lock_and_nonvac()
         # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
@@ -144,6 +164,57 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             "INTR_STATE.wkup_expired stayed 0 under the high threshold",
             count1,
             count2,
+        )
+
+    async def _count_advance(self, prescaler: int, window_ticks: int) -> int:
+        """Restart the WKUP counter with ``prescaler`` and return its advance over
+        ``window_ticks`` clk_wdt ticks. The threshold stays high, so nothing expires."""
+        await self.wdt.write(WKUP_CTRL, 0)  # disable while configuring
+        await self.wdt.write(WKUP_COUNT_HI, 0)
+        await self.wdt.write(WKUP_COUNT_LO, 0)
+        await self.wdt.write(WKUP_THOLD_HI, 0)
+        await self.wdt.write(WKUP_THOLD_LO, self.cfg_wdt.wkup_high_thold)
+        await self.wdt.write(WKUP_CTRL, WKUP_ENABLE | (prescaler << WKUP_PRESCALER_SHIFT))
+        start = await self.wdt.read(WKUP_COUNT_LO)
+        await ClockCycles(cocotb.top.clk_i, window_ticks * self._tick)
+        end = await self.wdt.read(WKUP_COUNT_LO)
+        await self.wdt.write(WKUP_CTRL, 0)  # stop the counter before the readback is used
+        return end - start
+
+    async def _chk_wkup_prescale(self) -> None:
+        """CHK-WKUP-PRESCALE: WKUP_CTRL.prescaler divides the wakeup count rate.
+
+        aon_timer_core.sv gates wkup_incr on ``prescale_count_q == prescaler``, so the
+        counter advances once per ``prescaler + 1`` clk_wdt ticks. Measured over the
+        same window with prescaler=0 and prescaler=P, the divided advance must fit the
+        spec bound; a prescaler that is decoded but not applied advances at the
+        undivided rate and fails the bound.
+        """
+        window = 60  # clk_wdt ticks per measurement window
+        presc = self.cfg_wdt.wkup_prescaler
+        adv_fast = await self._count_advance(0, window)
+        adv_slow = await self._count_advance(presc, window)
+        # Nonvacuity against an independent literal: the undivided run must make real
+        # progress, otherwise "the divided run counted less" proves nothing.
+        assert adv_fast >= 20, (
+            f"CHK-WKUP-PRESCALE: prescaler=0 advanced only {adv_fast} over {window} "
+            f"clk_wdt ticks; the divided-rate bound below would be vacuous"
+        )
+        # Spec bound from the programmed divisor (plus one tick of CSR-read skew at
+        # each end of the window), NOT from the measured fast run.
+        bound = window // (presc + 1) + 2
+        assert adv_slow <= bound, (
+            f"CHK-WKUP-PRESCALE: prescaler={presc} advanced {adv_slow} over {window} "
+            f"clk_wdt ticks, above the divided bound {bound} (prescaler not applied?)"
+        )
+        self.logger.info(
+            "CHK-WKUP-PRESCALE PASS: WKUP_COUNT advanced %d ticks with prescaler=0 and "
+            "%d with prescaler=%d over the same %d-tick window (bound %d)",
+            adv_fast,
+            adv_slow,
+            presc,
+            window,
+            bound,
         )
 
     async def _chk_wkup_expire(self) -> None:
@@ -202,6 +273,39 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
         self.logger.info(
             "CHK-WKUP-EXPIRE PASS (RW1C): W1C cleared wkup_expired -> 0 (0x%08x)", post
+        )
+
+    async def _chk_intr_test(self) -> None:
+        """CHK-INTR-TEST: INTR_TEST.wkup_timer_expired forces INTR_STATE.wkup_expired.
+
+        The wakeup counter is disabled and zeroed first, so nothing but the INTR_TEST
+        write can raise the status bit (aon_timer.sv drives prim_intr_hw from
+        reg2hw.intr_test). W1C then clears it again.
+        """
+        await self.wdt.write(WKUP_CTRL, 0)  # counter off: the set below is attributable
+        await self.wdt.write(WKUP_COUNT_HI, 0)
+        await self.wdt.write(WKUP_COUNT_LO, 0)
+        await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)  # clear any stale status
+        pre = await self.wdt.read(INTR_STATE)
+        assert (pre & INTR_WKUP_EXPIRED) == 0, (
+            f"CHK-INTR-TEST: INTR_STATE.wkup_expired already set before the force "
+            f"(0x{pre:08x}); the set below would be unattributed"
+        )
+        await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
+        ok, val = await self._poll_bit_set(
+            INTR_STATE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+        )
+        assert ok, f"CHK-INTR-TEST: INTR_TEST did not set wkup_expired (INTR_STATE=0x{val:08x})"
+        await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)  # W1C
+        post = await self.wdt.read(INTR_STATE)
+        assert (post & INTR_WKUP_EXPIRED) == 0, (
+            f"CHK-INTR-TEST: W1C did not clear the forced wkup_expired (0x{post:08x})"
+        )
+        self.logger.info(
+            "CHK-INTR-TEST PASS: INTR_TEST forced INTR_STATE.wkup_expired (0x%08x) with the "
+            "wakeup counter off, and W1C cleared it (0x%08x)",
+            val,
+            post,
         )
 
     async def _chk_wdog_pet(self) -> None:
@@ -272,4 +376,38 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             bite_post,
             resp,
             resp_bite,
+        )
+
+        # CHK-REGWEN-SCOPE: the lock covers WDOG_CTRL / WDOG_BARK_THOLD /
+        # WDOG_BITE_THOLD only (aon_timer_reg_top.sv passes wdog_regwen_qs as
+        # src_regwen_i for those three registers and '0 for every other). The WKUP
+        # configuration and WDOG_COUNT must therefore still accept writes while the
+        # watchdog thresholds are locked -- a lock wired to the whole block would
+        # freeze the wakeup timer and the pet path with it.
+        thold_val = self.cfg_wdt.postlock_wkup_thold
+        await self.wdt.write(WKUP_THOLD_LO, thold_val)
+        thold_rb = await self.wdt.read(WKUP_THOLD_LO)
+        assert thold_rb == thold_val, (
+            f"CHK-REGWEN-SCOPE: WKUP_THOLD_LO write blocked by the WDOG lock "
+            f"(0x{thold_rb:08x} != 0x{thold_val:08x})"
+        )
+        count_val = self.cfg_wdt.postlock_wdog_count
+        await self.wdt.write(WDOG_COUNT, count_val)
+        landed, count_rb = await self._poll_at_least(
+            WDOG_COUNT, count_val, timeout_cycles=40 * self._tick, step=4 * self._tick
+        )
+        assert landed, (
+            f"CHK-REGWEN-SCOPE: WDOG_COUNT write blocked by the WDOG lock "
+            f"(0x{count_rb:08x} < 0x{count_val:08x})"
+        )
+        assert count_rb <= count_val + 0x100, (
+            f"CHK-REGWEN-SCOPE: WDOG_COUNT read 0x{count_rb:08x}, more than the CDC "
+            f"tolerance above the written 0x{count_val:08x}"
+        )
+        await self.wdt.write(WDOG_COUNT, 0)  # pet again: leave the watchdog far from bark
+        self.logger.info(
+            "CHK-REGWEN-SCOPE PASS: with WDOG_REGWEN=0, WKUP_THOLD_LO took 0x%08x and "
+            "WDOG_COUNT took 0x%08x -- the lock covers the watchdog config only",
+            thold_rb,
+            count_rb,
         )

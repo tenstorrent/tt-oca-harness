@@ -404,7 +404,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_spi_ot_flash_cmd_rand_test`
 |cpu
 |ocah_axi_vip, ocah_spi_vip, CPU FW
-|JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check.
+|JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery.
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
@@ -611,9 +611,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_efuse_rma_token_rand_test`
 
-|SPI-OT flash + DMA
+|SPI-OT flash command set
 |PROVEN
-|`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_*`
+|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the Phase-1 reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the row above and is not re-credited here.
 
 |WDT bark → NMI, pet, lock
 |PROVEN
@@ -625,7 +625,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Scratch bank reset domains (warm vs cold)
 |PROVEN
-|`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split, not the bank geometry: a warm reset clears the warm bank while the cold bank retains, and only a cold reset clears both. That pair is what makes the split real rather than two banks that merely exist. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. Scope: the vehicle exercises index 0 of each bank, so the domain is proven per bank and not per register, and the bank *size* is not graded here — see <<known-limitations>> for the count the specification asks for against the count the RTL implements.
+|`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
@@ -2817,9 +2817,15 @@ poll and yields the same pass.
 |CHK-SPI-IDLE
 |The SPI host returns to idle with a clean error status.
 |CHK-NONVAC
-|The programmed flash content is not the erased 0xFF pattern, given a source payload that contains a non-erased word.
+|The flash readback holds content that is not the erased 0xFF pattern, so the content compare above is not erased-against-erased. Scanned on the value the flash returned, not on the staged source, which the config forces non-erased and could never fail.
 |CHK-RAND-REP
-|The cocotb golden walked the deterministic length and trigger cells, requiring the expected number of write-enable and page-program transactions and a per-case address and data match.
+|The cocotb golden walked the deterministic length and trigger cells, requiring a literal floor of write-enable and page-program transactions on the bus and a per-case address and data match.
+|CHK-WIP
+|The flash write-in-progress bit clears before the content is read, so the compare runs against a settled page rather than one still being programmed.
+|CHK-MULTICHUNK
+|Every PAGE PROGRAM the device received is longer on the bus than one 16-byte DMA chunk, so the TX-watermark refill loop iterated. Counted from the bus, not from the scenario table.
+|CHK-ERR-OVERFLOW
+|A TXDATA write past `STATUS.TXFULL` latches exactly `ERROR_STATUS.OVERFLOW`; `CTRL.SW_RST` plus write-one-to-clear then lets a flash status read complete.
 |===
 
 '''''
@@ -2835,7 +2841,7 @@ poll and yields the same pass.
 
 *VIP / Model*: ocah_axi_vip, ocah_spi_vip, CPU FW
 
-*Objective*: JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check.
+*Objective*: JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery.
 
 *Test Procedure*:
 
@@ -2849,7 +2855,8 @@ poll and yields the same pass.
 |===
 |Checker |Contract
 |CHK-PROGRAM / CHK-READ
-|A page program followed by a read returns the exact random pattern at the exact random address.|CHK-ERASE
+|A page program followed by a read returns the exact random pattern at the exact random address.
+|CHK-ERASE
 |A sector erase leaves the programmed region reading all-ones and leaves the adjacent 4 KiB neighbour sector intact. The same-address read immediately before the erase returned non-erased random data through the same path.
 |CHK-NO-ERROR
 |The SPI host error status is zero after the sequence.
@@ -2861,12 +2868,32 @@ poll and yields the same pass.
 |WRDI runs on a WEL that RDSR just proved set, then RDSR sees WEL clear.
 |CHK-FAST-READ
 |FAST_READ returns the programmed pattern.
+|CHK-WIP
+|RDSR after the erase returns a defined status with the write-in-progress bit clear. The device model is instant-ready, so this fails on a wedged status path, not on erase latency.
+|CHK-WEL-AUTOCLR
+|The erase consumes the write-enable latch.
+|CHK-WP-PP
+|A page program issued with the write-enable latch clear does not land; the sector still reads all-ones. The BFM records no payload on that transaction.
+|CHK-RDSR2
+|Opcode `0x35` returns status register 2 while status register 1 reads write-enable set, so a decode that folds `0x35` onto `0x05` fails.
+|CHK-ERR-UNDERFLOW
+|Reading `RXDATA` with the receive FIFO empty latches exactly `ERROR_STATUS.UNDERFLOW`, then write-one-to-clear releases it.
+|CHK-ERR-CMDINVAL
+|A command with the reserved speed encoding latches exactly `ERROR_STATUS.CMDINVAL`, then write-one-to-clear releases it.
+|CHK-ERR-CSIDINVAL
+|A segment whose chip-select is outside `NUM_CS` latches exactly `ERROR_STATUS.CSIDINVAL`, then write-one-to-clear releases it.
+|CHK-ERR-RECOVER
+|READ ID completes with the BFM JEDEC identity after the three injections, so the host was released rather than left disabled.
+|CHK-RAND-REP
+|The seed varies the programmed address, word count and payload. The opcode sequence is fixed, and the BFM golden requires that exact observed order.
 |===
 *Scope*: the transaction-order golden requires the BFM-visible opcode sequence
 (JEDEC, WREN, RDSR, WRDI, program/read, FAST_READ, neighbour program/read, erase,
-primary and neighbour read). Dual and quad modes stay infrastructure-gated and
-are not exercised. They are BFM-gated, not a feature-scorecard
-hole.
+primary and neighbour read, post-erase status, the ignored write-protect program,
+RDSR2, and the recovery READ ID). The three `ERROR_STATUS` injections put nothing
+on the bus: the host disables its core the cycle the error latches. Dual and quad
+modes stay infrastructure-gated and are not exercised. They are BFM-gated, not a
+feature-scorecard hole.
 
 
 
@@ -2992,6 +3019,8 @@ deferred rather than covered.
 |The done bit is observed set and then cleared to zero.
 |CHK-ERR-OPCODE
 |An invalid opcode raises exactly the opcode error — asserted *exclusively*, so no other error bit may be set — with the done bit required clear, then cleared by write-one-to-clear. The recovery copy after the error matches the independent source snapshot.
+|CHK-ERR-ADDR
+|The address and range validation the engine applies before it moves a byte. Four refused descriptors, each asserting its `ERROR_CODE` bit *exclusively*: a 4-byte transfer whose source is not 4-byte aligned raises `src_addr_error`, the same on the destination raises `dst_addr_error`, a 2-byte transfer on an odd source raises `src_addr_error`, and an enabled range whose limit sits below its base raises `base_limit_error`. None may set `STATUS.done`, and a clean copy after the four proves the engine recovers. The RDL defines nine error bits; before this only the opcode and range-valid legs were ever provoked, and the address legs appeared solely in a diagnostic decode.
 |CHK-RAND-REP
 |Mode and width cells walk every seed; src/dst/length/fill come from the run seed.
 |===
@@ -3065,6 +3094,12 @@ deferred rather than covered.
 |A cold reset clears the cold bank too.
 |CHK-WARM-CLEAR / CHK-WARM-RETAIN
 |The warm-reset scratch bank clears while the cold bank retains its value across the same event — the pair that makes the domain split real.
+|CHK-BANK-ALIAS
+|Each of the sixteen implemented registers holds its own pattern, so an index-to-index or bank-to-bank alias fails.
+|CHK-WARM-BANK
+|A warm reset clears every warm register and leaves every cold register at its pattern.
+|CHK-COLD-BANK
+|A cold reset clears every register of both banks.
 |===
 *Independence limit*: the front-door and back-door values are not independent —
 the probe is assigned from the same flops the register read returns — so their
@@ -3152,6 +3187,12 @@ feature credit. Closing the isolation claim needs both a run mode where
 |A pre-lock threshold write lands, so the lock check below is not reading a reset value.
 |CHK-REGWEN-LOCK
 |Once locked, both `WDOG_BARK_THOLD` and `WDOG_BITE_THOLD` reject writes.
+|CHK-WKUP-PRESCALE
+|`WKUP_CTRL.prescaler` divides the wakeup count rate. The bound comes from the programmed divisor, not from the undivided measurement.
+|CHK-INTR-TEST
+|`INTR_TEST` forces `INTR_STATE.wkup_expired` with the wakeup counter off, then write-one-to-clear releases it.
+|CHK-REGWEN-SCOPE
+|With the watchdog lock closed, `WKUP_THOLD_LO` and `WDOG_COUNT` still accept writes. The lock covers the watchdog configuration only.
 |===
 
 '''''
@@ -3218,6 +3259,8 @@ feature credit. Closing the isolation claim needs both a run mode where
 |The implemented bit writes and reads back in both directions.
 |CHK-STUB-CONST
 |AES STATUS, HMAC INTR_STATE, OTBN STATUS and SW_DEBUG read the *same value* with `pka_cg_enable` set and clear, not merely OKAY on both: the first read of each witness is kept and the second, taken with the bit flipped, must match it. A witness whose value moved with the enable would answer OKAY either way, so completing the access is not the contract. Bound: these CSRs are constant in this build, so the compare catches an enable that perturbs them and cannot by itself distinguish "the bit gates nothing" from "these witnesses never change".
+|CHK-RSVD-RAZWI
+|An all-ones write to both 32-bit halves of `CLOCK_GATE_CTRL` reads back only the implemented bit. An unimplemented bit that stores, or an alias onto the upper half, fails here.
 |===
 *Scope limit*: the implemented contract is the designer placeholder, not a live
 per-IP clock gate.

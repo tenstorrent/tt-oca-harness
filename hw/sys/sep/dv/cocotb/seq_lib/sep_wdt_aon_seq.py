@@ -15,8 +15,12 @@ Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl
   WDOG_CTRL   +0x1C  enable[0]
   WDOG_BARK_THOLD +0x20 / WDOG_BITE_THOLD +0x24 / WDOG_COUNT +0x28
   INTR_STATE  +0x2C  wkup_expired[0] RW1C, wdog_bark[1] RW1C
-  INTR_TEST   +0x30  / WKUP_CAUSE +0x34 (wakeup-request; level-held, AON-domain,
-                       cleared by WRITING 0 once the count>=thold condition is gone)
+  INTR_TEST   +0x30  wkup_expired[0] / wdog_bark[1] force (prim_intr_hw)
+  WKUP_CAUSE  +0x34  wakeup-request; level-held, AON-domain, cleared by WRITING 0
+                     once the count>=thold condition is gone
+WDOG_REGWEN gates WDOG_CTRL / WDOG_BARK_THOLD / WDOG_BITE_THOLD only
+(aon_timer_reg_top.sv src_regwen_i): the WKUP registers and WDOG_COUNT stay
+writable while the watchdog config is locked.
 The WDT runs on clk_wdt (~1000x slower than the core clock in this env); the block
 is always clocked (no CLOCK_GATE_CTRL ungate needed).
 """
@@ -46,7 +50,10 @@ INTR_TEST = WDT_BASE + 0x30
 WKUP_CAUSE = WDT_BASE + 0x34
 
 WKUP_ENABLE = 1 << 0
+WKUP_PRESCALER_SHIFT = 1  # WKUP_CTRL.prescaler[12:1]
+WKUP_PRESCALER_MAX = 0xFFF
 WDOG_ENABLE = 1 << 0
+INTR_TEST_WKUP_EXPIRED = 1 << 0
 INTR_WKUP_EXPIRED = 1 << 0
 INTR_WDOG_BARK = 1 << 1
 
@@ -59,9 +66,11 @@ class SepWdtCfg:
     Single source of truth for the test's programmable thresholds: the small WKUP
     threshold that must expire within the poll budget, the large WKUP threshold that
     must NOT expire during the counter-advance window, and the WDOG_BARK_THOLD value
-    written before the REGWEN lock (plus a distinct post-lock attempt value). The
-    count/expiry/pet/lock contract is identical for every threshold; the randomization
-    just varies the values per seed. Seed logged. Single seed per invocation.
+    written before the REGWEN lock (plus a distinct post-lock attempt value), the
+    WKUP_CTRL prescaler divisor, and the values written to the registers the WDOG
+    lock must not reach. The count/expiry/prescale/pet/lock contract is identical
+    for every threshold; the randomization just varies the values per seed. Seed
+    logged. Single seed per invocation.
     """
 
     def __init__(self, seed: int) -> None:
@@ -73,12 +82,26 @@ class SepWdtCfg:
         )  # large: no expiry in the count window
         self.bark_prelock = rng.randrange(1, 0x1_0000)  # nonzero pre-lock BARK_THOLD
         self.bark_postlock = self.bark_prelock ^ 0xFFFF  # distinct locked-write attempt
+        # WKUP_CTRL.prescaler: the wakeup counter advances once every
+        # (prescaler + 1) clk_wdt ticks (aon_timer_core.sv wkup_incr), so a value
+        # well above 1 makes the divided rate distinguishable from prescaler=0
+        # inside one measurement window.
+        self.wkup_prescaler = rng.randrange(24, 64)
+        # Post-lock WKUP_THOLD_LO probe value: a register the WDOG lock must NOT
+        # reach. Distinct from every threshold above so the readback is attributable.
+        self.postlock_wkup_thold = 0x1000_0000 | rng.randrange(1, 0x1_0000)
+        # Post-lock WDOG_COUNT probe value: far above any count the enabled
+        # watchdog reaches organically in this window, so the readback cannot be
+        # confused with free running.
+        self.postlock_wdog_count = 0x0000_8000
 
     def summary(self) -> str:
         return (
             f"seed={self.seed} wkup_thold={self.wkup_thold} "
             f"wkup_high_thold=0x{self.wkup_high_thold:x} "
-            f"bark_prelock=0x{self.bark_prelock:04x} bark_postlock=0x{self.bark_postlock:04x}"
+            f"bark_prelock=0x{self.bark_prelock:04x} bark_postlock=0x{self.bark_postlock:04x} "
+            f"wkup_prescaler={self.wkup_prescaler} "
+            f"postlock_wkup_thold=0x{self.postlock_wkup_thold:08x}"
         )
 
 

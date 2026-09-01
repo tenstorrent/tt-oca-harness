@@ -492,6 +492,98 @@ static int chk_done_rw1c(void) {
     return e;
 }
 
+// ---- CHK-ERR-ADDR: the engine's address and range validation ----
+// The RDL defines nine ERROR_CODE bits; before this only opcode_error and
+// range_valid_error were ever provoked. These three are the address-validation
+// legs, which is what stops a mis-programmed descriptor from moving bytes: a
+// transfer whose address does not meet the alignment its width requires, and a
+// DMA-enabled range whose limit sits below its base. Each cell asserts the
+// error EXCLUSIVELY, so a fault that raises a different bit is a failure rather
+// than a pass, and each is followed by a clean transfer proving the engine
+// recovers.
+static int chk_err_addr(void) {
+    int e = 0;
+    struct {
+        const char *name;
+        uint32_t src, dst, width, range_base, range_limit, want;
+    } cells[] = {
+        // 4-byte width demands src_addr[1:0] == 0 (secure_dma.sv: DmaSrcAddrErr).
+        {"src misaligned for 4B", src_base + 1u, dst_base, SEP_DMA_WIDTH_4B,
+         0x0u, 0xFFFFFFFFu, SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
+        // and dst_addr[1:0] == 0 (DmaDstAddrErr).
+        {"dst misaligned for 4B", src_base, dst_base + 2u, SEP_DMA_WIDTH_4B,
+         0x0u, 0xFFFFFFFFu, SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm},
+        // 2-byte width demands bit 0 clear on both.
+        {"src misaligned for 2B", src_base + 1u, dst_base, SEP_DMA_WIDTH_2B,
+         0x0u, 0xFFFFFFFFu, SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
+        // An inverted enabled-memory range: limit below base (DmaBaseLimitErr).
+        {"range limit below base", src_base, dst_base, SEP_DMA_WIDTH_4B,
+         0x2000u, 0x1000u, SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm},
+    };
+    const uint32_t ncells = (uint32_t)(sizeof(cells) / sizeof(cells[0]));
+    const uint32_t nwords = copy_bytes / 4u;
+
+    for (uint32_t c = 0; c < ncells; c++) {
+        wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, cells[c].range_base);
+        wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, cells[c].range_limit);
+        uint32_t st = dma_run(cells[c].src, cells[c].dst, copy_bytes, copy_bytes,
+                              cells[c].width, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                              SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+        uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+        if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != cells[c].want) {
+            sep_mbx_puts("FAIL: CHK-ERR-ADDR ");
+            sep_mbx_puts(cells[c].name);
+            sep_mbx_puts(" expected err ");
+            sep_mbx_puthex(cells[c].want);
+            sep_mbx_puts(" got ");
+            sep_mbx_puthex(err);
+            sep_mbx_puts(" status ");
+            sep_mbx_puthex(st);
+            sep_mbx_putc('\n');
+            e++;
+        }
+        if (st & SECURE_DMA__STATUS__DONE_bm) {
+            sep_mbx_puts("FAIL: CHK-ERR-ADDR ");
+            sep_mbx_puts(cells[c].name);
+            sep_mbx_puts(" set STATUS.done on a refused transfer\n");
+            e++;
+        }
+        wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    }
+
+    // Restore a permissive range and prove the engine still copies.
+    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0u);
+    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    uint32_t snap[MAX_COPY_WORDS];
+    fill_src_words(nwords, snap);
+    clear_dst_words(nwords + 1, 0xA5A5A5A5u);
+    uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
+        sep_mbx_puts("FAIL: CHK-ERR-ADDR recovery copy did not succeed\n");
+        e++;
+    } else {
+        volatile uint32_t *d = (volatile uint32_t *)dst_base;
+        for (uint32_t i = 0; i < nwords; i++) {
+            if (d[i] != snap[i]) {
+                sep_mbx_puts("FAIL: CHK-ERR-ADDR recovery copy mismatch at word ");
+                sep_mbx_puthex(i);
+                sep_mbx_putc('\n');
+                e++;
+                break;
+            }
+        }
+    }
+    if (!e) {
+        sep_mbx_puts("CHK-ERR-ADDR PASS: 4 address/range violations each raised their "
+                     "own ERROR_CODE bit exclusively, none set STATUS.done, and the "
+                     "engine copied correctly afterwards\n");
+    }
+    return e;
+}
+
 // ---- CHK-ERR-OPCODE: invalid opcode -> opcode_error -> clear -> recovery ----
 static int chk_err_opcode(void) {
     int e = 0;
@@ -594,6 +686,7 @@ int main(void) {
     errors += chk_width();
     errors += chk_done_rw1c();
     errors += chk_err_opcode();
+    errors += chk_err_addr();
 
     if (errors == 0) {
         sep_mbx_puts("PASS: DMA basic -- reset/cfg-regwen/range-regwen/copy-mode/"
