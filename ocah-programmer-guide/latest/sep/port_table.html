@@ -408,16 +408,16 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMI core enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_enable</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMI uncore enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>

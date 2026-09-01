@@ -486,13 +486,12 @@ configuration register.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="timer-and-software-interrupts-tbd"><a class="anchor" href="#timer-and-software-interrupts-tbd"></a><a class="link" href="#timer-and-software-interrupts-tbd">Timer and Software Interrupts (TBD)</a></h5>
+<h5 id="timer-and-software-interrupts"><a class="anchor" href="#timer-and-software-interrupts"></a><a class="link" href="#timer-and-software-interrupts">Timer and Software Interrupts</a></h5>
 <div class="paragraph">
-<p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are both tied to zero
-at the SMU integration boundary; external CLINT-style delivery is not yet
-routed. The VeeR core contains independent internal timers that generate
-standard RISC-V <code>mip.MTIP</code> and <code>mip.MSIP</code> interrupts without requiring an
-external signal; those remain functional.</p>
+<p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are tied to zero at
+the SMU integration boundary. There is no external CLINT-style delivery path.
+The VeeR core contains independent internal timers that generate standard RISC-V
+<code>mip.MTIP</code> and <code>mip.MSIP</code> interrupts without requiring an external signal.</p>
 </div>
 </div>
 </div>
