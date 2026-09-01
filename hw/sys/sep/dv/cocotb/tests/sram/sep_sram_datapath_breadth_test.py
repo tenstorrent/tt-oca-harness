@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP external-SRAM datapath-breadth test (PyUVM).
 
-Memory-subsystem Phase-2 rep SRAM datapath breadth. reference provenance: uvm_tests/sram
+Memory-subsystem SRAM datapath breadth. reference provenance: uvm_tests/sram
 sep_sram_uvm_byte_strobe / byte_pattern / data_pattern / addr_boundary /
 write_read / sequential_access. Exercises the external scratch SRAM
-(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the Phase-1
+(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the
 smoke (a single 64-bit R/W + one 32-bit partial).
 
 `[RANDCFG]` -- ``SepSramBreadthCfg`` is the single source of truth for both the
@@ -32,7 +32,8 @@ positive PASS line):
   CHK-PATTERN  : each cfg data pattern reads back exactly.
   CHK-BOUNDARY : the base word and the top valid word R/W read back exactly.
   CHK-SEQ      : a run of consecutive single-beat 64-bit words, per-word integrity.
-  CHK-NONVAC   : a distinct unwritten word differs from the written pattern.
+  CHK-NONVAC   : two addresses hold complementary written values, so a
+                 stuck read path fails.
 
 no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 """
@@ -41,7 +42,10 @@ from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
-from seq_lib.sep_sram_breadth_seq import SepSramBreadth, SepSramBreadthCfg
+from seq_lib.sep_sram_breadth_seq import (
+    SepSramBreadth,
+    SepSramBreadthCfg,
+)
 
 
 @pyuvm.test()
@@ -136,12 +140,11 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         wr_addr = cfg.base_addr + cfg.nonvac_wr_offset
         rd_addr = cfg.base_addr + cfg.nonvac_rd_offset
         # Both addresses are written, with complementary patterns, and both are read
-        # back and value-checked. The previous form wrote only wr_addr and required the
-        # UNWRITTEN rd_addr to differ from the written pattern -- but rd_addr holds
-        # zero-initialised memory, and nonvac_pattern is built as `getrandbits(64) | 1`,
-        # so the check reduced to `0 != nonzero`, true by construction every run. It
-        # could not detect the stuck read path it names: a datapath returning all-zeros
-        # passed it, and so did one returning all-ones.
+        # back and value-checked. Comparing a written address against an unwritten one
+        # would not catch the stuck read path this names: zero-initialised memory
+        # differs from any non-zero pattern by construction, so a datapath returning
+        # all-zeros or all-ones would pass. Two written values that must differ from
+        # each other cannot be satisfied by a constant.
         other_pattern = (~cfg.nonvac_pattern) & ((1 << 64) - 1)
         await self.sram.write(wr_addr, cfg.nonvac_pattern, length=8)
         await self.sram.write(rd_addr, other_pattern, length=8)

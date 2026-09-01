@@ -114,9 +114,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wkup_expire()
         await self._chk_wdog_pet()
         await self._chk_regwen_lock_and_nonvac()
-        # No CHK-ALL summary: it asserted nothing, and every facet above already
-        # logs its own PASS line. A plan row keyed on a bare summary string would
-        # record coverage with no checker behind it.
+        # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
+        # row keyed on a bare summary string would record coverage with no checker
+        # behind it.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""
@@ -211,10 +211,10 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self.wdt.write(WDOG_BITE_THOLD, 0x00FF_FFFF)
         await self.wdt.write(WDOG_COUNT, 0)
         await self.wdt.write(WDOG_CTRL, WDOG_ENABLE)
-        # Run long enough that the pre-pet count dominates the CDC tolerance. With the
-        # old 60-tick window the count reached ~57 while the tolerance was 0x100 (256),
-        # so a pet that did nothing left count2 ~= 57 and still passed -- the check could
-        # not distinguish "pet reset the counter" from "pet was ignored".
+        # Run long enough that the pre-pet count dominates the CDC tolerance. A window
+        # short enough to leave the count near the tolerance cannot distinguish "the pet
+        # reset the counter" from "the pet was ignored", so the floor below is what
+        # gives the comparison meaning.
         await ClockCycles(cocotb.top.clk_i, 1200 * self._tick)
         count1 = await self.wdt.read(WDOG_COUNT)
         assert count1 >= 0x400, (
