@@ -350,6 +350,10 @@ feature has no legal knob space (a strap, a single named handshake).
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Narrow-write lane masking against the AXI strobe rule (IHI 0022 A3.4.3), plus write/readback of the OTBN IMEM and DMEM memory windows. The KMAC state window is not probed: it is gated by the engine's own configuration, so a probe there would test KMAC bring-up rather than the read mask. A window behind an SRAM-style adapter applies the mask on reads, unlike a register behind a register adapter, so a bridge driving that mask from the write strobe returns zeros with a correct response — only a data compare sees it.
+|`sep_axi_partial_lane_read_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Read-side counterpart of the strobe test: a read narrower than the 64-bit beat only obligates the responder to drive the addressed byte lanes (a 32-bit CSR leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every non-addressed lane undriven), so the value handed to the test must be a pure function of the addressed lanes. Every read is compared against an independent golden and repeated around a checked disturbing access, so a result that leaks undriven lanes or leftover channel state fails as a mismatch.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -433,7 +437,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_wdt_aon_timer_internals_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON timer.
+|Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
 |`sep_clock_gate_control_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -619,6 +623,10 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_crypto_per_ip_reset_isolation_test` (includes in-window DECERR). Drain-before-reset is proven for the shared TRNG domain in the row below; for the four accelerator domains it stays Phase 3.
 
+|Scratch bank reset domains (warm vs cold)
+|PROVEN
+|`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split, not the bank geometry: a warm reset clears the warm bank while the cold bank retains, and only a cold reset clears both. That pair is what makes the split real rather than two banks that merely exist. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. Scope: the vehicle exercises index 0 of each bank, so the domain is proven per bank and not per register, and the bank *size* is not graded here — see <<known-limitations>> for the count the specification asks for against the count the RTL implements.
+
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
 |`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three AXI ports to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external CSR and source-select staying outside the domain, and the JTAG hold/release pair.
@@ -655,13 +663,17 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_axi_strobe_window_test`, passing on VCS and on the Verilator merge gate.
 
+|AXI narrow-read lane extraction and repeatability
+|PROVEN
+|`sep_axi_partial_lane_read_test`: all 36 byte-run slices, all 14 aligned narrow-ARSIZE cells and the CSR extremes exact and repeatable, passing on the Verilator acceptance backend.
+
 |Reserved inter-block address space
 |PROVEN
 |`sep_axi_map_refuse_test`, passing on VCS and on the Verilator merge gate.
 
 |Dead-space decode
 |PROVEN
-|`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus: nine windows serve no beat past their extent, and three of them serve their in-extent beats and refuse only the tail, so the refusal is per beat rather than per burst. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
+|`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
 |PROVEN
@@ -3093,6 +3105,16 @@ claimed: the pin has no netlist path to either observable in this build.
 |A real reset source drops the CPU reset observable and then restores it, so the observable is live rather than stuck at one. This is what keeps the entry worth running.
 |===
 
+*No scorecard row, deliberately.* The denominator rule is that the architecture
+documents define the feature set. `dbg_rstb_i` is named in them — a port-table
+line in `hw/sys/sep/doc/port_table.adoc` and a sentence in the integrator guide
+describing a separate reset for the EL2 CPU debug module — but neither states a
+behavioural contract, and nothing requires isolation from the system reset. A feature the specification does not define is not a
+row, so this entry earns none and its absence is not an oversight. The two
+checkers above are worth running as a reset-tree liveness guard; they are not a
+feature credit. Closing the isolation claim needs both a run mode where
+`dbg_rstb_i` reaches `sep_cpu` and a specification statement to check it against.
+
 '''''
 
 [[sep_wdt_aon_timer_internals_test]]
@@ -3106,7 +3128,7 @@ claimed: the pin has no netlist path to either observable in this build.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON timer.
+*Objective*: Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
 
 *Test Procedure*:
 
@@ -3195,7 +3217,7 @@ claimed: the pin has no netlist path to either observable in this build.
 |CHK-STORAGE
 |The implemented bit writes and reads back in both directions.
 |CHK-STUB-CONST
-|AES STATUS, HMAC INTR_STATE, OTBN STATUS, and SW_DEBUG still complete OKAY with `pka_cg_enable` 0 and 1. The bit does not gate those IPs.
+|AES STATUS, HMAC INTR_STATE, OTBN STATUS and SW_DEBUG read the *same value* with `pka_cg_enable` set and clear, not merely OKAY on both: the first read of each witness is kept and the second, taken with the bit flipped, must match it. A witness whose value moved with the enable would answer OKAY either way, so completing the access is not the contract. Bound: these CSRs are constant in this build, so the compare catches an enable that perturbs them and cannot by itself distinguish "the bit gates nothing" from "these witnesses never change".
 |===
 *Scope limit*: the implemented contract is the designer placeholder, not a live
 per-IP clock gate.
@@ -3579,7 +3601,7 @@ both lock flavours of one seed-selected spare.
 . Take the register inventory and the exclusion reasons from `sep_reg_bit_bash_seq`: `write_reason() is None` for the no-side-effect blocks, plus `touch_reason() is None` restricted to `TOUCH_BLOCKS` for plain RW storage inside the other major IPs. A second list would let two sweeps disagree about which registers are safe to write.
 . Drop the blocks where the access itself would decide the result. `WDT_TIMER` is the one today: aon_timer runs on a clock 1000 times slower than the system clock, so the AXI timeout spans about ten of its edges and whether a round trip fits depends on the phase the access arrives on. A probe there measures CDC latency against the timeout rather than channel delivery. `sep_reg_bit_bash_rand_test` covers that block's storage.
 . Prime the register with the complement under its write mask at default timing, and read it back, so a write that never lands reads as the prime rather than looking plausible.
-. Apply the cell's timing profile through the VIP master (`ocah_axi_timing.AxiTimingProfile`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
+. Apply the cell's timing profile through the VIP master (`AxiTimingProfile`, `ocah_axi_master_config`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
 . Read a second register in the same block, write it back with one software-usable bit flipped at default timing, read it again, then re-read the swept register. Deriving the value from the current contents keeps a write that never arrived from reading back correct.
 . A shadowed register commits on the second identical write. The profile arms a one-shot release, so it shapes the first write only and the committing second write goes out same-cycle. The ordering under test is the one the register sees first; the commit itself is not an ordered access.
 
@@ -3683,6 +3705,46 @@ both lock flavours of one seed-selected spare.
 
 '''''
 
+[[sep_axi_partial_lane_read_test]]
+===== `sep_axi_partial_lane_read_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Testlist*: `system.toml`
+
+*Randomization*: RANDCFG — the required cells are walked exhaustively on every seed: all 36 contiguous (offset, length) byte-run slices of a 64-bit word, all 14 aligned narrow-ARSIZE cells (AxSIZE 0/1/2 at every legal lane offset), and the all-zeros/all-ones CSR patterns. The seed varies the walk order, the SRAM addresses, the 64-bit word under test and extra CSR patterns.
+
+*Objective*: A read narrower than the 64-bit CPU-LSU beat only obligates the responder to drive the addressed byte lanes: a 32-bit CSR endpoint leaves RDATA[63:32] undriven, and a narrow-ARSIZE beat leaves every non-addressed lane undriven. The VIP master samples the full beat and extracts the addressed bytes, so the value a test receives must be a pure function of the addressed lanes — exact against an independent golden and identical on re-read — regardless of what the undriven lanes carry. `sep_axi_strobe_window_test` owns the write-side lane rule; here the write is trusted and the read extraction is on trial. The contract is pinned through the public VIP read path alone, with no cocotb or cocotbext-axi global state involved.
+
+*Test Procedure*:
+
+[arabic]
+. Write a pattern to the 32-bit `SW_DEBUG` CSR, read it back twice as 4-byte reads with a checked read of the non-zero RO `SEP_LOCAL_BASE_ADDR` register between them; repeat for the all-zeros, all-ones and seed-random patterns.
+. Prime a seed-random 64-bit SRAM word and its neighbour with the complement value.
+. Read every contiguous (offset, length) byte run of the primed word, re-reading each slice after a checked full-width read of the complement neighbour.
+. Read the primed word at every aligned narrow-ARSIZE cell (AxSIZE 0/1/2 at each legal lane offset).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-CSR-LANE
+|Each pattern reads back exactly and identically on the repeat, through a beat whose upper four lanes the CSR endpoint never drives. All-zeros always runs next to all-ones and random patterns on the same register, so a dead write path or a zero-filled read cannot pass the set.
+|CHK-SRAM-SLICE
+|Every byte-run slice equals the Python slice of the primed word, and re-reads it exactly after the disturbing read. An extraction that starts at the wrong byte, takes the wrong length, or depends on leftover channel payloads fails the compare; the disturbing read is itself compared against the complement word, so the disturbance is proven to have happened.
+|CHK-ARSIZE
+|Every aligned AxSIZE-0/1/2 cell returns exactly the addressed lanes of the primed word, on beats where the responder legitimately drives nothing else.
+|CHK-RANDCFG
+|The seed, word, addresses and cell counts are logged up front, so a shrunken walk is visible rather than inferred from a PASS.
+|===
+
+'''''
+
 [[sep_axi_map_refuse_test]]
 ===== `sep_axi_map_refuse_test`
 
@@ -3761,8 +3823,6 @@ both lock flavours of one seed-selected spare.
 |A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
 |CHK-DEADSPACE-BEAT
 |Each beat of the burst carries its own `RRESP`, kept in order by the bus monitor, so the refusal can be attributed to a beat rather than to the burst. No beat past a block extent may answer OKAY. The rule is asserted in that direction only: refusing the whole burst is legal AXI and stricter than the specification, so a window that refuses every beat is recorded, not failed. A second assertion requires at least one window that serves its in-extent beats and refuses only the tail — without one, the checker shows that nothing past an extent is served but not that the fabric can tell the beats apart. A captured vector whose length does not match the beats issued is treated as no evidence, since unrelated traffic on the bus would lengthen it. Read bursts only; see <<known-limitations>> for why writes cannot be.
-|CHK-RANDCFG
-|Twelve anchors plus seed-selected dead offsets ran in one invocation.
 |===
 
 '''''
@@ -4248,7 +4308,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |45
 |Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |44 in-scope: 41 PROVEN, 3 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |45 in-scope: 42 PROVEN, 3 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
 |===
 
@@ -4363,6 +4423,9 @@ constraint is not an open defect.
 
 |CPU reset-vector TDR (spec)
 |`hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register — the vector reaches the CPU through a direct wrapper input. The testbench shifts that opcode on every CPU-boot run and the sequence is inert: stimulus that reads as coverage and cannot fail. Remove it or give the claim an owner.
+
+|Scratch bank register count (spec vs RTL)
+|`hw/sys/sep/doc/cpu.adoc` requires "two sets of 16 x 32-bit scratch register banks". `hw/sys/sep/regs/blocks/sep_scratch/sep_scratch.rdl` declares `SCRATCH[8]`, so each bank implements eight registers, not sixteen. The reset-domain behaviour of the banks that exist is proven; the count is not, and no test asserts it. This row is the record of the difference, not a claimed contract. Do not XFAIL.
 
 |AP/STEE output-remap attributes and pass-through (spec)
 |`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. `hw/common/axi/output_remap/rtl/output_remap.sv` has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. The vehicle on this bank is `sep_fabric_output_remap_datapath_proxy_test`, which proves a programmed window translates and that a beat outside it is refused; the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.

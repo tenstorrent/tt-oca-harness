@@ -250,8 +250,8 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CLOCK_GATE_CTRL placeholder representative. sep_cpu_ctrl implements
 # pka_cg_enable[0:0] only; RTL does not consume it. Proves storage plus
-# AES/HMAC/OTBN/SW_DEBUG CSRs still OKAY with the bit 0 and 1 (stub-const,
-# not a live per-IP gate). no_cpu / +skip_fuse_sense.
+# AES/HMAC/OTBN/SW_DEBUG CSRs reading the same value with the bit 0 and 1
+# (stub-const, not a live per-IP gate). no_cpu / +skip_fuse_sense.
 name = "sep_clock_gate_control_test"
 module = "system.sep_clock_gate_control_test"
 seed = 1
@@ -350,6 +350,26 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Partial-lane read determinism. A read narrower than the 64-bit beat only
+# obligates the responder to drive the addressed byte lanes (a 32-bit CSR
+# leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every
+# non-addressed lane undriven), so the value handed back must be a pure
+# function of the addressed lanes: exact against an independent golden and
+# identical on re-read around a checked disturbing access. Complements
+# sep_axi_strobe_window_test (write-side masking): here the read extraction
+# is on trial. All 36 byte-run slices + all 14 aligned narrow-ARSIZE cells +
+# the all-zeros/all-ones CSR patterns run on every seed.
+name = "sep_axi_partial_lane_read_test"
+module = "system.sep_axi_partial_lane_read_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

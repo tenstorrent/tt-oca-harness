@@ -38,8 +38,10 @@ module tlul_to_axi_lite
 		output axi_lite_req_t  axi_lite_req_o,
 		input  axi_lite_rsp_t  axi_lite_rsp_i,
 
-		// Error output (sticky)
-		output logic      err_o
+		// Error output (sticky). Held until err_clr_i; a new error in the same cycle
+		// as the clear still latches, so a fault racing the clear is never lost.
+		output logic      err_o,
+		input  logic      err_clr_i
 	);
 
 	// --------------------------------------------------
@@ -151,7 +153,8 @@ module tlul_to_axi_lite
 		w_done_d     = w_done_q;
 		resp_data_d  = resp_data_q;
 		resp_error_d = resp_error_q;
-		sticky_err_d = sticky_err_q;
+		// Clear applies first; the set conditions below override it in the same cycle.
+		sticky_err_d = sticky_err_q & ~err_clr_i;
 
 		// Default TL-UL Outputs (Zero out struct)
 		tl_o = '0;

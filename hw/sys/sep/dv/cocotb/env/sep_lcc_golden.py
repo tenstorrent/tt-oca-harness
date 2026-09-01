@@ -193,7 +193,7 @@ def feat_ctrl_expected(
 _FULL_NO_TEST = 0xFFFF_0000_FFFF_FFFF  # M64 with TEST_MASK cleared
 _FUNC_ALL = 0xFFFF_0000_0000_0000  # FUNC_MASK only
 
-_LCC_GOLDEN_VECTORS = (
+_LCC_GOLDEN_VECTORS: tuple[tuple[int, int, int, dict[str, int], int], ...] = (
     # (lc_raw, sip_dis, sys_dis, kwargs, expected)
     (LC_TEST_DEV, 0, 0, {}, _FULL_NO_TEST),  # all-enable, test bits cleared
     (LC_TEST_DEV, 0, 0, {"secure_tm": 1}, M64),  # secure_tm keeps test bits

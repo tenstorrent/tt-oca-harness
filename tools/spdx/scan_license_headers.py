@@ -144,8 +144,8 @@ def area(path: str) -> str:
 
 
 def main() -> None:
-    results = defaultdict(lambda: defaultdict(list))
-    counts = Counter()
+    results: defaultdict[str, defaultdict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
+    counts: Counter[str] = Counter()
     for path in tracked_files():
         if not wanted(path):
             continue
