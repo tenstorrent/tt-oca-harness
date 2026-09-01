@@ -5,11 +5,10 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_addr_map import CLOCK_GATE_CONTROL_RESET
 from seq_lib.smc_cluster_beu_test_seq import smc_cluster_beu_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -44,9 +43,7 @@ class smc_cluster_beu_test(smc_base_test):
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,
-            expected_bytes=(CLOCK_GATE_CONTROL_RESET & 0xFFFF_FFFF).to_bytes(
-                4, "big"
-            ),
+            expected_bytes=(CLOCK_GATE_CONTROL_RESET & 0xFFFF_FFFF).to_bytes(4, "big"),
             observed_bytes=seq.restored_word.to_bytes(4, "big"),
             details=(
                 "Documented BEU window 0xC801_0000+ folds onto SMC_BASE_CONFIG "

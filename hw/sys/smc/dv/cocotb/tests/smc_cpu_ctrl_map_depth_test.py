@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cpu_ctrl_map_depth_test_seq import smc_cpu_ctrl_map_depth_test_seq
 from seq_lib.smc_cpu_vip_utils import check_cpu_bfm_observability
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -25,8 +25,7 @@ class smc_cpu_ctrl_map_depth_test(smc_base_test):
         # relayed boolean: the token is emitted only after every map row's exact
         # RDL-reset compare and the scoreboard reachability cross-check passed.
         assert "CHK-CPU-CTRL-MAP-DEPTH" in seq.chk_seen, (
-            "missing CHK evidence token: CHK-CPU-CTRL-MAP-DEPTH "
-            f"(seen={sorted(seq.chk_seen)})"
+            f"missing CHK evidence token: CHK-CPU-CTRL-MAP-DEPTH (seen={sorted(seq.chk_seen)})"
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,

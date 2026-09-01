@@ -5,11 +5,11 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_local_fabric_csr_depth_test_seq import (
     LOCAL_FABRIC_MIN_VALUE_CHECKS,
     smc_local_fabric_csr_depth_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

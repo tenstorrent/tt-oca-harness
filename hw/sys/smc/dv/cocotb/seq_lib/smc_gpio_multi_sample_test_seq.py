@@ -46,7 +46,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_gpio_item import (
     GPIO_SAMPLE_FIELDS,
     GPIO_STABLE_VECTOR_FIELDS,
@@ -125,13 +124,15 @@ class smc_gpio_multi_sample_test_seq(smc_base_test_seq):
                     "the scoreboard against reference sample 0 on %s, %d "
                     "clk_ref_i cycles later; backed by this run's "
                     "pad-bus positive control (%s)",
-                    i, item, ", ".join(stated), i * self.GAP_REF_CYCLES,
+                    i,
+                    item,
+                    ", ".join(stated),
+                    i * self.GAP_REF_CYCLES,
                     probe_evidence("gpio_core2pad_en_vec"),
                 )
             else:
                 cocotb.log.info(
-                    "GPIO multi-sample reference (observed only, no stated "
-                    "expectation): %s", item
+                    "GPIO multi-sample reference (observed only, no stated expectation): %s", item
                 )
             if i < self.SAMPLES - 1:
                 await ClockCycles(dut.clk_ref_i, self.GAP_REF_CYCLES)
@@ -164,8 +165,13 @@ class smc_gpio_multi_sample_test_seq(smc_base_test_seq):
             "outputs such as the AVSBus clock on bit 49, and the %d "
             "tb_gpio_*_any OR-aggregates (%d/%d/%d) admit no control at all -- "
             "both are diagnostics only.",
-            self.SAMPLES, self.GAP_REF_CYCLES,
-            ref.core2pad_en_vec, ref.vec_width,
-            ref.core2pad_vec, len(GPIO_SAMPLE_FIELDS),
-            ref.core2pad_any, ref.core2pad_en_any, ref.pad2core_en_any,
+            self.SAMPLES,
+            self.GAP_REF_CYCLES,
+            ref.core2pad_en_vec,
+            ref.vec_width,
+            ref.core2pad_vec,
+            len(GPIO_SAMPLE_FIELDS),
+            ref.core2pad_any,
+            ref.core2pad_en_any,
+            ref.pad2core_en_any,
         )

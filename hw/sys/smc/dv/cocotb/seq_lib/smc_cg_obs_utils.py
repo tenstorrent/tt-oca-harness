@@ -17,7 +17,9 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from . import smc_addr_map as _addr
-from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
+
+# Re-exported: callers do `import smc_cg_obs_utils as cg` then `cg.PASS_ALL_CONFIG`.
+from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG as PASS_ALL_CONFIG
 
 # Authoritative addresses / field masks (generated headers via smc_addr_map).
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL
@@ -106,9 +108,7 @@ async def count_gated_rising(dut, gated_clk_name: str, smc_cycles: int) -> int:
     return edges["n"]
 
 
-async def count_enabled_at_smc_rise(
-    dut, gated_clk_name: str, smc_cycles: int
-) -> int:
+async def count_enabled_at_smc_rise(dut, gated_clk_name: str, smc_cycles: int) -> int:
     """Count how many of ``smc_cycles`` successive clk_smc rising edges sample gated==1.
 
     Same-domain free-running gated clocks (test_en bypass / disable_cg) sample 1
@@ -236,8 +236,7 @@ async def wait_gated_off(
             last_toggle_at = cyc + idle_observe
     diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
     raise AssertionError(
-        f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} "
-        f"hyst={hyst} {diag}"
+        f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} hyst={hyst} {diag}"
     )
 
 
@@ -308,9 +307,7 @@ def assert_fence_order(fence: list[tuple[str, int]], expected: list[str]) -> Non
     assert order == expected, f"NONVAC fence order wrong: {order} expected {expected}"
 
 
-def assert_fence_progress(
-    fence: list[tuple[str, int]], expected: list[str]
-) -> list[int]:
+def assert_fence_progress(fence: list[tuple[str, int]], expected: list[str]) -> list[int]:
     """Fence order **plus** strictly increasing simulation timestamps.
 
     Unlike :func:`assert_fence_order`, the timestamp leg is a claim about the

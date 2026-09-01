@@ -27,14 +27,12 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_reset_seq_base import SmcResetSeqBase
 
 
 class smc_powergood_glitch_test_seq(SmcResetSeqBase):
-
     # Width of the mid-glitch hold, in clk_ref_i edges, and therefore also how
     # long powergood_i stays low (it is restored only after the window closes).
     # As wide as smc_reset_ctrl's 32-sample de-glitch window: the gated state is
@@ -49,7 +47,7 @@ class smc_powergood_glitch_test_seq(SmcResetSeqBase):
     # carrying expectations: the two bookend SAMPLEs and the 11 OBSERVED-ONLY
     # transition snapshots satisfy the global check_phase activity gate on their
     # own ([LIVENESS-COMPLETENESS] / [NO-ZERO-ACTIVITY-PASS]).
-    MIN_WAIT_CHECKS = 2   # glitch-effect + recovery handshakes
+    MIN_WAIT_CHECKS = 2  # glitch-effect + recovery handshakes
     MIN_RAW_CHECKS = MID_GLITCH_HOLD_REF_CYCLES  # the whole checked hold window
 
     # `_send` (with its `expect_*` keyword guard) and `_hold_raw` come from

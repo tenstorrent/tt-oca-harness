@@ -61,7 +61,6 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-
 from env.smc_gpio_item import (
     GPIO_STABLE_VECTOR_FIELDS,
     SmcGpioItem,
@@ -94,12 +93,16 @@ from .smc_efuse_vip_utils import (
 )
 
 _REPO = Path(__file__).resolve().parents[6]
-_UART_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c"
-    / "uart_16550_main.h"
-)
+_UART_H = _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
@@ -114,12 +117,8 @@ UART0_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
     0,
 )
-UART0_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART0_ITR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR", 0
-)
+UART0_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART0_ITR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR", 0)
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 # ETBEI/TTBEI = the transmitter-holding-register-empty interrupt enable and its
 # ITR (interrupt test register) counterpart. ITR is a real 16550 register in the
@@ -153,9 +152,7 @@ GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 _GPIO_RX_ENABLE = 2 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
 _GPIO_IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
 _GPIO_IRQ_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bm")
-_GPIO_TYPE_ACTIVE_LOW = 1 << gpio_intf_u32(
-    "GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bp"
-)
+_GPIO_TYPE_ACTIVE_LOW = 1 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bp")
 GPIO0_INPUT_ACTIVE_LOW_IRQ = (
     _GPIO_RX_ENABLE | _GPIO_IF_ENABLE | _GPIO_IRQ_ENABLE | _GPIO_TYPE_ACTIVE_LOW
 )
@@ -196,7 +193,10 @@ def _read_probe(dut, signal_name: str) -> int:
 
 
 async def _await_probe_level(
-    dut, probe: str, expected: int, label: str,
+    dut,
+    probe: str,
+    expected: int,
+    label: str,
     bound: int = _LEVEL_BOUND_CYCLES,
 ) -> int:
     """Bounded per-cycle poll until ``probe == expected``, then hold-verify it.
@@ -276,15 +276,11 @@ async def prove_sync_irq_probe(seq: SmcCsrSeq) -> None:
 
     await seq.csr_write("SYNC_REG_SET", SYNC_REG, SYNC_REG_SYNC_BM)
     await seq.csr_read("SYNC_REG_SET_RB", SYNC_REG, expected=SYNC_REG_SYNC_BM)
-    assert_cycles = await _await_probe_level(
-        dut, "sync_irq", 1, "sync_irq_assert"
-    )
+    assert_cycles = await _await_probe_level(dut, "sync_irq", 1, "sync_irq_assert")
 
     await seq.csr_write("SYNC_REG_CLR", SYNC_REG, SYNC_REG_SYNC_RESET)
     await seq.csr_read("SYNC_REG_CLR_RB", SYNC_REG, expected=SYNC_REG_SYNC_RESET)
-    clear_cycles = await _await_probe_level(
-        dut, "sync_irq", 0, "sync_irq_release"
-    )
+    clear_cycles = await _await_probe_level(dut, "sync_irq", 0, "sync_irq_release")
 
     credit_probe(
         "sync_irq",
@@ -296,7 +292,9 @@ async def prove_sync_irq_probe(seq: SmcCsrSeq) -> None:
         "after %d clk_smc_i cycle(s) (held %d), and 1->0 returned it to 0 after "
         "%d cycle(s); the probe reads both levels, so an idle tb_sync_irq==0 "
         "compare is fail-capable",
-        assert_cycles, _LEVEL_HOLD_CYCLES, clear_cycles,
+        assert_cycles,
+        _LEVEL_HOLD_CYCLES,
+        clear_cycles,
     )
 
 
@@ -322,15 +320,11 @@ async def prove_uart_irq_any_probe(seq: SmcCsrSeq) -> None:
     await seq.csr_write("UART0_EN", UART0_CTRL, UART_EN)
     await seq.csr_write("UART0_IER_ETBEI", UART0_IER, IER_ETBEI)
     await seq.csr_write("UART0_ITR_TTBEI", UART0_ITR, ITR_TTBEI)
-    assert_cycles = await _await_probe_level(
-        dut, "uart_irq_any", 1, "uart_irq_assert"
-    )
+    assert_cycles = await _await_probe_level(dut, "uart_irq_any", 1, "uart_irq_assert")
 
     await seq.csr_write("UART0_ITR_CLR", UART0_ITR, 0)
     await seq.csr_write("UART0_IER_CLR", UART0_IER, 0)
-    clear_cycles = await _await_probe_level(
-        dut, "uart_irq_any", 0, "uart_irq_release"
-    )
+    clear_cycles = await _await_probe_level(dut, "uart_irq_any", 0, "uart_irq_release")
     await seq.csr_write("UART_CG_RESTORE", CLOCK_GATE_CONTROL, cg)
 
     credit_probe(
@@ -343,7 +337,9 @@ async def prove_uart_irq_any_probe(seq: SmcCsrSeq) -> None:
         "tb_uart_irq_any to 1 after %d clk_smc_i cycle(s) (held %d), and "
         "clearing ITR/IER returned it to 0 after %d cycle(s); the probe reads "
         "both levels, so an idle tb_uart_irq_any==0 compare is fail-capable",
-        assert_cycles, _LEVEL_HOLD_CYCLES, clear_cycles,
+        assert_cycles,
+        _LEVEL_HOLD_CYCLES,
+        clear_cycles,
     )
 
 
@@ -368,8 +364,7 @@ async def prove_i2c_cg_en_probe(seq: SmcCsrSeq) -> None:
 
     await seq.csr_write("I2C_CG_RESTORE", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
     clear_cycles = await _await_probe_level(dut, "i2c_cg_en", 0, "i2c_cg_clear")
-    await seq.csr_read("I2C_CG_RESTORE_RB", CLOCK_GATE_CONTROL,
-                       expected=cg & ~I2C_CG_EN)
+    await seq.csr_read("I2C_CG_RESTORE_RB", CLOCK_GATE_CONTROL, expected=cg & ~I2C_CG_EN)
 
     credit_probe(
         "i2c_cg_en",
@@ -382,7 +377,9 @@ async def prove_i2c_cg_en_probe(seq: SmcCsrSeq) -> None:
         "tb_i2c_cg_en to 1 after %d clk_smc_i cycle(s) (held %d), and 1->0 "
         "returned it to 0 after %d cycle(s); the probe reads both levels, so an "
         "idle tb_i2c_cg_en==0 compare is fail-capable",
-        assert_cycles, _LEVEL_HOLD_CYCLES, clear_cycles,
+        assert_cycles,
+        _LEVEL_HOLD_CYCLES,
+        clear_cycles,
     )
 
 
@@ -406,9 +403,7 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
     Costs 1 CSR access.
     """
     dut = cocotb.top
-    _assert_idle_precondition(
-        dut, "axil_external_active", "prove_axil_external_active_probe"
-    )
+    _assert_idle_precondition(dut, "axil_external_active", "prove_axil_external_active_probe")
 
     hits = [0]
     sampler = cocotb.start_soon(_count_probe_high(dut, "axil_external_active", hits))
@@ -428,9 +423,7 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
         "in flight: the activity probe is stuck at 0 / undriven / mis-tied, so "
         "any idle == 0 assertion on it is vacuous"
     )
-    idle_cycles = await _await_probe_level(
-        dut, "axil_external_active", 0, "axil_external_idle"
-    )
+    idle_cycles = await _await_probe_level(dut, "axil_external_active", 0, "axil_external_idle")
 
     credit_probe(
         "axil_external_active",
@@ -443,8 +436,11 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
         "window @ 0x%08x (rdata=0x%08x == expected 0x%x), then back to 0 after "
         "%d cycle(s); the probe reads both levels, so an idle "
         "tb_axil_external_active==0 compare is fail-capable",
-        hits[0], EXTERNAL_PLL_CGM0_STATUS, rdata,
-        EXTERNAL_PLL_CGM0_STATUS_EXPECTED, idle_cycles,
+        hits[0],
+        EXTERNAL_PLL_CGM0_STATUS,
+        rdata,
+        EXTERNAL_PLL_CGM0_STATUS_EXPECTED,
+        idle_cycles,
     )
 
 
@@ -462,14 +458,10 @@ async def prove_axil_efuse_bank_probe(seq: SmcCsrSeq) -> None:
     Costs 1 CSR access.
     """
     dut = cocotb.top
-    _assert_idle_precondition(
-        dut, "axil_efuse_bank_active", "prove_axil_efuse_bank_probe"
-    )
+    _assert_idle_precondition(dut, "axil_efuse_bank_active", "prove_axil_efuse_bank_probe")
 
     hits = [0]
-    sampler = cocotb.start_soon(
-        _count_probe_high(dut, "axil_efuse_bank_active", hits)
-    )
+    sampler = cocotb.start_soon(_count_probe_high(dut, "axil_efuse_bank_active", hits))
     try:
         rdata = await seq.csr_read(
             "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME",
@@ -486,9 +478,7 @@ async def prove_axil_efuse_bank_probe(seq: SmcCsrSeq) -> None:
         "flight: the activity probe is stuck at 0 / undriven / mis-tied, so any "
         "idle == 0 assertion on it is vacuous"
     )
-    idle_cycles = await _await_probe_level(
-        dut, "axil_efuse_bank_active", 0, "axil_efuse_bank_idle"
-    )
+    idle_cycles = await _await_probe_level(dut, "axil_efuse_bank_active", 0, "axil_efuse_bank_idle")
 
     credit_probe(
         "axil_efuse_bank_active",
@@ -501,7 +491,10 @@ async def prove_axil_efuse_bank_probe(seq: SmcCsrSeq) -> None:
         "window @ 0x%08x (rdata=0x%08x == RDL reset 0x%02x), then back to 0 "
         "after %d cycle(s); the probe reads both levels, so an idle "
         "tb_axil_efuse_bank_active==0 compare is fail-capable",
-        hits[0], EFUSE_SHIM_CTRL_WINDOW, rdata, EFUSE_BANK_INIT_TIME_RESET,
+        hits[0],
+        EFUSE_SHIM_CTRL_WINDOW,
+        rdata,
+        EFUSE_BANK_INIT_TIME_RESET,
         idle_cycles,
     )
 
@@ -520,24 +513,16 @@ async def prove_gpio_irq_any_probe(seq: SmcCsrSeq) -> None:
     """
     dut = cocotb.top
     saved = await seq.csr_read("GPIO0_DATA_CTRL_SAVE", GPIO0_DATA_CTRL)
-    await seq.csr_write(
-        "GPIO0_INPUT_ACTIVE_LOW_IRQ", GPIO0_DATA_CTRL, GPIO0_INPUT_ACTIVE_LOW_IRQ
-    )
+    await seq.csr_write("GPIO0_INPUT_ACTIVE_LOW_IRQ", GPIO0_DATA_CTRL, GPIO0_INPUT_ACTIVE_LOW_IRQ)
     dut.tb_gpio_ext_drive_en.value = 0x1
     dut.tb_gpio_ext_drive_value.value = 0x1
-    idle_cycles = await _await_probe_level(
-        dut, "gpio_irq_any", 0, "gpio0_pad_high_idle"
-    )
+    idle_cycles = await _await_probe_level(dut, "gpio_irq_any", 0, "gpio0_pad_high_idle")
 
     dut.tb_gpio_ext_drive_value.value = 0x0
-    assert_cycles = await _await_probe_level(
-        dut, "gpio_irq_any", 1, "gpio0_pad_low_assert"
-    )
+    assert_cycles = await _await_probe_level(dut, "gpio_irq_any", 1, "gpio0_pad_low_assert")
 
     dut.tb_gpio_ext_drive_value.value = 0x1
-    clear_cycles = await _await_probe_level(
-        dut, "gpio_irq_any", 0, "gpio0_pad_high_clear"
-    )
+    clear_cycles = await _await_probe_level(dut, "gpio_irq_any", 0, "gpio0_pad_high_clear")
     dut.tb_gpio_ext_drive_en.value = 0x0
     await seq.csr_write("GPIO0_DATA_CTRL_RESTORE", GPIO0_DATA_CTRL, saved)
 
@@ -551,7 +536,10 @@ async def prove_gpio_irq_any_probe(seq: SmcCsrSeq) -> None:
         "after %d clk_smc_i cycle(s) (held %d) and 0->1 cleared it after %d "
         "cycle(s) (pad-high idle confirmed after %d); the probe reads both "
         "levels, so an idle tb_gpio_irq_any==0 compare is fail-capable",
-        assert_cycles, _LEVEL_HOLD_CYCLES, clear_cycles, idle_cycles,
+        assert_cycles,
+        _LEVEL_HOLD_CYCLES,
+        clear_cycles,
+        idle_cycles,
     )
 
 
@@ -654,9 +642,7 @@ async def prove_gpio_pad_bus_probe(seq: SmcCsrSeq) -> None:
     saved = await seq.csr_read("GPIO0_DATA_CTRL_PADBUS_SAVE", GPIO0_DATA_CTRL)
 
     # 1) TX enabled, register value high -> exactly one new output-enable bit.
-    await seq.csr_write(
-        "GPIO0_PADBUS_TX_HIGH", GPIO0_DATA_CTRL, GPIO0_OUTPUT_DRIVE_HIGH
-    )
+    await seq.csr_write("GPIO0_PADBUS_TX_HIGH", GPIO0_DATA_CTRL, GPIO0_OUTPUT_DRIVE_HIGH)
     assert_cycles, en_hi, val_hi = await _await_pad_bus(
         dut,
         lambda en, val: (en & (~base_en & mask)) != 0,
@@ -677,9 +663,7 @@ async def prove_gpio_pad_bus_probe(seq: SmcCsrSeq) -> None:
     )
 
     # 2) TX still enabled, register value low -> value clears, enable holds.
-    await seq.csr_write(
-        "GPIO0_PADBUS_TX_LOW", GPIO0_DATA_CTRL, GPIO0_OUTPUT_DRIVE_LOW
-    )
+    await seq.csr_write("GPIO0_PADBUS_TX_LOW", GPIO0_DATA_CTRL, GPIO0_OUTPUT_DRIVE_LOW)
     low_cycles, en_lo, val_lo = await _await_pad_bus(
         dut,
         lambda en, val: (val & pad_bit) == 0 and (en & pad_bit) != 0,
@@ -720,8 +704,14 @@ async def prove_gpio_pad_bus_probe(seq: SmcCsrSeq) -> None:
         "OR-aggregates are NOT credited by this or any control -- they read 1 "
         "from reset onward and no stimulus can drive them to 0 (see "
         "env.smc_probe_liveness.UNBACKABLE_PROBES).",
-        pad_idx, base_en, en_hi, assert_cycles, low_cycles,
-        en_end, val_end, restore_cycles,
+        pad_idx,
+        base_en,
+        en_hi,
+        assert_cycles,
+        low_cycles,
+        en_end,
+        val_end,
+        restore_cycles,
     )
 
 
@@ -753,25 +743,20 @@ PROBE_CONTROLS: dict[str, tuple] = {
     "sync_irq": (prove_sync_irq_probe, 4, ("sync_irq",)),
     "uart_irq_any": (prove_uart_irq_any_probe, 8, ("uart_irq_any",)),
     "i2c_cg_en": (prove_i2c_cg_en_probe, 4, ("i2c_cg_en",)),
-    "axil_external_active": (
-        prove_axil_external_active_probe, 1, ("axil_external_active",)
-    ),
-    "axil_efuse_bank_active": (
-        prove_axil_efuse_bank_probe, 1, ("axil_efuse_bank_active",)
-    ),
+    "axil_external_active": (prove_axil_external_active_probe, 1, ("axil_external_active",)),
+    "axil_efuse_bank_active": (prove_axil_efuse_bank_probe, 1, ("axil_efuse_bank_active",)),
     "gpio_irq_any": (prove_gpio_irq_any_probe, 3, ("gpio_irq_any",)),
     # One control, two credited observables: the same GPIO0 TX programming moves
     # the output-enable vector and the value vector.
     "gpio_pad_bus": (
-        prove_gpio_pad_bus_probe, 4,
+        prove_gpio_pad_bus_probe,
+        4,
         ("gpio_core2pad_vec", "gpio_core2pad_en_vec"),
     ),
 }
 
 assert all(
-    probe in PROBE_SIGNALS
-    for _coro, _cost, credits in PROBE_CONTROLS.values()
-    for probe in credits
+    probe in PROBE_SIGNALS for _coro, _cost, credits in PROBE_CONTROLS.values() for probe in credits
 ), "every PROBE_CONTROLS credit must name a probe declared in PROBE_SIGNALS"
 
 
@@ -815,7 +800,9 @@ class SmcProbePositiveControlSeq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-PROBE-CONTROLS: %d probe positive control(s) passed both legs "
             "(%s) in %d SEP_IN AXI CSR accesses",
-            len(self.controls), ", ".join(self.controls), self.accesses,
+            len(self.controls),
+            ", ".join(self.controls),
+            self.accesses,
         )
 
 
@@ -858,8 +845,7 @@ class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
     being checked, and it is now on an observable proven able to change.
     """
 
-    def __init__(self, name: str, reference, samples: int = 2,
-                 gap_ref_cycles: int = 80) -> None:
+    def __init__(self, name: str, reference, samples: int = 2, gap_ref_cycles: int = 80) -> None:
         super().__init__(name)
         self.reference = reference
         self.samples = samples
@@ -871,8 +857,7 @@ class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
         sb = self.env.scoreboard
         ref = self.reference
         assert ref is not None and ref.resolvable, (
-            "GPIO pad-bus stability: the reference sample is missing or was "
-            f"not resolvable ({ref})"
+            f"GPIO pad-bus stability: the reference sample is missing or was not resolvable ({ref})"
         )
         assert ref.vec_width > 0, (
             "GPIO pad-bus stability: the reference sample carries no pad-bus "
@@ -927,9 +912,13 @@ class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
             "outputs such as the AVSBus clock on bit 49, and the three "
             "tb_gpio_*_any OR-aggregates (%d/%d/%d) admit no control at all -- "
             "both are reported as diagnostics only.",
-            self.samples, self.gap_ref_cycles,
-            ref.core2pad_en_vec, ref.vec_width,
+            self.samples,
+            self.gap_ref_cycles,
+            ref.core2pad_en_vec,
+            ref.vec_width,
             probe_evidence("gpio_core2pad_en_vec"),
             ref.core2pad_vec,
-            ref.core2pad_any, ref.core2pad_en_any, ref.pad2core_en_any,
+            ref.core2pad_any,
+            ref.core2pad_en_any,
+            ref.pad2core_en_any,
         )

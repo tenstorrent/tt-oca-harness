@@ -7,7 +7,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ALT_ADDR,
     OUTPUT_FABRIC_ALT_DATA,
@@ -19,7 +18,7 @@ from seq_lib.smc_output_fabric_vip_utils import (
     output_fabric_pass_all_cfg_seq,
     output_responder_counts,
 )
-
+from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floors, written out here rather than derived from the
 # config sequence's own counter: a floor that shrinks with the sequence cannot

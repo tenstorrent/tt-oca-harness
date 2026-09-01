@@ -23,17 +23,13 @@ from .smc_diagnostic_vip_utils import prove_axil_any_master_activity
 
 _REPO = Path(__file__).resolve().parents[6]
 _SMC_CONFIG_PKG_SV = _REPO / "hw" / "sys" / "smc" / "rtl" / "smc_config_pkg.sv"
-_NDM_RESET_RDL = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "blocks" / "ndm_reset" / "ndm_reset.rdl"
-)
+_NDM_RESET_RDL = _REPO / "hw" / "sys" / "smc" / "regs" / "blocks" / "ndm_reset" / "ndm_reset.rdl"
 _CPU_CLUSTER_COUNT_RE = re.compile(
     r"^\s*localparam\s+logic\s*\[\s*\d+\s*:\s*\d+\s*\]\s+CPU_CLUSTER_COUNT\s*=\s*"
     r"(\d+)\s*;",
     re.M,
 )
-_CLUSTER_COUNT_FIELD_RE = re.compile(
-    r"\}\s*ndmreset_cluster_count\s*\[\s*(\d+)\s*:\s*(\d+)\s*\]"
-)
+_CLUSTER_COUNT_FIELD_RE = re.compile(r"\}\s*ndmreset_cluster_count\s*\[\s*(\d+)\s*:\s*(\d+)\s*\]")
 
 
 def _cpu_cluster_count() -> int:
@@ -66,9 +62,7 @@ def _cpu_cluster_count() -> int:
     text = _SMC_CONFIG_PKG_SV.read_text(encoding="utf-8")
     match = _CPU_CLUSTER_COUNT_RE.search(text)
     if not match:
-        raise RuntimeError(
-            f"CPU_CLUSTER_COUNT localparam not found in {_SMC_CONFIG_PKG_SV}"
-        )
+        raise RuntimeError(f"CPU_CLUSTER_COUNT localparam not found in {_SMC_CONFIG_PKG_SV}")
     return int(match.group(1), 0)
 
 
@@ -77,9 +71,7 @@ def _cluster_count_field_width() -> int:
     text = _NDM_RESET_RDL.read_text(encoding="utf-8")
     match = _CLUSTER_COUNT_FIELD_RE.search(text)
     if not match:
-        raise RuntimeError(
-            f"ndmreset_cluster_count field range not found in {_NDM_RESET_RDL}"
-        )
+        raise RuntimeError(f"ndmreset_cluster_count field range not found in {_NDM_RESET_RDL}")
     return int(match.group(1)) - int(match.group(2)) + 1
 
 
@@ -101,9 +93,7 @@ NDMRESET_CLUSTER_COUNT_ADDR = smc_addr(
 # Software-write pattern for the sw=r leg: every field bit inverted, so a
 # register that (wrongly) accepted the write cannot coincidentally read back the
 # expected count.
-NDMRESET_CLUSTER_COUNT_WR_PATTERN = (
-    NDMRESET_CLUSTER_COUNT_DECLARED ^ _CLUSTER_COUNT_MASK
-)
+NDMRESET_CLUSTER_COUNT_WR_PATTERN = NDMRESET_CLUSTER_COUNT_DECLARED ^ _CLUSTER_COUNT_MASK
 
 # ``DFX_DEBUG_BUS_MUX`` is a 64-bit register -- ``dfx_ctrl_status.rdl:116-118``
 # declares ``reg DEBUG_BUS_MUX { regwidth = 0x40; }`` with fields running to
@@ -124,10 +114,25 @@ _DEBUG_BUS_MUX_BYTES = 8
 # RDL/spec-traceable (see _cpu_cluster_count) and it is handled by its own
 # propagation + sw=r legs in body(), which say exactly what they prove.
 DIAGNOSTIC_READS = [
-    ("CHIP_CONFIG_RAS_BANK_INFO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"), 0x0, 4),
-    ("NDMRESET_PROCESS", smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"), 0x0, 4),
+    (
+        "CHIP_CONFIG_RAS_BANK_INFO",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
+        0x0,
+        4,
+    ),
+    (
+        "NDMRESET_PROCESS",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"),
+        0x0,
+        4,
+    ),
     ("DFX_DEBUG_CTRL", smc_addr("SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR"), 0x0, 4),
-    ("DFX_DEBUG_BUS_MUX", smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR"), 0x0, _DEBUG_BUS_MUX_BYTES),
+    (
+        "DFX_DEBUG_BUS_MUX",
+        smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR"),
+        0x0,
+        _DEBUG_BUS_MUX_BYTES,
+    ),
 ]
 
 
@@ -157,8 +162,10 @@ class smc_ecc_dfd_dbs_sanity_test_seq(SmcCsrSeq):
                 "reset)",
                 name,
                 addr,
-                length * 2, rdata,
-                length * 2, expected,
+                length * 2,
+                rdata,
+                length * 2,
+                expected,
                 length * 8,
             )
 

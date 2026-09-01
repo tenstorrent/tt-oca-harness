@@ -8,7 +8,6 @@ from enum import Enum
 
 from pyuvm import uvm_sequence_item
 
-
 # The three OR-reduction aggregates. All three are declared unbackable in
 # env.smc_probe_liveness.UNBACKABLE_PROBES: they read 1 from reset onward and no
 # frontdoor stimulus can drive them to 0, so they are OBSERVED-ONLY diagnostics
@@ -65,7 +64,6 @@ class SmcGpioOp(Enum):
 
 
 class SmcGpioItem(uvm_sequence_item):
-
     def __init__(self, name: str = "SmcGpioItem") -> None:
         super().__init__(name)
         self.op: SmcGpioOp = SmcGpioOp.SAMPLE

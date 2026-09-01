@@ -39,8 +39,8 @@ from .smc_i2c_field_masks import (
     I2C_HOST_FIFO_STATUS_RXLVL_BP,
     I2C_STATUS_ACQEMPTY,
     I2C_STATUS_ACQFULL,
-    I2C_STATUS_FMTFULL,
     I2C_STATUS_FMTEMPTY,
+    I2C_STATUS_FMTFULL,
     I2C_STATUS_RXEMPTY,
     I2C_STATUS_RXFULL,
     I2C_STATUS_TXEMPTY,
@@ -60,9 +60,7 @@ except Exception:  # noqa: BLE001 - optional at import time
     SmcI2cMasterVip = None  # type: ignore[assignment]
     _I2C_VIP_AVAILABLE = False
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 # SPEC depths, hw/ip/i2c/doc/interface.adoc:16 and :18 --
 #   "CTRL_TX_FIFO_DEPTH |64 |Controller mode TX FIFO depth (entries)"
@@ -90,15 +88,11 @@ _BUS_POLL_STEP_US = 10
 
 
 def _rx_lvl(status: int) -> int:
-    return (int(status) & I2C_HOST_FIFO_STATUS_RXLVL_BM) >> (
-        I2C_HOST_FIFO_STATUS_RXLVL_BP
-    )
+    return (int(status) & I2C_HOST_FIFO_STATUS_RXLVL_BM) >> (I2C_HOST_FIFO_STATUS_RXLVL_BP)
 
 
 def _acq_lvl(status: int) -> int:
-    return (int(status) & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> (
-        I2C_TARGET_FIFO_STATUS_ACQLVL_BP
-    )
+    return (int(status) & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> (I2C_TARGET_FIFO_STATUS_ACQLVL_BP)
 
 
 def _target_id(address0: int, mask0: int = 0x7F) -> int:
@@ -172,9 +166,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             _pack_timing4(4, 5),
         )
 
-    async def _await_lvl_at_least(
-        self, label: str, lvl_a: int, lvl_fn, want: int
-    ) -> int:
+    async def _await_lvl_at_least(self, label: str, lvl_a: int, lvl_fn, want: int) -> int:
         """Bounded wait for a FIFO level to reach ``want``; expiry raises."""
         lvl = -1
         for i in range(_BUS_POLL_ITERS):
@@ -204,13 +196,10 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
                 return st
             await Timer(_STATUS_POLL_STEP_NS, units="ns")
         raise AssertionError(
-            f"{label} timeout STATUS=0x{st:08x} "
-            f"want_set=0x{want_set:x} want_clear=0x{want_clear:x}"
+            f"{label} timeout STATUS=0x{st:08x} want_set=0x{want_set:x} want_clear=0x{want_clear:x}"
         )
 
-    async def _await_lvl_zero(
-        self, label: str, lvl_a: int, lvl_fn
-    ) -> None:
+    async def _await_lvl_zero(self, label: str, lvl_a: int, lvl_fn) -> None:
         lvl = -1
         for i in range(_STATUS_POLL_ITERS):
             lvl = lvl_fn(await self.csr_read(f"{label}_{i}", lvl_a))
@@ -251,9 +240,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             f"(hw/ip/i2c/doc/interface.adoc:16)"
         )
 
-        await self._await_status(
-            "FMT_FULL", status_a, want_set=I2C_STATUS_FMTFULL
-        )
+        await self._await_status("FMT_FULL", status_a, want_set=I2C_STATUS_FMTFULL)
 
         await self.csr_write("FMT_RST2", fifo_a, I2C_FIFO_CTRL_FMTRST)
         await self._await_status(
@@ -284,21 +271,14 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
         fifo_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", idx)
         fdata_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", idx)
         ovrd_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", idx)
-        cevents_a = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", idx
-        )
+        cevents_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", idx)
         ctrl_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", idx)
-        host_fifo = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR", idx
-        )
+        host_fifo = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR", idx)
 
         assert _I2C_VIP_AVAILABLE and SmcI2cEepromSlave is not None, (
-            "I2C protocol VIP unavailable: the RX leg needs a bus responder to "
-            "fill the RX FIFO"
+            "I2C protocol VIP unavailable: the RX leg needs a bus responder to fill the RX FIFO"
         )
-        self._eeprom = SmcI2cEepromSlave(
-            addr=_EEPROM_ADDR, name="smc_i2c0_fifo_full_eeprom"
-        )
+        self._eeprom = SmcI2cEepromSlave(addr=_EEPROM_ADDR, name="smc_i2c0_fifo_full_eeprom")
         self._eeprom.write_mem(0, _EEPROM_CONTENT)
 
         await self.wait_i2c0_lsio_ready("I2C0_FIFO_FULL_RX")
@@ -310,9 +290,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
 
         # START + address|R, then read _RX_FILL_BYTES bytes and NACK/STOP.
         addr_r = (_EEPROM_ADDR << 1) | 1
-        await self.csr_write(
-            "RX_FDATA_START", fdata_a, I2C_FDATA_START | addr_r
-        )
+        await self.csr_write("RX_FDATA_START", fdata_a, I2C_FDATA_START | addr_r)
         await self.csr_write(
             "RX_FDATA_READ",
             fdata_a,
@@ -387,9 +365,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             f"(hw/ip/i2c/doc/interface.adoc:18)"
         )
 
-        await self._await_status(
-            "TX_FULL", status_a, want_set=I2C_STATUS_TXFULL
-        )
+        await self._await_status("TX_FULL", status_a, want_set=I2C_STATUS_TXFULL)
 
         await self.csr_write("TX_RST2", fifo_a, I2C_FIFO_CTRL_TXRST)
         await self._await_status(
@@ -417,20 +393,13 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
         idx = 0
         status_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", idx)
         fifo_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", idx)
-        wrap_a = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", idx
-        )
+        wrap_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", idx)
         ctrl_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", idx)
-        tgtid_a = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", idx
-        )
-        tgt_fifo = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", idx
-        )
+        tgtid_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", idx)
+        tgt_fifo = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", idx)
 
         assert _I2C_VIP_AVAILABLE and SmcI2cMasterVip is not None, (
-            "I2C protocol VIP unavailable: the ACQ leg needs a bus master to "
-            "fill the ACQ FIFO"
+            "I2C protocol VIP unavailable: the ACQ leg needs a bus master to fill the ACQ FIFO"
         )
 
         # Re-role I2C0 from controller to target for the acquire path.
@@ -480,12 +449,8 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
         cg = await self.csr_read("I2C_CG", CLOCK_GATE_CONTROL)
         await self.csr_write("I2C_UNGATE", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
 
-        wrap0 = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-        )
-        wrap1 = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1
-        )
+        wrap0 = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
+        wrap1 = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1)
         await self.csr_write("I2C0_WRAP_HOST", wrap0, I2C_WRAP_CTRL_HOST)
         await self.csr_write("I2C1_WRAP_TGT", wrap1, I2C_WRAP_CTRL_TARGET)
 
@@ -515,8 +480,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             f"tx={self.tx_ok} acq={self.acq_ok}"
         )
         cocotb.log.info(
-            "CHK-I2C-FIFO-FULL-BASIC: fmt=%s(full@%d) rx=%s(lvl=%d) "
-            "tx=%s(full@%d) acq=%s(lvl=%d)",
+            "CHK-I2C-FIFO-FULL-BASIC: fmt=%s(full@%d) rx=%s(lvl=%d) tx=%s(full@%d) acq=%s(lvl=%d)",
             self.fmt_ok,
             self.fmt_full_at,
             self.rx_ok,

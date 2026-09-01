@@ -10,15 +10,9 @@ from cocotb.triggers import RisingEdge
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-NDM_REQUEST = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR"
-)
-NDM_PROCESS = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"
-)
-NDM_CLUSTERS = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR"
-)
+NDM_REQUEST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR")
+NDM_PROCESS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR")
+NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR")
 # NDMRESET_CLUSTER_COUNT carries no golden here: `ndm_reset.rdl:33-39` declares
 # it `sw = r; hw = w` with reset 0x0, i.e. the value is driven by the
 # integration's cluster count and no SPEC table in this repository pins it to a
@@ -38,8 +32,8 @@ NDM_CLUSTERS = smc_addr(
 # reported count read zero. It detects a count that over-reports the request
 # bits the DUT actually implements; it cannot detect a DUT that implements more
 # request bits than the bench drives.
-_NDM_CLUSTER_COUNT_MASK = 0xFF          # ndm_reset.rdl ndmreset_cluster_count[7:0]
-_NDM_MAX_CLUSTERS = 32                  # ndm_reset.rdl "Supports up to 32 CPU Clusters"
+_NDM_CLUSTER_COUNT_MASK = 0xFF  # ndm_reset.rdl ndmreset_cluster_count[7:0]
+_NDM_MAX_CLUSTERS = 32  # ndm_reset.rdl "Supports up to 32 CPU Clusters"
 _PIN_BOUND = 64
 
 
@@ -54,8 +48,7 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         self.all_request_readback: int | None = None
         self.bits_swept: list[int] = []
 
-    async def _await_pins(self, dut, irq: int, process: int,
-                          label: str) -> dict[str, int]:
+    async def _await_pins(self, dut, irq: int, process: int, label: str) -> dict[str, int]:
         """Return the SAMPLE that matched so tokens print measured pin values."""
         last = {}
         for _ in range(_PIN_BOUND):
@@ -114,7 +107,10 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         idle_pins = await self._await_pins(dut, irq=0, process=0, label="IDLE")
         cocotb.log.info(
             "CHK-NDM-IDLE: REQUEST=0x%x PROCESS=0x%x process_o=0x%x irq=%d",
-            req0, proc0, idle_pins["process"], idle_pins["irq"],
+            req0,
+            proc0,
+            idle_pins["process"],
+            idle_pins["irq"],
         )
 
         # The RDL's stated use of CLUSTER_COUNT -- "can be read to mask the
@@ -152,19 +148,18 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             "line the bench drives reaches the register and bits above the "
             "reported count read zero. Request bits beyond the bench's port "
             "width are outside this leg's reach",
-            count, port_width, drive_all.bit_count(),
-            self.all_request_readback, count,
+            count,
+            port_width,
+            drive_all.bit_count(),
+            self.all_request_readback,
+            count,
         )
 
         for bit in range(count):
             mask = 1 << bit
             dut.tb_ndmreset_request.value = mask
-            req_pins = await self._await_pins(
-                dut, irq=1, process=0, label=f"REQ{bit}"
-            )
-            got_req = await self.csr_read(
-                f"NDM_REQUEST_B{bit}", NDM_REQUEST, expected=mask
-            )
+            req_pins = await self._await_pins(dut, irq=1, process=0, label=f"REQ{bit}")
+            got_req = await self.csr_read(f"NDM_REQUEST_B{bit}", NDM_REQUEST, expected=mask)
             cocotb.log.info(
                 "CHK-NDM-REQ-%d: pin=0x%x REQUEST=0x%x irq=%d process_o=0x%x",
                 bit,
@@ -175,15 +170,10 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             )
 
             await self.csr_write(f"NDM_PROCESS_SET_B{bit}", NDM_PROCESS, mask)
-            proc_pins = await self._await_pins(
-                dut, irq=1, process=mask, label=f"PROC{bit}"
-            )
-            got_proc = await self.csr_read(
-                f"NDM_PROCESS_B{bit}", NDM_PROCESS, expected=mask
-            )
+            proc_pins = await self._await_pins(dut, irq=1, process=mask, label=f"PROC{bit}")
+            got_proc = await self.csr_read(f"NDM_PROCESS_B{bit}", NDM_PROCESS, expected=mask)
             cocotb.log.info(
-                "CHK-NDM-PROC-%d: PROCESS=0x%x process_o=0x%x (measured pin "
-                "sample, irq=%d)",
+                "CHK-NDM-PROC-%d: PROCESS=0x%x process_o=0x%x (measured pin sample, irq=%d)",
                 bit,
                 got_proc,
                 proc_pins["process"],
@@ -191,18 +181,11 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             )
 
             dut.tb_ndmreset_request.value = 0
-            drop_pins = await self._await_pins(
-                dut, irq=0, process=mask, label=f"DROP{bit}"
-            )
-            got_req = await self.csr_read(
-                f"NDM_REQUEST_DROP_B{bit}", NDM_REQUEST, expected=0
-            )
-            got_proc = await self.csr_read(
-                f"NDM_PROCESS_HOLD_B{bit}", NDM_PROCESS, expected=mask
-            )
+            drop_pins = await self._await_pins(dut, irq=0, process=mask, label=f"DROP{bit}")
+            got_req = await self.csr_read(f"NDM_REQUEST_DROP_B{bit}", NDM_REQUEST, expected=0)
+            got_proc = await self.csr_read(f"NDM_PROCESS_HOLD_B{bit}", NDM_PROCESS, expected=mask)
             cocotb.log.info(
-                "CHK-NDM-DROP-%d: REQUEST=0x%x PROCESS held 0x%x process_o=0x%x "
-                "irq=%d",
+                "CHK-NDM-DROP-%d: REQUEST=0x%x PROCESS held 0x%x process_o=0x%x irq=%d",
                 bit,
                 got_req,
                 got_proc,
@@ -211,14 +194,13 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             )
 
             await self.csr_write(f"NDM_PROCESS_CLR_B{bit}", NDM_PROCESS, 0)
-            clr_pins = await self._await_pins(
-                dut, irq=0, process=0, label=f"CLR{bit}"
-            )
-            got_proc = await self.csr_read(
-                f"NDM_PROCESS_CLR_B{bit}", NDM_PROCESS, expected=0
-            )
+            clr_pins = await self._await_pins(dut, irq=0, process=0, label=f"CLR{bit}")
+            got_proc = await self.csr_read(f"NDM_PROCESS_CLR_B{bit}", NDM_PROCESS, expected=0)
             cocotb.log.info(
                 "CHK-NDM-CLR-%d: PROCESS=0x%x process_o=0x%x irq=%d",
-                bit, got_proc, clr_pins["process"], clr_pins["irq"],
+                bit,
+                got_proc,
+                clr_pins["process"],
+                clr_pins["irq"],
             )
             self.bits_swept.append(bit)

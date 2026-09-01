@@ -69,12 +69,8 @@ CPU_MAP_READS = [
     ),
     (
         "HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD",
-        smc_addr(
-            "SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR"
-        ),
-        _base_config_reset(
-            "SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset"
-        ),
+        smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR"),
+        _base_config_reset("SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset"),
     ),
 ]
 
@@ -104,8 +100,6 @@ class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
             "SMC_TOP_SMC_BASE_CONFIG_*_BASE_ADDR symbol and compared against its "
             "generated RDL reset: %s",
             len(CPU_MAP_READS),
-            "; ".join(
-                f"{name}@0x{addr:08x}==0x{exp:x}" for name, addr, exp in CPU_MAP_READS
-            ),
+            "; ".join(f"{name}@0x{addr:08x}==0x{exp:x}" for name, addr, exp in CPU_MAP_READS),
         )
         self.chk_seen.add("CHK-CPU-CTRL-MAP-DEPTH")

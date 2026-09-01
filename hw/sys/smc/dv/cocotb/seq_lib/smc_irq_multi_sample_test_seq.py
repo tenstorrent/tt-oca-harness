@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_irq_item import IRQ_SAMPLE_FIELDS, SmcIrqItem, SmcIrqOp
 
 from .smc_base_test_seq import smc_base_test_seq
@@ -46,8 +45,7 @@ class smc_irq_multi_sample_test_seq(smc_base_test_seq):
         # Minimum-activity gate: an empty/short collection is a stimulus defect,
         # never a pass ([NO-ZERO-ACTIVITY-PASS]).
         assert len(self.samples) == self.SAMPLE_COUNT, (
-            f"IRQ multi-sample collected {len(self.samples)} samples, expected "
-            f"{self.SAMPLE_COUNT}"
+            f"IRQ multi-sample collected {len(self.samples)} samples, expected {self.SAMPLE_COUNT}"
         )
         for item in self.samples:
             assert item.resolvable, f"IRQ sample {item.get_name()} unresolvable (X/Z): {item}"
@@ -66,8 +64,8 @@ class smc_irq_multi_sample_test_seq(smc_base_test_seq):
                 f"{item.get_name()} read {dict(zip(IRQ_SAMPLE_FIELDS, got))}"
             )
         cocotb.log.info(
-            "CHK-IRQ-MULTI-SAMPLE-STABLE: %d resolvable SAMPLEs %d ref cycles "
-            "apart all read %s",
-            len(self.samples), self.GAP_REF_CYCLES,
+            "CHK-IRQ-MULTI-SAMPLE-STABLE: %d resolvable SAMPLEs %d ref cycles apart all read %s",
+            len(self.samples),
+            self.GAP_REF_CYCLES,
             dict(zip(IRQ_SAMPLE_FIELDS, golden)),
         )

@@ -88,9 +88,7 @@ class SmuScoreboard(uvm_component):
         self.checks += 1
         if observed != expected:
             self.errors += 1
-            self.logger.error(
-                "CHECK FAIL %s: expected %s, got %s", name, expected, observed
-            )
+            self.logger.error("CHECK FAIL %s: expected %s, got %s", name, expected, observed)
             raise AssertionError(f"{name}: expected {expected}, got {observed}")
         token = self._resolve_token(name, evidence)
         self.logger.info("CHECK PASS %s: %s", name, observed)
@@ -150,24 +148,18 @@ class SmuScoreboard(uvm_component):
                 f"or align check names to FEATURE_LIST TOKENs."
             )
         for chk_id, token, expect in rows:
-            self.logger.info(
-                "FEATURE PROVEN %s -> %s (%s)", chk_id, token, expect
-            )
+            self.logger.info("FEATURE PROVEN %s -> %s (%s)", chk_id, token, expect)
 
     def check_phase(self) -> None:
         if self.checks == 0:
-            raise AssertionError(
-                "SmuScoreboard: zero checks executed - refusing vacuous PASS"
-            )
+            raise AssertionError("SmuScoreboard: zero checks executed - refusing vacuous PASS")
         if self.errors != 0:
             raise AssertionError(
                 f"SmuScoreboard: {self.errors} check(s) failed out of {self.checks}"
             )
         # Non-vacuity evidence token required by leaf contracts
         self._log_evidence("CHK-NONVAC")
-        self.logger.info(
-            "SmuScoreboard: %d check(s) passed with zero errors", self.checks
-        )
+        self.logger.info("SmuScoreboard: %d check(s) passed with zero errors", self.checks)
         if self._evidence_tokens:
             self.logger.info(
                 "EVIDENCE_SUMMARY: %d token(s) - %s",

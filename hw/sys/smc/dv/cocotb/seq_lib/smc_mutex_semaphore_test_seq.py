@@ -87,7 +87,8 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-MUTEX-TAKE: MUTEX[0] read 0x%x == free 0x%x (now acquired)",
-            self.take, MUTEX_FREE,
+            self.take,
+            MUTEX_FREE,
         )
 
         # ---- MUTEX[0]: deny while held ----
@@ -96,7 +97,8 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-MUTEX-HELD: MUTEX[0] read 0x%x == taken 0x%x while held",
-            self.deny, MUTEX_TAKEN,
+            self.deny,
+            MUTEX_TAKEN,
         )
 
         # ---- MUTEX[1]: the neighbouring lock is a *different* lock ----
@@ -108,7 +110,8 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-MUTEX-NEIGHBOUR-FREE: MUTEX[1] read 0x%x == free 0x%x while "
             "MUTEX[0] is held (locks are independent, not aliased)",
-            self.nbr_free_while_held, MUTEX_FREE,
+            self.nbr_free_while_held,
+            MUTEX_FREE,
         )
 
         # ---- release MUTEX[0]; MUTEX[1] must be untouched by it ----
@@ -118,7 +121,8 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-MUTEX-REL: write released MUTEX[0]; read 0x%x == free 0x%x",
-            self.free_after_release, MUTEX_FREE,
+            self.free_after_release,
+            MUTEX_FREE,
         )
         self.nbr_held_after_release = await self.csr_read(
             "MUTEX1_STILL_HELD", MUTEX1, expected=MUTEX_TAKEN, length=ACCESS_BYTES
@@ -126,7 +130,8 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-MUTEX-NEIGHBOUR-HOLD: MUTEX[1] read 0x%x == taken 0x%x after "
             "the MUTEX[0] release (a release does not free its neighbours)",
-            self.nbr_held_after_release, MUTEX_TAKEN,
+            self.nbr_held_after_release,
+            MUTEX_TAKEN,
         )
 
         # Restore both locks to their reset (available) state.
@@ -142,7 +147,9 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         )
         await self.csr_write("SEMA0_INC", SEMA0, SEMA_STEP, length=ACCESS_BYTES)
         self.sema_inc = await self.csr_read(
-            "SEMA0_AFTER_INC", SEMA0, expected=SEMA_RESET + SEMA_STEP,
+            "SEMA0_AFTER_INC",
+            SEMA0,
+            expected=SEMA_RESET + SEMA_STEP,
             length=ACCESS_BYTES,
         )
         await self.csr_write("SEMA0_DEC", SEMA0, SEMA_STEP_NEG, length=ACCESS_BYTES)
@@ -152,7 +159,11 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-SEMA-ACCUMULATE: SEMA[0] 0x%x -(+%d)-> 0x%x -(-%d)-> 0x%x "
             "(signed 2s-complement inc/dec, rdl:283-293)",
-            self.sema_reset, SEMA_STEP, self.sema_inc, SEMA_STEP, self.sema_dec,
+            self.sema_reset,
+            SEMA_STEP,
+            self.sema_inc,
+            SEMA_STEP,
+            self.sema_dec,
         )
 
         # ---- Reconciliation: the compares must have reached a real checker ----
@@ -178,9 +189,15 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
             "mutex1 free_while_m0_held=0x%x held_after_m0_rel=0x%x free=0x%x | "
             "sema0 reset=0x%x inc=0x%x dec=0x%x | "
             "scoreboard value_checks=%d (>= %d)",
-            self.take, self.deny, self.free_after_release,
-            self.nbr_free_while_held, self.nbr_held_after_release,
+            self.take,
+            self.deny,
+            self.free_after_release,
+            self.nbr_free_while_held,
+            self.nbr_held_after_release,
             self.nbr_free_after_own_release,
-            self.sema_reset, self.sema_inc, self.sema_dec,
-            self.value_checks, EXPECTED_VALUE_CHECKS,
+            self.sema_reset,
+            self.sema_inc,
+            self.sema_dec,
+            self.value_checks,
+            EXPECTED_VALUE_CHECKS,
         )

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_cool_reset_x_cold_reset_test_seq import (
     _COLD_PAT,
     _SCRATCH_RESET,
@@ -13,6 +12,7 @@ from seq_lib.smc_cool_reset_x_cold_reset_test_seq import (
     _WARM_PAT,
     smc_cool_reset_x_cold_reset_test_seq,
 )
+from smc_base_test import smc_base_test
 
 _ARMED = (_WARM_PAT, _COLD_PAT)
 _CLEARED = (_SCRATCH_RESET, _SCRATCH_RESET)
@@ -37,15 +37,11 @@ class smc_cool_reset_x_cold_reset_test(smc_base_test):
             f"cold did not win: isolate_req_o=0x{seq.iso_last:x} "
             f"rst_cool_from_flr={seq.cool_last}, expected 0x0 / 1"
         )
-        assert (seq.cool_scratch_before, seq.cool_scratch_after) == (
-            _ARMED, _CLEARED
-        ), (
+        assert (seq.cool_scratch_before, seq.cool_scratch_after) == (_ARMED, _CLEARED), (
             f"FLR-only cool: scratch banks {seq.cool_scratch_before} -> "
             f"{seq.cool_scratch_after}, expected {_ARMED} -> {_CLEARED}"
         )
-        assert (seq.cold_scratch_pre, seq.cold_scratch_post) == (
-            _ARMED, _CLEARED
-        ), (
+        assert (seq.cold_scratch_pre, seq.cold_scratch_post) == (_ARMED, _CLEARED), (
             f"FLR-cool x cold overlap: scratch banks {seq.cold_scratch_pre} -> "
             f"{seq.cold_scratch_post}, expected {_ARMED} -> {_CLEARED}"
         )

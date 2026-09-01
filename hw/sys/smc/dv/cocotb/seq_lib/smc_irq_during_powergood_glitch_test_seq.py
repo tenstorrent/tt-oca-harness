@@ -46,7 +46,6 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
-
 from env.smc_irq_item import IRQ_SAMPLE_FIELDS, SmcIrqItem, SmcIrqOp
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
@@ -64,7 +63,6 @@ _IRQ_PROBES = {
 
 
 class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
-
     # Stimulus quantity: the minimum time powergood_i is held low, in clk_ref_i
     # cycles, enforced in the body -- the mid-glitch SAMPLEs usually take longer
     # than this on their own, and whatever they do not cover is topped up before
@@ -139,14 +137,10 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
                     # An interrupt line to the CPU going X/Z is a defect, not a
                     # don't-care, so it is reported as a failure rather than
                     # resolved arbitrarily by int() ([X-AWARE-CHECK]).
-                    self._watch_unresolvable.append(
-                        f"{probe} unresolvable ({raw}) at {now}ns"
-                    )
+                    self._watch_unresolvable.append(f"{probe} unresolvable ({raw}) at {now}ns")
                     continue
                 if int(raw) != 0:
-                    self._watch_violations.append(
-                        f"{probe} asserted ({int(raw)}) at {now}ns"
-                    )
+                    self._watch_violations.append(f"{probe} asserted ({int(raw)}) at {now}ns")
 
     def _check_watch(self, label: str) -> None:
         assert self._watch_cycles > 0, (
@@ -186,9 +180,7 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
 
         # S3: IRQ SAMPLEs from inside the glitch hold.
         for i in range(self.GLITCH_IRQ_SAMPLES):
-            self.glitch_irq_samples.append(
-                await self._irq_sample(f"irq_mid_glitch_{i}")
-            )
+            self.glitch_irq_samples.append(await self._irq_sample(f"irq_mid_glitch_{i}"))
             await ClockCycles(dut.clk_ref_i, self.IRQ_SAMPLE_GAP_REF_CYCLES)
 
         # Exact gated state while power-good is not stable (SPEC: POR holds the
@@ -220,9 +212,7 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
         # Release powergood and keep sampling IRQ while recovery is in flight.
         await self._reset_item("pg_hi", SmcResetOp.POWERGOOD_HI)
         for i in range(self.RECOVERY_IRQ_SAMPLES):
-            self.recovery_irq_samples.append(
-                await self._irq_sample(f"irq_recovering_{i}")
-            )
+            self.recovery_irq_samples.append(await self._irq_sample(f"irq_recovering_{i}"))
             await ClockCycles(dut.clk_ref_i, self.IRQ_SAMPLE_GAP_REF_CYCLES)
 
         # S5: positive control for the recovered idle-IRQ leg -- prove the DUT
@@ -245,13 +235,11 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
         # S7: post-recovery idle IRQ, now that recovery is proven.
         self.recovered_irq = await self._irq_sample("irq_recovered")
 
-        # Consume both bookends: resolvable, and the recovered aggregates equal
-        # the pre-glitch baseline. Previously these two items were stored and
-        # never read ([NO-DUMMY-DEAD-CODE]).
+        # Both bookends are consumed: resolvable, and the recovered aggregates
+        # equal the pre-glitch baseline. A sample that is stored and never read
+        # is not evidence ([NO-DUMMY-DEAD-CODE]).
         for item in (self.baseline_irq, self.recovered_irq):
-            assert item.resolvable, (
-                f"{item.get_name()} IRQ sample unresolvable (X/Z): {item}"
-            )
+            assert item.resolvable, f"{item.get_name()} IRQ sample unresolvable (X/Z): {item}"
         base = tuple(getattr(self.baseline_irq, f) for f in IRQ_SAMPLE_FIELDS)
         recovered = tuple(getattr(self.recovered_irq, f) for f in IRQ_SAMPLE_FIELDS)
         assert recovered == base, (
@@ -272,6 +260,7 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
             self.GLITCH_REF_CYCLES,
             self.recovery_wait.wait_ref_cycles,
             2 + len(self.glitch_irq_samples) + len(self.recovery_irq_samples),
-            len(self.glitch_irq_samples), len(self.recovery_irq_samples),
+            len(self.glitch_irq_samples),
+            len(self.recovery_irq_samples),
             self._watch_cycles,
         )

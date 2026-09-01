@@ -13,14 +13,12 @@ choice `smc_axil_burst_idle_test` made ([NO-DUMMY-DEAD-CODE]).
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_irq_observe_test_seq import smc_irq_observe_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_irq_observe_test(smc_base_test):
-
     # The scoreboard's only value compare on this testcase's proof path is the
     # idle `tb_<aggregate> == 0` of the three IRQ aggregates, which a
     # stuck-at-0 / undriven / mis-bound probe passes identically to a quiet DUT.

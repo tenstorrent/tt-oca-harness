@@ -172,6 +172,68 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
         data = result.first_data();
     endtask
 
+    // Single-beat write with explicit channel skew (the cocotb write_skewed
+    // parity operation): aw/w_valid_delay hold that channel's VALID low for N
+    // cycles before it launches — AXI permits either arrival order, so
+    // demux/regblock channel-ordering paths are exercised deliberately — and
+    // b_ready_delay defers the BREADY assert after the data phase.
+    task write_skewed_result(
+        input  bit [63:0]    addr,
+        input  bit [63:0]    data,
+        output ocah_axi_item result,
+        input  int unsigned  aw_valid_delay = 0,
+        input  int unsigned  w_valid_delay = 0,
+        input  int unsigned  b_ready_delay = 0,
+        input  bit [7:0]     strb = 8'hFF,
+        input  int           size = -1,
+        input  bit [2:0]     prot = '0,
+        input  bit           check_response = 1'b1,
+        input  bit           allow_timeout = 1'b0
+    );
+        ocah_axi_item it = ocah_axi_item::type_id::create("write_skewed");
+        it.protocol       = resolve_cfg().protocol;
+        it.direction      = OCAH_AXI_DIR_WRITE;
+        it.address        = addr;
+        it.data_words.push_back(data);
+        it.strobes.push_back(resolve_strb(strb));
+        it.size           = resolve_size(size);
+        it.prot           = prot;
+        it.expected_beats = 1;
+        it.aw_valid_delay = aw_valid_delay;
+        it.w_valid_delay  = w_valid_delay;
+        it.b_ready_delay  = b_ready_delay;
+        do_axi(it);
+        write_transactions++;
+        enforce_result(it, "skewed write to", check_response, allow_timeout);
+        result = it;
+    endtask
+
+    // Single-beat read holding RREADY low for hold_cycles after RVALID
+    // asserts (the cocotb read_with_rready_hold parity operation);
+    // result.hold_stable reports RDATA/RRESP stability across the hold.
+    task read_hold_result(
+        input  bit [63:0]    addr,
+        input  int unsigned  hold_cycles,
+        output ocah_axi_item result,
+        input  int           size = -1,
+        input  bit [2:0]     prot = '0,
+        input  bit           check_response = 1'b1,
+        input  bit           allow_timeout = 1'b0
+    );
+        ocah_axi_item it = ocah_axi_item::type_id::create("read_hold");
+        it.protocol       = resolve_cfg().protocol;
+        it.direction      = OCAH_AXI_DIR_READ;
+        it.address        = addr;
+        it.size           = resolve_size(size);
+        it.prot           = prot;
+        it.expected_beats = 1;
+        it.r_ready_delay  = hold_cycles;
+        do_axi(it);
+        read_transactions++;
+        enforce_result(it, "held read from", check_response, allow_timeout);
+        result = it;
+    endtask
+
     // Multi-beat write burst (one raw bus word per beat; strb_words empty =
     // full-beat strobes on every beat). AXI4 only.
     task burst_write_result(

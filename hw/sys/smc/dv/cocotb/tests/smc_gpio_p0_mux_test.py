@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_gpio_p0_mux_test_seq import smc_gpio_p0_mux_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -28,10 +28,7 @@ class smc_gpio_p0_mux_test(smc_base_test):
         # would fail. The individual samples are asserted in the sequence; what
         # this adds is that all four came from the same run and hold together.
         bit = 1 << 0
-        pattern = tuple(
-            (v & bit) != 0
-            for v in (seq.en_base, seq.en_reg, seq.en_both, seq.en_lsio)
-        )
+        pattern = tuple((v & bit) != 0 for v in (seq.en_base, seq.en_reg, seq.en_both, seq.en_lsio))
         assert pattern == (False, True, True, True), (
             f"gpio p0 mux enable pattern base/reg/both/lsio = {pattern}, "
             f"expected (False, True, True, True) "

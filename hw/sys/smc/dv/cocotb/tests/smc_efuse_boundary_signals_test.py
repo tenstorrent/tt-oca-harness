@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_boundary_signals_test_seq import (
     smc_efuse_boundary_signals_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

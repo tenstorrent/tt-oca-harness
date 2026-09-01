@@ -88,20 +88,14 @@ class SmcProtocolVipItem(uvm_sequence_item):
         mode = "proxy" if self.proxy else "protocol"
         golden = ""
         if self.expected_bytes is not None:
-            golden = (
-                f" golden={self.expected_bytes.hex()}"
-                f" obs={(self.observed_bytes or b'').hex()}"
-            )
+            golden = f" golden={self.expected_bytes.hex()} obs={(self.observed_bytes or b'').hex()}"
         timeouts = "n/a" if self.timeouts is None else self.timeouts
         role = "AUTO-COVERAGE-STAMP" if self.auto_evidence else "scenario-recorded"
         fabric = ""
         if self.fabric_accesses or self.min_fabric_accesses:
             label = self.fabric_access_label or "non-CSR fabric"
             source = f" [{self.fabric_access_source}]" if self.fabric_access_source else ""
-            fabric = (
-                f" {label}={self.fabric_accesses} "
-                f"(min={self.min_fabric_accesses}){source}"
-            )
+            fabric = f" {label}={self.fabric_accesses} (min={self.min_fabric_accesses}){source}"
         return (
             f"{self.kind.value}:{self.scenario} mode={mode} role={role} "
             f"csr_accesses={self.csr_accesses} (min={self.min_csr_accesses})"

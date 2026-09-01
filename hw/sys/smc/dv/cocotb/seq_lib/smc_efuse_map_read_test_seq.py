@@ -89,20 +89,41 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
 #     each, but no `SMC_TOP_SMC_EFUSE_MAP_SPI_*_BASE_ADDR` does, so there is no
 #     register to read on this map.
 _MAP_REGIONS = (
-    ("CLUSTER", "SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__CLUSTER_READ_LOCK_bm"),
-    ("FABRIC", "SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__FABRIC_READ_LOCK_bm"),
-    ("SOP_TOPOLOGY", "SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__SOP_TOPOLOGY_READ_LOCK_bm"),
-    ("I2C_CLOCK_GATING", "SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__I2C_CLOCK_GATING_READ_LOCK_bm"),
-    ("I3C_DISABLE", "SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__I3C_DISABLE_READ_LOCK_bm"),
-    ("PLL_AND_SENSOR", "SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__PLL_AND_SENSOR_READ_LOCK_bm"),
-    ("PACKAGE_ID", "SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR",
-     "SMC_EFUSE_MAP__LOCKS__PACKAGE_ID_READ_LOCK_bm"),
+    (
+        "CLUSTER",
+        "SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__CLUSTER_READ_LOCK_bm",
+    ),
+    (
+        "FABRIC",
+        "SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__FABRIC_READ_LOCK_bm",
+    ),
+    (
+        "SOP_TOPOLOGY",
+        "SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__SOP_TOPOLOGY_READ_LOCK_bm",
+    ),
+    (
+        "I2C_CLOCK_GATING",
+        "SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__I2C_CLOCK_GATING_READ_LOCK_bm",
+    ),
+    (
+        "I3C_DISABLE",
+        "SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__I3C_DISABLE_READ_LOCK_bm",
+    ),
+    (
+        "PLL_AND_SENSOR",
+        "SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__PLL_AND_SENSOR_READ_LOCK_bm",
+    ),
+    (
+        "PACKAGE_ID",
+        "SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR",
+        "SMC_EFUSE_MAP__LOCKS__PACKAGE_ID_READ_LOCK_bm",
+    ),
 )
 # `I2C_I3C_ID` is a 9-entry array. The authoritative map carries it as a PeakRDL
 # indexed macro -- `SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(idx) =
@@ -134,11 +155,13 @@ for _rname, _asym, _lsym in _MAP_REGIONS:
     EFUSE_MAP_READS.append((f"EFUSE_MAP_{_rname}", _a, _map_expect(_a, _lsym)))
 for _i in range(_I2C_I3C_ID_COUNT):
     _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", _i)
-    EFUSE_MAP_READS.append((
-        f"EFUSE_MAP_I2C_I3C_ID_{_i}", _a,
-        _map_expect(_a, "SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"),
-    ))
-
+    EFUSE_MAP_READS.append(
+        (
+            f"EFUSE_MAP_I2C_I3C_ID_{_i}",
+            _a,
+            _map_expect(_a, "SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"),
+        )
+    )
 
 
 class smc_efuse_map_read_test_seq(SmcCsrSeq):
@@ -172,10 +195,7 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
             "CHK-EFUSE-MAP-READ: %s (expectations derived from "
             "assets/smc_efuse_default.hex + SMC_EFUSE_MAP LOCKS read-lock bits, "
             "%d distinct values)",
-            "; ".join(
-                f"{name}@0x{addr:08x}==0x{exp:08x}"
-                for name, addr, exp in EFUSE_MAP_READS
-            ),
+            "; ".join(f"{name}@0x{addr:08x}==0x{exp:08x}" for name, addr, exp in EFUSE_MAP_READS),
             len(distinct),
         )
         self.chk_seen.add("CHK-EFUSE-MAP-READ")

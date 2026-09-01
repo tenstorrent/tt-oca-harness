@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_axil_item import AXIL_CHECKABLE_FIELDS, SmcAxilItem, SmcAxilOp
 
 from .smc_axil_idle_test_seq import assert_axil_idle, prove_axil_probe_alive
@@ -69,8 +68,7 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
             if i < self.BURST_SAMPLES - 1:
                 await ClockCycles(dut.clk_smc_i, self.GAP_SMC_CYCLES)
         assert len(self.samples) == self.BURST_SAMPLES, (
-            f"expected {self.BURST_SAMPLES} AXI-Lite SAMPLE items, "
-            f"got {len(self.samples)}"
+            f"expected {self.BURST_SAMPLES} AXI-Lite SAMPLE items, got {len(self.samples)}"
         )
         # One OBSERVED-ONLY string per sample, kept per-sample: reassigning a
         # single variable inside the loop left the token quoting the *last*
@@ -79,8 +77,7 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
         observed_only_per_sample = [assert_axil_idle(s) for s in self.samples]
         distinct_observed_only = sorted(set(observed_only_per_sample))
         observed_only = "; ".join(
-            f"{text} x{observed_only_per_sample.count(text)}"
-            for text in distinct_observed_only
+            f"{text} x{observed_only_per_sample.count(text)}" for text in distinct_observed_only
         )
         # Typed-counter end gate: every dispatched SAMPLE reached the
         # type-dispatched scoreboard. A mis-bound agent or a dropped item would
@@ -111,5 +108,6 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
         # the sequence may assert a contract identity ([NO-DUMMY-DEAD-CODE]).
         cocotb.log.info(
             "smc_axil_burst_idle_test_seq PASS: %d idle samples, %d booked",
-            self.BURST_SAMPLES, booked,
+            self.BURST_SAMPLES,
+            booked,
         )

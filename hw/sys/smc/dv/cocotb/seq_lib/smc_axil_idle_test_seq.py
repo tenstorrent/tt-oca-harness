@@ -21,7 +21,6 @@ Two legs, because "the AXI-Lite masters are idle" is a negative claim:
 from __future__ import annotations
 
 import cocotb
-
 from env.smc_axil_item import (
     AXIL_CHECKABLE_FIELDS,
     AXIL_UNBACKABLE_FIELDS,
@@ -94,13 +93,10 @@ def assert_axil_idle(item: SmcAxilItem) -> str:
             f"{item.get_name()}: tb_axil_{field} = {got}, expected 0 (no "
             f"AXI-Lite master traffic is driven in this window) ({item})"
         )
-    return ", ".join(
-        f"tb_axil_{f}={getattr(item, f)}" for f in AXIL_UNBACKABLE_FIELDS
-    )
+    return ", ".join(f"tb_axil_{f}={getattr(item, f)}" for f in AXIL_UNBACKABLE_FIELDS)
 
 
 class smc_axil_idle_test_seq(smc_base_test_seq):
-
     # Exact number of AXI-Lite SAMPLE items this body dispatches. The end gate
     # reconciles it against the scoreboard's typed counter, which is incremented
     # on the analysis path -- so a mis-bound agent, a dropped item or a monitor

@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_error_conditions_test_seq import (
     smc_uart_error_conditions_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -22,8 +22,7 @@ class smc_uart_error_conditions_test(smc_base_test):
         seq = smc_uart_error_conditions_test_seq("uart_err_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.parity_ok and seq.overrun_ok and seq.break_ok, (
-            f"uart err incomplete pe={seq.parity_ok} "
-            f"oe={seq.overrun_ok} bi={seq.break_ok}"
+            f"uart err incomplete pe={seq.parity_ok} oe={seq.overrun_ok} bi={seq.break_ok}"
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
@@ -35,7 +34,5 @@ class smc_uart_error_conditions_test(smc_base_test):
             min_csr_accesses=550,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                f"ERR pe={seq.parity_ok} oe={seq.overrun_ok} bi={seq.break_ok}"
-            ),
+            details=(f"ERR pe={seq.parity_ok} oe={seq.overrun_ok} bi={seq.break_ok}"),
         )

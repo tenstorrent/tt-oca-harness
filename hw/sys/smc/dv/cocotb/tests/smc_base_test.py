@@ -216,9 +216,9 @@ def _digest(path: Path) -> tuple[str, int]:
 
 
 def _mtime_utc(path: Path) -> str:
-    return datetime.fromtimestamp(
-        path.stat().st_mtime, tz=timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
 
 
 def _require(path: Path, what: str) -> Path:
@@ -250,16 +250,13 @@ def log_build_model_identity() -> str:
     # Line count only, as a coarse change tell. The authoritative resolved-input
     # identity is `deps_sha256` (the elaboration dependency list): this filelist
     # is mostly `-f` includes, so its own line count says little.
-    flist_lines = len(
-        flist.read_text(encoding="utf-8", errors="replace").splitlines()
-    )
+    flist_lines = len(flist.read_text(encoding="utf-8", errors="replace").splitlines())
     deps_part = "deps=none"
     if deps_rel is not None:
         deps = _require(build_dir / deps_rel, f"{tool} elaboration input list")
         deps_sha, _deps_size = _digest(deps)
         deps_part = (
-            f"deps={deps.relative_to(root)} deps_sha256={deps_sha} "
-            f"deps_mtime={_mtime_utc(deps)}"
+            f"deps={deps.relative_to(root)} deps_sha256={deps_sha} deps_mtime={_mtime_utc(deps)}"
         )
     line = (
         "CHK-BUILD-MODEL-IDENTITY: this run simulated "
@@ -400,8 +397,7 @@ class smc_base_test(uvm_test):
             # An auto stamp is booked in the scoreboard's activity bin, never as
             # a check, so it carries no floor by construction.
             assert min_csr_accesses is None, (
-                "auto_evidence records are activity stamps and must not carry "
-                "min_csr_accesses"
+                "auto_evidence records are activity stamps and must not carry min_csr_accesses"
             )
             min_csr_accesses = 0
         else:
@@ -423,9 +419,7 @@ class smc_base_test(uvm_test):
                 f"golden has nothing on the record that can fail and must be "
                 f"booked with auto_evidence=True instead."
             )
-        assert min_fabric_accesses >= 0, (
-            "fabric access floor must be non-negative"
-        )
+        assert min_fabric_accesses >= 0, "fabric access floor must be non-negative"
         assert not (min_fabric_accesses and not fabric_access_label), (
             "min_fabric_accesses needs fabric_access_label naming the traffic"
         )
@@ -467,9 +461,7 @@ class smc_base_test(uvm_test):
         item.fabric_accesses = measured_fabric
         item.min_fabric_accesses = min_fabric_accesses
         item.fabric_access_label = fabric_access_label
-        item.fabric_access_source = (
-            f"measured: SmcScoreboard.axi_accesses_by_bus[{fabric_bus!r}]"
-        )
+        item.fabric_access_source = f"measured: SmcScoreboard.axi_accesses_by_bus[{fabric_bus!r}]"
         item.auto_evidence = auto_evidence
         await _OneShot(item, "protocol_vip_os").start(self.env.protocol_vip_agent.sequencer)
 
@@ -585,7 +577,9 @@ class smc_base_test(uvm_test):
         cocotb.start_soon(watch_probe_liveness(dut))
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start())
+        cocotb.start_soon(
+            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
+        )
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood")
@@ -628,16 +622,13 @@ class smc_base_test(uvm_test):
             vals = [getattr(dut, p).value for p in self._COLD_RELEASE_PROBES]
             if all(v.is_resolvable and int(v) == 1 for v in vals):
                 self.logger.info(
-                    "Cold reset chain released %d clk_ref_i cycles after "
-                    "rst_cold_ni=1 (%s)", cycle,
-                    ", ".join(f"{p}={int(v)}" for p, v in
-                              zip(self._COLD_RELEASE_PROBES, vals)),
+                    "Cold reset chain released %d clk_ref_i cycles after rst_cold_ni=1 (%s)",
+                    cycle,
+                    ", ".join(f"{p}={int(v)}" for p, v in zip(self._COLD_RELEASE_PROBES, vals)),
                 )
                 return cycle
             await ClockCycles(dut.clk_ref_i, 1)
-        last = ", ".join(
-            f"{p}={getattr(dut, p).value}" for p in self._COLD_RELEASE_PROBES
-        )
+        last = ", ".join(f"{p}={getattr(dut, p).value}" for p in self._COLD_RELEASE_PROBES)
         raise AssertionError(
             f"cold reset chain not released within {bound} clk_ref_i cycles of "
             f"rst_cold_ni=1; last observed {last}"
@@ -660,9 +651,7 @@ class smc_base_test(uvm_test):
             return
         from seq_lib.smc_probe_positive_control import SmcProbePositiveControlSeq
 
-        seq = SmcProbePositiveControlSeq(
-            "probe_positive_control_seq", self.probe_positive_controls
-        )
+        seq = SmcProbePositiveControlSeq("probe_positive_control_seq", self.probe_positive_controls)
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
 
     async def run_phase(self) -> None:
@@ -677,16 +666,12 @@ class smc_base_test(uvm_test):
         # Prefer the per-test class attribute; fall back to the legacy name map.
         kind = self.protocol_vip_kind or _PROTOCOL_VIP_TESTS.get(test_name)
         if getattr(self, "auto_protocol_vip", True) and kind is not None:
-            # Auto stamp, NOT evidence of protocol behaviour. It previously
-            # recorded csr_accesses=0 / timeouts=0 and a canned details string
-            # regardless of what the scenario did, i.e. a self-manufactured
-            # record that could not fail ([NO-ALWAYS-PASS-CHECKER]) and landed
-            # with csr_accesses=0 after real traffic
-            # ([EVIDENCE-TOKEN-CONDITIONAL]). Now it carries only measured
-            # numbers (the SYS-AXI transaction count the scoreboard actually
+            # Auto stamp, NOT evidence of protocol behaviour. It carries only
+            # measured numbers (the SYS-AXI transaction count the scoreboard
             # observed), declares `auto_evidence=True` so the scoreboard books
-            # it as an activity stamp in its own coverage bin instead of a
-            # check, and reports timeouts as "not measured".
+            # it as an activity stamp in its own coverage bin rather than a
+            # check, and reports timeouts as "not measured". A stamp with a
+            # canned count could not fail ([NO-ALWAYS-PASS-CHECKER]).
             #
             # A scenario that wants a real protocol VIP record sets
             # `auto_protocol_vip = False` and calls record_protocol_vip() with

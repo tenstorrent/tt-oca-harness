@@ -19,18 +19,14 @@ from .smc_output_fabric_vip_utils import reg_field_pack
 #   INTR_STATUS = 0: RDL reset constants (uart_16550_main.rdl / log_engine.rdl).
 #
 # UART_MSR expected values (spec-derived, see the MSR block below).
-UART_MSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0
-)
+UART_MSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0)
 UART_LOG_ENGINE_CTRL_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
 )
 
 # UART0 pad function enable, packed from the generated field layout rather than
 # written as 0x1: ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN``.
-UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack(
-    "UART_LOG_ENGINE_CTRL_CTRL_reg_t", uart_en=1
-)
+UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t", uart_en=1)
 
 # --- UART_MSR: field contract + the CTS pad level this test drives -----------
 #
@@ -89,10 +85,10 @@ MSR_CTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", cts=1)
 # cts_ni driven 0  =>  CTS = ~0 = 1. First MSR read of the simulation:
 # "changed since the last time this register was read" with no prior read and
 # CTS asserted => the delta is reported => DCTS = 1.
-MSR_FIRST_READ = MSR_DCTS | MSR_CTS          # 0x11
+MSR_FIRST_READ = MSR_DCTS | MSR_CTS  # 0x11
 # Back-to-back second read: the first read is now "the last time this register
 # was read" and CTS has not moved, so DCTS must have cleared.
-MSR_SECOND_READ = MSR_CTS                    # 0x10
+MSR_SECOND_READ = MSR_CTS  # 0x10
 # Settled words for each driven pad level (DCTS already consumed by the
 # preceding read): pad 1 => cts_ni = 1 => CTS = 0; pad 0 => CTS = 1.
 MSR_SETTLED = {0: MSR_CTS, 1: 0}
@@ -112,17 +108,28 @@ MSR_POLL_READS = 40
 
 UART_LOG_READS = [
     ("UART_LOG_ENGINE_CTRL", UART_LOG_ENGINE_CTRL_CTRL, 0x0),
-    ("UART_IIR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0), 0x1),
-    ("UART_LSR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0),
-     0x0000_0060),
-    ("LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR",
-        0), 0x0),
-    ("LOG_ENGINE_INTR_STATUS", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR",
-        0), 0x0),
+    (
+        "UART_IIR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0),
+        0x1,
+    ),
+    (
+        "UART_LSR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0),
+        0x0000_0060,
+    ),
+    (
+        "LOG_ENGINE_CTRL",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", 0),
+        0x0,
+    ),
+    (
+        "LOG_ENGINE_INTR_STATUS",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR", 0
+        ),
+        0x0,
+    ),
 ]
 
 # Non-poll accesses this body always issues: 5 RDL-reset reads + 1 UART_EN
@@ -157,9 +164,7 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         dut = cocotb.top
         mask = 1 << UART0_CTS_PAD
         dut.tb_gpio_ext_drive_en.value = int(dut.tb_gpio_ext_drive_en.value) & ~mask
-        dut.tb_gpio_ext_drive_value.value = (
-            int(dut.tb_gpio_ext_drive_value.value) & ~mask
-        )
+        dut.tb_gpio_ext_drive_value.value = int(dut.tb_gpio_ext_drive_value.value) & ~mask
 
     async def _read_msr(self, name: str, expected: int | None = None) -> int:
         rdata = await self.csr_read(name, UART_MSR, expected=expected)
@@ -201,18 +206,25 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
                 "CHK-UART-MSR-CTS-PAD%d: after this test drove CTS pad %d to "
                 "%d, UART_MSR read 0x%02x == 0x%02x (CTS=%d = ~cts_ni, DCTS=1 "
                 "for the change since the last read) on poll read %d",
-                level, UART0_CTS_PAD, level, rdata, transition,
-                1 - level, i,
+                level,
+                UART0_CTS_PAD,
+                level,
+                rdata,
+                transition,
+                1 - level,
+                i,
             )
-            follow = await self._read_msr(f"UART_MSR_PAD{level}_CLEARED",
-                                          expected=settled)
+            follow = await self._read_msr(f"UART_MSR_PAD{level}_CLEARED", expected=settled)
             reads += 1
             cocotb.log.info(
                 "CHK-UART-MSR-DELTA-CLEAR-PAD%d: next UART_MSR read = 0x%02x "
                 "== 0x%02x -- DCTS cleared by the preceding read while CTS "
                 "stayed at %d, as the rclr delta-since-last-read contract "
                 "requires",
-                level, follow, settled, 1 - level,
+                level,
+                follow,
+                settled,
+                1 - level,
             )
             return reads
         raise AssertionError(
@@ -233,7 +245,10 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             cocotb.log.info(
                 "CHK-UART-LOG-%s: SEP_IN AXI read @ 0x%08x returned OKAY "
                 "rdata=0x%08x == RDL reset 0x%08x",
-                name, addr, rdata, expected,
+                name,
+                addr,
+                rdata,
+                expected,
             )
 
         # Establish the CTS level as this test's own stimulus and route the pad
@@ -241,9 +256,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         # both before and after the UART_EN write, so enabling the pad function
         # cannot itself move CTS and the first MSR read needs no settling.
         self._drive_cts_pad(0)
-        await self.csr_write("UART_LOG_ENGINE_CTRL_UART_EN",
-                             UART_LOG_ENGINE_CTRL_CTRL,
-                             UART_LOG_ENGINE_CTRL_UART_EN)
+        await self.csr_write(
+            "UART_LOG_ENGINE_CTRL_UART_EN", UART_LOG_ENGINE_CTRL_CTRL, UART_LOG_ENGINE_CTRL_UART_EN
+        )
 
         msr_first = await self._read_msr("UART_MSR", expected=MSR_FIRST_READ)
         cocotb.log.info(
@@ -251,16 +266,19 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             "(this test drives CTS pad %d low -> cts_ni=0 -> CTS=1; "
             "dsr_ni/ri_ni/dcd_ni tied 1 -> DSR=RI=DCD=0; first read of this "
             "register -> DCTS=1)",
-            UART_MSR, msr_first, MSR_FIRST_READ, UART0_CTS_PAD,
+            UART_MSR,
+            msr_first,
+            MSR_FIRST_READ,
+            UART0_CTS_PAD,
         )
 
-        msr_second = await self._read_msr("UART_MSR_RD2",
-                                         expected=MSR_SECOND_READ)
+        msr_second = await self._read_msr("UART_MSR_RD2", expected=MSR_SECOND_READ)
         cocotb.log.info(
             "CHK-UART-MSR-DELTA-CLEAR: second UART_MSR read = 0x%08x == 0x%02x "
             "-- DCTS cleared by the preceding read while CTS stayed asserted, "
             "as the MSR delta-since-last-read contract requires",
-            msr_second, MSR_SECOND_READ,
+            msr_second,
+            MSR_SECOND_READ,
         )
 
         # Both polarities of the pin->MSR mapping, and DCTS set->clear in both
@@ -284,5 +302,7 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             "CHK-UART-LOG-COUNT: %d SEP_IN AXI accesses value-checked "
             "(%d RDL-reset registers + 1 UART_EN write + %d UART_MSR reads "
             "across two test-driven CTS pad levels)",
-            self.accesses, len(UART_LOG_READS), self.msr_reads,
+            self.accesses,
+            len(UART_LOG_READS),
+            self.msr_reads,
         )

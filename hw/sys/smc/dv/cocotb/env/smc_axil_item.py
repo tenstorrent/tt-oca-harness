@@ -8,7 +8,6 @@ from enum import Enum
 
 from pyuvm import uvm_sequence_item
 
-
 AXIL_PORT_FIELDS = ("dtp_csr_active", "external_active", "efuse_bank_active")
 AXIL_SAMPLE_FIELDS = AXIL_PORT_FIELDS + ("any_master_active",)
 
@@ -22,9 +21,7 @@ AXIL_SAMPLE_FIELDS = AXIL_PORT_FIELDS + ("any_master_active",)
 # report `dtp_csr_active` as OBSERVED-ONLY / not closure evidence
 # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 AXIL_UNBACKABLE_FIELDS = ("dtp_csr_active",)
-AXIL_CHECKABLE_FIELDS = tuple(
-    f for f in AXIL_SAMPLE_FIELDS if f not in AXIL_UNBACKABLE_FIELDS
-)
+AXIL_CHECKABLE_FIELDS = tuple(f for f in AXIL_SAMPLE_FIELDS if f not in AXIL_UNBACKABLE_FIELDS)
 
 
 class SmcAxilOp(Enum):
@@ -32,7 +29,6 @@ class SmcAxilOp(Enum):
 
 
 class SmcAxilItem(uvm_sequence_item):
-
     def __init__(self, name: str = "SmcAxilItem") -> None:
         super().__init__(name)
         self.op: SmcAxilOp = SmcAxilOp.SAMPLE

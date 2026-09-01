@@ -158,9 +158,7 @@ class SmcSysAxiDriver(uvm_driver):
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        await await_reset_resolved(
-            dut.rst_primary_smc_clk_no, dut.clk_smc_i, self.bus_name
-        )
+        await await_reset_resolved(dut.rst_primary_smc_clk_no, dut.clk_smc_i, self.bus_name)
         self.axi = OcahAxiMasterAgent.from_prefix(
             dut,
             self.bus_prefix,
@@ -195,9 +193,14 @@ class SmcSysAxiDriver(uvm_driver):
             item.resp_code = self._resp_code(resp)
             _raw_ok = self._resp_ok(resp)
             item.resp_ok = _raw_ok or item.allow_error
-            self.logger.info("%s read  0x%014x -> 0x%x ok=%s%s",
-                             self.bus_name, item.addr, item.rdata, item.resp_ok,
-                             self._tolerated_note(_raw_ok, item.resp_code))
+            self.logger.info(
+                "%s read  0x%014x -> 0x%x ok=%s%s",
+                self.bus_name,
+                item.addr,
+                item.rdata,
+                item.resp_ok,
+                self._tolerated_note(_raw_ok, item.resp_code),
+            )
         elif item.op is SmcSysAxiOp.WRITE:
             event = self.axi.init_write(
                 address=item.addr,
@@ -212,9 +215,14 @@ class SmcSysAxiDriver(uvm_driver):
             item.resp_code = self._resp_code(resp)
             _raw_ok = self._resp_ok(resp)
             item.resp_ok = _raw_ok or item.allow_error
-            self.logger.info("%s write 0x%014x <- 0x%x ok=%s%s",
-                             self.bus_name, item.addr, item.wdata, item.resp_ok,
-                             self._tolerated_note(_raw_ok, item.resp_code))
+            self.logger.info(
+                "%s write 0x%014x <- 0x%x ok=%s%s",
+                self.bus_name,
+                item.addr,
+                item.wdata,
+                item.resp_ok,
+                self._tolerated_note(_raw_ok, item.resp_code),
+            )
         else:
             raise ValueError(f"unknown SMC SYS AXI op {item.op}")
 

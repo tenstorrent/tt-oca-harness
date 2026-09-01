@@ -19,42 +19,38 @@ _UART0 = 0  # UART_LOG_ENGINE_WRAP idx
 # with the RDL instead of silently narrowing when a field grows
 # ([EXACT-EXPECTATION] / [ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _REPO = Path(__file__).resolve().parents[6]
-_UART_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c"
-    / "uart_16550_main.h"
-)
+_UART_H = _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
 _UART_LOG_ENGINE_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
-_LOG_ENGINE_H = (
-    _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c"
-    / "log_engine.h"
-)
+_LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
 
 UART_LOG_ENGINE_CTRL_MASK = _field_mask(
     _UART_LOG_ENGINE_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm"
 )
 UART_SCR_MASK = _field_mask(_UART_H, "UART_16550_MAIN__SCR__SCR_bm")
-LOG_REGION_SIZE_MASK = _field_mask(
-    _LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_bm"
-)
+LOG_REGION_SIZE_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_bm")
 LOG_REGION_ADDR_LO_MASK = _field_mask(
     _LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bm"
 )
 # INTR_ENABLE has exactly these two fields in log_engine.h; the mask is their
 # union rather than a hand-written 0x11.
-LOG_INTR_ENABLE_MASK = (
-    _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm")
-    | _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm")
-)
+LOG_INTR_ENABLE_MASK = _field_mask(
+    _LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm"
+) | _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm")
 # Two further `sw = rw; hw = r` log-engine registers with reset 0 and no
 # side-effect property in log_engine.rdl. `INTR_TEST` is NOT added: it is
 # `sw = w` with `singlepulse`, so a written 1 does not stick and no
 # write/read-back expectation is derivable for it.
-LOG_WRITE_ADDR_MASK = _field_mask(
-    _LOG_ENGINE_H, "LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm"
-)
+LOG_WRITE_ADDR_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm")
 # `LOG_CTRL` is deliberately NOT added to the write sweep, for two independent
 # reasons: its generated macro is doubly indexed
 # (`..._LOG_CTRL_BASE_ADDR(wrap_idx, LOG_CTRL_idx)`, smc_addr.h:756) so
@@ -70,63 +66,131 @@ LOG_WRITE_ADDR_MASK = _field_mask(
 # coverage claim of this testcase rests on the masked write/read-back sweep in
 # `UART_LOG_WRITES` below, whose compares the scoreboard does book.
 UART_LOG_READS = [
-    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
-        _UART0), None),
-    ("UART0_IIR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", _UART0), None),
-    ("UART0_LSR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", _UART0), None),
-    ("UART0_MSR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", _UART0), None),
-    ("UART0_SCR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", _UART0), None),
-    ("LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR",
-        _UART0), None),
-    ("LOG_ENGINE_REGION_SIZE", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR",
-        _UART0), None),
-    ("LOG_ENGINE_REGION_ADDR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
-        _UART0), None),
-    ("LOG_ENGINE_INTR_ENABLE", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR",
-        _UART0), None),
-    ("LOG_ENGINE_LOG_CTRL_0", smc_bootrom_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_LOG_CTRL_0__BASE_ADDR"),
-     None),
+    (
+        "UART_LOG_ENGINE_CTRL",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", _UART0
+        ),
+        None,
+    ),
+    (
+        "UART0_IIR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", _UART0),
+        None,
+    ),
+    (
+        "UART0_LSR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", _UART0),
+        None,
+    ),
+    (
+        "UART0_MSR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", _UART0),
+        None,
+    ),
+    (
+        "UART0_SCR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", _UART0),
+        None,
+    ),
+    (
+        "LOG_ENGINE_CTRL",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", _UART0
+        ),
+        None,
+    ),
+    (
+        "LOG_ENGINE_REGION_SIZE",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR",
+            _UART0,
+        ),
+        None,
+    ),
+    (
+        "LOG_ENGINE_REGION_ADDR",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
+            _UART0,
+        ),
+        None,
+    ),
+    (
+        "LOG_ENGINE_INTR_ENABLE",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR", _UART0
+        ),
+        None,
+    ),
+    (
+        "LOG_ENGINE_LOG_CTRL_0",
+        smc_bootrom_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_LOG_CTRL_0__BASE_ADDR"
+        ),
+        None,
+    ),
 ]
 
 # LOG_ENGINE_LOG_CTRL_0 is intentionally READ-only-swept (see UART_LOG_READS)
 # and NOT part of the write/restore sweep (arbiter assume on unfinished log write).
 UART_LOG_WRITES = [
-    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
-        _UART0), UART_LOG_ENGINE_CTRL_MASK, UART_LOG_ENGINE_CTRL_MASK),
-    ("UART0_SCR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", _UART0),
-     0x5A, UART_SCR_MASK),
-    ("LOG_ENGINE_REGION_SIZE", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR",
-        _UART0), 0x0000_1000, LOG_REGION_SIZE_MASK),
-    ("LOG_ENGINE_REGION_ADDR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
-        _UART0), 0x0000_2000, LOG_REGION_ADDR_LO_MASK),
-    ("LOG_ENGINE_INTR_ENABLE", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR",
-        _UART0), LOG_INTR_ENABLE_MASK, LOG_INTR_ENABLE_MASK),
-    ("LOG_ENGINE_LOG_WRITE_ADDR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR",
-        _UART0), 0x5A5A_A5A5 & LOG_WRITE_ADDR_MASK, LOG_WRITE_ADDR_MASK),
+    (
+        "UART_LOG_ENGINE_CTRL",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", _UART0
+        ),
+        UART_LOG_ENGINE_CTRL_MASK,
+        UART_LOG_ENGINE_CTRL_MASK,
+    ),
+    (
+        "UART0_SCR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", _UART0),
+        0x5A,
+        UART_SCR_MASK,
+    ),
+    (
+        "LOG_ENGINE_REGION_SIZE",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR",
+            _UART0,
+        ),
+        0x0000_1000,
+        LOG_REGION_SIZE_MASK,
+    ),
+    (
+        "LOG_ENGINE_REGION_ADDR",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
+            _UART0,
+        ),
+        0x0000_2000,
+        LOG_REGION_ADDR_LO_MASK,
+    ),
+    (
+        "LOG_ENGINE_INTR_ENABLE",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR", _UART0
+        ),
+        LOG_INTR_ENABLE_MASK,
+        LOG_INTR_ENABLE_MASK,
+    ),
+    (
+        "LOG_ENGINE_LOG_WRITE_ADDR",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR", _UART0
+        ),
+        0x5A5A_A5A5 & LOG_WRITE_ADDR_MASK,
+        LOG_WRITE_ADDR_MASK,
+    ),
 ]
 
 # Fail-capable floors for this scenario, written out here and referenced ONLY by
 # the closing gate / the testcase-level protocol-VIP record. They are not
 # recomputed from the two tables the body walks: a floor derived from the same
 # tables moves with the stimulus and can never catch a sweep that stopped short.
-UART_LOG_MIN_CSR_ACCESSES = 40   # 10 reads + 6 registers x (save, write, rb,
-                                 # restore, restore-rb)
+UART_LOG_MIN_CSR_ACCESSES = 40  # 10 reads + 6 registers x (save, write, rb,
+# restore, restore-rb)
 # Masked read-back compares this scenario must have PERFORMED AND PASSED: one
 # after each write, one after each restore.
 UART_LOG_EXPECTED_COMPARES = 12
@@ -158,7 +222,12 @@ class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
                 "CHK-UART-LOG-ENGINE-REG-RW: %s @0x%08x wrote 0x%08x, read back "
                 "0x%08x; masked with the generated field mask 0x%08x both sides "
                 "are 0x%08x",
-                name, addr, pattern, got, mask, pattern & mask,
+                name,
+                addr,
+                pattern,
+                got,
+                mask,
+                pattern & mask,
             )
 
         for name, addr, value, mask in reversed(original):
@@ -172,7 +241,12 @@ class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
                 "CHK-UART-LOG-ENGINE-REG-RESTORE: %s @0x%08x restored to the "
                 "value saved before the write 0x%08x, read back 0x%08x; masked "
                 "with 0x%08x both sides are 0x%08x",
-                name, addr, value, got, mask, value & mask,
+                name,
+                addr,
+                value,
+                got,
+                mask,
+                value & mask,
             )
 
         # Loop integrity against an INDEPENDENT module constant (not recomputed

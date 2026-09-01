@@ -5,11 +5,11 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_dfx_status_abort_test_seq import (
     EXPECTED_VALUE_CHECKS,
     smc_dfx_status_abort_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

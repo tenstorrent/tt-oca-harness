@@ -137,12 +137,11 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
                 # check on it and is fail-capable rather than a restatement of an
                 # upstream exact compare.
                 via_mapped = await self.csr_read(
-                    f"CORE{core}_MAPPED_{label}", mapped,
+                    f"CORE{core}_MAPPED_{label}",
+                    mapped,
                     expected=golden.get(label),
                 )
-                via_beu = await self.csr_read(
-                    f"CORE{core}_BEU_WINDOW_{label}", beu_addr
-                )
+                via_beu = await self.csr_read(f"CORE{core}_BEU_WINDOW_{label}", beu_addr)
                 assert via_beu == via_mapped, (
                     f"core{core} {label}: documented BEU address 0x{beu_addr:08x} "
                     f"returned 0x{via_beu:08x} but the address the local-fabric "
@@ -186,9 +185,12 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
             "Write co-residency: hysteresis 0x%x written at 0x%08x read back as "
             "0x%08x at 0x%08x. This testcase locks the #1237 / #1249 aliasing; "
             "it proves NO BEU property, because no access reaches a BEU.",
-            len(self.alias_pairs), LOCAL_BASE_RESET,
-            len(self.discriminating_pairs), _CG_HYST_PROBE,
-            _CORESIDENCY_BEU_ADDR, self.coresidency_word,
+            len(self.alias_pairs),
+            LOCAL_BASE_RESET,
+            len(self.discriminating_pairs),
+            _CG_HYST_PROBE,
+            _CORESIDENCY_BEU_ADDR,
+            self.coresidency_word,
             _CORESIDENCY_MAPPED_ADDR,
         )
 
@@ -200,12 +202,11 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
         it is positive evidence that one physical register sits behind both.
         """
         original = await self.csr_read(
-            "CORESIDENCY_SAVE", _CORESIDENCY_MAPPED_ADDR,
+            "CORESIDENCY_SAVE",
+            _CORESIDENCY_MAPPED_ADDR,
             expected=CLOCK_GATE_CONTROL_RESET & 0xFFFF_FFFF,
         )
-        probe = (original & ~CG_HYST_MASK) | (
-            (_CG_HYST_PROBE << CG_HYST_SHIFT) & CG_HYST_MASK
-        )
+        probe = (original & ~CG_HYST_MASK) | ((_CG_HYST_PROBE << CG_HYST_SHIFT) & CG_HYST_MASK)
         await self.csr_write("CORESIDENCY_WR_VIA_BEU", _CORESIDENCY_BEU_ADDR, probe)
         self.coresidency_word = await self.csr_read(
             "CORESIDENCY_RB_VIA_MAPPED", _CORESIDENCY_MAPPED_ADDR, expected=probe
@@ -217,9 +218,7 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
             f"0x{self.coresidency_word:08x} (was 0x{original:08x}). The two "
             f"addresses are not one register."
         )
-        await self.csr_write(
-            "CORESIDENCY_RESTORE", _CORESIDENCY_MAPPED_ADDR, original
-        )
+        await self.csr_write("CORESIDENCY_RESTORE", _CORESIDENCY_MAPPED_ADDR, original)
         self.restored_word = await self.csr_read(
             "CORESIDENCY_RESTORE_RB", _CORESIDENCY_MAPPED_ADDR, expected=original
         )

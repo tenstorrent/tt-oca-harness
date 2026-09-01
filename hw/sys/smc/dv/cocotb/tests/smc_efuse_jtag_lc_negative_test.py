@@ -31,7 +31,6 @@ except ImportError:  # pragma: no cover - cocotb version shim
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_jtag_lc_negative_test_seq import (
     SMC_EFUSE_MAP_CHIPLET_ID,
     SMC_EFUSE_MAP_LOCKS,
@@ -39,6 +38,7 @@ from seq_lib.smc_efuse_jtag_lc_negative_test_seq import (
     smc_efuse_jtag_lc_negative_test_seq,
 )
 from seq_lib.smc_jtag_vip_utils import check_cpu_jtag_pin_vip
+from smc_base_test import smc_base_test
 
 BLOCK_SIGNATURE = 0xBADCAB1E
 LC_PROD = 0x1
@@ -79,21 +79,15 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
 
         # Negative: non-identity blocked; identity exception still allowed.
         await self._check_read("PROD", "NON_ID", SMC_EFUSE_MAP_LOCKS, expect_block=True)
-        await self._check_read(
-            "PROD", "CHIPLET_ID", SMC_EFUSE_MAP_CHIPLET_ID, expect_block=False
-        )
-        await self._check_read(
-            "PROD", "PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID, expect_block=False
-        )
+        await self._check_read("PROD", "CHIPLET_ID", SMC_EFUSE_MAP_CHIPLET_ID, expect_block=False)
+        await self._check_read("PROD", "PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID, expect_block=False)
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
 
         # Secondary: CHIP_CONFIG mirror must match the driven packed state.
         lc_seq = _LcStateExactSeq("lc_state_exact", expected=packed)
         await self.start_seq(lc_seq, self.env.sys_axi_agent.sequencer)
 
-        assert not self.errors, (
-            "eFuse JTAG LC negative mismatch:\n" + "\n".join(self.errors)
-        )
+        assert not self.errors, "eFuse JTAG LC negative mismatch:\n" + "\n".join(self.errors)
 
         await check_cpu_jtag_pin_vip()
         await self.record_protocol_vip(
@@ -131,22 +125,18 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             return None
         return _resp_code(event.data)
 
-    async def _check_read(
-        self, label: str, cls: str, addr: int, *, expect_block: bool
-    ) -> None:
+    async def _check_read(self, label: str, cls: str, addr: int, *, expect_block: bool) -> None:
         self.checks += 1
         rdata, code = await self._read(addr)
         # Timeout on a claimed path is a hard fail ([TIMEOUT-MUST-FAIL]).
         if rdata is None or code is None:
             self.errors.append(
-                f"[{label}] {cls} read @0x{addr:08x} TIMEOUT "
-                f"(expect_block={expect_block})"
+                f"[{label}] {cls} read @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
         blocked = code == RESP_DECERR
         self.logger.info(
-            "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s "
-            "blocked=%s (exp_block=%s)",
+            "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s blocked=%s (exp_block=%s)",
             label,
             cls,
             addr,
@@ -191,14 +181,12 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         code = await self._write(addr, 0xA5A5_5A5A)
         if code is None:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} TIMEOUT "
-                f"(expect_block={expect_block})"
+                f"[{label}] write @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
         blocked = code == RESP_DECERR
         self.logger.info(
-            "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s "
-            "(exp_block=%s)",
+            "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
             label,
             addr,
             code,
@@ -207,13 +195,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but "
-                f"got resp={code}"
+                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got resp={code}"
             )
         elif not expect_block and blocked:
-            self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked"
-            )
+            self.errors.append(f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked")
 
 
 class _LcStateExactSeq(smc_efuse_jtag_lc_negative_test_seq):

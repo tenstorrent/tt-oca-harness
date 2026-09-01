@@ -18,9 +18,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 AXI_RESP_DECERR = 3
 
 # Alive sentinel: always-OKAY local CSR (before/after fabric-alive proof).
-ALIVE_SENTINEL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+ALIVE_SENTINEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 # DECERR probes, each named for the region the authoritative map puts it in and
 # each address built from generated symbols rather than a hand-computed offset
@@ -39,9 +37,7 @@ ALIVE_SENTINEL = smc_addr(
 # Last page of ecam_region. Its upper 7 bits are already LOCAL_BASE's, so the
 # fold is the identity here and the request arrives where it was written.
 _UNIMPL_ECAM = (
-    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR")
-    + smc_addr("SMC_TOP_ECAM_REGION_SIZE")
-    - 0x1000
+    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
 )
 # Last page of xvisor_region, reached only THROUGH the fold: the written
 # address carries a different upper 7 bits, so the request arrives at
@@ -49,9 +45,7 @@ _UNIMPL_ECAM = (
 # below fail if the generated map moves either region such that the probe stops
 # demonstrating the fold.
 _XVISOR_TOP_PAGE = (
-    smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR")
-    + smc_addr("SMC_TOP_XVISOR_REGION_SIZE")
-    - 0x1000
+    smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR") + smc_addr("SMC_TOP_XVISOR_REGION_SIZE") - 0x1000
 )
 _UNIMPL_XVISOR_VIA_MASK = 0xCE00_0000 | (_XVISOR_TOP_PAGE & LOCAL_FABRIC_KEEP_MASK)
 assert _UNIMPL_XVISOR_VIA_MASK != _XVISOR_TOP_PAGE, (
@@ -78,8 +72,12 @@ _GPIO_CTRL_ERR_DATA = 0x0
 # (name, addr, expected AXI resp, expected rdata)
 ERROR_PROBES: list[tuple[str, int, int, int]] = [
     ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
-    ("UNIMPL_XVISOR_REGION_VIA_MASK", _UNIMPL_XVISOR_VIA_MASK, AXI_RESP_DECERR,
-     ERR_SLAVE_SIGNATURE),
+    (
+        "UNIMPL_XVISOR_REGION_VIA_MASK",
+        _UNIMPL_XVISOR_VIA_MASK,
+        AXI_RESP_DECERR,
+        ERR_SLAVE_SIGNATURE,
+    ),
     ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, _GPIO_CTRL_ERR_DATA),
 ]
 
@@ -93,8 +91,9 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         #: Sentinel word read before the probes, re-pinned after them.
         self.sentinel_word: int | None = None
 
-    async def _error_probe(self, name: str, addr: int, expected_resp: int,
-                           expected_rdata: int) -> None:
+    async def _error_probe(
+        self, name: str, addr: int, expected_resp: int, expected_rdata: int
+    ) -> None:
         item = SmcSysAxiItem(f"err_rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
@@ -135,13 +134,13 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
             "flagged as a protocol error"
         )
         decerr_addrs = [
-            addr for _name, addr, resp, _data in ERROR_PROBES
-            if resp == AXI_RESP_DECERR
+            addr for _name, addr, resp, _data in ERROR_PROBES if resp == AXI_RESP_DECERR
         ]
         monitor.expected_decerr_addrs.update(decerr_addrs)
         cocotb.log.info(
             "AXI monitor: registered %d by-design DECERR address(es): %s",
-            len(decerr_addrs), ", ".join(f"0x{a:08x}" for a in decerr_addrs),
+            len(decerr_addrs),
+            ", ".join(f"0x{a:08x}" for a in decerr_addrs),
         )
 
         baseline = await self.csr_read("ALIVE_SENTINEL_BASELINE", ALIVE_SENTINEL)
@@ -154,9 +153,7 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         # the probes, so "the fabric recovered" means "returns the same content",
         # not merely "still answers OKAY". The compare is booked by the
         # scoreboard (env/smc_scoreboard.py:711-718) because `expected` is set.
-        await self.csr_read(
-            "ALIVE_SENTINEL_RECOVERY", ALIVE_SENTINEL, expected=baseline
-        )
+        await self.csr_read("ALIVE_SENTINEL_RECOVERY", ALIVE_SENTINEL, expected=baseline)
 
         # Reachability against the scoreboard's own tally rather than against
         # `self.error_responses`, which this sequence increments once per loop
@@ -174,9 +171,10 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
             "err-slave data (%s); ALIVE_SENTINEL @ 0x%08x returned 0x%08x "
             "before the probes and the same word after (value-checked); "
             "scoreboard value_checks=%d",
-            len(ERROR_PROBES), AXI_RESP_DECERR,
-            ", ".join(
-                f"{n}@0x{a:08x}=0x{d:08x}" for n, a, _r, d in ERROR_PROBES
-            ),
-            ALIVE_SENTINEL, baseline, sb.sys_axi_value_checks_seen,
+            len(ERROR_PROBES),
+            AXI_RESP_DECERR,
+            ", ".join(f"{n}@0x{a:08x}=0x{d:08x}" for n, a, _r, d in ERROR_PROBES),
+            ALIVE_SENTINEL,
+            baseline,
+            sb.sys_axi_value_checks_seen,
         )

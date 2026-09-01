@@ -50,5 +50,5 @@ class SmcI2cItem(uvm_sequence_item):
     def __str__(self) -> str:
         return (
             f"SmcI2cItem(op={self.op.value}, resolvable={self.resolvable}, "
-            f"cg_en={self.cg_en}, debug_lo=0x{self.debug_lo & 0xf:x})"
+            f"cg_en={self.cg_en}, debug_lo=0x{self.debug_lo & 0xF:x})"
         )

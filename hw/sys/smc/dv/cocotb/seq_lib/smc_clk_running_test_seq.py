@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
-from . import smc_addr_map as _addr
 
 # Every record this sequence emits goes through `cocotb.log`: a module-level
 # `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
@@ -82,17 +81,12 @@ class smc_clk_running_test_seq(SmcCsrSeq):
     def _dut(self):
         return cocotb.top
 
-    async def _program_cg(
-        self, *, dma_en: bool, zeroer_en: bool, hyst: int
-    ) -> tuple[int, int]:
+    async def _program_cg(self, *, dma_en: bool, zeroer_en: bool, hyst: int) -> tuple[int, int]:
         """Program CLOCK_GATE_CONTROL and return ``(programmed, readback)``."""
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (
-            cur
-            & ~DMA_CG_EN
-            & ~ZEROER_CG_EN
-            & ~CG_HYST_MASK
-        ) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
+        nxt = (cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
+            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
+        )
         if dma_en:
             nxt |= DMA_CG_EN
         if zeroer_en:
@@ -108,9 +102,7 @@ class smc_clk_running_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write(
-            "INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
-        )
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
         await self.csr_write(
             "INBOUND0_FILTER_CONFIG_PASS_ALL",
             INBOUND0_FILTER_CONFIG,
@@ -140,8 +132,7 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         item.memory_region = DMA_MODEL_REGION
         await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
 
-    async def _read_bytes(self, addr: int, length: int, *,
-                          check_golden: bool = False) -> bytes:
+    async def _read_bytes(self, addr: int, length: int, *, check_golden: bool = False) -> bytes:
         """Frontdoor JTAG-AXI read; optionally compared against the golden model.
 
         The consumer for the ``update_golden`` bookkeeping the payload writes
@@ -166,24 +157,18 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         await self.csr_write(
             "DMA_DST_ADDRESS_LO", DMA_CTRL_DST_ADDRESS_LO, DMA_DST_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_DST_ADDRESS_HI", DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32
-        )
+        await self.csr_write("DMA_DST_ADDRESS_HI", DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32)
         await self.csr_write(
             "DMA_SRC_ADDRESS_LO", DMA_CTRL_SRC_ADDRESS_LO, DMA_SRC_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_SRC_ADDRESS_HI", DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32
-        )
+        await self.csr_write("DMA_SRC_ADDRESS_HI", DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32)
         await self.csr_write("DMA_LENGTH_LO", DMA_CTRL_LENGTH_LO, len(DMA_PAYLOAD))
         await self.csr_write("DMA_LENGTH_HI", DMA_CTRL_LENGTH_HI, 0)
         await self.csr_write("DMA_DST_STRIDE_LO", DMA_CTRL_DST_STRIDE_LO, 0)
         await self.csr_write("DMA_DST_STRIDE_HI", DMA_CTRL_DST_STRIDE_HI, 0)
         await self.csr_write("DMA_SRC_STRIDE_LO", DMA_CTRL_SRC_STRIDE_LO, 0)
         await self.csr_write("DMA_SRC_STRIDE_HI", DMA_CTRL_SRC_STRIDE_HI, 0)
-        await self.csr_write(
-            "DMA_NUM_REPETITIONS_LO", DMA_CTRL_NUM_REPETITIONS_LO, DMA_REPS
-        )
+        await self.csr_write("DMA_NUM_REPETITIONS_LO", DMA_CTRL_NUM_REPETITIONS_LO, DMA_REPS)
         await self.csr_write("DMA_NUM_REPETITIONS_HI", DMA_CTRL_NUM_REPETITIONS_HI, 0)
 
     async def _start_dma(self) -> int:
@@ -243,18 +228,14 @@ class smc_clk_running_test_seq(SmcCsrSeq):
 
         await self._program_output_fabric_pass_all()
         await self._write_bytes(DMA_SRC_ADDR, DMA_PAYLOAD)
-        await self._write_bytes(
-            DMA_DST_ADDR, bytes(0x5A for _ in range(len(DMA_PAYLOAD)))
-        )
+        await self._write_bytes(DMA_DST_ADDR, bytes(0x5A for _ in range(len(DMA_PAYLOAD))))
 
         # ---- S1: CG enable frontdoor write + readback ----
         cg.log_step(
             "S1",
             "frontdoor-write CLOCK_GATE_CONTROL DMA_CG_EN=1 ZEROER_CG_EN=1; readback",
         )
-        programmed, rb = await self._program_cg(
-            dma_en=True, zeroer_en=True, hyst=HYST_CYCLES
-        )
+        programmed, rb = await self._program_cg(dma_en=True, zeroer_en=True, hyst=HYST_CYCLES)
         dma_probe = cg.sample_bit(dut, "tb_dma_cg_en")
         zeroer_probe = cg.sample_bit(dut, "tb_zeroer_cg_en")
         assert dma_probe == 1, f"tb_dma_cg_en={dma_probe}, expected 1"
@@ -274,11 +255,16 @@ class smc_clk_running_test_seq(SmcCsrSeq):
             "dma_cg_en %d->%d zeroer_cg_en %d->%d hyst %d->%d "
             "probe_tb_dma_cg_en=%d probe_tb_zeroer_cg_en=%d"
             % (
-                programmed, rb,
-                int((programmed & DMA_CG_EN) != 0), dma_rb,
-                int((programmed & ZEROER_CG_EN) != 0), zeroer_rb,
-                (programmed & CG_HYST_MASK) >> CG_HYST_SHIFT, hyst_rb,
-                dma_probe, zeroer_probe,
+                programmed,
+                rb,
+                int((programmed & DMA_CG_EN) != 0),
+                dma_rb,
+                int((programmed & ZEROER_CG_EN) != 0),
+                zeroer_rb,
+                (programmed & CG_HYST_MASK) >> CG_HYST_SHIFT,
+                hyst_rb,
+                dma_probe,
+                zeroer_probe,
             ),
         )
         cg.mark_fence(self.fence, "cg-enable-readback")
@@ -347,12 +333,9 @@ class smc_clk_running_test_seq(SmcCsrSeq):
             ACTIVE_WINDOW,
         )
         assert dma_edges == ACTIVE_WINDOW, (
-            f"active DMA clock missing toggles: edges={dma_edges} "
-            f"window={ACTIVE_WINDOW}"
+            f"active DMA clock missing toggles: edges={dma_edges} window={ACTIVE_WINDOW}"
         )
-        assert zaxi_edges == 0, (
-            f"idle Zeroer axi_clk still toggling during DMA: edges={zaxi_edges}"
-        )
+        assert zaxi_edges == 0, f"idle Zeroer axi_clk still toggling during DMA: edges={zaxi_edges}"
         assert cg.sample_bit(dut, "tb_zeroer_busy") == 0, "Zeroer unexpectedly busy"
         toggles_every = int(dma_edges == ACTIVE_WINDOW)
         axi_gated = int(zaxi_edges == 0)
@@ -387,8 +370,7 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         # ([NO-DUMMY-DEAD-CODE]); the bounded waits that do raise on expiry are
         # `_wait_dma_busy`, `_wait_dma_done` and `cg.wait_gated_off`.
         assert 0 <= done_cyc < DMA_DONE_TIMEOUT_SMC, (
-            f"DMA completion cycle {done_cyc} outside the bound "
-            f"{DMA_DONE_TIMEOUT_SMC}"
+            f"DMA completion cycle {done_cyc} outside the bound {DMA_DONE_TIMEOUT_SMC}"
         )
         cg.emit_chk(
             self.chk_seen,
@@ -408,9 +390,7 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         # a real data check instead of dead records ([NO-DUMMY-DEAD-CODE]).
         cg.log_step("S5", "golden check: DMA destination holds the payload")
         self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
-        moved = await self._read_bytes(
-            DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True
-        )
+        moved = await self._read_bytes(DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True)
         assert moved == DMA_PAYLOAD, (
             f"DMA destination mismatch after the ungate window: got "
             f"{moved.hex()}, expected {DMA_PAYLOAD.hex()}"

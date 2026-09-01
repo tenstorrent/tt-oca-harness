@@ -25,7 +25,6 @@ be False, so it has no FAIL-ON path in the evidence that exists. The former
 from __future__ import annotations
 
 import cocotb
-
 from env.smc_irq_item import IRQ_SAMPLE_FIELDS, SmcIrqItem, SmcIrqOp
 from env.smc_probe_liveness import probe_alive, probe_evidence
 
@@ -39,7 +38,6 @@ IRQ_IDLE_LEVEL = 0
 
 
 class smc_irq_observe_test_seq(smc_base_test_seq):
-
     def __init__(self, name: str = "smc_irq_observe_test_seq") -> None:
         super().__init__(name)
         self.sample = None
@@ -77,14 +75,12 @@ class smc_irq_observe_test_seq(smc_base_test_seq):
         uncredited = [f for f in IRQ_SAMPLE_FIELDS if not probe_alive(f)]
         assert not uncredited, (
             "IRQ observe: no same-run liveness credit for "
-            + ", ".join(
-                f"{f} ({probe_evidence(f)})" for f in uncredited
-            )
+            + ", ".join(f"{f} ({probe_evidence(f)})" for f in uncredited)
             + " -- the scoreboard books those idle legs OBSERVED-ONLY, so this "
             "testcase would report an all-zero read from a possibly dead probe "
             "as evidence. The producing controls are declared by the test as "
-            "probe_positive_controls = (\"sync_irq\", \"uart_irq_any\", "
-            "\"gpio_irq_any\")."
+            'probe_positive_controls = ("sync_irq", "uart_irq_any", '
+            '"gpio_irq_any").'
         )
 
         # Idle contract, restated where the diagnostic can name the sample: the
@@ -103,7 +99,8 @@ class smc_irq_observe_test_seq(smc_base_test_seq):
             "%d on a scoreboard-booked SAMPLE, and each carries a same-run "
             "liveness credit, so every leg was exact-compared rather than "
             "OBSERVED-ONLY (%s)",
-            len(IRQ_SAMPLE_FIELDS), IRQ_IDLE_LEVEL,
+            len(IRQ_SAMPLE_FIELDS),
+            IRQ_IDLE_LEVEL,
             "; ".join(f"{f}: {probe_evidence(f)}" for f in IRQ_SAMPLE_FIELDS),
         )
         # No `SMC_007 scenario PASS` line: the DV-CARD header it mirrored cited

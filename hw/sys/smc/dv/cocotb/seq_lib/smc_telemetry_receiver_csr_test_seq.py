@@ -34,9 +34,8 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
-from .smc_csr_seq_utils import SmcCsrSeq
-
 from .smc_addr_map import TELEMETRY_CG_EN, smc_addr, smc_indexed_addr
+from .smc_csr_seq_utils import SmcCsrSeq
 
 # Reset sweep across ALL THREE receivers, not just receiver 0's CTRL.
 #
@@ -81,8 +80,7 @@ TELEMETRY_READS = [
     (
         f"TELEMETRY_RECEIVER_{_rx}_{_rt}",
         smc_indexed_addr(
-            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
-            f"{_rt}_BASE_ADDR",
+            f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{_rt}_BASE_ADDR",
             _rx,
         ),
         _reset,
@@ -112,9 +110,7 @@ _TELEMETRY_0_PROBE_ID = smc_indexed_addr(
 )
 _STATUS_EMPTY = 0x1
 _INTR_MISSING_LAST = 0x1
-_CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+_CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 _TELEMETRY_CG_EN = TELEMETRY_CG_EN
 _NUM_BEATS_PER_PACKET = 8
 _PROBE_ID = 0x05
@@ -225,34 +221,25 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         # limited to "the window decodes and reads its reset values".
         for rx in _QUIET_RECEIVERS:
             addr = smc_indexed_addr(
-                "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
-                "INTR_ENABLE_BASE_ADDR",
+                "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_ENABLE_BASE_ADDR",
                 rx,
             )
-            await self.csr_write(
-                f"TELEMETRY_{rx}_INTR_ENABLE_WR", addr, _INTR_ENABLE_WRITABLE
-            )
+            await self.csr_write(f"TELEMETRY_{rx}_INTR_ENABLE_WR", addr, _INTR_ENABLE_WRITABLE)
             await self.csr_read(
                 f"TELEMETRY_{rx}_INTR_ENABLE_RB",
                 addr,
                 expected=_INTR_ENABLE_WRITABLE,
             )
             await self.csr_write(f"TELEMETRY_{rx}_INTR_ENABLE_RESTORE", addr, 0)
-            await self.csr_read(
-                f"TELEMETRY_{rx}_INTR_ENABLE_RESTORE_RB", addr, expected=0
-            )
+            await self.csr_read(f"TELEMETRY_{rx}_INTR_ENABLE_RESTORE_RB", addr, expected=0)
             self.quiet_receivers_proved.append(rx)
 
         status = await self.csr_read("TELEMETRY_0_STATUS", _TELEMETRY_0_STATUS)
         assert status & _STATUS_EMPTY, (
             f"TELEMETRY_0 STATUS.EMPTY expected at reset, got 0x{status:08x}"
         )
-        intr_st = await self.csr_read(
-            "TELEMETRY_0_INTR_STATUS", _TELEMETRY_0_INTR_STATUS
-        )
-        assert intr_st == 0, (
-            f"TELEMETRY_0 INTR_STATUS not quiet at reset: 0x{intr_st:08x}"
-        )
+        intr_st = await self.csr_read("TELEMETRY_0_INTR_STATUS", _TELEMETRY_0_INTR_STATUS)
+        assert intr_st == 0, f"TELEMETRY_0 INTR_STATUS not quiet at reset: 0x{intr_st:08x}"
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", _CLOCK_GATE_CONTROL)
         await self.csr_write(
@@ -278,13 +265,9 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         await self.csr_write(
             "TELEMETRY_0_INTR_ENABLE", _TELEMETRY_0_INTR_ENABLE, _INTR_MISSING_LAST
         )
-        await self.csr_write(
-            "TELEMETRY_0_INTR_TEST", _TELEMETRY_0_INTR_TEST, _INTR_MISSING_LAST
-        )
+        await self.csr_write("TELEMETRY_0_INTR_TEST", _TELEMETRY_0_INTR_TEST, _INTR_MISSING_LAST)
         self.irq_rise_cycles = await _await_irq_level(dut, 1, "INTR_TEST rise")
-        intr_st = await self.csr_read(
-            "TELEMETRY_0_INTR_STATUS_POST", _TELEMETRY_0_INTR_STATUS
-        )
+        intr_st = await self.csr_read("TELEMETRY_0_INTR_STATUS_POST", _TELEMETRY_0_INTR_STATUS)
         assert intr_st & _INTR_MISSING_LAST, (
             f"tb_telemetry_irq_any rose but TELEMETRY_0 INTR_STATUS does not "
             f"carry MISSING_LAST: 0x{intr_st:08x}"
@@ -311,8 +294,7 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
             await ClockCycles(dut.clk_smc_i, 1)
         else:
             raise AssertionError(
-                f"TELEMETRY_0 buffer stayed EMPTY after ATB message "
-                f"(STATUS=0x{status:08x})"
+                f"TELEMETRY_0 buffer stayed EMPTY after ATB message (STATUS=0x{status:08x})"
             )
         probe = await self.csr_read("TELEMETRY_0_PROBE_ID", _TELEMETRY_0_PROBE_ID)
         assert (probe & 0x1F) == _PROBE_ID, (

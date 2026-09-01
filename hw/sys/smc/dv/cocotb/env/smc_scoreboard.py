@@ -37,7 +37,6 @@ from .smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 
 class SmcScoreboard(uvm_subscriber):
-
     def build_phase(self) -> None:
         self.i2c_samples_seen = 0
         self.reset_samples_seen = 0
@@ -123,8 +122,7 @@ class SmcScoreboard(uvm_subscriber):
         self.logger.info("FUNC_COV_VALUE bin=%s value=%s", bin_name, value)
 
     # ------------------------------------------------------- idle-leg policy --
-    def _idle_leg(self, probe: str, label: str, got: int, exp: int,
-                  item) -> str:
+    def _idle_leg(self, probe: str, label: str, got: int, exp: int, item) -> str:
         """Book one idle/negative leg on a tb_top observability probe.
 
         Returns ``"checked"`` when the leg was exact-compared here (its probe
@@ -140,9 +138,7 @@ class SmcScoreboard(uvm_subscriber):
             # exact compare on it would be an unbacked negative check forever.
             # It is logged, never asserted, never counted as checked evidence.
             self.idle_legs_observed_only += 1
-            self._unbackable_idle_legs[probe] = (
-                self._unbackable_idle_legs.get(probe, 0) + 1
-            )
+            self._unbackable_idle_legs[probe] = self._unbackable_idle_legs.get(probe, 0) + 1
             return "unbackable"
         if probe_alive(probe):
             assert got == exp, (
@@ -182,7 +178,9 @@ class SmcScoreboard(uvm_subscriber):
                 "for it can exist in this TB (%s), so its idle value is a "
                 "diagnostic only and must not be presented as closure "
                 "evidence.",
-                probe, count, UNBACKABLE_PROBES[probe],
+                probe,
+                count,
+                UNBACKABLE_PROBES[probe],
             )
         for probe, count in sorted(unbacked.items()):
             self.logger.info(
@@ -191,7 +189,9 @@ class SmcScoreboard(uvm_subscriber):
                 "(%s). Its value is a diagnostic; a stuck-at-0 / undriven / "
                 "mis-bound probe would read the same. Add the control via "
                 "smc_base_test.probe_positive_controls to make it a check.",
-                probe, count, probe_evidence(probe),
+                probe,
+                count,
+                probe_evidence(probe),
             )
 
     def write(self, item) -> None:
@@ -215,7 +215,8 @@ class SmcScoreboard(uvm_subscriber):
             self.logger.warning("SmcScoreboard ignoring %s", type(item).__name__)
 
     def _check_i2c(self, item):
-        if item.op is not SmcI2cOp.SAMPLE: return
+        if item.op is not SmcI2cOp.SAMPLE:
+            return
         self.i2c_samples_seen += 1
         assert item.resolvable, f"I2C not resolvable: {item}"
         checked = ["resolvable"]
@@ -231,14 +232,11 @@ class SmcScoreboard(uvm_subscriber):
         # via smc_base_test.probe_positive_controls = ("i2c_cg_en",)).
         if item.expect_cg_en is not None:
             assert item.cg_en == item.expect_cg_en, (
-                f"tb_i2c_cg_en expected {item.expect_cg_en}, got {item.cg_en} "
-                f"({item})"
+                f"tb_i2c_cg_en expected {item.expect_cg_en}, got {item.cg_en} ({item})"
             )
             checked.append("cg_en")
         else:
-            verdict = self._idle_leg(
-                "i2c_cg_en", "tb_i2c_cg_en", item.cg_en, 0, item
-            )
+            verdict = self._idle_leg("i2c_cg_en", "tb_i2c_cg_en", item.cg_en, 0, item)
             if verdict == "checked":
                 checked.append("cg_en")
             else:
@@ -250,7 +248,7 @@ class SmcScoreboard(uvm_subscriber):
         if item.expect_debug_lo is not None:
             assert item.debug_lo == item.expect_debug_lo, (
                 f"tb_i2c_debug_lo expected 0x{item.expect_debug_lo:x}, "
-                f"got 0x{item.debug_lo & 0xf:x} ({item})"
+                f"got 0x{item.debug_lo & 0xF:x} ({item})"
             )
             checked.append("debug_lo")
         else:
@@ -258,7 +256,9 @@ class SmcScoreboard(uvm_subscriber):
         self.logger.info(
             "Scoreboard I2C sample #%d: %s [checked: %s | OBSERVED-ONLY (NOT "
             "checked evidence): %s]",
-            self.i2c_samples_seen, item, ", ".join(checked),
+            self.i2c_samples_seen,
+            item,
+            ", ".join(checked),
             ", ".join(observed_only) or "-",
         )
         self._cov("i2c_state", (int(item.resolvable), int(item.cg_en)))
@@ -267,13 +267,9 @@ class SmcScoreboard(uvm_subscriber):
     def _assert_reset_expectations(self, item, exps) -> None:
         for field, exp in exps:
             got = getattr(item, field)
-            assert got == exp, (
-                f"reset {field} = {got}, expected {exp} ({item})"
-            )
+            assert got == exp, f"reset {field} = {got}, expected {exp} ({item})"
         if item.expect_left_stable:
-            assert not all(
-                getattr(item, f) == 1 for f in RESET_POST_STABLE_FIELDS
-            ), (
+            assert not all(getattr(item, f) == 1 for f in RESET_POST_STABLE_FIELDS), (
                 "expect_left_stable: DUT is still fully post-stable "
                 f"({', '.join(RESET_POST_STABLE_FIELDS)} all released) inside the "
                 f"driven assert/glitch window -- the stimulus produced no "
@@ -305,14 +301,13 @@ class SmcScoreboard(uvm_subscriber):
             exp = getattr(item, "expect_" + field)
             exp = 1 if exp is None else exp
             got = getattr(item, field)
-            assert got == exp, (
-                f"reset {field} = {got}, expected {exp} post-release ({item})"
-            )
+            assert got == exp, f"reset {field} = {got}, expected {exp} post-release ({item})"
         self._assert_reset_expectations(item, [])
         self.logger.info(
-            "Scoreboard reset sample #%d: %s [checked: resolvable + all %d "
-            "reset observables]",
-            self.reset_samples_seen, item, len(RESET_SAMPLE_FIELDS),
+            "Scoreboard reset sample #%d: %s [checked: resolvable + all %d reset observables]",
+            self.reset_samples_seen,
+            item,
+            len(RESET_SAMPLE_FIELDS),
         )
         self._cov("reset_state", self._reset_cov_tuple(item))
 
@@ -332,7 +327,8 @@ class SmcScoreboard(uvm_subscriber):
             self.logger.info(
                 "Scoreboard reset RAW observation #%d (OBSERVED-ONLY, no "
                 "expectation set -- NOT checked evidence): %s",
-                self.reset_raw_observations_seen, item,
+                self.reset_raw_observations_seen,
+                item,
             )
             self._cov("reset_raw_observed", self._reset_cov_tuple(item))
             return
@@ -343,7 +339,8 @@ class SmcScoreboard(uvm_subscriber):
         self._assert_reset_expectations(item, exps)
         self.logger.info(
             "Scoreboard reset RAW check #%d: %s [checked: %s%s]",
-            self.reset_raw_checks_seen, item,
+            self.reset_raw_checks_seen,
+            item,
             ", ".join(f for f, _ in exps) or "-",
             ", left_stable" if item.expect_left_stable else "",
         )
@@ -366,9 +363,10 @@ class SmcScoreboard(uvm_subscriber):
         assert item.resolvable, f"reset WAIT_STATE match is not resolvable: {item}"
         self._assert_reset_expectations(item, exps)
         self.logger.info(
-            "Scoreboard reset WAIT_STATE check #%d matched after %d ref cycles: "
-            "%s [checked: %s%s]",
-            self.reset_wait_checks_seen, item.wait_ref_cycles, item,
+            "Scoreboard reset WAIT_STATE check #%d matched after %d ref cycles: %s [checked: %s%s]",
+            self.reset_wait_checks_seen,
+            item.wait_ref_cycles,
+            item,
             ", ".join(f for f, _ in exps) or "-",
             ", left_stable" if item.expect_left_stable else "",
         )
@@ -376,7 +374,8 @@ class SmcScoreboard(uvm_subscriber):
 
     # ------------------------------------------------------------------ clk --
     def _check_clk(self, item):
-        if item.op is not SmcClkOp.COUNT_EDGES: return
+        if item.op is not SmcClkOp.COUNT_EDGES:
+            return
         self.clk_samples_seen += 1
         self.clk_setup_checks_seen += 1
         # SETUP self-check ONLY. clk_ref_i / clk_smc_i / clk_periph_i are DUT
@@ -389,10 +388,18 @@ class SmcScoreboard(uvm_subscriber):
         assert item.periph_rising_edges > 0
         assert item.smc_rising_edges >= item.ref_rising_edges
         self.logger.info(
-            "Scoreboard clk SETUP self-check #%d (TB-driven input clocks -- "
-            "NOT DUT proof): %s", self.clk_setup_checks_seen, item,
+            "Scoreboard clk SETUP self-check #%d (TB-driven input clocks -- NOT DUT proof): %s",
+            self.clk_setup_checks_seen,
+            item,
         )
-        self._cov("clk_bucket", (item.ref_rising_edges // 50, item.smc_rising_edges // 50, item.periph_rising_edges // 50))
+        self._cov(
+            "clk_bucket",
+            (
+                item.ref_rising_edges // 50,
+                item.smc_rising_edges // 50,
+                item.periph_rising_edges // 50,
+            ),
+        )
         self._check_clk_dut_gated(item)
 
     def _check_clk_dut_gated(self, item):
@@ -407,8 +414,7 @@ class SmcScoreboard(uvm_subscriber):
         """
         if item.gated_clk_rising_edges < 0:
             return
-        explicit = (item.expect_gated_clk_running is not None
-                    or item.expect_gated_cg_en is not None)
+        explicit = item.expect_gated_clk_running is not None or item.expect_gated_cg_en is not None
         if not explicit:
             # Derived contract: with the gate enable deasserted the gater must
             # pass its clock through, so a quiet output is a DUT failure. This
@@ -417,13 +423,16 @@ class SmcScoreboard(uvm_subscriber):
             # cg_en == 1 the gate state is activity/hysteresis dependent, so
             # there is nothing to assert and the counts stay OBSERVED-ONLY
             # (smc_zeroer_*_cg_test own the programmed-gate proof).
-            if not (item.gated_clk_contract and item.gated_probe_resolvable
-                    and item.gated_cg_en == 0):
+            if not (
+                item.gated_clk_contract and item.gated_probe_resolvable and item.gated_cg_en == 0
+            ):
                 self.logger.info(
                     "Scoreboard clk DUT gated observation (OBSERVED-ONLY, no "
                     "applicable expectation -- NOT checked evidence): %s=%d %s=%d",
-                    item.gated_clk_probe, item.gated_clk_rising_edges,
-                    item.gated_cg_en_probe, item.gated_cg_en,
+                    item.gated_clk_probe,
+                    item.gated_clk_rising_edges,
+                    item.gated_cg_en_probe,
+                    item.gated_cg_en,
                 )
                 return
             self.clk_dut_checks_seen += 1
@@ -436,15 +445,15 @@ class SmcScoreboard(uvm_subscriber):
             self.logger.info(
                 "Scoreboard clk DUT gated check #%d: %s=%d edges with %s=0 "
                 "(gate disabled => must free-run)",
-                self.clk_dut_checks_seen, item.gated_clk_probe,
-                item.gated_clk_rising_edges, item.gated_cg_en_probe,
+                self.clk_dut_checks_seen,
+                item.gated_clk_probe,
+                item.gated_clk_rising_edges,
+                item.gated_cg_en_probe,
             )
             self._cov("dut_gated_clk", (item.gated_clk_probe, 1, 0))
             return
         self.clk_dut_checks_seen += 1
-        assert item.gated_probe_resolvable, (
-            f"{item.gated_cg_en_probe} is not resolvable: {item}"
-        )
+        assert item.gated_probe_resolvable, f"{item.gated_cg_en_probe} is not resolvable: {item}"
         if item.expect_gated_cg_en is not None:
             assert item.gated_cg_en == item.expect_gated_cg_en, (
                 f"{item.gated_cg_en_probe} expected {item.expect_gated_cg_en}, "
@@ -461,19 +470,23 @@ class SmcScoreboard(uvm_subscriber):
                 f"{item.gated_clk_rising_edges} rising edges ({item})"
             )
         self.logger.info(
-            "Scoreboard clk DUT gated check #%d: %s=%d (expect_running=%s) "
-            "%s=%d (expect=%s)",
+            "Scoreboard clk DUT gated check #%d: %s=%d (expect_running=%s) %s=%d (expect=%s)",
             self.clk_dut_checks_seen,
-            item.gated_clk_probe, item.gated_clk_rising_edges,
+            item.gated_clk_probe,
+            item.gated_clk_rising_edges,
             item.expect_gated_clk_running,
-            item.gated_cg_en_probe, item.gated_cg_en, item.expect_gated_cg_en,
+            item.gated_cg_en_probe,
+            item.gated_cg_en,
+            item.expect_gated_cg_en,
         )
-        self._cov("dut_gated_clk", (item.gated_clk_probe,
-                                    int(item.gated_clk_rising_edges > 0),
-                                    item.gated_cg_en))
+        self._cov(
+            "dut_gated_clk",
+            (item.gated_clk_probe, int(item.gated_clk_rising_edges > 0), item.gated_cg_en),
+        )
 
     def _check_irq(self, item):
-        if item.op is not SmcIrqOp.SAMPLE: return
+        if item.op is not SmcIrqOp.SAMPLE:
+            return
         self.irq_samples_seen += 1
         assert item.resolvable, f"IRQ not resolvable: {item}"
         # A stated expectation (expect_<field>, either level) is always
@@ -496,9 +509,7 @@ class SmcScoreboard(uvm_subscriber):
             got = getattr(item, field)
             if getattr(item, "expect_" + field) is not None:
                 exp = item.expected(field)
-                assert got == exp, (
-                    f"tb_{field} expected {exp}, got {got} ({item})"
-                )
+                assert got == exp, f"tb_{field} expected {exp}, got {got} ({item})"
                 checked.append(field)
                 continue
             verdict = self._idle_leg(field, f"tb_{field}", got, 0, item)
@@ -509,13 +520,16 @@ class SmcScoreboard(uvm_subscriber):
         self.logger.info(
             "Scoreboard IRQ sample #%d: %s [checked: %s | OBSERVED-ONLY (NOT "
             "checked evidence): %s]",
-            self.irq_samples_seen, item, ", ".join(checked),
+            self.irq_samples_seen,
+            item,
+            ", ".join(checked),
             ", ".join(observed_only) or "-",
         )
         self._cov("irq_state", (int(item.sync_irq), int(item.gpio_irq_any), int(item.uart_irq_any)))
 
     def _check_gpio(self, item):
-        if item.op is not SmcGpioOp.SAMPLE: return
+        if item.op is not SmcGpioOp.SAMPLE:
+            return
         self.gpio_samples_seen += 1
         # Two classes of GPIO observable, and only one of them can carry
         # evidence.
@@ -552,14 +566,10 @@ class SmcScoreboard(uvm_subscriber):
             probe = GPIO_FIELD_PROBES[field]
             label = GPIO_FIELD_SIGNALS[field]
             exp = getattr(item, "expect_" + field)
-            refuse_expectation_on_unbackable(
-                probe, label, exp, "SmcScoreboard._check_gpio"
-            )
+            refuse_expectation_on_unbackable(probe, label, exp, "SmcScoreboard._check_gpio")
             if probe in UNBACKABLE_PROBES:
                 self.idle_legs_observed_only += 1
-                self._unbackable_idle_legs[probe] = (
-                    self._unbackable_idle_legs.get(probe, 0) + 1
-                )
+                self._unbackable_idle_legs[probe] = self._unbackable_idle_legs.get(probe, 0) + 1
                 observed_only.append(f"{field}(unbackable)")
                 continue
             if exp is None:
@@ -576,20 +586,24 @@ class SmcScoreboard(uvm_subscriber):
                 self.idle_legs_checked += 1
                 checked.append(field)
             else:
-                self._pending_idle_legs.append(
-                    (probe, label, got, exp, str(item))
-                )
+                self._pending_idle_legs.append((probe, label, got, exp, str(item)))
                 observed_only.append(f"{field}(pending)")
         self.logger.info(
             "Scoreboard GPIO sample #%d: %s [checked: %s | OBSERVED-ONLY (NOT "
             "checked evidence): %s]",
-            self.gpio_samples_seen, item, ", ".join(checked),
+            self.gpio_samples_seen,
+            item,
+            ", ".join(checked),
             ", ".join(observed_only) or "-",
         )
-        self._cov("gpio_state", (int(item.core2pad_any), int(item.core2pad_en_any), int(item.pad2core_en_any)))
+        self._cov(
+            "gpio_state",
+            (int(item.core2pad_any), int(item.core2pad_en_any), int(item.pad2core_en_any)),
+        )
 
     def _check_axil(self, item):
-        if item.op is not SmcAxilOp.SAMPLE: return
+        if item.op is not SmcAxilOp.SAMPLE:
+            return
         self.axil_samples_seen += 1
         assert item.resolvable, f"AXIL not resolvable: {item}"
         # A stated expectation (expect_<field>, either level) is always
@@ -625,20 +639,17 @@ class SmcScoreboard(uvm_subscriber):
         for field in AXIL_SAMPLE_FIELDS:
             got = getattr(item, field)
             refuse_expectation_on_unbackable(
-                f"axil_{field}", f"tb_axil_{field}",
+                f"axil_{field}",
+                f"tb_axil_{field}",
                 getattr(item, "expect_" + field),
                 "SmcScoreboard._check_axil",
             )
             if getattr(item, "expect_" + field) is not None:
                 exp = item.expected(field)
-                assert got == exp, (
-                    f"tb_axil_{field} expected {exp}, got {got} ({item})"
-                )
+                assert got == exp, f"tb_axil_{field} expected {exp}, got {got} ({item})"
                 checked.append(field)
                 continue
-            verdict = self._idle_leg(
-                f"axil_{field}", f"tb_axil_{field}", got, 0, item
-            )
+            verdict = self._idle_leg(f"axil_{field}", f"tb_axil_{field}", got, 0, item)
             if verdict == "checked":
                 checked.append(field)
             else:
@@ -646,12 +657,12 @@ class SmcScoreboard(uvm_subscriber):
         self.logger.info(
             "Scoreboard AXIL sample #%d: %s [checked: %s | OBSERVED-ONLY (NOT "
             "checked evidence): %s]",
-            self.axil_samples_seen, item, ", ".join(checked),
+            self.axil_samples_seen,
+            item,
+            ", ".join(checked),
             ", ".join(observed_only) or "-",
         )
-        self._cov("axil_master", tuple(
-            int(getattr(item, f)) for f in AXIL_SAMPLE_FIELDS
-        ))
+        self._cov("axil_master", tuple(int(getattr(item, f)) for f in AXIL_SAMPLE_FIELDS))
 
     def _resp_is_okay(self, item: SmcSysAxiItem) -> bool:
         """True only for AXI OKAY — not SLVERR/DECERR even if allow_error."""
@@ -666,8 +677,9 @@ class SmcScoreboard(uvm_subscriber):
         bus = getattr(item, "bus_name", "") or "unknown"
         if not getattr(item, "timed_out", False):
             self.axi_accesses_by_bus[bus] = self.axi_accesses_by_bus.get(bus, 0) + 1
-        self.logger.info("Scoreboard SYS AXI check #%d [%s]: %s",
-                         self.sys_axi_checks_seen, bus, item)
+        self.logger.info(
+            "Scoreboard SYS AXI check #%d [%s]: %s", self.sys_axi_checks_seen, bus, item
+        )
         if getattr(item, "expect_error", False):
             # Negative-path probe (mirrors the SEP expect_error guard): a real
             # error response is the expected outcome. Two vacuous passes are
@@ -697,9 +709,7 @@ class SmcScoreboard(uvm_subscriber):
                 )
             self._cov("sys_axi", (item.op.value, item.addr >> 12))
             return
-        assert item.resp_ok, (
-            f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY"
-        )
+        assert item.resp_ok, f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY"
         if item.expected_resp is not None:
             assert item.resp_code == item.expected_resp, (
                 f"SYS AXI {item.op.value} @ 0x{item.addr:014x} resp "
@@ -710,9 +720,7 @@ class SmcScoreboard(uvm_subscriber):
             mask = (1 << (item.length * 8)) - 1
             got = item.rdata & mask
             exp = item.expected & mask
-            assert got == exp, (
-                f"SYS AXI read 0x{item.addr:014x} = 0x{got:x}, expected 0x{exp:x}"
-            )
+            assert got == exp, f"SYS AXI read 0x{item.addr:014x} = 0x{got:x}, expected 0x{exp:x}"
             self.sys_axi_value_checks_seen += 1
         self._check_sys_axi_memory_model(item)
 
@@ -725,12 +733,8 @@ class SmcScoreboard(uvm_subscriber):
                 f"SYS AXI golden update refused for non-OKAY "
                 f"{item.op.value} @ 0x{item.addr:x} resp={item.resp_code}"
             )
-            assert item.op is SmcSysAxiOp.WRITE, (
-                "update_golden is only valid for SYS AXI writes"
-            )
-            region = self.memory_model.find_region(
-                item.addr, item.length, item.memory_region
-            )
+            assert item.op is SmcSysAxiOp.WRITE, "update_golden is only valid for SYS AXI writes"
+            region = self.memory_model.find_region(item.addr, item.length, item.memory_region)
             assert region is not None, (
                 f"update_golden set but no memory region covers 0x{item.addr:x} "
                 f"(region={item.memory_region!r})"
@@ -755,20 +759,16 @@ class SmcScoreboard(uvm_subscriber):
                 f"SYS AXI golden check refused for non-OKAY "
                 f"{item.op.value} @ 0x{item.addr:x} resp={item.resp_code}"
             )
-            assert item.op is SmcSysAxiOp.READ, (
-                "check_golden is only valid for SYS AXI reads"
-            )
-            region = self.memory_model.find_region(
-                item.addr, item.length, item.memory_region
-            )
+            assert item.op is SmcSysAxiOp.READ, "check_golden is only valid for SYS AXI reads"
+            region = self.memory_model.find_region(item.addr, item.length, item.memory_region)
             assert region is not None, (
                 f"check_golden set but no memory region covers 0x{item.addr:x} "
                 f"(region={item.memory_region!r})"
             )
             mask = (1 << (item.length * 8)) - 1
-            exp = self.memory_model.read_int(
-                item.addr, length=item.length, region=region.name
-            ) & mask
+            exp = (
+                self.memory_model.read_int(item.addr, length=item.length, region=region.name) & mask
+            )
             got = item.rdata & mask
             assert got == exp, (
                 f"SYS AXI memory-model mismatch @ 0x{item.addr:x} "
@@ -800,10 +800,10 @@ class SmcScoreboard(uvm_subscriber):
             self.logger.info(
                 "Scoreboard protocol VIP AUTO-COVERAGE-STAMP #%d (activity "
                 "record, NOT a check): %s",
-                self.protocol_vip_auto_stamps_seen, item,
+                self.protocol_vip_auto_stamps_seen,
+                item,
             )
-            self._cov("protocol_vip_auto",
-                      (item.kind.value, item.scenario, item.csr_accesses > 0))
+            self._cov("protocol_vip_auto", (item.kind.value, item.scenario, item.csr_accesses > 0))
             return
         # ROOT GATE: a scenario-recorded item is bookable as a *check* only with
         # a meaningful stimulus floor. With min_csr_accesses == 0 every assert
@@ -827,16 +827,15 @@ class SmcScoreboard(uvm_subscriber):
             f"book it in the protocol_vip_auto activity bin instead."
         )
         self.protocol_vip_checks_seen += 1
-        self.logger.info("Scoreboard protocol VIP check #%d: %s",
-                         self.protocol_vip_checks_seen, item)
+        self.logger.info(
+            "Scoreboard protocol VIP check #%d: %s", self.protocol_vip_checks_seen, item
+        )
         # A scenario-recorded item is an evidence record, not the protocol
         # verdict: the real protocol verification lives in sequence-body /
         # SYS-AXI scoreboard checks. The asserts below make the record itself
         # fail-capable — an empty or activity-short record is rejected instead of
         # logging false coverage.
-        assert item.details != "", (
-            f"protocol VIP {item.scenario} recorded without evidence details"
-        )
+        assert item.details != "", f"protocol VIP {item.scenario} recorded without evidence details"
         assert item.csr_accesses >= item.min_csr_accesses, (
             f"protocol VIP {item.scenario}: observed csr_accesses "
             f"({item.csr_accesses}) below the stimulus minimum "
@@ -874,33 +873,47 @@ class SmcScoreboard(uvm_subscriber):
         self.logger.info(
             "Scoreboard probe liveness: proven-at-1 this run = %s; "
             "unbackable-by-TB = %s; idle legs checked=%d observed_only=%d",
-            ", ".join(sorted(alive)) or "-", ", ".join(sorted(UNBACKABLE_PROBES)),
-            self.idle_legs_checked, self.idle_legs_observed_only,
+            ", ".join(sorted(alive)) or "-",
+            ", ".join(sorted(UNBACKABLE_PROBES)),
+            self.idle_legs_checked,
+            self.idle_legs_observed_only,
         )
         # Minimum-activity gate. Deliberately excludes
         # `protocol_vip_auto_stamps_seen` and `reset_raw_observations_seen`:
         # neither can fail, so neither may satisfy the gate on its own
         # ([NO-ZERO-ACTIVITY-PASS]).
-        total = (self.i2c_samples_seen + self.reset_samples_seen + self.clk_samples_seen
-                 + self.irq_samples_seen + self.gpio_samples_seen + self.axil_samples_seen
-                 + self.sys_axi_checks_seen + self.protocol_vip_checks_seen
-                 + self.reset_raw_checks_seen + self.reset_wait_checks_seen)
+        total = (
+            self.i2c_samples_seen
+            + self.reset_samples_seen
+            + self.clk_samples_seen
+            + self.irq_samples_seen
+            + self.gpio_samples_seen
+            + self.axil_samples_seen
+            + self.sys_axi_checks_seen
+            + self.protocol_vip_checks_seen
+            + self.reset_raw_checks_seen
+            + self.reset_wait_checks_seen
+        )
         assert total > 0, "SmcScoreboard saw no SAMPLE items"
         self.logger.info(
             "Scoreboard activity: i2c=%d reset=%d(raw_chk=%d raw_obs=%d wait=%d) "
             "clk_setup=%d clk_dut=%d irq=%d gpio=%d axil=%d sys_axi=%d "
             "protocol_vip=%d(auto_stamps=%d)",
-            self.i2c_samples_seen, self.reset_samples_seen,
-            self.reset_raw_checks_seen, self.reset_raw_observations_seen,
-            self.reset_wait_checks_seen, self.clk_setup_checks_seen,
-            self.clk_dut_checks_seen, self.irq_samples_seen,
-            self.gpio_samples_seen, self.axil_samples_seen,
-            self.sys_axi_checks_seen, self.protocol_vip_checks_seen,
+            self.i2c_samples_seen,
+            self.reset_samples_seen,
+            self.reset_raw_checks_seen,
+            self.reset_raw_observations_seen,
+            self.reset_wait_checks_seen,
+            self.clk_setup_checks_seen,
+            self.clk_dut_checks_seen,
+            self.irq_samples_seen,
+            self.gpio_samples_seen,
+            self.axil_samples_seen,
+            self.sys_axi_checks_seen,
+            self.protocol_vip_checks_seen,
             self.protocol_vip_auto_stamps_seen,
         )
         self.logger.info(
-            "Scoreboard measured AXI accesses per bus (completed, non-timeout): "
-            "%s",
-            ", ".join(f"{bus}={n}" for bus, n in
-                      sorted(self.axi_accesses_by_bus.items())) or "-",
+            "Scoreboard measured AXI accesses per bus (completed, non-timeout): %s",
+            ", ".join(f"{bus}={n}" for bus, n in sorted(self.axi_accesses_by_bus.items())) or "-",
         )

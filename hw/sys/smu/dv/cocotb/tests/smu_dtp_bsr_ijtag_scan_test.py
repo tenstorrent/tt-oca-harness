@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_bsr_ijtag_scan_test_seq import smu_dtp_bsr_ijtag_scan_test_seq
 from smu_base_test import smu_base_test
 
@@ -15,10 +14,7 @@ class smu_dtp_bsr_ijtag_scan_test(smu_base_test):
     """EXTEST/SAMPLE_PRELOAD BSR select; no Force / no sep_in."""
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=BARE smu_dtp_bsr_ijtag_scan_test "
-            "TierC DTP-BSR-IJTAG SEP=0 JTAG"
-        )
+        self.logger.info("DUT_TAG=BARE smu_dtp_bsr_ijtag_scan_test TierC DTP-BSR-IJTAG SEP=0 JTAG")
         seq = smu_dtp_bsr_ijtag_scan_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (

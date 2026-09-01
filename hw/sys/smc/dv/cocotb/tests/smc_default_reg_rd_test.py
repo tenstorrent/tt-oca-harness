@@ -16,8 +16,8 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_default_reg_rd_test_seq import smc_default_reg_rd_test_seq
+from smc_base_test import smc_base_test
 
 # Value-compare floor, measured by an INDEPENDENT observer.
 # The scoreboard increments `sys_axi_value_checks_seen` once per SEP_IN AXI read
@@ -50,7 +50,8 @@ class smc_default_reg_rd_test(smc_base_test):
             "CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR: scoreboard "
             "sys_axi_value_checks_seen=%d >= %d (independent observer, not the "
             "sequence's own counter and not derived from the CSR catalog)",
-            value_compares, EXPECTED_VALUE_COMPARES,
+            value_compares,
+            EXPECTED_VALUE_COMPARES,
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.CSR,

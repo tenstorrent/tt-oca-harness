@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_gpio_irq_active_test_seq import smc_gpio_irq_active_test_seq
 from seq_lib.smc_gpio_vip_utils import check_gpio0_active_low_irq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

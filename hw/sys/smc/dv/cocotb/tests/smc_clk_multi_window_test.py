@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_clk_multi_window_test_seq import smc_clk_multi_window_test_seq
-
+from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a

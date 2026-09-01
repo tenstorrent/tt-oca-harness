@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_ss_reset_complete_test_seq import (
-    SS_WARM_RESET_VALUE,
     SS_COMPLETE_ALL_ONE,
     SS_COMPLETE_DROP_0_31,
+    SS_WARM_RESET_VALUE,
     smc_ss_reset_complete_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -41,18 +41,21 @@ class smc_ss_reset_complete_test(smc_base_test):
         #     0 of the asserted/released reads, so this full-word compare covers
         #     the remaining 31 bits and fails on a wrong word.
         assert (seq.idle_csr, seq.drop_csr, seq.restore_csr) == (
-            SS_COMPLETE_ALL_ONE, SS_COMPLETE_DROP_0_31, SS_COMPLETE_ALL_ONE
+            SS_COMPLETE_ALL_ONE,
+            SS_COMPLETE_DROP_0_31,
+            SS_COMPLETE_ALL_ONE,
         ), (
             f"ss_reset_complete_i -> CSR mirror wrong: idle=0x{seq.idle_csr:x} "
             f"drop=0x{seq.drop_csr:x} restore=0x{seq.restore_csr:x}, expected "
             f"0x{SS_COMPLETE_ALL_ONE:x}/0x{SS_COMPLETE_DROP_0_31:x}/0x{SS_COMPLETE_ALL_ONE:x}"
         )
         assert seq.warm_pins == (1, 0, 1), (
-            f"ss_reset_ctrl[0].warm_reset_n did not follow the SW bit 1->0->1: "
-            f"{seq.warm_pins}"
+            f"ss_reset_ctrl[0].warm_reset_n did not follow the SW bit 1->0->1: {seq.warm_pins}"
         )
         assert seq.warm_csr == (
-            SS_WARM_RESET_VALUE, SS_WARM_RESET_VALUE & ~0x1, SS_WARM_RESET_VALUE
+            SS_WARM_RESET_VALUE,
+            SS_WARM_RESET_VALUE & ~0x1,
+            SS_WARM_RESET_VALUE,
         ), (
             f"SS_WARM_RESET_N readbacks {seq.warm_csr} do not match the "
             f"programmed sequence around reset value 0x{SS_WARM_RESET_VALUE:x}"

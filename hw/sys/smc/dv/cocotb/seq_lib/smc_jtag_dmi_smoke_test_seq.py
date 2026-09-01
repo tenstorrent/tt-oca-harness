@@ -43,12 +43,8 @@ class smc_jtag_dmi_smoke_test_seq(SmcCsrSeq):
             length=8,
         )
         await ClockCycles(cocotb.top.clk_smc_i, 64)
-        reset_ctrl = await self.csr_read(
-            "CPU_CTRL_RESET_CTRL_RB", CPU_CTRL_RESET_CTRL, length=8
-        )
-        assert reset_ctrl & (1 << 24), (
-            f"debug_reset_n not set in RESET_CTRL (got 0x{reset_ctrl:X})"
-        )
+        reset_ctrl = await self.csr_read("CPU_CTRL_RESET_CTRL_RB", CPU_CTRL_RESET_CTRL, length=8)
+        assert reset_ctrl & (1 << 24), f"debug_reset_n not set in RESET_CTRL (got 0x{reset_ctrl:X})"
 
         tap = SmcJtagTap(name="smc_jtag_dmi")
         tap.init_signals()
@@ -63,8 +59,7 @@ class smc_jtag_dmi_smoke_test_seq(SmcCsrSeq):
         self.dmstatus = await tap.read_dmstatus()
         dm_ver = self.dmstatus & 0xF
         assert dm_ver == 2, (
-            f"dmstatus.version={dm_ver} != 2 (Debug Spec 0.13); "
-            f"dmstatus=0x{self.dmstatus:08X}"
+            f"dmstatus.version={dm_ver} != 2 (Debug Spec 0.13); dmstatus=0x{self.dmstatus:08X}"
         )
         assert self.dmstatus != 0, "dmstatus read as zero after dmactive"
         self.dmi_ok = True

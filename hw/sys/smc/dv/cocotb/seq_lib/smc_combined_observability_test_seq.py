@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_i2c_item import SmcI2cItem, SmcI2cOp
 from env.smc_reset_item import RESET_SAMPLE_FIELDS, SmcResetItem, SmcResetOp
 
@@ -28,7 +27,6 @@ from .smc_base_test_seq import smc_base_test_seq
 
 
 class smc_combined_observability_test_seq(smc_base_test_seq):
-
     GAP_REF_CYCLES = 50
 
     # Exact per-type item counts this body dispatches; the end gate compares the
@@ -65,9 +63,7 @@ class smc_combined_observability_test_seq(smc_base_test_seq):
     async def body(self) -> None:
         dut = cocotb.top
         env = self._resolve_env()
-        before = {
-            name: getattr(env.scoreboard, name) for name in self.EXPECTED_SAMPLES
-        }
+        before = {name: getattr(env.scoreboard, name) for name in self.EXPECTED_SAMPLES}
 
         reset_item = SmcResetItem("reset_sample")
         reset_item.op = SmcResetOp.SAMPLE
@@ -77,13 +73,12 @@ class smc_combined_observability_test_seq(smc_base_test_seq):
         for field in RESET_SAMPLE_FIELDS:
             got = getattr(reset_item, field)
             assert got == 1, (
-                f"reset {field} = {got}, expected 1 (released) after bring-up "
-                f"({reset_item})"
+                f"reset {field} = {got}, expected 1 (released) after bring-up ({reset_item})"
             )
         cocotb.log.info(
-            "CHK-COMBINED-RESET: all %d reset observables read 1 (released) "
-            "after bring-up: %s",
-            len(RESET_SAMPLE_FIELDS), reset_item,
+            "CHK-COMBINED-RESET: all %d reset observables read 1 (released) after bring-up: %s",
+            len(RESET_SAMPLE_FIELDS),
+            reset_item,
         )
 
         await ClockCycles(dut.clk_ref_i, self.GAP_REF_CYCLES)
@@ -102,16 +97,15 @@ class smc_combined_observability_test_seq(smc_base_test_seq):
             "%d clk_ref_i cycles after the reset sample -- backed in this same "
             "run by the declared i2c_cg_en positive control "
             "(CHK-PROBE-I2C-CG-EN-ALIVE): %s",
-            self.GAP_REF_CYCLES, i2c_item,
+            self.GAP_REF_CYCLES,
+            i2c_item,
         )
 
         # End gate: both dispatched items reached the type-dispatched
         # scoreboard, exactly once each. Consumes the two retained handles, so
         # neither is stored-but-unread ([NO-ZERO-ACTIVITY-PASS]).
         sb = env.scoreboard
-        observed = {
-            name: getattr(sb, name) - before[name] for name in self.EXPECTED_SAMPLES
-        }
+        observed = {name: getattr(sb, name) - before[name] for name in self.EXPECTED_SAMPLES}
         assert observed == self.EXPECTED_SAMPLES, (
             f"combined composition mismatch: scoreboard booked {observed}, "
             f"expected {self.EXPECTED_SAMPLES}"
@@ -124,5 +118,7 @@ class smc_combined_observability_test_seq(smc_base_test_seq):
             "CHK-COMBINED-COMPOSITION: both item types reached the "
             "type-dispatched scoreboard with the exact counts this sequence "
             "dispatched: %s (reset=%s, i2c=%s)",
-            observed, self.reset_sample, self.i2c_sample,
+            observed,
+            self.reset_sample,
+            self.i2c_sample,
         )

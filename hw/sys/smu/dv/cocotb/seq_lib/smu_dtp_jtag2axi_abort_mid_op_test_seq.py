@@ -67,29 +67,23 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-ABORT-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         otp_gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         fab_gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if otp_gate != 0 or fab_gate != 0:
             raise AssertionError(
-                f"J2A gated after TCK sync: otp_disable={otp_gate} "
-                f"smc_disable={fab_gate}"
+                f"J2A gated after TCK sync: otp_disable={otp_gate} smc_disable={fab_gate}"
             )
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
-        self._log(
-            f"CHK-ABORT-GATE-OPEN otp={otp_gate} smc={fab_gate} caps=0x{caps:04x}"
-        )
+        self._log(f"CHK-ABORT-GATE-OPEN otp={otp_gate} smc={fab_gate} caps=0x{caps:04x}")
         sb.expect_eq(
             "CHK-ABORT-GATE-OPEN",
             (otp_gate, fab_gate, caps),
@@ -121,17 +115,13 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
                 "(abort needs an outstanding op)"
             )
         self.s2_ok = True
-        self._log(
-            f"CHK-ABORT-BUSY OTP +0x80 status=BUSY probe=0x{SMC_OTP_DEFAULT_PROBE_ADDR:x}"
-        )
+        self._log(f"CHK-ABORT-BUSY OTP +0x80 status=BUSY probe=0x{SMC_OTP_DEFAULT_PROBE_ADDR:x}")
         sb.expect_eq("CHK-ABORT-BUSY", busy_st, J2A_STATUS_BUSY)
 
         idc = int(await jtag.read("IDCODE", shift_value=0)) & 0xFFFF_FFFF
         require_jtag_tdo_resolved("IDCODE mid-BUSY")
         if idc != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE mid-BUSY want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idc:08x}"
-            )
+            raise AssertionError(f"IDCODE mid-BUSY want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idc:08x}")
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
@@ -157,9 +147,7 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
                     f"want SUCCESS+0x{VERSION_LO_RESET:08x}"
                 )
             recovered.append(data)
-            self._log(
-                f"CHK-J2A-ABORT VERSION_LO[{i}]=0x{data:08x} status=SUCCESS"
-            )
+            self._log(f"CHK-J2A-ABORT VERSION_LO[{i}]=0x{data:08x} status=SUCCESS")
         self.s4_ok = True
         sb.expect_eq(
             "CHK-J2A-ABORT",

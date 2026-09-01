@@ -99,9 +99,7 @@ class SmcClkDriver(uvm_driver):
             item.gated_clk_rising_edges = gated_count[0]
             en_sig = getattr(dut, item.gated_cg_en_probe, None)
             en_val = None if en_sig is None else en_sig.value
-            item.gated_cg_en = (
-                int(en_val) if en_val is not None and en_val.is_resolvable else -1
-            )
+            item.gated_cg_en = int(en_val) if en_val is not None and en_val.is_resolvable else -1
             item.gated_probe_resolvable = item.gated_cg_en >= 0
         self.logger.info("Counted %s", item)
 

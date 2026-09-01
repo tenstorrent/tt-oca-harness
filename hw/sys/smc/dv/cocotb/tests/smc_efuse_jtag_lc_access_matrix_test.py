@@ -55,9 +55,8 @@ except ImportError:  # pragma: no cover - cocotb version shim
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
-
 from seq_lib.smc_addr_map import smc_addr
+from smc_base_test import smc_base_test
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
 EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
@@ -221,8 +220,9 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # Restore a benign lifecycle state.
         await self._set_lc_state(LC_TEST_DEV, False, "RESTORE")
 
-        assert not self.errors, "eFuse JTAG LC access-control matrix mismatch:\n" + \
-            "\n".join(self.errors)
+        assert not self.errors, "eFuse JTAG LC access-control matrix mismatch:\n" + "\n".join(
+            self.errors
+        )
 
         # Anti-vacuity gate. Every access in this bench returns rdata
         # 0xBADCAB1E, blocked or allowed, so the data compare alone cannot
@@ -232,9 +232,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # the error slave, or never routing to it) fails here even though every
         # individual row's expectation could still be satisfied by one of the
         # two stuck behaviours.
-        discriminating = [
-            addr for addr, outs in self._read_outcomes.items() if len(outs) == 2
-        ]
+        discriminating = [addr for addr, outs in self._read_outcomes.items() if len(outs) == 2]
         assert discriminating, (
             "no eFuse map address was both blocked and allowed across the six "
             "lifecycle states: the access-control demux never discriminated, so "
@@ -248,7 +246,8 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             "never discriminated"
         )
         missing = [
-            f"CHK-EFUSE-JTAG-LC-{label}" for _r, _s, label in LC_MATRIX
+            f"CHK-EFUSE-JTAG-LC-{label}"
+            for _r, _s, label in LC_MATRIX
             if f"CHK-EFUSE-JTAG-LC-{label}" not in self.chk_seen
         ]
         assert not missing, f"missing CHK evidence tokens: {missing}"
@@ -298,9 +297,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 f"lc-decode cross-check signal '{var}' is not published on "
                 f"{'.'.join(_LC_PROBE_PATH)}"
             )
-        cocotb.log.info(
-            "lc-decode cross-check ENABLED on %s", ".".join(_LC_PROBE_PATH)
-        )
+        cocotb.log.info("lc-decode cross-check ENABLED on %s", ".".join(_LC_PROBE_PATH))
         return node
 
     async def _set_lc_state(self, raw: int, sigint: bool, label: str) -> None:
@@ -322,9 +319,14 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         got_sigint = int(efw.lc_sigint_err.value)
         got_prod = int(efw.is_prod_or_rma_sip.value)
         cocotb.log.info(
-            "lc decode [%s] raw=0x%x sigint=%d prod_or_rma=%d "
-            "(exp raw=0x%x sigint=%d prod=%d)",
-            label, got_raw, got_sigint, got_prod, exp_raw, exp_sigint, exp_prod,
+            "lc decode [%s] raw=0x%x sigint=%d prod_or_rma=%d (exp raw=0x%x sigint=%d prod=%d)",
+            label,
+            got_raw,
+            got_sigint,
+            got_prod,
+            exp_raw,
+            exp_sigint,
+            exp_prod,
         )
         if (got_raw, got_sigint, got_prod) != (exp_raw, exp_sigint, exp_prod):
             self.errors.append(
@@ -358,16 +360,22 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
     def _bus_state(self) -> str:
         dut = cocotb.top
         bits = []
-        for sig in ("ej_axi_arvalid", "ej_axi_arready", "ej_axi_rvalid",
-                    "ej_axi_awvalid", "ej_axi_awready", "ej_axi_wvalid",
-                    "ej_axi_bvalid", "rst_primary_smc_clk_no"):
+        for sig in (
+            "ej_axi_arvalid",
+            "ej_axi_arready",
+            "ej_axi_rvalid",
+            "ej_axi_awvalid",
+            "ej_axi_awready",
+            "ej_axi_wvalid",
+            "ej_axi_bvalid",
+            "rst_primary_smc_clk_no",
+        ):
             handle = getattr(dut, sig, None)
             if handle is not None:
                 bits.append(f"{sig}={handle.value}")
         return " ".join(bits) if bits else "<no ej_axi handles>"
 
-    async def _check_read(self, label: str, cls: str, addr: int,
-                          expect_block: bool) -> int | None:
+    async def _check_read(self, label: str, cls: str, addr: int, expect_block: bool) -> int | None:
         self.checks += 1
         rdata, code = await self._read(addr)
 
@@ -394,9 +402,14 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         blocked = code == RESP_DECERR
         self._read_outcomes.setdefault(addr, set()).add(blocked)
         cocotb.log.info(
-            "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s "
-            "blocked=%s (exp_block=%s)",
-            label, cls, addr, rdata, code, blocked, expect_block,
+            "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s blocked=%s (exp_block=%s)",
+            label,
+            cls,
+            addr,
+            rdata,
+            code,
+            blocked,
+            expect_block,
         )
         if expect_block and not blocked:
             self.errors.append(
@@ -405,8 +418,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             )
         elif not expect_block and blocked:
             self.errors.append(
-                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was "
-                f"blocked (DECERR)"
+                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
             )
         elif expect_block and rdata != BLOCK_SIGNATURE:
             # architecture.adoc:297-299. Note this compare cannot discriminate
@@ -421,8 +433,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             )
         return code
 
-    async def _check_write(self, label: str, addr: int,
-                           expect_block: bool) -> int | None:
+    async def _check_write(self, label: str, addr: int, expect_block: bool) -> int | None:
         self.checks += 1
         code = await self._write(addr, 0xA5A5_5A5A)
         if code is None:
@@ -439,12 +450,15 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         self._write_outcomes.add(blocked)
         cocotb.log.info(
             "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
-            label, addr, code, blocked, expect_block,
+            label,
+            addr,
+            code,
+            blocked,
+            expect_block,
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got "
-                f"resp={code}"
+                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got resp={code}"
             )
         elif not expect_block and blocked:
             self.errors.append(

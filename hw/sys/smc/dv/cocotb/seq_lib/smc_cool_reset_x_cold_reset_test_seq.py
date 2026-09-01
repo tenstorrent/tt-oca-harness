@@ -12,15 +12,9 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
 SMCEN = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
-FLR_DELAY = smc_addr(
-    "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR"
-)
-FLR_HOLD = smc_addr(
-    "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR"
-)
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
+FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 # misc_wrap.rdl instantiates TWO scratch banks (`scratch scratch_cold @0x0` and
 # `scratch scratch_cold_warm @0x80`), both `scratch.rdl` SCRATCH[8] sw=rw
 # reset 0x0. Both are swept here. Attribution note, measured on this bench and
@@ -101,20 +95,17 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         """Write a distinct non-zero pattern into both scratch banks and prove
         the readback, so any later `expected=0` compare has a measured non-zero
         starting point in the same run instead of resting on the reset value."""
-        await self.csr_write(f"{label}_SCRATCH_WARM", SCRATCH_COLD_WARM_0,
-                             _WARM_PAT)
-        warm = await self.csr_read(f"{label}_SCRATCH_WARM_RB",
-                                   SCRATCH_COLD_WARM_0, expected=_WARM_PAT)
+        await self.csr_write(f"{label}_SCRATCH_WARM", SCRATCH_COLD_WARM_0, _WARM_PAT)
+        warm = await self.csr_read(
+            f"{label}_SCRATCH_WARM_RB", SCRATCH_COLD_WARM_0, expected=_WARM_PAT
+        )
         await self.csr_write(f"{label}_SCRATCH_COLD", SCRATCH_COLD_0, _COLD_PAT)
-        cold = await self.csr_read(f"{label}_SCRATCH_COLD_RB", SCRATCH_COLD_0,
-                                   expected=_COLD_PAT)
+        cold = await self.csr_read(f"{label}_SCRATCH_COLD_RB", SCRATCH_COLD_0, expected=_COLD_PAT)
         return (warm, cold)
 
     async def _read_scratch(self, label: str, expected: int) -> tuple[int, int]:
-        warm = await self.csr_read(f"{label}_SCRATCH_WARM", SCRATCH_COLD_WARM_0,
-                                   expected=expected)
-        cold = await self.csr_read(f"{label}_SCRATCH_COLD", SCRATCH_COLD_0,
-                                   expected=expected)
+        warm = await self.csr_read(f"{label}_SCRATCH_WARM", SCRATCH_COLD_WARM_0, expected=expected)
+        cold = await self.csr_read(f"{label}_SCRATCH_COLD", SCRATCH_COLD_0, expected=expected)
         return (warm, cold)
 
     async def _program_flr_counters(self) -> None:
@@ -141,26 +132,24 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         dut.tb_cfg_flr_pf_active.value = 1
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "POS_COOL_ASSERT")
         assert self._int(dut.rst_cool_ni) & 1 == 1
-        cocotb.log.info(
-            "CHK-FLR-COLD-POS-COOL: FLR-only rst_cool_from_flr=0 rst_cool_ni=1"
-        )
+        cocotb.log.info("CHK-FLR-COLD-POS-COOL: FLR-only rst_cool_from_flr=0 rst_cool_ni=1")
         dut.tb_cfg_flr_pf_active.value = 0
         await self._await_cool(dut, 1, _COOL_RELEASE_BOUND, "POS_COOL_RELEASE")
         await self._await_warm(dut, "POS_WARM")
         # FLR-cool effect on the scratch banks. Fail-capable: both banks were
         # written and read back non-zero immediately above, so a design where
         # the cool reset does not reach them fails here.
-        self.cool_scratch_after = await self._read_scratch(
-            "AFTER_COOL", _SCRATCH_RESET
-        )
+        self.cool_scratch_after = await self._read_scratch("AFTER_COOL", _SCRATCH_RESET)
         cocotb.log.info(
             "CHK-FLR-COOL-SCRATCH-CLEAR: the FLR-only cool cleared BOTH scratch "
             "banks: SCRATCH_COLD_WARM_0 0x%08x->0x%x and SCRATCH_COLD_0 "
             "0x%08x->0x%x. No scratch register in this map survives a cool, "
             "which is why the post-cold leg below claims 'cleared across the "
             "overlap' and not 'cleared by the cold reset'",
-            self.cool_scratch_before[0], self.cool_scratch_after[0],
-            self.cool_scratch_before[1], self.cool_scratch_after[1],
+            self.cool_scratch_before[0],
+            self.cool_scratch_after[0],
+            self.cool_scratch_before[1],
+            self.cool_scratch_after[1],
         )
         await self.csr_write("SMC_REG_CLR", SMC_REG, 0)
 
@@ -173,9 +162,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
             await RisingEdge(dut.clk_ref_i)
 
         dut.tb_cfg_flr_pf_active.value = 1
-        self.iso_live = await self._await_iso(
-            dut, lambda v: v == _SMCEN, _ISO_BOUND, "ISO_LIVE"
-        )
+        self.iso_live = await self._await_iso(dut, lambda v: v == _SMCEN, _ISO_BOUND, "ISO_LIVE")
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "OVERLAP_COOL_HELD")
         cocotb.log.info(
             "CHK-FLR-COLD-ISO-LIVE: isolate_req_o=0x%x cool=0 before cold",
@@ -219,9 +206,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         dut.rst_cold_ni.value = 1
         await self._await_warm(dut, "POST_COLD_WARM")
         await self.wait_fuse_sense_done()
-        self.cold_scratch_post = await self._read_scratch(
-            "POST_COLD", _SCRATCH_RESET
-        )
+        self.cold_scratch_post = await self._read_scratch("POST_COLD", _SCRATCH_RESET)
         cocotb.log.info(
             "CHK-FLR-COLD-SCRATCH: across the FLR-cool x cold overlap the two "
             "scratch banks went 0x%08x/0x%08x (measured immediately before the "
@@ -230,6 +215,8 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
             "clears both banks (CHK-FLR-COOL-SCRATCH-CLEAR), so this leg proves "
             "they were cleared across the overlap -- it does NOT attribute the "
             "clear to the cold reset",
-            self.cold_scratch_pre[0], self.cold_scratch_pre[1],
-            self.cold_scratch_post[0], self.cold_scratch_post[1],
+            self.cold_scratch_pre[0],
+            self.cold_scratch_pre[1],
+            self.cold_scratch_post[0],
+            self.cold_scratch_post[1],
         )

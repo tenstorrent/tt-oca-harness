@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_i2c_p0_multictrl_test_seq import smc_i2c_p0_multictrl_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -30,8 +30,5 @@ class smc_i2c_p0_multictrl_test(smc_base_test):
             min_csr_accesses=125,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                "I2C0/1/2 time-multiplexed shared-bus writes; "
-                f"phases_ok={seq.phases_ok}"
-            ),
+            details=(f"I2C0/1/2 time-multiplexed shared-bus writes; phases_ok={seq.phases_ok}"),
         )

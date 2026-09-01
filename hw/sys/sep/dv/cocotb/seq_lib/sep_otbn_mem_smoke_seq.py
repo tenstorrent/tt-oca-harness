@@ -4,13 +4,10 @@
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import cocotb
-
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
+from sep_reg_meta import sym
 
 OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
 OTBN_ADDR_STATUS = OTBN_BASE + 0x018

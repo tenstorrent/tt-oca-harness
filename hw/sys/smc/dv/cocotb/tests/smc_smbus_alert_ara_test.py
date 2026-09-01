@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_smbus_alert_ara_test_seq import smc_smbus_alert_ara_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

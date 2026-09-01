@@ -36,9 +36,8 @@ import re
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "cpu_trace_diag_test")
@@ -73,7 +72,9 @@ class sep_cpu_trace_diag_test(sep_base_test):
         # default banner and would overwrite an assignment made there).
         self.sb.expected_line = _EXPECTED_LINE
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
@@ -95,7 +96,8 @@ class sep_cpu_trace_diag_test(sep_base_test):
         )
         self.logger.info(
             "CHK-TRAP-EVENT PASS: 1 breakpoint trap, trace pc=0x%08x (%s)",
-            trap_pc, mon.symbols.lookup(trap_pc),
+            trap_pc,
+            mon.symbols.lookup(trap_pc),
         )
 
         # CHK-TRAP-SYM: the CSR-true mepc the firmware printed symbolizes into
@@ -118,16 +120,14 @@ class sep_cpu_trace_diag_test(sep_base_test):
             f"CHK-CHAIN-SYM FAIL: no retired PC symbolized into {missing} "
             f"(saw {len(mon.pcs)} distinct PCs)"
         )
-        self.logger.info(
-            "CHK-CHAIN-SYM PASS: retirements cover %s", ", ".join(_CHAIN_SYMBOLS)
-        )
+        self.logger.info("CHK-CHAIN-SYM PASS: retirements cover %s", ", ".join(_CHAIN_SYMBOLS))
 
         # CHK-DEPTH: the shadow stack tracked the chain plus the trap frame.
         assert mon.max_depth >= _MIN_STACK_DEPTH, (
-            f"CHK-DEPTH FAIL: max shadow-stack depth {mon.max_depth} < "
-            f"{_MIN_STACK_DEPTH}"
+            f"CHK-DEPTH FAIL: max shadow-stack depth {mon.max_depth} < {_MIN_STACK_DEPTH}"
         )
         self.logger.info(
             "CHK-DEPTH PASS: max call depth %d (resync notes %d)",
-            mon.max_depth, mon.resync_notes,
+            mon.max_depth,
+            mon.resync_notes,
         )

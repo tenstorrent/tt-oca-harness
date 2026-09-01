@@ -24,7 +24,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import cocotb
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
@@ -127,27 +126,21 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
         ),
         DeadspaceProbe(
             "base_config_hang_det_timeout",
-            smc_addr(
-                "SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD_BASE_ADDR"
-            ),
+            smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD_BASE_ADDR"),
             0x80,
             _smc_def("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR"),
             _block_extent("SMC_TOP_SMC_BASE_CONFIG", indexed=False),
         ),
         DeadspaceProbe(
             "outbound_filter0_start",
-            smc_indexed_addr(
-                "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", 0
-            ),
+            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", 0),
             0x200,
             smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0),
             _block_extent("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL", indexed=True),
         ),
         DeadspaceProbe(
             "alias_remap0_region_end",
-            smc_indexed_addr(
-                "SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR", 0
-            ),
+            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR", 0),
             0x100,
             smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_BASE_ADDR", 0),
             _block_extent("SMC_TOP_SMC_ALIAS_REMAP_REGION", indexed=True),
@@ -227,7 +220,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         # (env/smc_sys_axi_agent.py:159-173) before `item_done()`, so the
         # sequence never regains control with `timed_out` set. This is a guard
         # for a future caller that sets `allow_timeout=True`, not a live check
-        #.
+        # .
         assert not item.timed_out, (
             f"{name} @ 0x{addr:08x}: timed out (deadspace probe must complete)"
         )
@@ -280,9 +273,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         Returns ``(original, seeded, seed_ok)``. The caller restores
         ``original``.
         """
-        live_rd = await self._xfer(
-            f"{probe.name}_live_rd", SmcSysAxiOp.READ, probe.live_addr
-        )
+        live_rd = await self._xfer(f"{probe.name}_live_rd", SmcSysAxiOp.READ, probe.live_addr)
         assert live_rd.resp_code == AXI_RESP_OKAY, (
             f"{probe.name}: live CSR 0x{probe.live_addr:08x} resp="
             f"{_RESP_NAME.get(live_rd.resp_code)} (block is not awake)"
@@ -297,9 +288,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             f"{probe.name}: seeding live CSR 0x{probe.live_addr:08x} with "
             f"0x{seed:08x} returned {_RESP_NAME.get(seed_wr.resp_code)}"
         )
-        seed_rd = await self._xfer(
-            f"{probe.name}_seed_rd", SmcSysAxiOp.READ, probe.live_addr
-        )
+        seed_rd = await self._xfer(f"{probe.name}_seed_rd", SmcSysAxiOp.READ, probe.live_addr)
         assert seed_rd.resp_code == AXI_RESP_OKAY, (
             f"{probe.name}: seeded readback of 0x{probe.live_addr:08x} resp="
             f"{_RESP_NAME.get(seed_rd.resp_code)}"
@@ -352,13 +341,8 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         finally:
             await self._restore_live(probe, original)
 
-    async def _probe_after_seed(
-        self, probe: DeadspaceProbe, before: int, seed_ok: bool
-    ) -> None:
-        dead_rd = await self._xfer(
-            f"{probe.name}_dead_rd", SmcSysAxiOp.READ, probe.dead_addr
-        )
-        dead_rd_resp = _RESP_NAME.get(dead_rd.resp_code)
+    async def _probe_after_seed(self, probe: DeadspaceProbe, before: int, seed_ok: bool) -> None:
+        dead_rd = await self._xfer(f"{probe.name}_dead_rd", SmcSysAxiOp.READ, probe.dead_addr)
         if (
             dead_rd.resp_code == AXI_RESP_OKAY
             and (dead_rd.rdata & 0xFFFFFFFF) == before
@@ -383,16 +367,14 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
                 f"0x{probe.live_addr:08x} still reads 0 (seed_ok={seed_ok}), "
                 f"so the alias compare had no discriminating value"
             )
-            self._log_proof(
-                "ALIAS-NOT-CHECKABLE", probe, before=f"0x{before:08x}"
-            )
+            self._log_proof("ALIAS-NOT-CHECKABLE", probe, before=f"0x{before:08x}")
 
         # The second payload exists for the collision case: if the live CSR
         # already held the first payload, `after == before` even though the
         # dead write wrapped through. `_seed_live` now requires the seeded
         # `before` to equal neither payload, so that collision is impossible by
         # construction and the OKAY path's early return can no longer hide it
-        #. PAYLOAD_ZERO therefore remains only as the
+        # . PAYLOAD_ZERO therefore remains only as the
         # second attempt on the refused path.
         for payload in (PAYLOAD, PAYLOAD_ZERO):
             dead_wr = await self._xfer(
@@ -431,23 +413,16 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
                     f"0x{payload:08x} resp=OKAY (no live change)"
                 )
                 self.accepted_dead.append(proof)
-                self._log_proof(
-                    "ACCEPTED", probe, payload=f"0x{payload:08x}", wr_resp=wr_resp
-                )
+                self._log_proof("ACCEPTED", probe, payload=f"0x{payload:08x}", wr_resp=wr_resp)
                 self._book_unproven_negative(probe, "ACCEPTED", seed_ok)
                 return
             if payload == PAYLOAD_ZERO:
-                proof = (
-                    f"{probe.name} dead 0x{probe.dead_addr:08x} "
-                    f"resp={wr_resp} (no live change)"
-                )
+                proof = f"{probe.name} dead 0x{probe.dead_addr:08x} resp={wr_resp} (no live change)"
                 self.refused.append(proof)
                 self._log_proof("REFUSED", probe, wr_resp=wr_resp)
                 self._book_unproven_negative(probe, "REFUSED", seed_ok)
 
-    def _book_unproven_negative(
-        self, probe: DeadspaceProbe, kind: str, seed_ok: bool
-    ) -> None:
+    def _book_unproven_negative(self, probe: DeadspaceProbe, kind: str, seed_ok: bool) -> None:
         """Record a "no live change" verdict taken without a positive control.
 
         ACCEPTED and REFUSED both rest on ``after == before``. That negative is
@@ -527,9 +502,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         i2c_wrapped = any(i2c.name in row for row in self.wrap_to_live)
         i2c_accepted = any(i2c.name in row for row in self.accepted_dead)
         if i2c_wrapped:
-            cocotb.log.error(
-                "DEADSPACE I2C wrap still aliases; i2c_wrap SIZE check did not hold"
-            )
+            cocotb.log.error("DEADSPACE I2C wrap still aliases; i2c_wrap SIZE check did not hold")
         elif i2c_refused:
             cocotb.log.info(
                 "DEADSPACE I2C: 0x%08x refused (i2c_wrap range-check held)",

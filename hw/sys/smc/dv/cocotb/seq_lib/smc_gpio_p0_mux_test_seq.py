@@ -174,7 +174,8 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
         assert (val_reg & _WRAP0_BIT) == _WRAP0_BIT, "register TX value not 1"
         cocotb.log.info(
             "CHK-GPIO-P0-MUX-REG: wrap0 core2pad_en delta=0x%x core2pad=0x%x",
-            delta, val_reg & _WRAP0_BIT,
+            delta,
+            val_reg & _WRAP0_BIT,
         )
 
         # PRIORITY, against a live competitor. `lsio_select` is set as well, and
@@ -201,7 +202,9 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
             "set and the LSIO source driving 0, wrap%d kept the register value "
             "core2pad=%d en=%d -- the register interface outranks a live "
             "lsio_select",
-            _WRAP, (val_both >> _WRAP) & 1, (en_both >> _WRAP) & 1,
+            _WRAP,
+            (val_both >> _WRAP) & 1,
+            (en_both >> _WRAP) & 1,
         )
 
         # LSIO ROUTING, the positive control for the select bit itself.
@@ -238,7 +241,10 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
             "to wrap%d -- core2pad_en=%d with the source driving (a select bit "
             "tied to 0 gives 0 here), and core2pad followed the source from %d "
             "to %d when it was flipped",
-            _WRAP, (en_lsio >> _WRAP) & 1, self.val_lsio, self.val_lsio_flipped,
+            _WRAP,
+            (en_lsio >> _WRAP) & 1,
+            self.val_lsio,
+            self.val_lsio_flipped,
         )
 
         # Restore: register path off, SPI pads back to the idle-safe parking the

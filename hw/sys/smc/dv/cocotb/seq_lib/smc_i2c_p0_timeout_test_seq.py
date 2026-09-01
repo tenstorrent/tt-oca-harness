@@ -18,23 +18,22 @@ from .smc_i2c_field_masks import (
     I2C_FDATA_STOP,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_HOST_FIFO_CONFIG_FMT_THRESH,
+    I2C_HOST_FIFO_CONFIG_RX_THRESH,
+    I2C_HOST_TIMEOUT_CTRL_VAL,
     I2C_INTR_ENABLE_STRETCH_TIMEOUT,
     I2C_INTR_STATE_STRETCH_TIMEOUT,
+    I2C_NACK_HANDLER_TIMEOUT_EN,
+    I2C_NACK_HANDLER_TIMEOUT_VAL,
+    I2C_TARGET_TIMEOUT_CTRL_EN,
+    I2C_TARGET_TIMEOUT_CTRL_VAL,
     I2C_TIMEOUT_CTRL_EN,
     I2C_TIMEOUT_CTRL_VAL,
     I2C_WRAP_CTRL_HOST,
     I2C_WRAP_CTRL_TARGET,
-    I2C_HOST_TIMEOUT_CTRL_VAL,
-    I2C_TARGET_TIMEOUT_CTRL_VAL,
-    I2C_TARGET_TIMEOUT_CTRL_EN,
-    I2C_NACK_HANDLER_TIMEOUT_VAL,
-    I2C_NACK_HANDLER_TIMEOUT_EN,
-    I2C_HOST_FIFO_CONFIG_RX_THRESH,
-    I2C_HOST_FIFO_CONFIG_FMT_THRESH,
 )
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 _TARGET_ADDR = 0x10
 _STRETCH_TIMEOUT_CYCLES = 2000
@@ -103,19 +102,13 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         if "smc_i2c_shared_bus" not in cocotb.plusargs:
-            raise AssertionError(
-                "smc_i2c_p0_timeout_test requires +smc_i2c_shared_bus"
-            )
+            raise AssertionError("smc_i2c_p0_timeout_test requires +smc_i2c_shared_bus")
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
 
         # I2C0 target, TX empty
-        wrap0 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-        )
+        wrap0 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
         await self.csr_write("I2C0_WRAP_TGT", wrap0, I2C_WRAP_CTRL_TARGET)
         await self._program_timing(0)
         await self.csr_write(
@@ -135,9 +128,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
         )
 
         # I2C1 host with stretch timeout enabled
-        wrap1 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1
-        )
+        wrap1 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1)
         await self.csr_write("I2C1_WRAP_HOST", wrap1, I2C_WRAP_CTRL_HOST)
         await self._program_timing(1)
         await self.csr_write(
@@ -154,8 +145,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
         await self.csr_write(
             "I2C1_TIMEOUT_CTRL",
             self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR", 1),
-            (_STRETCH_TIMEOUT_CYCLES & I2C_TIMEOUT_CTRL_VAL)
-            | I2C_TIMEOUT_CTRL_EN,
+            (_STRETCH_TIMEOUT_CYCLES & I2C_TIMEOUT_CTRL_VAL) | I2C_TIMEOUT_CTRL_EN,
         )
         await self.csr_write(
             "I2C1_INTR_ENABLE",
@@ -182,16 +172,13 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
             I2C_FDATA_READB | I2C_FDATA_STOP | 1,
         )
 
-        intr_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1
-        )
+        intr_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1)
         intr = 0
         for _ in range(800):
             intr = await self.csr_read("I2C1_INTR_POLL", intr_addr)
             if intr & I2C_INTR_STATE_STRETCH_TIMEOUT:
                 cocotb.log.info(
-                    "CHK-I2C-P0-TIMEOUT: STRETCH_TIMEOUT INTR_STATE=0x%x "
-                    "cycles=%d",
+                    "CHK-I2C-P0-TIMEOUT: STRETCH_TIMEOUT INTR_STATE=0x%x cycles=%d",
                     intr,
                     _STRETCH_TIMEOUT_CYCLES,
                 )
@@ -199,9 +186,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
                 break
             await Timer(5, units="us")
         if not self.stretch_ok:
-            raise AssertionError(
-                f"STRETCH_TIMEOUT not seen INTR_STATE=0x{intr:08x}"
-            )
+            raise AssertionError(f"STRETCH_TIMEOUT not seen INTR_STATE=0x{intr:08x}")
 
         # Clean release
         await self.csr_write(
@@ -243,20 +228,24 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
         # 0 -> 1 -> 0 across the reset read / probe readback / restore readback.
         sweep = (
             ("HOST_TIMEOUT_CTRL", I2C_HOST_TIMEOUT_CTRL_VAL, 0),
-            ("TARGET_TIMEOUT_CTRL",
-             I2C_TARGET_TIMEOUT_CTRL_VAL | I2C_TARGET_TIMEOUT_CTRL_EN,
-             I2C_TARGET_TIMEOUT_CTRL_EN),
-            ("HOST_NACK_HANDLER_TIMEOUT",
-             I2C_NACK_HANDLER_TIMEOUT_VAL | I2C_NACK_HANDLER_TIMEOUT_EN,
-             I2C_NACK_HANDLER_TIMEOUT_EN),
-            ("HOST_FIFO_CONFIG",
-             I2C_HOST_FIFO_CONFIG_RX_THRESH | I2C_HOST_FIFO_CONFIG_FMT_THRESH,
-             0),
+            (
+                "TARGET_TIMEOUT_CTRL",
+                I2C_TARGET_TIMEOUT_CTRL_VAL | I2C_TARGET_TIMEOUT_CTRL_EN,
+                I2C_TARGET_TIMEOUT_CTRL_EN,
+            ),
+            (
+                "HOST_NACK_HANDLER_TIMEOUT",
+                I2C_NACK_HANDLER_TIMEOUT_VAL | I2C_NACK_HANDLER_TIMEOUT_EN,
+                I2C_NACK_HANDLER_TIMEOUT_EN,
+            ),
+            (
+                "HOST_FIFO_CONFIG",
+                I2C_HOST_FIFO_CONFIG_RX_THRESH | I2C_HOST_FIFO_CONFIG_FMT_THRESH,
+                0,
+            ),
         )
         for name, mask, must_set in sweep:
-            addr = self._idx_addr(
-                f"SMC_TOP_SMC_I2C_WRAP_I2C_{name}_BASE_ADDR", idx
-            )
+            addr = self._idx_addr(f"SMC_TOP_SMC_I2C_WRAP_I2C_{name}_BASE_ADDR", idx)
             probe = (0x5A5A_A5A5 & mask) | must_set
             assert probe & must_set == must_set, (
                 f"{name}: the probe 0x{probe:08x} does not set the bits this "
@@ -272,17 +261,11 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
         # value and CLEARS it. That makes a two-sided check of the read-clear
         # semantic itself, which is stronger than a plain readback -- a register
         # that merely stored the value would fail the second read.
-        nack = self._idx_addr(
-            f"SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", idx
-        )
+        nack = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", idx)
         nack_probe = 0x5A
         await self.csr_write(f"I2C{idx}_TARGET_NACK_COUNT_WR", nack, nack_probe)
-        await self.csr_read(
-            f"I2C{idx}_TARGET_NACK_COUNT_RD1", nack, expected=nack_probe
-        )
-        await self.csr_read(
-            f"I2C{idx}_TARGET_NACK_COUNT_RD2", nack, expected=0
-        )
+        await self.csr_read(f"I2C{idx}_TARGET_NACK_COUNT_RD1", nack, expected=nack_probe)
+        await self.csr_read(f"I2C{idx}_TARGET_NACK_COUNT_RD2", nack, expected=0)
         cocotb.log.info(
             "CHK-I2C-TIMEOUT-CSR-SWEEP: %d timeout/FIFO CSRs took a masked "
             "write/readback/restore on controller %d (both TIMEOUT EN bits "
@@ -291,5 +274,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
             "read 0x%x then 0x0 on the second read, which is its rclr semantic "
             "and not just storage (INTR_TEST excluded -- singlepulse, see "
             "docstring)",
-            len(sweep), idx, nack_probe,
+            len(sweep),
+            idx,
+            nack_probe,
         )

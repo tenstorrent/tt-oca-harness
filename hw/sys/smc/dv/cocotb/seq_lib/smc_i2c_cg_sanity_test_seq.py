@@ -24,7 +24,6 @@ in this environment, so this sequence states no expectation for it.
 from __future__ import annotations
 
 import cocotb
-
 from env.smc_i2c_item import SmcI2cItem, SmcI2cOp
 from env.smc_probe_liveness import probe_alive, probe_evidence
 
@@ -77,5 +76,6 @@ class smc_i2c_cg_sanity_test_seq(smc_base_test_seq):
             "%d on a scoreboard-booked SAMPLE, and the probe carries a same-run "
             "liveness credit (%s), so the leg was exact-compared rather than "
             "OBSERVED-ONLY",
-            I2C_CG_EN_RESET, probe_evidence("i2c_cg_en"),
+            I2C_CG_EN_RESET,
+            probe_evidence("i2c_cg_en"),
         )

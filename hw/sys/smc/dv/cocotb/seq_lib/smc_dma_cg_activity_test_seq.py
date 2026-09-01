@@ -31,19 +31,18 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
+
+from . import smc_addr_map as _addr
+from ._one_shot import _OneShot
+from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
 # Every record this sequence emits goes through `cocotb.log`: a module-level
 # `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
 # the STEP/CHK/FENCE and P2_COVERAGE_ARTIFACT evidence written through one never
 # reaches the kept log -- every CHK- token this sequence emitted was lost that
 # way ([EVIDENCE-TOKEN-CONDITIONAL]).
-
-from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
-
-from ._one_shot import _OneShot
-from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_addr_map as _addr
-from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
 
 def _p2_coverage_report_dirs() -> list[Path]:
@@ -113,6 +112,7 @@ def _emit_p2_hyst_sweep_coverage_report(
         ",".join(cells_hit),
     )
     return written[0]
+
 
 # Authoritative addresses / field masks (generated headers via smc_addr_map).
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL
@@ -324,9 +324,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write(
-            "INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
-        )
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
         await self.csr_write(
             "INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
         )
@@ -352,9 +350,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             item.wdata = int.from_bytes(chunk, "little")
             item.update_golden = True
             item.memory_region = DMA_MODEL_REGION
-            await _OneShot(item, f"{item_name}_os").start(
-                self.env.jtag_axi_agent.sequencer
-            )
+            await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
 
     async def _program_dma_descriptors(self, length: int) -> None:
         await self.csr_write("DMA_CONFIG", DMA_CTRL_CONFIG, DMA_CONFIG_ENABLED_ND)
@@ -617,8 +613,9 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             )
         return timeline
 
-    def _find_last_deassert(self, timeline: list[tuple[int, int]], start_idx: int,
-                            label: str) -> int:
+    def _find_last_deassert(
+        self, timeline: list[tuple[int, int]], start_idx: int, label: str
+    ) -> int:
         result = None
         for i in range(start_idx, len(timeline) - 1):
             if timeline[i][0] == 1 and timeline[i + 1][0] == 0:
@@ -630,8 +627,9 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             )
         return result
 
-    def _count_consecutive_edges(self, timeline: list[tuple[int, int]], start_idx: int,
-                                 label: str) -> int:
+    def _count_consecutive_edges(
+        self, timeline: list[tuple[int, int]], start_idx: int, label: str
+    ) -> int:
         observed = 0
         for i in range(start_idx, len(timeline)):
             if timeline[i][1] == 1:
@@ -644,8 +642,9 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             f"observed_so_far={observed})"
         )
 
-    def _assert_no_glitch(self, timeline: list[tuple[int, int]], start_idx: int,
-                          end_idx: int, label: str) -> None:
+    def _assert_no_glitch(
+        self, timeline: list[tuple[int, int]], start_idx: int, end_idx: int, label: str
+    ) -> None:
         for i in range(start_idx, end_idx):
             busy, edge = timeline[i]
             if not edge:
@@ -672,15 +671,13 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             busy, edge = await self._cycle_step()
             timeline.append((busy, int(edge)))
 
-        async def _run_pulse(label: str, margin: int = 3,
-                             bound: int = P2_RACE_PULSE_BOUND) -> None:
+        async def _run_pulse(label: str, margin: int = 3, bound: int = P2_RACE_PULSE_BOUND) -> None:
             task = cocotb.start_soon(self.csr_read(label, DMA_CTRL_STATUS_0))
             waited = 0
             while not task.done():
                 if waited >= bound:
                     raise AssertionError(
-                        f"{label}: CSR activity pulse did not complete within "
-                        f"{bound} cycles"
+                        f"{label}: CSR activity pulse did not complete within {bound} cycles"
                     )
                 await _cycle()
                 waited += 1
@@ -746,9 +743,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         """P2 extension (SMC_CG_P2_001), additive after the P1 flow in body():
         required-cell hysteresis sweep + seed-driven extras + reassert race."""
         seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
-        sweep_gaps, race_hyst_val, early_off, b2b_off, late_margin = _p2_seeded_knobs(
-            seed
-        )
+        sweep_gaps, race_hyst_val, early_off, b2b_off, late_margin = _p2_seeded_knobs(seed)
         cocotb.log.info(
             "SEED: %d P2 knobs sweep=%s race_hyst=%d early=%d b2b=%d late_margin=%d",
             seed,
@@ -808,21 +803,13 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             )
             # Recorded ONLY after the exact compare passed above.
             sweep_results[gap] = (actual_hyst, observed)
-        missing_required = [
-            g for g in P2_REQUIRED_SWEEP_GAPS if g not in sweep_results
-        ]
-        assert not missing_required, (
-            f"sweep required cells not observed: {missing_required}"
-        )
+        missing_required = [g for g in P2_REQUIRED_SWEEP_GAPS if g not in sweep_results]
+        assert not missing_required, f"sweep required cells not observed: {missing_required}"
         # Coverage artifact grades the FL required_cells, and books a cell only
         # from a measurement that passed its exact compare -- not from a
         # restatement of the required list. The 0..7 band is swept above but
         # excluded from the booking per P2_LOW_BAND_EXCLUSION_REASON.
-        cells_hit = [
-            f"hyst-gap={g}"
-            for g in P2_REQUIRED_SWEEP_GAPS
-            if g in sweep_results
-        ]
+        cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS if g in sweep_results]
         cell_measurements = {
             f"hyst-gap={g}": {
                 "programmed_gap": g,
@@ -831,14 +818,12 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             }
             for g in sweep_results
         }
-        cov_path = _emit_p2_hyst_sweep_coverage_report(
-            cells_hit, cell_measurements
-        )
+        cov_path = _emit_p2_hyst_sweep_coverage_report(cells_hit, cell_measurements)
         self._emit_chk(
             "CHK-DMA-HYST-SWEEP",
-            "CHK-DMA-HYST-SWEEP: " + " ".join(
-                f"gap{g}(hyst_field={sweep_results[g][0]},"
-                f"deassert_cyc={sweep_results[g][1]})"
+            "CHK-DMA-HYST-SWEEP: "
+            + " ".join(
+                f"gap{g}(hyst_field={sweep_results[g][0]},deassert_cyc={sweep_results[g][1]})"
                 for g in sweep_gaps
             )
             + f" coverage_artifact={cov_path.name} cells={','.join(cells_hit)}"
@@ -853,9 +838,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             "ACTION/RESPONSE/EFFECT for SMC-CG-DMA-HYST.S2: activity-reassert "
             "race (early-in-countdown, back-to-back, last-cycle-before-expiry)",
         )
-        race_hyst = await self._program_cg_field(
-            enable=True, hyst_value=race_hyst_val
-        )
+        race_hyst = await self._program_cg_field(enable=True, hyst_value=race_hyst_val)
         await self._p2_settle_idle(P2_SETTLE_TIMEOUT_SMC)
         race = await self._race_trial(
             race_hyst,
@@ -871,15 +854,21 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             "CHK-DMA-HYST-RACE",
             "CHK-DMA-HYST-RACE: zero_glitches=1 hyst={} early_offset={} "
             "b2b_gap={} late_offset={} final_countdown_restarted_full={}".format(
-                race["hyst"], race["early_offset"], race["b2b_gap"],
-                race["late_offset"], race["final_countdown"],
+                race["hyst"],
+                race["early_offset"],
+                race["b2b_gap"],
+                race["late_offset"],
+                race["final_countdown"],
             ),
         )
         self._mark_fence("RACE-REASSERT-EARLY")
         self._mark_fence("RACE-REASSERT-LAST")
 
-        self._log_step("P2-S4", "TIMEOUT: every bounded wait above has a finite bound, "
-                                "a fail-on-expiry path, and a last-state diagnostic")
+        self._log_step(
+            "P2-S4",
+            "TIMEOUT: every bounded wait above has a finite bound, "
+            "a fail-on-expiry path, and a last-state diagnostic",
+        )
         self._emit_chk(
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS: sweep_bound_smc_cycles={} settle_bound_smc_cycles={} "
@@ -916,9 +905,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             "RACE-REASSERT-EARLY",
             "RACE-REASSERT-LAST",
         ]
-        assert fence_terms == expected_p2_pre_pass, (
-            f"P2 NONVAC fence order wrong: {fence_terms}"
-        )
+        assert fence_terms == expected_p2_pre_pass, f"P2 NONVAC fence order wrong: {fence_terms}"
         # The token is written under the SAME name the testcase gate requires
         # (`CHK-NONVAC-P2`), so each required name resolves to exactly one
         # greppable line in the kept log and the P1 and P2 fences do not share a
@@ -1076,8 +1063,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         )
         self._emit_chk(
             "CHK-DMA-GATING-DISABLED",
-            f"CHK-DMA-GATING-DISABLED: toggles_every_cycle=1 edges={edges} "
-            f"window={IDLE_OBSERVE}",
+            f"CHK-DMA-GATING-DISABLED: toggles_every_cycle=1 edges={edges} window={IDLE_OBSERVE}",
         )
         self._mark_fence("gating-disabled-observed")
 

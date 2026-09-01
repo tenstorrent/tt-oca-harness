@@ -37,7 +37,6 @@ from .smc_base_test_seq import smc_base_test_seq
 
 
 class smc_gpio_observe_test_seq(smc_base_test_seq):
-
     def __init__(self, name: str = "smc_gpio_observe_test_seq") -> None:
         super().__init__(name)
         # Read by smc_gpio_observe_test.run_scenario as the reference of the

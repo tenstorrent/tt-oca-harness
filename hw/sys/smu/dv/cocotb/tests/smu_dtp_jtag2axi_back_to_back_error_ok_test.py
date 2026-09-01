@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_jtag2axi_back_to_back_error_ok_test_seq import (
     smu_dtp_jtag2axi_back_to_back_error_ok_test_seq,
 )
@@ -18,18 +17,11 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_dtp_jtag2axi_back_to_back_error_ok_test "
-            "TierC JTAG2AXI-B2B SEP=0 JTAG"
+            "DUT_TAG=BARE smu_dtp_jtag2axi_back_to_back_error_ok_test TierC JTAG2AXI-B2B SEP=0 JTAG"
         )
         seq = smu_dtp_jtag2axi_back_to_back_error_ok_test_seq(self)
         await seq.run()
-        assert (
-            seq.s1_ok
-            and seq.s2_ok
-            and seq.s3_ok
-            and seq.s4_ok
-            and seq.s5_ok
-        ), (
+        assert seq.s1_ok and seq.s2_ok and seq.s3_ok and seq.s4_ok and seq.s5_ok, (
             f"jtag2axi_b2b incomplete s1={seq.s1_ok} s2={seq.s2_ok} "
             f"s3={seq.s3_ok} s4={seq.s4_ok} s5={seq.s5_ok}"
         )

@@ -10,11 +10,10 @@ import sys
 from pathlib import Path
 
 import cocotb
-from cocotb.triggers import ClockCycles
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+
 # Shared output-fabric VIP layer: fabric window, filter pass-all programming and
 # the X-aware responder sampling all live there (no local re-implementation).
 from .smc_output_fabric_vip_utils import (
@@ -41,9 +40,7 @@ ZEROER_SIZE = ZEROER_CTRL_SIZE_REG_ADDR
 ZEROER_CTRL_STATUS = ZEROER_CTRL_CTRL_STATUS_REG_ADDR
 # CTRL_STATUS start value packed from the generated ZEROER_CTRL field layout
 # (int_en at bit 0 — the write side effect that starts the FSM), not a literal.
-ZEROER_CTRL_STATUS_START = reg_field_pack(
-    "ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1
-)
+ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
 # --- CTRL_STATUS readback expectation (S4) ----------------------------------
 # Packed from the same generated field layout, never a literal, and every bit of
 # the 64-bit word is accounted for:
@@ -91,9 +88,7 @@ ZEROER_CTRL_STATUS_START = reg_field_pack(
 # documented as completed but implements busy"). The emitted
 # CHK-ZEROER-CTRL-STATUS token must cite ``zeroer.sv`` + the S5 observation for
 # the polarity, never the adoc, which contradicts it.
-ZEROER_CTRL_STATUS_DONE = reg_field_pack(
-    "ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1, status=0
-)
+ZEROER_CTRL_STATUS_DONE = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1, status=0)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
 OUTPUT_FABRIC_MODEL_REGION = "zeroer_output_fabric"
@@ -262,9 +257,7 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
         return item.rdata.to_bytes(length, "little")
 
-    async def _wait_for_zeroer_write(
-        self, start_writes: int, start_reads: int
-    ) -> None:
+    async def _wait_for_zeroer_write(self, start_writes: int, start_reads: int) -> None:
         """Exact-count wait for the single zeroer beat on the SYS_OUT responder.
 
         ``ZEROER_SIZE`` is 8 bytes against a 64-bit data path, so the operation
@@ -303,10 +296,12 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         # Track poison in the VIP model for neighbour bookkeeping only; the
         # zeroed-region oracle is JTAG AXI readback vs ZEROER_EXPECTED, not
         # memory_model.expect after rewriting the model.
-        self.memory_model.write(OUTPUT_FABRIC_ADDR, ZEROER_POISON,
-                                region=OUTPUT_FABRIC_MODEL_REGION)
-        self.memory_model.write(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON,
-                                region=OUTPUT_FABRIC_MODEL_REGION)
+        self.memory_model.write(
+            OUTPUT_FABRIC_ADDR, ZEROER_POISON, region=OUTPUT_FABRIC_MODEL_REGION
+        )
+        self.memory_model.write(
+            OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON, region=OUTPUT_FABRIC_MODEL_REGION
+        )
         await self._write_bytes(OUTPUT_FABRIC_ADDR, ZEROER_POISON)
         await self._write_bytes(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON)
         preload_rb = await self._read_bytes(OUTPUT_FABRIC_ADDR, len(ZEROER_POISON))
@@ -337,12 +332,11 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             "(addresses from smc_reg ZEROER_CTRL_*_REG_ADDR)"
         )
 
-        cocotb.log.info(
-            "STEP S3: trigger ZEROER_CTRL_STATUS.int_en=1; wait writes; readback zeros"
-        )
+        cocotb.log.info("STEP S3: trigger ZEROER_CTRL_STATUS.int_en=1; wait writes; readback zeros")
         # The zeroer FSM starts on the INT_EN field write side effect.
-        await self.csr_write("ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS,
-                             ZEROER_CTRL_STATUS_START, length=8)
+        await self.csr_write(
+            "ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, ZEROER_CTRL_STATUS_START, length=8
+        )
         # Exactly one AXI write clears the 8-byte DEST region; neighbour is
         # untouched. `exact_writes=True` makes a second beat a failure.
         await self._wait_for_zeroer_write(start_writes, start_reads)
@@ -400,8 +394,10 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             "plus the deasserted busy status (see ZEROER_CTRL_STATUS_DONE)"
         )
         ctrl_status = await self.csr_read(
-            "ZEROER_CTRL_STATUS_DONE", ZEROER_CTRL_STATUS,
-            expected=ZEROER_CTRL_STATUS_DONE, length=8,
+            "ZEROER_CTRL_STATUS_DONE",
+            ZEROER_CTRL_STATUS,
+            expected=ZEROER_CTRL_STATUS_DONE,
+            length=8,
         )
         cocotb.log.info(
             "CHK-ZEROER-CTRL-STATUS: CTRL_STATUS@"
@@ -460,15 +456,14 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"SIZE={BUSY_PROBE_SIZE:#x} ({BUSY_PROBE_BEATS} beats) and sample "
             "STATUS inside the trigger-to-idle window"
         )
-        await self.csr_write("ZEROER_SIZE_BUSY_PROBE", ZEROER_SIZE,
-                             BUSY_PROBE_SIZE, length=8)
-        await self.csr_write("ZEROER_CTRL_STATUS_BUSY_PROBE", ZEROER_CTRL_STATUS,
-                             ZEROER_CTRL_STATUS_START, length=8)
+        await self.csr_write("ZEROER_SIZE_BUSY_PROBE", ZEROER_SIZE, BUSY_PROBE_SIZE, length=8)
+        await self.csr_write(
+            "ZEROER_CTRL_STATUS_BUSY_PROBE", ZEROER_CTRL_STATUS, ZEROER_CTRL_STATUS_START, length=8
+        )
 
         busy_word = None
         for _ in range(BUSY_PROBE_ASSERT_CYCLES):
-            word = await self.csr_read("ZEROER_CTRL_STATUS_BUSY_POLL",
-                                       ZEROER_CTRL_STATUS, length=8)
+            word = await self.csr_read("ZEROER_CTRL_STATUS_BUSY_POLL", ZEROER_CTRL_STATUS, length=8)
             if word & STATUS_BM:
                 busy_word = word
                 break
@@ -487,8 +482,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
 
         cleared_word = None
         for _ in range(BUSY_PROBE_CLEAR_CYCLES):
-            word = await self.csr_read("ZEROER_CTRL_STATUS_CLEAR_POLL",
-                                       ZEROER_CTRL_STATUS, length=8)
+            word = await self.csr_read(
+                "ZEROER_CTRL_STATUS_CLEAR_POLL", ZEROER_CTRL_STATUS, length=8
+            )
             if not (word & STATUS_BM):
                 cleared_word = word
                 break

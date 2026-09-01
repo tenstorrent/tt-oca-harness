@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
@@ -29,9 +28,7 @@ from .smc_reset_seq_base import SmcResetSeqBase
 SCRATCH_COLD_WARM_1 = smc_indexed_addr(
     "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 1
 )
-CHIP_CONFIG_VERSION_LO = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"
-)
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 PERSIST_PATTERN = 0xCAFE_0020
 
 # clk_ref_i edges. Assert bound must exceed smc_reset_ctrl's 32-sample cool
@@ -68,8 +65,7 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def _reset_op(self, name: str, op: SmcResetOp) -> None:
         await self._send(op, item_name=name)
 
-    async def _await_level(self, signal: str, want: int, bound: int,
-                           label: str) -> None:
+    async def _await_level(self, signal: str, want: int, bound: int, label: str) -> None:
         """Bounded poll on a top-level reset observable; expiry fails the test."""
         dut = cocotb.top
         sig = getattr(dut, signal)
@@ -99,41 +95,47 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             writable=True,
         )
 
-        got = await self.csr_read("CHIP_CONFIG_VERSION_LO_BASELINE", version.addr,
-                                  expected=version.expected)
+        got = await self.csr_read(
+            "CHIP_CONFIG_VERSION_LO_BASELINE", version.addr, expected=version.expected
+        )
         cocotb.log.info(
             "CHK-CSR-BASELINE-RO: %s @ 0x%08x read 0x%08x == its mapped default "
             "0x%08x before any reset stimulus",
-            version.name, version.addr, got, version.expected,
+            version.name,
+            version.addr,
+            got,
+            version.expected,
         )
 
-        await self.csr_write_readback("SCRATCH_COLD_WARM_1_PRE_COOL", scratch.addr,
-                                      PERSIST_PATTERN)
+        await self.csr_write_readback("SCRATCH_COLD_WARM_1_PRE_COOL", scratch.addr, PERSIST_PATTERN)
         cocotb.log.info(
             "CHK-CSR-PRE-COOL-READBACK: %s @ 0x%08x wrote and read back "
             "0x%08x before the cool pulse",
-            scratch.name, scratch.addr, PERSIST_PATTERN,
+            scratch.name,
+            scratch.addr,
+            PERSIST_PATTERN,
         )
 
         await self._reset_op("cool_rst_lo", SmcResetOp.COOL_RST_LO)
         # Hold rst_cool_ni low until the reset is really taken: a fixed hold
         # shorter than the de-glitch window is silently rejected and nothing
         # downstream would reset at all.
-        await self._await_level("rst_primary_smc_clk_no", 0, COOL_ASSERT_BOUND_REF,
-                                "COOL_ASSERT")
-        await self._await_level("tb_rst_warm_smc_clk_n", 0, COOL_ASSERT_BOUND_REF,
-                                "COOL_ASSERT_WARM")
+        await self._await_level("rst_primary_smc_clk_no", 0, COOL_ASSERT_BOUND_REF, "COOL_ASSERT")
+        await self._await_level(
+            "tb_rst_warm_smc_clk_n", 0, COOL_ASSERT_BOUND_REF, "COOL_ASSERT_WARM"
+        )
         cocotb.log.info(
             "CHK-COOL-RESET-ASSERTED: rst_cool_ni=0 de-glitched into "
             "rst_primary_smc_clk_no=0 and rst_warm_smc_clk_n=0 within "
-            "%d clk_ref_i edges", COOL_ASSERT_BOUND_REF,
+            "%d clk_ref_i edges",
+            COOL_ASSERT_BOUND_REF,
         )
 
         await self._reset_op("cool_rst_hi", SmcResetOp.COOL_RST_HI)
-        await self._await_level("rst_primary_smc_clk_no", 1, COOL_RECOVER_BOUND_REF,
-                                "COOL_RELEASE")
-        await self._await_level("tb_rst_warm_smc_clk_n", 1, COOL_RECOVER_BOUND_REF,
-                                "COOL_RELEASE_WARM")
+        await self._await_level("rst_primary_smc_clk_no", 1, COOL_RECOVER_BOUND_REF, "COOL_RELEASE")
+        await self._await_level(
+            "tb_rst_warm_smc_clk_n", 1, COOL_RECOVER_BOUND_REF, "COOL_RELEASE_WARM"
+        )
         await self.wait_fuse_sense_done()
         cocotb.log.info(
             "CHK-COOL-RESET-RELEASED: rst_primary_smc_clk_no=1 and "
@@ -142,34 +144,46 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             COOL_RECOVER_BOUND_REF,
         )
 
-        got = await self.csr_read("CHIP_CONFIG_VERSION_LO_RECOVERY", version.addr,
-                                  expected=version.expected)
+        got = await self.csr_read(
+            "CHIP_CONFIG_VERSION_LO_RECOVERY", version.addr, expected=version.expected
+        )
         cocotb.log.info(
             "CHK-CSR-POST-COOL-RECOVERY: %s @ 0x%08x read 0x%08x, again its "
             "mapped default 0x%08x, so the SEP_IN AXI CSR path recovered from "
-            "the cool reset", version.name, version.addr, got, version.expected,
+            "the cool reset",
+            version.name,
+            version.addr,
+            got,
+            version.expected,
         )
 
-        got = await self.csr_read("SCRATCH_COLD_WARM_1_POST_COOL", scratch.addr,
-                                  expected=scratch.expected)
+        got = await self.csr_read(
+            "SCRATCH_COLD_WARM_1_POST_COOL", scratch.addr, expected=scratch.expected
+        )
         cocotb.log.info(
             "CHK-COOL-RESET-CLEARS-WARM-SCRATCH: %s @ 0x%08x read 0x%08x "
             "(== its mapped reset value 0x%08x) instead of the pre-cool "
             "0x%08x — the cool pulse reached the warm reset domain this "
             "register lives in",
-            scratch.name, scratch.addr, got, scratch.expected, PERSIST_PATTERN,
+            scratch.name,
+            scratch.addr,
+            got,
+            scratch.expected,
+            PERSIST_PATTERN,
         )
 
-        await self.csr_write_readback("SCRATCH_COLD_WARM_1_POST_COOL_RW",
-                                      scratch.addr, PERSIST_PATTERN)
+        await self.csr_write_readback(
+            "SCRATCH_COLD_WARM_1_POST_COOL_RW", scratch.addr, PERSIST_PATTERN
+        )
         cocotb.log.info(
             "CHK-CSR-WRITABLE-AFTER-COOL: %s @ 0x%08x wrote and read back "
             "0x%08x after cool recovery",
-            scratch.name, scratch.addr, PERSIST_PATTERN,
+            scratch.name,
+            scratch.addr,
+            PERSIST_PATTERN,
         )
 
-        await self.csr_restore("SCRATCH_COLD_WARM_1", scratch.addr,
-                              data=scratch.expected)
+        await self.csr_restore("SCRATCH_COLD_WARM_1", scratch.addr, data=scratch.expected)
         # Loop integrity + scoreboard cross-check. This sweep issues no bounded
         # read, so `assert_all_reachable` deliberately does NOT assert
         # `timeouts == 0` here (it could not fail on this path -- a no-response
@@ -198,6 +212,9 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "scoreboard measured %d value-checked reads (>= %d required, rdata "
             "compared against the generated map / written pattern) out of %d "
             "SYS AXI items it checked, each write proven by its read-back",
-            self.accesses, EXPECTED_ACCESSES, value_checked,
-            EXPECTED_VALUE_CHECKED_READS, sb.sys_axi_checks_seen,
+            self.accesses,
+            EXPECTED_ACCESSES,
+            value_checked,
+            EXPECTED_VALUE_CHECKED_READS,
+            sb.sys_axi_checks_seen,
         )

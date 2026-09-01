@@ -35,8 +35,13 @@ _CSR_BOUND = 64
 # Neither loops back into the DUT, so driving them perturbs nothing.
 #
 _SS_SWEEP_REGS = (
-    "SS_CONFIG", "SS_COLD_RESET_N", "SS_CONFIG_HOLD", "SS_SRAM_HOLD",
-    "SS_CRITICAL_HOLD", "SS_DEBUG_HOLD", "SS_FORCE_TO_REF_CLK",
+    "SS_CONFIG",
+    "SS_COLD_RESET_N",
+    "SS_CONFIG_HOLD",
+    "SS_SRAM_HOLD",
+    "SS_CRITICAL_HOLD",
+    "SS_DEBUG_HOLD",
+    "SS_FORCE_TO_REF_CLK",
 )
 # The `external` keyword is NOT the criterion for inclusion. It says where a
 # register lives, not whether it stores what software writes: `SS_CONFIG` @0x20
@@ -125,9 +130,7 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
         )
         await self.csr_read("ISOLATE_REQ_REG_RESET", iso, expected=0)
         await self.csr_write("ISOLATE_REQ_REG_WR", iso, 1 << ISOLATE_REQ_BIT)
-        await self.csr_read(
-            "ISOLATE_REQ_REG_RB", iso, expected=1 << ISOLATE_REQ_BIT
-        )
+        await self.csr_read("ISOLATE_REQ_REG_RB", iso, expected=1 << ISOLATE_REQ_BIT)
         await RisingEdge(dut.clk_smc_i)
         pin_set = int(dut.tb_isolate_req_o.value)
         assert pin_set == (1 << ISOLATE_REQ_BIT), (
@@ -140,8 +143,7 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
         await RisingEdge(dut.clk_smc_i)
         pin_clr = int(dut.tb_isolate_req_o.value)
         assert pin_clr == 0, (
-            f"isolate_req_o stayed 0x{pin_clr:x} after ISOLATE_REQ_REG was "
-            f"restored to 0"
+            f"isolate_req_o stayed 0x{pin_clr:x} after ISOLATE_REQ_REG was restored to 0"
         )
         cocotb.log.info(
             "CHK-RESET-UNIT-SS-SWEEP: %d software-owned SS_*/ISOLATE_REQ "
@@ -150,7 +152,11 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
             "0x%x -> 0x%x, so the CSR-to-pin path is checked and not just the "
             "storage. Every RESET_UNIT register outside this set is named in "
             "the module header with the criterion that excludes it",
-            len(_SS_SWEEP_REGS), _SS_PATTERN, pin_idle, pin_set, pin_clr,
+            len(_SS_SWEEP_REGS),
+            _SS_PATTERN,
+            pin_idle,
+            pin_set,
+            pin_clr,
         )
 
     async def _await_warm_cleared(self, dut, label: str) -> int:
@@ -160,9 +166,7 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
             if last == 0:
                 return last
             await RisingEdge(dut.clk_smc_i)
-        raise AssertionError(
-            f"{label}: COLD_WARM last=0x{last:x} want=0 after {_CSR_BOUND} polls"
-        )
+        raise AssertionError(f"{label}: COLD_WARM last=0x{last:x} want=0 after {_CSR_BOUND} polls")
 
     async def body(self) -> None:
         dut = cocotb.top

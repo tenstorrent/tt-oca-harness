@@ -49,8 +49,8 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
         self.c0 = None
         self.c1 = None
         self.delta = None
-        self.ref_edges_lo = None   # edges strictly between the two accesses
-        self.ref_edges_hi = None   # edges over the whole bracketing window
+        self.ref_edges_lo = None  # edges strictly between the two accesses
+        self.ref_edges_hi = None  # edges over the whole bracketing window
         self.cdc_skew = _CDC_SKEW_REF
 
     async def body(self) -> None:
@@ -115,13 +115,19 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
             "CHK-REF-COUNT: 0x%x -> 0x%x delta=%d, clk_ref_i edges measured "
             "in the same window: %d <= delta <= %d (+/- %d CDC skew), "
             "%d edges awaited between the accesses",
-            self.c0, self.c1, self.delta, self.ref_edges_lo,
-            self.ref_edges_hi, _CDC_SKEW_REF, _REF_WAIT,
+            self.c0,
+            self.c1,
+            self.delta,
+            self.ref_edges_lo,
+            self.ref_edges_hi,
+            _CDC_SKEW_REF,
+            _REF_WAIT,
         )
         cocotb.log.info(
             "CHK-REF-COUNT-BASIC: delta=%d within the measured refclk-edge "
             "bounds [%d, %d] (one count per clk_ref_i edge, "
             "doc/trm/src/architecture.adoc:256-265)",
-            self.delta, self.ref_edges_lo - _CDC_SKEW_REF,
+            self.delta,
+            self.ref_edges_lo - _CDC_SKEW_REF,
             self.ref_edges_hi + _CDC_SKEW_REF,
         )

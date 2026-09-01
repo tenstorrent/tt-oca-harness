@@ -17,6 +17,25 @@ RESP_SLVERR = 2
 RESP_DECERR = 3
 RESP_TIMEOUT = -1
 
+# AxPROT bit values (IHI 0022 A4.7): OR them into the `prot` argument.
+PROT_PRIVILEGED = 1
+PROT_NONSECURE = 2
+PROT_INSTRUCTION = 4
+
+_RESP_NAMES = {
+    RESP_OKAY: "OKAY",
+    RESP_EXOKAY: "EXOKAY",
+    RESP_SLVERR: "SLVERR",
+    RESP_DECERR: "DECERR",
+    RESP_TIMEOUT: "TIMEOUT",
+}
+
+
+def resp_name(resp: Any) -> str:
+    """Human-readable name for a response code (worst beat of a list)."""
+    code = worst_resp(resp)
+    return _RESP_NAMES.get(code, str(resp))
+
 
 def normalize_resp_list(resp: Any) -> tuple[int, ...]:
     """Return a tuple of plain response codes from scalar/list/backend enums."""
@@ -44,13 +63,15 @@ def bytes_to_int(data: bytes | bytearray, *, byteorder: str = "little") -> int:
     return int.from_bytes(bytes(data), byteorder)
 
 
-def words_from_bytes(data: bytes | bytearray, beat_bytes: int, *, byteorder: str = "little") -> tuple[int, ...]:
+def words_from_bytes(
+    data: bytes | bytearray, beat_bytes: int, *, byteorder: str = "little"
+) -> tuple[int, ...]:
     """Split backend byte payloads into one integer per AXI beat."""
     payload = bytes(data)
     if beat_bytes <= 0:
         raise ValueError(f"beat_bytes must be positive, got {beat_bytes}")
     return tuple(
-        int.from_bytes(payload[offset:offset + beat_bytes], byteorder)
+        int.from_bytes(payload[offset : offset + beat_bytes], byteorder)
         for offset in range(0, len(payload), beat_bytes)
     )
 

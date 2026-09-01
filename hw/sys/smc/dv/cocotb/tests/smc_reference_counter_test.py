@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_reference_counter_test_seq import smc_reference_counter_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -28,9 +28,7 @@ class smc_reference_counter_test(smc_base_test):
             f"the clk_ref_i measurement window was empty (lo={seq.ref_edges_lo})"
         )
         assert (
-            seq.ref_edges_lo - seq.cdc_skew
-            <= seq.c1 - seq.c0
-            <= seq.ref_edges_hi + seq.cdc_skew
+            seq.ref_edges_lo - seq.cdc_skew <= seq.c1 - seq.c0 <= seq.ref_edges_hi + seq.cdc_skew
         ), (
             f"REFERENCE_COUNTER delta {seq.c1 - seq.c0} is outside the measured "
             f"clk_ref_i edge bounds [{seq.ref_edges_lo - seq.cdc_skew}, "

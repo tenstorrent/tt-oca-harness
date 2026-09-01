@@ -35,9 +35,7 @@ def _mailbox_irq_level(dut) -> int:
     arbitrarily ([X-AWARE-CHECK]).
     """
     raw = dut.tb_mailbox_irq_any.value
-    assert raw.is_resolvable, (
-        f"tb_mailbox_irq_any is not resolvable (X/Z): {raw}"
-    )
+    assert raw.is_resolvable, f"tb_mailbox_irq_any is not resolvable (X/Z): {raw}"
     return int(raw)
 
 
@@ -90,7 +88,9 @@ async def check_mailbox_irq_source(mask: int = 0x1) -> None:
     cycles = await _await_mailbox_irq_level(dut, 0, "mailbox_irq_idle")
     cocotb.log.info(
         "CHK-MAILBOX-IRQ-IDLE: interrupts held 0 -> tb_mailbox_irq_any==0 after "
-        "%d clk_smc_i cycles, held %d", cycles, _IRQ_HOLD_CYCLES,
+        "%d clk_smc_i cycles, held %d",
+        cycles,
+        _IRQ_HOLD_CYCLES,
     )
 
     dut.tb_sep_mailbox_interrupts.value = mask
@@ -98,7 +98,9 @@ async def check_mailbox_irq_source(mask: int = 0x1) -> None:
     cocotb.log.info(
         "CHK-MAILBOX-IRQ-ASSERT: interrupts 0->0x%02x asserted "
         "tb_mailbox_irq_any==1 after %d clk_smc_i cycles, held %d",
-        mask, cycles, _IRQ_HOLD_CYCLES,
+        mask,
+        cycles,
+        _IRQ_HOLD_CYCLES,
     )
 
     dut.tb_sep_mailbox_interrupts.value = 0
@@ -106,7 +108,9 @@ async def check_mailbox_irq_source(mask: int = 0x1) -> None:
     cocotb.log.info(
         "CHK-MAILBOX-IRQ-CLEAR: interrupts 0x%02x->0 cleared "
         "tb_mailbox_irq_any==0 after %d clk_smc_i cycles, held %d",
-        mask, cycles, _IRQ_HOLD_CYCLES,
+        mask,
+        cycles,
+        _IRQ_HOLD_CYCLES,
     )
     cocotb.log.info(
         "CHK-MAILBOX-IRQ-SOURCE: all three exact tb_mailbox_irq_any legs "

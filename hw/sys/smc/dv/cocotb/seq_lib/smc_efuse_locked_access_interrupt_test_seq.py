@@ -32,12 +32,8 @@ from .smc_efuse_vip_utils import efuse_map_read_locked, efuse_preload_word_at
 
 LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
-WRITE_LOCK = smc_efuse_map_u32(
-    "SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_WRITE_LOCK_bm"
-)
-READ_LOCK = smc_efuse_map_u32(
-    "SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm"
-)
+WRITE_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_WRITE_LOCK_bm")
+READ_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
 
 # Exact expectation for the LOCKS shadow word, derived from the preload asset
 # plus the generated map at run time. It travels the real path -- sense FSM ->
@@ -46,9 +42,7 @@ READ_LOCK = smc_efuse_map_u32(
 # instead of rotting into a hand-copied literal.
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
 #: Host-side truth about whether the asset read-locks CHIPLET_ID.
-CHIPLET_ID_READ_LOCKED = efuse_map_read_locked(
-    "SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm"
-)
+CHIPLET_ID_READ_LOCKED = efuse_map_read_locked("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
 #: Fuse content behind CHIPLET_ID, i.e. the word a leaking gate would disclose.
 CHIPLET_ID_CONTENT = efuse_preload_word_at(CHIPLET_ID)
 
@@ -144,16 +138,14 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
 
         # Exact compare against the asset-derived word, booked by the scoreboard.
         locks = await self.csr_read("LOCKS_PRE", LOCKS, expected=LOCKS_PRELOAD)
-        assert (locks & WRITE_LOCK) == 0, (
-            f"CHIPLET_ID write-lock already set: LOCKS=0x{locks:08x}"
-        )
+        assert (locks & WRITE_LOCK) == 0, f"CHIPLET_ID write-lock already set: LOCKS=0x{locks:08x}"
         assert (locks & READ_LOCK) != 0, (
-            f"asset read-locks CHIPLET_ID but the DUT does not report it: "
-            f"LOCKS=0x{locks:08x}"
+            f"asset read-locks CHIPLET_ID but the DUT does not report it: LOCKS=0x{locks:08x}"
         )
         cocotb.log.info(
             "CHK-EFUSE-LOCK-PRE: LOCKS=0x%08x (asset word 0x%08x) wr=%d rd=%d",
-            locks, LOCKS_PRELOAD,
+            locks,
+            LOCKS_PRELOAD,
             1 if locks & WRITE_LOCK else 0,
             1 if locks & READ_LOCK else 0,
         )
@@ -161,15 +153,11 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         async def _unlocked_write() -> None:
             await self.csr_write("CHIPLET_ID_UNLOCK_WR", CHIPLET_ID, _UNLOCKED_PAT)
 
-        self.unlock_edges = await self._count_edges_during(
-            "UNLOCK", _unlocked_write()
-        )
+        self.unlock_edges = await self._count_edges_during("UNLOCK", _unlocked_write())
         assert self.unlock_edges == 0, (
             f"unlocked CHIPLET_ID write pulsed IRQ {self.unlock_edges} time(s)"
         )
-        cocotb.log.info(
-            "CHK-EFUSE-LOCK-IRQ-UNLOCK: unlocked write edges=%d", self.unlock_edges
-        )
+        cocotb.log.info("CHK-EFUSE-LOCK-IRQ-UNLOCK: unlocked write edges=%d", self.unlock_edges)
 
         await self.csr_write("LOCKS_WOSSET_WR", LOCKS, locks | WRITE_LOCK)
         locks2 = await self.csr_read("LOCKS_WR", LOCKS)
@@ -189,9 +177,7 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
             f"write-locked CHIPLET_ID write produced {self.wr_edges} IRQ edges, "
             f"expected exactly 1 (one pulse per locked APB access phase)"
         )
-        cocotb.log.info(
-            "CHK-EFUSE-LOCK-IRQ-WR: write-locked write edges=%d", self.wr_edges
-        )
+        cocotb.log.info("CHK-EFUSE-LOCK-IRQ-WR: write-locked write edges=%d", self.wr_edges)
 
         async def _locked_read() -> None:
             # `expected=` hands the compare to the scoreboard, which raises on
@@ -203,8 +189,7 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
 
         self.rd_edges = await self._count_edges_during("RDLOCK", _locked_read())
         assert self.rd_edges == 1, (
-            f"read-locked CHIPLET_ID read produced {self.rd_edges} IRQ edges, "
-            f"expected exactly 1"
+            f"read-locked CHIPLET_ID read produced {self.rd_edges} IRQ edges, expected exactly 1"
         )
         # SPEC-derived half of the read-lock claim (architecture.adoc:196-199,
         # `lock[0] = 1` is read-locked): whatever sentinel the gate substitutes,

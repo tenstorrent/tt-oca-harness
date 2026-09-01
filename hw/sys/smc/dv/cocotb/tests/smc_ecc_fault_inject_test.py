@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_ecc_fault_inject_test_seq import smc_ecc_fault_inject_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -27,8 +27,5 @@ class smc_ecc_fault_inject_test(smc_base_test):
             min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                "DUT scratch0_inject_fire scored via live scratch fetch "
-                "(SBE/recovery/DBE)"
-            ),
+            details=("DUT scratch0_inject_fire scored via live scratch fetch (SBE/recovery/DBE)"),
         )

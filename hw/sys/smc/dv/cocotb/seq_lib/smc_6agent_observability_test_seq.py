@@ -15,15 +15,14 @@ The composition claim is gated on the **scoreboard's typed counters**
 agent, a dropped item type or a monitor that never published fails the gate.
 The ordered ``chk_seen`` list is kept only as a readable record of which legs
 ran -- it is appended by ``_chk`` itself in the same straight-line body, so
-comparing it against a literal could not fail on any RTL and is no longer
-presented as the composition check (`[NO-ALWAYS-PASS-CHECKER]`).
+comparing it against a literal could not fail on any RTL, so it is not the
+composition check (`[NO-ALWAYS-PASS-CHECKER]`).
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_axil_item import (
     AXIL_CHECKABLE_FIELDS,
     AXIL_UNBACKABLE_FIELDS,
@@ -40,7 +39,6 @@ from env.smc_reset_item import RESET_SAMPLE_FIELDS, SmcResetItem, SmcResetOp
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_probe_positive_control import ensure_gpio_pad_bus_control
 
-
 # Of the two backable pad-bus vectors, only the output-ENABLE vector is a
 # defensible cross-sample expectation here. `tb_core2pad_o` (the pad *value*
 # bus) carries live LSIO traffic -- UART TX toggles inside the sampling window
@@ -55,7 +53,6 @@ GPIO_STABLE_VECTOR_FIELDS = ("core2pad_en_vec",)
 
 
 class smc_6agent_observability_test_seq(smc_base_test_seq):
-
     # Exact per-type item counts this body dispatches; the end gate compares the
     # scoreboard's typed counters against them. The test's declared probe
     # positive controls dispatch no agent SAMPLE items, so these are exact.
@@ -111,35 +108,34 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
 
     async def body(self) -> None:
         env = self._resolve_env()
-        before = {
-            name: getattr(env.scoreboard, name) for name in self.EXPECTED_SAMPLES
-        }
+        before = {name: getattr(env.scoreboard, name) for name in self.EXPECTED_SAMPLES}
 
-        r = SmcResetItem("reset"); r.op = SmcResetOp.SAMPLE
+        r = SmcResetItem("reset")
+        r.op = SmcResetOp.SAMPLE
         await self.dispatch_reset(r)
         assert r.resolvable, f"reset sample is X/Z: {r}"
         for field in RESET_SAMPLE_FIELDS:
             got = getattr(r, field)
-            assert got == 1, (
-                f"reset {field} = {got}, expected 1 (released) post bring-up ({r})"
-            )
-        self._chk("RESET", "all %d reset observables read 1 (released): %s",
-                  len(RESET_SAMPLE_FIELDS), r)
+            assert got == 1, f"reset {field} = {got}, expected 1 (released) post bring-up ({r})"
+        self._chk(
+            "RESET", "all %d reset observables read 1 (released): %s", len(RESET_SAMPLE_FIELDS), r
+        )
 
-        i = SmcI2cItem("i2c"); i.op = SmcI2cOp.SAMPLE
+        i = SmcI2cItem("i2c")
+        i.op = SmcI2cOp.SAMPLE
         await self.dispatch_i2c(i)
         assert i.resolvable, f"I2C sample is X/Z: {i}"
         assert i.cg_en == 0, f"tb_i2c_cg_en = {i.cg_en}, expected 0 ({i})"
         self._chk("I2C", "tb_i2c_cg_en == 0 on a resolved sample: %s", i)
 
-        ir = SmcIrqItem("irq"); ir.op = SmcIrqOp.SAMPLE
+        ir = SmcIrqItem("irq")
+        ir.op = SmcIrqOp.SAMPLE
         await self.dispatch_irq(ir)
         assert ir.resolvable, f"IRQ sample is X/Z: {ir}"
         for field in IRQ_SAMPLE_FIELDS:
             got = getattr(ir, field)
             assert got == 0, (
-                f"tb_{field} = {got}, expected 0 with no interrupt source "
-                f"driven ({ir})"
+                f"tb_{field} = {got}, expected 0 with no interrupt source driven ({ir})"
             )
         # Idle-zero legs backed in *this* run: the three aggregates' positive
         # controls are declared by this testcase's own
@@ -149,8 +145,12 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
         # passive liveness ledger the scoreboard consults, so the scoreboard
         # exact-compares all three legs instead of booking them OBSERVED-ONLY
         # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). No cross-testcase delegation.
-        self._chk("IRQ", "%s all read 0 with no interrupt source driven: %s",
-                  "/".join(f"tb_{f}" for f in IRQ_SAMPLE_FIELDS), ir)
+        self._chk(
+            "IRQ",
+            "%s all read 0 with no interrupt source driven: %s",
+            "/".join(f"tb_{f}" for f in IRQ_SAMPLE_FIELDS),
+            ir,
+        )
 
         # GPIO: a *pair* of SAMPLEs, not one, and the compare is on the raw
         # pad-bus vectors -- not on the three tb_gpio_*_any aggregates.
@@ -177,7 +177,8 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
         # [NEGATIVE-NEEDS-POSITIVE-CONTROL]).
         self.env = env
         await ensure_gpio_pad_bus_control(self)
-        g_ref = SmcGpioItem("gpio_ref"); g_ref.op = SmcGpioOp.SAMPLE
+        g_ref = SmcGpioItem("gpio_ref")
+        g_ref.op = SmcGpioOp.SAMPLE
         await self.dispatch_gpio(g_ref)
         assert g_ref.resolvable, f"GPIO reference sample is X/Z: {g_ref}"
         assert g_ref.vec_width > 0, (
@@ -187,10 +188,12 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
         )
         cocotb.log.info(
             "GPIO reference sample (pad-bus vectors are the checked observables; "
-            "the tb_gpio_*_any aggregates are OBSERVED-ONLY): %s", g_ref,
+            "the tb_gpio_*_any aggregates are OBSERVED-ONLY): %s",
+            g_ref,
         )
         await ClockCycles(cocotb.top.clk_ref_i, self.GPIO_GAP_REF_CYCLES)
-        g = SmcGpioItem("gpio"); g.op = SmcGpioOp.SAMPLE
+        g = SmcGpioItem("gpio")
+        g.op = SmcGpioOp.SAMPLE
         for field in GPIO_STABLE_VECTOR_FIELDS:
             setattr(g, "expect_" + field, getattr(g_ref, field))
         await self.dispatch_gpio(g)
@@ -217,15 +220,14 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
             "reference sample %d clk_ref_i cycles later, both probes carrying a "
             "same-run liveness credit (%s); tb_gpio_*_any aggregates "
             "OBSERVED-ONLY: %s",
-            ", ".join(
-                f"tb_{f}=0x{getattr(g_ref, f):x}" for f in GPIO_STABLE_VECTOR_FIELDS
-            ),
+            ", ".join(f"tb_{f}=0x{getattr(g_ref, f):x}" for f in GPIO_STABLE_VECTOR_FIELDS),
             self.GPIO_GAP_REF_CYCLES,
             probe_evidence("gpio_core2pad_en_vec"),
             g,
         )
 
-        a = SmcAxilItem("axil"); a.op = SmcAxilOp.SAMPLE
+        a = SmcAxilItem("axil")
+        a.op = SmcAxilOp.SAMPLE
         await self.dispatch_axil(a)
         assert a.resolvable, f"AXIL sample is X/Z: {a}"
         # Only the backable probes are exact-compared. `dtp_csr_active` can have
@@ -243,26 +245,30 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
                 f"traffic is driven in this scenario) ({a})"
             )
         self._chk(
-            "AXIL", "%s all read 0 [OBSERVED-ONLY, NOT checked evidence: %s]: %s",
+            "AXIL",
+            "%s all read 0 [OBSERVED-ONLY, NOT checked evidence: %s]: %s",
             "/".join(f"tb_axil_{f}" for f in AXIL_CHECKABLE_FIELDS),
-            ", ".join(
-                f"tb_axil_{f}={getattr(a, f)}" for f in AXIL_UNBACKABLE_FIELDS
-            ),
+            ", ".join(f"tb_axil_{f}={getattr(a, f)}" for f in AXIL_UNBACKABLE_FIELDS),
             a,
         )
 
-        c = SmcClkItem("clk"); c.op = SmcClkOp.COUNT_EDGES; c.window_ref_cycles = 25
+        c = SmcClkItem("clk")
+        c.op = SmcClkOp.COUNT_EDGES
+        c.window_ref_cycles = 25
         await self.dispatch_clk(c)
-        assert c.gated_probe_resolvable, (
-            f"{c.gated_cg_en_probe} is not resolvable: {c}"
-        )
+        assert c.gated_probe_resolvable, f"{c.gated_cg_en_probe} is not resolvable: {c}"
         self._chk(
             "CLK",
             "COUNT_EDGES window passed its scoreboard legs (SETUP ref=%d smc=%d "
             "periph=%d; DUT %s=%d edges with %s=%d): %s",
-            c.ref_rising_edges, c.smc_rising_edges, c.periph_rising_edges,
-            c.gated_clk_probe, c.gated_clk_rising_edges,
-            c.gated_cg_en_probe, c.gated_cg_en, c,
+            c.ref_rising_edges,
+            c.smc_rising_edges,
+            c.periph_rising_edges,
+            c.gated_clk_probe,
+            c.gated_clk_rising_edges,
+            c.gated_cg_en_probe,
+            c.gated_cg_en,
+            c,
         )
 
         # Per-type composition gate: each of the six item types must have
@@ -274,9 +280,7 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
         # The scoreboard's own check_phase only requires a non-zero total, which
         # a missing type would satisfy.
         sb = env.scoreboard
-        observed = {
-            name: getattr(sb, name) - before[name] for name in self.EXPECTED_SAMPLES
-        }
+        observed = {name: getattr(sb, name) - before[name] for name in self.EXPECTED_SAMPLES}
         assert observed == self.EXPECTED_SAMPLES, (
             f"6-agent composition mismatch: scoreboard booked {observed}, "
             f"expected {self.EXPECTED_SAMPLES}"
@@ -285,5 +289,6 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
             "CHK-6AGENT-COMPOSITION: all six item types reached the "
             "type-dispatched scoreboard with the exact counts this sequence "
             "dispatched: %s (legs that ran, record only: %s)",
-            observed, self.chk_seen,
+            observed,
+            self.chk_seen,
         )

@@ -11,6 +11,7 @@ Health-test *quality* is out of scope.
 from __future__ import annotations
 
 from sep_reg_meta import ENTROPY_SOURCE
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     DECOR_CTRL_DIV8,
@@ -62,7 +63,7 @@ class SepEsrcAlert(SepAxiRegDriver):
     async def leave_alert_hang(self) -> None:
         await self._wr(
             ESRC_CTRL,
-            ENTROPY_SOURCE.value("CTRL", RESET=0, MODULE_ENABLE=0),
+            ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0),
         )
 
     async def w1c_alert(self) -> None:

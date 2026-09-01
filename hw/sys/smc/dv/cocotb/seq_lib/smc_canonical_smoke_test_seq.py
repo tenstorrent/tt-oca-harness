@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_axil_item import AXIL_UNBACKABLE_FIELDS, SmcAxilItem, SmcAxilOp
 from env.smc_clk_item import SmcClkItem, SmcClkOp
 from env.smc_gpio_item import SmcGpioItem, SmcGpioOp
@@ -90,7 +89,7 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         "reset_samples_seen": 4,
         "i2c_samples_seen": 4,
         "irq_samples_seen": 4,
-        "gpio_samples_seen": 8,   # 4 sweeps x (reference + exact-compared)
+        "gpio_samples_seen": 8,  # 4 sweeps x (reference + exact-compared)
         "axil_samples_seen": 4,
         "clk_samples_seen": 4,
         "reset_raw_checks_seen": 3,
@@ -147,9 +146,12 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         )
         self.wait_state_checks += 1
         cocotb.log.info(
-            "CHK-RESET-WAIT-%s: %s observed after %d clk_ref_i cycles "
-            "(bound %d, expiry fails): %s",
-            label.upper(), expects, item.wait_ref_cycles, bound, item,
+            "CHK-RESET-WAIT-%s: %s observed after %d clk_ref_i cycles (bound %d, expiry fails): %s",
+            label.upper(),
+            expects,
+            item.wait_ref_cycles,
+            bound,
+            item,
         )
         return item
 
@@ -213,9 +215,7 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         gpio_ref = SmcGpioItem(f"{label}_gpio_ref")
         gpio_ref.op = SmcGpioOp.SAMPLE
         await self.dispatch_gpio(gpio_ref)
-        assert gpio_ref.resolvable, (
-            f"{label}: GPIO reference sample is X/Z: {gpio_ref}"
-        )
+        assert gpio_ref.resolvable, f"{label}: GPIO reference sample is X/Z: {gpio_ref}"
         assert gpio_ref.vec_width > 0, (
             f"{label}: GPIO reference sample carries no pad-bus vector "
             f"(tb_core2pad_o / tb_core2pad_en_o mirror missing), so this sweep "
@@ -266,9 +266,7 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
 
     async def body(self) -> None:
         env = self._resolve_env()
-        before = {
-            name: getattr(env.scoreboard, name) for name in self.EXPECTED_COUNTS
-        }
+        before = {name: getattr(env.scoreboard, name) for name in self.EXPECTED_COUNTS}
 
         # Pad-bus positive control once for the whole run: it credits
         # `gpio_core2pad_vec` / `gpio_core2pad_en_vec` in the liveness ledger and
@@ -285,14 +283,10 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         pg = await self._wait_state(
             "pg_asserted", self.ASSERT_BOUND_REF_CYCLES, **_POWERGOOD_ASSERTED
         )
-        await self._hold_remaining(
-            self.POWERGOOD_GLITCH_REF_CYCLES, pg.wait_ref_cycles
-        )
+        await self._hold_remaining(self.POWERGOOD_GLITCH_REF_CYCLES, pg.wait_ref_cycles)
         await self._raw_check("pg_mid_window", **_POWERGOOD_ASSERTED)
         await self._reset(SmcResetOp.POWERGOOD_HI)
-        await self._wait_state(
-            "pg_released", self.RELEASE_BOUND_REF_CYCLES, **_ALL_RELEASED
-        )
+        await self._wait_state("pg_released", self.RELEASE_BOUND_REF_CYCLES, **_ALL_RELEASED)
         await self._sample_all("after_powergood")
 
         # --- cold reset re-assert --------------------------------------------
@@ -302,14 +296,10 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
             self.ASSERT_BOUND_REF_CYCLES,
             **_PRIMARY_ASSERTED,
         )
-        await self._hold_remaining(
-            self.COLD_REASSERT_REF_CYCLES, cold.wait_ref_cycles
-        )
+        await self._hold_remaining(self.COLD_REASSERT_REF_CYCLES, cold.wait_ref_cycles)
         await self._raw_check("cold_mid_window", **_PRIMARY_ASSERTED)
         await self._reset(SmcResetOp.COLD_RST_HI)
-        await self._wait_state(
-            "cold_released", self.RELEASE_BOUND_REF_CYCLES, **_ALL_RELEASED
-        )
+        await self._wait_state("cold_released", self.RELEASE_BOUND_REF_CYCLES, **_ALL_RELEASED)
         await self._sample_all("after_cold")
 
         # --- cool reset ------------------------------------------------------
@@ -319,14 +309,10 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
             self.ASSERT_BOUND_REF_CYCLES,
             **_PRIMARY_ASSERTED,
         )
-        await self._hold_remaining(
-            self.COOL_ASSERT_REF_CYCLES, cool.wait_ref_cycles
-        )
+        await self._hold_remaining(self.COOL_ASSERT_REF_CYCLES, cool.wait_ref_cycles)
         await self._raw_check("cool_mid_window", **_PRIMARY_ASSERTED)
         await self._reset(SmcResetOp.COOL_RST_HI)
-        await self._wait_state(
-            "cool_released", self.RELEASE_BOUND_REF_CYCLES, **_ALL_RELEASED
-        )
+        await self._wait_state("cool_released", self.RELEASE_BOUND_REF_CYCLES, **_ALL_RELEASED)
         await self._sample_all("after_cool")
 
         assert self.multi_agent_samples == 4, "expected baseline plus 3 recovery sweeps"
@@ -348,9 +334,7 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         # counters above are its own bookkeeping; these come from the analysis
         # path, so a mis-bound agent or a dropped type fails.
         sb = env.scoreboard
-        observed = {
-            name: getattr(sb, name) - before[name] for name in self.EXPECTED_COUNTS
-        }
+        observed = {name: getattr(sb, name) - before[name] for name in self.EXPECTED_COUNTS}
         assert observed == self.EXPECTED_COUNTS, (
             f"canonical-smoke composition mismatch: scoreboard booked "
             f"{observed}, expected {self.EXPECTED_COUNTS}"
@@ -368,8 +352,7 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
             f"({[probe_evidence(p) for p in dead]})"
         )
         unbackable = ", ".join(
-            f"tb_axil_{f} ({UNBACKABLE_PROBES['axil_' + f]})"
-            for f in AXIL_UNBACKABLE_FIELDS
+            f"tb_axil_{f} ({UNBACKABLE_PROBES['axil_' + f]})" for f in AXIL_UNBACKABLE_FIELDS
         )
         # Which agents contributed a *compared expectation*, not merely a booked
         # item: reset (five post-release observables exact-compared by the
@@ -390,13 +373,17 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
             "per type %s; %d idle probes carry a same-run liveness credit (%s), "
             "and %d idle_legs were exact-compared vs %d booked OBSERVED-ONLY. "
             "NOT checked evidence: %s",
-            self.multi_agent_samples, len(compared_agents),
+            self.multi_agent_samples,
+            len(compared_agents),
             "/".join(compared_agents),
-            self.gpio_compared_sweeps, self.GPIO_GAP_REF_CYCLES,
+            self.gpio_compared_sweeps,
+            self.GPIO_GAP_REF_CYCLES,
             self.wait_state_checks,
-            self.raw_reset_checks, observed,
+            self.raw_reset_checks,
+            observed,
             len(self.REQUIRED_LIVE_PROBES),
             ", ".join(self.REQUIRED_LIVE_PROBES),
-            sb.idle_legs_checked, sb.idle_legs_observed_only,
+            sb.idle_legs_checked,
+            sb.idle_legs_observed_only,
             unbackable,
         )

@@ -45,10 +45,7 @@ import cocotb
 from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-_AVSBUS_H = (
-    _REPO / "hw" / "ip" / "avsbus_controller" / "regs" / "gen" / "c"
-    / "avsbus_controller.h"
-)
+_AVSBUS_H = _REPO / "hw" / "ip" / "avsbus_controller" / "regs" / "gen" / "c" / "avsbus_controller.h"
 
 
 def _avs(symbol: str) -> int:
@@ -58,27 +55,15 @@ def _avs(symbol: str) -> int:
 
 # --- Authoritative AVSBus window (PeakRDL smc_addr.h) ---
 AVS_READBACK = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR")
-AVS_DEBUG_READBACK = smc_addr(
-    "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR"
-)
-AVS_NORMAL_STATUS = smc_addr(
-    "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR"
-)
-AVS_SLAVE_STATUS = smc_addr(
-    "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE_ADDR"
-)
-AVS_FIFOS_STATUS = smc_addr(
-    "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR"
-)
+AVS_DEBUG_READBACK = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR")
+AVS_NORMAL_STATUS = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR")
+AVS_SLAVE_STATUS = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE_ADDR")
+AVS_FIFOS_STATUS = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR")
 AVS_INTERRUPT = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR")
-AVS_INTERRUPT_MASK = smc_addr(
-    "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_BASE_ADDR"
-)
+AVS_INTERRUPT_MASK = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_BASE_ADDR")
 # avsbus_controller.rdl:352-409 -- nine rw fields, all masked at reset.
 AVS_INTERRUPT_MASK_RESET = 0x1FF
-AVS_INTERRUPT_CLEAR = smc_addr(
-    "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_BASE_ADDR"
-)
+AVS_INTERRUPT_CLEAR = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_BASE_ADDR")
 
 # --- Readback-pointer witness (see module docstring) ---
 # ``AVS_INTERRUPT`` reset word: hw/ip/avsbus_controller/doc/memmap.adoc:107
@@ -87,9 +72,7 @@ AVS_INTERRUPT_CLEAR = smc_addr(
 AVS_INTERRUPT_NONE_PENDING = 0x00000000
 # The single flag the readback pointer raises when it is advanced on an empty
 # FIFO (avsbus_controller.rdl:299-303). Mask by symbol from the generated header.
-AVS_READBACK_UNDERFLOW = _avs(
-    "AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_bm"
-)
+AVS_READBACK_UNDERFLOW = _avs("AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_bm")
 # Write-1 clear for the same flag (rdl:422-426, memmap.adoc:54 "Clear interrupt
 # bits"); leaves the block back at "no pending interrupts".
 AVS_CLEAR_READBACK_UNDERFLOW = _avs(
@@ -101,9 +84,8 @@ AVS_CLEAR_READBACK_UNDERFLOW = _avs(
 # command FIFO empty and neither master nor slave driving the AVS bus. Every
 # other bit in the register is an activity/error indicator whose RDL reset is 0
 # and which cannot have been set because no AVS_CMD was ever written.
-AVS_NORMAL_STATUS_IDLE = (
-    _avs("AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_EMPTY_bm")
-    | _avs("AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_BUS_IS_IDLE_bm")
+AVS_NORMAL_STATUS_IDLE = _avs("AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_EMPTY_bm") | _avs(
+    "AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_BUS_IS_IDLE_bm"
 )
 
 # AVS_SLAVE_STATUS: no slave subframe has been received, so both fields hold
@@ -128,12 +110,8 @@ AVS_FIFOS_STATUS_EMPTY = (
         << _avs("AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bp")
     )
     | (
-        _avs(
-            "AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_reset"
-        )
-        << _avs(
-            "AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bp"
-        )
+        _avs("AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_reset")
+        << _avs("AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bp")
     )
     | (
         _avs("AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_reset")
@@ -176,7 +154,8 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         # Entry state: no interrupt is pending, so READBACK_UNDERFLOW_INT is 0
         # and any later 1 must have been raised by something this body did.
         await self.csr_read(
-            "AVS_INTERRUPT_ENTRY", AVS_INTERRUPT,
+            "AVS_INTERRUPT_ENTRY",
+            AVS_INTERRUPT,
             expected=AVS_INTERRUPT_NONE_PENDING,
         )
 
@@ -185,9 +164,7 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         # AND that they left the readback pointer untouched, which the
         # AVS_INTERRUPT read below measures.
         dbg = await self.csr_read("AVS_DEBUG_READBACK", AVS_DEBUG_READBACK)
-        dbg_again = await self.csr_read(
-            "AVS_DEBUG_READBACK_REREAD", AVS_DEBUG_READBACK
-        )
+        dbg_again = await self.csr_read("AVS_DEBUG_READBACK_REREAD", AVS_DEBUG_READBACK)
         assert dbg_again == dbg, (
             f"AVS_DEBUG_READBACK @ 0x{AVS_DEBUG_READBACK:08x} is documented as a "
             f"non-destructive mirror, but two back-to-back reads returned "
@@ -200,7 +177,8 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         # below value-compares that). The contrast leg further down proves this
         # flag can reach 1 over this same path, so this is not a stuck-at-0 pass.
         await self.csr_read(
-            "AVS_INTERRUPT_AFTER_DEBUG_READBACK", AVS_INTERRUPT,
+            "AVS_INTERRUPT_AFTER_DEBUG_READBACK",
+            AVS_INTERRUPT,
             expected=AVS_INTERRUPT_NONE_PENDING,
         )
         cocotb.log.info(
@@ -210,8 +188,12 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             "touched the readback FIFO pointer (rdl:149-151 non-destructive "
             "mirror; rdl:299-303 defines the witness). Contrast leg below shows "
             "the same flag going to 1 on a pointer-advancing read.",
-            AVS_DEBUG_READBACK, dbg, dbg_again, AVS_INTERRUPT,
-            AVS_INTERRUPT_NONE_PENDING, AVS_READBACK_UNDERFLOW,
+            AVS_DEBUG_READBACK,
+            dbg,
+            dbg_again,
+            AVS_INTERRUPT,
+            AVS_INTERRUPT_NONE_PENDING,
+            AVS_READBACK_UNDERFLOW,
         )
 
         for name, addr, expected in SIDEBAND_OKAY_READS:
@@ -222,7 +204,9 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             cocotb.log.info(
                 "CHK-AVS-%s: 0x%08x resp=OKAY rdata == expected 0x%08X "
                 "(from generated avsbus_controller.h)",
-                name.replace("AVS_", "").replace("_", "-"), addr, expected,
+                name.replace("AVS_", "").replace("_", "-"),
+                addr,
+                expected,
             )
 
         for name, addr in SIDEBAND_ERR_READS:
@@ -251,7 +235,8 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         # reg occurred when the readback fifo was empty"). Exact word, so a DUT
         # that raised nothing, or raised something else too, fails.
         await self.csr_read(
-            "AVS_INTERRUPT_AFTER_READBACK", AVS_INTERRUPT,
+            "AVS_INTERRUPT_AFTER_READBACK",
+            AVS_INTERRUPT,
             expected=AVS_READBACK_UNDERFLOW,
         )
         cocotb.log.info(
@@ -261,25 +246,29 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             "control that makes the two AVS_INTERRUPT == 0x%08X compares above "
             "fail-capable: the witness flag is alive at 1 on this DUT and this "
             "path, so 'debug read left it clear' is a measurement.",
-            AVS_READBACK_UNDERFLOW, AVS_INTERRUPT_NONE_PENDING,
+            AVS_READBACK_UNDERFLOW,
+            AVS_INTERRUPT_NONE_PENDING,
         )
 
         # Documented write-1 clear (rdl:422-426), and the register must return to
         # "no pending interrupts" -- which also restores the entry state for any
         # later scenario sharing this block.
         await self.csr_write(
-            "AVS_INTERRUPT_CLEAR_UNDERFLOW", AVS_INTERRUPT_CLEAR,
+            "AVS_INTERRUPT_CLEAR_UNDERFLOW",
+            AVS_INTERRUPT_CLEAR,
             AVS_CLEAR_READBACK_UNDERFLOW,
         )
         await self.csr_read(
-            "AVS_INTERRUPT_AFTER_CLEAR", AVS_INTERRUPT,
+            "AVS_INTERRUPT_AFTER_CLEAR",
+            AVS_INTERRUPT,
             expected=AVS_INTERRUPT_NONE_PENDING,
         )
         cocotb.log.info(
             "CHK-AVS-INTERRUPT-W1C: AVS_INTERRUPT_CLEAR @ 0x%08x <= 0x%08X "
             "cleared READBACK_UNDERFLOW_INT; AVS_INTERRUPT back to 0x%08X "
             "(rdl:422-426 CLEAR_READBACK_UNDERFLOW_INT)",
-            AVS_INTERRUPT_CLEAR, AVS_CLEAR_READBACK_UNDERFLOW,
+            AVS_INTERRUPT_CLEAR,
+            AVS_CLEAR_READBACK_UNDERFLOW,
             AVS_INTERRUPT_NONE_PENDING,
         )
 
@@ -297,28 +286,29 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         # re-read.
         mask_probe = AVS_INTERRUPT_MASK_RESET & 0x0AA
         await self.csr_read(
-            "AVS_INTERRUPT_MASK_RESET", AVS_INTERRUPT_MASK,
+            "AVS_INTERRUPT_MASK_RESET",
+            AVS_INTERRUPT_MASK,
             expected=AVS_INTERRUPT_MASK_RESET,
         )
+        await self.csr_write("AVS_INTERRUPT_MASK_WR", AVS_INTERRUPT_MASK, mask_probe)
+        await self.csr_read("AVS_INTERRUPT_MASK_RB", AVS_INTERRUPT_MASK, expected=mask_probe)
         await self.csr_write(
-            "AVS_INTERRUPT_MASK_WR", AVS_INTERRUPT_MASK, mask_probe
-        )
-        await self.csr_read(
-            "AVS_INTERRUPT_MASK_RB", AVS_INTERRUPT_MASK, expected=mask_probe
-        )
-        await self.csr_write(
-            "AVS_INTERRUPT_MASK_RESTORE", AVS_INTERRUPT_MASK,
+            "AVS_INTERRUPT_MASK_RESTORE",
+            AVS_INTERRUPT_MASK,
             AVS_INTERRUPT_MASK_RESET,
         )
         await self.csr_read(
-            "AVS_INTERRUPT_MASK_RESTORE_RB", AVS_INTERRUPT_MASK,
+            "AVS_INTERRUPT_MASK_RESTORE_RB",
+            AVS_INTERRUPT_MASK,
             expected=AVS_INTERRUPT_MASK_RESET,
         )
         cocotb.log.info(
             "CHK-AVS-INTERRUPT-MASK: reset 0x%03X read back, probe 0x%03X "
             "written and read back, restored to 0x%03X -- nine rw mask fields "
             "proven live, un-masked only across dead time",
-            AVS_INTERRUPT_MASK_RESET, mask_probe, AVS_INTERRUPT_MASK_RESET,
+            AVS_INTERRUPT_MASK_RESET,
+            mask_probe,
+            AVS_INTERRUPT_MASK_RESET,
         )
 
         assert self.accesses == SIDEBAND_TOTAL_ACCESSES + 5, (

@@ -37,30 +37,16 @@ from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
-STATUS = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
-)
-PROGRAM_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
-)
-READ_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR"
-)
-READ_DATA = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR"
-)
-PROG_TMO = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR"
-)
-READ_TMO = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR"
-)
+STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
+READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
+READ_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR")
+PROG_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR")
+READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
 
 PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-PROG_RB = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm"
-)
+PROG_RB = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm")
 PROG_EN = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 PROG_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
@@ -71,24 +57,18 @@ READ_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm"
 TMO_EN_P = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bm"
 )
-TMO_EN_R = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm"
-)
+TMO_EN_R = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm")
 TMO_CYC_RST_P = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_reset"
 )
 TMO_CYC_RST_R = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset"
 )
-REQ_ERR = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm"
-)
+REQ_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm")
 REQ_ERR_CLR = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm"
 )
-SENSE_DONE = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm"
-)
+SENSE_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm")
 PROG_ADDR_ERR = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bm"
 )
@@ -99,9 +79,7 @@ READ_ADDR_ERR = efuse_ifc_u32(
 # Word 0 of the eFuse bank MODEL after fuse sense, i.e. word 0 of the preload
 # asset the model $readmemh'd at time 0 -- derived from the asset at run time,
 # never a hand literal. Model-backed observation, not a silicon claim.
-OTP_WORD0_MARKER = efuse_preload_word_at(
-    smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-)
+OTP_WORD0_MARKER = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
 _BIT = 0
 _POLL = 10_000
 
@@ -160,9 +138,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         st = await self._program("PROG_TMO", idle=False)
         otp = int(dut.tb_efuse_programmed_word0.value)
         assert st & PROG_ERR, f"short program timeout expected status=1 got 0x{st:x}"
-        assert otp == OTP_WORD0_MARKER, (
-            f"timed-out program sticky-OR OTP: 0x{otp:08x}"
-        )
+        assert otp == OTP_WORD0_MARKER, f"timed-out program sticky-OR OTP: 0x{otp:08x}"
         self.prog_tmo_ok = True
         self.prog_tmo_ctrl = st
         cocotb.log.info(
@@ -171,15 +147,15 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "still 0x%x (unburned) -- the bank is efuse_bank_model.sv, a "
             "declared simulation stand-in, so this half is not silicon-path "
             "coverage",
-            st, got, otp,
+            st,
+            got,
+            otp,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-PROG")
 
         st_hold = await self.csr_read("PROG_TMO_HOLD", PROGRAM_CTRL)
         stat_hold = await self.csr_read("STATUS_HOLD", STATUS)
-        assert st_hold & PROG_ERR, (
-            f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
-        )
+        assert st_hold & PROG_ERR, f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
         # PROGRAM_STATUS is live HW from the last op; writing 0 does not clear
         # it. EFUSE_INTERFACE_CTRL_STATUS is now asserted per field from the
         # generated header rather than printed next to no expectation
@@ -188,8 +164,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         # an address error, so all three error bits must read 0 and SENSE_DONE
         # must read 1.
         assert (stat_hold & SENSE_DONE) == SENSE_DONE, (
-            f"STATUS.EFUSE_SENSE_DONE not set after fuse sense: "
-            f"STATUS=0x{stat_hold:x}"
+            f"STATUS.EFUSE_SENSE_DONE not set after fuse sense: STATUS=0x{stat_hold:x}"
         )
         for _name, _mask in (
             ("EFUSE_REQ_ERROR", REQ_ERR),
@@ -207,7 +182,12 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "STATUS=0x%x with SENSE_DONE(0x%x)=1 and "
             "REQ_ERROR/PROGRAM_ADDR_ERROR/READ_ADDR_ERROR "
             "(0x%x/0x%x/0x%x) all 0, each asserted from the generated header",
-            st_hold, stat_hold, SENSE_DONE, REQ_ERR, PROG_ADDR_ERR, READ_ADDR_ERR,
+            st_hold,
+            stat_hold,
+            SENSE_DONE,
+            REQ_ERR,
+            PROG_ADDR_ERR,
+            READ_ADDR_ERR,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-PROG-SET")
         await self.csr_write("PROG_TMO_IDLE", PROGRAM_CTRL, 0)
@@ -225,7 +205,9 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "clear with the RDL-default timeout 0x%x); MODEL-BACKED: eFuse "
             "bank model word0 now 0x%x with bit0 set -- burn observed in "
             "efuse_bank_model.sv, a declared simulation stand-in, not silicon",
-            st, TMO_CYC_RST_P, otp,
+            st,
+            TMO_CYC_RST_P,
+            otp,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-PROG-REC")
 
@@ -278,7 +260,12 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "completed value (bit0 set) is the word burned into "
             "efuse_bank_model.sv, a declared simulation stand-in, not silicon "
             "-- no claim is made here about what a real eFuse macro returns",
-            data, st, got, data_ctl, st_ctl, tmo_enabled_long,
+            data,
+            st,
+            got,
+            data_ctl,
+            st_ctl,
+            tmo_enabled_long,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD")
 
@@ -295,7 +282,9 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "given the RDL-default cycle count. MODEL-BACKED: bit0 being set "
             "is the burned word from efuse_bank_model.sv, a declared "
             "simulation stand-in, not silicon",
-            TMO_CYC_RST_R, st, data,
+            TMO_CYC_RST_R,
+            st,
+            data,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD-REC")
         # Summary token, carrying the measured words. Boolean leg flags would

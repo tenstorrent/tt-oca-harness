@@ -29,28 +29,24 @@ Addresses come from the generated PeakRDL map only (indexed
 from __future__ import annotations
 
 import cocotb
-
-from .smc_addr_map import smc_addr, smc_indexed_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_csr_field_catalog import SmcCsrAccessKind, catalog_entry
 
 # (catalog name, generated address). The expected value is taken from the
 # catalog entry returned by ``catalog_entry`` — no second copy here.
 READABLE_REGS = [
-    ("SCRATCH_COLD_0",
-     smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)),
-    ("SCRATCH_COLD_1",
-     smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1)),
-    ("SCRATCH_COLD_WARM_0",
-     smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0)),
-    ("CHIP_CONFIG_VERSION_LO",
-     smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")),
-    ("CHIP_CONFIG_VERSION_HI",
-     smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR")),
-    ("CHIP_CONFIG_CHIP_ID",
-     smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")),
+    ("SCRATCH_COLD_0", smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)),
+    ("SCRATCH_COLD_1", smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1)),
+    (
+        "SCRATCH_COLD_WARM_0",
+        smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0),
+    ),
+    ("CHIP_CONFIG_VERSION_LO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")),
+    ("CHIP_CONFIG_VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR")),
+    ("CHIP_CONFIG_CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")),
 ]
 
 # Stimulus-derived floor for the value compares -- the ONE DUT-sensitive check
@@ -83,8 +79,7 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         self.reads = 0
         self.value_checks = 0
 
-    async def _read(self, name: str, addr: int, expected: int,
-                    kind: SmcCsrAccessKind) -> None:
+    async def _read(self, name: str, addr: int, expected: int, kind: SmcCsrAccessKind) -> None:
         # ``expected`` is non-optional: a catalog entry that
         # carries no expectation is a hard error here, not a silently
         # decode-only read. The former ``expected is None`` branch and its
@@ -116,25 +111,24 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         # satisfied one layer up; this only catches a future call site that turns
         # ``allow_timeout`` on and would otherwise fall through to a value
         # compare against untransferred data.
-        assert not item.timed_out, (
-            f"{name} @ 0x{addr:08x}: SEP_IN AXI read never responded"
-        )
+        assert not item.timed_out, f"{name} @ 0x{addr:08x}: SEP_IN AXI read never responded"
         assert item.resp_ok, (
-            f"{name} @ 0x{addr:08x}: SEP_IN AXI read returned non-OKAY "
-            f"resp={item.resp_code}"
+            f"{name} @ 0x{addr:08x}: SEP_IN AXI read returned non-OKAY resp={item.resp_code}"
         )
         mask = (1 << (item.length * 8)) - 1
         got = item.rdata & mask
         exp = expected & mask
         assert got == exp, (
-            f"{name} @ 0x{addr:08x}: default read 0x{got:08x}, "
-            f"expected 0x{exp:08x} ({kind.value})"
+            f"{name} @ 0x{addr:08x}: default read 0x{got:08x}, expected 0x{exp:08x} ({kind.value})"
         )
         self.value_checks += 1
         cocotb.log.info(
             "CHK-DEFAULT-REG-VALUE: %s @ 0x%08x read OKAY and returned its "
             "mapped default 0x%08x (%s)",
-            name, addr, exp, kind.value,
+            name,
+            addr,
+            exp,
+            kind.value,
         )
 
     async def body(self) -> None:
@@ -166,5 +160,7 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
             "a cataloged default (floor %d, an independent literal); all reads "
             "OKAY. Every register in this sweep is value-compared -- there is no "
             "decode-only path.",
-            self.value_checks, self.reads, EXPECTED_VALUE_COMPARES,
+            self.value_checks,
+            self.reads,
+            EXPECTED_VALUE_COMPARES,
         )

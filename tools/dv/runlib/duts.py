@@ -19,7 +19,8 @@ from pathlib import Path
 
 from .config import load_dut, load_toml
 from .models import ConfigError, Dut
-from .paths import configs_root, dv_path, dv_root as active_dv_root, repo_path, repo_rel
+from .paths import configs_root, dv_path, repo_rel
+from .paths import dv_root as active_dv_root
 
 # Direct children of hw/ that are namespaces, not DUTs.
 _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}

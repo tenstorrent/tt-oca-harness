@@ -31,12 +31,8 @@ from .smc_addr_map import smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_csr_field_catalog import catalog_entry
 
-SCRATCH_COLD_0 = smc_indexed_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0
-)
-SCRATCH_COLD_1 = smc_indexed_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1
-)
+SCRATCH_COLD_0 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
+SCRATCH_COLD_1 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1)
 SCRATCH_COLD_WARM_0 = smc_indexed_addr(
     "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0
 )
@@ -112,6 +108,5 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
         # floor lives at the record_protocol_vip call in
         # tests/smc_register_sanity_test.py (min_csr_accesses=15).
         assert self.accesses == 5 * len(WRITE_READBACK), (
-            f"expected {5 * len(WRITE_READBACK)} real SEP_IN AXI CSR accesses, "
-            f"got {self.accesses}"
+            f"expected {5 * len(WRITE_READBACK)} real SEP_IN AXI CSR accesses, got {self.accesses}"
         )

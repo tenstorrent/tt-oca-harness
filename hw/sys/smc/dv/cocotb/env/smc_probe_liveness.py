@@ -184,8 +184,7 @@ def credit_probe(probe: str, evidence: str) -> None:
     _ALIVE.setdefault(probe, evidence)
 
 
-def refuse_expectation_on_unbackable(probe: str, label: str, expectation,
-                                     where: str) -> None:
+def refuse_expectation_on_unbackable(probe: str, label: str, expectation, where: str) -> None:
     """Refuse a stated ``expect_*`` on a probe that can never be backed.
 
     The compare side of the scoreboard needs the same structural rail

@@ -39,7 +39,6 @@ leaves the cold-stable path released.
 from __future__ import annotations
 
 import cocotb
-
 from env.smc_clk_item import SmcClkItem, SmcClkOp
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
@@ -95,16 +94,10 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
         to satisfy a non-vacuity fence.
         """
         sb = self.env.scoreboard
-        return (
-            sb.reset_samples_seen
-            + sb.reset_raw_checks_seen
-            + sb.reset_wait_checks_seen
-        )
+        return sb.reset_samples_seen + sb.reset_raw_checks_seen + sb.reset_wait_checks_seen
 
     def _mark_step(self, step_id: str, detail: str) -> None:
-        self._step_marks.append(
-            (step_id, self._checked_reset_evidence(), self._recovery_checks)
-        )
+        self._step_marks.append((step_id, self._checked_reset_evidence(), self._recovery_checks))
         self._log(f"STEP {step_id}: {detail}")
 
     async def _recover_sample(self) -> SmcResetItem:
@@ -194,9 +187,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
             f"rst_primary_smc_clk_no=={s4.rst_primary_smc_clk_n}"
         )
         await self._send(SmcResetOp.COLD_RST_HI)
-        self._log(
-            "LIFECYCLE CHK-COLD-ASSERT-PRIMARY cleared: COLD_RST_HI restores rst_cold_ni=1"
-        )
+        self._log("LIFECYCLE CHK-COLD-ASSERT-PRIMARY cleared: COLD_RST_HI restores rst_cold_ni=1")
         s4c = await self._recover_sample()
         assert s4c.rst_primary_ref_clk_n == 1 and s4c.rst_primary_smc_clk_n == 1, s4c
         self._log(
@@ -229,9 +220,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
             f"{s5.rst_primary_smc_clk_n}"
         )
         await self._send(SmcResetOp.POWERGOOD_HI)
-        self._log(
-            "LIFECYCLE CHK-POWERGOOD-GATES cleared: POWERGOOD_HI restores powergood_i=1"
-        )
+        self._log("LIFECYCLE CHK-POWERGOOD-GATES cleared: POWERGOOD_HI restores powergood_i=1")
         s5c = await self._recover_sample()
         assert s5c.powergood_stable == 1, s5c
         self._log(

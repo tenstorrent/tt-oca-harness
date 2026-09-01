@@ -26,10 +26,9 @@ import sys
 from pathlib import Path
 
 import cocotb
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import _field_mask, smc_addr, smc_indexed_addr
+from .smc_addr_map import _field_mask, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import (
     INBOUND0_END,
@@ -84,9 +83,6 @@ from smc_reg import (  # noqa: E402
     SMC_CLA_CRSCRATCHPAD_REG_ADDR,
     SMC_CLA_REG_MAP_BASE_ADDR,
     SMC_CLA_SCRATCH_REG_ADDR,
-    SMC_CLA_CDfdCsr_REG_DEFAULT,
-    SMC_CLA_CrScratchpad_REG_DEFAULT,
-    SMC_CLA_Scratch_REG_DEFAULT,
     SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
@@ -95,6 +91,9 @@ from smc_reg import (  # noqa: E402
     SMC_MMODE_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_CLA_CDfdCsr_REG_DEFAULT,
+    SMC_CLA_CrScratchpad_REG_DEFAULT,
+    SMC_CLA_Scratch_REG_DEFAULT,
 )
 
 # Per-entry ATTRS addresses from the generated map. Reset value comes from the
@@ -118,54 +117,126 @@ MMODE_REMAP_ATTRS_ADDRS = (
 # generated RDL reset value for that register type (alias_remap.rdl:
 # start_addr/end_addr/offset[55:12] = 0x0, cacheable/valid = 0x0).
 ALIAS_REMAP_REGS = (
-    ("ALIAS_REMAP_0_START", SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_0_END", SMC_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_0_ATTRS", SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_1_START", SMC_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_1_END", SMC_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_1_ATTRS", SMC_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_2_START", SMC_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_2_END", SMC_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_2_ATTRS", SMC_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_3_START", SMC_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_3_END", SMC_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_3_ATTRS", SMC_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_4_START", SMC_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_4_END", SMC_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_4_ATTRS", SMC_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_5_START", SMC_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_5_END", SMC_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_5_ATTRS", SMC_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_6_START", SMC_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_6_END", SMC_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_6_ATTRS", SMC_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
-    ("ALIAS_REMAP_7_START", SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT),
-    ("ALIAS_REMAP_7_END", SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR,
-     REMAP_REGION_REGION_END_REG_DEFAULT),
-    ("ALIAS_REMAP_7_ATTRS", SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT),
+    (
+        "ALIAS_REMAP_0_START",
+        SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_0_END",
+        SMC_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_0_ATTRS",
+        SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_1_START",
+        SMC_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_1_END",
+        SMC_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_1_ATTRS",
+        SMC_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_2_START",
+        SMC_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_2_END",
+        SMC_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_2_ATTRS",
+        SMC_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_3_START",
+        SMC_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_3_END",
+        SMC_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_3_ATTRS",
+        SMC_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_4_START",
+        SMC_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_4_END",
+        SMC_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_4_ATTRS",
+        SMC_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_5_START",
+        SMC_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_5_END",
+        SMC_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_5_ATTRS",
+        SMC_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_6_START",
+        SMC_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_6_END",
+        SMC_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_6_ATTRS",
+        SMC_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_7_START",
+        SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_7_END",
+        SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR,
+        REMAP_REGION_REGION_END_REG_DEFAULT,
+    ),
+    (
+        "ALIAS_REMAP_7_ATTRS",
+        SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+    ),
 )
 
 # --- CLA aperture --------------------------------------------------------
@@ -173,8 +244,7 @@ ALIAS_REMAP_REGS = (
 # `CrScratchpad` is the discriminating one: its reset is 0xBFBF..BF, a value no
 # error slave and no unmapped read can produce.
 CLA_RESET_READS = (
-    ("CLA_CRSCRATCHPAD", SMC_CLA_CRSCRATCHPAD_REG_ADDR,
-     SMC_CLA_CrScratchpad_REG_DEFAULT),
+    ("CLA_CRSCRATCHPAD", SMC_CLA_CRSCRATCHPAD_REG_ADDR, SMC_CLA_CrScratchpad_REG_DEFAULT),
     ("CLA_CDFDCSR", SMC_CLA_CDFDCSR_REG_ADDR, SMC_CLA_CDfdCsr_REG_DEFAULT),
 )
 # smc_cla.rdl `Scratch @ 0x33F8`: "Additional scratch register for DV", sw=rw,
@@ -197,37 +267,91 @@ CLA_SCRATCH_PATTERN = 0xA5A5_5A5A_C3C3_3C3C
 # is wrong: measured, an 8-byte read of `Trdstimpl` @0x1004 returns non-OKAY
 # because it spans past the register. Each row is read at its declared width.
 CLA_REG32 = (
-    "CDbgDebugTraceCfg", "TimeStampConfig", "TrClusterFuseCfgHi",
-    "TrClusterFuseCfgLow", "TrScratchHi", "TrScratchLo",
-    "TrScratchpadHi", "TrScratchpadLo", "Trcustomramsmemlimitlow",
-    "Trdstcontrol", "Trdstimpl", "Trdstinstfeatures",
-    "Trdstramcontrol", "Trdstramdata", "Trdstramimpl",
-    "Trdstramlimithigh", "Trdstramlimitlow", "Trdstramrphigh",
-    "Trdstramrplow", "Trdstramstarthigh", "Trdstramstartlow",
-    "Trdstramwphigh", "Trdstramwplow", "Trfunnelcontrol",
-    "Trfunneldisinput", "Trfunnelimpl", "Trramcontrol",
-    "Trramdata", "Trramimpl", "Trramlimithigh",
-    "Trramlimitlow", "Trramrphigh", "Trramrplow",
-    "Trramstarthigh", "Trramstartlow", "Trramwphigh",
+    "CDbgDebugTraceCfg",
+    "TimeStampConfig",
+    "TrClusterFuseCfgHi",
+    "TrClusterFuseCfgLow",
+    "TrScratchHi",
+    "TrScratchLo",
+    "TrScratchpadHi",
+    "TrScratchpadLo",
+    "Trcustomramsmemlimitlow",
+    "Trdstcontrol",
+    "Trdstimpl",
+    "Trdstinstfeatures",
+    "Trdstramcontrol",
+    "Trdstramdata",
+    "Trdstramimpl",
+    "Trdstramlimithigh",
+    "Trdstramlimitlow",
+    "Trdstramrphigh",
+    "Trdstramrplow",
+    "Trdstramstarthigh",
+    "Trdstramstartlow",
+    "Trdstramwphigh",
+    "Trdstramwplow",
+    "Trfunnelcontrol",
+    "Trfunneldisinput",
+    "Trfunnelimpl",
+    "Trramcontrol",
+    "Trramdata",
+    "Trramimpl",
+    "Trramlimithigh",
+    "Trramlimitlow",
+    "Trramrphigh",
+    "Trramrplow",
+    "Trramstarthigh",
+    "Trramstartlow",
+    "Trramwphigh",
     "Trramwplow",
 )
 
 CLA_HW_DRIVEN = (
-    "CDbgClaCounter0Cfg", "CDbgClaCounter1Cfg", "CDbgClaCounter2Cfg",
-    "CDbgClaCounter3Cfg", "CDbgClaCtrlStatus", "CDbgEapStatus",
-    "CDbgSignalSnapshotNode0Eap0", "CDbgSignalSnapshotNode0Eap1", "CDbgSignalSnapshotNode0Eap2",
-    "CDbgSignalSnapshotNode0Eap3", "CDbgSignalSnapshotNode1Eap0", "CDbgSignalSnapshotNode1Eap1",
-    "CDbgSignalSnapshotNode1Eap2", "CDbgSignalSnapshotNode1Eap3", "CDbgSignalSnapshotNode2Eap0",
-    "CDbgSignalSnapshotNode2Eap1", "CDbgSignalSnapshotNode2Eap2", "CDbgSignalSnapshotNode2Eap3",
-    "CDbgSignalSnapshotNode3Eap0", "CDbgSignalSnapshotNode3Eap1", "CDbgSignalSnapshotNode3Eap2",
-    "CDbgSignalSnapshotNode3Eap3", "Timestamp", "Trdstcontrol",
-    "Trdstramcontrol", "Trdstramdata", "Trdstramlimithigh",
-    "Trdstramlimitlow", "Trdstramrphigh", "Trdstramrplow",
-    "Trdstramstarthigh", "Trdstramstartlow", "Trdstramwphigh",
-    "Trdstramwplow", "Trfunnelcontrol", "Trfunneldisinput",
-    "Trramcontrol", "Trramdata", "Trramlimithigh",
-    "Trramlimitlow", "Trramrphigh", "Trramrplow",
-    "Trramstarthigh", "Trramstartlow", "Trramwphigh",
+    "CDbgClaCounter0Cfg",
+    "CDbgClaCounter1Cfg",
+    "CDbgClaCounter2Cfg",
+    "CDbgClaCounter3Cfg",
+    "CDbgClaCtrlStatus",
+    "CDbgEapStatus",
+    "CDbgSignalSnapshotNode0Eap0",
+    "CDbgSignalSnapshotNode0Eap1",
+    "CDbgSignalSnapshotNode0Eap2",
+    "CDbgSignalSnapshotNode0Eap3",
+    "CDbgSignalSnapshotNode1Eap0",
+    "CDbgSignalSnapshotNode1Eap1",
+    "CDbgSignalSnapshotNode1Eap2",
+    "CDbgSignalSnapshotNode1Eap3",
+    "CDbgSignalSnapshotNode2Eap0",
+    "CDbgSignalSnapshotNode2Eap1",
+    "CDbgSignalSnapshotNode2Eap2",
+    "CDbgSignalSnapshotNode2Eap3",
+    "CDbgSignalSnapshotNode3Eap0",
+    "CDbgSignalSnapshotNode3Eap1",
+    "CDbgSignalSnapshotNode3Eap2",
+    "CDbgSignalSnapshotNode3Eap3",
+    "Timestamp",
+    "Trdstcontrol",
+    "Trdstramcontrol",
+    "Trdstramdata",
+    "Trdstramlimithigh",
+    "Trdstramlimitlow",
+    "Trdstramrphigh",
+    "Trdstramrplow",
+    "Trdstramstarthigh",
+    "Trdstramstartlow",
+    "Trdstramwphigh",
+    "Trdstramwplow",
+    "Trfunnelcontrol",
+    "Trfunneldisinput",
+    "Trramcontrol",
+    "Trramdata",
+    "Trramlimithigh",
+    "Trramlimitlow",
+    "Trramrphigh",
+    "Trramrplow",
+    "Trramstarthigh",
+    "Trramstartlow",
+    "Trramwphigh",
     "Trramwplow",
 )
 
@@ -261,14 +385,16 @@ def _cla_reset_sweep() -> tuple[tuple[str, int, int, int], ...]:
     for sym in dir(_r):
         if not sym.startswith("SMC_CLA_") or not sym.endswith("_REG_ADDR"):
             continue
-        stem = sym[len("SMC_CLA_"):-len("_REG_ADDR")]
+        stem = sym[len("SMC_CLA_") : -len("_REG_ADDR")]
         # The generated module spells defaults in the RDL's mixed case and
         # addresses in upper case; match case-insensitively on the stem.
         default = None
         for cand in dir(_r):
-            if (cand.startswith("SMC_CLA_") and cand.endswith("_REG_DEFAULT")
-                    and cand[len("SMC_CLA_"):-len("_REG_DEFAULT")].upper()
-                    == stem.upper()):
+            if (
+                cand.startswith("SMC_CLA_")
+                and cand.endswith("_REG_DEFAULT")
+                and cand[len("SMC_CLA_") : -len("_REG_DEFAULT")].upper() == stem.upper()
+            ):
                 default = getattr(_r, cand)
                 break
         if default is None:
@@ -298,15 +424,17 @@ CLA_UNMAPPED_PROBES = (
 # Field positions come from the generated alias_remap header, never hand-packed.
 _ALIAS_REMAP_H = (
     Path(__file__).resolve().parents[6]
-    / "hw" / "common" / "axi" / "axi_alias_remap" / "regs" / "gen" / "c"
+    / "hw"
+    / "common"
+    / "axi"
+    / "axi_alias_remap"
+    / "regs"
+    / "gen"
+    / "c"
     / "alias_remap.h"
 )
-ATTRS_VALID_BM = _field_mask(
-    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm"
-)
-ATTRS_OFFSET_BP = _field_mask(
-    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bp"
-)
+ATTRS_VALID_BM = _field_mask(_ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm")
+ATTRS_OFFSET_BP = _field_mask(_ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bp")
 START_ADDR_BP = _field_mask(
     _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_START__START_ADDR_bp"
 )
@@ -340,7 +468,7 @@ _RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4  # MMODE + ALIAS + XVISOR resets + XVISOR
 # explicit `len(CLA_RESET_SWEEP) >= 55` assert in `_cla_window`, so a generated
 # map that lost rows fails loudly instead of silently lowering this floor.
 _CLA_ACCESSES = 2 + 4 + 3 + len(CLA_RESET_SWEEP)
-_REMAP_ACCESSES = 6 + 6 + 2 + 4         # filters + program/readback + off + restore
+_REMAP_ACCESSES = 6 + 6 + 2 + 4  # filters + program/readback + off + restore
 _EXPECTED_ACCESSES = _RESET_SWEEP_ACCESSES + _CLA_ACCESSES + _REMAP_ACCESSES
 # JTAG-AXI (non-CSR) accesses: identity write+read, remapped write, read at the
 # landing site, read back at the source with the entry disabled.
@@ -350,7 +478,7 @@ EXPECTED_JTAG_ACCESSES = 5
 # value check. Written out per group rather than derived from the tables the
 # body walks, so it cannot shrink together with the stimulus.
 _EXPECTED_VALUE_CHECKS = (
-    32   # 8 MMODE ATTRS + 24 ALIAS START/END/ATTRS reset values
+    32  # 8 MMODE ATTRS + 24 ALIAS START/END/ATTRS reset values
     + 8  # 8 XVISOR ATTRS reset values
     + 2  # XVISOR probe readback + restore readback
     + 2  # CLA CrScratchpad + CDfdCsr reset values
@@ -362,9 +490,9 @@ _EXPECTED_VALUE_CHECKS = (
 
 
 class smc_remap_cla_test_seq(SmcCsrSeq):
-    async def csr_read_expect_resp_zero(self, name: str, addr: int,
-                                        expected_resp: int,
-                                        length: int = 4) -> int:
+    async def csr_read_expect_resp_zero(
+        self, name: str, addr: int, expected_resp: int, length: int = 4
+    ) -> int:
         """Read a window that must answer with one EXACT error response and 0.
 
         Stronger than ``csr_read_expect_error`` ("some error"): the response
@@ -407,11 +535,10 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         # proof; a reset-only compare on eight zero registers would be satisfied
         # by an unmapped window just as well.
         for i in range(XVISOR_REMAP_ENTRIES):
-            addr = smc_indexed_addr(
-                "SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", i
-            )
+            addr = smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", i)
             await self.csr_read(
-                f"XVISOR_REMAP_{i}_ATTRS", addr,
+                f"XVISOR_REMAP_{i}_ATTRS",
+                addr,
                 expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
                 length=8,
             )
@@ -419,24 +546,29 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
             XVISOR_REMAP_ENTRIES - 1,
         )
+        await self.csr_write("XVISOR_REMAP_PROBE", xv_probe_addr, XVISOR_PROBE, length=8)
+        await self.csr_read(
+            "XVISOR_REMAP_PROBE_RB",
+            xv_probe_addr,
+            expected=XVISOR_PROBE,
+            length=8,
+        )
         await self.csr_write(
-            "XVISOR_REMAP_PROBE", xv_probe_addr, XVISOR_PROBE, length=8
+            "XVISOR_REMAP_RESTORE",
+            xv_probe_addr,
+            OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+            length=8,
         )
         await self.csr_read(
-            "XVISOR_REMAP_PROBE_RB", xv_probe_addr,
-            expected=XVISOR_PROBE, length=8,
-        )
-        await self.csr_write(
-            "XVISOR_REMAP_RESTORE", xv_probe_addr,
-            OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT, length=8,
-        )
-        await self.csr_read(
-            "XVISOR_REMAP_RESTORE_RB", xv_probe_addr,
-            expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT, length=8,
+            "XVISOR_REMAP_RESTORE_RB",
+            xv_probe_addr,
+            expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+            length=8,
         )
         for i, addr in enumerate(MMODE_REMAP_ATTRS_ADDRS):
             await self.csr_read(
-                f"MMODE_REMAP_{i}_ATTRS", addr,
+                f"MMODE_REMAP_{i}_ATTRS",
+                addr,
                 expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
                 length=8,
             )
@@ -453,26 +585,32 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         )
 
     async def _cla_window(self) -> None:
-
         """Allow leg + deny leg on the CLA aperture, in the same run."""
         for name, addr, expected in CLA_RESET_READS:
             await self.csr_read(name, addr, expected=expected, length=8)
         # Live-register proof: the DV scratch register is sw=rw with reset 0.
-        await self.csr_write("CLA_SCRATCH", SMC_CLA_SCRATCH_REG_ADDR,
-                             CLA_SCRATCH_PATTERN, length=8)
-        await self.csr_read("CLA_SCRATCH_RB", SMC_CLA_SCRATCH_REG_ADDR,
-                            expected=CLA_SCRATCH_PATTERN, length=8)
-        await self.csr_write("CLA_SCRATCH_RESTORE", SMC_CLA_SCRATCH_REG_ADDR,
-                             SMC_CLA_Scratch_REG_DEFAULT, length=8)
-        await self.csr_read("CLA_SCRATCH_RESTORE_RB", SMC_CLA_SCRATCH_REG_ADDR,
-                            expected=SMC_CLA_Scratch_REG_DEFAULT, length=8)
+        await self.csr_write("CLA_SCRATCH", SMC_CLA_SCRATCH_REG_ADDR, CLA_SCRATCH_PATTERN, length=8)
+        await self.csr_read(
+            "CLA_SCRATCH_RB", SMC_CLA_SCRATCH_REG_ADDR, expected=CLA_SCRATCH_PATTERN, length=8
+        )
+        await self.csr_write(
+            "CLA_SCRATCH_RESTORE", SMC_CLA_SCRATCH_REG_ADDR, SMC_CLA_Scratch_REG_DEFAULT, length=8
+        )
+        await self.csr_read(
+            "CLA_SCRATCH_RESTORE_RB",
+            SMC_CLA_SCRATCH_REG_ADDR,
+            expected=SMC_CLA_Scratch_REG_DEFAULT,
+            length=8,
+        )
         cocotb.log.info(
             "CHK-CLA-WINDOW-ALLOW: CrScratchpad=0x%016x and CDfdCsr=0x%016x "
             "match their generated RDL reset values, and Scratch took "
             "0x%016x -> 0x%016x on a write/readback/restore -- the CLA aperture "
             "answers with live registers (positive control for the deny leg)",
-            SMC_CLA_CrScratchpad_REG_DEFAULT, SMC_CLA_CDfdCsr_REG_DEFAULT,
-            CLA_SCRATCH_PATTERN, SMC_CLA_Scratch_REG_DEFAULT,
+            SMC_CLA_CrScratchpad_REG_DEFAULT,
+            SMC_CLA_CDfdCsr_REG_DEFAULT,
+            CLA_SCRATCH_PATTERN,
+            SMC_CLA_Scratch_REG_DEFAULT,
         )
         # Full-aperture reset sweep. Every CLA register is compared against its
         # generated reset value; the non-zero rows are the discriminating ones.
@@ -496,7 +634,8 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "unmapped read can fabricate 0xBFBF..BF / 0x41010101 / 0x01003901 / "
             "0xEFEFEFEF / 0x03000068). Zero-reset rows are separated from a lost "
             "decode by the deny leg below, which answers SLVERR in the same run.",
-            len(CLA_RESET_SWEEP), len(CLA_SWEEP_NONZERO),
+            len(CLA_RESET_SWEEP),
+            len(CLA_SWEEP_NONZERO),
         )
         for name, addr in CLA_UNMAPPED_PROBES:
             await self.csr_read_expect_resp_zero(name, addr, RESP_SLVERR)
@@ -510,18 +649,18 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
 
     async def _program_pass_all_filters(self) -> None:
         """Inbound/outbound filters wide open so the remap is what is tested."""
-        await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0,
-                             length=8)
-        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END,
-                             0x00FF_FFFF_FFFF_FFFF, length=8)
-        await self.csr_write("INBOUND0_FILTER_CONFIG_PASS_ALL",
-                             INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8)
-        await self.csr_write("OUTBOUND0_START_PASS_ALL", OUTBOUND0_START, 0x0,
-                             length=8)
-        await self.csr_write("OUTBOUND0_END_PASS_ALL", OUTBOUND0_END,
-                             0x00FF_FFFF_FFFF_FFFF, length=8)
-        await self.csr_write("OUTBOUND0_FILTER_CONFIG_PASS_ALL",
-                             OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8)
+        await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
+        await self.csr_write(
+            "INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
+        await self.csr_write("OUTBOUND0_START_PASS_ALL", OUTBOUND0_START, 0x0, length=8)
+        await self.csr_write(
+            "OUTBOUND0_END_PASS_ALL", OUTBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
+        )
+        await self.csr_write(
+            "OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
 
     async def _prove_alias_remap_landing(self) -> None:
         """Program ALIAS_REMAP_0 and observe where the access actually lands."""
@@ -532,37 +671,41 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         # access must land where it was issued.
         await jtag_axi_write(self, REMAP_SRC, IDENTITY_DATA)
         await check_output_responder_delta(
-            start_writes=start_writes, start_reads=start_reads,
-            write_delta=1, read_delta=0,
-            last_addr=REMAP_SRC, last_wdata=IDENTITY_DATA,
+            start_writes=start_writes,
+            start_reads=start_reads,
+            write_delta=1,
+            read_delta=0,
+            last_addr=REMAP_SRC,
+            last_wdata=IDENTITY_DATA,
         )
         ident = await jtag_axi_read(self, REMAP_SRC, expected=IDENTITY_DATA)
         cocotb.log.info(
             "CHK-REMAP-ALIAS0-IDENTITY: ALIAS_REMAP_0 invalid -> JTAG AXI write "
             "at 0x%x landed at tb_output_axi_last_addr=0x%x with wdata=0x%016x "
             "and read back 0x%016x (positive control: the path works untranslated)",
-            REMAP_SRC, REMAP_SRC, IDENTITY_DATA, ident.rdata,
+            REMAP_SRC,
+            REMAP_SRC,
+            IDENTITY_DATA,
+            ident.rdata,
         )
 
         # (2) Program the entry and prove the landing site moved.
-        await self.csr_write("ALIAS0_START_PROG", ALIAS0_START, REMAP_SRC,
-                             length=8)
-        await self.csr_read("ALIAS0_START_PROG_RB", ALIAS0_START,
-                            expected=REMAP_SRC, length=8)
+        await self.csr_write("ALIAS0_START_PROG", ALIAS0_START, REMAP_SRC, length=8)
+        await self.csr_read("ALIAS0_START_PROG_RB", ALIAS0_START, expected=REMAP_SRC, length=8)
         await self.csr_write("ALIAS0_END_PROG", ALIAS0_END, REMAP_DST, length=8)
-        await self.csr_read("ALIAS0_END_PROG_RB", ALIAS0_END,
-                            expected=REMAP_DST, length=8)
-        await self.csr_write("ALIAS0_ATTRS_PROG", ALIAS0_ATTRS, REMAP_ATTRS_ON,
-                             length=8)
-        await self.csr_read("ALIAS0_ATTRS_PROG_RB", ALIAS0_ATTRS,
-                            expected=REMAP_ATTRS_ON, length=8)
+        await self.csr_read("ALIAS0_END_PROG_RB", ALIAS0_END, expected=REMAP_DST, length=8)
+        await self.csr_write("ALIAS0_ATTRS_PROG", ALIAS0_ATTRS, REMAP_ATTRS_ON, length=8)
+        await self.csr_read("ALIAS0_ATTRS_PROG_RB", ALIAS0_ATTRS, expected=REMAP_ATTRS_ON, length=8)
 
         mid_writes, mid_reads = output_responder_counts()
         await jtag_axi_write(self, REMAP_SRC, REMAPPED_DATA)
         await check_output_responder_delta(
-            start_writes=mid_writes, start_reads=mid_reads,
-            write_delta=1, read_delta=0,
-            last_addr=REMAP_DST, last_wdata=REMAPPED_DATA,
+            start_writes=mid_writes,
+            start_reads=mid_reads,
+            write_delta=1,
+            read_delta=0,
+            last_addr=REMAP_DST,
+            last_wdata=REMAPPED_DATA,
         )
         landed = await jtag_axi_read(self, REMAP_DST, expected=REMAPPED_DATA)
         cocotb.log.info(
@@ -572,37 +715,57 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "tb_output_axi_last_addr=0x%x (= source + %d * 0x%x, the programmed "
             "translation) carrying wdata=0x%016x, and a read at the landing site "
             "returns 0x%016x",
-            REMAP_SRC, REMAP_DST, REMAP_ATTRS_ON, REMAP_OFFSET_PAGES,
-            REMAP_SRC, REMAP_DST, REMAP_OFFSET_PAGES, _PAGE, REMAPPED_DATA,
+            REMAP_SRC,
+            REMAP_DST,
+            REMAP_ATTRS_ON,
+            REMAP_OFFSET_PAGES,
+            REMAP_SRC,
+            REMAP_DST,
+            REMAP_OFFSET_PAGES,
+            _PAGE,
+            REMAPPED_DATA,
             landed.rdata,
         )
 
         # (3) Negative control: disable the entry and read the source address.
         # It must still hold the identity-phase data, i.e. the translated write
         # did NOT also land at the source.
-        await self.csr_write("ALIAS0_ATTRS_OFF", ALIAS0_ATTRS,
-                             REMAP_REGION_REGION_ATTRS_REG_DEFAULT, length=8)
-        await self.csr_read("ALIAS0_ATTRS_OFF_RB", ALIAS0_ATTRS,
-                            expected=REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
-                            length=8)
+        await self.csr_write(
+            "ALIAS0_ATTRS_OFF", ALIAS0_ATTRS, REMAP_REGION_REGION_ATTRS_REG_DEFAULT, length=8
+        )
+        await self.csr_read(
+            "ALIAS0_ATTRS_OFF_RB",
+            ALIAS0_ATTRS,
+            expected=REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+            length=8,
+        )
         src_after = await jtag_axi_read(self, REMAP_SRC, expected=IDENTITY_DATA)
         cocotb.log.info(
             "CHK-REMAP-ALIAS0-OFF: with ALIAS_REMAP_0.valid cleared the read at "
             "0x%x returns 0x%016x -- the identity-phase data, unchanged by the "
             "translated write, so the remap moved the access instead of "
             "duplicating it",
-            REMAP_SRC, src_after.rdata,
+            REMAP_SRC,
+            src_after.rdata,
         )
-        await self.csr_write("ALIAS0_START_RESTORE", ALIAS0_START,
-                             REMAP_REGION_REGION_START_REG_DEFAULT, length=8)
-        await self.csr_read("ALIAS0_START_RESTORE_RB", ALIAS0_START,
-                            expected=REMAP_REGION_REGION_START_REG_DEFAULT,
-                            length=8)
-        await self.csr_write("ALIAS0_END_RESTORE", ALIAS0_END,
-                             REMAP_REGION_REGION_END_REG_DEFAULT, length=8)
-        await self.csr_read("ALIAS0_END_RESTORE_RB", ALIAS0_END,
-                            expected=REMAP_REGION_REGION_END_REG_DEFAULT,
-                            length=8)
+        await self.csr_write(
+            "ALIAS0_START_RESTORE", ALIAS0_START, REMAP_REGION_REGION_START_REG_DEFAULT, length=8
+        )
+        await self.csr_read(
+            "ALIAS0_START_RESTORE_RB",
+            ALIAS0_START,
+            expected=REMAP_REGION_REGION_START_REG_DEFAULT,
+            length=8,
+        )
+        await self.csr_write(
+            "ALIAS0_END_RESTORE", ALIAS0_END, REMAP_REGION_REGION_END_REG_DEFAULT, length=8
+        )
+        await self.csr_read(
+            "ALIAS0_END_RESTORE_RB",
+            ALIAS0_END,
+            expected=REMAP_REGION_REGION_END_REG_DEFAULT,
+            length=8,
+        )
 
     async def body(self) -> None:
         await self._sweep_reset_values()

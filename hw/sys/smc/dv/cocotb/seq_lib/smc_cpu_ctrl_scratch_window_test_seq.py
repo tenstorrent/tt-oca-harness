@@ -15,9 +15,11 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # idx * 0x8` (smc_addr.h:2325) is the authority for both base and stride
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 SCRATCH_WRITES = [
-    (f"CPU_CTRL_SCRATCH_{_i}",
-     smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", _i),
-     0xC0A0_0000 | _i)
+    (
+        f"CPU_CTRL_SCRATCH_{_i}",
+        smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", _i),
+        0xC0A0_0000 | _i,
+    )
     for _i in (0, 7, 15)
 ]
 
@@ -40,9 +42,7 @@ DUMMY_ROM_RESETS = {
 }
 # DUMMY_ROM_NULL[4] @0x2A0 is plain padding scratch.
 DUMMY_ROM_NULL_COUNT = 4
-DUMMY_ROM_NULL_RESET = cpu_ctrl_u32(
-    "CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_reset"
-)
+DUMMY_ROM_NULL_RESET = cpu_ctrl_u32("CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_reset")
 # At least one row must be non-trivially non-zero, or the sweep degenerates into
 # reading zeroes back off registers that a dead or unmapped window could also
 # fabricate ([NO-ZERO-ACTIVITY-PASS]).
@@ -101,24 +101,16 @@ class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):
         # fail on anything the DUT did ([NO-ALWAYS-PASS-CHECKER]).
         # `assert_all_reachable` cross-checks the same count against the
         # scoreboard, so a mis-bound analysis path fails.
-        expected = (
-            len(SCRATCH_WRITES) * 5
-            + len(DUMMY_ROM_RESETS) * 5
-            + DUMMY_ROM_NULL_COUNT
-        )
+        expected = len(SCRATCH_WRITES) * 5 + len(DUMMY_ROM_RESETS) * 5 + DUMMY_ROM_NULL_COUNT
         self.assert_all_reachable(expected, "CPU_CTRL_SCRATCH_WINDOW")
 
     async def _dummy_rom_sweep(self) -> None:
         """Reset / write / readback / restore over DUMMY_ROM_0..3 + NULL[4]."""
         for idx, reset in DUMMY_ROM_RESETS.items():
             addr = smc_addr(f"SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_{idx}_BASE_ADDR")
-            await self.csr_read(
-                f"DUMMY_ROM_{idx}_RESET", addr, expected=reset, length=8
-            )
+            await self.csr_read(f"DUMMY_ROM_{idx}_RESET", addr, expected=reset, length=8)
             await self.csr_write(f"DUMMY_ROM_{idx}_WR", addr, _ROM_PROBE, length=8)
-            await self.csr_read(
-                f"DUMMY_ROM_{idx}_RB", addr, expected=_ROM_PROBE, length=8
-            )
+            await self.csr_read(f"DUMMY_ROM_{idx}_RB", addr, expected=_ROM_PROBE, length=8)
             await self.csr_write(f"DUMMY_ROM_{idx}_RESTORE", addr, reset, length=8)
             restored = await self.csr_read(
                 f"DUMMY_ROM_{idx}_RESTORE_RB", addr, expected=reset, length=8
@@ -126,18 +118,20 @@ class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):
             if idx == 0:
                 self.rom0_restored = restored
         for idx in range(DUMMY_ROM_NULL_COUNT):
-            addr = smc_indexed_addr(
-                "SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", idx
-            )
+            addr = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", idx)
             await self.csr_read(
-                f"DUMMY_ROM_NULL_{idx}_RESET", addr,
-                expected=DUMMY_ROM_NULL_RESET, length=8,
+                f"DUMMY_ROM_NULL_{idx}_RESET",
+                addr,
+                expected=DUMMY_ROM_NULL_RESET,
+                length=8,
             )
         cocotb.log.info(
             "CHK-CPU-CTRL-DUMMY-ROM: %d DUMMY_ROM registers read at their "
             "non-zero generated resets (0x%016x ...), took probe 0x%016x on a "
             "write/readback, and were restored exactly; %d DUMMY_ROM_NULL "
             "padding rows read at reset 0",
-            len(DUMMY_ROM_RESETS), DUMMY_ROM_RESETS[0], _ROM_PROBE,
+            len(DUMMY_ROM_RESETS),
+            DUMMY_ROM_RESETS[0],
+            _ROM_PROBE,
             DUMMY_ROM_NULL_COUNT,
         )

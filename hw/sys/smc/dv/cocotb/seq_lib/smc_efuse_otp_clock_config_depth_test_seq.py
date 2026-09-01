@@ -27,24 +27,20 @@ from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
-CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
+CLOCK_GATE_CONTROL = smc_addr(
+    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
+)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
 CLOCK_GATE_PATTERN = (1 << 8) | (1 << 11) | (1 << 12)
 CLOCK_GATE_MASK = 0x0000_1FFF
 
-_CHIP_CONFIG_H = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "chip_config.h"
-)
+_CHIP_CONFIG_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "chip_config.h"
 _CHIP_CONFIG = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 
 # Generated RDL resets, imported by symbol rather than hand-copied
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]): chip_config.h:20 / :33, generated from
 # hw/sys/smc/regs/blocks/chip_config/chip_config.rdl.
-VERSION_LO_RESET = _field_mask(
-    _CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"
-)
-VERSION_HI_RESET = _field_mask(
-    _CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION_HI_reset"
-)
+VERSION_LO_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
+VERSION_HI_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
 
 # CHIP_ID / LC_STATE / RAS_BANK_INFO are fuse-derived mirrors whose expected
 # content is not published in any artifact this bench can read, so they carry no

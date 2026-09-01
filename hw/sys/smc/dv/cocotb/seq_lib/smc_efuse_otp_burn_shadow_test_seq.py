@@ -39,15 +39,11 @@ import cocotb
 from cocotb.triggers import RisingEdge
 
 from .smc_addr_map import efuse_ifc_u32, smc_addr
-from .smc_efuse_vip_utils import efuse_preload_word_at
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_efuse_vip_utils import efuse_preload_word_at
 
-EFUSE_STATUS = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
-)
-EFUSE_PROGRAM_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
-)
+EFUSE_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 # Addressed and NAMED by the same generated symbol. At this offset the shadow
 # block serves raw shadow word 0 (`efuse_shadow_regs.sv:683` returns
 # `shadow_efuse.values[paddr>>2]` for the whole map window) rather than the
@@ -63,24 +59,14 @@ OTP_WORD0_MARKER = efuse_preload_word_at(SMC_EFUSE_MAP_LOCKS)
 # PROGRAM_CTRL field masks by generated symbol, matching the sibling eFuse
 # sequences. Hand-written shifts are correct-but-unsourced and would keep
 # asserting an old field identity after an eFuse RDL regeneration.
-_PROG_DATA = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm"
-)
-_PROG_GO = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm"
-)
+_PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
+_PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
 _PROG_READBACK = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm"
 )
-_PROG_ENABLE = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm"
-)
-_PROG_DONE = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm"
-)
-_PROG_STATUS = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm"
-)
+_PROG_ENABLE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
+_PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
+_PROG_STATUS = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
 
 #: Directed, timing-independent SEP_IN AXI accesses this sequence issues: two
 #: PROGRAM_CTRL writes, the shadow-map read and the EFUSE_STATUS read. The
@@ -144,7 +130,8 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-EFUSE-OTP-SHADOW: SMC_EFUSE_MAP_LOCKS @0x%08x = 0x%08x, the "
             "sensed shadow word, matching asset word 0",
-            SMC_EFUSE_MAP_LOCKS, map0,
+            SMC_EFUSE_MAP_LOCKS,
+            map0,
         )
 
         # First PROGRAM (bit2 is clear in the preload word): the injected failure
@@ -164,14 +151,15 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
             f"0x{prog_fail:08x}, expected the unchanged 0x{OTP_WORD0_MARKER:08x}"
         )
         assert st_fail & _PROG_STATUS, (
-            f"program_status expected 1 on injected fail "
-            f"(PROGRAM_CTRL=0x{st_fail:08x})"
+            f"program_status expected 1 on injected fail (PROGRAM_CTRL=0x{st_fail:08x})"
         )
         cocotb.log.info(
             "CHK-EFUSE-OTP-PROGRAM-FAIL: PROGRAM_CTRL=0x%08x status=%d "
             "(real RTL: efuse_interface_shim readback comparison) and the "
             "bank-model word 0 is unchanged at 0x%08x (model-scored)",
-            st_fail, 1 if st_fail & _PROG_STATUS else 0, prog_fail,
+            st_fail,
+            1 if st_fail & _PROG_STATUS else 0,
+            prog_fail,
         )
 
         # Second PROGRAM (bit0 is clear in the preload word): success sticky-OR.
@@ -183,9 +171,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         st_ok = await self._wait_program_done(clk, "PROGRAM_OK")
         prog_ok = int(dut.tb_efuse_programmed_word0.value)
         assert (prog_ok & 1) == 1, "sticky-OR burn did not set bit0"
-        assert prog_ok == (OTP_WORD0_MARKER | 1), (
-            f"sticky-OR burn unexpected: got 0x{prog_ok:08x}"
-        )
+        assert prog_ok == (OTP_WORD0_MARKER | 1), f"sticky-OR burn unexpected: got 0x{prog_ok:08x}"
         # POSITIVE CONTROL for the `program_status == 1` assert on the injected
         # failure above. Without it, a PROGRAM_CTRL whose status bit were stuck
         # high would satisfy the fail leg just as well.
@@ -199,7 +185,9 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
             "same status bit reads 1 on the injected failure and 0 here, so it "
             "discriminates; bank-model word 0 sticky-ORed to 0x%08x "
             "(model-scored)",
-            st_ok, 1 if st_ok & _PROG_STATUS else 0, prog_ok,
+            st_ok,
+            1 if st_ok & _PROG_STATUS else 0,
+            prog_ok,
         )
 
         status = await self.csr_read("EFUSE_STATUS", EFUSE_STATUS)

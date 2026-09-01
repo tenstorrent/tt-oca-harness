@@ -12,12 +12,11 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
 
 # Every record this sequence emits goes through `cocotb.log`: a module-level
 # `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
@@ -39,9 +38,7 @@ HYST_LEGAL_LO = 8
 HYST_LEGAL_HI = 63
 
 # Deferral-ledger entry that tracks the 0..7 exclusion outside this file.
-HYST_DEFERRAL_LEDGER = (
-    Path(__file__).resolve().parents[2] / "testlists" / "deferred.toml"
-)
+HYST_DEFERRAL_LEDGER = Path(__file__).resolve().parents[2] / "testlists" / "deferred.toml"
 HYST_DEFERRAL_ENTRY = "smc_clk_multi_window_test_hyst_low_band_0_7"
 
 
@@ -128,6 +125,7 @@ def _seeded_hyst_windows(seed: int) -> tuple[int, int, int, list[int]]:
     extras = [h for h in ordered if h not in (hyst_min, hyst_mid, hyst_max)]
     return hyst_min, hyst_mid, hyst_max, extras
 
+
 DMA_SRC_ADDR = 0x0200_0000
 DMA_DST_ADDR = 0x0200_0100
 DMA_MODEL_REGION = "clk_multi_window_dma_fabric"
@@ -198,8 +196,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         item.memory_region = DMA_MODEL_REGION
         await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
 
-    async def _read_bytes(self, addr: int, length: int, *,
-                          check_golden: bool = False) -> bytes:
+    async def _read_bytes(self, addr: int, length: int, *, check_golden: bool = False) -> bytes:
         """Frontdoor JTAG-AXI read; optionally compared against the golden model."""
         assert self.env is not None
         item_name = f"jtag_mw_rd_0x{addr:x}"
@@ -217,15 +214,11 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         await self.csr_write(
             "DMA_DST_ADDRESS_LO", cg.DMA_CTRL_DST_ADDRESS_LO, DMA_DST_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_DST_ADDRESS_HI", cg.DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32
-        )
+        await self.csr_write("DMA_DST_ADDRESS_HI", cg.DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32)
         await self.csr_write(
             "DMA_SRC_ADDRESS_LO", cg.DMA_CTRL_SRC_ADDRESS_LO, DMA_SRC_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_SRC_ADDRESS_HI", cg.DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32
-        )
+        await self.csr_write("DMA_SRC_ADDRESS_HI", cg.DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32)
         await self.csr_write("DMA_LENGTH_LO", cg.DMA_CTRL_LENGTH_LO, len(DMA_PAYLOAD))
         await self.csr_write("DMA_LENGTH_HI", cg.DMA_CTRL_LENGTH_HI, 0)
         await self.csr_write("DMA_DST_STRIDE_LO", cg.DMA_CTRL_DST_STRIDE_LO, 0)
@@ -370,9 +363,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         # documents RisingEdge start/stop races that can under-count to 0, so a
         # single late gated edge could satisfy `== 0` there
         # ([EXACT-EXPECTATION]); this samples every cycle in the same domain.
-        post = await cg.count_enabled_at_smc_rise(
-            dut, "tb_dma_gated_clk", IDLE_OBSERVE
-        )
+        post = await cg.count_enabled_at_smc_rise(dut, "tb_dma_gated_clk", IDLE_OBSERVE)
         assert post == 0, (
             f"gated clock still enabled after idle: {post}/{IDLE_OBSERVE} "
             f"clk_smc_i rises sampled tb_dma_gated_clk == 1 (expected 0)"
@@ -399,8 +390,13 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "WINDOW %s hyst=%d measured_delay=%d cell=%s busy_fall=%d "
             "last_edge=%d quiet_after_smc=%d (bound %d)",
-            step_id, hyst, delay, cell, state["busy_fall_at"],
-            state["last_edge_at"], state["smc"] - quiet_start,
+            step_id,
+            hyst,
+            delay,
+            cell,
+            state["busy_fall_at"],
+            state["last_edge_at"],
+            state["smc"] - quiet_start,
             GATE_OFF_TIMEOUT_SMC,
         )
         return delay
@@ -424,8 +420,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         hyst_min, hyst_mid, hyst_max, extras = _seeded_hyst_windows(seed)
         cocotb.log.info(
-            "SEED: %d hyst windows min/mid/max=%d/%d/%d extras=%s "
-            "draw_range=%d..%d",
+            "SEED: %d hyst windows min/mid/max=%d/%d/%d extras=%s draw_range=%d..%d",
             seed,
             hyst_min,
             hyst_mid,
@@ -550,9 +545,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         # the model was written and never read, leaving "memory-model UPDATE"
         # records that read like data checking ([NO-DUMMY-DEAD-CODE]).
         self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
-        moved = await self._read_bytes(
-            DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True
-        )
+        moved = await self._read_bytes(DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True)
         assert moved == DMA_PAYLOAD, (
             f"DMA destination mismatch after the measured windows: got "
             f"{moved.hex()}, expected {DMA_PAYLOAD.hex()}"

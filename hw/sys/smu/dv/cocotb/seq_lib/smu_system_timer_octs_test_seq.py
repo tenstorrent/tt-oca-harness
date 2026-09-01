@@ -37,12 +37,8 @@ ATTR_PRIMARY_BM = cpu_ctrl_bm("CPU_CTRL__SMC_ATTRIBUTES__CHIPLET_IS_PRIMARY_bm")
 
 ADDR_START = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR")
 ADDR_STATUS = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR")
-ADDR_PRESET_LO = smc_addr(
-    "SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR"
-)
-ADDR_PRESET_HI = smc_addr(
-    "SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR"
-)
+ADDR_PRESET_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR")
+ADDR_PRESET_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR")
 STATUS_RUNNING = system_timer_octs_bm("SYSTEM_TIMER_OCTS__STATUS__RUNNING_bm")
 
 PRESET = 0x1000
@@ -133,8 +129,7 @@ class smu_system_timer_octs_test_seq:
                 return last
             if i > 0 and (i % 64) == 0:
                 self._log(
-                    f"{label}: pin still {last} (prior={prior}) "
-                    f"after {i * PIN_POLL_STEP} cycles"
+                    f"{label}: pin still {last} (prior={prior}) after {i * PIN_POLL_STEP} cycles"
                 )
         raise AssertionError(
             f"TIMEOUT {label}: tb_timer_count did not exceed {prior} "
@@ -164,10 +159,7 @@ class smu_system_timer_octs_test_seq:
                 f"(attrs=0x{attrs:08x}); OSS tb_top ties chiplet_is_primary_i=1"
             )
         self.s1_ok = True
-        self._log(
-            "CHK-OCTS-PRIMARY-STRAP: csr=1 tb_tie=chiplet_is_primary_i "
-            f"attrs=0x{attrs:08x}"
-        )
+        self._log(f"CHK-OCTS-PRIMARY-STRAP: csr=1 tb_tie=chiplet_is_primary_i attrs=0x{attrs:08x}")
         sb.expect_eq("CHK-OCTS-PRIMARY-STRAP", is_primary, ATTR_PRIMARY_BM)
 
         # S2: preset + start; prove free-run via product pin (not J2A COUNT).
@@ -175,9 +167,7 @@ class smu_system_timer_octs_test_seq:
         await self._j2a_wr32(jtag, ADDR_PRESET_HI, 0, "PRESET_HI")
         preset_rb = await self._j2a_rd32(jtag, ADDR_PRESET_LO, "PRESET_LO_RB")
         if preset_rb != PRESET:
-            raise AssertionError(
-                f"PRESET_LO readback 0x{preset_rb:x} want 0x{PRESET:x}"
-            )
+            raise AssertionError(f"PRESET_LO readback 0x{preset_rb:x} want 0x{PRESET:x}")
         await self._j2a_wr32(jtag, ADDR_START, 1, "TIMER_START")
         status = await self._poll_status_running(jtag, "after TIMER_START")
         self._log(f"OCTS STATUS RUNNING (0x{status:08x})")
@@ -186,9 +176,7 @@ class smu_system_timer_octs_test_seq:
         if pin0 is None:
             raise AssertionError("tb_timer_count unobservable on OSS tb_top")
         if pin0 < PRESET:
-            raise AssertionError(
-                f"after START pin0={pin0} expected >= PRESET 0x{PRESET:x}"
-            )
+            raise AssertionError(f"after START pin0={pin0} expected >= PRESET 0x{PRESET:x}")
         self._log(f"OCTS pin0={pin0} (after RUNNING, preset_rb=0x{preset_rb:x})")
         pin1 = await self._poll_pin_above(pin0, "primary free-run")
         if pin1 <= pin0:
@@ -209,8 +197,7 @@ class smu_system_timer_octs_test_seq:
         reload_rb = await self._j2a_rd32(jtag, ADDR_PRESET_LO, "PRESET_LO_RELOAD_RB")
         if reload_rb != reload_preset:
             raise AssertionError(
-                f"PRESET_LO reload readback 0x{reload_rb:x} "
-                f"want 0x{reload_preset:x}"
+                f"PRESET_LO reload readback 0x{reload_rb:x} want 0x{reload_preset:x}"
             )
         await self._j2a_wr32(jtag, ADDR_START, 1, "TIMER_START_RELOAD")
         await self._poll_status_running(jtag, "after preset reload TIMER_START")
@@ -241,7 +228,5 @@ class smu_system_timer_octs_test_seq:
         sb.expect_true("CHK-OCTS-PRESET-RELOAD-ADVANCE", pin3 > pin2)
 
         self._log(
-            "PASS SYS-TIMER-OCTS "
-            f"s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "
-            f"pin={self.pin_ok}"
+            f"PASS SYS-TIMER-OCTS s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} pin={self.pin_ok}"
         )

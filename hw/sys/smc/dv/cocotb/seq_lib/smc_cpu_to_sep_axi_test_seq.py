@@ -29,8 +29,8 @@ from smc_reg import (  # noqa: E402
 )
 
 # Spec-anchored reset constants. Each read verifies SMC_CPU_CTRL decode at
-# 0xC0039000+ AND full RDL reset content — not merely OKAY. (Earlier revision used
-# stale 0xC001_xxxx BASE_CONFIG literals under CPU_CTRL names.)
+# 0xC0039000+ AND full RDL reset content — not merely OKAY. The addresses are
+# CPU_CTRL's own, not BASE_CONFIG's.
 #
 # The access width is now per-register and no ``& 0xFFFF_FFFF`` masking is
 # applied anywhere: masking to [31:0] silently dropped
@@ -43,17 +43,17 @@ from smc_reg import (  # noqa: E402
 # The other four defaults are zero above bit 31, so their AxSIZE stays 4 and the
 # unmasked constant is identical to the masked one.
 CPU_CTRL_READS = [
-    ("RESET_VECTOR_0", SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR,
-     CPU_CTRL_RESET_VECTOR_REG_DEFAULT, 4),
-    ("RESET_CTRL", SMC_CPU_CTRL_RESET_CTRL_REG_ADDR,
-     CPU_CTRL_RESET_CTRL_REG_DEFAULT, 4),
+    ("RESET_VECTOR_0", SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR, CPU_CTRL_RESET_VECTOR_REG_DEFAULT, 4),
+    ("RESET_CTRL", SMC_CPU_CTRL_RESET_CTRL_REG_ADDR, CPU_CTRL_RESET_CTRL_REG_DEFAULT, 4),
     # length=8: carries core_resets_done[35:32] == 0xF into the compare.
-    ("CORE_RESET_PULSE_COUNT", SMC_CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_ADDR,
-     CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_DEFAULT, 8),
-    ("WDT_TIMEOUT", SMC_CPU_CTRL_WDT_TIMEOUT_REG_ADDR,
-     CPU_CTRL_WDT_TIMEOUT_REG_DEFAULT, 4),
-    ("TEST_CTRL", SMC_CPU_CTRL_TEST_CTRL_REG_ADDR,
-     CPU_CTRL_TEST_CTRL_REG_DEFAULT, 4),
+    (
+        "CORE_RESET_PULSE_COUNT",
+        SMC_CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_ADDR,
+        CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_DEFAULT,
+        8,
+    ),
+    ("WDT_TIMEOUT", SMC_CPU_CTRL_WDT_TIMEOUT_REG_ADDR, CPU_CTRL_WDT_TIMEOUT_REG_DEFAULT, 4),
+    ("TEST_CTRL", SMC_CPU_CTRL_TEST_CTRL_REG_ADDR, CPU_CTRL_TEST_CTRL_REG_DEFAULT, 4),
 ]
 CPU_CTRL_SCRATCH_0 = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 CPU_PATTERN = 0xC511_0001
@@ -71,8 +71,7 @@ class smc_cpu_to_sep_axi_test_seq(SmcCsrSeq):
         # issues the default 4-byte reads.
         for name, addr, expected, length in CPU_CTRL_READS:
             await self.csr_read(name, addr, expected=expected, length=length)
-        await self.csr_write_readback("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0,
-                                      CPU_PATTERN)
+        await self.csr_write_readback("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0, CPU_PATTERN)
         await self.csr_restore("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0)
         # Closing gate is DUT-sensitive: every read above carried an independent
         # RDL reset expectation via the scoreboard, and scratch write/readback

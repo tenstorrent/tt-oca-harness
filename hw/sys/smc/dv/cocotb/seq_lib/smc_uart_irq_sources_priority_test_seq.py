@@ -18,7 +18,14 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
@@ -26,33 +33,15 @@ UART_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
     0,
 )
-UART_RBR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
-)
-UART_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART_IIR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0
-)
-UART_LCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
-)
-UART_MCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0
-)
-UART_LSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
-)
-UART_MSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0
-)
-UART_ITR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR", 0
-)
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+UART_RBR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0)
+UART_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART_IIR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0)
+UART_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART_MCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0)
+UART_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
+UART_MSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0)
+UART_ITR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR", 0)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
@@ -67,9 +56,7 @@ ITR_TLSI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TLSI_bm")
 ITR_TDSSI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TDSSI_bm")
 ITR_TFEI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TFEI_bm")
 ITR_TRTI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TRTI_bm")
-IIR_INTERRUPT_PENDING = _field_mask(
-    _UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm"
-)
+IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
 LCR_DLAB = _field_mask(_UART_H, "UART_16550_MAIN__LCR__DLAB_bm")
@@ -126,9 +113,7 @@ def _iir_pending(iir: int) -> bool:
 class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
     """UART0 IRQ source mapping, clear paths, and priority."""
 
-    def __init__(
-        self, name: str = "smc_uart_irq_sources_priority_test_seq"
-    ) -> None:
+    def __init__(self, name: str = "smc_uart_irq_sources_priority_test_seq") -> None:
         super().__init__(name)
         self.gating_ok: bool = False
         self.clear_ok: bool = False
@@ -178,8 +163,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir) and _iir_id(iir) == forbidden:
                 raise AssertionError(
-                    f"{label}: gated source ID=0x{forbidden:x} still pending "
-                    f"IIR=0x{iir:08x}"
+                    f"{label}: gated source ID=0x{forbidden:x} still pending IIR=0x{iir:08x}"
                 )
             last = _iir_id(iir) if _iir_pending(iir) else None
             await Timer(100, units="ns")
@@ -189,8 +173,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         iir = await self.csr_read(f"{label}_POST", UART_IIR)
         if _iir_pending(iir) and _iir_id(iir) == expect_id:
             raise AssertionError(
-                f"{label}: ID=0x{expect_id:x} still pending after clear "
-                f"IIR=0x{iir:08x}"
+                f"{label}: ID=0x{expect_id:x} still pending after clear IIR=0x{iir:08x}"
             )
 
     async def _test_gating_mapping(self) -> None:
@@ -307,16 +290,16 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         # RDL's priority ranking (_IIR_PRIORITY), so the golden traces to
         # uart_16550_main.rdl IIR.INTERRUPT_ID rather than to the RTL encoder.
         pairs = [
-            ("LSR_vs_RDR", IER_ELSI | IER_ERBFI, ITR_TLSI | ITR_TRBFI,
-             (_INTR_LSR, _INTR_RDR)),
-            ("RDR_vs_THRE", IER_ERBFI | IER_ETBEI, ITR_TRBFI | ITR_TTBEI,
-             (_INTR_RDR, _INTR_THRE)),
-            ("THRE_vs_MODEM", IER_ETBEI | IER_EDSSI, ITR_TTBEI | ITR_TDSSI,
-             (_INTR_THRE, _INTR_MODEM)),
-            ("TO_vs_RDR", IER_ERBFI, ITR_TRBFI | ITR_TRTI,
-             (_INTR_TIMEOUT, _INTR_RDR)),
-            ("FIFO_vs_LSR", IER_ELSI | IER_EFEI, ITR_TLSI | ITR_TFEI,
-             (_INTR_FIFO_ERR, _INTR_LSR)),
+            ("LSR_vs_RDR", IER_ELSI | IER_ERBFI, ITR_TLSI | ITR_TRBFI, (_INTR_LSR, _INTR_RDR)),
+            ("RDR_vs_THRE", IER_ERBFI | IER_ETBEI, ITR_TRBFI | ITR_TTBEI, (_INTR_RDR, _INTR_THRE)),
+            (
+                "THRE_vs_MODEM",
+                IER_ETBEI | IER_EDSSI,
+                ITR_TTBEI | ITR_TDSSI,
+                (_INTR_THRE, _INTR_MODEM),
+            ),
+            ("TO_vs_RDR", IER_ERBFI, ITR_TRBFI | ITR_TRTI, (_INTR_TIMEOUT, _INTR_RDR)),
+            ("FIFO_vs_LSR", IER_ELSI | IER_EFEI, ITR_TLSI | ITR_TFEI, (_INTR_FIFO_ERR, _INTR_LSR)),
         ]
         for name, ier, itr, contenders in pairs:
             expect = _rdl_priority_winner(*contenders)
@@ -333,8 +316,13 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
                 "(priority %d) and id=0x%x (priority %d) per "
                 "uart_16550_main.rdl IIR.INTERRUPT_ID; winner observed ID=0x%x, "
                 "ranking requires 0x%x",
-                name, contenders[0], _IIR_PRIORITY[contenders[0]],
-                contenders[1], _IIR_PRIORITY[contenders[1]], got, expect,
+                name,
+                contenders[0],
+                _IIR_PRIORITY[contenders[0]],
+                contenders[1],
+                _IIR_PRIORITY[contenders[1]],
+                got,
+                expect,
             )
 
     async def body(self) -> None:

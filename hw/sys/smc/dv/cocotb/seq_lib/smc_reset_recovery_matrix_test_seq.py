@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_reset_seq_base import SmcResetSeqBase

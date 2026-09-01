@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_reset_unit_sanity_test_seq import smc_reset_unit_sanity_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -29,6 +29,5 @@ class smc_reset_unit_sanity_test(smc_base_test):
         # sequence body that issued no register sweep at all
         # ([NO-ZERO-ACTIVITY-PASS]).
         assert seq.ss_regs_swept, (
-            "the RESET_UNIT SS_* write/readback sweep issued no stimulus in "
-            "this run"
+            "the RESET_UNIT SS_* write/readback sweep issued no stimulus in this run"
         )

@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_otp_burn_shadow_test_seq import (
     DIRECTED_ACCESSES,
     smc_efuse_otp_burn_shadow_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_spi_log_engine_test_seq import smc_uart_spi_log_engine_test_seq
+from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floor for the UART_LOG record, written out here rather
 # than derived from the sequence's own register table on purpose: a floor

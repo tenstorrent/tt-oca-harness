@@ -27,24 +27,6 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Fabric decode-error / negative response (the reference suite\'s sep_cpu_lsu_negative_matrix_test # + sep_cpu_ifu_invalid_target_test +
-# sep_fabric_xbar_error_closure_test ). The CPU-LSU AXI master reads
-# an unmapped local address -> exact DECERR (allow_timeout=False so a wedge fails),
-# while a known-mapped CSR on the same bus returns OKAY + value. COVERED_STRONGER:
-# asserts the exact spec response vs the reference suite's any-non-OKAY/timeout-tolerated check.
-# no_cpu (host drives the CPU-LSU splice); +skip_fuse_sense (decode is independent
-# of OTP/entropy).
-name = "sep_fabric_decode_error_response_test"
-module = "system.sep_fabric_decode_error_response_test"
-seed = 1
-reseed = 3
-timeout_sec = 1800
-tags = ["fabric", "decode", "negative", "system", "subsystem"]
-run_modes = ["no_cpu"]
-target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
-
-[[tests]]
 # Simultaneous multi-source interrupt fan-in + anti-alias (the reference suite
 # sep_irq_extended_connectivity_test). Host asserts a CROSS-IP set (HMAC/KMAC/CSRNG/
 # EDN INTR_TEST -> sep_internal_interrupts bits 15/18/21/25) AT ONCE and proves the
@@ -161,6 +143,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shared TRNG-reset recovery contract: populate the entropy pool, quiesce
+# AES/KMAC/OTBN/KM, reset ESRC+CSRNG+EDN, prove the pool scrubbed stale/partial
+# data while its AXI responder stayed live, verify external-source selection and
+# CSR passthrough remain outside reset, reinitialize the complete entropy chain,
+# observe fresh pool progress, then release consumers.
+name = "sep_trng_reset_recovery_test"
+module = "system.sep_trng_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "trng", "entropy", "isolation", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # Inbound-filter per-entry RULE matrix (the reference suite's
 # sep_inbound_filter_blockbydefault_test +
 # sep_inbound_filter_programming_ownership_test +
@@ -233,9 +230,13 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x1E + per-IP reset-wire clears, bad-address D-bus
-# NMI x2, WDT bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
+# wdt_sanity_test): SW_RESET_N=0x3E plus the per-IP and shared TRNG reset-wire
+# clears, bad-address D-bus NMI x2, WDT
+# bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
+# JTAG-holds OTBN/AES/HMAC/KMAC across rst_ni release and fuse sense so they
+# never raise crypto edn_req, then releases them; the firmware then probes the
+# four per-IP reset wires and the shared TRNG reset across ESRC, CSRNG and EDN.
 name = "sep_reset_wdt_sanity_test"
 module = "cpu.sep_reset_wdt_sanity_test"
 firmware = "reset_wdt_sanity_test"
@@ -290,9 +291,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CSR reset / RW / RO / reserved sweep over the generated SystemRDL export.
 # RANDCFG: block order and complement-vs-ones order from the run seed.
-# Every reset-eligible register and every write-safe register is walked
-# in one invocation; TOUCH_BLOCKS picks one storage RW per
-# other major IP (write x, compare with mask, restore).
+# Reset walk is the inventory after reasoned skips (not every OFFSET
+# symbol). Full-mask write-lands is 19 registers (8 scratch-cold +
+# 8 scratch-warm + 3 CPU_CTRL); 32 inbound START/END use the wrap model.
+# TOUCH_BLOCKS picks one storage RW per other major IP.
 # no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
@@ -307,13 +309,80 @@ args = ["+skip_fuse_sense"]
 # Intra-block dead-space decode on CSR windows larger than REG_MAP_SIZE
 # (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI).
 # An access past allocated size must be refused and must not change a
-# live register. Hard FAILED until RTL refuses the wrap; do not XFAIL.
+# live register; do not XFAIL. CHK-DEADSPACE-BURST asserts the same refusal
+# on a later beat of a burst that ends past the window's extent.
 # no_cpu; +skip_fuse_sense.
 name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"
 seed = 1
 timeout_sec = 1800
 tags = ["fabric", "decode", "negative", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Reserved rows of hw/sys/sep/doc/memory_map.adoc must be refused. Walks the
+# gaps BETWEEN block windows; sep_fabric_deadspace_decode_test walks the dead
+# tail INSIDE a window. Expectation is spec-derived; the crossbar decode table
+# is logged as a cross-check, never used to build the expectation.
+name = "sep_axi_map_refuse_test"
+module = "system.sep_axi_map_refuse_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Narrow-write byte masking and memory-window readback. Every AxSIZE at every
+# legal lane offset on every seed; the seed varies staged data only. The
+# window compare is the only checker that catches a read-mask defect, which
+# returns a correct response with zeroed data.
+name = "sep_axi_strobe_window_test"
+module = "system.sep_axi_strobe_window_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI channel ordering, swept over the whole write-safe register inventory:
+# the three legal AW/W orderings at every register, crossed with the three
+# transfer sizes on the scratch words. Each block terminates AXI at its own
+# register adapter, so the ordering contract has to hold at each of them. An
+# adapter that latches its pending-write flag on AW accept answers OKAY while
+# dropping the data, so the cell compares the readback, not the response, and
+# a follow-on write to a second register in the block catches a stale flag
+# committing the next write to the wrong target.
+name = "sep_axi_order_sweep_test"
+module = "system.sep_axi_order_sweep_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The same sweep driven from the SMN inbound master. m_axi reaches the same
+# eleven IP block adapters through the inbound filter, so an adapter that
+# mishandles a channel ordering has to be caught from both TB-driven buses.
+# The walk opens allow windows first, and does not sweep the sixteen
+# INBOUND_FILTER_CTRL blocks: those CSRs gate the access in flight, so writing
+# them would measure filter reprogramming. They stay swept on s_axi.
+name = "sep_axi_order_sweep_m_axi_test"
+module = "system.sep_axi_order_sweep_m_axi_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

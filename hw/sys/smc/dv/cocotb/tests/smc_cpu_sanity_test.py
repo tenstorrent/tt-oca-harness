@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cpu_ctrl_map_depth_test_seq import smc_cpu_ctrl_map_depth_test_seq
 from seq_lib.smc_cpu_vip_utils import (
     check_cpu_bfm_observability,
     check_cpu_firmware_boot_contract,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -36,7 +36,7 @@ class smc_cpu_sanity_test(smc_base_test):
             proxy=not boot_checked,
             details=(
                 "CPU firmware boot PASS contract checked"
-                if boot_checked else
-                f"CPU firmware boot infra armed but not promoted ({boot['reason']})"
+                if boot_checked
+                else f"CPU firmware boot infra armed but not promoted ({boot['reason']})"
             ),
         )

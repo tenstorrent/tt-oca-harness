@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_i3c_to_fabric_test_seq import smc_i3c_to_fabric_test_seq
-
+from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floor, written out here as a literal rather than read
 # back from the sequence's own counters: a floor derived from them shrinks

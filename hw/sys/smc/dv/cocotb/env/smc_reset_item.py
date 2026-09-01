@@ -8,7 +8,6 @@ from enum import Enum
 
 from pyuvm import uvm_sequence_item
 
-
 # Every reset observable the driver samples, in log order. Anything sampled and
 # logged must appear here so it also gets a fail-capable compare
 # ([EXACT-EXPECTATION]: an observed-but-never-compared field reads as checked).
@@ -84,12 +83,10 @@ class SmcResetItem(uvm_sequence_item):
         ]
 
     def __str__(self) -> str:
-        if self.op in (SmcResetOp.SAMPLE, SmcResetOp.RAW_SAMPLE,
-                       SmcResetOp.WAIT_STATE):
+        if self.op in (SmcResetOp.SAMPLE, SmcResetOp.RAW_SAMPLE, SmcResetOp.WAIT_STATE):
             tail = ""
             if self.op is SmcResetOp.WAIT_STATE:
-                tail = (f", timed_out={self.timed_out}, "
-                        f"wait_ref_cycles={self.wait_ref_cycles}")
+                tail = f", timed_out={self.timed_out}, wait_ref_cycles={self.wait_ref_cycles}"
             return (
                 f"SmcResetItem(op={self.op.value}, resolvable={self.resolvable}, "
                 f"powergood_stable={self.powergood_stable}, "

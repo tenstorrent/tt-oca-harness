@@ -43,12 +43,10 @@ proof path.
 from __future__ import annotations
 
 import cocotb
+from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_field_catalog import catalog_entry
-
-from env.smc_reset_item import SmcResetItem, SmcResetOp
-
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_reset_seq_base import SmcResetSeqBase
 
@@ -62,9 +60,7 @@ CHIP_CONFIG_VERSION_LO = catalog_entry(
 )
 SCRATCH_COLD_WARM_0 = catalog_entry(
     "SCRATCH_COLD_WARM_0",
-    smc_indexed_addr(
-        "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0
-    ),
+    smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0),
     writable=True,
 )
 SCRATCH_PATTERN = 0xF1A0_0001
@@ -141,20 +137,23 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
-        await self.csr_read("CHIP_CONFIG_VERSION_LO_BASELINE",
-                            CHIP_CONFIG_VERSION_LO.addr,
-                            expected=CHIP_CONFIG_VERSION_LO.expected)
-        await self.csr_write("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0.addr,
-                             SCRATCH_PATTERN)
-        await self.csr_read("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0.addr,
-                            expected=SCRATCH_PATTERN)
+        await self.csr_read(
+            "CHIP_CONFIG_VERSION_LO_BASELINE",
+            CHIP_CONFIG_VERSION_LO.addr,
+            expected=CHIP_CONFIG_VERSION_LO.expected,
+        )
+        await self.csr_write("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0.addr, SCRATCH_PATTERN)
+        await self.csr_read(
+            "SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0.addr, expected=SCRATCH_PATTERN
+        )
 
         self._assert_flr_pin_idle("pre cool pulse")
         await self._reset_op("cool_rst_lo", SmcResetOp.COOL_RST_LO)
         # Hold rst_cool_ni low until the reset is really taken (mid-assert
         # FAIL-ON), never for a fixed count below the de-glitch window.
         await self._wait_reset_state(
-            "cool_asserted", COOL_ASSERT_BOUND_REF,
+            "cool_asserted",
+            COOL_ASSERT_BOUND_REF,
             expect_powergood_stable=1,
             expect_rst_cold_stable_ref_clk_n=1,
             expect_rst_primary_ref_clk_n=0,
@@ -163,7 +162,8 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         await self._reset_op("cool_rst_hi", SmcResetOp.COOL_RST_HI)
         await self._wait_reset_state(
-            "cool_released", COOL_RECOVER_BOUND_REF,
+            "cool_released",
+            COOL_RECOVER_BOUND_REF,
             expect_powergood_stable=1,
             expect_rst_cold_stable_ref_clk_n=1,
             expect_rst_primary_ref_clk_n=1,
@@ -175,34 +175,38 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self.wait_fuse_sense_done()
         await self._sample_reset("post_cool_reset")
 
-        await self.csr_read("CHIP_CONFIG_VERSION_LO_RECOVERY",
-                            CHIP_CONFIG_VERSION_LO.addr,
-                            expected=CHIP_CONFIG_VERSION_LO.expected)
+        await self.csr_read(
+            "CHIP_CONFIG_VERSION_LO_RECOVERY",
+            CHIP_CONFIG_VERSION_LO.addr,
+            expected=CHIP_CONFIG_VERSION_LO.expected,
+        )
         # Cool-effect compare, before any rewrite: the pre-cool pattern must be
         # gone and the mapped reset value back.
-        await self.csr_read("SCRATCH_COLD_WARM_0_POST_COOL", SCRATCH_COLD_WARM_0.addr,
-                            expected=SCRATCH_COLD_WARM_0.expected)
+        await self.csr_read(
+            "SCRATCH_COLD_WARM_0_POST_COOL",
+            SCRATCH_COLD_WARM_0.addr,
+            expected=SCRATCH_COLD_WARM_0.expected,
+        )
         # Positive control for that negative-looking compare: the same register
         # is provably writable/readable after the cool recovery, so the reset
         # value above is a real reset, not a dead CSR path
         # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-        await self.csr_write("SCRATCH_COLD_WARM_0_POST_COOL_RW",
-                             SCRATCH_COLD_WARM_0.addr, SCRATCH_PATTERN)
-        await self.csr_read("SCRATCH_COLD_WARM_0_POST_COOL_RW",
-                            SCRATCH_COLD_WARM_0.addr, expected=SCRATCH_PATTERN)
-        await self.csr_write("SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0.addr,
-                             SCRATCH_COLD_WARM_0.expected)
+        await self.csr_write(
+            "SCRATCH_COLD_WARM_0_POST_COOL_RW", SCRATCH_COLD_WARM_0.addr, SCRATCH_PATTERN
+        )
+        await self.csr_read(
+            "SCRATCH_COLD_WARM_0_POST_COOL_RW", SCRATCH_COLD_WARM_0.addr, expected=SCRATCH_PATTERN
+        )
+        await self.csr_write(
+            "SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0.addr, SCRATCH_COLD_WARM_0.expected
+        )
 
         for s in self.samples:
             assert s.resolvable, f"unresolved FLR sample: {s.get_name()}"
-            assert s.powergood_stable == 1, \
-                f"powergood unstable at {s.get_name()}"
-            assert s.rst_primary_ref_clk_n == 1, \
-                f"primary ref reset asserted at {s.get_name()}"
-            assert s.rst_primary_smc_clk_n == 1, \
-                f"primary smc reset asserted at {s.get_name()}"
-            assert s.rst_wdt_smc_clk_n == 1, \
-                f"wdt reset asserted at {s.get_name()}"
+            assert s.powergood_stable == 1, f"powergood unstable at {s.get_name()}"
+            assert s.rst_primary_ref_clk_n == 1, f"primary ref reset asserted at {s.get_name()}"
+            assert s.rst_primary_smc_clk_n == 1, f"primary smc reset asserted at {s.get_name()}"
+            assert s.rst_wdt_smc_clk_n == 1, f"wdt reset asserted at {s.get_name()}"
         self._assert_flr_pin_idle("post cool recovery")
         # Loop integrity + scoreboard cross-check. This sweep issues no bounded
         # read, so `assert_all_reachable` deliberately does NOT assert

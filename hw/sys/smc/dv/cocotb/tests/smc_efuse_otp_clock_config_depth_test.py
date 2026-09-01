@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_otp_clock_config_depth_test_seq import (
     smc_efuse_otp_clock_config_depth_test_seq,
 )
 from seq_lib.smc_efuse_vip_utils import check_efuse_otp_observability
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -27,8 +27,7 @@ class smc_efuse_otp_clock_config_depth_test(smc_base_test):
         # CHK-EFUSE-BANK-IDLE instead of the "NOT closure evidence" WARNING.
         await check_efuse_otp_observability()
         assert "CHK-EFUSE-CLOCK-GATE-DEPTH" in seq.chk_seen, (
-            "missing CHK evidence token: CHK-EFUSE-CLOCK-GATE-DEPTH "
-            f"(seen={sorted(seq.chk_seen)})"
+            f"missing CHK evidence token: CHK-EFUSE-CLOCK-GATE-DEPTH (seen={sorted(seq.chk_seen)})"
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,

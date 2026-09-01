@@ -13,10 +13,9 @@ with it instead of silently retargeting a still-passing decode smoke
 from __future__ import annotations
 
 import cocotb
-
-from .smc_addr_map import _REPO, _field_mask, smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 # smc_addr_map.py exposes no generic accessor for these two generated headers
@@ -26,13 +25,10 @@ _SMC_BASE_CFG_H = (
     _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
 )
 _AXIL_MAILBOX_H = (
-    _REPO / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c"
-    / "axil_mailbox_smc_wrap.h"
+    _REPO / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox_smc_wrap.h"
 )
 
-_CPU_CTRL_H = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
-)
+_CPU_CTRL_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 MAILBOX_CG_EN = _field_mask(
@@ -44,17 +40,11 @@ MAILBOX_CG_EN = _field_mask(
 # mailbox FIFOs), so the threshold clamp below is computed from a value the DUT
 # reports rather than from a literal copied out of the RTL package.
 SMC_ATTRIBUTES = smc_addr("SMC_TOP_SMC_CPU_CTRL_SMC_ATTRIBUTES_BASE_ADDR")
-MAILBOX_DEPTH_BM = _field_mask(
-    _CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bm"
-)
-MAILBOX_DEPTH_BP = _field_mask(
-    _CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bp"
-)
+MAILBOX_DEPTH_BM = _field_mask(_CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bm")
+MAILBOX_DEPTH_BP = _field_mask(_CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bp")
 
 MAILBOX_STATUS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR")
-MAILBOX_ERROR_FLAGS = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR"
-)
+MAILBOX_ERROR_FLAGS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR")
 MAILBOX_WIRQT = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR")
 MAILBOX_RIRQT = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR")
 MAILBOX_IRQEN = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR")
@@ -147,10 +137,10 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
         # Exact idle expectations: a non-idle STATUS or any sticky error flag on
         # an untouched mailbox now fails in the scoreboard value compare instead
         # of only proving the access returned OKAY.
-        await self._read("MAILBOX_STATUS", MAILBOX_STATUS,
-                         expected=MAILBOX_STATUS_IDLE)
-        await self._read("MAILBOX_ERROR_FLAGS", MAILBOX_ERROR_FLAGS,
-                         expected=MAILBOX_ERROR_FLAGS_IDLE)
+        await self._read("MAILBOX_STATUS", MAILBOX_STATUS, expected=MAILBOX_STATUS_IDLE)
+        await self._read(
+            "MAILBOX_ERROR_FLAGS", MAILBOX_ERROR_FLAGS, expected=MAILBOX_ERROR_FLAGS_IDLE
+        )
 
         # MailboxDepth as the DUT publishes it, for the SPEC threshold clamp.
         attrs = await self._read("SMC_ATTRIBUTES", SMC_ATTRIBUTES)
@@ -175,19 +165,17 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
             "CPU_CTRL.SMC_ATTRIBUTES; %s each read back the SPEC clamp "
             "min(written, depth-1) exactly",
             depth,
-            ", ".join(
-                f"{n} (wrote 0x{w:x}, expected 0x{e:x})" for n, w, e in clamped
-            ),
+            ", ".join(f"{n} (wrote 0x{w:x}, expected 0x{e:x})" for n, w, e in clamped),
         )
 
         for name, addr, _pattern, _readback in reversed(WRITE_READBACK):
             await self._write(f"{name}_RESTORE", addr, 0)
             await self._read(f"{name}_RESTORE", addr, expected=0)
 
-        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
-                          self.clock_gate_value)
-        await self._read("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
-                         expected=self.clock_gate_value)
+        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value)
+        await self._read(
+            "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, expected=self.clock_gate_value
+        )
         # 19 mailbox/clock-gate accesses + the SMC_ATTRIBUTES read that sources
         # the threshold-clamp expectation.
         assert self.accesses == EXPECTED_ACCESSES, (

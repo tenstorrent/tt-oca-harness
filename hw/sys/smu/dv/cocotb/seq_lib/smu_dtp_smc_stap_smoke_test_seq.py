@@ -162,9 +162,7 @@ class smu_dtp_smc_stap_smoke_test_seq:
 
         idcode = await raw.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-DTP-SMC-STAP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         # S1: TRST (active-low) reaches SMC STAP host trst_n
@@ -173,16 +171,12 @@ class smu_dtp_smc_stap_smoke_test_seq:
             await jtag.step_tms(1)
         trst_asserted = self._sample_bit("tb_stap_smc_trst_n")
         if trst_asserted != 0:
-            raise AssertionError(
-                f"SMC STAP trst_n during TRST want 0 got {trst_asserted}"
-            )
+            raise AssertionError(f"SMC STAP trst_n during TRST want 0 got {trst_asserted}")
         self.dut.jtag_trst.value = 1
         await ClockCycles(self.dut.clk_ref_i, 4)
         trst_released = self._sample_bit("tb_stap_smc_trst_n")
         if trst_released != 1:
-            raise AssertionError(
-                f"SMC STAP trst_n after TRST release want 1 got {trst_released}"
-            )
+            raise AssertionError(f"SMC STAP trst_n after TRST release want 1 got {trst_released}")
         raw._state = OcahJtagState.TEST_LOGIC_RESET
         raw._current_instruction = None
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
@@ -210,8 +204,7 @@ class smu_dtp_smc_stap_smoke_test_seq:
             )
         if unsel["oen_tcks"] != 0:
             raise AssertionError(
-                "SMC STAP tdo_oen during unselected IDCODE "
-                f"oen_tcks={unsel['oen_tcks']} want 0"
+                f"SMC STAP tdo_oen during unselected IDCODE oen_tcks={unsel['oen_tcks']} want 0"
             )
         self._log(
             f"CHK-DTP-SMC-STAP-UNSEL: smc_tms_edges={unsel['smc_edges']} "
@@ -304,12 +297,8 @@ class smu_dtp_smc_stap_smoke_test_seq:
             f"ptap_edges={byp['ptap_edges']} mismatch={byp['mismatch']} "
             f"oen_tcks={byp['oen_tcks']} payload=0x{PAYLOAD:08x}"
         )
-        sb.expect_eq(
-            "CHK-DTP-SMC-STAP-IDCODE-BFM", byp["smc_edges"], byp["ptap_edges"]
-        )
-        sb.expect_eq(
-            "CHK-DTP-SMC-STAP-PAYLOAD-OEN", byp["oen_tcks"], EXPECTED_SHIFT_TCKS
-        )
+        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-BFM", byp["smc_edges"], byp["ptap_edges"])
+        sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-OEN", byp["oen_tcks"], EXPECTED_SHIFT_TCKS)
         sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH", byp["mismatch"], 0)
 
         self._log(

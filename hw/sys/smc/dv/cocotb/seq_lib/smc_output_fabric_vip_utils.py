@@ -11,7 +11,6 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
@@ -54,12 +53,8 @@ OUTPUT_FABRIC_MODEL_SIZE = 0x0001_0000
 # map ``smc_addr_map.smc_bootrom_addr`` already reads). PeakRDL emits the fields
 # LSB-first, so member order gives the bit offsets.
 _REPO = Path(__file__).resolve().parents[6]
-_SMC_TOP_REGS_H = (
-    _REPO / "hw" / "sys" / "smc" / "bootrom" / "prod" / "registers" / "smc_top_regs.h"
-)
-_BITFIELD_STRUCT_RE = re.compile(
-    r"typedef\s+struct\s*\{(.*?)\}\s*(\w+)\s*;", re.S
-)
+_SMC_TOP_REGS_H = _REPO / "hw" / "sys" / "smc" / "bootrom" / "prod" / "registers" / "smc_top_regs.h"
+_BITFIELD_STRUCT_RE = re.compile(r"typedef\s+struct\s*\{(.*?)\}\s*(\w+)\s*;", re.S)
 _BITFIELD_MEMBER_RE = re.compile(r"uint(?:8|16|32|64)_t\s+(\w+)\s*:\s*(\d+)\s*;")
 
 
@@ -140,36 +135,43 @@ class output_fabric_pass_all_cfg_seq(SmcCsrSeq):
 
     async def program_inbound_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF,
-                             length=8)
-        await self.csr_write("INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG,
-                             PASS_ALL_CONFIG, length=8)
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
+        await self.csr_write(
+            "INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
 
     async def program_outbound_pass_all(self) -> None:
         await self.csr_write("OUTBOUND0_START_PASS_ALL", OUTBOUND0_START, 0x0, length=8)
-        await self.csr_write("OUTBOUND0_END_PASS_ALL", OUTBOUND0_END, 0x00FF_FFFF_FFFF_FFFF,
-                             length=8)
-        await self.csr_write("OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG,
-                             PASS_ALL_CONFIG, length=8)
+        await self.csr_write(
+            "OUTBOUND0_END_PASS_ALL", OUTBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
+        )
+        await self.csr_write(
+            "OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
 
 
 class output_fabric_block_write_cfg_seq(output_fabric_pass_all_cfg_seq):
     """Program filters to pass reads but block writes for a target window."""
 
-    def __init__(self, name: str = "output_fabric_block_write_cfg_seq",
-                 start_addr: int = OUTPUT_FABRIC_ADDR,
-                 end_addr: int = OUTPUT_FABRIC_ADDR + 0xFFF) -> None:
+    def __init__(
+        self,
+        name: str = "output_fabric_block_write_cfg_seq",
+        start_addr: int = OUTPUT_FABRIC_ADDR,
+        end_addr: int = OUTPUT_FABRIC_ADDR + 0xFFF,
+    ) -> None:
         super().__init__(name)
         self.start_addr = start_addr
         self.end_addr = end_addr
 
     async def body(self) -> None:
         await self.program_inbound_pass_all()
-        await self.csr_write("OUTBOUND0_START_BLOCK_WRITE", OUTBOUND0_START, self.start_addr,
-                             length=8)
+        await self.csr_write(
+            "OUTBOUND0_START_BLOCK_WRITE", OUTBOUND0_START, self.start_addr, length=8
+        )
         await self.csr_write("OUTBOUND0_END_BLOCK_WRITE", OUTBOUND0_END, self.end_addr, length=8)
-        await self.csr_write("OUTBOUND0_FILTER_CONFIG_READ_ONLY", OUTBOUND0_FILTER_CONFIG,
-                             READ_ONLY_CONFIG, length=8)
+        await self.csr_write(
+            "OUTBOUND0_FILTER_CONFIG_READ_ONLY", OUTBOUND0_FILTER_CONFIG, READ_ONLY_CONFIG, length=8
+        )
         assert self.accesses == 6, "output-fabric block-write setup mismatch"
 
 
@@ -226,9 +228,7 @@ async def jtag_axi_read(
     item.expected_resp = expected_resp
     item.check_golden = check_golden
     item.memory_region = memory_region
-    await _OneShot(item, f"jtag_output_read_0x{addr:x}_os").start(
-        test.env.jtag_axi_agent.sequencer
-    )
+    await _OneShot(item, f"jtag_output_read_0x{addr:x}_os").start(test.env.jtag_axi_agent.sequencer)
     return item
 
 
@@ -278,9 +278,9 @@ def output_responder_counts(dut=None) -> tuple[int, int]:
 BLOCKED_WRITE_HOLD_CYCLES = 64
 
 
-async def hold_output_responder_writes(*, expected_writes: int, label: str,
-                                       hold_cycles: int
-                                       = BLOCKED_WRITE_HOLD_CYCLES) -> int:
+async def hold_output_responder_writes(
+    *, expected_writes: int, label: str, hold_cycles: int = BLOCKED_WRITE_HOLD_CYCLES
+) -> int:
     """Require the SYS_OUT write counter to stay at ``expected_writes``.
 
     The negative half of an output-filter block proof: a write the filter must
@@ -319,13 +319,17 @@ async def hold_output_responder_writes(*, expected_writes: int, label: str,
 RESPONDER_OBS_TIMEOUT_CYCLES = 200
 
 
-async def check_output_responder_delta(*, start_writes: int, start_reads: int,
-                                       write_delta: int, read_delta: int,
-                                       last_addr: int | None = None,
-                                       last_wdata: int | None = None,
-                                       exact_writes: bool = True,
-                                       timeout_cycles: int
-                                       = RESPONDER_OBS_TIMEOUT_CYCLES) -> None:
+async def check_output_responder_delta(
+    *,
+    start_writes: int,
+    start_reads: int,
+    write_delta: int,
+    read_delta: int,
+    last_addr: int | None = None,
+    last_wdata: int | None = None,
+    exact_writes: bool = True,
+    timeout_cycles: int = RESPONDER_OBS_TIMEOUT_CYCLES,
+) -> None:
     """Wait (bounded) until the SYS_OUT responder shows the expected observation.
 
     Poll-until-condition on the real observables instead of a fixed settle:
@@ -356,11 +360,7 @@ async def check_output_responder_delta(*, start_writes: int, start_reads: int,
         last["read_count"] = _resolved_int(dut.tb_output_axi_read_count)
         last["last_addr"] = _resolved_int(dut.tb_output_axi_last_addr)
         last["last_wdata"] = _resolved_int(dut.tb_output_axi_last_wdata)
-        if (
-            exact_writes
-            and last["write_count"] is not None
-            and last["write_count"] > want_writes
-        ):
+        if exact_writes and last["write_count"] is not None and last["write_count"] > want_writes:
             raise AssertionError(
                 "SYS_OUT responder saw MORE writes than this scenario issued: "
                 f"write_count={last['write_count']} > expected exactly "
@@ -386,8 +386,11 @@ async def check_output_responder_delta(*, start_writes: int, start_reads: int,
             cocotb.log.info(
                 "output responder observation reached: write_count=%d (%s%d) "
                 "read_count=%d (>=%d) last_addr=%s last_wdata=%s",
-                last["write_count"], "==" if exact_writes else ">=", want_writes,
-                last["read_count"], want_reads,
+                last["write_count"],
+                "==" if exact_writes else ">=",
+                want_writes,
+                last["read_count"],
+                want_reads,
                 "n/a" if last_addr is None else f"0x{last['last_addr']:x}",
                 "n/a" if last_wdata is None else f"0x{last['last_wdata']:x}",
             )

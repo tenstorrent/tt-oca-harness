@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_mutex_semaphore_test_seq import (
     EXPECTED_VALUE_CHECKS,
     MUTEX_FREE,
@@ -14,6 +13,7 @@ from seq_lib.smc_mutex_semaphore_test_seq import (
     SEMA_STEP,
     smc_mutex_semaphore_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -27,7 +27,9 @@ class smc_mutex_semaphore_test(smc_base_test):
         # from booleans the sequence set itself: if a compare inside body() is
         # ever demoted to a log line, these still fail.
         assert (seq.take, seq.deny, seq.free_after_release) == (
-            MUTEX_FREE, MUTEX_TAKEN, MUTEX_FREE
+            MUTEX_FREE,
+            MUTEX_TAKEN,
+            MUTEX_FREE,
         ), (
             f"MUTEX[0] take/deny/release wrong: take=0x{seq.take:x} "
             f"deny=0x{seq.deny:x} free=0x{seq.free_after_release:x} "
@@ -44,7 +46,9 @@ class smc_mutex_semaphore_test(smc_base_test):
             f"free=0x{seq.nbr_free_after_own_release:x}"
         )
         assert (seq.sema_reset, seq.sema_inc, seq.sema_dec) == (
-            SEMA_RESET, SEMA_RESET + SEMA_STEP, SEMA_RESET
+            SEMA_RESET,
+            SEMA_RESET + SEMA_STEP,
+            SEMA_RESET,
         ), (
             f"SEMA[0] signed accumulate wrong: reset=0x{seq.sema_reset:x} "
             f"inc=0x{seq.sema_inc:x} dec=0x{seq.sema_dec:x}"

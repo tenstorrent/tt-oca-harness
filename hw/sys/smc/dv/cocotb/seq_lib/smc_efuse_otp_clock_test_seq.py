@@ -27,9 +27,7 @@ from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
-_MISC_WRAP_H = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "misc_wrap.h"
-)
+_MISC_WRAP_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "misc_wrap.h"
 
 
 def _chip_config_reset(field: str) -> int:
@@ -37,7 +35,9 @@ def _chip_config_reset(field: str) -> int:
     return _field_mask(_MISC_WRAP_H, f"CHIP_CONFIG__{field}__{field}_reset")
 
 
-CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+CLOCK_GATE_CONTROL = smc_addr(
+    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
+)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
 # Whole-register reset default from the generated PeakRDL Python map -- one
 # generated symbol, not a hand-composed field list (a hand list silently omits a
 # field the next regeneration adds). This makes the baseline CLOCK_GATE_CONTROL
@@ -58,9 +58,21 @@ CLOCK_GATE_CONTROL_RESET = SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT
 # value-checked instead of being decode-only evidence inside a CHK line that
 # claims every access was compared.
 CHIP_CONFIG_READS = [
-    ("CHIP_CONFIG_VERSION_LO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"), _chip_config_reset("VERSION_LO")),
-    ("CHIP_CONFIG_VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR"), _chip_config_reset("VERSION_HI")),
-    ("CHIP_CONFIG_CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"), _chip_config_reset("CHIP_ID")),
+    (
+        "CHIP_CONFIG_VERSION_LO",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"),
+        _chip_config_reset("VERSION_LO"),
+    ),
+    (
+        "CHIP_CONFIG_VERSION_HI",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR"),
+        _chip_config_reset("VERSION_HI"),
+    ),
+    (
+        "CHIP_CONFIG_CHIP_ID",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"),
+        _chip_config_reset("CHIP_ID"),
+    ),
 ]
 
 
@@ -80,11 +92,11 @@ class smc_efuse_otp_clock_test_seq(SmcCsrSeq):
         # Baseline read now carries the generated reset expectation, so it is a
         # value check in its own right and not just the reference for the
         # stability re-check below.
-        clock_gate = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL,
-                                         expected=CLOCK_GATE_CONTROL_RESET)
+        clock_gate = await self.csr_read(
+            "CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, expected=CLOCK_GATE_CONTROL_RESET
+        )
         await self.csr_read_many(CHIP_CONFIG_READS)
-        await self.csr_read("CLOCK_GATE_CONTROL_RECHECK", CLOCK_GATE_CONTROL,
-                            expected=clock_gate)
+        await self.csr_read("CLOCK_GATE_CONTROL_RECHECK", CLOCK_GATE_CONTROL, expected=clock_gate)
         assert self.accesses == len(CHIP_CONFIG_READS) + 3, "eFuse proxy read mismatch"
         # Every one of these accesses passed `expected` to the scoreboard, which
         # fails the run on any rdata mismatch, so reaching this line means all of

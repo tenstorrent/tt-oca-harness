@@ -20,10 +20,10 @@ import cocotb
 from cocotb.triggers import RisingEdge
 
 from .smc_jtag_protocol_vip import (
+    _DMI_DR_WIDTH,
     EXPECTED_CPU_TAP_IDCODE,
     SmcJtagTap,
     SmcJtagTapError,
-    _DMI_DR_WIDTH,
 )
 
 # --- DTMCS expectation, RISC-V External Debug Support v0.13.2 sec. 6.1.4 ---
@@ -65,8 +65,8 @@ DTMCS_RESERVED_HI_SHIFT = 15
 _CPU_TAP_IR_WIDTH = 5
 _IDCODE_DR_WIDTH = 32
 _DTMCS_DR_WIDTH = 32
-MIN_CPU_JTAG_TCK_EDGES = (
-    (_CPU_TAP_IR_WIDTH + _IDCODE_DR_WIDTH) + (_CPU_TAP_IR_WIDTH + _DTMCS_DR_WIDTH)
+MIN_CPU_JTAG_TCK_EDGES = (_CPU_TAP_IR_WIDTH + _IDCODE_DR_WIDTH) + (
+    _CPU_TAP_IR_WIDTH + _DTMCS_DR_WIDTH
 )
 
 
@@ -146,14 +146,14 @@ async def check_cpu_jtag_pin_vip() -> int:
     idcode = await tap.read_idcode(check=False)
     assert dut.tb_cpu_jtag_tdo.value.is_resolvable, "CPU JTAG TDO is not resolvable"
     assert idcode == EXPECTED_CPU_TAP_IDCODE, (
-        f"CPU JTAG IDCODE=0x{idcode:08X} != expected "
-        f"0x{EXPECTED_CPU_TAP_IDCODE:08X}"
+        f"CPU JTAG IDCODE=0x{idcode:08X} != expected 0x{EXPECTED_CPU_TAP_IDCODE:08X}"
     )
     cocotb.log.info(
         "CHK-CPU-JTAG-IDCODE: captured IDCODE=0x%08X == expected 0x%08X "
         "(full 32-bit match; tb_cpu_jtag_tdo resolvability is also asserted but "
         "is not DUT-sensitive evidence on a 2-state Verilator build)",
-        idcode, EXPECTED_CPU_TAP_IDCODE,
+        idcode,
+        EXPECTED_CPU_TAP_IDCODE,
     )
 
     dtmcs = await tap.read_dtmcs()
@@ -183,8 +183,15 @@ async def check_cpu_jtag_pin_vip() -> int:
     cocotb.log.info(
         "CHK-CPU-JTAG-DTMCS: DTMCS=0x%08X version=0x%X==0x%X abits=%d==%d "
         "dmistat=%d==%d reserved[31:%d]=0 (idle=%d advisory hint, not asserted)",
-        dtmcs, version, DTMCS_VERSION_0_13, abits, EXPECTED_DTMCS_ABITS,
-        dmistat, DTMCS_DMISTAT_NO_ERROR, DTMCS_RESERVED_HI_SHIFT, idle,
+        dtmcs,
+        version,
+        DTMCS_VERSION_0_13,
+        abits,
+        EXPECTED_DTMCS_ABITS,
+        dmistat,
+        DTMCS_DMISTAT_NO_ERROR,
+        DTMCS_RESERVED_HI_SHIFT,
+        idle,
     )
 
     tck_edges = tck_counter.stop()
@@ -201,7 +208,9 @@ async def check_cpu_jtag_pin_vip() -> int:
         "at the pin across the TAP reset + IDCODE + DTMCS scans >= floor %d "
         "(2 x (IR %d + DR 32) payload bits; reset/navigation/idle cycles "
         "deliberately excluded from the floor)",
-        tck_edges, MIN_CPU_JTAG_TCK_EDGES, _CPU_TAP_IR_WIDTH,
+        tck_edges,
+        MIN_CPU_JTAG_TCK_EDGES,
+        _CPU_TAP_IR_WIDTH,
     )
     return tck_edges
 

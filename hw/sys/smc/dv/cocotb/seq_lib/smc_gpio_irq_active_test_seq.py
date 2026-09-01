@@ -37,14 +37,11 @@ DATA_CTRL_SW_MASK = (
     | gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
     | gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bm")
 )
-DATA_CTRL_RO_MASK = (
-    gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
-    | gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
+DATA_CTRL_RO_MASK = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm") | gpio_intf_u32(
+    "GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm"
 )
 
-MAILBOX_IRQEN = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR"
-)
+MAILBOX_IRQEN = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR")
 # axil_mailbox.rdl IRQEN (regwidth 64): eirq[2]/rtirq[1]/wtirq[0] all reset 0x0
 # and no other field is declared, so the whole register reads 0 out of reset.
 MAILBOX_IRQEN_RESET = 0x0
@@ -66,8 +63,9 @@ class smc_gpio_irq_active_test_seq(SmcCsrSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
 
-        await self.csr_write("GPIO0_INPUT_ACTIVE_LOW_IRQ", GPIO0_DATA_CTRL,
-                             GPIO_INPUT_ACTIVE_LOW_IRQ)
+        await self.csr_write(
+            "GPIO0_INPUT_ACTIVE_LOW_IRQ", GPIO0_DATA_CTRL, GPIO_INPUT_ACTIVE_LOW_IRQ
+        )
         # Read-back proves the write landed in the DUT's register, not just that
         # the access completed: without it a write-only decode (or a dropped
         # write) is indistinguishable from a programmed IRQ configuration.
@@ -81,11 +79,14 @@ class smc_gpio_irq_active_test_seq(SmcCsrSeq):
             "CHK-GPIO0-DATA-CTRL-READBACK: sw bits 0x%08x match the programmed "
             "RX + interface-enable + IRQ-enable + active-low-level word "
             "(RO bits 0x%08x observed 0x%08x, not checked evidence)",
-            got_sw, DATA_CTRL_RO_MASK, readback & DATA_CTRL_RO_MASK,
+            got_sw,
+            DATA_CTRL_RO_MASK,
+            readback & DATA_CTRL_RO_MASK,
         )
 
-        await self.csr_read("MAILBOX_IRQEN_AS_IRQ_PROXY", MAILBOX_IRQEN,
-                            expected=MAILBOX_IRQEN_RESET, length=8)
+        await self.csr_read(
+            "MAILBOX_IRQEN_AS_IRQ_PROXY", MAILBOX_IRQEN, expected=MAILBOX_IRQEN_RESET, length=8
+        )
         cocotb.log.info(
             "CHK-MAILBOX-IRQEN-RESET: 0x%016x matches the axil_mailbox.rdl reset",
             MAILBOX_IRQEN_RESET,

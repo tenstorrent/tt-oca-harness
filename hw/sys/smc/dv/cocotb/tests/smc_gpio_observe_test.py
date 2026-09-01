@@ -47,15 +47,13 @@ path exists, moves, and then holds.
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_gpio_observe_test_seq import smc_gpio_observe_test_seq
 from seq_lib.smc_probe_positive_control import SmcGpioAggregateStabilitySeq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_gpio_observe_test(smc_base_test):
-
     # Number of further samples exact-compared against the reference sample, and
     # their spacing. Two samples over 160 clk_ref_i cycles keep the window long
     # enough for a spurious toggle to be visible without lengthening the run.

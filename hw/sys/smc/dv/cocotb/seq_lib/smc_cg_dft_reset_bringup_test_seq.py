@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
+from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
-from . import smc_addr_map as _addr
 
 # Every record this sequence emits goes through `cocotb.log`: a module-level
 # `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
@@ -46,13 +45,11 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
     def _dut(self):
         return cocotb.top
 
-    async def _program_cg(
-        self, *, dma_en: bool, zeroer_en: bool, hyst: int = HYST
-    ) -> None:
+    async def _program_cg(self, *, dma_en: bool, zeroer_en: bool, hyst: int = HYST) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (
-            cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK
-        ) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
+        nxt = (cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
+            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
+        )
         if dma_en:
             nxt |= DMA_CG_EN
         if zeroer_en:
@@ -62,9 +59,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
     async def _reset_op(self, op: SmcResetOp) -> SmcResetItem:
         item = SmcResetItem(op.value.lower())
         item.op = op
-        await _OneShot(item, f"reset_{op.value.lower()}_os").start(
-            self.env.reset_agent.sequencer
-        )
+        await _OneShot(item, f"reset_{op.value.lower()}_os").start(self.env.reset_agent.sequencer)
         return item
 
     async def _reset_sample(self) -> SmcResetItem:
@@ -134,9 +129,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
             f"Zeroer reg_clk gated under test_en_i: edges={zreg_edges} window={IDLE_OBSERVE}"
         )
         dft_every = int(
-            dma_edges == IDLE_OBSERVE
-            and zaxi_edges == IDLE_OBSERVE
-            and zreg_edges == IDLE_OBSERVE
+            dma_edges == IDLE_OBSERVE and zaxi_edges == IDLE_OBSERVE and zreg_edges == IDLE_OBSERVE
         )
         cg.emit_chk(
             self.chk_seen,
@@ -182,9 +175,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
             f"Zeroer reg_clk gated under rst_ni override: edges={zreg_rst_edges} "
             f"window={IDLE_OBSERVE}"
         )
-        rst_every = int(
-            zaxi_rst_edges == IDLE_OBSERVE and zreg_rst_edges == IDLE_OBSERVE
-        )
+        rst_every = int(zaxi_rst_edges == IDLE_OBSERVE and zreg_rst_edges == IDLE_OBSERVE)
         cg.emit_chk(
             self.chk_seen,
             "CHK-RESET-OVERRIDE-FREE-RUN",

@@ -47,9 +47,6 @@ package smc_pkg;
 	localparam int unsigned JTAG_ID_WIDTH                         = 2;
 	localparam int unsigned SEP_IN_ID_WIDTH                       = 6;
 
-	// Local alias region size
-	localparam logic [AXI_ADDR_WIDTH-1:0] LOCAL_ALIAS_REGION_SIZE = 56'h100_0000;	// 16MB of local alias region
-
 	// Output ID Width Parameters
 	localparam int unsigned SYS_OUT_ID_WIDTH = 8;
 
@@ -462,6 +459,10 @@ package smc_pkg;
     	jtag_smc_reset_ctrl_ovrd_t ovrd;
     	jtag_smc_reset_ctrl_val_t val;
 	} jtag_smc_reset_ctrl_t;
+
+	function automatic logic is_pow2(input logic [31:0] value);
+		return (value != '0) && ((value & (value - 32'd1)) == '0);
+	endfunction
 
 endpackage
 `endif  // SMC_PACKAGE_DEFINED

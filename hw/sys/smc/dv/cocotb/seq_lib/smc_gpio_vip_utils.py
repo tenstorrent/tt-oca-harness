@@ -45,9 +45,7 @@ def _irq_level(dut) -> int:
     arbitrarily ([X-AWARE-CHECK]).
     """
     raw = dut.tb_gpio_irq_any.value
-    assert raw.is_resolvable, (
-        f"tb_gpio_irq_any is not resolvable (X/Z): {raw}"
-    )
+    assert raw.is_resolvable, f"tb_gpio_irq_any is not resolvable (X/Z): {raw}"
     return int(raw)
 
 
@@ -105,21 +103,27 @@ async def check_gpio0_active_low_irq() -> None:
     cycles = await await_gpio_irq_level(dut, 0, "gpio0_pad_high_idle")
     cocotb.log.info(
         "CHK-GPIO-IRQ-ACTIVE-LOW-IDLE: pad held 1 -> tb_gpio_irq_any==0 after "
-        "%d clk_smc_i cycles, held %d", cycles, _IRQ_HOLD_CYCLES,
+        "%d clk_smc_i cycles, held %d",
+        cycles,
+        _IRQ_HOLD_CYCLES,
     )
 
     dut.tb_gpio_ext_drive_value.value = 0x0
     cycles = await await_gpio_irq_level(dut, 1, "gpio0_pad_low_assert")
     cocotb.log.info(
         "CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT: pad 1->0 asserted tb_gpio_irq_any==1 "
-        "after %d clk_smc_i cycles, held %d", cycles, _IRQ_HOLD_CYCLES,
+        "after %d clk_smc_i cycles, held %d",
+        cycles,
+        _IRQ_HOLD_CYCLES,
     )
 
     dut.tb_gpio_ext_drive_value.value = 0x1
     cycles = await await_gpio_irq_level(dut, 0, "gpio0_pad_high_clear")
     cocotb.log.info(
         "CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR: pad 0->1 cleared tb_gpio_irq_any==0 "
-        "after %d clk_smc_i cycles, held %d", cycles, _IRQ_HOLD_CYCLES,
+        "after %d clk_smc_i cycles, held %d",
+        cycles,
+        _IRQ_HOLD_CYCLES,
     )
 
     dut.tb_gpio_ext_drive_en.value = 0x0

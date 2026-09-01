@@ -98,7 +98,8 @@ class SmcResetDriver(uvm_driver):
         item.wait_ref_cycles = item.timeout_ref_cycles
         self.logger.error(
             "WAIT_STATE did not match within %d ref cycles; last %s",
-            item.timeout_ref_cycles, item,
+            item.timeout_ref_cycles,
+            item,
         )
 
     def _sample(self, item: SmcResetItem, log: bool = True) -> None:
@@ -124,7 +125,6 @@ class SmcResetDriver(uvm_driver):
 
 
 class SmcResetAgent(uvm_agent):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)

@@ -156,7 +156,6 @@ def _slot_signature(index: int, outbound: bool) -> int:
 
 
 class smc_filter_multi_entry_test_seq(SmcCsrSeq):
-
     def __init__(self, name: str = "smc_filter_multi_entry_test_seq") -> None:
         super().__init__(name)
         #: Scoreboard-measured exact-value compares booked by this sweep.
@@ -173,15 +172,9 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
         default = FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT
         table: list[tuple[str, int, int, int]] = []
         for i, addr in enumerate(_INBOUND_FILTER_CONFIG):
-            table.append(
-                ("INBOUND_FILTER", i, addr,
-                 default | _slot_signature(i, outbound=False))
-            )
+            table.append(("INBOUND_FILTER", i, addr, default | _slot_signature(i, outbound=False)))
         for i, addr in enumerate(_OUTBOUND_FILTER_CONFIG):
-            table.append(
-                ("OUTBOUND_FILTER", i, addr,
-                 default | _slot_signature(i, outbound=True))
-            )
+            table.append(("OUTBOUND_FILTER", i, addr, default | _slot_signature(i, outbound=True)))
         return table
 
     async def body(self) -> None:
@@ -199,24 +192,19 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
             "distinct, so a co-resident readback would not discriminate slots"
         )
         assert len({addr for _, _, addr, _ in table}) == slots, (
-            "filter_multi_entry: the 32 FILTER_CONFIG addresses are not "
-            "pairwise distinct"
+            "filter_multi_entry: the 32 FILTER_CONFIG addresses are not pairwise distinct"
         )
 
         # PHASE 1 -- RDL reset content of every window, before anything is
         # written anywhere.
         for label, index, addr, _sig in table:
-            await self.csr_read(
-                f"{label}_{index}_CONFIG", addr, expected=default, length=8
-            )
+            await self.csr_read(f"{label}_{index}_CONFIG", addr, expected=default, length=8)
 
         # PHASE 2 -- program ALL 32 slots and restore NONE of them, so that at
         # the end of this phase the 32 distinct signatures are simultaneously
         # resident in the DUT.
         for label, index, addr, sig in table:
-            await self.csr_write(
-                f"{label}_{index}_CONFIG_SIG", addr, sig, length=8
-            )
+            await self.csr_write(f"{label}_{index}_CONFIG_SIG", addr, sig, length=8)
 
         # PHASE 3 -- the slot-identity proof. Every readback happens while the
         # other 31 slots still hold their own distinct signatures, so a window
@@ -225,21 +213,14 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
         # shared register holds the LAST signature written in phase 2, so the
         # very first readback here fails.
         for label, index, addr, sig in table:
-            await self.csr_read(
-                f"{label}_{index}_CONFIG_SIG", addr, expected=sig, length=8
-            )
+            await self.csr_read(f"{label}_{index}_CONFIG_SIG", addr, expected=sig, length=8)
 
         # PHASE 4/5 -- restore the RDL reset content everywhere, readback
         # confirmed, so the sweep leaves no filter CSR perturbed.
         for label, index, addr, _sig in table:
-            await self.csr_write(
-                f"{label}_{index}_CONFIG_RESTORE", addr, default, length=8
-            )
+            await self.csr_write(f"{label}_{index}_CONFIG_RESTORE", addr, default, length=8)
         for label, index, addr, _sig in table:
-            await self.csr_read(
-                f"{label}_{index}_CONFIG_RESTORE", addr, expected=default,
-                length=8
-            )
+            await self.csr_read(f"{label}_{index}_CONFIG_RESTORE", addr, expected=default, length=8)
 
         expected_accesses = slots * _ACCESSES_PER_SLOT
         expected_value_checks = slots * _VALUE_CHECKS_PER_SLOT
@@ -252,9 +233,7 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
         # the scoreboard books a value check only AFTER an exact rdata compare
         # passed, so a mis-bound analysis path (or a leg that lost its
         # `expected=`) fails here instead of passing on zero compares.
-        self.value_checks_measured = (
-            sb.sys_axi_value_checks_seen - value_checks_before
-        )
+        self.value_checks_measured = sb.sys_axi_value_checks_seen - value_checks_before
         assert self.value_checks_measured >= expected_value_checks, (
             f"filter_multi_entry: scoreboard booked only "
             f"{self.value_checks_measured} SEP_IN AXI exact-value compares, "
@@ -272,5 +251,8 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
             "signature and fails the scoreboard's exact 64-bit compare; "
             "scoreboard booked %d >= %d exact-value compares (independent "
             "observer, not the sequence's own access counter)",
-            slots, slots, self.value_checks_measured, expected_value_checks,
+            slots,
+            slots,
+            self.value_checks_measured,
+            expected_value_checks,
         )

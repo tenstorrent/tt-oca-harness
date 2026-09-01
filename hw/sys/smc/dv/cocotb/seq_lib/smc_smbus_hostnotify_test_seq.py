@@ -44,22 +44,14 @@ _HOST_ADDR = 0x08
 _TARGET_ADDR = 0x50
 _NOTIFY_DATA16 = 0xBEEF
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-I2C0_WRAP_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-)
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
 I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
 I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
 I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 0)
-I2C0_FIFO_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0
-)
-I2C0_TARGET_ID = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0
-)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
+I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0)
 I2C0_ACQDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", 0)
 I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
 I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
@@ -72,10 +64,7 @@ I2C_WRAP_ENABLE = I2C_WRAP_CTRL_TARGET
 I2C_OVRD_OFF = 0x0
 # RXRST|FMTRST|ACQRST|TXRST — clear host + target FIFOs before target mode.
 I2C_FIFO_CTRL_ALL_RST = (
-    I2C_FIFO_CTRL_RXRST
-    | I2C_FIFO_CTRL_FMTRST
-    | I2C_FIFO_CTRL_ACQRST
-    | I2C_FIFO_CTRL_TXRST
+    I2C_FIFO_CTRL_RXRST | I2C_FIFO_CTRL_FMTRST | I2C_FIFO_CTRL_ACQRST | I2C_FIFO_CTRL_TXRST
 )
 
 
@@ -195,16 +184,12 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
         )
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
+        await self.csr_write("CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
         await self.csr_write("I2C0_WRAP_ENABLE", I2C0_WRAP_CTRL, I2C_WRAP_ENABLE)
         await self.wait_i2c0_lsio_ready("I2C0_HOSTNOTIFY_WRAP")
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
-        await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_ALL_RST
-        )
+        await self.csr_write("I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_ALL_RST)
         await self.csr_write(
             "I2C0_TARGET_ID_HOST",
             I2C0_TARGET_ID,
@@ -229,18 +214,13 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
         self.observed_acq_words = list(words)
         cocotb.log.info(
             "DUT Host Notify ACQDATA words=%s",
-            [
-                f"(sig={acq_signal(w)},0x{acq_abyte(w):02X})"
-                for w in words
-            ],
+            [f"(sig={acq_signal(w)},0x{acq_abyte(w):02X})" for w in words],
         )
         assert words, "DUT ACQDATA empty after Host Notify"
 
         # Exact expected frame: START(host addr, W) + 3 HN data bytes + STOP.
         expect = [pack_acq((_HOST_ADDR << 1) | 0, I2C_ACQ_SIGNAL_START)]
-        expect.extend(
-            pack_acq(b, I2C_ACQ_SIGNAL_NONE) for b in expected_payload
-        )
+        expect.extend(pack_acq(b, I2C_ACQ_SIGNAL_NONE) for b in expected_payload)
         expect.append(pack_acq(0, I2C_ACQ_SIGNAL_STOP))
         assert len(words) == len(expect), (
             f"DUT Host Notify ACQ length mismatch: got={len(words)} "
@@ -262,9 +242,7 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
         # Position-by-position compare of the whole frame (payload included).
         for i, exp_word in enumerate(expect[:-1]):
             got = words[i]
-            if acq_abyte(got) != acq_abyte(exp_word) or acq_signal(
-                got
-            ) != acq_signal(exp_word):
+            if acq_abyte(got) != acq_abyte(exp_word) or acq_signal(got) != acq_signal(exp_word):
                 raise AssertionError(
                     f"DUT Host Notify ACQ[{i}] mismatch got=0x{got:04x} "
                     f"exp=0x{exp_word:04x} "
@@ -275,9 +253,7 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
             f"0x{words[-1]:04x} words={[hex(w) for w in words]}"
         )
 
-        data_bytes = [
-            acq_abyte(w) for w in words if acq_signal(w) == I2C_ACQ_SIGNAL_NONE
-        ]
+        data_bytes = [acq_abyte(w) for w in words if acq_signal(w) == I2C_ACQ_SIGNAL_NONE]
         self.observed_bytes = bytes(data_bytes)
 
         await self.csr_write("I2C0_CTRL_DISABLE", I2C0_CTRL, 0)

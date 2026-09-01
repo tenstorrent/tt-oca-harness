@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_cpu_reset_source_test_seq import (
     APPLIED,
     CORE0_N,
     smc_cpu_reset_source_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

@@ -32,11 +32,11 @@ _I2C_WRITE_OFFSET = 0x10
 _SMBUS_PEC_OFFSET = 0x20
 _SMBUS_PEC_DATA = 0xA5
 _SMBUS_ARA_ADDR = 0x0C
-_SMBUS_ARA_REPLY = (_I2C_EEPROM_ADDR << 1)  # 0xA0 — alerting slave addr<<1
+_SMBUS_ARA_REPLY = _I2C_EEPROM_ADDR << 1  # 0xA0 — alerting slave addr<<1
 
 from .smc_addr_map import (
-    I2C_CG_EN,
     _REPO,
+    I2C_CG_EN,
     _field_mask,
     smc_addr,
     smc_indexed_addr,
@@ -67,38 +67,29 @@ def _i2c_field(reg: str, field: str, value: int) -> int:
     pos = _i2c_u32(f"I2C__{reg}__{field}_bp")
     packed = (value << pos) & mask
     assert packed >> pos == value, (
-        f"{value:#x} does not fit I2C.{reg}.{field} (mask {mask:#x} at bit "
-        f"{pos})"
+        f"{value:#x} does not fit I2C.{reg}.{field} (mask {mask:#x} at bit {pos})"
     )
     return packed
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
-I2C0_WRAP_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-)
+
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
 I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
 I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
 I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 0)
 I2C0_RDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR", 0)
 I2C0_FDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", 0)
-I2C0_FIFO_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0
-)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
 I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
 I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
 I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", 0)
 I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", 0)
 I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", 0)
-I2C0_CONTROLLER_EVENTS = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0
-)
+I2C0_CONTROLLER_EVENTS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0)
 
 # I2C_CTRL (SMC wrapper): enable the instance and put it in controller mode.
-I2C_WRAP_ENABLE_CONTROLLER = (
-    _i2c_ctrl_u32("I2C_CTRL__I2C_CTRL__I2C_EN_bm")
-    | _i2c_ctrl_u32("I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bm")
+I2C_WRAP_ENABLE_CONTROLLER = _i2c_ctrl_u32("I2C_CTRL__I2C_CTRL__I2C_EN_bm") | _i2c_ctrl_u32(
+    "I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bm"
 )
 I2C_CTRL_ENABLEHOST = _i2c_u32("I2C__CTRL__ENABLEHOST_bm")
 
@@ -113,8 +104,8 @@ I2C_OVRD_PULL_SDA_LOW = _I2C_OVRD_TXOVRDEN | _I2C_OVRD_SCLVAL
 I2C_OVRD_PULL_BOTH_LOW = _I2C_OVRD_TXOVRDEN
 I2C_OVRD_OFF = 0x0
 
-I2C_FIFO_CTRL_RXRST_FMTRST = (
-    _i2c_u32("I2C__FIFO_CTRL__RXRST_bm") | _i2c_u32("I2C__FIFO_CTRL__FMTRST_bm")
+I2C_FIFO_CTRL_RXRST_FMTRST = _i2c_u32("I2C__FIFO_CTRL__RXRST_bm") | _i2c_u32(
+    "I2C__FIFO_CTRL__FMTRST_bm"
 )
 I2C_STATUS_HOSTIDLE = _i2c_u32("I2C__STATUS__HOSTIDLE_bm")
 I2C_STATUS_RXEMPTY = _i2c_u32("I2C__STATUS__RXEMPTY_bm")
@@ -132,13 +123,10 @@ I2C_CONTROLLER_EVENTS_ALL = (
 )
 
 I2C_READABLE_REGS = [
-    ("I2C0_INTR_STATE", smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0), 0x0),
+    ("I2C0_INTR_STATE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0), 0x0),
     ("I2C0_STATUS", I2C0_STATUS, None),
-    ("I2C1_INTR_STATE", smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
-    ("I2C2_INTR_STATE", smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
+    ("I2C1_INTR_STATE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
+    ("I2C2_INTR_STATE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
 ]
 
 
@@ -148,9 +136,7 @@ def _fdata(byte: int, flags: int = 0) -> int:
 
 
 def _pack_timing0(thigh: int, tlow: int) -> int:
-    return _i2c_field("TIMING0", "THIGH", thigh) | _i2c_field(
-        "TIMING0", "TLOW", tlow
-    )
+    return _i2c_field("TIMING0", "THIGH", thigh) | _i2c_field("TIMING0", "TLOW", tlow)
 
 
 def _pack_timing1(t_r: int, t_f: int) -> int:
@@ -158,21 +144,15 @@ def _pack_timing1(t_r: int, t_f: int) -> int:
 
 
 def _pack_timing2(tsu_sta: int, thd_sta: int) -> int:
-    return _i2c_field("TIMING2", "TSU_STA", tsu_sta) | _i2c_field(
-        "TIMING2", "THD_STA", thd_sta
-    )
+    return _i2c_field("TIMING2", "TSU_STA", tsu_sta) | _i2c_field("TIMING2", "THD_STA", thd_sta)
 
 
 def _pack_timing3(tsu_dat: int, thd_dat: int) -> int:
-    return _i2c_field("TIMING3", "TSU_DAT", tsu_dat) | _i2c_field(
-        "TIMING3", "THD_DAT", thd_dat
-    )
+    return _i2c_field("TIMING3", "TSU_DAT", tsu_dat) | _i2c_field("TIMING3", "THD_DAT", thd_dat)
 
 
 def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
-    return _i2c_field("TIMING4", "TSU_STO", tsu_sto) | _i2c_field(
-        "TIMING4", "T_BUF", t_buf
-    )
+    return _i2c_field("TIMING4", "TSU_STO", tsu_sto) | _i2c_field("TIMING4", "T_BUF", t_buf)
 
 
 class smc_i2c_master_target_test_seq(SmcCsrSeq):
@@ -308,9 +288,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
-        await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
-        )
+        await self.csr_write("I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
         # W1C: clear sticky NACK/halt so a prior attempt cannot freeze Idle+SCL.
         await self.csr_write(
             "I2C0_CONTROLLER_EVENTS_CLR",
@@ -326,9 +304,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             I2C0_FDATA,
             _fdata(addr_byte, I2C_FDATA_START),
         )
-        await self.csr_write(
-            "I2C0_FDATA_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET)
-        )
+        await self.csr_write("I2C0_FDATA_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET))
         await self.csr_write(
             "I2C0_FDATA_DATA_STOP",
             I2C0_FDATA,
@@ -375,22 +351,12 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         pec = SmcI2cMasterVip.smbus_pec(_I2C_EEPROM_ADDR, 0, payload)
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0
 
-        await self.csr_write(
-            "I2C0_FIFO_RST_PEC", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
-        )
+        await self.csr_write("I2C0_FIFO_RST_PEC", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
         base_stops = self._i2c_slave.stops
-        await self.csr_write(
-            "I2C0_FDATA_PEC_START", I2C0_FDATA, _fdata(addr_byte, I2C_FDATA_START)
-        )
-        await self.csr_write(
-            "I2C0_FDATA_PEC_OFFSET", I2C0_FDATA, _fdata(_SMBUS_PEC_OFFSET)
-        )
-        await self.csr_write(
-            "I2C0_FDATA_PEC_DATA", I2C0_FDATA, _fdata(_SMBUS_PEC_DATA)
-        )
-        await self.csr_write(
-            "I2C0_FDATA_PEC_STOP", I2C0_FDATA, _fdata(pec, I2C_FDATA_STOP)
-        )
+        await self.csr_write("I2C0_FDATA_PEC_START", I2C0_FDATA, _fdata(addr_byte, I2C_FDATA_START))
+        await self.csr_write("I2C0_FDATA_PEC_OFFSET", I2C0_FDATA, _fdata(_SMBUS_PEC_OFFSET))
+        await self.csr_write("I2C0_FDATA_PEC_DATA", I2C0_FDATA, _fdata(_SMBUS_PEC_DATA))
+        await self.csr_write("I2C0_FDATA_PEC_STOP", I2C0_FDATA, _fdata(pec, I2C_FDATA_STOP))
 
         await self._wait_hostidle("DUT_SMBUS_PEC")
         await self._wait_slave_stop("DUT_SMBUS_PEC", base_stops)
@@ -424,13 +390,9 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         ara_slave = SmcI2cEepromSlave(addr=_SMBUS_ARA_ADDR, name="smc_i2c0_ara")
         ara_slave.write_mem(0, bytes([_SMBUS_ARA_REPLY]))
 
-        await self.csr_write(
-            "I2C0_FIFO_RST_ARA", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
-        )
+        await self.csr_write("I2C0_FIFO_RST_ARA", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
         addr_r = (_SMBUS_ARA_ADDR << 1) | 1
-        await self.csr_write(
-            "I2C0_FDATA_ARA_START", I2C0_FDATA, _fdata(addr_r, I2C_FDATA_START)
-        )
+        await self.csr_write("I2C0_FDATA_ARA_START", I2C0_FDATA, _fdata(addr_r, I2C_FDATA_START))
         # READB + STOP + FBYTE=1: read one byte then NACK/STOP (OT host pattern).
         await self.csr_write(
             "I2C0_FDATA_ARA_READ",
@@ -450,9 +412,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 break
             await Timer(10, units="us")
         else:
-            raise AssertionError(
-                f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})"
-            )
+            raise AssertionError(f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})")
 
         # Transfer may already be back in hostidle by the time RX is readable, so
         # busy is not always sampled. Either way the FMT entries must be proven
@@ -478,8 +438,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             (rdata >> 1) & 0x7F,
         )
         assert rdata == _SMBUS_ARA_REPLY, (
-            f"DUT SMBus ARA mismatch: got 0x{rdata:02X}, "
-            f"expected 0x{_SMBUS_ARA_REPLY:02X}"
+            f"DUT SMBus ARA mismatch: got 0x{rdata:02X}, expected 0x{_SMBUS_ARA_REPLY:02X}"
         )
         self.dut_smbus_ara_ok = True
         cocotb.log.info(
@@ -506,20 +465,14 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             except Exception as exc:  # noqa: BLE001 - defensive
                 cocotb.log.warning("I2C EEPROM slave bind skipped: %s", exc)
 
-        self.clock_gate_value = await self.csr_read(
-            "CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL
-        )
+        self.clock_gate_value = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
 
         for name, addr, expected in I2C_READABLE_REGS:
             await self.csr_read(name, addr, expected)
 
         ungated = self.clock_gate_value & ~I2C_CG_EN
-        await self.csr_write(
-            "CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, ungated
-        )
-        await self.csr_read(
-            "CLOCK_GATE_CONTROL_UNGATED", CLOCK_GATE_CONTROL, expected=ungated
-        )
+        await self.csr_write("CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, ungated)
+        await self.csr_read("CLOCK_GATE_CONTROL_UNGATED", CLOCK_GATE_CONTROL, expected=ungated)
 
         await self.csr_write(
             "I2C0_WRAP_ENABLE_CONTROLLER",
@@ -537,30 +490,18 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         # OVRD pin-level gate (register -> pad).
         await self.csr_write("I2C0_OVRD_RELEASE", I2C0_OVRD, I2C_OVRD_RELEASE)
         await self._check_line("i2c_release", expected_scl=1, expected_sda=1)
-        await self.csr_write(
-            "I2C0_OVRD_PULL_SCL_LOW", I2C0_OVRD, I2C_OVRD_PULL_SCL_LOW
-        )
+        await self.csr_write("I2C0_OVRD_PULL_SCL_LOW", I2C0_OVRD, I2C_OVRD_PULL_SCL_LOW)
         await self._check_line("i2c_scl_low", expected_scl=0, expected_sda=1)
-        await self.csr_write(
-            "I2C0_OVRD_PULL_SDA_LOW", I2C0_OVRD, I2C_OVRD_PULL_SDA_LOW
-        )
+        await self.csr_write("I2C0_OVRD_PULL_SDA_LOW", I2C0_OVRD, I2C_OVRD_PULL_SDA_LOW)
         await self._check_line("i2c_sda_low", expected_scl=1, expected_sda=0)
-        await self.csr_write(
-            "I2C0_OVRD_PULL_BOTH_LOW", I2C0_OVRD, I2C_OVRD_PULL_BOTH_LOW
-        )
+        await self.csr_write("I2C0_OVRD_PULL_BOTH_LOW", I2C0_OVRD, I2C_OVRD_PULL_BOTH_LOW)
         await self._check_line("i2c_both_low", expected_scl=0, expected_sda=0)
-        await self.csr_write(
-            "I2C0_OVRD_RELEASE_RESTORE", I2C0_OVRD, I2C_OVRD_RELEASE
-        )
-        await self._check_line(
-            "i2c_release_restore", expected_scl=1, expected_sda=1
-        )
+        await self.csr_write("I2C0_OVRD_RELEASE_RESTORE", I2C0_OVRD, I2C_OVRD_RELEASE)
+        await self._check_line("i2c_release_restore", expected_scl=1, expected_sda=1)
 
         # U4-2 hard gate: DUT controller must own the bus (VCS and Verilator).
         if self._i2c_slave is None:
-            raise AssertionError(
-                "I2C EEPROM slave VIP unavailable; cannot prove DUT host path"
-            )
+            raise AssertionError("I2C EEPROM slave VIP unavailable; cannot prove DUT host path")
         await self._dut_i2c0_host_write_proof()
         await self._dut_i2c0_smbus_pec_write_proof()
         await self._dut_i2c0_smbus_ara_read_proof()
@@ -576,11 +517,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             CLOCK_GATE_CONTROL,
             expected=self.clock_gate_value,
         )
-        assert (
-            self.dut_host_write_ok
-            and self.dut_smbus_pec_ok
-            and self.dut_smbus_ara_ok
-        ), (
+        assert self.dut_host_write_ok and self.dut_smbus_pec_ok and self.dut_smbus_ara_ok, (
             "I2C U4-2/SMBus incomplete: "
             f"write={self.dut_host_write_ok} pec={self.dut_smbus_pec_ok} "
             f"ara={self.dut_smbus_ara_ok}"

@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import RESET_SAMPLE_FIELDS, SmcResetItem, SmcResetOp
 
 from .smc_base_test_seq import smc_base_test_seq
@@ -63,8 +62,7 @@ class SmcResetSeqBase(smc_base_test_seq):
     # The only keyword names `_send` may set on the item. Anything else is a
     # typo, and a typo applied by blind setattr is a silent non-check.
     _SEND_KEYS = frozenset(
-        [f"expect_{f}" for f in RESET_SAMPLE_FIELDS]
-        + ["expect_left_stable", "timeout_ref_cycles"]
+        [f"expect_{f}" for f in RESET_SAMPLE_FIELDS] + ["expect_left_stable", "timeout_ref_cycles"]
     )
 
     def __init__(self, name: str = "smc_reset_seq_base") -> None:
@@ -87,9 +85,7 @@ class SmcResetSeqBase(smc_base_test_seq):
         **expects,
     ) -> SmcResetItem:
         bad = set(expects) - self._SEND_KEYS
-        assert not bad, (
-            f"unknown reset item keyword(s) {sorted(bad)} (typo = silent non-check)"
-        )
+        assert not bad, f"unknown reset item keyword(s) {sorted(bad)} (typo = silent non-check)"
         item = SmcResetItem(item_name or op.value.lower())
         item.op = op
         for field, value in expects.items():
@@ -120,8 +116,7 @@ class SmcResetSeqBase(smc_base_test_seq):
         )
         if label:
             self._timeout_paths.append(
-                f"{label}: bound={bound} ref_cycles matched at "
-                f"{item.wait_ref_cycles} last={item}"
+                f"{label}: bound={bound} ref_cycles matched at {item.wait_ref_cycles} last={item}"
             )
         return item
 
@@ -184,7 +179,10 @@ class SmcResetSeqBase(smc_base_test_seq):
         cocotb.log.info(
             "CHK-MID-ASSERT-HOLD: %s stayed in the expected state at all %d "
             "checked clk_ref_i samples after the assert handshake matched; "
-            "last %s", label, hold, last,
+            "last %s",
+            label,
+            hold,
+            last,
         )
         self._timeout_paths.append(
             f"{label}: hold={hold} ref_cycles all samples matched last={last}"

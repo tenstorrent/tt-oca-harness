@@ -22,11 +22,13 @@ from cocotb.triggers import ClockCycles
 # it, and the parse fails loudly if the enum is renamed or removed.
 _AVSBUS_RTL = (
     Path(__file__).resolve().parents[6]
-    / "hw" / "ip" / "avsbus_controller" / "rtl" / "avsbus_controller.sv"
+    / "hw"
+    / "ip"
+    / "avsbus_controller"
+    / "rtl"
+    / "avsbus_controller.sv"
 )
-_STATE_ENUM_RE = re.compile(
-    r"typedef\s+enum\s+logic\s*\[16:0\]\s*\{(.*?)\}\s*state_t\s*;", re.S
-)
+_STATE_ENUM_RE = re.compile(r"typedef\s+enum\s+logic\s*\[16:0\]\s*\{(.*?)\}\s*state_t\s*;", re.S)
 _STATE_ROW_RE = re.compile(r"(AVS_\w+)\s*=\s*17'b([01]{17})")
 
 
@@ -43,9 +45,7 @@ def avs_state_map() -> dict[int, str]:
     return out
 
 
-AVS_STATE_IDLE = next(
-    code for code, name in avs_state_map().items() if name == "AVS_IDLE"
-)
+AVS_STATE_IDLE = next(code for code, name in avs_state_map().items() if name == "AVS_IDLE")
 
 
 async def check_sideband_observability() -> None:
@@ -92,8 +92,7 @@ async def check_sideband_observability() -> None:
     # so both aggregates must still be deasserted. A spuriously asserting IRQ
     # fails here instead of being logged and ignored.
     assert avs_irq == 0, (
-        f"AVSBus IRQ asserted ({avs_irq}) after CSR probes that configure no "
-        f"interrupt source"
+        f"AVSBus IRQ asserted ({avs_irq}) after CSR probes that configure no interrupt source"
     )
     assert tel_irq == 0, (
         f"Telemetry IRQ aggregate asserted ({tel_irq}) after CSR probes that "
@@ -123,7 +122,12 @@ async def check_sideband_observability() -> None:
         "avsbus_controller.sv state_t) -- IRQ aggregates quiescent and FSM in "
         "IDLE; the is_resolvable guards above are 4-state-only and are no-ops "
         "on this Verilator run",
-        avs_irq, tel_irq, state, states[state], onehot_bits, len(states),
+        avs_irq,
+        tel_irq,
+        state,
+        states[state],
+        onehot_bits,
+        len(states),
     )
 
 
@@ -146,9 +150,7 @@ async def wait_avsbus_leave_idle(max_cycles: int = 4000) -> int:
     for _ in range(max_cycles):
         state = await sample_avsbus_cur_state()
         if state != AVS_STATE_IDLE:
-            cocotb.log.info(
-                "AVSBus FSM left IDLE: cur_state_debug=0x%x", state
-            )
+            cocotb.log.info("AVSBus FSM left IDLE: cur_state_debug=0x%x", state)
             return state
         await ClockCycles(dut.clk_smc_i, 1)
     state = await sample_avsbus_cur_state()

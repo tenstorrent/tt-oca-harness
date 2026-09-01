@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_mailbox_irq_test_seq import smc_mailbox_irq_test_seq
 from seq_lib.smc_mailbox_vip_utils import check_mailbox_irq_source
-
+from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a

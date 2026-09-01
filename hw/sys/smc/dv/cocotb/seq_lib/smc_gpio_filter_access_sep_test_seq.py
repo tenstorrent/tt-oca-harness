@@ -22,8 +22,8 @@ import sys
 from pathlib import Path
 
 import cocotb
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
+
 from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -121,8 +121,7 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         )
         got = item.rdata & 0xFFFF_FFFF
         assert got == (self.ERR_SLAVE_SIGNATURE & 0xFFFF_FFFF), (
-            f"{name} @ 0x{addr:08x}: expected 0x{self.ERR_SLAVE_SIGNATURE:08x}, "
-            f"got 0x{got:08x}"
+            f"{name} @ 0x{addr:08x}: expected 0x{self.ERR_SLAVE_SIGNATURE:08x}, got 0x{got:08x}"
         )
         self.denied_resps.append(item.resp_code)
         return item.rdata
@@ -137,24 +136,17 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         got = await self.csr_read(
             "GPIO0_FILTER_PRE", GPIO0_FILTER, expected=_FILTER_RESET, prot=_PROT_UNPRIV
         )
-        cocotb.log.info(
-            "CHK-GPIO-FILTER-PRE: GPIO0 ACCESS_FILTER reset 0x%x with AxPROT=0", got
-        )
+        cocotb.log.info("CHK-GPIO-FILTER-PRE: GPIO0 ACCESS_FILTER reset 0x%x with AxPROT=0", got)
 
-        await self.csr_write(
-            "GPIO0_FILTER_LOCK", GPIO0_FILTER, _FILTER_LOCK, prot=_AWPROT_PRIV
-        )
+        await self.csr_write("GPIO0_FILTER_LOCK", GPIO0_FILTER, _FILTER_LOCK, prot=_AWPROT_PRIV)
         got = await self.csr_read(
             "GPIO0_FILTER_PRIV", GPIO0_FILTER, expected=_FILTER_LOCK, prot=_ARPROT_PRIV
         )
-        cocotb.log.info(
-            "CHK-GPIO-FILTER-PRIV: GPIO0 ACCESS_FILTER 0x%x with AxPROT=1", got
-        )
+        cocotb.log.info("CHK-GPIO-FILTER-PRIV: GPIO0 ACCESS_FILTER 0x%x with AxPROT=1", got)
 
         resp = await self._read_denied_decerr("GPIO0_FILTER_UNPRIV", GPIO0_FILTER)
         cocotb.log.info(
-            "CHK-GPIO-FILTER-UNPRIV: GPIO0 ACCESS_FILTER AxPROT=0 read -> resp=%s "
-            "rdata=0x%08x",
+            "CHK-GPIO-FILTER-UNPRIV: GPIO0 ACCESS_FILTER AxPROT=0 read -> resp=%s rdata=0x%08x",
             _RESP_NAME.get(AXI_RESP_DECERR),
             resp & 0xFFFF_FFFF,
         )
@@ -165,36 +157,35 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         # have disarmed itself, so the privileged readback that follows is a
         # direct test of "the refused write took no effect" rather than a
         # response-code observation.
-        wr_resp = await self._write_denied(
-            "GPIO0_FILTER_UNPRIV_WR", GPIO0_FILTER, _FILTER_RESET
-        )
+        wr_resp = await self._write_denied("GPIO0_FILTER_UNPRIV_WR", GPIO0_FILTER, _FILTER_RESET)
         got = await self.csr_read(
-            "GPIO0_FILTER_AFTER_DENIED_WR", GPIO0_FILTER, expected=_FILTER_LOCK,
+            "GPIO0_FILTER_AFTER_DENIED_WR",
+            GPIO0_FILTER,
+            expected=_FILTER_LOCK,
             prot=_ARPROT_PRIV,
         )
         # Positive control for the deny: the same address in the same state still
         # accepts a PRIVILEGED write, so the refusal above is the AxPROT filter
         # and not a window that stopped accepting writes altogether.
-        await self.csr_write(
-            "GPIO0_FILTER_PRIV_WR", GPIO0_FILTER, _FILTER_LOCK, prot=_AWPROT_PRIV
-        )
+        await self.csr_write("GPIO0_FILTER_PRIV_WR", GPIO0_FILTER, _FILTER_LOCK, prot=_AWPROT_PRIV)
         cocotb.log.info(
             "CHK-GPIO-FILTER-WR-DENY: GPIO0 ACCESS_FILTER AxPROT=0 write of "
             "0x%x refused with resp=%s (%d) and the register still reads 0x%x, "
             "so the denied write took no effect; a privileged write to the same "
             "address in the same state is accepted",
-            _FILTER_RESET, _RESP_NAME.get(wr_resp, "?"), wr_resp, got,
+            _FILTER_RESET,
+            _RESP_NAME.get(wr_resp, "?"),
+            wr_resp,
+            got,
         )
 
-        await self.csr_write(
-            "GPIO1_FILTER_LOCK", GPIO1_FILTER, _FILTER_LOCK, prot=_AWPROT_PRIV
-        )
+        await self.csr_write("GPIO1_FILTER_LOCK", GPIO1_FILTER, _FILTER_LOCK, prot=_AWPROT_PRIV)
         got = await self.csr_read(
             "GPIO1_FILTER_PRIV", GPIO1_FILTER, expected=_FILTER_LOCK, prot=_ARPROT_PRIV
         )
         resp = await self._read_denied_decerr("GPIO1_FILTER_UNPRIV", GPIO1_FILTER)
         cocotb.log.info(
-            "CHK-GPIO-FILTER-GPIO1: GPIO1 ACCESS_FILTER priv=0x%x unpriv "
-            "rdata=0x%08x DECERR",
-            got, resp & 0xFFFF_FFFF,
+            "CHK-GPIO-FILTER-GPIO1: GPIO1 ACCESS_FILTER priv=0x%x unpriv rdata=0x%08x DECERR",
+            got,
+            resp & 0xFFFF_FFFF,
         )

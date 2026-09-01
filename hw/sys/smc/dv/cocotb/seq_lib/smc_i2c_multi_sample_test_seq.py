@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_i2c_item import SmcI2cItem, SmcI2cOp
 from env.smc_probe_liveness import probe_alive, probe_evidence
 
@@ -26,7 +25,6 @@ from .smc_base_test_seq import smc_base_test_seq
 
 
 class smc_i2c_multi_sample_test_seq(smc_base_test_seq):
-
     GAP_REF_CYCLES = 100
 
     def __init__(self, name: str = "smc_i2c_multi_sample_test_seq") -> None:
@@ -84,8 +82,7 @@ class smc_i2c_multi_sample_test_seq(smc_base_test_seq):
         first = self.samples[0]
         for i, item in enumerate(self.samples):
             assert item.resolvable, (
-                f"I2C multi-sample {i}: tb_i2c_cg_en / tb_i2c_debug_lo "
-                f"unresolvable (X/Z) -> {item}"
+                f"I2C multi-sample {i}: tb_i2c_cg_en / tb_i2c_debug_lo unresolvable (X/Z) -> {item}"
             )
             assert item.cg_en == first.cg_en, (
                 f"I2C multi-sample {i}: cg_en={item.cg_en} drifted from "

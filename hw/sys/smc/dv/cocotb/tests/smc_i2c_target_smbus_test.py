@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_i2c_target_smbus_test_seq import smc_i2c_target_smbus_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -19,12 +19,7 @@ class smc_i2c_target_smbus_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_i2c_target_smbus_test_seq("i2c_target_smbus_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert (
-            seq.alert_asserted
-            and seq.ara_ok
-            and seq.alert_cleared
-            and seq.suspend_ok
-        ), (
+        assert seq.alert_asserted and seq.ara_ok and seq.alert_cleared and seq.suspend_ok, (
             f"target_smbus incomplete alert={seq.alert_asserted} ara={seq.ara_ok} "
             f"clr={seq.alert_cleared} sus={seq.suspend_ok}"
         )
@@ -38,10 +33,7 @@ class smc_i2c_target_smbus_test(smc_base_test):
             min_csr_accesses=28,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                f"VIP ARA + ext SMBSUS "
-                f"ara_ok={seq.ara_ok} sus_ok={seq.suspend_ok}"
-            ),
+            details=(f"VIP ARA + ext SMBSUS ara_ok={seq.ara_ok} sus_ok={seq.suspend_ok}"),
             expected_bytes=seq.expected_bytes,
             observed_bytes=seq.observed_bytes,
         )

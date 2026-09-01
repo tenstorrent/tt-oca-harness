@@ -65,7 +65,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             "0xC0000020 -> 0x%08x (WDT CMP generated reset is 0x1000). Equal "
             "non-zero values would mean the CLINT window answers from the WDT "
             "window after a bit-27 fold, the shape #1237 records for the BEU.",
-            fold_probe, wdt_cmp,
+            fold_probe,
+            wdt_cmp,
         )
 
         # Second discriminator, from a DIFFERENT block: 0xC0004034 is
@@ -76,7 +77,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CLINT-FOLD-DIAGNOSTIC-2: 0xC8004034 -> 0x%08x, AVS_INTERRUPT_MASK "
             "0xC0004034 -> 0x%08x (generated reset 0x1FF)",
-            fold_probe2, avs_mask,
+            fold_probe2,
+            avs_mask,
         )
 
         # Third window in the same family: PLIC at 0xC400_0000 (bit 26). #1237
@@ -87,7 +89,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "PLIC-FOLD-DIAGNOSTIC: 0xC4000020 -> 0x%08x (WDT CMP reset is "
             "0x1000), 0xC4004034 -> 0x%08x (AVS_INTERRUPT_MASK reset is 0x1FF)",
-            plic_probe1, plic_probe2,
+            plic_probe1,
+            plic_probe2,
         )
 
         # LOCALISATION PROBE. CLINT (0xC800_0000, bit 27) and PLIC
@@ -111,9 +114,7 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
         for bit in (24, 25, 26, 27):
             addr = 0xC000_0020 | (1 << bit)
             try:
-                widths[bit] = await self.csr_read_allow_error(
-                    f"FOLD_WIDTH_BIT{bit}", addr
-                )
+                widths[bit] = await self.csr_read_allow_error(f"FOLD_WIDTH_BIT{bit}", addr)
             except Exception:  # noqa: BLE001 - a refused access is a result
                 widths[bit] = None
         dropped = sorted(b for b, v in widths.items() if v == 0x1000)
@@ -123,7 +124,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             "0x1000): %s; bits KEPT (decoded, DECERR or other value): %s. "
             "Raw: %s. Read together with the three window probes above, the "
             "surviving SEP_IN offset field is [24:0] and bits 27:25 are lost.",
-            dropped, kept,
+            dropped,
+            kept,
             ", ".join(
                 f"bit{b}=" + ("DECERR/none" if v is None else f"0x{v:08x}")
                 for b, v in sorted(widths.items())
@@ -148,12 +150,9 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
         # wide, so uniqueness is expressed as a pattern across harts (set on
         # even indices, clear on odd) checked while all four are resident.
         addrs = [
-            smc_indexed_addr("SMC_TOP_SMC_CLUSTER_CLINT_MSIP_BASE_ADDR", i)
-            for i in range(MSIP_NUM)
+            smc_indexed_addr("SMC_TOP_SMC_CLUSTER_CLINT_MSIP_BASE_ADDR", i) for i in range(MSIP_NUM)
         ]
-        assert len(set(addrs)) == MSIP_NUM, (
-            "CLINT MSIP addresses are not pairwise distinct"
-        )
+        assert len(set(addrs)) == MSIP_NUM, "CLINT MSIP addresses are not pairwise distinct"
         for i, addr in enumerate(addrs):
             await self.csr_read(f"CLINT_MSIP{i}_RESET", addr, expected=0)
 
@@ -170,8 +169,7 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             await self.csr_read(f"CLINT_MSIP{i}_RESTORE_RB", addr, expected=0)
 
         assert self.msip_proven == list(range(MSIP_NUM)), (
-            f"MSIP readback covered harts {self.msip_proven}, expected "
-            f"{list(range(MSIP_NUM))}"
+            f"MSIP readback covered harts {self.msip_proven}, expected {list(range(MSIP_NUM))}"
         )
         cocotb.log.info(
             "CHK-CLINT-CSR: MTIME advanced 0x%016x -> 0x%016x across %d "
@@ -179,6 +177,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             "(a bit-27 fold onto the WDT window could not increment); %d MSIP "
             "harts held an alternating per-hart pattern read back while all "
             "four were resident, then restored to 0",
-            self.mtime_first, self.mtime_second, MTIME_GAP_CYCLES,
+            self.mtime_first,
+            self.mtime_second,
+            MTIME_GAP_CYCLES,
             len(self.msip_proven),
         )

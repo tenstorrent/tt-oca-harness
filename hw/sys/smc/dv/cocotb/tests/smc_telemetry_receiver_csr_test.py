@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_telemetry_receiver_csr_test_seq import smc_telemetry_receiver_csr_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -28,9 +27,7 @@ class smc_telemetry_receiver_csr_test(smc_base_test):
             f"{seq.probe_id_readback!r}; the ATB message this testcase framed "
             f"carried probe_id 0x05"
         )
-        assert seq.status_non_empty is not None and not (
-            seq.status_non_empty & 0x1
-        ), (
+        assert seq.status_non_empty is not None and not (seq.status_non_empty & 0x1), (
             f"TELEMETRY_0 STATUS still reports EMPTY "
             f"({seq.status_non_empty!r}) after the ATB message"
         )

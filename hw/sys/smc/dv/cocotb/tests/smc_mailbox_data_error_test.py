@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_mailbox_data_error_test_seq import smc_mailbox_data_error_test_seq
 from seq_lib.smc_mailbox_vip_utils import check_mailbox_irq_source
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -22,8 +22,7 @@ class smc_mailbox_data_error_test(smc_base_test):
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         await check_mailbox_irq_source(mask=0x2)
         assert "CHK-MAILBOX-FIFO-DATA" in seq.chk_seen, (
-            "missing CHK evidence token: CHK-MAILBOX-FIFO-DATA "
-            f"(seen={sorted(seq.chk_seen)})"
+            f"missing CHK evidence token: CHK-MAILBOX-FIFO-DATA (seen={sorted(seq.chk_seen)})"
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.MAILBOX,

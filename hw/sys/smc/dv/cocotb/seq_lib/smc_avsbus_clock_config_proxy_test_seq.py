@@ -81,9 +81,7 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
         # ---- Positive control: gate CLEARED, the AVS_CFG windows must answer ----
         ungated = original & ~AVS_CG_EN
         await self.csr_write("CLOCK_GATE_CONTROL_AVS_OFF", CLOCK_GATE_CONTROL, ungated)
-        await self.csr_read(
-            "CLOCK_GATE_CONTROL_AVS_OFF", CLOCK_GATE_CONTROL, expected=ungated
-        )
+        await self.csr_read("CLOCK_GATE_CONTROL_AVS_OFF", CLOCK_GATE_CONTROL, expected=ungated)
         for name, addr in AVSBUS_TIMEOUT_READS:
             before = self.timeouts
             t0 = get_sim_time(units="ns")
@@ -102,13 +100,14 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
             cocotb.log.info(
                 "AVS positive control: %s @ 0x%08x answered in %d ns "
                 "(rdata=0x%x) with AVS_CG_EN cleared",
-                name, addr, latency, rdata,
+                name,
+                addr,
+                latency,
+                rdata,
             )
 
         healthy_ns = max(self.ungated_latencies_ns.values())
-        self.gated_bound_ns = max(
-            _MIN_GATED_BOUND_NS, healthy_ns * _GATED_BOUND_FACTOR
-        )
+        self.gated_bound_ns = max(_MIN_GATED_BOUND_NS, healthy_ns * _GATED_BOUND_FACTOR)
         # Record whether the bound came from the measurement or from the floor.
         # This is reported, NOT asserted: the floor dominating is not a defect
         # (a larger bound only makes the negative leg harder to satisfy), but
@@ -140,7 +139,8 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
         for name, addr in AVSBUS_TIMEOUT_READS:
             before = self.timeouts
             await self.csr_read_bounded(
-                f"{name}_UNGATED_SAME_BOUND", addr,
+                f"{name}_UNGATED_SAME_BOUND",
+                addr,
                 timeout_ns=self.gated_bound_ns,
             )
             assert self.timeouts == before, (
@@ -157,9 +157,7 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
         # ---- Negative leg: gate SET, the same three reads must NOT answer ----
         enabled = original | AVS_CG_EN
         await self.csr_write("CLOCK_GATE_CONTROL_AVS_EN", CLOCK_GATE_CONTROL, enabled)
-        await self.csr_read(
-            "CLOCK_GATE_CONTROL_AVS_EN", CLOCK_GATE_CONTROL, expected=enabled
-        )
+        await self.csr_read("CLOCK_GATE_CONTROL_AVS_EN", CLOCK_GATE_CONTROL, expected=enabled)
         for name, addr in AVSBUS_TIMEOUT_READS:
             before = self.timeouts
             await self.csr_short_timeout(name, addr, timeout_ns=self.gated_bound_ns)
@@ -167,9 +165,7 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
             self.gated_timeouts += 1
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, original)
-        await self.csr_read(
-            "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, expected=original
-        )
+        await self.csr_read("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, expected=original)
 
         # ---- Reconciliation against the scoreboard, not against self-counts ----
         self.assert_reachable_or_gated(
@@ -195,16 +191,16 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
             "CLOCK_GATE_CONTROL 0x%x -> 0x%x -> 0x%x readback-checked; "
             "scoreboard value_checks=%d (>= %d)",
             len(AVSBUS_TIMEOUT_READS),
-            ",".join(
-                f"{n}={self.ungated_latencies_ns[n]}"
-                for n, _ in AVSBUS_TIMEOUT_READS
-            ),
+            ",".join(f"{n}={self.ungated_latencies_ns[n]}" for n, _ in AVSBUS_TIMEOUT_READS),
             healthy_ns,
             self.gated_timeouts,
             self.gated_bound_ns,
             _MIN_GATED_BOUND_NS,
             _GATED_BOUND_FACTOR,
             healthy_ns,
-            ungated, enabled, original,
-            self.value_checks, EXPECTED_VALUE_CHECKS,
+            ungated,
+            enabled,
+            original,
+            self.value_checks,
+            EXPECTED_VALUE_CHECKS,
         )

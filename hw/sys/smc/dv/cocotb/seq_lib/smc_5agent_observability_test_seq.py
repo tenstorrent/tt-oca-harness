@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_clk_item import SmcClkItem, SmcClkOp
 from env.smc_gpio_item import SmcGpioItem, SmcGpioOp
 from env.smc_i2c_item import SmcI2cItem, SmcI2cOp
@@ -48,6 +47,7 @@ from .smc_gpio_irq_active_test_seq import (
     GPIO0_DATA_CTRL,
     GPIO_INPUT_ACTIVE_LOW_IRQ,
 )
+
 # Bounded pad -> aggregate poll published by smc_gpio_vip_utils (expiry is a
 # failure, never a settle delay). `check_gpio0_active_low_irq` cannot be used
 # here because it releases the pad before returning, leaving no window in which
@@ -57,7 +57,6 @@ from .smc_gpio_irq_active_test_seq import (
 # (`[REUSE-AND-LAYERING]`).
 from .smc_gpio_vip_utils import await_gpio_irq_level
 from .smc_probe_positive_control import ensure_gpio_pad_bus_control
-
 
 # Of the two backable pad-bus vectors, only the output-ENABLE vector is a
 # defensible cross-sample expectation here. `tb_core2pad_o` (the pad *value*
@@ -83,19 +82,19 @@ class _Gpio0IrqArmSeq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.csr_write(
-            "GPIO0_INPUT_ACTIVE_LOW_IRQ", GPIO0_DATA_CTRL,
+            "GPIO0_INPUT_ACTIVE_LOW_IRQ",
+            GPIO0_DATA_CTRL,
             GPIO_INPUT_ACTIVE_LOW_IRQ,
         )
 
 
 class smc_5agent_observability_test_seq(smc_base_test_seq):
-
     # Exact per-type item counts this body dispatches; the end gate compares the
     # scoreboard's typed counters against them.
     EXPECTED_SAMPLES = {
         "reset_samples_seen": 1,
         "i2c_samples_seen": 1,
-        "irq_samples_seen": 2,   # positive control + idle re-check
+        "irq_samples_seen": 2,  # positive control + idle re-check
         "gpio_samples_seen": 2,  # observed-only reference + exact-compared
         "clk_samples_seen": 1,
     }
@@ -164,7 +163,8 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
             "CHK-5AGENT-IRQ-POSITIVE: GPIO0 driven low asserted tb_gpio_irq_any "
             "after %d clk_smc_i cycles and the IRQ agent sampled it as 1 "
             "(expect_gpio_irq_any=1 exact-compared by the scoreboard): %s",
-            cycles, pos,
+            cycles,
+            pos,
         )
 
         dut.tb_gpio_ext_drive_value.value = 0x1
@@ -174,24 +174,29 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
     async def body(self) -> None:
         env = self._resolve_env()
 
-        r = SmcResetItem("reset"); r.op = SmcResetOp.SAMPLE
+        r = SmcResetItem("reset")
+        r.op = SmcResetOp.SAMPLE
         await self.dispatch_reset(r)
         assert r.resolvable, f"reset sample is X/Z: {r}"
         cocotb.log.info(
             "CHK-5AGENT-RESET: post-bring-up reset SAMPLE passed its exact "
-            "all-released expectation: %s", r,
+            "all-released expectation: %s",
+            r,
         )
 
-        i = SmcI2cItem("i2c"); i.op = SmcI2cOp.SAMPLE
+        i = SmcI2cItem("i2c")
+        i.op = SmcI2cOp.SAMPLE
         await self.dispatch_i2c(i)
         assert i.resolvable and i.cg_en == 0, f"I2C idle sample unexpected: {i}"
         cocotb.log.info(
-            "CHK-5AGENT-I2C: I2C SAMPLE passed tb_i2c_cg_en == 0: %s", i,
+            "CHK-5AGENT-I2C: I2C SAMPLE passed tb_i2c_cg_en == 0: %s",
+            i,
         )
 
         # IRQ: positive control first, then the idle re-check it backs.
         await self._prove_irq_positive_control(env)
-        ir = SmcIrqItem("irq"); ir.op = SmcIrqOp.SAMPLE
+        ir = SmcIrqItem("irq")
+        ir.op = SmcIrqOp.SAMPLE
         await self.dispatch_irq(ir)
         self.irq_idle = ir
         assert ir.resolvable, f"IRQ idle sample is X/Z: {ir}"
@@ -204,7 +209,8 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         cocotb.log.info(
             "CHK-5AGENT-IRQ-IDLE: with no interrupt source driven, %s all read "
             "0 -- backed by CHK-5AGENT-IRQ-POSITIVE in this same run: %s",
-            "/".join(f"tb_{f}" for f in IRQ_SAMPLE_FIELDS), ir,
+            "/".join(f"tb_{f}" for f in IRQ_SAMPLE_FIELDS),
+            ir,
         )
 
         # GPIO: a *pair* of SAMPLEs, not one, and the compare is on the raw
@@ -232,7 +238,8 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         # [NEGATIVE-NEEDS-POSITIVE-CONTROL]).
         self.env = env
         await ensure_gpio_pad_bus_control(self)
-        g_ref = SmcGpioItem("gpio_ref"); g_ref.op = SmcGpioOp.SAMPLE
+        g_ref = SmcGpioItem("gpio_ref")
+        g_ref.op = SmcGpioOp.SAMPLE
         await self.dispatch_gpio(g_ref)
         assert g_ref.resolvable, f"GPIO reference sample is X/Z: {g_ref}"
         assert g_ref.vec_width > 0, (
@@ -242,10 +249,12 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         )
         cocotb.log.info(
             "GPIO reference sample (pad-bus vectors are the checked observables; "
-            "the tb_gpio_*_any aggregates are OBSERVED-ONLY): %s", g_ref,
+            "the tb_gpio_*_any aggregates are OBSERVED-ONLY): %s",
+            g_ref,
         )
         await ClockCycles(cocotb.top.clk_ref_i, self.GPIO_GAP_REF_CYCLES)
-        g = SmcGpioItem("gpio"); g.op = SmcGpioOp.SAMPLE
+        g = SmcGpioItem("gpio")
+        g.op = SmcGpioOp.SAMPLE
         for field in GPIO_STABLE_VECTOR_FIELDS:
             setattr(g, "expect_" + field, getattr(g_ref, field))
         await self.dispatch_gpio(g)
@@ -270,22 +279,27 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
             "CHK-5AGENT-GPIO: pad-bus vectors %s exact-compared by the "
             "scoreboard against the reference sample %d clk_ref_i cycles "
             "later, both probes carrying a same-run liveness credit (%s): %s",
-            ", ".join(
-                f"tb_{f}=0x{getattr(g_ref, f):x}" for f in GPIO_STABLE_VECTOR_FIELDS
-            ),
+            ", ".join(f"tb_{f}=0x{getattr(g_ref, f):x}" for f in GPIO_STABLE_VECTOR_FIELDS),
             self.GPIO_GAP_REF_CYCLES,
             probe_evidence("gpio_core2pad_en_vec"),
             g,
         )
 
-        c = SmcClkItem("clk"); c.op = SmcClkOp.COUNT_EDGES; c.window_ref_cycles = 25
+        c = SmcClkItem("clk")
+        c.op = SmcClkOp.COUNT_EDGES
+        c.window_ref_cycles = 25
         await self.dispatch_clk(c)
         cocotb.log.info(
             "CHK-5AGENT-CLK: COUNT_EDGES window passed its scoreboard legs "
             "(ref=%d smc=%d periph=%d SETUP; %s=%d edges with %s=%d): %s",
-            c.ref_rising_edges, c.smc_rising_edges, c.periph_rising_edges,
-            c.gated_clk_probe, c.gated_clk_rising_edges,
-            c.gated_cg_en_probe, c.gated_cg_en, c,
+            c.ref_rising_edges,
+            c.smc_rising_edges,
+            c.periph_rising_edges,
+            c.gated_clk_probe,
+            c.gated_clk_rising_edges,
+            c.gated_cg_en_probe,
+            c.gated_cg_en,
+            c,
         )
 
         # Per-type composition gate: each of the five item types must have
@@ -301,5 +315,6 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         cocotb.log.info(
             "CHK-5AGENT-COMPOSITION: all five item types reached the "
             "type-dispatched scoreboard with the exact counts this sequence "
-            "dispatched: %s", observed,
+            "dispatched: %s",
+            observed,
         )

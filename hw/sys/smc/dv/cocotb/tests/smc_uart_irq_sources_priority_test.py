@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_irq_sources_priority_test_seq import (
     _INTR_FIFO_ERR,
     _INTR_LSR,
@@ -16,6 +15,7 @@ from seq_lib.smc_uart_irq_sources_priority_test_seq import (
     _INTR_TIMEOUT,
     smc_uart_irq_sources_priority_test_seq,
 )
+from smc_base_test import smc_base_test
 
 # Expected IIR.INTERRUPT_ID per source, from uart_16550_main.rdl reg IIR (the
 # same table the sequence quotes). Written out here as the testcase-level golden
@@ -59,13 +59,11 @@ class smc_uart_irq_sources_priority_test(smc_base_test):
                 f"while its enable/force was cleared"
             )
         assert len(seq.priority_ids) == EXPECTED_PRIORITY_PAIRS, (
-            f"{len(seq.priority_ids)} priority contests ran, expected "
-            f"{EXPECTED_PRIORITY_PAIRS}"
+            f"{len(seq.priority_ids)} priority contests ran, expected {EXPECTED_PRIORITY_PAIRS}"
         )
         for name, (got, want) in seq.priority_ids.items():
             assert got == want, (
-                f"{name}: IIR reported id 0x{got:x}, the RDL priority ranking "
-                f"requires 0x{want:x}"
+                f"{name}: IIR reported id 0x{got:x}, the RDL priority ranking requires 0x{want:x}"
             )
         # OBSERVED count from the scoreboard's per-bus tally, not the sequence's
         # own counter; the floor is an independent literal.
@@ -80,7 +78,6 @@ class smc_uart_irq_sources_priority_test(smc_base_test):
             csr_accesses=measured_csr,
             proxy=False,
             details=(
-                f"IRQ source ids {seq.gate_map_ids}; RDL-ranked priority "
-                f"winners {seq.priority_ids}"
+                f"IRQ source ids {seq.gate_map_ids}; RDL-ranked priority winners {seq.priority_ids}"
             ),
         )

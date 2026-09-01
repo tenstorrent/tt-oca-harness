@@ -8,7 +8,6 @@ from enum import Enum
 
 from pyuvm import uvm_sequence_item
 
-
 IRQ_SAMPLE_FIELDS = ("sync_irq", "gpio_irq_any", "uart_irq_any")
 
 
@@ -17,7 +16,6 @@ class SmcIrqOp(Enum):
 
 
 class SmcIrqItem(uvm_sequence_item):
-
     def __init__(self, name: str = "SmcIrqItem") -> None:
         super().__init__(name)
         self.op: SmcIrqOp = SmcIrqOp.SAMPLE

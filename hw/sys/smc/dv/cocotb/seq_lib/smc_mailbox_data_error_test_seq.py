@@ -29,10 +29,9 @@ first branch; the fail-capable DUT compare above is untouched.
 from __future__ import annotations
 
 import cocotb
-
-from .smc_addr_map import _SMC_BASE_CFG_H, _field_mask, smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import _SMC_BASE_CFG_H, _field_mask, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 AXI_RESP_OKAY = 0
@@ -43,31 +42,15 @@ MAILBOX_CG_EN = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bm"
 )
 
-OUTBOUND_WRITE_DATA = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR"
-)
-OUTBOUND_READ_DATA = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR"
-)
-OUTBOUND_STATUS = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR"
-)
-OUTBOUND_ERROR_FLAGS = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR"
-)
+OUTBOUND_WRITE_DATA = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR")
+OUTBOUND_READ_DATA = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR")
+OUTBOUND_STATUS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR")
+OUTBOUND_ERROR_FLAGS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR")
 
-INBOUND_WRITE_DATA = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR"
-)
-INBOUND_READ_DATA = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_BASE_ADDR"
-)
-INBOUND_STATUS = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_STATUS_BASE_ADDR"
-)
-INBOUND_ERROR_FLAGS = smc_addr(
-    "SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR"
-)
+INBOUND_WRITE_DATA = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR")
+INBOUND_READ_DATA = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_BASE_ADDR")
+INBOUND_STATUS = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_STATUS_BASE_ADDR")
+INBOUND_ERROR_FLAGS = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR")
 
 # FIFO payloads. Each is written into one mailbox port and required back out of
 # the paired port, so the compare is DUT-vs-stimulus across a real datapath.
@@ -88,9 +71,14 @@ class smc_mailbox_data_error_test_seq(smc_base_test_seq):
         self.clock_gate_value: int = 0
         self.chk_seen: set[str] = set()
 
-    async def _read(self, name: str, addr: int, expected: int | None = None,
-                    expected_resp: int = AXI_RESP_OKAY,
-                    allow_error: bool = False) -> int:
+    async def _read(
+        self,
+        name: str,
+        addr: int,
+        expected: int | None = None,
+        expected_resp: int = AXI_RESP_OKAY,
+        allow_error: bool = False,
+    ) -> int:
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
@@ -103,9 +91,14 @@ class smc_mailbox_data_error_test_seq(smc_base_test_seq):
         self.accesses += 1
         return item.rdata
 
-    async def _write(self, name: str, addr: int, data: int,
-                     expected_resp: int = AXI_RESP_OKAY,
-                     allow_error: bool = False) -> None:
+    async def _write(
+        self,
+        name: str,
+        addr: int,
+        data: int,
+        expected_resp: int = AXI_RESP_OKAY,
+        allow_error: bool = False,
+    ) -> None:
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
@@ -124,10 +117,10 @@ class smc_mailbox_data_error_test_seq(smc_base_test_seq):
         await self._read("CLOCK_GATE_CONTROL_ENABLED", CLOCK_GATE_CONTROL, expected=enabled)
 
     async def _restore_mailbox_clock(self) -> None:
-        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
-                          self.clock_gate_value)
-        await self._read("CLOCK_GATE_CONTROL_RESTORED", CLOCK_GATE_CONTROL,
-                         expected=self.clock_gate_value)
+        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value)
+        await self._read(
+            "CLOCK_GATE_CONTROL_RESTORED", CLOCK_GATE_CONTROL, expected=self.clock_gate_value
+        )
 
     async def body(self) -> None:
         await self._enable_mailbox_clock()
@@ -138,32 +131,51 @@ class smc_mailbox_data_error_test_seq(smc_base_test_seq):
         await self._read("INBOUND_ERROR_FLAGS_BASE", INBOUND_ERROR_FLAGS)
 
         # Writes to READ_DATA are illegal valid-address operations.
-        await self._write("OUTBOUND_READ_DATA_ILLEGAL", OUTBOUND_READ_DATA, 0xBAD0_BAD0_0000_0001,
-                          expected_resp=AXI_RESP_SLVERR, allow_error=True)
-        await self._write("INBOUND_READ_DATA_ILLEGAL", INBOUND_READ_DATA, 0xBAD0_BAD0_0000_0002,
-                          expected_resp=AXI_RESP_SLVERR, allow_error=True)
+        await self._write(
+            "OUTBOUND_READ_DATA_ILLEGAL",
+            OUTBOUND_READ_DATA,
+            0xBAD0_BAD0_0000_0001,
+            expected_resp=AXI_RESP_SLVERR,
+            allow_error=True,
+        )
+        await self._write(
+            "INBOUND_READ_DATA_ILLEGAL",
+            INBOUND_READ_DATA,
+            0xBAD0_BAD0_0000_0002,
+            expected_resp=AXI_RESP_SLVERR,
+            allow_error=True,
+        )
 
         # Outbound write-data is consumed from the paired inbound read-data port.
         await self._write("OUTBOUND_WRITE_DATA_0", OUTBOUND_WRITE_DATA, OUTBOUND_PAYLOAD_0)
         await self._write("OUTBOUND_WRITE_DATA_1", OUTBOUND_WRITE_DATA, OUTBOUND_PAYLOAD_1)
-        await self._write("OUTBOUND_WRITE_DATA_FULL", OUTBOUND_WRITE_DATA,
-                          OUTBOUND_PAYLOAD_OVERFLOW,
-                          expected_resp=AXI_RESP_SLVERR, allow_error=True)
+        await self._write(
+            "OUTBOUND_WRITE_DATA_FULL",
+            OUTBOUND_WRITE_DATA,
+            OUTBOUND_PAYLOAD_OVERFLOW,
+            expected_resp=AXI_RESP_SLVERR,
+            allow_error=True,
+        )
         # DUT-vs-stimulus compares (scoreboard-enforced via `item.expected`):
         # FIFO order and payload integrity across the outbound->inbound path.
-        await self._read("INBOUND_READ_DATA_0", INBOUND_READ_DATA,
-                         expected=OUTBOUND_PAYLOAD_0)
-        await self._read("INBOUND_READ_DATA_1", INBOUND_READ_DATA,
-                         expected=OUTBOUND_PAYLOAD_1)
-        await self._read("INBOUND_READ_DATA_EMPTY", INBOUND_READ_DATA,
-                         expected_resp=AXI_RESP_SLVERR, allow_error=True)
+        await self._read("INBOUND_READ_DATA_0", INBOUND_READ_DATA, expected=OUTBOUND_PAYLOAD_0)
+        await self._read("INBOUND_READ_DATA_1", INBOUND_READ_DATA, expected=OUTBOUND_PAYLOAD_1)
+        await self._read(
+            "INBOUND_READ_DATA_EMPTY",
+            INBOUND_READ_DATA,
+            expected_resp=AXI_RESP_SLVERR,
+            allow_error=True,
+        )
 
         # Inbound write-data is consumed from the paired outbound read-data port.
         await self._write("INBOUND_WRITE_DATA_0", INBOUND_WRITE_DATA, INBOUND_PAYLOAD_0)
-        await self._read("OUTBOUND_READ_DATA_0", OUTBOUND_READ_DATA,
-                         expected=INBOUND_PAYLOAD_0)
-        await self._read("OUTBOUND_READ_DATA_EMPTY", OUTBOUND_READ_DATA,
-                         expected_resp=AXI_RESP_SLVERR, allow_error=True)
+        await self._read("OUTBOUND_READ_DATA_0", OUTBOUND_READ_DATA, expected=INBOUND_PAYLOAD_0)
+        await self._read(
+            "OUTBOUND_READ_DATA_EMPTY",
+            OUTBOUND_READ_DATA,
+            expected_resp=AXI_RESP_SLVERR,
+            allow_error=True,
+        )
 
         await self._read("OUTBOUND_STATUS_FINAL", OUTBOUND_STATUS)
         await self._read("INBOUND_STATUS_FINAL", INBOUND_STATUS)

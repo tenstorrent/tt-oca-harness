@@ -511,7 +511,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
+      - hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
   - target: any(dtp, sep)
     files:
@@ -593,10 +593,9 @@ sources:
       - hw/common/och_prim/rtl/prim_pipe_stages.sv
       - hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
       - hw/common/och_prim/rtl/prim_pulse_signal.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
       - hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
       - hw/common/och_prim/rtl/prim_rom_bank_swap.sv
+      - hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
       - hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
       - hw/common/och_prim/rtl/prim_sync2.sv
       - hw/common/och_prim/rtl/prim_sync2r.sv
@@ -615,8 +614,14 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
       - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
       - hw/common/sync.sv
+  # Scrambled-RAM primitives: dtp has no scrambled memory, so excluded here.
+  - target: any(sep, smc, key_manager)
+    files:
+      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
+      - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
   - target: all(any(dtp, sep, smc, key_manager), not(synth))
     files:
+      - hw/common/och_prim_generic/rtl/prim_ao222.sv
       - hw/common/och_prim_generic/rtl/prim_clkgater.sv
       - hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
       - hw/common/och_prim_generic/rtl/prim_clock_nand2.sv
@@ -917,7 +922,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
       - hw/sys/sep/rtl/aes_wrapper.sv
-      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
+      - hw/sys/sep/rtl/sep_local_axi_xbar.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
       - hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
       - hw/sys/sep/rtl/hmac_wrapper.sv
@@ -943,6 +948,8 @@ sources:
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
       - hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv
       - hw/sys/sep/rtl/sep_crypto_axi_isolate.sv
+      - hw/sys/sep/rtl/sep_crypto_trng_axi_isolate.sv
+      - hw/sys/sep/rtl/sep_trng.sv
       # =====================================================================
       # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
       #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
@@ -1501,11 +1508,7 @@ sources:
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:
-      - hw/top/smc_cpu_mem_integration.sv
       - hw/top/smc_wrapper.sv
   - target: smu_wrapper
     files:
-      # Same CPU ROM/scratch/L1$ macros as smc_wrapper; TB attaches them to the
-      # passthrough rom_intf_* ports (smc_ip_integration stays SMU-safe).
-      - hw/top/smc_cpu_mem_integration.sv
       - hw/top/smu_wrapper.sv

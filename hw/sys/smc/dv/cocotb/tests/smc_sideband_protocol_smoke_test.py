@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_sideband_protocol_smoke_test_seq import (
     smc_sideband_protocol_smoke_test_seq,
 )
+from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floor for the SIDEBAND record, written out here rather
 # than imported from the sequence's own SIDEBAND_TOTAL_ACCESSES: a floor derived
@@ -45,7 +45,7 @@ class smc_sideband_protocol_smoke_test(smc_base_test):
             # leaves `allow_timeout` False, so the driver raises on expiry and
             # `seq.timeouts` can only ever be 0 here. Reporting that structural
             # zero would advertise a measurement that was never taken
-            #.
+            # .
             timeouts=None,
             min_csr_accesses=SIDEBAND_MIN_CSR_ACCESSES,
             details=(

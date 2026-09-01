@@ -40,9 +40,7 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 
 LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
-PROG_IF_RD = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR"
-)
+PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
 PROG_IF_RD_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset"
 )
@@ -57,9 +55,7 @@ PROG_IF_RD_RESET = efuse_ifc_u32(
 # EFUSE_READ_REQ_TIMEOUT @0x14 is `sw=rw` (rdl:180) with a non-zero reset, so
 # it discriminates a dead window in three independent ways (non-zero reset
 # read, a written pattern read back, and the restore).
-READ_REQ_TMO = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR"
-)
+READ_REQ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
 READ_REQ_TMO_CYCLES_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset"
 )
@@ -69,9 +65,7 @@ READ_REQ_TMO_CYCLES_BM = efuse_ifc_u32(
 # Alternating-bit probe inside the 28-bit cycles field: a stuck-at-0,
 # stuck-at-1 or reset-only window cannot read this back.
 READ_REQ_TMO_PROBE = 0x0A5A_5A5A & READ_REQ_TMO_CYCLES_BM
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 # Positive-control pattern for SCRATCH_COLD_WARM_0: alternating bits so a
 # stuck-at-0 or stuck-at-1 register cannot read it back.
 SCRATCH_PROBE_PATTERN = 0x5A5A_A5A5
@@ -118,9 +112,7 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
                 f"last_sense={last_sense} last_frst={last_frst}"
             )
         self.hold_ok = True
-        cocotb.log.info(
-            "CHK-EFUSE-BND-HOLD: sense=1 fuse_reset_n=0 hold_ext_boot=1"
-        )
+        cocotb.log.info("CHK-EFUSE-BND-HOLD: sense=1 fuse_reset_n=0 hold_ext_boot=1")
         self.chk_seen.add("CHK-EFUSE-BND-HOLD")
 
         for cycle in range(_PIPE_STAY):
@@ -182,18 +174,14 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
             if last_warm == 1:
                 break
         else:
-            raise AssertionError(
-                f"RELEASE: tb_rst_warm_smc_clk_n stayed 0 last={last_warm}"
-            )
+            raise AssertionError(f"RELEASE: tb_rst_warm_smc_clk_n stayed 0 last={last_warm}")
 
         # Exact expectation from the generated RDL reset: no program read-back
         # has been issued in this testcase, so DOUT must still be at its reset
         # value. `expected=` is mandatory here: printing the word inside the
         # evidence token without comparing it reads as a check while being none
         # ([EXACT-EXPECTATION]).
-        prog = await self.csr_read(
-            "EFUSE_PROG_IF_RD", PROG_IF_RD, expected=PROG_IF_RD_RESET
-        )
+        prog = await self.csr_read("EFUSE_PROG_IF_RD", PROG_IF_RD, expected=PROG_IF_RD_RESET)
         # Positive control for the compare above (see PROG_IF_RD_RESET note at
         # the top of this file): PROG_IF_RD's reset is 0x0 and it is `sw = r`,
         # so that read alone cannot separate "the block answered with the reset
@@ -202,27 +190,27 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
         # run: its non-zero reset already rules out a stuck-at-0 window, and
         # the write/readback/restore rules out a reset-only or stuck window.
         tmo_reset = await self.csr_read(
-            "EFUSE_READ_REQ_TMO_RESET", READ_REQ_TMO,
+            "EFUSE_READ_REQ_TMO_RESET",
+            READ_REQ_TMO,
             expected=READ_REQ_TMO_CYCLES_RESET,
         )
-        await self.csr_write(
-            "EFUSE_READ_REQ_TMO_PROBE", READ_REQ_TMO, READ_REQ_TMO_PROBE
-        )
+        await self.csr_write("EFUSE_READ_REQ_TMO_PROBE", READ_REQ_TMO, READ_REQ_TMO_PROBE)
         tmo_probe = await self.csr_read(
-            "EFUSE_READ_REQ_TMO_PROBE_RB", READ_REQ_TMO,
+            "EFUSE_READ_REQ_TMO_PROBE_RB",
+            READ_REQ_TMO,
             expected=READ_REQ_TMO_PROBE,
         )
         await self.csr_write(
-            "EFUSE_READ_REQ_TMO_RESTORE", READ_REQ_TMO,
+            "EFUSE_READ_REQ_TMO_RESTORE",
+            READ_REQ_TMO,
             READ_REQ_TMO_CYCLES_RESET,
         )
         tmo_restored = await self.csr_read(
-            "EFUSE_READ_REQ_TMO_RESTORE_RB", READ_REQ_TMO,
+            "EFUSE_READ_REQ_TMO_RESTORE_RB",
+            READ_REQ_TMO,
             expected=READ_REQ_TMO_CYCLES_RESET,
         )
-        warm = await self.csr_read(
-            "SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0
-        )
+        warm = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
         # Positive control for the `warm == 0` compare above: without it, a
         # SCRATCH_COLD_WARM_0 that is dead, unmapped or stuck at 0 satisfies the
         # post-release expectation just as well as a live one

@@ -15,16 +15,13 @@ import re
 from pathlib import Path
 
 import cocotb
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import _SMC_BASE_CFG_H, I3C_CG_EN, _field_mask, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_i3c_vip_utils import observe_i3c0_external_pull_low
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 # Entry-state precondition for the CLOCK_GATE_CONTROL set/restore claim
 #: the generated header declares this field's reset as 0, so
 # the toggle below really is 0 -> 1 -> 0 rather than "wrote the same word twice".
@@ -53,7 +50,12 @@ I3C_CG_EN_RESET = _field_mask(
 # in under this repo, so the RDL itself is the authoritative in-repo source.
 _I3C_BASE_RDL = (
     Path(__file__).resolve().parents[6]
-    / "vendor" / "chipsalliance" / "i3c-core" / "upstream" / "src" / "rdl"
+    / "vendor"
+    / "chipsalliance"
+    / "i3c-core"
+    / "upstream"
+    / "src"
+    / "rdl"
     / "base_registers.rdl"
 )
 _RDL_REG_END_RE = re.compile(r"\}\s*(\w+)\s*@\s*(0x[0-9A-Fa-f]+)\s*;")
@@ -75,7 +77,7 @@ def _i3c_reg_from_rdl(reg_name: str) -> tuple[int, int]:
         body_start = text.rfind("reg {", 0, match.start())
         if body_start < 0:
             break
-        resets = _RDL_RESET_RE.findall(text[body_start:match.start()])
+        resets = _RDL_RESET_RE.findall(text[body_start : match.start()])
         if len(resets) != 1:
             raise RuntimeError(
                 f"{reg_name} in {_I3C_BASE_RDL} does not declare exactly one "
@@ -114,7 +116,7 @@ def _i3c_multifield_reg_from_rdl(reg_name: str) -> tuple[int, int, dict[str, int
             break
         reset_word = 0
         masks: dict[str, int] = {}
-        for field in _RDL_FIELD_RE.finditer(text[body_start:match.start()]):
+        for field in _RDL_FIELD_RE.finditer(text[body_start : match.start()]):
             hi = int(field.group("hi"))
             lo = int(field.group("lo"))
             width_mask = (1 << (hi - lo + 1)) - 1
@@ -142,8 +144,8 @@ I3C0_HCI_VERSION = I3C0_CSR_WINDOW + HCI_VERSION_OFFSET
 # register reset word and the BUS_ENABLE bit all come from the same vendor RDL.
 # (base_registers.rdl: ``HC_CONTROL @ 0x4``, ``BUS_ENABLE[31:31] sw=rw reset=0``,
 # ``MODE_SELECTOR[6:6] reset=1`` -- so the reset word is 0x0000_0040.)
-HC_CONTROL_OFFSET, I3C_HC_CONTROL_RESET, _HC_CONTROL_MASKS = (
-    _i3c_multifield_reg_from_rdl("HC_CONTROL")
+HC_CONTROL_OFFSET, I3C_HC_CONTROL_RESET, _HC_CONTROL_MASKS = _i3c_multifield_reg_from_rdl(
+    "HC_CONTROL"
 )
 I3C0_HC_CONTROL = I3C0_CSR_WINDOW + HC_CONTROL_OFFSET
 I3C_HC_CONTROL_BUS_ENABLE = _HC_CONTROL_MASKS["BUS_ENABLE"]
@@ -188,9 +190,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         self.writes += 1
 
     async def body(self) -> None:
-        self.clock_gate_value = await self._read(
-            "CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL
-        )
+        self.clock_gate_value = await self._read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         # Guarantee the set/restore token below describes a real transition: if
         # I3C_CG_EN were already set, both writes would write the same word and
         # both readbacks would compare against the same value.
@@ -206,9 +206,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         await self._write("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, enabled)
         await self._read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, expected=enabled)
 
-        await self._write(
-            "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value
-        )
+        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value)
         await self._read(
             "CLOCK_GATE_CONTROL_RESTORE",
             CLOCK_GATE_CONTROL,
@@ -220,7 +218,9 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         cocotb.log.info(
             "CHK-I3C-CLOCK-GATE-RW: CLOCK_GATE_CONTROL 0x%08x I3C_CG_EN set "
             "readback==0x%08X then restored readback==0x%08X",
-            CLOCK_GATE_CONTROL, enabled, self.clock_gate_value,
+            CLOCK_GATE_CONTROL,
+            enabled,
+            self.clock_gate_value,
         )
 
         # Real OCA I3C core: window must complete OKAY with HCI_VERSION reset.
@@ -242,8 +242,11 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
             "0x%03x = 0x%08x resp=OKAY rdata=0x%08X == 0x%08X "
             "(expected = base_registers.rdl HCI_VERSION.VERSION reset; "
             "CSR-window decode only, no I3C protocol claim)",
-            I3C0_CSR_WINDOW, HCI_VERSION_OFFSET, I3C0_HCI_VERSION,
-            rdata & 0xFFFF_FFFF, I3C_HCI_VERSION_RESET,
+            I3C0_CSR_WINDOW,
+            HCI_VERSION_OFFSET,
+            I3C0_HCI_VERSION,
+            rdata & 0xFFFF_FFFF,
+            I3C_HCI_VERSION_RESET,
         )
 
         # --- Enable the real I3C core, observe the pads, restore -------------
@@ -258,12 +261,8 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         #   * after the write == that word with BUS_ENABLE set, proving the
         #     sw=rw field is really writable in the real core, and
         #   * after the restore == the declared reset word again.
-        await self._read(
-            "I3C0_HC_CONTROL", I3C0_HC_CONTROL, expected=I3C_HC_CONTROL_RESET
-        )
-        await self._write(
-            "I3C0_HC_CONTROL_BUS_ENABLE", I3C0_HC_CONTROL, I3C_HC_CONTROL_ENABLED
-        )
+        await self._read("I3C0_HC_CONTROL", I3C0_HC_CONTROL, expected=I3C_HC_CONTROL_RESET)
+        await self._write("I3C0_HC_CONTROL_BUS_ENABLE", I3C0_HC_CONTROL, I3C_HC_CONTROL_ENABLED)
         await self._read(
             "I3C0_HC_CONTROL_BUS_ENABLE",
             I3C0_HC_CONTROL,
@@ -275,8 +274,11 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
             "BUS_ENABLE (bm 0x%08X, sw=rw in base_registers.rdl) wrote and read "
             "back 0x%08X: the real I3C core's host-controller enable is "
             "software-writable over the fabric",
-            I3C0_CSR_WINDOW, HC_CONTROL_OFFSET, I3C0_HC_CONTROL,
-            I3C_HC_CONTROL_RESET, I3C_HC_CONTROL_BUS_ENABLE,
+            I3C0_CSR_WINDOW,
+            HC_CONTROL_OFFSET,
+            I3C0_HC_CONTROL,
+            I3C_HC_CONTROL_RESET,
+            I3C_HC_CONTROL_BUS_ENABLE,
             I3C_HC_CONTROL_ENABLED,
         )
 
@@ -284,9 +286,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         # for exactly what it does and does not claim).
         await observe_i3c0_external_pull_low(core_enabled=True)
 
-        await self._write(
-            "I3C0_HC_CONTROL_RESTORE", I3C0_HC_CONTROL, I3C_HC_CONTROL_RESET
-        )
+        await self._write("I3C0_HC_CONTROL_RESTORE", I3C0_HC_CONTROL, I3C_HC_CONTROL_RESET)
         await self._read(
             "I3C0_HC_CONTROL_RESTORE",
             I3C0_HC_CONTROL,
@@ -300,6 +300,5 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         # same counters and runs first, so the floor is defence-in-depth against a
         # future refactor that bypasses this assert.
         assert (self.reads, self.writes) == (7, 4), (
-            f"I3C fabric smoke issued {self.reads} reads / {self.writes} writes, "
-            f"expected 7 / 4"
+            f"I3C fabric smoke issued {self.reads} reads / {self.writes} writes, expected 7 / 4"
         )

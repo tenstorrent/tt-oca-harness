@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_locked_access_interrupt_test_seq import (
     smc_efuse_locked_access_interrupt_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

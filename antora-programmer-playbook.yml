@@ -11,6 +11,12 @@ content:
       branches: HEAD
       start_path: doc/programmer
       edit_url: false
+asciidoc:
+  attributes:
+    kroki-default-format: svg
+    kroki-fetch-diagram: true
+  extensions:
+    - asciidoctor-kroki
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable

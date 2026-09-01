@@ -51,8 +51,7 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
                 return last
             await RisingEdge(cocotb.top.clk_smc_i)
         raise AssertionError(
-            f"{label}: STATUS_SMU=0x{last:x} want 0x{want:x} after "
-            f"{_MAX_STATUS_POLLS} CSR poll(s)"
+            f"{label}: STATUS_SMU=0x{last:x} want 0x{want:x} after {_MAX_STATUS_POLLS} CSR poll(s)"
         )
 
     async def body(self) -> None:
@@ -75,7 +74,8 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-DFX-ABORT-IDLE: STATUS_SMU=0x%x (no abort bit set) after "
             "%d CSR poll(s) with both abort pins driven 0",
-            idle, self.stage_polls[-1],
+            idle,
+            self.stage_polls[-1],
         )
 
         dut.tb_mem_repair_abort.value = 1
@@ -94,7 +94,9 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             "CHK-DFX-ABORT-REPAIR: STATUS_SMU=0x%x live after %d CSR poll(s) "
             "with mem_repair_abort_i=1, still 0x%x after the pin returned to 0 "
             "(sticky)",
-            repair, repair_live_polls, sticky,
+            repair,
+            repair_live_polls,
+            sticky,
         )
 
         dut.tb_mbist_abort.value = 1
@@ -114,7 +116,9 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             "CHK-DFX-ABORT-MBIST: STATUS_SMU=0x%x live after %d CSR poll(s) "
             "with mbist_abort_i=1, still 0x%x after the pin returned to 0 "
             "(both aborts sticky)",
-            both, mbist_live_polls, both_sticky,
+            both,
+            mbist_live_polls,
+            both_sticky,
         )
 
         # Reconciliation against the SCOREBOARD, not against this sequence's own
@@ -142,6 +146,9 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             "%d access(es) checked by the scoreboard, %d of them value "
             "compares (>= %d)",
             " -> ".join(f"0x{w:x}" for w in self.status_progression),
-            self.stage_polls, _MAX_STATUS_POLLS, sb.sys_axi_checks_seen,
-            self.value_checks, EXPECTED_VALUE_CHECKS,
+            self.stage_polls,
+            _MAX_STATUS_POLLS,
+            sb.sys_axi_checks_seen,
+            self.value_checks,
+            EXPECTED_VALUE_CHECKS,
         )

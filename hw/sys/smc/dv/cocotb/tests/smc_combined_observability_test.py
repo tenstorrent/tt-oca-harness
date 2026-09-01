@@ -15,17 +15,15 @@ for each agent.
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib._one_shot import _OneShot
 from seq_lib.smc_combined_observability_test_seq import (
     smc_combined_observability_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_combined_observability_test(smc_base_test):
-
     # The I2C leg's only value compare is the idle `tb_i2c_cg_en == 0`; this
     # control proves the same probe able to read 1 in the same run and credits
     # the liveness ledger the scoreboard consults
@@ -37,14 +35,10 @@ class smc_combined_observability_test(smc_base_test):
         seq = smc_combined_observability_test_seq("combined_obs_seq")
 
         async def dispatch_reset(item) -> None:
-            await _OneShot(item, "reset_oneshot").start(
-                self.env.reset_agent.sequencer
-            )
+            await _OneShot(item, "reset_oneshot").start(self.env.reset_agent.sequencer)
 
         async def dispatch_i2c(item) -> None:
-            await _OneShot(item, "i2c_oneshot").start(
-                self.env.i2c_agent.sequencer
-            )
+            await _OneShot(item, "i2c_oneshot").start(self.env.i2c_agent.sequencer)
 
         seq.dispatch_reset = dispatch_reset
         seq.dispatch_i2c = dispatch_i2c

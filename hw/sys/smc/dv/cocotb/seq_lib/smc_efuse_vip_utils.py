@@ -55,9 +55,7 @@ from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_bootrom_addr
 #
 # Proof class of anything checked this way is **transport**: it proves the map
 # window decodes and returns the sensed word, not that fuse programming works.
-EFUSE_DEFAULT_HEX = (
-    _REPO / "hw" / "sys" / "smc" / "dv" / "assets" / "smc_efuse_default.hex"
-)
+EFUSE_DEFAULT_HEX = _REPO / "hw" / "sys" / "smc" / "dv" / "assets" / "smc_efuse_default.hex"
 EFUSE_MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 EFUSE_MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
 
@@ -90,8 +88,7 @@ def efuse_preload_word_at(addr: int) -> int:
     words = efuse_preload_words()
     idx = (addr - EFUSE_MAP_BASE) // 4
     assert idx < len(words), (
-        f"0x{addr:08x} is word {idx} but {EFUSE_DEFAULT_HEX.name} holds only "
-        f"{len(words)} word(s)"
+        f"0x{addr:08x} is word {idx} but {EFUSE_DEFAULT_HEX.name} holds only {len(words)} word(s)"
     )
     return words[idx]
 
@@ -106,12 +103,8 @@ def efuse_map_read_locked(lock_field_symbol: str) -> bool:
     an observed read.
     """
     mask = _field_mask(_SMC_EFUSE_MAP_H, lock_field_symbol)
-    locks_lo = efuse_preload_word_at(
-        smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-    )
-    locks_hi = efuse_preload_word_at(
-        smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4
-    )
+    locks_lo = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
+    locks_hi = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4)
     locks = (locks_hi << 32) | locks_lo
     return bool(locks & mask)
 
@@ -149,8 +142,7 @@ EFUSE_SHIM_CTRL_WINDOW = smc_bootrom_addr(
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]). Same
 # read-one-generated-#define accessor the rest of this package uses.
 _EFUSE_SHIM_CTRL_H = (
-    _REPO / "hw" / "ip" / "efuse" / "dv" / "models" / "regs" / "gen" / "c"
-    / "efuse_shim_ctrl.h"
+    _REPO / "hw" / "ip" / "efuse" / "dv" / "models" / "regs" / "gen" / "c" / "efuse_shim_ctrl.h"
 )
 EFUSE_BANK_INIT_TIME_RESET = _field_mask(
     _EFUSE_SHIM_CTRL_H, "EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset"
@@ -224,8 +216,7 @@ async def prove_efuse_bank_axil_activity(
     dut = cocotb.top
     probe = dut.tb_axil_efuse_bank_active
     assert probe.value.is_resolvable, (
-        "eFuse-bank AXI-Lite activity signal is not resolvable before the "
-        "positive control"
+        "eFuse-bank AXI-Lite activity signal is not resolvable before the positive control"
     )
     assert int(probe.value) == 0, (
         "positive-control precondition failed: tb_axil_efuse_bank_active is "

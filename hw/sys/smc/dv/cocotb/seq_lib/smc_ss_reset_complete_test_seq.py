@@ -12,16 +12,12 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 SS_COMPLETE = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR")
 SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR")
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
 # SS_WARM_RESET_N's reset value comes from the generated reset_unit header, the
 # same accessor smc_jtag_reset_ctrl_test_seq uses, so a narrowing of the field in
 # the RDL rots this expectation instead of leaving a stale golden behind.
-SS_WARM_RESET_VALUE = reset_unit_u32(
-    "RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset"
-)
+SS_WARM_RESET_VALUE = reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset")
 SS_COMPLETE_ALL_ONE = 0xFFFFFFFF
 SS_COMPLETE_DROP_0_31 = 0x7FFFFFFE
 _CSR_BOUND = 64
@@ -78,8 +74,7 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
                 return last
             await RisingEdge(cocotb.top.clk_smc_i)
         raise AssertionError(
-            f"{label}: SS_RESET_COMPLETE last=0x{last:x} want=0x{want:x} "
-            f"after {_CSR_BOUND} polls"
+            f"{label}: SS_RESET_COMPLETE last=0x{last:x} want=0x{want:x} after {_CSR_BOUND} polls"
         )
 
     def _warm_pin(self, dut) -> int:
@@ -107,16 +102,12 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_ss_reset_complete"), (
-            "tb_ss_reset_complete missing"
-        )
+        assert hasattr(dut, "tb_ss_reset_complete"), "tb_ss_reset_complete missing"
         assert hasattr(dut, "tb_ss0_warm_reset_n"), "tb_ss0_warm_reset_n missing"
 
         dut.tb_ss_reset_complete.value = SS_COMPLETE_ALL_ONE
         self.idle_csr = await self._await_csr(SS_COMPLETE_ALL_ONE, "IDLE")
-        cocotb.log.info(
-            "CHK-SS-COMPLETE-IDLE: CSR=0x%x pin=all-1", self.idle_csr
-        )
+        cocotb.log.info("CHK-SS-COMPLETE-IDLE: CSR=0x%x pin=all-1", self.idle_csr)
 
         dut.tb_ss_reset_complete.value = SS_COMPLETE_DROP_0_31
         self.drop_csr = await self._await_csr(SS_COMPLETE_DROP_0_31, "DROP")
@@ -128,9 +119,7 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
 
         dut.tb_ss_reset_complete.value = SS_COMPLETE_ALL_ONE
         self.restore_csr = await self._await_csr(SS_COMPLETE_ALL_ONE, "RESTORE")
-        cocotb.log.info(
-            "CHK-SS-COMPLETE-RESTORE: CSR=0x%x pin=all-1", self.restore_csr
-        )
+        cocotb.log.info("CHK-SS-COMPLETE-RESTORE: CSR=0x%x pin=all-1", self.restore_csr)
 
         warm0 = await self.csr_read("SS_WARM_IDLE", SS_WARM)
         assert warm0 == SS_WARM_RESET_VALUE, (
@@ -154,10 +143,15 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
             "fail-capable content is the bounded wait and the CSR compares) "
             "reached in %s/%s/%s clk_smc_i cycles; CSR=0x%x→0x%x→0x%x read "
             "without expected= and compared here and at testcase level",
-            pin0, pin1, pin2,
-            self.polls.get("WARM_IDLE"), self.polls.get("WARM_ASSERT"),
+            pin0,
+            pin1,
+            pin2,
+            self.polls.get("WARM_IDLE"),
+            self.polls.get("WARM_ASSERT"),
             self.polls.get("WARM_RELEASE"),
-            warm0, warm1, warm2,
+            warm0,
+            warm1,
+            warm2,
         )
         # SCRATCH_COLD_WARM_0 read/write/restore. This scenario drives no SMC
         # warm or cool reset -- the SW SS_WARM_RESET_N bit exercised above is
@@ -165,19 +159,20 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
         # made here about reset clearing this register (that property is proven
         # by smc_jtag_reset_ctrl_test, which causes a real cool reset). What is
         # proven is that the register is a live sw=rw scratch cell.
-        await self.csr_write("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0,
-                             _SCRATCH_PAT)
-        wrote = await self.csr_read("SCRATCH_COLD_WARM_0_RB", SCRATCH_COLD_WARM_0,
-                                    expected=_SCRATCH_PAT)
-        await self.csr_write("SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0,
-                             _SCRATCH_RESET)
+        await self.csr_write("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, _SCRATCH_PAT)
+        wrote = await self.csr_read(
+            "SCRATCH_COLD_WARM_0_RB", SCRATCH_COLD_WARM_0, expected=_SCRATCH_PAT
+        )
+        await self.csr_write("SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0, _SCRATCH_RESET)
         restored = await self.csr_read(
-            "SCRATCH_COLD_WARM_0_RESTORE_RB", SCRATCH_COLD_WARM_0,
+            "SCRATCH_COLD_WARM_0_RESTORE_RB",
+            SCRATCH_COLD_WARM_0,
             expected=_SCRATCH_RESET,
         )
         cocotb.log.info(
             "CHK-SS-COMPLETE-SCRATCH-RW: SCRATCH_COLD_WARM_0 took 0x%08x then "
             "0x%08x on write/readback (no SMC warm or cool reset occurs in this "
             "scenario, so no reset-clearing claim is made)",
-            wrote, restored,
+            wrote,
+            restored,
         )

@@ -7,11 +7,10 @@ DV-CARD: SMC_CG_TEST_MODE_BYPASS_TEST ANCHOR: smc_cg_test_mode_bypass_test
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
 
-from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
+from .smc_csr_seq_utils import SmcCsrSeq
 
 # Every record this sequence emits goes through `cocotb.log`: a module-level
 # `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
@@ -41,13 +40,11 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
     def _dut(self):
         return cocotb.top
 
-    async def _program_cg(
-        self, *, dma_en: bool, zeroer_en: bool, hyst: int = HYST
-    ) -> None:
+    async def _program_cg(self, *, dma_en: bool, zeroer_en: bool, hyst: int = HYST) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (
-            cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK
-        ) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
+        nxt = (cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
+            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
+        )
         if dma_en:
             nxt |= DMA_CG_EN
         if zeroer_en:
@@ -113,13 +110,13 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         # that never takes effect fails here rather than being absorbed by a
         # longer wait ([NO-BLIND-DELAY-SYNC]).
         bypass_seen_at = await cg.wait_enabled(
-            dut, "tb_dma_gated_clk", timeout_smc=GATE_OFF_TIMEOUT_SMC,
+            dut,
+            "tb_dma_gated_clk",
+            timeout_smc=GATE_OFF_TIMEOUT_SMC,
             diag_names=("tb_dma_cg_en", "tb_dma_gater_busy", "tb_test_en_i"),
         )
         # Exact every-cycle via per-SMC-rise sample (avoids edge-counter ±1 races).
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_dma_gated_clk", IDLE_OBSERVE
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_dma_gated_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"DMA clock gated under test_en_i: edges={edges} window={IDLE_OBSERVE}"
         )
@@ -148,12 +145,8 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         # off by the same gater with test_en_i=0, so a gater that never gates
         # fails there instead of passing here. No settle delay is needed: the
         # DMA window above already ran IDLE_OBSERVE cycles under test_en_i=1.
-        zaxi = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
-        )
-        zreg = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
-        )
+        zaxi = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE)
+        zreg = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert zaxi == IDLE_OBSERVE, (
             f"axi_clk gated under test_en_i: edges={zaxi} window={IDLE_OBSERVE} "
             f"(this clock WAS observed gated off at smc cycle {zaxi_off_at} "
@@ -236,11 +229,23 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
             "test_en_i=1 enabled dma={}/{} zeroer_axi={}/{} zeroer_reg={}/{}; "
             "test_en_i=0 re-gated at smc_cycle={} then enabled dma={}/{} "
             "zeroer_axi={}/{} zeroer_reg={}/{}".format(
-                fence_times[0], fence_times[1], fence_times[2], fence_times[3],
-                edges, IDLE_OBSERVE, zaxi, IDLE_OBSERVE, zreg, IDLE_OBSERVE,
+                fence_times[0],
+                fence_times[1],
+                fence_times[2],
+                fence_times[3],
+                edges,
+                IDLE_OBSERVE,
+                zaxi,
+                IDLE_OBSERVE,
+                zreg,
+                IDLE_OBSERVE,
                 dma_regate_at,
-                rel_dma, IDLE_OBSERVE, rel_zaxi, IDLE_OBSERVE,
-                rel_zreg, IDLE_OBSERVE,
+                rel_dma,
+                IDLE_OBSERVE,
+                rel_zaxi,
+                IDLE_OBSERVE,
+                rel_zreg,
+                IDLE_OBSERVE,
             ),
         )
         cg.mark_fence(self.fence, "PASS")

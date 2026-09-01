@@ -192,7 +192,8 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
         "host controller %s; all %d I3C0 nets resolvable (no X/Z) at every one "
         "of the %d sample points",
         "ENABLED (HC_CONTROL.BUS_ENABLE=1)" if core_enabled else "left disabled",
-        len(_I3C0_NETS), len(samples) * len(_I3C0_NETS),
+        len(_I3C0_NETS),
+        len(samples) * len(_I3C0_NETS),
     )
     # Diagnostics: deliberately NOT a CHK- token and NOT asserted.
     cocotb.log.info(

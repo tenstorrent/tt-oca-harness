@@ -56,13 +56,14 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
             # `expected=` hands the compare to the scoreboard, which raises on
             # mismatch, so a local `assert got == pattern` would only restate
             # it and would carry no failure mode of its own.
-            observed[name] = await self.csr_read(
-                name, addr, expected=pattern, length=8
-            )
+            observed[name] = await self.csr_read(name, addr, expected=pattern, length=8)
             cocotb.log.info(
                 "CHK-SPM-MEM-%s: addr=0x%x data=0x%x (read while all %d edge "
                 "patterns are resident)",
-                name, addr, observed[name], len(_PATTERNS),
+                name,
+                addr,
+                observed[name],
+                len(_PATTERNS),
             )
 
         # `lo_ok`/`mid_ok`/`hi_ok` were `flags.append(True)` inside the loop --
@@ -70,11 +71,18 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
         # printed exactly those three constants. Both are replaced by the
         # measured words ([NO-ALWAYS-PASS-CHECKER]).
         self.lo_ok, self.mid_ok, self.hi_ok = (
-            observed["SPM_LO"], observed["SPM_LO_NEXT"], observed["SPM_HI"]
+            observed["SPM_LO"],
+            observed["SPM_LO_NEXT"],
+            observed["SPM_HI"],
         )
         cocotb.log.info(
             "CHK-SPM-MEM-BASIC: lo@0x%x=0x%x next@0x%x=0x%x hi@0x%x=0x%x -- all "
             "three read back with the other two still resident, so a decode "
             "that collapsed the SPM edges onto one location fails here",
-            _LO, self.lo_ok, _LO_NEXT, self.mid_ok, _HI, self.hi_ok,
+            _LO,
+            self.lo_ok,
+            _LO_NEXT,
+            self.mid_ok,
+            _HI,
+            self.hi_ok,
         )
