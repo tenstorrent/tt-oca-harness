@@ -52,6 +52,29 @@ ocah-doc-reg-setup:
 	@true
 endif
 
+## Verification dashboard data.
+#
+# doc/trm/src/dashboard.adoc fetches this JSON in the browser at page load.
+OCAH_DASHBOARD_DATA_DIR ?= $(OCAH_DOC_DIR)/_build/dashboard-data
+OCAH_DASHBOARD_DATA_REF ?= origin/dv-dashboard-data
+OCAH_DASHBOARD_DATA_PATH ?= latest/summary.json
+OCAH_DASHBOARD_STAGE := OCAH_ROOT="$(OCAH_ROOT)" \
+	OCAH_DASHBOARD_DATA_DIR="$(OCAH_DASHBOARD_DATA_DIR)" \
+	OCAH_DASHBOARD_DATA_REF="$(OCAH_DASHBOARD_DATA_REF)" \
+	OCAH_DASHBOARD_DATA_PATH="$(OCAH_DASHBOARD_DATA_PATH)" \
+	bash $(OCAH_ROOT)/tools/doc/stage_dashboard_data.sh
+
+## Stage dashboard JSON from the local clone of the data branch.
+.PHONY: ocah-doc-dashboard-data
+ocah-doc-dashboard-data:
+	@$(OCAH_DASHBOARD_STAGE)
+
+# Copy staged dashboard data into a built site tree.
+# $(call ocah_stage_dashboard_data,<site-root>)
+define ocah_stage_dashboard_data
+@$(OCAH_DASHBOARD_STAGE) "$(1)"
+endef
+
 # Product makefrags.
 -include $(OCAH_DOC_DIR)/trm/doc.mk
 -include $(OCAH_DOC_DIR)/integrator/doc.mk
@@ -95,6 +118,7 @@ ocah-doc-all-clean: ocah-doc-clean
 
 OCAH_PHONY += \
   ocah-doc-reg-setup \
+  ocah-doc-dashboard-data \
   ocah-doc-setup \
   ocah-doc-html \
   ocah-doc-pdf \
