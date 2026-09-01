@@ -35,6 +35,14 @@ module sep_dma_wrap
   // Aggregated fatal alert (alert pulse | integ_fail of all channels).
   output logic                                      dma_alert_o,
 
+  // Bridge fault reporting. Both are held until dma_err_clr_i; a fault arriving in
+  // the same cycle as the clear still latches. They are NOT cleared by a CPU-only
+  // reset (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must
+  // treat an assertion at boot as possibly stale rather than a fresh fault.
+  output logic                                      dma_reg_bus_err_o,
+  output logic                                      dma_host_intg_err_o,
+  input  logic                                      dma_err_clr_i,
+
   // Register Interface (AXI Slave)
   input  sep_pkg::sep_32_64_6_12_axi_req_t            reg_req_i,
   output sep_pkg::sep_32_64_6_12_axi_resp_t           reg_resp_o,
@@ -82,10 +90,6 @@ module sep_dma_wrap
   // DMA AXI signals before local alias remap
   sep_pkg::sep_32_64_3_12_axi_req_t  dma_axi_req_raw;
   sep_pkg::sep_32_64_3_12_axi_resp_t dma_axi_resp_raw;
-
-  // Unused error signals from converters
-  logic axi_to_tlul_err;
-  logic tlul_to_axi_intg_err;
 
   // CTN Interface (tied off)
   tlul_pkg::tl_d2h_t ctn_tl_d2h;
@@ -220,7 +224,8 @@ module sep_dma_wrap
     .axi_lite_rsp_o  (axi_lite_slv_resp),
     .tl_o            (tl_d_i),
     .tl_i            (tl_d_o),
-    .err_o           (axi_to_tlul_err)
+    .err_o           (dma_reg_bus_err_o),
+    .err_clr_i       (dma_err_clr_i)
   );
 
   //////////////////////////////////////////////////////
@@ -245,7 +250,8 @@ module sep_dma_wrap
     .tl_o            (host_tl_h_i),
     .axi_lite_req_o  (axi_lite_mst_req),
     .axi_lite_rsp_i  (axi_lite_mst_resp),
-    .err_o           (tlul_to_axi_intg_err)
+    .err_o           (dma_host_intg_err_o),
+    .err_clr_i       (dma_err_clr_i)
   );
 
   // Convert AXI-Lite to AXI (before data width conversion)
