@@ -14,6 +14,10 @@ module ocah_npu_fabric_adapter
   input  logic clk_i,
   input  logic rst_ni,
 
+  // Trusted release from secure-management logic. Assert synchronously to
+  // clk_i only after authentication and fabric containment are active.
+  input  logic security_release_i,
+
   // Application CSR fabric: 32-bit AXI4-Lite subordinate.
   // The adopter decoder supplies a zero-based offset within the NPU aperture.
   input  logic        s_axil_awvalid_i,
@@ -42,6 +46,7 @@ module ocah_npu_fabric_adapter
   output logic [7:0]                   m_axi_awlen_o,
   output logic [2:0]                   m_axi_awsize_o,
   output logic [1:0]                   m_axi_awburst_o,
+  output logic [2:0]                   m_axi_awprot_o,
   output logic                         m_axi_wvalid_o,
   input  logic                         m_axi_wready_i,
   output logic [NPU_AXI_DATA_W-1:0]    m_axi_wdata_o,
@@ -58,6 +63,7 @@ module ocah_npu_fabric_adapter
   output logic [7:0]                   m_axi_arlen_o,
   output logic [2:0]                   m_axi_arsize_o,
   output logic [1:0]                   m_axi_arburst_o,
+  output logic [2:0]                   m_axi_arprot_o,
   input  logic                         m_axi_rvalid_i,
   output logic                         m_axi_rready_o,
   input  logic [NPU_AXI_ID_W-1:0]      m_axi_rid_i,
@@ -71,11 +77,22 @@ module ocah_npu_fabric_adapter
 
   logic [31:0] npu_dma_awaddr;
   logic [31:0] npu_dma_araddr;
+  logic        npu_rst_ni;
+
+  // Reset assertion remains asynchronous through rst_ni/security_release_i;
+  // the trusted controller must synchronize the rising release edge to clk_i.
+  assign npu_rst_ni = rst_ni & security_release_i;
 
   // The NPU can issue only low-4-GiB physical addresses. These sized casts
   // zero-extend because the source signals are unsigned packed logic vectors.
   assign m_axi_awaddr_o = FabricAddrWidth'(npu_dma_awaddr);
   assign m_axi_araddr_o = FabricAddrWidth'(npu_dma_araddr);
+
+  // npu_axi_csr_wrap has no AxPROT outputs. Classify every DMA request at this
+  // trusted ingress as data, non-secure, and unprivileged. An adopter-specific
+  // wrapper must also assign a non-spoofable stream/source ID for its fabric.
+  assign m_axi_awprot_o = 3'b010;
+  assign m_axi_arprot_o = 3'b010;
 
   initial begin
     assert (FabricAddrWidth >= 32)
@@ -86,7 +103,7 @@ module ocah_npu_fabric_adapter
     .PrefetchEn (PrefetchEn)
   ) u_npu (
     .clk_i,
-    .rst_ni,
+    .rst_ni (npu_rst_ni),
 
     .s_axil_awvalid_i,
     .s_axil_awready_o,

@@ -90,6 +90,10 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
 {
     uint32_t remaining = timeout;
 
+    if (!platform_npu_security_release_confirmed()) {
+        return -5;
+    }
+
     if (descriptor == NULL || descriptor_words == 0u ||
         buffer < PLATFORM_NPU_DMA_BASE ||
         buffer_size > PLATFORM_NPU_DMA_SIZE ||
@@ -125,6 +129,10 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
 
 int npu_interrupt_route_smoke(uint32_t timeout)
 {
+    if (!platform_npu_security_release_confirmed()) {
+        return -2;
+    }
+
     npu_irq_seen = 0u;
     npu_write(NPU_INTR_STATE, NPU_INTR_DONE | NPU_INTR_ERROR);
     npu_write(NPU_INTR_ENABLE, NPU_INTR_DONE | NPU_INTR_ERROR);

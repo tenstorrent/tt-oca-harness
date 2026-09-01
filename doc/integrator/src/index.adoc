@@ -24,7 +24,7 @@ ifdef::backend-html5[]
 
 * xref:revision.adoc[Revision History] - Track major revisions and updates to the OCAH Integrator Guide
 * xref:index.adoc#smu-top-level-integration[SMU Top-Level Integration] - Guidelines for integrating OCAH subsystems
-* xref:user-ip-integration.adoc[User IP Integration] - Add an SMC-managed peripheral or application-owned accelerator
+* xref:user-ip-integration.adoc[User IP Integration] - Add management, security-extension, or application IP
 endif::backend-html5[]
 
 ifdef::backend-pdf[]

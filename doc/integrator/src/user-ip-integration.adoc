@@ -8,39 +8,77 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-This chapter describes how to add adopter-owned IP to the user subsystem around
-the Open Chiplet Atlas Harness (OCAH). It is for an SoC integrator connecting a
-management peripheral, accelerator, or other application block to a chiplet that
-contains the OCAH System Management Unit (SMU).
+This chapter describes how to add adopter-owned IP to a chiplet containing the
+Open Chiplet Atlas Harness (OCAH). It covers management peripherals, security
+extensions, and application logic in the user subsystem.
 
-OCAH does not provide a general-purpose user-subsystem interconnect. The adopter
-owns the application fabric, address decode, clock and power-domain logic, and
-the application software stack. OCAH provides management access and lifecycle
-signals that the adopter can connect to that infrastructure.
+The distinction matters. An IP connected to an OCAH bus does not automatically
+become trusted, securely booted, lifecycle-controlled, or protected from other
+initiators. The integrator must define those properties and provide the fabric,
+firewalls, IOMMU, secure-boot handoff, and physical implementation needed to
+enforce them.
+
+OCAH Phase 1 does not contain the general-purpose System Management Network
+(SMN), die-to-die fabric, or user-subsystem interconnect shown in the system
+block diagram. The application subsystem remains an adopter-owned black box.
+Consequently, the application path in this chapter is an integration contract,
+not a drop-in RTL port on `smu.sv`. The adopter owns the application fabric,
+address decode, clock and power domains, and application software stack; OCAH
+provides management and security services around that subsystem.
 
 [[user-ip-integration-model]]
-== Select the integration model
+== Select the trust and attachment model
 
-First decide who owns the IP at run time. This determines the correct CSR,
-interrupt, and data paths.
+First decide whether the IP is part of a management, security, or application
+trust domain. This determines the correct CSR, interrupt, data, boot, and debug
+paths. These classes are not interchangeable.
 
 .User IP attachment classes
-[cols="24%,25%,28%,23%",options="header"]
+[cols="18%,22%,23%,20%,17%",options="header"]
 |===
-|Class |CSR connection |DMA or data connection |Interrupt destination
+|Class |Runtime and trust owner |CSR connection |DMA or data connection
+|Interrupt destination
 
 |SMC-managed peripheral
+|SMC firmware; management-plane policy
 |The supplementary portion of the SMC adopter peripheral window,
 `smc_external_req_o` / `smc_external_resp_i`
 |Usually none; attach any independent manager to an adopter-owned fabric
 |An assigned bit of SMU `ext_interrupts_i`
 
+|SEP security extension
+|SEP firmware; inside or directly supporting the security boundary
+|The SEP external region through `sep_external_req_o` /
+`sep_external_resp_i`
+|The SEP extension port is a manager-to-subordinate path. Any extension DMA
+manager uses a separately contained adopter-fabric connection
+|An assigned bit of `sep_extintsrc_req_i`
+
 |Application-owned accelerator
+|Application firmware or OS; outside the OCAH trusted computing base unless a
+threat-model review explicitly places it inside
 |An adopter SoC CSR fabric
-|The IP's AXI manager connects to the adopter memory fabric
+|The IP's AXI manager connects through an IOMMU or equivalent firewall to the
+adopter memory fabric
 |The application interrupt controller; optionally also an assigned bit of SMU
 `ext_interrupts_i` for management or fault notification
 |===
+
+Before selecting a class, record:
+
+* the code, configuration, keys, model weights, and user data handled by the IP;
+* which of those assets require integrity, confidentiality, or anti-rollback;
+* whether the IP and its supply chain are trusted;
+* which boot stage authenticates and releases the IP;
+* which initiators may access its CSRs and memory;
+* the least-privilege AXI security attributes and source identity it receives;
+* its debug, scan, test, and production-lifecycle policy; and
+* where security and fatal faults are reported.
+
+The OCAH SMC and SEP inbound/outbound filters protect their own traffic paths.
+They do not automatically protect an IP attached to the adopter fabric. Use
+default-deny hardware policy at every new trust boundary and prevent less
+trusted software or the IP itself from rewriting or spoofing that policy.
 
 Do not connect an adopter DMA manager to `smu_axi_out_req_o`. That port is an
 OCAH *manager output*: it carries transactions initiated by the SMC or SEP to
@@ -48,12 +86,12 @@ the adopter fabric. A user IP's DMA interface is another manager on that fabric.
 
 [source,text]
 ----
-                         +------------------------------+
-SMC / SEP -- SMU AXI out |                              |--> memory / peripherals
-                         |     adopter SoC fabric       |
-User IP DMA ------------>|                              |
-Application CPU -------->|                              |
-                         +------------------------------+
+                         +--------------------------------------+
+SMC / SEP -- SMU AXI out |                                      |
+                         | adopter SMN / application fabric     |--> memory
+Application CPU -------->|                                      |
+User IP DMA --> IOMMU --->|                                      |
+                         +--------------------------------------+
 ----
 
 The SMU inbound AXI port is also not a route from an external manager to an
@@ -120,6 +158,57 @@ in RTL, SMC firmware, and the verification environment. `sep_extintsrc_req_i`
 is a separate SEP interrupt input and must not be substituted for
 `ext_interrupts_i`.
 
+[[sep-security-extension-ip]]
+== Integrate a SEP security extension
+
+Use this model only for logic that SEP firmware must own as part of, or in
+direct support of, the chiplet security boundary. Examples include a
+security-policy engine or an adopter cryptographic service. Do not place an
+ordinary application accelerator here merely to make it appear trusted.
+
+=== Allocate the SEP external region
+
+`sep_external_req_o` and `sep_external_resp_i` expose the SEP local crossbar's
+32-bit-address, 64-bit-data AXI4 extension target at local addresses
+`0x2000_0000` through `0x3fff_ffff`. The first four bytes at `0x2000_0000` are
+intercepted by current `sep.sv` RTL for the eFuse SHIM, so an adopter decoder
+must not allocate that address. Reserve naturally aligned, non-overlapping
+ranges in the remainder and return `DECERR` for holes.
+
+The port is a transaction path from SEP-local initiators to adopter
+subordinates. It is not a connection for an adopter IP's DMA manager. The SEP
+CPU LSU/debug paths, SEP DMA, and the filtered system-interface path have
+crossbar connectivity to the extension target. External system access remains
+subject to the SEP inbound filter, which is block-by-default after reset and
+must be opened deliberately by SEP firmware.
+
+Preserve the AXI ID, `PROT`, and user/source information carried by the packed
+SEP request type. If the subordinate uses another protocol or a narrower data
+path, verify burst conversion, byte strobes, ordering, response IDs, and error
+propagation at the adapter.
+
+=== Apply SEP security policy
+
+Placing a block behind the SEP extension port only changes reachability; it
+does not prove the block trustworthy. The security design must additionally:
+
+* include executable or mutable extension state in the appropriate verified-
+  boot and anti-rollback policy;
+* prevent non-secure or incorrectly identified initiators from reaching
+  protected registers;
+* exclude roots, keys, and integrity-critical state from scan, and classify
+  any secret-consuming state under the SEP scan policy;
+* define zeroization and reset behavior for sensitive state;
+* constrain any extension DMA manager independently at the adopter fabric; and
+* route integrity, tamper, and fatal errors to a security or safety handler
+  that cannot be masked by application software.
+
+Assign each SEP-visible interrupt an allocated bit of
+`sep_extintsrc_req_i`. Synchronize an asynchronous source before the SEP
+boundary or retain it as a level until SEP firmware clears the peripheral
+status. Do not route it to SMU `ext_interrupts_i` unless SMC also has an
+independent management reason to receive the event.
+
 [[application-owned-user-ip]]
 == Integrate an application-owned accelerator
 
@@ -128,16 +217,32 @@ and normal interrupt service for an accelerator.
 
 === Connect control and DMA independently
 
-Place the CSR subordinate on the adopter's application CSR fabric. Connect the
-DMA manager to the adopter memory fabric as a peer of the application CPU and
-the OCAH outbound manager. The fabric must supply any required address-width,
-data-width, ID-width, clock-domain, security, and coherency adapters.
+Place the CSR subordinate on the adopter's application CSR fabric. In a future
+full-harness integration this fabric may be the SMN shown in the OCAH system
+architecture; Phase 1 supplies no SMN RTL. Connect the DMA manager through a
+trusted ingress point to the adopter memory fabric as a peer of the application
+CPU and the OCAH outbound manager. The fabric must supply any required
+address-width, data-width, ID-width, clock-domain, security, and coherency
+adapters.
 
 For a manager with an address width narrower than the fabric, zero-extend its
 addresses. Zero-extension restricts the manager to the low part of the physical
-address space; it is not address translation. Place every DMA buffer in a range
-the manager can represent, or add a documented translation unit such as an
-IOMMU.
+address space; it is not address translation or security containment.
+
+Treat a third-party or application-owned DMA engine as untrusted by default.
+Place an IOMMU or equivalent address-and-permission firewall between it and
+memory, assign a non-spoofable stream/source identity at the trusted fabric
+ingress, and allow only the buffers and operations required for the current
+workload. An integration may omit that containment only when a threat-model
+review explicitly accepts the IP inside the relevant trust boundary or proves
+that the hardware connection cannot reach another asset.
+
+If the IP does not generate AXI `AxPROT` or fabric user/source fields, the
+trusted adapter must supply least-privilege values. Application IP normally
+originates non-secure, unprivileged data transactions (`AxPROT = 3'b010`). Do
+not let an untrusted IP assert secure privilege or choose its own authenticated
+source ID. Validate unsupported transaction types, including atomics and
+exclusive accesses, at the ingress.
 
 The system address map must define independently:
 
@@ -145,7 +250,9 @@ The system address map must define independently:
 * the DMA-visible memory aperture;
 * whether the SMC or SEP can also reach the CSR aperture through
   `smu_axi_out_req_o`; and
-* which initiators and security states are permitted by the adopter fabric.
+* which initiators and security states are permitted by the adopter fabric;
+* the IOMMU/firewall context and non-spoofable source identity; and
+* which security policy registers become locked before the IP is released.
 
 === Route application and management interrupts
 
@@ -157,6 +264,64 @@ must log or recover the subsystem.
 Do not join two independently cleared interrupt controllers to a pulse. Define
 the ownership of status acknowledgement and masking so one handler cannot hide
 an event from the other.
+
+[[user-ip-security-lifecycle]]
+== Integrate secure boot, lifecycle, debug, and test
+
+=== Establish a trusted release sequence
+
+Hold application IP in reset and keep its bus-master capability blocked while
+the chiplet root of trust is establishing policy. Before enabling transactions:
+
+. SEP authenticates every executable or mutable configuration item required by
+  the product threat model, checks its security version, and extends the
+  measurement into attestation when required.
+. Trusted firmware configures the CSR firewall, DMA stream identity,
+  IOMMU/firewall ranges, interrupt ownership, and fault routing.
+. Trusted firmware locks policy that application software and the IP must not
+  change.
+. SMC completes the power, clock, reset, and isolation sequence.
+. The secure-management handoff records success before the application driver
+  enables queues or DMA.
+
+OCAH does not provide a generic manifest loader or release API for arbitrary
+user IP. The adopter must extend the verified-boot policy and trusted firmware
+for the selected IP, or integrate an equivalent platform root-of-trust service,
+then verify that implementation as part of the product security case.
+
+The authenticated set is product-specific. For an accelerator it may include
+microcode, firmware, register presets, bitstreams, or integrity-sensitive model
+metadata. Bulk user data need not be part of verified boot, but it still needs
+runtime access control. A hardwired accelerator with no mutable executable
+state still requires identity/version checks and containment before release.
+
+Fail closed. Authentication, rollback, policy-lock, or firewall setup failure
+must leave the IP reset or bus-blocked and must produce a diagnosable security
+event. Application software must not be able to convert that failure into a
+release.
+
+=== Apply lifecycle and scan policy
+
+Classify adopter IP state using the SEP lifecycle asset model:
+
+* Class 1 confidentiality or integrity assets are excluded from scan;
+* Class 2 secret-consuming state is placed on a dedicated chain that is never
+  scan-dumpable and observes the secure-test rules; and
+* Class 3 general logic is accessible only when the applicable owner and
+  lifecycle debug policy permit it.
+
+The SEP lifecycle architecture reserves adopter bits in its feature-control
+vector for additional debug, test, and functional gates. The bit-allocation
+convention is currently open, and the current SMU boundary exposes
+`lc_state_o` and `secure_tm_o` but not the complete feature-control vector. An
+IP that needs lifecycle-controlled enables therefore requires an explicitly
+reviewed extension to the integration wrapper and lifecycle/RDL allocation; it
+must not infer an ad-hoc debug authorization from `lc_state_o` alone.
+
+`secure_tm_o` indicates secure test mode; it is not a general functional-access
+authorization. Document how the IP's DTP/scan path, test enables, JTAG-visible
+registers, SRAM test, and secret zeroization behave in every production,
+development, RMA, and secure-test condition used by the product.
 
 [[user-ip-clocks-resets-power]]
 == Integrate clocks, reset, and power
@@ -199,14 +364,19 @@ the user IP's power controller.
 
 Use this ordering for a switchable user domain:
 
-. Hold the IP in reset and isolate its outputs.
+. Hold the IP in reset, isolate its outputs, and block its manager ports.
 . Enable the domain supply and wait for the adopter power-good indication.
 . Start and qualify the functional clock. Clock qualification includes
   confirming PLL lock or equivalent clock-gating stability before the clock is
   considered clean.
-. Deassert the IP reset synchronously to its clock.
+. Configure and lock the trusted fabric ingress, IOMMU/firewall, and fault
+  routing while the IP remains blocked.
+. Complete the required authentication and secure-management release checks.
+. Deassert the IP reset synchronously to its clock only after release is
+  authorized.
 . Complete any IP-local memory initialization.
 . Remove isolation.
+. Enable DMA only after its translation and permission context is active.
 . Assert the assigned `ss_reset_complete_i` bit only when the IP can accept
   transactions.
 
@@ -226,9 +396,12 @@ hardware address and interrupt maps. At minimum the platform contract records:
 * CSR base and span;
 * interrupt number, trigger type, polarity, and owner;
 * DMA address width and accessible ranges;
+* DMA stream/source identity, IOMMU context, and permission owner;
+* AXI security/privilege attributes and allowed CSR initiators;
 * coherency and cache-maintenance policy;
 * reset and power-domain index; and
-* IP configuration or ABI version.
+* IP configuration or ABI version, authenticated components, minimum security
+  versions, and secure-release indication.
 
 Use the generated `*_addr.h` and register headers under a block's
 `regs/gen/c/` directory when its register map is supplied as SystemRDL. An
@@ -243,10 +416,18 @@ sensing and required memory repair, programmed the SMC/SEP global apertures, and
 made the peripheral's clock and power domain available. Configure and clear the
 peripheral before enabling its SMC interrupt source.
 
-For an application-owned accelerator, SMC firmware should bring the domain to
-an accessible reset state and report completion. Application firmware or the OS
-driver then validates the hardware version, allocates DMA-safe buffers, clears
-stale status, registers the application interrupt handler, and enables work.
+For a SEP security extension, SEP firmware validates the extension identity and
+version, establishes access policy, initializes sensitive state, clears pending
+status, and enables its SEP interrupt only after the relevant verified-boot
+stage succeeds.
+
+For an application-owned accelerator, trusted SEP/SMC firmware first performs
+the authenticated release and containment sequence. Application firmware or
+the OS driver must verify that secure release succeeded; it then validates the
+hardware/ABI version, allocates DMA-safe buffers through the assigned IOMMU
+context, clears stale status, registers the application interrupt handler, and
+enables work. A driver must not substitute its own version check for the secure
+boot decision.
 
 === Handle DMA coherency
 
@@ -277,7 +458,19 @@ or DMA engine in an error state is not a complete recovery mechanism.
 
 This example uses the external NPU as a representative DMA-capable accelerator.
 The OCAH tree does not contain or redistribute NPU source. The example adapter
-instantiates the external `npu_axi_csr_wrap`, not the raw `npu_top`.
+instantiates the external `npu_axi_csr_wrap`, not the raw `npu_top`. It is an
+illustrative boundary adapter, not a self-contained public regression: an
+open-source integrator cannot compile it without separately obtaining the NPU
+package and wrapper. A release-quality reproducible example must pin an
+open-source dependency or replace this block with an in-tree reference model.
+
+The example classifies the NPU as application-owned and outside the OCAH
+trusted computing base. It receives no device roots or secret keys, originates
+non-secure unprivileged transactions, and remains reset/bus-blocked until
+trusted firmware has configured its IOMMU/firewall context and authorized
+release. A product that makes the NPU part of its trusted computing base needs a
+separate threat-model and verification argument; changing an AXI attribute is
+not sufficient.
 
 The reference NPU wrapper exposes:
 
@@ -293,19 +486,36 @@ decoder consumes only address bits `[11:0]`.
 
 |`m_axi_*`
 |64-bit AXI4 manager
-|Connect to DMA-visible memory. Zero-extend `m_axi_awaddr_o[31:0]` and
-`m_axi_araddr_o[31:0]` on a wider fabric and constrain all buffers below 4 GiB
-unless an address-translation unit is present.
+|Connect through a trusted IOMMU/firewall ingress. Zero-extend
+`m_axi_awaddr_o[31:0]` and `m_axi_araddr_o[31:0]` on a wider fabric, assign a
+non-spoofable stream ID, and constrain all untranslated addresses below 4 GiB.
+The adapter supplies `AxPROT=3'b010` because the NPU wrapper has no protection
+outputs.
 
 |`intr_done_o`, `intr_error_o`
 |Retained level interrupts
 |Route to separate application interrupt sources. Optionally route the error
-level to an assigned SMU `ext_interrupts_i` bit for SMC fault handling.
+level to an assigned SMU `ext_interrupts_i` bit for SMC fault handling; a fatal
+security violation from the trusted ingress must not depend on the NPU's own
+interrupt.
 
 |`clk_i`, `rst_ni`
 |Single NPU clock and active-low reset
 |Use an adopter clock/reset domain. The NPU contains no internal CDC.
+
+|`security_release_i`
+|Trusted release into the example adapter
+|Keep low until authentication and containment setup succeed. Synchronize its
+rising edge to `clk_i`; deassertion may asynchronously force the NPU back into
+reset. This signal does not replace the external DMA firewall.
 |===
+
+The NPU's mutable executable/configuration surface must be established for the
+selected product configuration. If it loads microcode or other executable
+state, authenticate it and enforce a minimum security version before release.
+If descriptors or model metadata influence a security decision, authenticate
+those items under the corresponding policy. Ordinary application tensors can
+remain runtime data, protected by the IOMMU/firewall rather than measured boot.
 
 The complete adapter is in
 `doc/integrator/examples/npu/ocah_npu_fabric_adapter.sv`. The significant
@@ -319,6 +529,10 @@ logic [31:0] npu_dma_araddr;
 // Sized casts zero-extend these unsigned 32-bit addresses.
 assign m_axi_awaddr_o = FabricAddrWidth'(npu_dma_awaddr);
 assign m_axi_araddr_o = FabricAddrWidth'(npu_dma_araddr);
+
+// The external wrapper supplies no AxPROT; use least privilege at this ingress.
+assign m_axi_awprot_o = 3'b010; // data, non-secure, unprivileged
+assign m_axi_arprot_o = 3'b010;
 ----
 
 The example allocation in `npu_platform.h` is illustrative, not an OCAH fixed
@@ -329,26 +543,41 @@ map:
 |Resource |Example assignment |Requirement
 
 |NPU CSRs |`0x3000_0000`--`0x3000_0fff` |4 KiB aligned application CSR aperture
-|DMA buffer memory |`0x4000_0000`--`0x4007_ffff` |Uncached 512 KiB range below 4 GiB
+|DMA buffer memory |`0x4000_0000`--`0x4007_ffff` |Uncached 512 KiB range below
+4 GiB; the IOMMU/firewall permits this range and rejects adjacent addresses
 |Done interrupt |Application IRQ 42 |Retained level; W1C at NPU `INTR_STATE[0]`
 |Error interrupt |Application IRQ 43 |Retained level; W1C at NPU `INTR_STATE[1]`
 |===
 
 The platform integration must replace these assignments and prove that the CPU
-and NPU observe the same physical buffer addresses.
+and NPU observe the same physical buffer addresses. The stream/source identity,
+IOMMU context, and secure-release indication are platform security resources;
+they are deliberately not invented in the portable example header.
 
 === Polling smoke path
 
-The example `npu_smoke.c` accepts a valid NPU descriptor supplied by the test
-application. It clears stale state, programs the 32-bit DMA base, queues the
-descriptor, starts the NPU, and polls `STATUS.done` / `STATUS.error` with a
-bounded timeout. Passing the test requires:
+Run the example only after trusted firmware reports successful authentication,
+containment setup, policy lock, and NPU release. The application must not be
+able to manufacture that indication. The example `npu_smoke.c` accepts a valid
+NPU descriptor supplied by the test application. It clears stale state,
+programs the 32-bit DMA base, queues the descriptor, starts the NPU, and polls
+`STATUS.done` / `STATUS.error` with a bounded timeout. Passing the test requires:
 
 * successful CSR read and write transactions;
 * DMA reads and writes only inside the assigned buffer range;
 * a completed descriptor before timeout;
 * no AXI `SLVERR` or `DECERR`; and
 * the expected output data after the required cache maintenance.
+
+Security negative tests must also prove that:
+
+* the NPU remains reset or bus-blocked after failed authentication or policy
+  setup;
+* DMA immediately below and above the permitted range is rejected and reported;
+* the NPU cannot select a secure/privileged attribute or another stream ID;
+* application software cannot rewrite locked firewall policy; and
+* production lifecycle/debug policy prevents unauthorized register, JTAG, and
+  scan access.
 
 === Interrupt smoke path
 
@@ -373,10 +602,18 @@ substitute for the named RTL, static-analysis, simulation, or firmware result.
 |Done |Gate |Required evidence |NPU example evidence
 
 |[ ]
-|Ownership and attachment class selected
-|Approved block diagram naming CSR, data/DMA, interrupt, clock, reset, and
-power owners
-|Application-owned accelerator; CSR and DMA are independent fabric ports
+|Trust and attachment class selected
+|Approved data-flow/trust-boundary diagram naming runtime owner, TCB status,
+CSR, DMA, interrupt, clock, reset, power, and security-policy owners
+|Application-owned, outside the OCAH TCB; CSR and DMA are independent fabric
+ports
+
+|[ ]
+|Assets and threats classified
+|Reviewed list of executable/configuration state, secrets, model/data assets,
+attackers, security objectives, and accepted residual risks
+|Microcode/configuration policy decided; tensors treated as contained runtime
+data unless product policy says otherwise
 
 |[ ]
 |CSR aperture allocated without overlap
@@ -390,10 +627,30 @@ backpressure, and error responses
 |`npu_axi_csr_wrap`; OCAH packed `axi_lite_to_tlul` is not used
 
 |[ ]
-|DMA topology and accessible ranges proven
-|Fabric connectivity report plus tests at the lowest/highest permitted address
-and at a rejected address
-|64-bit data, 4-bit ID, 32-bit address; AW and AR addresses zero-extended
+|Transaction identity and privilege fixed
+|RTL review and assertions proving the IP cannot spoof secure/privileged
+`AxPROT`, authenticated source/stream ID, or unsupported transaction types
+|Trusted adapter fixes `AxPROT=3'b010`; adopter ingress assigns the stream ID
+
+|[ ]
+|DMA containment and ranges proven
+|IOMMU/firewall configuration and lock evidence plus tests at the lowest/highest
+permitted address and rejected adjacent/protected addresses
+|64-bit data, 4-bit ID, 32-bit address; AW/AR zero-extended and then contained
+by an adopter IOMMU/firewall
+
+|[ ]
+|Secure boot and release fail closed
+|Positive and negative tests for authentication, minimum security version,
+policy setup/lock, reset or bus block on failure, and secure handoff
+|NPU remains reset/bus-blocked until trusted firmware authorizes release
+
+|[ ]
+|Lifecycle, debug, and scan policy closed
+|Asset-class manifest, feature-control allocation, DTP/scan connectivity, and
+tests in production, development, RMA, and secure-test conditions
+|No roots or keys; adopter must allocate reviewed lifecycle gates before adding
+NPU debug/scan access
 
 |[ ]
 |Clock and reset crossings closed
@@ -408,19 +665,23 @@ test
 
 |[ ]
 |Interrupt routing and ownership proven
-|Assigned interrupt map; mask, trigger, acknowledgement, and lost-interrupt tests
-|Done/error retained levels to application IRQs; optional error to
-`ext_interrupts_i`
+|Assigned interrupt/fault map; mask, trigger, acknowledgement, lost-interrupt,
+and unmaskable security-fault tests
+|Done/error retained levels to application IRQs; optional operational error to
+`ext_interrupts_i`; trusted ingress reports containment violations
 
 |[ ]
 |Software platform contract generated or reviewed
-|Base/span, IRQ, DMA width/range, cache policy, and ABI version agree with RTL
-|`npu_platform.h` replaced with adopter assignments
+|Base/span, IRQ, DMA width/range, source identity, IOMMU context, security
+attributes, release state, cache policy, and ABI/security versions agree with RTL
+|`npu_platform.h` replaced and extended with adopter security resources
 
 |[ ]
 |Polling and interrupt smoke tests pass
-|Bounded positive tests plus timeout, IP error, and fabric-error negative tests
-|Valid descriptor completes in both modes; `INTR_TEST` separately verifies route
+|Bounded positive tests plus timeout, IP error, fabric-error, containment, and
+unauthorized-access negative tests
+|Valid descriptor completes in both modes only after secure release;
+`INTR_TEST` separately verifies routing
 
 |[ ]
 |DMA coherency policy verified
@@ -434,9 +695,15 @@ resubmission
 |Escalate to `rst_ni` if NPU soft reset cannot recover the PE state
 
 |[ ]
+|Example and dependency are reproducible
+|Pinned public dependency or in-tree model with an automated build and test
+|Current adapter is illustrative and does not pass this gate until the external
+NPU dependency is made publicly reproducible
+
+|[ ]
 |Integration sign-off complete
-|Lint, CDC/RDC, synthesis, constraints, simulation, firmware, security, and
-documentation reviews archived against one RTL revision
-|External NPU revision and configuration profile recorded; no NPU source copied
-into OCAH
+|Lint, CDC/RDC, synthesis, constraints, simulation, firmware, threat-model,
+security, DFT, and documentation reviews archived against one RTL revision
+|External NPU revision/configuration recorded; containment and secure-release
+evidence linked to the sign-off record
 |===

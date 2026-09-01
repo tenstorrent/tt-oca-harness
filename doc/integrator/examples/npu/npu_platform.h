@@ -17,4 +17,8 @@
 // This example range is required to be mapped uncached.
 #define PLATFORM_NPU_DMA_COHERENT  0u
 
+// Implement this using a read-only handoff from trusted SEP/SMC firmware. The
+// application must not be able to manufacture or rewrite the returned state.
+int platform_npu_security_release_confirmed(void);
+
 #endif  // OCAH_EXAMPLE_NPU_PLATFORM_H_
