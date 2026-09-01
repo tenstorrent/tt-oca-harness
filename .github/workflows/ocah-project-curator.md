@@ -214,7 +214,8 @@ If Assignees is empty, assign one human. First match wins:
    unique assignee, or the assignee with a strict majority. A tie is not a match.
 4. Otherwise leave unassigned. Do not assign the opener as a fallback.
 
-REASON is the matching rule in a few words.
+REASON describes why this person was chosen. Never say "you opened it" —
+opening an issue does not determine who works on it.
 
 If the issue has an assignee and a milestone due date or an issue due date
 in the next 3 days, post a due reminder. Prefer the sooner of the two dates.

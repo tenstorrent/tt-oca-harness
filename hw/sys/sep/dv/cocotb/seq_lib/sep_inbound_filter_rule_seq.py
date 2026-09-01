@@ -64,7 +64,9 @@ WINDOW_B_VALUE = 0xA11C_BEEF
 BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_DECERR = 3
-INFILT_N_ENTRIES = 8
+# sep_pkg.sv INBOUND_FILTER_NUM_FILTERS. disable_all() must clear every entry
+# or a leftover allow window survives a walk that assumes it cleared them.
+INFILT_N_ENTRIES = 16
 WALK_ENTRIES = (0, 7)
 ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
 # Non-zero FILTER_CONFIG.src_id and a distinct AXI user[3:0] for the mismatch

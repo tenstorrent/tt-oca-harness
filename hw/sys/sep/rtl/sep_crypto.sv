@@ -46,6 +46,8 @@ module sep_crypto #(
     // leg, so the pool draws from either the internal DRBG or the external TRNG.
     input  edn_pkg::edn_req_t                  entropy_pool_edn_req_i,
     output edn_pkg::edn_rsp_t                  entropy_pool_edn_rsp_o,
+    // Clears the fabric entropy pool while the internal TRNG reset is active.
+    output logic                               trng_entropy_clear_o,
 
     // Efuse Interface to SHIM CSR
 	output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
@@ -230,6 +232,7 @@ module sep_crypto #(
     // Internal DRBG-side AXI-Stream (one per mux)
     drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
     drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_rsp;
+    logic trng_reset_active;
 
     // Muxed AXI-Stream outputs (one per mux)
     drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
@@ -276,10 +279,10 @@ module sep_crypto #(
     km_intf_pkg::km_axil_resp_t abr_key_axil_isolated_resp, km_efuse_axil_isolated_resp;
     km_intf_pkg::km_axil_req_t     km_mbox_axil_req;
     km_intf_pkg::km_axil_resp_t    km_mbox_axil_resp;
-    sep_pkg::sep_32_32_axil_req_t  esrc_axil_req;
-    sep_pkg::sep_32_32_axil_resp_t esrc_axil_resp;
-    drbg_pkg::drbg_axil64_req_t    csrng_axil_req,  edn_axil_req;
-    drbg_pkg::drbg_axil64_resp_t   csrng_axil_resp, edn_axil_resp;
+    sep_pkg::sep_32_32_axil_req_t  esrc_axil_isolated_req;
+    sep_pkg::sep_32_32_axil_resp_t esrc_axil_isolated_resp;
+    drbg_pkg::drbg_axil64_req_t    csrng_axil_isolated_req,  edn_axil_isolated_req;
+    drbg_pkg::drbg_axil64_resp_t   csrng_axil_isolated_resp, edn_axil_isolated_resp;
     sep_pkg::sep_32_64_6_12_axi_req_t  fuse_axi_req,  lifecycle_axi_req,  abr_axi_req;
     sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp, abr_axi_resp;
 
@@ -325,14 +328,14 @@ module sep_crypto #(
         .km_efuse_axil_isolated_resp_i(km_efuse_axil_isolated_resp),
         .km_mbox_axil_req_o           (km_mbox_axil_req),
         .km_mbox_axil_resp_i          (km_mbox_axil_resp),
-        .esrc_axil_req_o              (esrc_axil_req),
-        .esrc_axil_resp_i             (esrc_axil_resp),
+        .esrc_axil_isolated_req_o     (esrc_axil_isolated_req),
+        .esrc_axil_isolated_resp_i    (esrc_axil_isolated_resp),
+        .csrng_axil_isolated_req_o    (csrng_axil_isolated_req),
+        .csrng_axil_isolated_resp_i   (csrng_axil_isolated_resp),
+        .edn_axil_isolated_req_o      (edn_axil_isolated_req),
+        .edn_axil_isolated_resp_i     (edn_axil_isolated_resp),
         .ext_trng_axil_req_o          (ext_trng_axil_req_o),
         .ext_trng_axil_resp_i         (ext_trng_axil_resp_i),
-        .csrng_axil_req_o             (csrng_axil_req),
-        .csrng_axil_resp_i            (csrng_axil_resp),
-        .edn_axil_req_o               (edn_axil_req),
-        .edn_axil_resp_i              (edn_axil_resp),
         .fuse_axi_req_o               (fuse_axi_req),
         .fuse_axi_resp_i              (fuse_axi_resp),
         .lifecycle_axi_req_o          (lifecycle_axi_req),
@@ -340,6 +343,38 @@ module sep_crypto #(
         .abr_axi_req_o                (abr_axi_req),
         .abr_axi_resp_i               (abr_axi_resp)
     );
+
+    // Internal entropy complex: coordinated reset/isolation, ESRC, and DRBG.
+    // Source muxes and post-mux adapters remain below.
+    sep_trng #(
+        .NUM_AXIS (EXT_TRNG_NUM_AXIS)
+    ) u_sep_trng (
+        .clk_i,
+        .rst_ni                    (gated_rst_ni.trng),
+        .entropy_rosc_sample_clk_i,
+        .esrc_axil_req_i           (esrc_axil_isolated_req),
+        .esrc_axil_resp_o          (esrc_axil_isolated_resp),
+        .csrng_axil_req_i          (csrng_axil_isolated_req),
+        .csrng_axil_resp_o         (csrng_axil_isolated_resp),
+        .edn_axil_req_i            (edn_axil_isolated_req),
+        .edn_axil_resp_o           (edn_axil_isolated_resp),
+        .drbg_axis_req_o           (drbg_int_axis_req),
+        .drbg_axis_rsp_i           (drbg_int_axis_rsp),
+        .csrng_alert_rx_i          (crypto_alert_rx[8:7]),
+        .csrng_alert_tx_o          (crypto_alert_tx[8:7]),
+        .edn_alert_rx_i            (crypto_alert_rx[10:9]),
+        .edn_alert_tx_o            (crypto_alert_tx[10:9]),
+        .entropy_source_irq_o,
+        .intr_cs_cmd_req_done_o,
+        .intr_cs_entropy_req_o,
+        .intr_cs_hw_inst_exc_o,
+        .intr_cs_fatal_err_o,
+        .intr_edn_cmd_req_done_o,
+        .intr_edn_fatal_err_o,
+        .trng_reset_active_o       (trng_reset_active)
+    );
+
+    assign trng_entropy_clear_o = trng_reset_active;
 
 
     //////////////////
@@ -772,106 +807,6 @@ module sep_crypto #(
         .data_o (km_otp_data.sep_sys_id)
     );
 
-
-    logic [31:0] entropy_stream_data;
-    logic        entropy_stream_vld;
-
-    entropy_source u_entropy_source_s3c_scan (
-        .clk_i,
-        .rst_ni              (sep_reset_ni),
-
-        .s_axil_awvalid_i    (esrc_axil_req.aw_valid),
-        .s_axil_awready_o    (esrc_axil_resp.aw_ready),
-        .s_axil_awaddr_i     (esrc_axil_req.aw.addr[8:0]),
-        .s_axil_awprot_i     (esrc_axil_req.aw.prot),
-
-        .s_axil_wvalid_i     (esrc_axil_req.w_valid),
-        .s_axil_wready_o     (esrc_axil_resp.w_ready),
-        .s_axil_wdata_i      (esrc_axil_req.w.data),
-        .s_axil_wstrb_i      (esrc_axil_req.w.strb),
-
-        .s_axil_bvalid_o     (esrc_axil_resp.b_valid),
-        .s_axil_bready_i     (esrc_axil_req.b_ready),
-        .s_axil_bresp_o      (esrc_axil_resp.b.resp),
-
-        .s_axil_arvalid_i    (esrc_axil_req.ar_valid),
-        .s_axil_arready_o    (esrc_axil_resp.ar_ready),
-        .s_axil_araddr_i     (esrc_axil_req.ar.addr[8:0]),
-        .s_axil_arprot_i     (esrc_axil_req.ar.prot),
-
-        .s_axil_rvalid_o     (esrc_axil_resp.r_valid),
-        .s_axil_rready_i     (esrc_axil_req.r_ready),
-        .s_axil_rdata_o      (esrc_axil_resp.r.data),
-        .s_axil_rresp_o      (esrc_axil_resp.r.resp),
-
-        .signal_monitor_o    (/* unconnected */),
-        .rosc_sample_clk_i   (entropy_rosc_sample_clk_i),
-
-        .entropy_stream_data_o (entropy_stream_data),
-        .entropy_stream_vld_o  (entropy_stream_vld),
-        .irq_o                 (entropy_source_irq_o)
-    );
-
-
-    //=========================================================================
-    // DRBG Instance
-    //=========================================================================
-
-    // drbg_int_axis_req/rsp are packed arrays, matching u_drbg_s3c_scan.edn_axis_o/i
-    // shape, so we bind them directly below (mux leg [i] = DRBG EDN endpoint [i]).
-    drbg #(
-        .EDN_ENDPOINT_COUNT        (sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT),
-        .EDN_NATIVE_ENDPOINT_COUNT (0)
-    ) u_drbg_s3c_scan (
-        .clk_i,
-        .rst_ni              (sep_reset_ni),
-
-        .entropy_stream_data_i (entropy_stream_data),
-        .entropy_stream_vld_i  (entropy_stream_vld),
-
-        // EDN AXI-Stream endpoints, one per ext-TRNG mux leg:
-        //   [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy pool (mux2)
-        .edn_axis_o            (drbg_int_axis_req),
-        .edn_axis_i            (drbg_int_axis_rsp),
-
-        // No native EDN endpoints: every DRBG output is an AXI-Stream leg so it can
-        // be muxed against the external TRNG. Tie off the width-1 port proxy.
-        .edn_native_req_i      (edn_pkg::EDN_REQ_DEFAULT),
-        .edn_native_rsp_o      (/* unconnected */),
-
-        // AXI-Lite CSR buses
-        .csrng_axil_req_i      (csrng_axil_req),
-        .csrng_axil_rsp_o      (csrng_axil_resp),
-        .edn_axil_req_i        (edn_axil_req),
-        .edn_axil_rsp_o        (edn_axil_resp),
-
-        // Sideband — safe defaults
-        .otp_en_csrng_sw_app_read_i (prim_mubi_pkg::MuBi8True),
-        .lc_hw_debug_en_i           (lc_ctrl_pkg::Off),
-
-        // Alerts
-        .csrng_alert_rx_i (crypto_alert_rx[8:7]),
-        .csrng_alert_tx_o (crypto_alert_tx[8:7]),
-        .edn_alert_rx_i   (crypto_alert_rx[10:9]),
-        .edn_alert_tx_o   (crypto_alert_tx[10:9]),
-
-        // Interrupts
-        .intr_cs_cmd_req_done_o (intr_cs_cmd_req_done_o),
-        .intr_cs_entropy_req_o  (intr_cs_entropy_req_o),
-        .intr_cs_hw_inst_exc_o  (intr_cs_hw_inst_exc_o),
-        .intr_cs_fatal_err_o    (intr_cs_fatal_err_o),
-        .intr_edn_cmd_req_done_o(intr_edn_cmd_req_done_o),
-        .intr_edn_fatal_err_o   (intr_edn_fatal_err_o)
-    );
-
-    // One DRBG EDN endpoint per mux leg. Direct packed-array bind of
-    // u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp assumes this
-    // invariant.
-    // Elaboration-time check (evaluated by synth and simulators).
-    if (EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT) begin : g_drbg_endpoint_mux_width_check
-        $error("sep_crypto: EXT_TRNG_NUM_AXIS must equal SEP_CRYPTO_EDN_ENDPOINT_COUNT; one DRBG EDN endpoint per mux leg.");
-    end
-
     //=========================================================================
     // Entropy Source Mux Logic
     //=========================================================================
@@ -911,12 +846,17 @@ module sep_crypto #(
     //=========================================================================
     // Mux 1 -> native EDN for crypto (32b FIFO + arbiter + edn_ack_sm)
     //=========================================================================
+    //
+    // These post-mux adapters also serve the external source, so they remain in
+    // the POR reset domain. An internal-TRNG reset synchronously clears buffered
+    // entropy and handshake state without exporting a generated reset domain.
 
     drbg_axis_edn_adapter #(
         .NUM_ENDPOINTS (sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
     ) u_axis_edn_crypto_s3c_scan (
         .clk_i      (clk_i),
-        .rst_ni     (sep_reset_ni),
+        .rst_ni     (rst_ni),
+        .clear_i    (trng_reset_active),
         .axis_req_i (entropy_muxed_req[1]),
         .axis_rsp_o (entropy_muxed_rsp[1]),
         .edn_req_i  (crypto_edn_req),
@@ -938,7 +878,8 @@ module sep_crypto #(
         .NUM_ENDPOINTS (sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
     ) u_axis_edn_pool_s3c_scan (
         .clk_i      (clk_i),
-        .rst_ni     (sep_reset_ni),
+        .rst_ni     (rst_ni),
+        .clear_i    (trng_reset_active),
         .axis_req_i (entropy_muxed_req[2]),
         .axis_rsp_o (entropy_muxed_rsp[2]),
         .edn_req_i  (pool_edn_req),

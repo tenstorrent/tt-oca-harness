@@ -24,7 +24,7 @@ module sep_isolate_rst_seq (
   typedef enum logic [1:0] {
     StReset,  // domain in reset, paths isolated
     StDrain,  // isolation requested, waiting for in-flight drain
-    StRun     // normal operation
+    StRun  // normal operation
   } isolate_state_e;
 
   isolate_state_e state_q, state_d;
@@ -65,10 +65,10 @@ module sep_isolate_rst_seq (
   end
 
   // Flopped so the domain reset only makes clean, clock-aligned transitions.
-  // Reset value 1 = domain reset asserted while rst_ni is asserted.
+  // Reset value 0 = domain reset asserted while rst_ni is asserted.
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      gated_rst_n_q <= 1'b1;
+      gated_rst_n_q <= 1'b0;
     end else begin
       gated_rst_n_q <= ~gated_rst_d;
     end
@@ -81,5 +81,9 @@ module sep_isolate_rst_seq (
 
   // Isolation must be held for the entire duration of the domain reset.
   `OCAH_ASSERT(IsolateHeldThroughReset_A, !gated_rst_no |-> isolate_req_o, clk_i, !rst_ni)
+
+  // Reset and isolation release together once software removes the request.
+  `OCAH_ASSERT(ResetReleaseRuns_A, state_q == StReset && sw_rst_req_ni |=> state_q == StRun, clk_i,
+               !rst_ni)
 
 endmodule

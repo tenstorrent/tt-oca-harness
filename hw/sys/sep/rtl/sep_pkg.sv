@@ -460,6 +460,7 @@ package sep_pkg;
     /////////////////////////////////////
 
     typedef struct packed {
+        logic trng;
         logic kmac;
         logic hmac;
         logic aes;
@@ -467,10 +468,14 @@ package sep_pkg;
         logic km;
     } sep_sw_rst_t;
 
-    // One bit per isolatable AXI path in sep_crypto. host_* are the SEP host
-    // paths to the accelerator wrappers; km_* are the Key Manager master
-    // paths to its slaves. Same layout is used for isolate_req and isolated.
+    // One bit per isolatable AXI-Lite path in sep_crypto. trng_* are the
+    // converted CSR paths to the internal TRNG complex; host_* are the SEP host
+    // paths to the accelerator wrappers; km_* are the Key Manager master paths
+    // to its slaves. Same layout is used for isolate_req and isolated.
     typedef struct packed {
+        logic trng_entropy_source;
+        logic trng_csrng;
+        logic trng_edn;
         logic host_otbn;
         logic host_aes;
         logic host_hmac;
@@ -663,6 +668,11 @@ package sep_pkg;
 
     // JTAG SEP Reset Control
     typedef struct packed {
+        // jtag_ptap sizes the SEP IC_RESET slice from $bits(type)/2 and maps the
+        // ovrd and val sub-structs independently by packed bit index. TRNG sits
+        // at each sub-struct's MSB, so it takes the new top port and the
+        // existing port indices keep their TDR positions.
+        logic trng_jtag_rst_n_ovrd;
         logic sep_reset_n_ovrd;
         logic kmac_jtag_rst_n_ovrd;
         logic hmac_jtag_rst_n_ovrd;
@@ -672,6 +682,7 @@ package sep_pkg;
     } jtag_sep_reset_ctrl_ovrd_t;
 
     typedef struct packed {
+        logic trng_jtag_rst_n_val;
         logic sep_reset_n_val;
         logic kmac_jtag_rst_n_val;
         logic hmac_jtag_rst_n_val;

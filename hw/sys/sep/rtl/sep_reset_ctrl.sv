@@ -8,7 +8,8 @@
 // Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM which
 // requests isolation of that domain's AXI paths, waits for them to drain,
 // and then asserts the domain's sequenced reset. Reset primitives combine the
-// sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides.
+// sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides
+// for KM, OTBN, AES, HMAC, KMAC, and the internal TRNG complex.
 //
 // Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
@@ -16,6 +17,7 @@
 //   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)
 //   Bit 3: hmac_sw_rst     - write 1 to release HMAC from reset (0=hold)
 //   Bit 4: kmac_sw_rst     - write 1 to release KMAC from reset (0=hold)
+//   Bit 5: trng_sw_rst      - write 1 to release internal TRNG (0=hold)
 
 `include "prim_assert.sv"
 
@@ -129,6 +131,7 @@ module sep_reset_ctrl
     // =========================================================================
     sep_pkg::sep_sw_rst_t sw_reset_bits;
 
+    assign sw_reset_bits.trng   = hwif_out.SW_RESET_N.trng_sw_rst_n.value;
     assign sw_reset_bits.kmac   = hwif_out.SW_RESET_N.kmac_sw_rst_n.value;
     assign sw_reset_bits.hmac   = hwif_out.SW_RESET_N.hmac_sw_rst_n.value;
     assign sw_reset_bits.aes    = hwif_out.SW_RESET_N.aes_sw_rst_n.value;
@@ -142,7 +145,8 @@ module sep_reset_ctrl
     // isolate with the KM domain: the KM path must be drained before either
     // side's reset may assert.
 
-    logic otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req, km_isolate_req;
+    logic otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req;
+    logic km_isolate_req, trng_isolate_req;
     sep_pkg::sep_sw_rst_t isolated_rst_n;
 
     sep_isolate_rst_seq u_otbn_isolate_seq (
@@ -193,8 +197,23 @@ module sep_reset_ctrl
         .gated_rst_no   (isolated_rst_n.km)
     );
 
+    // The TRNG reset is shared by the entropy source, CSRNG, and EDN.
+    sep_isolate_rst_seq u_trng_isolate_seq (
+        .clk_i          (clk_i),
+        .rst_ni         (rst_ni),
+        .sw_rst_req_ni  (sw_reset_bits.trng),
+        .isolated_i     (sep_crypto_isolated_i.trng_entropy_source &
+                         sep_crypto_isolated_i.trng_csrng &
+                         sep_crypto_isolated_i.trng_edn),
+        .isolate_req_o  (trng_isolate_req),
+        .gated_rst_no   (isolated_rst_n.trng)
+    );
+
     // Host-path isolates belong to their engine; KM-path isolates isolate when
     // either the engine or the KM is being reset.
+    assign sep_crypto_isolate_req_o.trng_entropy_source = trng_isolate_req;
+    assign sep_crypto_isolate_req_o.trng_csrng          = trng_isolate_req;
+    assign sep_crypto_isolate_req_o.trng_edn            = trng_isolate_req;
     assign sep_crypto_isolate_req_o.host_otbn = otbn_isolate_req;
     assign sep_crypto_isolate_req_o.host_aes  = aes_isolate_req;
     assign sep_crypto_isolate_req_o.host_hmac = hmac_isolate_req;
@@ -251,6 +270,12 @@ module sep_reset_ctrl
         .out_o (pre_jtag_rst_n.km)
     );
 
+    prim_and2 #(.Width(1)) u_trng_rst_and (
+        .in0_i (isolated_rst_n.trng),
+        .in1_i (sep_reset_n),
+        .out_o (pre_jtag_rst_n.trng)
+    );
+
     prim_rst_mux2_hf_n u_kmac_rst_ovrd_mux (
         .rst0_ni (pre_jtag_rst_n.kmac),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val),
@@ -284,6 +309,13 @@ module sep_reset_ctrl
         .rst1_ni (jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd),
         .rst_no  (sep_crypto_gated_rst_no.km)
+    );
+
+    prim_rst_mux2_hf_n u_trng_rst_ovrd_mux (
+        .rst0_ni (pre_jtag_rst_n.trng),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.trng_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.trng_jtag_rst_n_ovrd),
+        .rst_no  (sep_crypto_gated_rst_no.trng)
     );
 
     // JTAG override to efuse reset

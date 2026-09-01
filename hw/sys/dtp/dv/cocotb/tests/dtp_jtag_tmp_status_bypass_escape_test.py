@@ -15,4 +15,10 @@ class dtp_jtag_tmp_status_bypass_escape_test(dtp_base_test):
     """Run the DTP VPLAN TMP BYPASS_ESCAPE scenario."""
 
     async def run_scenario(self) -> None:
-        await self.start_seq(dtp_jtag_tmp_status_bypass_escape_test_seq())
+        await self.start_looped_seq(
+            dtp_jtag_tmp_status_bypass_escape_test_seq,
+            "jtag_tmp_status_bypass_escape_test_seq",
+            specific_env="DTP_JTAG_TMP_STATUS_BYPASS_ESCAPE_TEST_LOOPS",
+            default_loops=16,
+            group_env="DTP_DEBUG_TDR_TEST_LOOPS",
+        )

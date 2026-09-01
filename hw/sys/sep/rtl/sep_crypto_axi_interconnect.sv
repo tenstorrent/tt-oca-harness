@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SEP crypto AXI fabric: 13-port host decode, bus-width conversion, and
-// transaction-draining isolation for accelerator and Key Manager paths.
+// transaction-draining isolation for internal TRNG, accelerator, and Key
+// Manager paths.
 
 `include "axi/typedef.svh"
 
@@ -61,19 +62,17 @@ module sep_crypto_axi_interconnect (
     output km_intf_pkg::km_axil_req_t          km_mbox_axil_req_o,
     input  km_intf_pkg::km_axil_resp_t         km_mbox_axil_resp_i,
 
-    // Entropy source AXI-Lite master
-    output sep_pkg::sep_32_32_axil_req_t       esrc_axil_req_o,
-    input  sep_pkg::sep_32_32_axil_resp_t      esrc_axil_resp_i,
+    // Converted and isolated AXI-Lite CSR buses to the internal TRNG complex
+    output sep_pkg::sep_32_32_axil_req_t       esrc_axil_isolated_req_o,
+    input  sep_pkg::sep_32_32_axil_resp_t      esrc_axil_isolated_resp_i,
+    output drbg_pkg::drbg_axil64_req_t         csrng_axil_isolated_req_o,
+    input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_isolated_resp_i,
+    output drbg_pkg::drbg_axil64_req_t         edn_axil_isolated_req_o,
+    input  drbg_pkg::drbg_axil64_resp_t        edn_axil_isolated_resp_i,
 
     // External TRNG AXI-Lite passthrough
     output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,
     input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,
-
-    // DRBG CSR buses (64-bit AXI-Lite)
-    output drbg_pkg::drbg_axil64_req_t         csrng_axil_req_o,
-    input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_resp_i,
-    output drbg_pkg::drbg_axil64_req_t         edn_axil_req_o,
-    input  drbg_pkg::drbg_axil64_resp_t        edn_axil_resp_i,
 
     // Full AXI4 passthrough masters
     output sep_pkg::sep_32_64_6_12_axi_req_t   fuse_axi_req_o,
@@ -88,21 +87,6 @@ module sep_crypto_axi_interconnect (
     // transactions of the upstream converter, so the host-path
     // axi_to_axi_lite instances use it as AxiMaxWriteTxns/AxiMaxReadTxns too.
     localparam int unsigned ISOLATE_NUM_PENDING = 4;
-
-    // 32-bit full-AXI intermediate types, shared by every 64b -> 32b -> AXI-Lite
-    // conversion chain in this module (accelerators, KM mailbox, esrc, trng).
-    localparam int unsigned AXI32_DATA_WIDTH = 32;
-    localparam int unsigned AXI32_STRB_WIDTH = AXI32_DATA_WIDTH / 8;
-
-    typedef logic [AXI32_DATA_WIDTH-1:0] axi32_data_t;
-    typedef logic [AXI32_STRB_WIDTH-1:0] axi32_strb_t;
-
-    `AXI_TYPEDEF_ALL(axi32,
-                     sep_pkg::sep_32_64_6_12_axi_addr_t,
-                     sep_pkg::sep_32_64_6_12_axi_id_t,
-                     axi32_data_t,
-                     axi32_strb_t,
-                     sep_pkg::sep_32_64_6_12_axi_user_t)
 
     sep_pkg::sep_32_64_6_12_axi_req_t  [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_reqs;
     sep_pkg::sep_32_64_6_12_axi_resp_t [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_resps;
@@ -314,24 +298,24 @@ module sep_crypto_axi_interconnect (
             sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn].ar.cache | axi_pkg::CACHE_MODIFIABLE;
     end
 
-    axi32_req_t  otbn_axi32_req;
-    axi32_resp_t otbn_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  otbn_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t otbn_axi32_resp;
 
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_otbn_axi_dw_converter (
@@ -350,8 +334,8 @@ module sep_crypto_axi_interconnect (
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
         .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
         .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
     ) u_otbn_axi_to_axi_lite (
@@ -385,24 +369,24 @@ module sep_crypto_axi_interconnect (
 
     // ---- HMAC ----
 
-    axi32_req_t  hmac_axi32_req;
-    axi32_resp_t hmac_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  hmac_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t hmac_axi32_resp;
 
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_hmac_axi_dw_converter (
@@ -421,8 +405,8 @@ module sep_crypto_axi_interconnect (
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
         .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
         .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
     ) u_hmac_axi_to_axi_lite (
@@ -456,24 +440,24 @@ module sep_crypto_axi_interconnect (
 
     // ---- AES ----
 
-    axi32_req_t  aes_axi32_req;
-    axi32_resp_t aes_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  aes_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t aes_axi32_resp;
 
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_aes_axi_dw_converter (
@@ -492,8 +476,8 @@ module sep_crypto_axi_interconnect (
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
         .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
         .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
     ) u_aes_axi_to_axi_lite (
@@ -527,24 +511,24 @@ module sep_crypto_axi_interconnect (
 
     // ---- KMAC ----
 
-    axi32_req_t  kmac_axi32_req;
-    axi32_resp_t kmac_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  kmac_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t kmac_axi32_resp;
 
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_kmac_axi_dw_converter (
@@ -563,8 +547,8 @@ module sep_crypto_axi_interconnect (
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
         .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
         .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
     ) u_kmac_axi_to_axi_lite (
@@ -733,25 +717,25 @@ module sep_crypto_axi_interconnect (
     //   Stage 1: axi_dw_converter  (64-bit AXI4 -> 32-bit AXI4)
     //   Stage 2: axi_to_axi_lite   (32-bit AXI4 -> 32-bit AXI-Lite)
 
-    axi32_req_t  km_axi32_req;
-    axi32_resp_t km_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  km_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t km_axi32_resp;
 
     // Stage 1: AXI Data Width Converter (64-bit -> 32-bit)
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),  // 64-bit input
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),                    // 32-bit output
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),  // 32-bit output
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_km_axi_dw_converter (
@@ -773,8 +757,8 @@ module sep_crypto_axi_interconnect (
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (4),
         .AxiMaxReadTxns  (4),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (km_intf_pkg::km_axil_req_t),
         .lite_resp_t     (km_intf_pkg::km_axil_resp_t)
     ) u_km_axi_to_axi_lite (
@@ -787,77 +771,30 @@ module sep_crypto_axi_interconnect (
         .mst_resp_i  (km_mbox_axil_resp_i)
     );
 
-    //=========================================================================
-    // DRBG AXI4-64 to AXI-Lite-64 Conversion (demux ports [8] and [9])
-    //=========================================================================
-    // Single-stage conversion: bus is already 64-bit data, matching DRBG's
-    // AXI-Lite-64 interface. No data-width converter needed.
+    //////////////////////////////////////////////
+    // Internal TRNG converted AXI-Lite paths   //
+    //////////////////////////////////////////////
 
-    axi_to_axi_lite #(
-        .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .full_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t),
-        .lite_req_t      (drbg_pkg::drbg_axil64_req_t),
-        .lite_resp_t     (drbg_pkg::drbg_axil64_resp_t)
-    ) u_csrng_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (test_en_i),
-        .slv_req_i   (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiCsrng]),
-        .slv_resp_o  (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiCsrng]),
-        .mst_req_o   (csrng_axil_req_o),
-        .mst_resp_i  (csrng_axil_resp_i)
-    );
+    // ---- Entropy source: 64b AXI -> 32b AXI -> 32b AXI-Lite -> isolate ----
 
-    axi_to_axi_lite #(
-        .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .full_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t),
-        .lite_req_t      (drbg_pkg::drbg_axil64_req_t),
-        .lite_resp_t     (drbg_pkg::drbg_axil64_resp_t)
-    ) u_edn_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (test_en_i),
-        .slv_req_i   (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEdn]),
-        .slv_resp_o  (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEdn]),
-        .mst_req_o   (edn_axil_req_o),
-        .mst_resp_i  (edn_axil_resp_i)
-    );
-
-    //=========================================================================
-    // Entropy Source (ESRC) — demux port [sep_crypto_pkg::SepCryptoAxiEntropySrc]
-    //=========================================================================
-    // Two-stage conversion: 64b AXI → 32b AXI → 32b AXI-Lite flat ports.
-
-    axi32_req_t  esrc_axi32_req;
-    axi32_resp_t esrc_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  esrc_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t esrc_axi32_resp;
 
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_esrc_axi_dw_converter (
@@ -869,25 +806,137 @@ module sep_crypto_axi_interconnect (
         .mst_resp_i(esrc_axi32_resp)
     );
 
+    sep_pkg::sep_32_32_axil_req_t  esrc_conv_axil_req;
+    sep_pkg::sep_32_32_axil_resp_t esrc_conv_axil_resp;
+
     axi_to_axi_lite #(
         .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
         .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
+        .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
         .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
     ) u_esrc_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (test_en_i),
-        .slv_req_i   (esrc_axi32_req),
-        .slv_resp_o  (esrc_axi32_resp),
-        .mst_req_o   (esrc_axil_req_o),
-        .mst_resp_i  (esrc_axil_resp_i)
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (esrc_axi32_req),
+        .slv_resp_o (esrc_axi32_resp),
+        .mst_req_o  (esrc_conv_axil_req),
+        .mst_resp_i (esrc_conv_axil_resp)
+    );
+
+    axi_lite_isolate #(
+        .NumPending           (ISOLATE_NUM_PENDING),
+        .TerminateTransaction (1'b1),
+        .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+        .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+        .axi_lite_req_t       (sep_pkg::sep_32_32_axil_req_t),
+        .axi_lite_resp_t      (sep_pkg::sep_32_32_axil_resp_t)
+    ) u_esrc_host_isolate (
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (esrc_conv_axil_req),
+        .slv_resp_o (esrc_conv_axil_resp),
+        .mst_req_o  (esrc_axil_isolated_req_o),
+        .mst_resp_i (esrc_axil_isolated_resp_i),
+        .isolate_i  (isolate_req_i.trng_entropy_source),
+        .isolated_o (isolated_o.trng_entropy_source)
+    );
+
+    // ---- CSRNG: 64b AXI -> 64b AXI-Lite -> isolate ----
+
+    drbg_pkg::drbg_axil64_req_t  csrng_conv_axil_req;
+    drbg_pkg::drbg_axil64_resp_t csrng_conv_axil_resp;
+
+    axi_to_axi_lite #(
+        .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+        .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+        .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+        .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
+        .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
+        .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+        .full_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t),
+        .lite_req_t      (drbg_pkg::drbg_axil64_req_t),
+        .lite_resp_t     (drbg_pkg::drbg_axil64_resp_t)
+    ) u_csrng_axi_to_axi_lite (
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiCsrng]),
+        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiCsrng]),
+        .mst_req_o  (csrng_conv_axil_req),
+        .mst_resp_i (csrng_conv_axil_resp)
+    );
+
+    axi_lite_isolate #(
+        .NumPending           (ISOLATE_NUM_PENDING),
+        .TerminateTransaction (1'b1),
+        .AxiAddrWidth         (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+        .AxiDataWidth         (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+        .axi_lite_req_t       (drbg_pkg::drbg_axil64_req_t),
+        .axi_lite_resp_t      (drbg_pkg::drbg_axil64_resp_t)
+    ) u_csrng_host_isolate (
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (csrng_conv_axil_req),
+        .slv_resp_o (csrng_conv_axil_resp),
+        .mst_req_o  (csrng_axil_isolated_req_o),
+        .mst_resp_i (csrng_axil_isolated_resp_i),
+        .isolate_i  (isolate_req_i.trng_csrng),
+        .isolated_o (isolated_o.trng_csrng)
+    );
+
+    // ---- EDN: 64b AXI -> 64b AXI-Lite -> isolate ----
+
+    drbg_pkg::drbg_axil64_req_t  edn_conv_axil_req;
+    drbg_pkg::drbg_axil64_resp_t edn_conv_axil_resp;
+
+    axi_to_axi_lite #(
+        .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+        .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+        .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+        .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
+        .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
+        .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+        .full_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t),
+        .lite_req_t      (drbg_pkg::drbg_axil64_req_t),
+        .lite_resp_t     (drbg_pkg::drbg_axil64_resp_t)
+    ) u_edn_axi_to_axi_lite (
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEdn]),
+        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEdn]),
+        .mst_req_o  (edn_conv_axil_req),
+        .mst_resp_i (edn_conv_axil_resp)
+    );
+
+    axi_lite_isolate #(
+        .NumPending           (ISOLATE_NUM_PENDING),
+        .TerminateTransaction (1'b1),
+        .AxiAddrWidth         (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+        .AxiDataWidth         (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+        .axi_lite_req_t       (drbg_pkg::drbg_axil64_req_t),
+        .axi_lite_resp_t      (drbg_pkg::drbg_axil64_resp_t)
+    ) u_edn_host_isolate (
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (edn_conv_axil_req),
+        .slv_resp_o (edn_conv_axil_resp),
+        .mst_req_o  (edn_axil_isolated_req_o),
+        .mst_resp_i (edn_axil_isolated_resp_i),
+        .isolate_i  (isolate_req_i.trng_edn),
+        .isolated_o (isolated_o.trng_edn)
     );
 
     //=========================================================================
@@ -895,24 +944,24 @@ module sep_crypto_axi_interconnect (
     //=========================================================================
     // 64b AXI → 32b AXI → 32b AXI-Lite → ext_trng_axil_*
 
-    axi32_req_t  trng_axi32_req;
-    axi32_resp_t trng_axi32_resp;
+    sep_pkg::sep_32_32_6_12_axi_req_t  trng_axi32_req;
+    sep_pkg::sep_32_32_6_12_axi_resp_t trng_axi32_resp;
 
     axi_dw_converter #(
         .AxiMaxReads         (8),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (AXI32_DATA_WIDTH),
+        .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (axi32_w_chan_t),
+        .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
         .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
         .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
         .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (axi32_r_chan_t),
+        .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
         .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (axi32_req_t),
-        .axi_mst_resp_t      (axi32_resp_t),
+        .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_trng_axi_dw_converter (
@@ -931,8 +980,8 @@ module sep_crypto_axi_interconnect (
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (4),
         .AxiMaxReadTxns  (4),
-        .full_req_t      (axi32_req_t),
-        .full_resp_t     (axi32_resp_t),
+        .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+        .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
         .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
         .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
     ) u_trng_axi_to_axi_lite (
