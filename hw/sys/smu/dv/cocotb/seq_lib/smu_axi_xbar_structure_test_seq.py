@@ -47,9 +47,7 @@ class smu_axi_xbar_structure_test_seq:
             evidence="CHK-XBAR-POS-IW",
         )
         self.pos_ok = in_ok and out_ok
-        self._log(
-            "CHK-XBAR-POS: gen_no_sep u_iw_conv_smc_in/out resolve under SEP=0"
-        )
+        self._log("CHK-XBAR-POS: gen_no_sep u_iw_conv_smc_in/out resolve under SEP=0")
 
         xbar_present = hasattr(gen, "u_smu_axi_xbar")
         sb.expect_true(
@@ -58,6 +56,4 @@ class smu_axi_xbar_structure_test_seq:
             evidence="CHK-XBAR-ABSENT-NO-SEP",
         )
         self.absent_ok = not xbar_present
-        self._log(
-            "CHK-XBAR-ABSENT-NO-SEP: smu_axi_xbar absent; gen_no_sep is direct SMC<->ext"
-        )
+        self._log("CHK-XBAR-ABSENT-NO-SEP: smu_axi_xbar absent; gen_no_sep is direct SMC<->ext")

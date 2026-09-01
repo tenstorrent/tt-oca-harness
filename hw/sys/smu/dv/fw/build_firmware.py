@@ -11,7 +11,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 FW_ROOT = Path(__file__).resolve().parent
 DV_ROOT = FW_ROOT.parent
 COMMON = FW_ROOT / "common"

@@ -24,7 +24,6 @@ from .smc_jtag_protocol_vip import (
     SmcJtagTapError,
 )
 
-
 # Module-level cache so multiple helper calls inside one test share one driver.
 _TAP_SINGLETON: Optional[SmcJtagTap] = None
 
@@ -56,7 +55,8 @@ async def check_cpu_jtag_pin_vip() -> None:
     assert dut.tb_cpu_jtag_tdo.value.is_resolvable, "CPU JTAG TDO is not resolvable"
     cocotb.log.info(
         "CPU JTAG pin VIP captured IDCODE=0x%08X (expected 0x%08X, MATCH)",
-        idcode, EXPECTED_CPU_TAP_IDCODE,
+        idcode,
+        EXPECTED_CPU_TAP_IDCODE,
     )
     dtmcs = await tap.read_dtmcs()
     version = dtmcs & 0xF
@@ -89,9 +89,7 @@ async def check_cpu_jtag_dtmcs() -> int:
     await tap.reset_tap()
     idcode = await tap.read_idcode(check=True)
     dtmcs = await tap.read_dtmcs()
-    cocotb.log.info(
-        "CPU JTAG TAP IR/DR proof: IDCODE=0x%08X, DTMCS=0x%08X", idcode, dtmcs
-    )
+    cocotb.log.info("CPU JTAG TAP IR/DR proof: IDCODE=0x%08X, DTMCS=0x%08X", idcode, dtmcs)
     return dtmcs
 
 

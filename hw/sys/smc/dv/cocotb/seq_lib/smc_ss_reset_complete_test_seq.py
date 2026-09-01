@@ -12,9 +12,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 SS_COMPLETE = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR")
 SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR")
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
 _ALL_ONE = 0xFFFFFFFF
 _DROP_0_31 = 0x7FFFFFFE
@@ -40,8 +38,7 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
                 return last
             await RisingEdge(cocotb.top.clk_smc_i)
         raise AssertionError(
-            f"{label}: SS_RESET_COMPLETE last=0x{last:x} want=0x{want:x} "
-            f"after {_CSR_BOUND} polls"
+            f"{label}: SS_RESET_COMPLETE last=0x{last:x} want=0x{want:x} after {_CSR_BOUND} polls"
         )
 
     def _warm_pin(self, dut) -> int:
@@ -62,9 +59,7 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_ss_reset_complete"), (
-            "tb_ss_reset_complete missing"
-        )
+        assert hasattr(dut, "tb_ss_reset_complete"), "tb_ss_reset_complete missing"
         assert hasattr(dut, "tb_ss0_warm_reset_n"), "tb_ss0_warm_reset_n missing"
 
         dut.tb_ss_reset_complete.value = _ALL_ONE
@@ -104,9 +99,7 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
             warm1,
             warm2,
         )
-        got = await self.csr_read(
-            "SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0
-        )
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
         cocotb.log.info("CHK-SS-COMPLETE-WARM-SCRATCH: SCRATCH_COLD_WARM_0=0x%x", got)
         cocotb.log.info(
             "CHK-SS-COMPLETE-BASIC: idle=%s drop=%s restore=%s warm=%s",

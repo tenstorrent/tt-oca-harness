@@ -14,7 +14,6 @@ class SmcIrqOp(Enum):
 
 
 class SmcIrqItem(uvm_sequence_item):
-
     def __init__(self, name: str = "SmcIrqItem") -> None:
         super().__init__(name)
         self.op: SmcIrqOp = SmcIrqOp.SAMPLE

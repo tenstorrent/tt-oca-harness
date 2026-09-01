@@ -84,6 +84,17 @@ class SepAxiMonitor(uvm_component):
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
+        # Write-channel ordering. VALID assertion is the stimulus this bench
+        # controls; the handshake is the slave's answer, and a slave that
+        # holds wready until AW makes a W-first handshake impossible however
+        # the master drives. The two are measured separately.
+        self.cycles = 0
+        self._aw_valid_cycle: int | None = None
+        self._w_valid_cycle: int | None = None
+        self._aw_hs_cycle: int | None = None
+        self._w_hs_cycle: int | None = None
+        self.last_write_stim: str | None = None
+        self.last_write_hs: str | None = None
         self.expected_decerr_seen = 0
 
     def arm_expected_decerr(self, n: int = 1) -> None:
@@ -106,6 +117,26 @@ class SepAxiMonitor(uvm_component):
         that did not see one must hand the credit back."""
         self._armed_decerr = max(0, self._armed_decerr - n)
 
+    def arm_write_order(self) -> None:
+        """Measure the next write on its own, discarding the previous one."""
+        self._aw_valid_cycle = None
+        self._w_valid_cycle = None
+        self._aw_hs_cycle = None
+        self._w_hs_cycle = None
+        self.last_write_stim = None
+        self.last_write_hs = None
+
+    @staticmethod
+    def _order(a, w) -> str | None:
+        if a is None or w is None:
+            return None
+        return "same-cycle" if a == w else "aw-first" if a < w else "w-first"
+
+    @property
+    def write_order_cycles(self) -> tuple:
+        """(aw_valid, w_valid, aw_handshake, w_handshake) cycle numbers."""
+        return (self._aw_valid_cycle, self._w_valid_cycle, self._aw_hs_cycle, self._w_hs_cycle)
+
     def _decerr(self, chan: str) -> None:
         """Handle a DECERR beat: consume an armed credit or fail."""
         if self._armed_decerr > 0:
@@ -124,9 +155,23 @@ class SepAxiMonitor(uvm_component):
     async def run_phase(self) -> None:
         dut = cocotb.top
         p = self.bus_prefix
-        sig = {n: getattr(dut, f"{p}_{n}", None)
-               for n in ("rvalid", "rready", "rdata", "rresp",
-                         "bvalid", "bready", "bresp", "araddr")}
+        sig = {
+            n: getattr(dut, f"{p}_{n}", None)
+            for n in (
+                "rvalid",
+                "rready",
+                "rdata",
+                "rresp",
+                "bvalid",
+                "bready",
+                "bresp",
+                "araddr",
+                "awvalid",
+                "awready",
+                "wvalid",
+                "wready",
+            )
+        }
         if any(sig[n] is None for n in ("rvalid", "rready", "rdata")):
             self.logger.info("%s read channel not found; AXI monitor idle", p)
             return
@@ -134,8 +179,22 @@ class SepAxiMonitor(uvm_component):
         self.logger.info("SEP AXI monitor active on %s bus (fail_decerr=%s)", p, self.fail_decerr)
         has_b = sig["bvalid"] is not None and sig["bready"] is not None
 
+        has_aw = all(sig[n] is not None for n in ("awvalid", "awready", "wvalid", "wready"))
+
         while True:
             await RisingEdge(dut.clk_i)
+            self.cycles += 1
+            if has_aw:
+                if _hi(sig["awvalid"]) and self._aw_valid_cycle is None:
+                    self._aw_valid_cycle = self.cycles
+                if _hi(sig["wvalid"]) and self._w_valid_cycle is None:
+                    self._w_valid_cycle = self.cycles
+                if _hi(sig["awvalid"]) and _hi(sig["awready"]) and self._aw_hs_cycle is None:
+                    self._aw_hs_cycle = self.cycles
+                if _hi(sig["wvalid"]) and _hi(sig["wready"]) and self._w_hs_cycle is None:
+                    self._w_hs_cycle = self.cycles
+                self.last_write_stim = self._order(self._aw_valid_cycle, self._w_valid_cycle)
+                self.last_write_hs = self._order(self._aw_hs_cycle, self._w_hs_cycle)
             if _hi(sig["rvalid"]) and _hi(sig["rready"]):
                 self.r_beats += 1
                 code = _resp(sig["rresp"]) if sig["rresp"] is not None else None
@@ -145,8 +204,10 @@ class SepAxiMonitor(uvm_component):
                 if code in (0, 1) and _is_all_x(sig["rdata"]):
                     addr = _resp(sig["araddr"]) if sig["araddr"] is not None else None
                     where = f" (last AR addr ~0x{addr:08x})" if addr is not None else ""
-                    self._fail(f"OKAY R beat returned all-X data{where} -- "
-                               "non-responding/uninitialised register path")
+                    self._fail(
+                        f"OKAY R beat returned all-X data{where} -- "
+                        "non-responding/uninitialised register path"
+                    )
                 if code == 3 and self.fail_decerr:
                     self._decerr("R")
             if has_b and _hi(sig["bvalid"]) and _hi(sig["bready"]):
@@ -162,7 +223,9 @@ class SepAxiMonitor(uvm_component):
         self.logger.info(
             "SEP AXI monitor [%s]: %d R beats, %d B resps; R-resp tally %s; "
             "%d expected DECERR; 0 errors",
-            self.bus_prefix, self.r_beats, self.b_resps,
+            self.bus_prefix,
+            self.r_beats,
+            self.b_resps,
             ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.resp_tally.items() if v),
             self.expected_decerr_seen,
         )

@@ -42,10 +42,11 @@ args = ["+km_rom_hex=km_rom_coexist.parhex"]
 # no_cpu mode (host drives the bus over AXI); +esrc_noise_force makes the ring
 # oscillators alive under Verilator. REAL fuse-sense (no +skip_fuse_sense): the KM
 # firmware reads OTP/lifecycle at boot and faults on an all-zero shadow, so the test
-# stages a valid PROD OTP image and senses it. The rom_main.rom.parhex artifact is
-# built from tracked source (make -C cocotb/tests/km_fw rom_main).
+# stages a valid PROD OTP image and senses it. c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_otbn_sideload_kat_test"
 module = "km.sep_km_otbn_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "otbn", "subsystem", "entropy"]
@@ -62,10 +63,11 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # golden (env/sep_aes_golden.py, self-tested vs FIPS-197). Frontdoor (no backdoor).
 # no_cpu mode; +esrc_noise_force makes the ring oscillators alive under Verilator.
 # REAL fuse-sense (no +skip_fuse_sense): the KM firmware reads OTP/lifecycle at
-# boot, so the test stages a valid PROD OTP image and senses it. rom_main.rom.parhex
-# is built from tracked source (make -C cocotb/tests/km_fw rom_main).
+# boot, so the test stages a valid PROD OTP image and senses it. c_compile builds
+# rom_main.rom.parhex (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_aes_sideload_kat_test"
 module = "km.sep_km_aes_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "aes", "subsystem", "entropy"]
@@ -83,9 +85,11 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # Frontdoor (no backdoor); HMAC has no CFG sideload bit, so the digest-vs-golden
 # compare is the consume-proof. no_cpu;
 # +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
-# (KM rom_main reads OTP at boot). rom_main.rom.parhex from tracked source.
+# (KM rom_main reads OTP at boot). c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_hmac_sideload_kat_test"
 module = "km.sep_km_hmac_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "hmac", "subsystem", "entropy"]
@@ -102,9 +106,11 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # dummy-key digest. No KMAC golden (as in the reference suite, no KMAC DPI). KMAC pulls real EDN
 # masking entropy during the keyed ops (proven via the CHK5_kmac sink). Frontdoor;
 # no_cpu; +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
-# (KM rom_main reads OTP at boot). rom_main.rom.parhex from tracked source.
+# (KM rom_main reads OTP at boot). c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_kmac_sideload_kat_test"
 module = "km.sep_km_kmac_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "kmac", "subsystem", "entropy"]

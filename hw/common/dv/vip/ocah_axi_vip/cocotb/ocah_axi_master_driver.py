@@ -132,6 +132,7 @@ class OcahAxiMasterDriver:
 
         self.log = logging.getLogger(name)
         self._bus, self._clock, self._reset = self._resolve_bus_clock_reset(axi4_intf, clock, reset)
+        timing = kwargs.pop("timing", None)
         self._master = AxiMaster(
             self._bus,
             self._clock,
@@ -140,9 +141,13 @@ class OcahAxiMasterDriver:
             max_burst_len=max_burst_len,
             **kwargs,
         )
+        if timing is not None:
+            self.set_timing(timing)
 
     @classmethod
-    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs: Any) -> "OcahAxiMasterDriver":
+    def from_prefix(
+        cls, dut, prefix: str, clock, reset=None, **kwargs: Any
+    ) -> "OcahAxiMasterDriver":
         """Construct from flattened AXI4 signals using ``AxiBus``."""
         return cls(AxiBus.from_prefix(dut, prefix), clock, reset, **kwargs)
 
@@ -167,6 +172,31 @@ class OcahAxiMasterDriver:
         if resolved_reset is None:
             resolved_reset = getattr(axi4_intf, "rst_ni", None)
         return bus, resolved_clock, resolved_reset
+
+    def set_timing(self, profile) -> None:
+        """Arm an ``AxiTimingProfile`` on this master's five channels.
+
+        AXI channels are independent, so AW/W ordering and response-channel
+        backpressure are legal stimulus the backend cannot otherwise produce.
+        See ocah_axi_timing.AxiTimingProfile.
+        """
+        from .ocah_axi_timing import apply_profile
+
+        apply_profile(self, profile)
+
+    @property
+    def channels(self) -> dict:
+        """The backend channel objects, keyed by AxiTimingProfile field name.
+
+        Exposed so timing control does not reach into the backend handle.
+        """
+        return {
+            "aw_delay": self._master.write_if.aw_channel,
+            "w_delay": self._master.write_if.w_channel,
+            "ar_delay": self._master.read_if.ar_channel,
+            "b_ready_delay": self._master.write_if.b_channel,
+            "r_ready_delay": self._master.read_if.r_channel,
+        }
 
     def init_signals(self) -> None:
         """Compatibility no-op; cocotbext-axi drives idle values at construction."""

@@ -70,7 +70,7 @@ unit, so an address that owns no register cannot alias onto one.
 |0x1080_0000 |0x1080_0FFF |4 kB |DMA |DMA CSR
 |0x1080_1000 |0x1080_1FFF |4 kB |WDT |Watchdog Timer
 |0x1080_2000 |0x1080_2FFF |4 kB |SRB |Dual Scratch Register Banks
-|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM and crypto accelerators)
+|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM, the crypto accelerators and the TRNG)
 |0x1080_3008 |0x108F_FFFF |1,043 kB |_RSV_ |reserved
 |0x1090_0000 |0x1090_FFFF |64kB |OTBN |Public Key processor memory and CSR
 |0x1091_0000 |0x1091_0FFF |4 kB |AES |Block Cipher
@@ -84,7 +84,8 @@ unit, so an address that owns no register cannot alias onto one.
 |0x1092_0000 |0x1092_0FFF |4 kB |KM |Key Manager
 |0x1092_1000 |0x1092_FFFF | |_RSV_ |Reserved
 |0x1093_0000 |0x1093_7FFF |32 kB |OTP |Fuse Control and Shadow Memory
-|0x1093_8000 |0x1094_FFFF | |_RSV_ |Reserved
+|0x1093_8000 |0x1093_FFFF |32 kB |_RSV_ |Reserved
+|0x1094_0000 |0x1094_FFFF |64 kB |ABR |Adams Bridge post-quantum accelerator (ML-DSA-87 / ML-KEM-1024) CSR aperture
 |0x1095_0000 |0x1095_FFFF |64 kB |EPOOL |Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.
 |0x1096_0000 |0x109F_FFFF | |_RSV_ |Reserved
 |0x10A0_0000 |0x10A3_FFFF |256 kB |SYS |System Bus I/F

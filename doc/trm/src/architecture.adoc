@@ -315,10 +315,12 @@ The reset hierarchy within the SMU proceeds as follows:
   infrastructure.
 
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
-  override cold, cool, and core reset domains independently for debug
-  scenarios. These are wired through the SMU to the SMC's
-  `rst_{cold,cool,core}_override_ni` / `rst_{cold,cool,core}_override_en_i`
-  ports.
+  override the fuse, cold, cool, warm, and per-subsystem reset domains
+  independently for debug scenarios. These are wired through the SMU into the
+  SMC reset unit's `jtag_reset_ctrl_i` and the SEP reset controller's
+  `jtag_sep_reset_ctrl_i`, each carrying an override-enable bit and a reset
+  value per port. The DTP JTAG chapter states the programming order these
+  overrides require.
 
 For the detailed reset controller design, sequencing FSM, reset register
 interface, and clock-reset interaction, refer to the Clock and Reset Management

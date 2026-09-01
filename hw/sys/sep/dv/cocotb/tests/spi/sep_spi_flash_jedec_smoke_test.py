@@ -6,13 +6,12 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
 from seq_lib.sep_spi_flash_jedec_seq import (
-    sep_spi_flash_jedec_seq,
     SPI_JEDEC_ID,
     SPI_RX_JEDEC_WORD,
+    sep_spi_flash_jedec_seq,
 )
 
 

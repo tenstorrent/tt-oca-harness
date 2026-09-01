@@ -614,8 +614,8 @@ module spi_controller_fsm
     // Assertions confirming valid user input
     `OCAH_OT_ASSERT(BidirOnlyInStdMode_A,
         cmd_speed_d == Standard || !(cmd_rd_en_d && cmd_wr_en_d),
-        clk_i, rst_ni)
-    `OCAH_OT_ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, rst_ni)
-    `OCAH_OT_ASSERT(ValidCSID_A, csid < NumCS, clk_i, rst_ni)
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(ValidCSID_A, csid < NumCS, clk_i, !rst_ni)
 
 endmodule

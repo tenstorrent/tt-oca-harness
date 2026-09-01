@@ -11,9 +11,9 @@ import logging
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
+from .smc_csr_seq_utils import SmcCsrSeq
 
 _LOG = logging.getLogger(__name__)
 
@@ -40,13 +40,11 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
     def _dut(self):
         return cocotb.top
 
-    async def _program_cg(
-        self, *, dma_en: bool, zeroer_en: bool, hyst: int = HYST
-    ) -> None:
+    async def _program_cg(self, *, dma_en: bool, zeroer_en: bool, hyst: int = HYST) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (
-            cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK
-        ) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
+        nxt = (cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
+            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
+        )
         if dma_en:
             nxt |= DMA_CG_EN
         if zeroer_en:
@@ -82,9 +80,7 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         dut.tb_test_en_i.value = 1
         await ClockCycles(dut.clk_smc_i, 4)
         # Exact every-cycle via per-SMC-rise sample (avoids edge-counter ±1 races).
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_dma_gated_clk", IDLE_OBSERVE
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_dma_gated_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"DMA clock gated under test_en_i: edges={edges} window={IDLE_OBSERVE}"
         )
@@ -109,12 +105,8 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         # test_en already 1; confirm both Zeroer clocks continuous while CG enabled
         # and idle (the otherwise-gating precondition proven in ZEROER_* tests).
         await ClockCycles(dut.clk_smc_i, HYST + 4)
-        zaxi = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
-        )
-        zreg = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
-        )
+        zaxi = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE)
+        zreg = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert zaxi == IDLE_OBSERVE, (
             f"axi_clk gated under test_en_i: edges={zaxi} window={IDLE_OBSERVE}"
         )
@@ -134,9 +126,7 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         # Restore functional mode.
         dut.tb_test_en_i.value = 0
 
-        cg.assert_fence_order(
-            self.fence, ["dma-bypass-observed", "zeroer-bypass-observed"]
-        )
+        cg.assert_fence_order(self.fence, ["dma-bypass-observed", "zeroer-bypass-observed"])
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",

@@ -16,15 +16,14 @@ at threshold (bus still hung) and drops when a completion (or !enable) resets it
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-
 from helpers import (
-    setup_dut,
-    reset_dut,
-    configure,
-    set_threshold,
-    issue_read,
     complete_read,
+    configure,
+    issue_read,
     issue_write,
+    reset_dut,
+    set_threshold,
+    setup_dut,
 )
 
 
@@ -54,11 +53,11 @@ async def test_core_sanity(dut):
     await configure(dut, THRESH)
 
     # 1. Read hang: must stay low until the threshold, then fire and hold high.
-    await issue_read(dut)                       # one outstanding read, never completed
+    await issue_read(dut)  # one outstanding read, never completed
     await ClockCycles(dut.clk_i, THRESH - 2)
     assert dut.irq_o.value == 0, "irq_o asserted too early (before threshold)"
     assert await wait_for_irq(dut, 16) is not None, "read hang never asserted irq_o"
-    await ClockCycles(dut.clk_i, THRESH + 8)    # irq_o is a level: holds while hung
+    await ClockCycles(dut.clk_i, THRESH + 8)  # irq_o is a level: holds while hung
     assert dut.irq_o.value == 1, "irq_o should stay high while the bus remains hung (level)"
 
     # 2. Completing the read drains the outstanding tx -> irq_o drops.
@@ -122,10 +121,12 @@ async def test_threshold_latched_per_window(dut):
     # Window 1: latched threshold = 20. Raise it mid-count -> must be IGNORED,
     # so it still fires near the latched 20 (within ~25 cycles), not extended to 40.
     await issue_read(dut)
-    await ClockCycles(dut.clk_i, 8)             # counting down from 20
-    await set_threshold(dut, 40)                # mid-window change -> no effect this window
+    await ClockCycles(dut.clk_i, 8)  # counting down from 20
+    await set_threshold(dut, 40)  # mid-window change -> no effect this window
     fired = await wait_for_irq(dut, 25)
-    assert fired is not None, "mid-window threshold change should be ignored (fire at latched value)"
+    assert fired is not None, (
+        "mid-window threshold change should be ignored (fire at latched value)"
+    )
 
     # Window 2: a completion reloads the counter with the new threshold (40); a
     # fresh hang must now take the LONGER time -> not fired at 30 cycles (< 40),
@@ -133,7 +134,7 @@ async def test_threshold_latched_per_window(dut):
     await complete_read(dut)
     await ClockCycles(dut.clk_i, 2)
     await issue_read(dut)
-    await ClockCycles(dut.clk_i, 30)            # 30 < 40 -> still counting
+    await ClockCycles(dut.clk_i, 30)  # 30 < 40 -> still counting
     assert dut.irq_o.value == 0, "next window should use the newly-latched (larger) threshold"
     fired = await wait_for_irq(dut, 25)
     assert fired is not None, "should fire once the new threshold elapses"
@@ -152,4 +153,3 @@ async def test_periodic_completions_never_fire(dut):
         await ClockCycles(dut.clk_i, THRESH - 8)
         await complete_read(dut)
         assert dut.irq_o.value == 0, "periodic completions should keep resetting the counter"
-

@@ -11,15 +11,13 @@ toggles the gate-enable spuriously.
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_i2c_multi_sample_test_seq import smc_i2c_multi_sample_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_i2c_multi_sample_test(smc_base_test):
     """Run the SMC OSS I2C multi-sample observability scenario."""
-
 
     async def run_scenario(self) -> None:
         seq = smc_i2c_multi_sample_test_seq("i2c_multi_sample_seq")

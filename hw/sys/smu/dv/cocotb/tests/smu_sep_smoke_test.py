@@ -13,7 +13,6 @@ SEP sysif/LC/SEC_DIS/mem/fuse/WDT/alias, CTM.S1, CTP, DTP CSR are out of scope
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_sep_smoke_test_seq import smu_sep_smoke_test_seq
 from smu_base_test import smu_base_test
 

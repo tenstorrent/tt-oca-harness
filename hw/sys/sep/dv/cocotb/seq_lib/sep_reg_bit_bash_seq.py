@@ -7,6 +7,8 @@ SepRegBitBashCfg is the single source of truth for which registers are reset-
 checked, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
+``iter_register_walk`` counts OFFSET symbols that lack DEFAULT/struct
+(``nometa``) instead of dropping them without a tally.
 Inbound-filter START/END stay in the write sweep under the full export
 mask. ``axi_filter_wrap`` rewrites a same-beat window only
 (``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
@@ -27,7 +29,12 @@ from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import RegInfo, iter_registers
+from sep_reg_meta import (
+    RegInfo,
+    iter_register_walk,
+    reg_hw_updating,
+)
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # (block, name) -> reason. name None = every register in the block.
@@ -53,6 +60,21 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("WDT_TIMER", "WDOG_COUNT"): "hw-driven timer",
 }
 
+
+# ENTROPY_SOURCE registers hardware may change while the noise source runs: a
+# reset compare on one measures elapsed time, not the DUT's reset value. The set
+# is `sw = r` minus proven constants, derived in sep_reg_meta.reg_hw_updating so
+# the dead-space store compare uses the SAME source and the two cannot drift
+# apart. HT_WATERMARK_NUM is `sw = rw` (a mode selector) and stays in the walk.
+# Resolved on first use so importing this module does not need the JSON on disk.
+def esrc_reset_skip() -> frozenset[str]:
+    """ENTROPY_SOURCE registers whose read value is not the POR value (cached)."""
+    cached = getattr(esrc_reset_skip, "_cache", None)
+    if cached is None:
+        cached = esrc_reset_skip._cache = reg_hw_updating("entropy_source")
+    return cached
+
+
 # Name suffixes excluded from reset and write. Each carries a reason.
 RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "INTR_TEST": "trigger",
@@ -63,6 +85,12 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "RXDATA": "FIFO",
     "WRITE_DATA": "FIFO",
     "READ_DATA": "FIFO",
+    # `RDATA`, not just `READ_DATA`: entropy_source names its auto-incrementing
+    # read ports FIFO_RDATA / BIW_OBS_RDATA / NOISE_OBS_RDATA. A read advances
+    # the pointer and decrements FIFO_STATUS.LEVEL; on an empty FIFO it also sets
+    # INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Reading one to check
+    # a reset value therefore destroys the state it is checking.
+    "RDATA": "FIFO",
     "GENBITS": "FIFO",
     "CMD": "trigger",
     "CMD_REQ": "trigger",
@@ -227,17 +255,16 @@ def inbound_addr_expected(name: str, written: int) -> int:
 
 
 def _is_inbound_addr(info: RegInfo) -> bool:
-    return (
-        info.block.startswith("INBOUND_FILTER_CTRL_")
-        and info.name in _INBOUND_ADDR
-    )
+    return info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR
 
 
 def touch_reason(info: RegInfo) -> str | None:
     """Why this register is not a plain storage touch, or None if it is.
 
     Mirrors reset_reason/write_reason: every exclusion carries a reason the
-    cfg tallies, so the summary accounts for the whole export.
+    cfg tallies, so the summary accounts for every inventory register.
+    Export symbols that lack DEFAULT/struct are counted by
+    ``iter_register_walk`` (``nometa``), not here.
     """
     why = reset_reason(info)
     if why is not None:
@@ -265,9 +292,7 @@ def touch_write_value(before: int, mask: int, rng: SepSeededRng) -> int:
     return (before & ~mask & 0xFFFF_FFFF) | field
 
 
-def _lookup(
-    table: dict[tuple[str, str | None], str], block: str, name: str
-) -> str | None:
+def _lookup(table: dict[tuple[str, str | None], str], block: str, name: str) -> str | None:
     return table.get((block, name)) or table.get((block, None))
 
 
@@ -281,7 +306,12 @@ def _suffix_reason(name: str) -> str | None:
 
 
 def reset_reason(info: RegInfo) -> str | None:
-    return _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
+    hit = _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
+    if hit is not None:
+        return hit
+    if info.block == "ENTROPY_SOURCE" and info.name in esrc_reset_skip():
+        return "hw-owned; read value is not the POR value"
+    return None
 
 
 def write_reason(info: RegInfo) -> str | None:
@@ -297,9 +327,7 @@ def write_reason(info: RegInfo) -> str | None:
     for prefix, reason in WRITE_EXCLUDE_PREFIXES.items():
         if info.block.startswith(prefix):
             return reason
-    if not any(
-        info.block == p or info.block.startswith(p) for p in WRITE_SAFE_PREFIXES
-    ):
+    if not any(info.block == p or info.block.startswith(p) for p in WRITE_SAFE_PREFIXES):
         return "not a no-side-effect block"
     return None
 
@@ -315,9 +343,13 @@ class SepRegBitBashCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        inventory = iter_registers()
+        walk = iter_register_walk()
+        inventory = list(walk.regs)
         if not inventory:
             raise RuntimeError("generated register export is empty")
+        self.export = walk.export
+        self.inventory = walk.inventory
+        self.nometa = walk.nometa
 
         reset_by_block: dict[str, list[RegInfo]] = defaultdict(list)
         write_by_block: dict[str, list[RegInfo]] = defaultdict(list)
@@ -341,7 +373,8 @@ class SepRegBitBashCfg:
         for i in range(len(self.reset_blocks) - 1, 0, -1):
             j = rng_order.randrange(0, i + 1)
             self.reset_blocks[i], self.reset_blocks[j] = (
-                self.reset_blocks[j], self.reset_blocks[i]
+                self.reset_blocks[j],
+                self.reset_blocks[i],
             )
         self.write_blocks = [b for b in self.reset_blocks if b in write_by_block]
         self.ones_first = bool(rng.getrandbits(1))
@@ -352,9 +385,9 @@ class SepRegBitBashCfg:
         if not self.write_regs:
             raise RuntimeError("write sweep is empty after exclusions")
         inbound_addr = [
-            info for info in self.write_regs
-            if info.block.startswith("INBOUND_FILTER_CTRL_")
-            and info.name in _INBOUND_ADDR
+            info
+            for info in self.write_regs
+            if info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR
         ]
         if len(inbound_addr) != 32:
             raise RuntimeError(
@@ -375,9 +408,7 @@ class SepRegBitBashCfg:
         for block in TOUCH_BLOCKS:
             cands = by_block.get(block)
             if not cands:
-                raise RuntimeError(
-                    f"TOUCH_BLOCKS {block}: no RW storage candidate in export"
-                )
+                raise RuntimeError(f"TOUCH_BLOCKS {block}: no RW storage candidate in export")
             info = cands[rng_touch.randrange(0, len(cands))]
             # Value uses reset as the pre-touch image (bring-up leaves POR).
             x = touch_write_value(info.reset, info.mask, rng_touch)
@@ -388,11 +419,10 @@ class SepRegBitBashCfg:
         skip_r = " ".join(f"{k}={v}" for k, v in sorted(self.reset_skipped.items()))
         skip_w = " ".join(f"{k}={v}" for k, v in sorted(self.write_skipped.items()))
         skip_t = " ".join(f"{k}={v}" for k, v in sorted(self.touch_skipped.items()))
-        touches = ",".join(
-            f"{i.block}.{i.name}=0x{x:x}/m0x{i.mask:x}" for i, x in self.touch_regs
-        )
+        touches = ",".join(f"{i.block}.{i.name}=0x{x:x}/m0x{i.mask:x}" for i, x in self.touch_regs)
         return (
             f"seed={self.seed} ones_first={int(self.ones_first)} "
+            f"export={self.export} inventory={self.inventory} nometa={self.nometa} "
             f"reset={len(self.reset_regs)}/{len(self.reset_blocks)}blocks "
             f"write={len(self.write_regs)}/{len(self.write_blocks)}blocks "
             f"touch={len(self.touch_regs)}[{touches}] "
@@ -425,15 +455,23 @@ class SepRegBitBash:
 
     async def _rd(self, addr: int, *, name: str) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
-            f"bash_rd_{name}", op=SepAxiOp.READ, addr=addr, length=4, size=2,
+            f"bash_rd_{name}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=4,
+            size=2,
         )
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
     async def _wr(self, addr: int, data: int, *, name: str) -> int:
         seq = SepAxiAccessSeq(
-            f"bash_wr_{name}", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-            length=4, size=2,
+            f"bash_wr_{name}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=2,
         )
         await self.test.start_seq(seq)
         return seq.resp_code
@@ -456,22 +494,16 @@ class SepRegBitBash:
     async def bash_write(self, info: RegInfo, *, ones_first: bool) -> None:
         tag = f"{info.block}_{info.name}"
         resp, before = await self._rd(info.addr, name=tag)
-        assert resp == 0, (
-            f"{info.block}.{info.name} @0x{info.addr:08x} resp={resp} before write"
-        )
+        assert resp == 0, f"{info.block}.{info.name} @0x{info.addr:08x} resp={resp} before write"
         inbound = _is_inbound_addr(info)
 
         async def do_complement(entry: int) -> int:
             mask = write_mask(info)
             pat = (~entry) & 0xFFFF_FFFF
             wr = await self._wr(info.addr, pat, name=f"{tag}_comp")
-            assert wr == 0, (
-                f"{info.block}.{info.name} complement write resp={wr}"
-            )
+            assert wr == 0, f"{info.block}.{info.name} complement write resp={wr}"
             rd, after = await self._rd(info.addr, name=f"{tag}_comp")
-            assert rd == 0, (
-                f"{info.block}.{info.name} complement read resp={rd}"
-            )
+            assert rd == 0, f"{info.block}.{info.name} complement read resp={rd}"
             if inbound:
                 expected = inbound_addr_expected(info.name, pat)
                 assert after == expected, (
@@ -521,13 +553,9 @@ class SepRegBitBash:
             mask = write_mask(info)
             pat = 0xFFFF_FFFF
             wr = await self._wr(info.addr, pat, name=f"{tag}_ones")
-            assert wr == 0, (
-                f"{info.block}.{info.name} all-ones write resp={wr}"
-            )
+            assert wr == 0, f"{info.block}.{info.name} all-ones write resp={wr}"
             rd, after = await self._rd(info.addr, name=f"{tag}_ones")
-            assert rd == 0, (
-                f"{info.block}.{info.name} all-ones read resp={rd}"
-            )
+            assert rd == 0, f"{info.block}.{info.name} all-ones read resp={rd}"
             if inbound:
                 expected = inbound_addr_expected(info.name, pat)
                 assert after == expected, (
@@ -537,8 +565,7 @@ class SepRegBitBash:
                 return after
             leaked = (entry ^ after) & ~mask & 0xFFFF_FFFF
             assert leaked == 0, (
-                f"CHK-RO FAIL: {info.block}.{info.name} all-ones moved "
-                f"outside mask 0x{leaked:08x}"
+                f"CHK-RO FAIL: {info.block}.{info.name} all-ones moved outside mask 0x{leaked:08x}"
             )
             if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
@@ -556,9 +583,7 @@ class SepRegBitBash:
             await do_ones(mid)
 
         wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore")
-        assert wr == 0, (
-            f"{info.block}.{info.name} restore write resp={wr}"
-        )
+        assert wr == 0, f"{info.block}.{info.name} restore write resp={wr}"
         rd, got = await self._rd(info.addr, name=f"{tag}_restore")
         assert rd == 0 and got == info.reset, (
             f"{info.block}.{info.name} restore read 0x{got:08x} "
@@ -578,19 +603,14 @@ class SepRegBitBash:
             f"resp={resp} before write"
         )
         wr = await self._wr(info.addr, x, name=f"{tag}_wr")
-        assert wr == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} write resp={wr}"
-        )
+        assert wr == 0, f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} write resp={wr}"
         if shadowed:
             wr = await self._wr(info.addr, x, name=f"{tag}_wr2")
             assert wr == 0, (
-                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow "
-                f"commit resp={wr}"
+                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow commit resp={wr}"
             )
         rd, after = await self._rd(info.addr, name=f"{tag}_rd")
-        assert rd == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} read resp={rd}"
-        )
+        assert rd == 0, f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} read resp={rd}"
         assert (after & mask) == (x & mask), (
             f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} "
             f"(read 0x{after:08x} & mask 0x{mask:08x})=0x{after & mask:08x} "
@@ -598,18 +618,14 @@ class SepRegBitBash:
         )
         leaked = (before ^ after) & ~mask & 0xFFFF_FFFF
         assert leaked == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} bits outside mask "
-            f"moved 0x{leaked:08x}"
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} bits outside mask moved 0x{leaked:08x}"
         )
         wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore")
-        assert wr == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} restore resp={wr}"
-        )
+        assert wr == 0, f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} restore resp={wr}"
         if shadowed:
             wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore2")
             assert wr == 0, (
-                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow "
-                f"restore resp={wr}"
+                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow restore resp={wr}"
             )
         rd, got = await self._rd(info.addr, name=f"{tag}_restore")
         assert rd == 0 and got == info.reset, (

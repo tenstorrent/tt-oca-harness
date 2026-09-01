@@ -18,19 +18,19 @@ encodings reused from fw/sep/tests/kmac_test + the reference seq):
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
-from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from env.sep_axi_agent import SepAxiOp
+
 # Shared SP800-185 encoders so the DUT PREFIX / KMAC right_encode(L) bytes match
 # the golden by construction.
 from env.sep_kmac_golden import encode_string, right_encode
+from sep_reg_meta import sym
+
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 KMAC_INTR_STATE = KMAC_BASE + 0x000
@@ -46,10 +46,10 @@ KMAC_STATE_S0 = KMAC_BASE + 0x400
 KMAC_STATE_S1 = KMAC_BASE + 0x500
 KMAC_MSG_FIFO = KMAC_BASE + 0x800
 
-KMAC_NUM_PUBLIC_KEY = 16   # KEY_SHARE0_0..15 / KEY_SHARE1_0..15
-KMAC_NUM_PREFIX = 11       # PREFIX_0..10
-KMAC_KEY_WORDS = 8         # 256-bit key
-KMAC_DIGEST_WORDS = 8      # 256-bit MAC
+KMAC_NUM_PUBLIC_KEY = 16  # KEY_SHARE0_0..15 / KEY_SHARE1_0..15
+KMAC_NUM_PREFIX = 11  # PREFIX_0..10
+KMAC_KEY_WORDS = 8  # 256-bit key
+KMAC_DIGEST_WORDS = 8  # 256-bit MAC
 
 # CMD sparse encodings (kmac_pkg kmac_cmd_e).
 KMAC_CMD_START = 0x1D
@@ -86,12 +86,11 @@ KMAC_RIGHT_ENCODE_256 = 0x0002_0001
 # entropy_ready[24]. sha3_mode_e: Sha3=0, Shake=2, CShake=3 (KMAC uses Shake +
 # kmac_en=1). keccak_strength_e / key_len_e select by security bit-width.
 KMAC_MODE = {"sha3": 0, "shake": 2, "cshake": 3}
-KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}   # L128/224/256/384/512
-KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}     # Key128..Key512
+KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}  # L128/224/256/384/512
+KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}  # Key128..Key512
 
 
-def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool,
-                   sideload: bool = False) -> int:
+def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool = False) -> int:
     """CFG_SHADOWED word with EDN entropy (entropy_mode=EDN + entropy_ready), the
     masking-required config. KMAC-256 keyed SW CFG 0x0101_0025 (same word the KM
     KMAC sideload KAT uses)."""
@@ -100,8 +99,8 @@ def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool,
         | (kstrength << 1)
         | (mode << 4)
         | (int(bool(sideload)) << 12)
-        | (0x1 << 16)      # entropy_mode = EDN
-        | (0x1 << 24)      # entropy_ready
+        | (0x1 << 16)  # entropy_mode = EDN
+        | (0x1 << 24)  # entropy_ready
     )
 
 
@@ -116,10 +115,10 @@ class SepKmacCfg:
     sec: int
     msg_words: list[int]
     outlen_bytes: int
-    key_words: list[int] | None = None      # KMAC only (len = key_bits/32)
-    key_bits: int | None = None             # KMAC only (128/256)
-    n: bytes = b""                          # cSHAKE function-name (usually empty)
-    s: bytes = b""                          # cSHAKE/KMAC customization string
+    key_words: list[int] | None = None  # KMAC only (len = key_bits/32)
+    key_bits: int | None = None  # KMAC only (128/256)
+    n: bytes = b""  # cSHAKE function-name (usually empty)
+    s: bytes = b""  # cSHAKE/KMAC customization string
 
     @property
     def kmac_en(self) -> bool:
@@ -132,8 +131,12 @@ class SepKmacCfg:
         return KMAC_MODE["cshake" if self.mode == "kmac" else self.mode]
 
     def cfg_word(self, *, sideload: bool = False) -> int:
-        return build_kmac_cfg(mode=self.mode_val(), kstrength=KMAC_STRENGTH[self.sec],
-                              kmac_en=self.kmac_en, sideload=sideload)
+        return build_kmac_cfg(
+            mode=self.mode_val(),
+            kstrength=KMAC_STRENGTH[self.sec],
+            kmac_en=self.kmac_en,
+            sideload=sideload,
+        )
 
     def prefix_bytes(self) -> bytes:
         """PREFIX = encode_string(N)||encode_string(S). KMAC forces N='KMAC';
@@ -145,9 +148,15 @@ class SepKmacCfg:
         return b""
 
     def golden_kwargs(self) -> dict:
-        return dict(mode=self.mode, sec=self.sec, msg_words=self.msg_words,
-                    outlen_bytes=self.outlen_bytes, key_words=self.key_words,
-                    n=self.n, s=self.s)
+        return dict(
+            mode=self.mode,
+            sec=self.sec,
+            msg_words=self.msg_words,
+            outlen_bytes=self.outlen_bytes,
+            key_words=self.key_words,
+            n=self.n,
+            s=self.s,
+        )
 
 
 class SepKmac(SepAxiRegDriver):
@@ -177,8 +186,9 @@ class SepKmac(SepAxiRegDriver):
         control = await self._rd(KMAC_STATUS)
         return s0, s1, control
 
-    async def keyed_mac(self, msg_words: list[int], *, sideload: bool,
-                        sw_key: list[int] | None = None) -> list[int]:
+    async def keyed_mac(
+        self, msg_words: list[int], *, sideload: bool, sw_key: list[int] | None = None
+    ) -> list[int]:
         """Run one keyed KMAC-256 over msg_words; return the 8-word digest
         (STATE share0 ^ share1). sideload=1 uses the KM key; sideload=0 uses
         sw_key written to KEY_SHARE0 (KEY_SHARE1=0)."""
@@ -223,8 +233,10 @@ class SepKmac(SepAxiRegDriver):
         """Program PREFIX_0..10 from encode_string(N)||encode_string(S) bytes (LE
         words); zero the unused registers (the encoded lengths self-delimit, so
         trailing zero-padding of the last word is ignored by the HW)."""
-        words = [int.from_bytes(prefix[i:i + 4].ljust(4, b"\x00"), "little")
-                 for i in range(0, len(prefix), 4)]
+        words = [
+            int.from_bytes(prefix[i : i + 4].ljust(4, b"\x00"), "little")
+            for i in range(0, len(prefix), 4)
+        ]
         for i in range(KMAC_NUM_PREFIX):
             await self._wr(KMAC_PREFIX_0 + i * 4, words[i] if i < len(words) else 0)
 
@@ -235,20 +247,26 @@ class SepKmac(SepAxiRegDriver):
         would corrupt the digest vs the golden)."""
         off = 0
         while off + 4 <= len(data):
-            await self._wr(KMAC_MSG_FIFO, int.from_bytes(data[off:off + 4], "little"))
+            await self._wr(KMAC_MSG_FIFO, int.from_bytes(data[off : off + 4], "little"))
             off += 4
         rem = len(data) - off
         if rem:
-            val = int.from_bytes(data[off:off + rem], "little")
-            seq = SepAxiAccessSeq(f"{self._DRIVER_TAG.lower()}_wr_partial",
-                                  op=SepAxiOp.WRITE, addr=KMAC_MSG_FIFO,
-                                  wdata=val, length=rem, size=self._AXI_SIZE)
+            val = int.from_bytes(data[off : off + rem], "little")
+            seq = SepAxiAccessSeq(
+                f"{self._DRIVER_TAG.lower()}_wr_partial",
+                op=SepAxiOp.WRITE,
+                addr=KMAC_MSG_FIFO,
+                wdata=val,
+                length=rem,
+                size=self._AXI_SIZE,
+            )
             await self.test.start_seq(seq)
             if not seq.resp_ok:
                 raise AssertionError(f"KMAC partial MSG_FIFO write ({rem}B) not OKAY")
 
-    async def run_family(self, cfg: "SepKmacCfg", *, tag: str = "",
-                         hold: bool = False) -> list[int]:
+    async def run_family(
+        self, cfg: "SepKmacCfg", *, tag: str = "", hold: bool = False
+    ) -> list[int]:
         """Run one KMAC-family op (sha3/shake/cshake/kmac SW-key) per ``cfg``;
         return the digest words (STATE share0 ^ share1, masking on). Proves the
         INTR_STATE.kmac_done RW1C contract (observed set -> W1C -> reads 0) before
@@ -269,7 +287,7 @@ class SepKmac(SepAxiRegDriver):
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         msg = b"".join((w & 0xFFFF_FFFF).to_bytes(4, "little") for w in cfg.msg_words)
         if cfg.kmac_en:
-            msg += right_encode(cfg.outlen_bytes * 8)   # spec-correct KMAC tail
+            msg += right_encode(cfg.outlen_bytes * 8)  # spec-correct KMAC tail
         await self._push_msg_bytes(msg)
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
         await self._wait_squeeze()
@@ -310,13 +328,19 @@ class SepKmac(SepAxiRegDriver):
         no_cpu path leaves the PIC unreached."""
         pre = await self._rd(KMAC_INTR_STATE)
         assert pre & KMAC_INTR_KMAC_DONE, (
-            f"KMAC INTR_STATE.kmac_done not set after absorb [{tag}] (0x{pre:08x})")
+            f"KMAC INTR_STATE.kmac_done not set after absorb [{tag}] (0x{pre:08x})"
+        )
         await self._wr(KMAC_INTR_STATE, KMAC_INTR_KMAC_DONE)
         post = await self._rd(KMAC_INTR_STATE)
         assert (post & KMAC_INTR_KMAC_DONE) == 0, (
-            f"KMAC INTR_STATE.kmac_done not cleared by W1C [{tag}] (0x{post:08x})")
-        self.log.info("CHK-DONE-RW1C PASS [%s]: INTR_STATE.kmac_done set (0x%08x) "
-                      "-> W1C -> reads 0 (0x%08x)", tag, pre, post)
+            f"KMAC INTR_STATE.kmac_done not cleared by W1C [{tag}] (0x{post:08x})"
+        )
+        self.log.info(
+            "CHK-DONE-RW1C PASS [%s]: INTR_STATE.kmac_done set (0x%08x) -> W1C -> reads 0 (0x%08x)",
+            tag,
+            pre,
+            post,
+        )
 
     async def _wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
         await self._poll(KMAC_STATUS_IDLE, f"idle/{tag}", timeout=timeout, poll_cycles=poll_cycles)
@@ -339,5 +363,6 @@ class SepKmac(SepAxiRegDriver):
         assert err == 0, f"KMAC ERR_CODE=0x{err:08x} [{tag}]"
         intr = await self._rd(KMAC_INTR_STATE)
         assert (intr & KMAC_INTR_KMAC_ERR) == 0, (
-            f"KMAC INTR_STATE.kmac_err set [{tag}] (0x{intr:08x})")
+            f"KMAC INTR_STATE.kmac_err set [{tag}] (0x{intr:08x})"
+        )
         self.log.info("KMAC STATUS clean [%s]: ERR_CODE=0, INTR_STATE.kmac_err=0", tag)

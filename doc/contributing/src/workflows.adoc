@@ -182,7 +182,14 @@ The need for the above may be checked with `make format-sv-check`.
 
 ==== Verilog Linting with Verilator
 
-TODO
+Verilator structurally lints each discovered hardware block as its own top:
+
+```bash
+make lint-verilator-all
+```
+
+Use `BLOCK=<block>` to restrict the run, for example
+`make lint-verilator-all BLOCK=sep`.
 
 ==== Verilog Style and Lint checking with Slang
 
@@ -195,7 +202,7 @@ make lint-slang-all
 ==== TCL Script Style, Lint and Format with Tclint
 
 To lint the TCL scripts in the repository, we use the package `tclint`.
-This may be managed by `uv` - run `uv sync` to install, or to use a system installed version, set `OCAH_TCLINT_SKIP_UV=1`.
+The repository's uv environment supplies both tclint and tclfmt.
 
 To lint, use the following command:
 
@@ -212,13 +219,41 @@ make format-tcl
 ==== C/C++ Style and Format with Clang-Format
 
 The C/C++ Firmware files included in each component are checked and formatted with `clang-format`.
-As with `tclint` above, this may be managed by `uv`, but `OCAH_CLANG_FORMAT_SKIP_UV=1` may be set to use a system installation.
+The repository's uv environment supplies the pinned clang-format version.
 
 ```bash
 make format-c
 ```
 
 To check for errors without modifying files, use `make format-c-check`.
+
+==== Python Lint and Format with Ruff
+
+Ruff lints and formats first-party Python while excluding generated register
+models, vendored sources, submodules, `nonfree/`, and build output.
+
+```bash
+make lint-python
+make format-python-check
+```
+
+To apply safe lint fixes and formatting locally, run:
+
+```bash
+make lint-python-fix
+make format-python
+```
+
+Pass `PYTHON_PATH=<path>` to restrict any command to part of the tree.
+
+==== Optional Pre-Commit Checks
+
+The optional pre-commit hook runs check-only Ruff, clang-format, tclfmt, and
+tclint operations on staged files. Enable it explicitly with
+`make hooks-install`; use `make hooks-uninstall` to remove it. The installation
+writes the standard local Git hook, does not change `core.hooksPath`, and is
+never performed by repository setup or checkout flows. See
+`CONTRIBUTING.md` for all hook commands.
 
 ==== References
 

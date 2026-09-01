@@ -12,14 +12,24 @@ Tests:
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
+
 from test.test_base import (
-    start_clocks, init, init_axil, axil_write, axil_read, wait_cycles,
-    get_ctp_addr, get_ctm_src_config_addr,
-    CTP_REG_CONFIG, CTP_REG_STRETCH_MULT,
-    NUM_CTP, NUM_INT_CT, NUM_CTM_PORTS,
-    NUM_INT_CT_WIRE_OR, NUM_INT_CT_P2P,
-    AxiLiteMaster
+    CTP_REG_CONFIG,
+    CTP_REG_STRETCH_MULT,
+    NUM_CTP,
+    NUM_INT_CT,
+    NUM_INT_CT_P2P,
+    NUM_INT_CT_WIRE_OR,
+    AxiLiteMaster,
+    axil_read,
+    axil_write,
+    get_ctm_src_config_addr,
+    get_ctp_addr,
+    init,
+    init_axil,
+    start_clocks,
+    wait_cycles,
 )
 
 
@@ -189,7 +199,7 @@ async def test_mixed_mode_routing(dut):
     await axil_write(dut, axil, ctm_src2_addr, 0x1)  # Select CTP[0] as source
 
     readback = await axil_read(dut, axil, ctm_src2_addr)
-    assert readback == 0x1, f"Test 1: CTM config mismatch"
+    assert readback == 0x1, "Test 1: CTM config mismatch"
 
     # Trigger from CTP[0] (Wire-OR input)
     dut.ctp_req_out_din.value = 0x1
@@ -231,7 +241,7 @@ async def test_mixed_mode_routing(dut):
     await axil_write(dut, axil, ctm_src1_addr, 0x4)  # Select CTP[2] as source
 
     readback = await axil_read(dut, axil, ctm_src1_addr)
-    assert readback == 0x4, f"Test 2: CTM config mismatch"
+    assert readback == 0x4, "Test 2: CTM config mismatch"
 
     # Trigger from CTP[2] (P2P input via req_in)
     dut.ctp_req_in_din.value = 0x4  # CTP[2] req_in
@@ -269,7 +279,7 @@ async def test_mixed_mode_routing(dut):
         await axil_write(dut, axil, ctm_src_addr, 0x1)  # Select CTP[0] as source
 
         readback = await axil_read(dut, axil, ctm_src_addr)
-        assert readback == 0x1, f"Test 3: CTM config mismatch"
+        assert readback == 0x1, "Test 3: CTM config mismatch"
 
         # Trigger from CTP[0] (Wire-OR input)
         dut.ctp_req_out_din.value = 0x1
@@ -290,7 +300,9 @@ async def test_mixed_mode_routing(dut):
                 dut._log.info(f"  Internal CT[{int_ct_p2p_idx}] output detected at cycle {cycle}")
                 break
 
-        assert output_detected, f"Test 3 failed: Internal CT[{int_ct_p2p_idx}] (P2P) did not receive"
+        assert output_detected, (
+            f"Test 3 failed: Internal CT[{int_ct_p2p_idx}] (P2P) did not receive"
+        )
 
         # Complete handshake
         dut.ctm_src_ack.value = 1 << int_ct_p2p_idx
@@ -313,7 +325,7 @@ async def test_mixed_mode_routing(dut):
         await axil_write(dut, axil, ctm_src3_addr, 1 << int_ct_wire_or_port)
 
         readback = await axil_read(dut, axil, ctm_src3_addr)
-        assert readback == (1 << int_ct_wire_or_port), f"Test 4: CTM config mismatch"
+        assert readback == (1 << int_ct_wire_or_port), "Test 4: CTM config mismatch"
 
         # Trigger from internal CT[0] (Wire-OR)
         dut.ctm_dst_req.value = 0x1  # Internal CT[0]
@@ -328,7 +340,9 @@ async def test_mixed_mode_routing(dut):
                 dut._log.info(f"  CTP[3] output detected at cycle {cycle}")
                 break
 
-        assert output_detected, "Test 4 failed: CTP[3] (P2P) did not receive from Internal CT[0] (Wire-OR)"
+        assert output_detected, (
+            "Test 4 failed: CTP[3] (P2P) did not receive from Internal CT[0] (Wire-OR)"
+        )
 
         # Complete handshake
         dut.ctp_ack_in_din.value = 0x8
@@ -352,7 +366,7 @@ async def test_mixed_mode_routing(dut):
         await axil_write(dut, axil, ctm_src0_addr, 1 << ctm_port_p2p)
 
         readback = await axil_read(dut, axil, ctm_src0_addr)
-        assert readback == (1 << ctm_port_p2p), f"Test 5: CTM config mismatch"
+        assert readback == (1 << ctm_port_p2p), "Test 5: CTM config mismatch"
 
         # Trigger from internal CT (P2P mode)
         dut.ctm_dst_req.value = 1 << int_ct_p2p_idx
@@ -370,7 +384,9 @@ async def test_mixed_mode_routing(dut):
                 dut._log.info(f"  CTP[0] output detected at cycle {cycle}")
                 break
 
-        assert output_detected, "Test 5 failed: CTP[0] (Wire-OR) did not receive from Internal CT (P2P)"
+        assert output_detected, (
+            "Test 5 failed: CTP[0] (Wire-OR) did not receive from Internal CT (P2P)"
+        )
 
         dut.ctm_dst_req.value = 0
         dut.ctp_req_out_din.value = 0

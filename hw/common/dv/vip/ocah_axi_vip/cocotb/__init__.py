@@ -60,7 +60,6 @@ from .ocah_axi_ref_model import (
     OcahAxiRefModel,
     OcahAxiRegionExpectation,
 )
-from .ocah_axi_scoreboard import OcahAxiScoreboard
 from .ocah_axi_results import (
     PROT_INSTRUCTION,
     PROT_NONSECURE,
@@ -74,6 +73,7 @@ from .ocah_axi_results import (
     OcahAxiWriteResult,
     resp_name,
 )
+from .ocah_axi_scoreboard import OcahAxiScoreboard
 
 
 class OcahAxiVipBackendError(ImportError):
@@ -93,22 +93,22 @@ def _unavailable_class(class_name: str, backend: str):
 
 
 try:
-    from .ocah_axi_master_agent import OcahAxiMasterAgent
-    from .ocah_axi_master_config import OcahAxiMasterConfig
-    from .ocah_axi_master_driver import OcahAxiIdCapture, OcahAxiMasterDriver
-    from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
     from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
     from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
     from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
     from .ocah_axi_lite_master_sequence import OcahAxiLiteMasterError, OcahAxiLiteMasterSequence
-    from .ocah_axi_slave_agent import OcahAxiSlaveAgent
-    from .ocah_axi_slave_config import OcahAxiSlaveConfig
-    from .ocah_axi_slave_driver import OcahAxiSlaveDriver
-    from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
     from .ocah_axi_lite_slave_agent import OcahAxiLiteSlaveAgent
     from .ocah_axi_lite_slave_config import OcahAxiLiteSlaveConfig
     from .ocah_axi_lite_slave_driver import OcahAxiLiteSlaveDriver
     from .ocah_axi_lite_slave_sequence import OcahAxiLiteSlaveSequence
+    from .ocah_axi_master_agent import OcahAxiMasterAgent
+    from .ocah_axi_master_config import OcahAxiMasterConfig
+    from .ocah_axi_master_driver import OcahAxiIdCapture, OcahAxiMasterDriver
+    from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
+    from .ocah_axi_slave_agent import OcahAxiSlaveAgent
+    from .ocah_axi_slave_config import OcahAxiSlaveConfig
+    from .ocah_axi_slave_driver import OcahAxiSlaveDriver
+    from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
 except ModuleNotFoundError as exc:
     if "cocotbext" not in str(exc):
         raise
@@ -153,7 +153,13 @@ except ModuleNotFoundError as exc:
     OcahAxiLiteProtocolWatcher = _unavailable_class("OcahAxiLiteProtocolWatcher", "cocotb")
     OcahAxiWatchFinding = None
 
+from .ocah_axi_timing import AxiTimingProfile, apply_profile, clear_profile
+
 __all__ = [
+    # Per-channel timing control (AW/W ordering, response backpressure)
+    "AxiTimingProfile",
+    "apply_profile",
+    "clear_profile",
     # Master side (AXI4 and AXI4-Lite)
     "OcahAxiMasterAgent",
     "OcahAxiMasterConfig",

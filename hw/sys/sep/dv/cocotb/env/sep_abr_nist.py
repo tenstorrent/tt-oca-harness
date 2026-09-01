@@ -13,14 +13,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_HEADER = (
-    Path(__file__).resolve().parents[2]
-    / "fw" / "tests" / "common" / "abr_nist_vectors.h"
-)
+_HEADER = Path(__file__).resolve().parents[2] / "fw" / "tests" / "common" / "abr_nist_vectors.h"
 
 
 def _load_u32_array(name: str) -> list[int]:
-    text = _HEADER.read_text()
+    text = _HEADER.read_text(encoding="utf-8")
     m = re.search(
         rf"static const uint32_t {name}\[(\d+)\] = \{{(.*?)\}};",
         text,

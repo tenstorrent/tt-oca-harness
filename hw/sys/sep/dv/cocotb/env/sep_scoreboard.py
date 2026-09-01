@@ -24,9 +24,9 @@ class SepScoreboard(uvm_subscriber):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.errors: list[str] = []
-        self.checks = 0          # transactions observed
-        self.value_checks = 0    # reads whose expected value was verified
-        self.error_checks = 0    # negative-path probes that returned a non-OKAY (as expected)
+        self.checks = 0  # transactions observed
+        self.value_checks = 0  # reads whose expected value was verified
+        self.error_checks = 0  # negative-path probes that returned a non-OKAY (as expected)
 
     def _fail(self, msg: str) -> None:
         self.errors.append(msg)
@@ -59,7 +59,9 @@ class SepScoreboard(uvm_subscriber):
                 self.error_checks += 1
                 self.logger.info(
                     "expected-error %s @ 0x%08x returned resp=%d (as expected)",
-                    item.op.value, item.addr, item.resp_code,
+                    item.op.value,
+                    item.addr,
+                    item.resp_code,
                 )
             return
         if not item.resp_ok:
@@ -88,8 +90,8 @@ class SepScoreboard(uvm_subscriber):
                 self.logger.info("read check OK @ 0x%08x = 0x%0*x", item.addr, width, got)
 
     def check_phase(self) -> None:
-        assert not self.errors, (
-            f"SEP scoreboard found {len(self.errors)} error(s): " + "; ".join(self.errors)
+        assert not self.errors, f"SEP scoreboard found {len(self.errors)} error(s): " + "; ".join(
+            self.errors
         )
         # Positive-evidence house rule: a clean run must have actually observed
         # transactions, not passed vacuously on zero activity.

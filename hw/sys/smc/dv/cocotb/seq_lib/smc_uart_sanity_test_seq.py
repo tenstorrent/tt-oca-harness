@@ -18,13 +18,18 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
@@ -32,9 +37,7 @@ IER_ERBFI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ERBFI_bm")
 IER_ETBEI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ETBEI_bm")
 IER_ELSI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ELSI_bm")
 IER_EDSSI = _field_mask(_UART_H, "UART_16550_MAIN__IER__EDSSI_bm")
-IIR_INTERRUPT_PENDING = _field_mask(
-    _UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm"
-)
+IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
 LCR_DLAB = _field_mask(_UART_H, "UART_16550_MAIN__LCR__DLAB_bm")
@@ -107,23 +110,15 @@ class smc_uart_sanity_test_seq(SmcCsrSeq):
                 break
             await Timer(100, units="ns")
         else:
-            raise AssertionError(
-                f"UART{ctrl}->UART{tgt}: RDR missing IIR=0x{iir:08x}"
-            )
+            raise AssertionError(f"UART{ctrl}->UART{tgt}: RDR missing IIR=0x{iir:08x}")
         rx = int(await self.csr_read(f"RX_{ctrl}_{tgt}", t["rbr"])) & 0xFF
         if rx != data:
-            raise AssertionError(
-                f"UART{ctrl}->UART{tgt}: got 0x{rx:02x} want 0x{data:02x}"
-            )
-        cocotb.log.info(
-            "CHK-UART-SANITY: UART%d->UART%d data=0x%02x", ctrl, tgt, data
-        )
+            raise AssertionError(f"UART{ctrl}->UART{tgt}: got 0x{rx:02x} want 0x{data:02x}")
+        cocotb.log.info("CHK-UART-SANITY: UART%d->UART%d data=0x%02x", ctrl, tgt, data)
 
     async def body(self) -> None:
         if "smc_uart_cross_3to0" not in cocotb.plusargs:
-            raise AssertionError(
-                "smc_uart_sanity_test requires +smc_uart_cross_3to0"
-            )
+            raise AssertionError("smc_uart_sanity_test requires +smc_uart_cross_3to0")
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)
         await self.csr_write("UART_UNGATE", CLOCK_GATE_CONTROL, cg & ~UART_CG_EN)
         for idx in (0, 1, 2, 3):
