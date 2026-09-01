@@ -78,7 +78,9 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         self.logger.info(
             "CHK-OFFSET PASS: remapped beat -> 0x%08x "
             "(data 0x%08x matches identity CLOCK_GATE_CTRL)",
-            cfg.expect_addr, got)
+            cfg.expect_addr,
+            got,
+        )
         # Same window, enable cleared: the beat must stay where it was issued.
         # src_pre is the pre-programming read of that address, and the vacuity
         # guard above already proved it differs from the remapped destination,
@@ -104,12 +106,20 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         self.logger.info(
             "CHK-VALID-GATE PASS: region %d programmed with valid clear leaves "
             "0x%08x reading 0x%08x, its own value, not the remapped 0x%08x",
-            cfg.region, cfg.access_addr, gated_data, dest_data)
+            cfg.region,
+            cfg.access_addr,
+            gated_data,
+            dest_data,
+        )
 
         # Config report, not a checker. The seed picks one region of the bank,
         # and a bound on an index the same seed generated cannot fail. What this
         # entry proves is asserted above, against the DUT.
         self.logger.info(
             "local-alias config: region=%d of %d src=0x%08x dest=0x%08x seed %d",
-            cfg.region, N_REGIONS, cfg.access_addr, cfg.expect_addr,
-            cfg.seed)
+            cfg.region,
+            N_REGIONS,
+            cfg.access_addr,
+            cfg.expect_addr,
+            cfg.seed,
+        )

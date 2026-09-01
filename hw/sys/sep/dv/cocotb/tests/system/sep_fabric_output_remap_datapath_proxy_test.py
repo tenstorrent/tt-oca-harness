@@ -18,8 +18,12 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_remap_seq import (
-    N_REGIONS, OUTFILT_N_ENTRIES,
-    RESP_DECERR, RESP_OKAY, SepOutboundRemap, SepOutboundRemapCfg,
+    N_REGIONS,
+    OUTFILT_N_ENTRIES,
+    RESP_DECERR,
+    RESP_OKAY,
+    SepOutboundRemap,
+    SepOutboundRemapCfg,
     remap_probe_seq,
 )
 
@@ -61,11 +65,19 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
         self.logger.info(
             "CHK-FILTER-DROP PASS: %s r%d access 0x%08x -> DECERR "
             "(outside the remapped allow window)",
-            cfg.bank, cfg.forbidden_region, cfg.forbidden_addr)
+            cfg.bank,
+            cfg.forbidden_region,
+            cfg.forbidden_addr,
+        )
         # Config report, not a checker. The seed picks one region and one entry,
         # and a bound on an index the same seed generated cannot fail. The
         # coverage this entry does claim is asserted above, against the DUT.
         self.logger.info(
             "output-remap config: bank=%s region=%d of %d entry=%d of %d, seed %d",
-            cfg.bank, cfg.region, N_REGIONS, cfg.entry, OUTFILT_N_ENTRIES,
-            cfg.seed)
+            cfg.bank,
+            cfg.region,
+            N_REGIONS,
+            cfg.entry,
+            OUTFILT_N_ENTRIES,
+            cfg.seed,
+        )

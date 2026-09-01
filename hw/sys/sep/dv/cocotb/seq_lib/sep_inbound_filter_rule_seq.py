@@ -36,11 +36,9 @@ governing the granule.
 
 from __future__ import annotations
 
-from sep_reg_meta import indexed_block_count, sym
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver

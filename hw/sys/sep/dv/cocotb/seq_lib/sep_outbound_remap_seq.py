@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -34,7 +34,6 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     REMAP_STRIDE,
     STEE_BASE,
 )
-from sep_reg_meta import indexed_block_count, sym
 
 # och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
 AP_REGION_BASE = 0x1100_0000

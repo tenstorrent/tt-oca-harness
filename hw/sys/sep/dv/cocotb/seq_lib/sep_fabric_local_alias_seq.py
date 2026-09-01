@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -33,7 +33,6 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     INFILT_BASE,
     OUTFILT_BASE,
 )
-from sep_reg_meta import indexed_block_count, sym
 
 # `local_master_alias_remap_ctrl[16]`; the count comes from the export so a
 # seed can select any region the bank actually has.
