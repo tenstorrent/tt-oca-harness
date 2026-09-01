@@ -392,10 +392,12 @@ doc_html() {
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
   doc_release_enabled && release_args=(--attribute release)
+  local npm_cmd=''
+  [[ -z "${OCAH_NO_INSTALL_NPM_DEPS:-}" ]] && npm_cmd='npm install --no-save --no-package-lock asciidoctor-kroki@0.18.1 &&'
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}" \
     --entrypoint sh \
     -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-    -c 'npm install --no-save --no-package-lock asciidoctor-kroki@0.18.1 && antora "$@"' \
+    -c '${npm_cmd} antora "$@"' \
     sh "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
   # Only the TRM carries the dashboard page; staging elsewhere would leave a
   # stray ocah-docs/ tree inside another book's site.
@@ -421,10 +423,12 @@ doc_html_all() {
   # `npm install` here writes into the
   # bind-mounted repo root, so it only needs to happen once per checkout
   # (harmless to repeat). Make sure node_modules/ is gitignored.
+  local npm_cmd=''
+  [[ -z "${OCAH_NO_INSTALL_NPM_DEPS:-}" ]] && npm_cmd='npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 asciidoctor-kroki@0.18.1 &&'
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm \
     -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_RELEASE_ARG="$release_arg" \
     -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-    sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 asciidoctor-kroki@0.18.1 && antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
+    sh -c '${npm_cmd} antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
 }
 
 doc_pdf() {
