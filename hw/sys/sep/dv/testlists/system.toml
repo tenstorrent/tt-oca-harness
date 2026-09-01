@@ -166,7 +166,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # non-allowed->DECERR (block-by-default), and read_en/write_en gating. Walks entry 0
 # and 7 x two windows x rw/r/w (match-all src_id=0) plus entry 0 / window 0
 # source-ID match and mismatch, then allow_burst deny/allow on AR and AW
-# of the scratch window. Distinct from
+# of the scratch window, then entry 15 same-page allow_burst=1 granule,
+# page-bound, and FILTER_CONFIG.locked. Distinct from
 # `sep_lcc_uvm_inbound_filter_gating_test` (global sep_debug skip gate). no_cpu + ext SMN master; REAL PROD fuse sense.
 # CHK-OWNERSHIP keeps CFG outside every allow window (firmware must not allow-list CFG).
 name = "sep_fabric_inbound_filter_rule_matrix_test"
@@ -294,11 +295,13 @@ args = ["+skip_fuse_sense"]
 # Reset walk is the inventory after reasoned skips (not every OFFSET
 # symbol). Full-mask write-lands is 19 registers (8 scratch-cold +
 # 8 scratch-warm + 3 CPU_CTRL); 32 inbound START/END use the wrap model.
-# TOUCH_BLOCKS picks one storage RW per other major IP.
+# The masked storage touch covers every register that is plain storage and
+# whose write has no side effect, entropy complex CSRs included.
 # no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["csr", "register", "system", "subsystem"]
 run_modes = ["no_cpu"]

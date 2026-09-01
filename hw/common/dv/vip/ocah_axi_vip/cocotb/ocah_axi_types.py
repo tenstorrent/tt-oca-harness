@@ -65,12 +65,14 @@ def bytes_to_int(data: bytes | bytearray, *, byteorder: str = "little") -> int:
     return int.from_bytes(bytes(data), byteorder)
 
 
-def words_from_bytes(data: bytes | bytearray, beat_bytes: int, *, byteorder: str = "little") -> tuple[int, ...]:
+def words_from_bytes(
+    data: bytes | bytearray, beat_bytes: int, *, byteorder: str = "little"
+) -> tuple[int, ...]:
     """Split backend byte payloads into one integer per AXI beat."""
     payload = bytes(data)
     if beat_bytes <= 0:
         raise ValueError(f"beat_bytes must be positive, got {beat_bytes}")
     return tuple(
-        int.from_bytes(payload[offset:offset + beat_bytes], byteorder)
+        int.from_bytes(payload[offset : offset + beat_bytes], byteorder)
         for offset in range(0, len(payload), beat_bytes)
     )

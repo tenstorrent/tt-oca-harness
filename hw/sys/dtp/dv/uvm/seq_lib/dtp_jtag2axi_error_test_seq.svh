@@ -4,8 +4,8 @@
 // JTAG2AXI error and error-path security scenarios for the DTP SV-UVM flow —
 // the SV analogue of the cocotb dtp_jtag2axi_error_test_seq.
 // One parameterized sequence, selected by `scenario`, against the target
-// named by `target_name` (SMC fabric in this flow; the OTP ports join with
-// their responder bring-up):
+// named by `target_name` (SMC fabric or either OTP AXI-Lite port; all
+// three responders are shared ocah_axi_vip slave agents):
 //
 //   * error_single_write / error_single_read — one-shot SLVERR then DECERR
 //     injections at beat-aligned addresses with randomized payloads: the
@@ -55,7 +55,11 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     endfunction
 
     protected function j2a_target_t target();
-        return (target_name == "smc_otp") ? target_smc_otp() : target_smc_axi();
+        case (target_name)
+            "smc_otp": return target_smc_otp();
+            "sep_otp": return target_sep_otp();
+            default:   return target_smc_axi();
+        endcase
     endfunction
 
     protected function bit [63:0] slot_addr(j2a_target_t t, bit [63:0] base,

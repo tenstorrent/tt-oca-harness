@@ -25,9 +25,9 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, with_timeout
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_reg_meta import sym
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS
@@ -36,9 +36,7 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
-from ocah_axi_vip import worst_resp
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
-
 
 # RDL-described addresses come from the generated SEP map. The external TRNG
 # responder is an integration aperture rather than a register block.
@@ -51,6 +49,7 @@ EDN_INTR_STATE = sym("EDN_INTR_STATE_REG_ADDR")
 EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
 EXT_TRNG_CSR = 0x1091_7000
 EXT_TRNG_SRC_SEL = sym("SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR")
+
 
 @pyuvm.test()
 class sep_trng_reset_recovery_test(sep_base_test):
@@ -238,9 +237,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         assert empty_pop.rdata == 0, "empty pool exposed stale pre-reset entropy"
 
         cfg = self.entropy_cfg
-        await self.start_seq(
-            SepEsrcConfigSeq("esrc_reconfig", cfg=cfg, reset_trng=False)
-        )
+        await self.start_seq(SepEsrcConfigSeq("esrc_reconfig", cfg=cfg, reset_trng=False))
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_restart_gens"))
         assert await self.wait_seed_ready(), "ESRC did not produce a fresh seed after reset"
         await self.start_seq(SepEsrcEnableEdnSeq("edn_restart"))

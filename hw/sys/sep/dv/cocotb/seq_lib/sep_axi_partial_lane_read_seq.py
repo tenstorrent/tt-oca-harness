@@ -25,10 +25,10 @@ lanes shows up as a repeat mismatch.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
@@ -54,11 +54,7 @@ _REQUIRED_CSR_PATTERNS = [0x0000_0000, 0xFFFF_FFFF]
 
 def _slice_specs() -> list[tuple[int, int]]:
     """All (offset, length) contiguous byte runs of an 8-byte beat (36 total)."""
-    return [
-        (offset, length)
-        for length in range(1, 9)
-        for offset in range(0, 9 - length)
-    ]
+    return [(offset, length) for length in range(1, 9) for offset in range(0, 9 - length)]
 
 
 def _arsize_specs() -> list[tuple[int, int]]:
@@ -67,11 +63,7 @@ def _arsize_specs() -> list[tuple[int, int]]:
     AxSIZE 0/1/2 at every legal aligned lane offset: 8 + 4 + 2 = 14 cells. The
     full-width AxSIZE=3 beat is the slice walk's baseline, not repeated here.
     """
-    return [
-        (size, offset)
-        for size in (0, 1, 2)
-        for offset in range(0, 8, 1 << size)
-    ]
+    return [(size, offset) for size in (0, 1, 2) for offset in range(0, 8, 1 << size)]
 
 
 class SepAxiPartialLaneReadCfg:
@@ -121,8 +113,11 @@ class SepAxiPartialLaneRead:
 
     async def write(self, addr: int, data: int, length: int) -> None:
         seq = SepAxiAccessSeq(
-            f"lane_wr_0x{addr:08x}_l{length}", op=SepAxiOp.WRITE,
-            addr=addr, wdata=data, length=length,
+            f"lane_wr_0x{addr:08x}_l{length}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=length,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
@@ -130,11 +125,13 @@ class SepAxiPartialLaneRead:
 
     async def read(self, addr: int, length: int, *, size: int | None = None) -> int:
         seq = SepAxiAccessSeq(
-            f"lane_rd_0x{addr:08x}_l{length}", op=SepAxiOp.READ,
-            addr=addr, length=length, size=size,
+            f"lane_rd_0x{addr:08x}_l{length}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=length,
+            size=size,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
-            raise AssertionError(
-                f"lane read @0x{addr:08x} len{length} size={size} not OKAY")
+            raise AssertionError(f"lane read @0x{addr:08x} len{length} size={size} not OKAY")
         return seq.rdata

@@ -30,7 +30,6 @@ cells run on every seed; the seed varies order, addresses, and data only.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_partial_lane_read_seq import (
     LOCAL_BASE_ADDR_ADDR,
@@ -56,21 +55,24 @@ class sep_axi_partial_lane_read_test(sep_base_test):
         self.logger.info(
             "partial-lane read PASS: CSR repeats, %d byte-run slices, and %d "
             "narrow-ARSIZE cells all exact and repeatable",
-            len(self.cfg_lane.slice_specs), len(self.cfg_lane.arsize_specs))
+            len(self.cfg_lane.slice_specs),
+            len(self.cfg_lane.arsize_specs),
+        )
 
     async def _disturb_csr(self) -> None:
         """Checked disturbing read between repeats (RO register, known value)."""
         got = await self.lane.read(LOCAL_BASE_ADDR_ADDR, 4)
         assert got == LOCAL_BASE_ADDR_EXP, (
-            f"disturb read LOCAL_BASE_ADDR 0x{got:08x} != 0x{LOCAL_BASE_ADDR_EXP:08x}")
+            f"disturb read LOCAL_BASE_ADDR 0x{got:08x} != 0x{LOCAL_BASE_ADDR_EXP:08x}"
+        )
 
     async def _disturb_sram(self) -> None:
         """Checked disturbing read between repeats (complement neighbor word)."""
         cfg = self.cfg_lane
         got = await self.lane.read(cfg.disturb_addr, 8)
         assert got == cfg.disturb_word, (
-            f"disturb read @0x{cfg.disturb_addr:08x} 0x{got:016x} != "
-            f"0x{cfg.disturb_word:016x}")
+            f"disturb read @0x{cfg.disturb_addr:08x} 0x{got:016x} != 0x{cfg.disturb_word:016x}"
+        )
 
     async def _chk_csr_lane(self) -> None:
         """4-byte reads of a 32-bit CSR: only RDATA[31:0] is driven by the DUT."""
@@ -79,15 +81,17 @@ class sep_axi_partial_lane_read_test(sep_base_test):
             first = await self.lane.read(SW_DEBUG_ADDR, 4)
             await self._disturb_csr()
             second = await self.lane.read(SW_DEBUG_ADDR, 4)
-            assert first == pattern, (
-                f"CHK-CSR-LANE 0x{pattern:08x}: first read 0x{first:08x}")
+            assert first == pattern, f"CHK-CSR-LANE 0x{pattern:08x}: first read 0x{first:08x}"
             assert second == first, (
                 f"CHK-CSR-LANE 0x{pattern:08x}: repeat 0x{second:08x} != "
-                f"first 0x{first:08x} (read depends on leftover bus state)")
+                f"first 0x{first:08x} (read depends on leftover bus state)"
+            )
         self.logger.info(
             "CHK-CSR-LANE PASS: %d patterns read back exact and repeatable "
             "through the half-driven CSR beat @0x%08x",
-            len(self.cfg_lane.csr_patterns), SW_DEBUG_ADDR)
+            len(self.cfg_lane.csr_patterns),
+            SW_DEBUG_ADDR,
+        )
 
     async def _chk_sram_slice(self) -> None:
         """Every contiguous byte-run slice of a primed word reads back exactly."""
@@ -101,14 +105,19 @@ class sep_axi_partial_lane_read_test(sep_base_test):
             second = await self.lane.read(cfg.sram_addr + offset, length)
             assert first == exp, (
                 f"CHK-SRAM-SLICE off {offset} len {length}: 0x{first:x} != "
-                f"golden 0x{exp:x} (word 0x{cfg.word:016x})")
+                f"golden 0x{exp:x} (word 0x{cfg.word:016x})"
+            )
             assert second == first, (
                 f"CHK-SRAM-SLICE off {offset} len {length}: repeat 0x{second:x} "
-                f"!= first 0x{first:x} (read depends on leftover bus state)")
+                f"!= first 0x{first:x} (read depends on leftover bus state)"
+            )
         self.logger.info(
             "CHK-SRAM-SLICE PASS: all %d byte-run slices of 0x%016x @0x%08x "
             "exact and repeatable around complement-word disturbs",
-            len(cfg.slice_specs), cfg.word, cfg.sram_addr)
+            len(cfg.slice_specs),
+            cfg.word,
+            cfg.sram_addr,
+        )
 
     async def _chk_arsize(self) -> None:
         """Narrow-ARSIZE beats: only the addressed lanes are driven at all."""
@@ -119,8 +128,11 @@ class sep_axi_partial_lane_read_test(sep_base_test):
             got = await self.lane.read(cfg.sram_addr + offset, length, size=size)
             assert got == exp, (
                 f"CHK-ARSIZE size {size} off {offset}: 0x{got:x} != golden "
-                f"0x{exp:x} (word 0x{cfg.word:016x})")
+                f"0x{exp:x} (word 0x{cfg.word:016x})"
+            )
         self.logger.info(
             "CHK-ARSIZE PASS: all %d aligned AxSIZE-0/1/2 cells extracted the "
             "addressed lanes exactly @0x%08x",
-            len(cfg.arsize_specs), cfg.sram_addr)
+            len(cfg.arsize_specs),
+            cfg.sram_addr,
+        )

@@ -7,12 +7,18 @@ Basic smoke test to verify core functionality
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
+
 from test.test_base import (
-    start_clocks, init, init_axil,
-    AxiLiteMaster, write_ct_src_config, read_ct_src_config,
-    pulse_ct_dst, wait_for_ct_src_pulse, check_ct_src_low
+    AxiLiteMaster,
+    init,
+    init_axil,
+    pulse_ct_dst,
+    read_ct_src_config,
+    start_clocks,
+    write_ct_src_config,
 )
+
 
 @cocotb.test()
 async def test_sanity(dut):
@@ -38,7 +44,9 @@ async def test_sanity(dut):
     dut._log.info("Reading CT_SRC0_CONFIG")
     readback = await read_ct_src_config(dut, axil, 0)
     dut._log.info(f"Readback value: 0x{readback:08x}")
-    assert readback == 0x00000001, f"Register readback mismatch: expected 0x00000001, got 0x{readback:08x}"
+    assert readback == 0x00000001, (
+        f"Register readback mismatch: expected 0x00000001, got 0x{readback:08x}"
+    )
 
     # Wait a few cycles for configuration to settle
     for _ in range(5):

@@ -148,7 +148,9 @@ class OcahAxiMasterDriver:
             self.set_timing(timing)
 
     @classmethod
-    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs: Any) -> "OcahAxiMasterDriver":
+    def from_prefix(
+        cls, dut, prefix: str, clock, reset=None, **kwargs: Any
+    ) -> "OcahAxiMasterDriver":
         """Construct from flattened AXI4 signals using ``AxiBus``."""
         return cls(AxiBus.from_prefix(dut, prefix), clock, reset, **kwargs)
 
@@ -461,7 +463,8 @@ def apply_profile(driver, profile: AxiTimingProfile) -> None:
             chan.clear_pause_generator()
             chan.pause = True
             _OCAH_RELEASERS[chan] = cocotb.start_soon(
-                _release_on_leader_valid(chan, chans[lead[field]], cycles))
+                _release_on_leader_valid(chan, chans[lead[field]], cycles)
+            )
         else:
             chan.set_pause_generator(_hold_then_go(cycles))
 

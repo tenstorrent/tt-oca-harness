@@ -10,9 +10,8 @@ object after ``start_seq``.
 
 from __future__ import annotations
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
 
 
 class SepAxiAccessSeq(uvm_sequence):

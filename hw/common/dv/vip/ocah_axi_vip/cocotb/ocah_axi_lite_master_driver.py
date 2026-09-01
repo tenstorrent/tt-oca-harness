@@ -78,7 +78,9 @@ class OcahAxiLiteMasterDriver:
         if resolved_clock is None:
             resolved_clock = getattr(axi4_lite_intf, "clk", None)
         if resolved_clock is None:
-            raise ValueError("OcahAxiLiteMasterDriver requires a clock or an interface with aclk/clk")
+            raise ValueError(
+                "OcahAxiLiteMasterDriver requires a clock or an interface with aclk/clk"
+            )
 
         resolved_reset = reset
         if resolved_reset is None:
@@ -132,7 +134,9 @@ class OcahAxiLiteMasterDriver:
     ):
         """Start a write and return the cocotb event, matching cocotbext style."""
         target = self._coalesce_addr(address, addr)
-        return self._master.init_write(target, self.data_bytes(data), prot=AxiProt(int(prot)), event=event)
+        return self._master.init_write(
+            target, self.data_bytes(data), prot=AxiProt(int(prot)), event=event
+        )
 
     def init_read(
         self,

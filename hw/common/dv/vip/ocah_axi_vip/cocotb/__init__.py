@@ -94,6 +94,14 @@ def _unavailable_class(class_name: str, backend: str):
 
 
 try:
+    from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
+    from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
+    from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
+    from .ocah_axi_lite_master_sequence import OcahAxiLiteMasterError, OcahAxiLiteMasterSequence
+    from .ocah_axi_lite_slave_agent import OcahAxiLiteSlaveAgent
+    from .ocah_axi_lite_slave_config import OcahAxiLiteSlaveConfig
+    from .ocah_axi_lite_slave_driver import OcahAxiLiteSlaveDriver
+    from .ocah_axi_lite_slave_sequence import OcahAxiLiteSlaveSequence
     from .ocah_axi_master_agent import OcahAxiMasterAgent
     from .ocah_axi_master_config import OcahAxiMasterConfig
     from .ocah_axi_master_driver import (
@@ -103,18 +111,10 @@ try:
         clear_profile,
     )
     from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
-    from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
-    from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
-    from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
-    from .ocah_axi_lite_master_sequence import OcahAxiLiteMasterError, OcahAxiLiteMasterSequence
     from .ocah_axi_slave_agent import OcahAxiSlaveAgent
     from .ocah_axi_slave_config import OcahAxiSlaveConfig
     from .ocah_axi_slave_driver import OcahAxiSlaveDriver
     from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
-    from .ocah_axi_lite_slave_agent import OcahAxiLiteSlaveAgent
-    from .ocah_axi_lite_slave_config import OcahAxiLiteSlaveConfig
-    from .ocah_axi_lite_slave_driver import OcahAxiLiteSlaveDriver
-    from .ocah_axi_lite_slave_sequence import OcahAxiLiteSlaveSequence
 except ModuleNotFoundError as exc:
     if "cocotbext" not in str(exc):
         raise

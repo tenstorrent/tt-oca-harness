@@ -3,7 +3,6 @@
 """DTP INV_BYPASS instruction test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_inv_bypass_test_seq import dtp_jtag_inv_bypass_test_seq
 

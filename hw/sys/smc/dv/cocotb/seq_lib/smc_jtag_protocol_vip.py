@@ -21,7 +21,6 @@ from typing import Optional
 
 import cocotb
 from cocotb.triggers import Timer
-
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver, OcahJtagMasterDriverError
 
 # IEEE 1149.1 / RISC-V Debug Spec opcodes (5-bit IR).
@@ -167,8 +166,7 @@ class SmcJtagTap:
             )
         if check and captured != self._expected_idcode:
             raise SmcJtagTapError(
-                f"{self.name}: IDCODE 0x{captured:08X} != expected "
-                f"0x{self._expected_idcode:08X}"
+                f"{self.name}: IDCODE 0x{captured:08X} != expected 0x{self._expected_idcode:08X}"
             )
         return captured
 
@@ -185,9 +183,7 @@ class SmcJtagTap:
 
     async def shift_dr(self, value: Optional[int] = None, *, width: int = 32) -> int:
         tap = self._ensure()
-        return int(
-            await tap.shift_dr(0 if value is None else int(value), width, back_to_rti=True)
-        )
+        return int(await tap.shift_dr(0 if value is None else int(value), width, back_to_rti=True))
 
     async def bypass(self) -> None:
         await self.shift_ir(_BYPASS_OPCODE)
@@ -302,9 +298,7 @@ class SmcJtagTap:
                 f"{self.name}: DMI write 0x{addr:02X}=0x{data:08X} status={status}"
             )
         if status == 3:
-            raise SmcJtagTapError(
-                f"{self.name}: DMI write 0x{addr:02X}=0x{data:08X} still busy"
-            )
+            raise SmcJtagTapError(f"{self.name}: DMI write 0x{addr:02X}=0x{data:08X} still busy")
 
     async def read_dmstatus(self) -> int:
         """Activate DM (dmactive + ack CDC) then read dmstatus (DMI 0x11)."""

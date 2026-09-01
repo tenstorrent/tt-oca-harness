@@ -75,9 +75,7 @@ class smc_ecc_codeword_corrupt_test_seq(SmcCsrSeq):
                 continue
             cur = int(dut.tb_cpu_scratch_read_count.value)
             if cur > baseline:
-                cocotb.log.info(
-                    "scratch_reads %d -> %d after %d cycles", baseline, cur, i + 1
-                )
+                cocotb.log.info("scratch_reads %d -> %d after %d cycles", baseline, cur, i + 1)
                 return cur
         raise AssertionError(
             f"TIMEOUT: scratch_reads stuck at {baseline} for "

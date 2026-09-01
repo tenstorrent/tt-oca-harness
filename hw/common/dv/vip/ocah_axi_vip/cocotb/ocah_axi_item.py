@@ -35,8 +35,7 @@ def _pop_fixed_fields(
     requested_direction = kwargs.pop("direction", direction)
     if requested_protocol != protocol or requested_direction != direction:
         raise ValueError(
-            f"expected {protocol} {direction} item, "
-            f"got {requested_protocol} {requested_direction}"
+            f"expected {protocol} {direction} item, got {requested_protocol} {requested_direction}"
         )
 
 

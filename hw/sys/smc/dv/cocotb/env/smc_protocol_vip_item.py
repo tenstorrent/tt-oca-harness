@@ -55,10 +55,7 @@ class SmcProtocolVipItem(uvm_sequence_item):
         mode = "proxy" if self.proxy else "protocol"
         golden = ""
         if self.expected_bytes is not None:
-            golden = (
-                f" golden={self.expected_bytes.hex()}"
-                f" obs={(self.observed_bytes or b'').hex()}"
-            )
+            golden = f" golden={self.expected_bytes.hex()} obs={(self.observed_bytes or b'').hex()}"
         return (
             f"{self.kind.value}:{self.scenario} mode={mode} "
             f"csr_accesses={self.csr_accesses} timeouts={self.timeouts} "

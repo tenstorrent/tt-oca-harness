@@ -174,7 +174,11 @@ class _FaultAxiRamWrite(AxiRamWrite):
             for beat in range(beats):
                 cur_word_addr = (cur_addr // self.byte_lanes) * self.byte_lanes
                 w = await self.w_channel.recv()
-                strb = int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
+                strb = (
+                    int(getattr(w, "wstrb", self.strb_mask))
+                    if self.wstrb_present
+                    else self.strb_mask
+                )
                 data = int(w.wdata).to_bytes(self.byte_lanes, "little")
                 last = int(w.wlast)
                 beat_resp = self.fault_owner.write_errors.pop(cur_word_addr, AxiResp.OKAY)
@@ -189,7 +193,9 @@ class _FaultAxiRamWrite(AxiRamWrite):
                             start_offset = offset
                         if not enabled and start_offset is not None:
                             if offset != start_offset:
-                                await self._write(cur_word_addr + start_offset, data[start_offset:offset])
+                                await self._write(
+                                    cur_word_addr + start_offset, data[start_offset:offset]
+                                )
                             start_offset = None
 
                 assert last == (beat == beats - 1)
@@ -263,7 +269,11 @@ class _FaultAxiRamRead(AxiRamRead):
                 r.rid = rid
                 r.rlast = beat == beats - 1
                 r.rresp = self.fault_owner.read_errors.pop(cur_word_addr, AxiResp.OKAY)
-                data = bytes(self.byte_lanes) if r.rresp != AxiResp.OKAY else await self._read(cur_word_addr, self.byte_lanes)
+                data = (
+                    bytes(self.byte_lanes)
+                    if r.rresp != AxiResp.OKAY
+                    else await self._read(cur_word_addr, self.byte_lanes)
+                )
                 r.rdata = int.from_bytes(data, "little")
                 await self.r_channel.send(r)
                 self.log.info(
@@ -281,7 +291,18 @@ class _FaultAxiRamRead(AxiRamRead):
 class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
     """cocotbext AXI4 RAM responder engine with OCAH fault-control APIs."""
 
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiSlaveDriver", **kwargs):
+    def __init__(
+        self,
+        bus,
+        clock,
+        reset=None,
+        reset_active_level=True,
+        size=2**64,
+        mem=None,
+        *,
+        name="OcahAxiSlaveDriver",
+        **kwargs,
+    ):
         self.write_if = None
         self.read_if = None
         self._init_fault_state(name)
