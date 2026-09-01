@@ -70,6 +70,12 @@ for cores N=0 to 3. The design provides separate reset controls for the
 uncore logic and debug subsystems, enabling flexible platform management
 and debug flows.
 
+CAUTION: Individual core resets are reserved for debug use. Resetting an
+individual core while other cores remain active risks unexpected behavior
+because the coherence manager may be unable to receive a required response
+from the core in reset. The current Rocket CPU architecture does not protect
+against this condition.
+
 SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
 feature can be disabled using disable_sram_auto_init_i to support
