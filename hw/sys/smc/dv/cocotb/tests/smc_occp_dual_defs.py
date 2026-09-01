@@ -12,6 +12,8 @@ import random
 import sys
 from pathlib import Path
 
+import cocotb
+
 # Generated PeakRDL map, same hookup as the single-instance cocotb tree.
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -133,7 +135,7 @@ OCCP_SRAM_BASE = 0xC006_6400
 # In normal operation the TARGET drives this pad, from set_gpio_status() on the
 # success path of its OCCP init (bootrom/prod/lib/src/occp.c:259-279 -- by pad
 # number, not via the SMC_STATUS_GPIO macro, which is why that macro looks
-# unused). tb_top_dual.sv resolves the undriven value LOW, so a target that
+# unused). tb_top.sv (SMC_DUAL half) resolves the undriven value LOW, so a target that
 # never asserts readiness leaves the controller waiting, as it would in silicon.
 CTRL_TARGET_READY_PAD = 58
 
@@ -243,8 +245,45 @@ def describe_post_code(word: int) -> str:
 
 
 # --------------------------------------------------------------------------
-# Shared I3C channels wired between the two instances, in the order
-# tb_top_dual.sv's SharedI3cIdx lists them. Both firmware halves select from
-# exactly this set.
+# Shared I3C channels wired between the two instances, in the order the
+# SMC_DUAL half of tb_top.sv lists them in SharedI3cIdx. Both firmware halves
+# select from exactly this set.
 # --------------------------------------------------------------------------
 SHARED_I3C_CHANNELS = (0, 1, 3)
+
+
+# --------------------------------------------------------------------------
+# Helpers shared by every dual-instance OCCP test.
+# --------------------------------------------------------------------------
+def required_plusarg(name: str, test_name: str) -> str:
+    """Fetch a mandatory plusarg, or fail with which test needed it."""
+    value = cocotb.plusargs.get(name)
+    if value is None:
+        raise AssertionError(f"{test_name} requires +{name}=")
+    return str(value)
+
+
+def bus_activity(dut) -> list[tuple[int, int, int]]:
+    """(channel, scl_falls, starts) for each cross-wired I3C channel.
+
+    Flat scalars, not an unpacked-array handle: cocotb reads every element of
+    the latter as element 0, which silently mis-attributed every per-channel
+    count until 2026-08-24. The instance number comes from the TB too
+    (tb_i3c_channel_id_N), so the label cannot drift from what is actually
+    being counted -- do not substitute SHARED_I3C_CHANNELS here, which would
+    reintroduce exactly that drift.
+    """
+    return [
+        (
+            int(getattr(dut, f"tb_i3c_channel_id_{pos}").value),
+            int(getattr(dut, f"tb_i3c_scl_fall_count_{pos}").value),
+            int(getattr(dut, f"tb_i3c_start_count_{pos}").value),
+        )
+        for pos in range(len(SHARED_I3C_CHANNELS))
+    ]
+
+
+def format_activity(activity) -> str:
+    return ", ".join(
+        f"I3C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in activity
+    )

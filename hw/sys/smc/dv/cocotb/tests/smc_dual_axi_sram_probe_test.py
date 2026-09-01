@@ -31,7 +31,7 @@ bytes in smc_cpu_mem_integration.sv), so a decode that only works inside one
 bank also fails.
 
 The scratch banks are NOT zeroed in this testbench --
-tb_top_dual.sv hardcodes ``disable_sram_auto_init_i = 1'b1`` -- so the
+tb_top.sv (SMC_DUAL half) hardcodes ``disable_sram_auto_init_i = 1'b1`` -- so the
 before-values are whatever the array powers up with and are not asserted on.
 
 Both instances are brought up with boot_stall RELEASED, which matters more than

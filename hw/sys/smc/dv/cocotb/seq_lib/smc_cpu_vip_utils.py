@@ -255,7 +255,7 @@ async def check_cpu_firmware_boot_contract(
     # Scratch/D$ PASS is observed via tb_cpu_fw_mailbox instead of an AXI read
     # of 0xC006_xxxx. This used to be justified with "SEP cannot AXI to
     # 0xC006_xxxx", which is not true as an unconditional statement:
-    # hw/sys/smc/dv/cocotb_dual/tests/smc_dual_axi_sram_probe_test measures
+    # hw/sys/smc/dv/cocotb/tests/smc_dual_axi_sram_probe_test measures
     # SEP_IN writing and reading back three distinct patterns at
     # 0xC0066400/+8/+0x40 on the same smc_wrapper RTL. The window is decoded
     # onto the front port by smc_local_xbar.sv:98-124 (rule 0 covers

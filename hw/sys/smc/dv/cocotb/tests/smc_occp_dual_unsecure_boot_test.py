@@ -85,14 +85,16 @@ from smc_occp_dual_defs import (
     SCRATCH_PASS_FAIL,
     SCRATCH_POST_CODE,
     SCRATCH_TARGET_ADDR,
-    SHARED_I3C_CHANNELS,
     SMC_SRAM_BASE,
     TEST_FAIL,
     TEST_PASS,
+    bus_activity,
     describe_post_code,
+    format_activity,
     pick_payload_addresses,
     post_code_boot_phase,
     post_code_error,
+    required_plusarg,
 )
 
 # Target ROM boot to its OCCP command loop. Measured at ~250 us of sim time in
@@ -130,12 +132,6 @@ CTRL_VERDICT_GRACE_ITERS = 60
 # shows up while it is happening rather than only in the timeout message.
 PROGRESS_EVERY = 100
 
-
-def _required_plusarg(name: str) -> str:
-    value = cocotb.plusargs.get(name)
-    if value is None:
-        raise AssertionError(f"smc_occp_dual_unsecure_boot_test requires +{name}=")
-    return str(value)
 
 
 # The OCCP JUMP lands on main(), never on _enter. _enter is crt0: it zeroes
@@ -275,7 +271,7 @@ def _tx_snoop(dut) -> str:
     """What the controller actually pushed into the I3C TX port."""
     count = int(dut.tb_bfm_i3c_tx_count.value)
     # Flat scalars, not an unpacked-array handle -- see the note on the
-    # per-channel counters in tb_top_dual.sv.
+    # per-channel counters in tb_top.sv (SMC_DUAL half).
     words = [int(getattr(dut, f"tb_bfm_i3c_tx_word_{i}").value) for i in range(8)]
     return (
         f"  controller I3C TX-port writes = {count} DWORD(s)\n"
@@ -284,28 +280,6 @@ def _tx_snoop(dut) -> str:
     )
 
 
-def _bus_activity(dut) -> list[tuple[int, int, int]]:
-    """(channel, scl_falls, starts) for each cross-wired I3C channel."""
-    out = []
-    for pos in range(len(SHARED_I3C_CHANNELS)):
-        # Flat scalars, not an unpacked-array handle: cocotb reads every element
-        # of the latter as element 0, which silently mis-attributed every
-        # per-channel count until 2026-08-24. The instance number comes from the
-        # TB too, so the label cannot drift from what is actually being counted.
-        out.append(
-            (
-                int(getattr(dut, f"tb_i3c_channel_id_{pos}").value),
-                int(getattr(dut, f"tb_i3c_scl_fall_count_{pos}").value),
-                int(getattr(dut, f"tb_i3c_start_count_{pos}").value),
-            )
-        )
-    return out
-
-
-def _format_activity(activity) -> str:
-    return ", ".join(
-        f"I3C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in activity
-    )
 
 
 @cocotb.test()
@@ -313,8 +287,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     harness = SmcDualHarness()
     dut = harness.dut
 
-    payload_bin = _required_plusarg("occp_payload_bin")
-    payload_sym = _required_plusarg("occp_payload_sym")
+    payload_bin = required_plusarg("occp_payload_bin", "smc_occp_dual_unsecure_boot_test")
+    payload_sym = required_plusarg("occp_payload_sym", "smc_occp_dual_unsecure_boot_test")
     payload_bytes = Path(payload_bin).read_bytes()
     payload_size = len(payload_bytes)
     entry_offset = _payload_entry_offset(payload_sym)
@@ -325,8 +299,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # to verify arrival in the target.
     expect_words = _payload_words(payload_bin)
     target_offset = target_addr - SMC_SRAM_BASE
-    _required_plusarg("rom_bin64")
-    _required_plusarg("bfm_rom_hex")
+    required_plusarg("rom_bin64", "smc_occp_dual_unsecure_boot_test")
+    required_plusarg("bfm_rom_hex", "smc_occp_dual_unsecure_boot_test")
 
     assert payload_size > 0, f"payload image {payload_bin} is empty"
     # The controller firmware reads the payload with 64-bit loads only while
@@ -416,7 +390,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         pre_pass,
     )
 
-    baseline_activity = _bus_activity(dut)
+    baseline_activity = bus_activity(dut)
 
     # ------------------------------------------------------------------
     # 2. Stage the payload in the controller's SRAM, front door.
@@ -551,7 +525,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"  target scratch0 = {passv:#010x}\n"
             f"  transfer landed  = {transfer_landed}\n"
             f"{_tx_snoop(dut)}\n"
-            f"  I3C bus [{_format_activity(_bus_activity(dut))}]\n"
+            f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
             f"  controller wb_pc0={int(dut.bfm_wb_pc0.value):#x} "
             f"rom_reads={int(dut.bfm_rom_read_count.value)}\n"
             f"controller firmware trace:\n{bfm_console.tail()}\n"
@@ -585,7 +559,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 "it.\n"
                 f"  transfer landed = {transfer_landed}\n"
                 f"{_tx_snoop(dut)}\n"
-                f"  I3C bus [{_format_activity(_bus_activity(dut))}]\n"
+                f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
                 f"target firmware trace:\n{dut_console.tail()}"
             )
@@ -630,7 +604,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 f"scratch_reads={int(dut.dut_scratch_read_count.value)} "
                 f"scratch_writes={int(dut.dut_scratch_write_count.value)} "
                 f"rom_reads={int(dut.dut_rom_read_count.value)}\n"
-                f"  I3C bus [{_format_activity(_bus_activity(dut))}]\n"
+                f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
                 f"target firmware trace:\n{dut_console.tail()}"
             )
@@ -651,7 +625,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 iteration,
                 OCCP_POLL_ITERS,
                 passv,
-                _format_activity(_bus_activity(dut)),
+                format_activity(bus_activity(dut)),
                 int(dut.bfm_wb_pc0.value),
             )
     else:
@@ -675,7 +649,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"wb_pc0={int(dut.dut_wb_pc0.value):#x}\n"
             f"  controller rom_reads={int(dut.bfm_rom_read_count.value)} "
             f"wb_pc0={int(dut.bfm_wb_pc0.value):#x}\n"
-            f"  I3C bus [{_format_activity(_bus_activity(dut))}]\n"
+            f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
             f"controller firmware trace (last lines):\n{bfm_console.tail()}\n"
             f"target firmware trace (last lines):\n{dut_console.tail()}"
         )
@@ -724,7 +698,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # ------------------------------------------------------------------
     # Non-vacuity: the two halves must actually have talked on the wire.
     # ------------------------------------------------------------------
-    activity = _bus_activity(dut)
+    activity = bus_activity(dut)
     moved = [
         (ch, falls - base_falls, starts - base_starts)
         for (ch, falls, starts), (_, base_falls, base_starts) in zip(
@@ -734,7 +708,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     ]
     assert moved, (
         "target reported the pass magic, but no I3C channel saw a single SCL "
-        f"fall during the transfer: [{_format_activity(activity)}]. "
+        f"fall during the transfer: [{format_activity(activity)}]. "
         "The pass cannot have come from an OCCP transfer."
     )
     used = ", ".join(

@@ -4,19 +4,30 @@
 
 Deliberately thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that
 harness builds the whole single-instance SmcEnv against tb_top.sv's ~400-port
-surface, none of which exists on tb_top_dual.sv. Here both instances share one
+surface, none of which exists on tb_top.sv (SMC_DUAL half). Here both instances share one
 clock/reset bring-up and each gets its own inbound AXI master.
 """
 
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
+from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, with_timeout
 
 from ocah_axi_vip import OcahAxiMasterAgent
+
+# This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
+# levels up from the file and one below the repo root. Anchored on the DV root
+# rather than the repo root: it is the nearer landmark, so a future move of
+# hw/sys/ does not silently retarget this.
+_DV_ROOT = Path(__file__).resolve().parents[2]
+_EFUSE_DIR = _DV_ROOT / "efuse_preload"
+assert _EFUSE_DIR.is_dir(), f"eFuse tooling not found at {_EFUSE_DIR}"
 
 # Clock periods in ns and the post-reset settle, taken from the single-instance
 # defaults in hw/sys/smc/dv/cocotb/env/smc_env_cfg.py. The dual top shares one
@@ -40,6 +51,59 @@ BULK_CHUNK_BYTES = 64
 
 def random_seed() -> int:
     return int(os.environ.get("RANDOM_SEED", "1"), 0)
+
+
+def regenerate_efuse_image(seed: int) -> None:
+    """Rewrite this run's eFuse image, seeded, before reset is released.
+
+    +smc_efuse_hex carries a PATH, fixed when the simulator launched; the file
+    at that path is not read until reset release, because the preload block in
+    hw/ip/efuse/dv/models/efuse_bank_model.sv waits on rst_ni. That is the whole
+    window this function lives in: overwrite the file now and the bank picks up
+    the new contents; overwrite it after reset and nothing changes.
+
+    Silently does nothing when +smc_efuse_hex is absent, so a test that does not
+    care about fuse contents is unaffected.
+
+    The image is derived from `seed`, so a failing run is reproducible from its
+    RANDOM_SEED. What varies today is the OCCP transport timeout -- see
+    efuse_preload/randomize_efuse.py for the field list and for what is not yet
+    randomized.
+    """
+    img = cocotb.plusargs.get("smc_efuse_hex")
+    if img is None:
+        return
+    img_path = Path(str(img))
+
+    # The generator needs tomllib (3.11+). The interpreter running cocotb is the
+    # repo venv, which satisfies that; sys.executable keeps us on it rather than
+    # whatever `python3` resolves to on PATH.
+    randomized = img_path.parent / "efuse_config_randomized.toml"
+    try:
+        subprocess.run(
+            [sys.executable, str(_EFUSE_DIR / "randomize_efuse.py"),
+             str(_EFUSE_DIR / "configurations/default_efuse.toml"),
+             "--output_file", str(randomized), "--seed", str(seed)],
+            check=True, capture_output=True, text=True,
+        )
+        result = subprocess.run(
+            [sys.executable, str(_EFUSE_DIR / "generate_efuse_preload.py"),
+             str(randomized), "--output_file", str(img_path)],
+            check=True, capture_output=True, text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        # Loud, not silent: a stale image from the c_build stage would still be
+        # on disk, so the run would carry on with fuse contents that do not
+        # match the seed it reports.
+        raise AssertionError(
+            f"eFuse image regeneration failed for seed {seed}:\n"
+            f"  {exc.cmd}\n  stdout: {exc.stdout}\n  stderr: {exc.stderr}"
+        ) from exc
+
+    cocotb.log.info(
+        "eFuse image regenerated for RANDOM_SEED=%d -> %s (%s)",
+        seed, img_path, result.stdout.strip(),
+    )
 
 
 class DualCsr:
@@ -179,6 +243,11 @@ class SmcDualHarness:
             random_seed(),
         )
         self.idle_pins(hold_dut_boot=hold_dut_boot, hold_bfm_boot=hold_bfm_boot)
+
+        # Before any reset is released -- the eFuse bank reads its image on
+        # rst_ni, so this is the last point at which the contents can still be
+        # chosen for this run.
+        regenerate_efuse_image(random_seed())
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())

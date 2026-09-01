@@ -25,13 +25,6 @@ schema_version = 1
 root = "hw/sys/smu/dv"
 sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
 
-# Dual-SMC OCCP boot flow (two smc_wrapper instances on a shared I3C0 bus).
-# Shares hw/sys/smc/dv with bare `smc` but uses smc_dual_sim_cfg.toml and its
-# own cocotb_dual tree, so it must be registered here.
-[duts.smc_dual]
-root = "hw/sys/smc/dv"
-sim_cfg = "hw/sys/smc/dv/smc_dual_sim_cfg.toml"
-
 [duts.dtp]
 root = "hw/sys/dtp/dv"
 
