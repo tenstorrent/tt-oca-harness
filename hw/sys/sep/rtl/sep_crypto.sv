@@ -165,7 +165,22 @@ module sep_crypto #(
     output logic                               locked_field_access_interrupt_o,
 
     // Token Comparator Redundancy Fault Interrupt
-    output logic                               token_match_fault_o
+    output logic                               token_match_fault_o,
+
+    // Per-block register bridge faults (sticky, held until the matching clear).
+    // Aggregated onto one PIC source in sep.sv; see sep_pkg::periph_bus_err_e.
+    output logic                               aes_bus_err_o,
+    output logic                               hmac_bus_err_o,
+    output logic                               kmac_bus_err_o,
+    output logic                               otbn_bus_err_o,
+    output logic                               csrng_bus_err_o,
+    output logic                               edn_bus_err_o,
+    input  logic                               aes_bus_err_clr_i,
+    input  logic                               hmac_bus_err_clr_i,
+    input  logic                               kmac_bus_err_clr_i,
+    input  logic                               otbn_bus_err_clr_i,
+    input  logic                               csrng_bus_err_clr_i,
+    input  logic                               edn_bus_err_clr_i
 );
 
     /////////////////////////
@@ -512,7 +527,11 @@ module sep_crypto #(
         .intr_cs_fatal_err_o,
         .intr_edn_cmd_req_done_o,
         .intr_edn_fatal_err_o,
-        .trng_reset_active_o       (trng_reset_active)
+        .trng_reset_active_o       (trng_reset_active),
+        .csrng_bus_err_o           (csrng_bus_err_o),
+        .csrng_bus_err_clr_i       (csrng_bus_err_clr_i),
+        .edn_bus_err_o             (edn_bus_err_o),
+        .edn_bus_err_clr_i         (edn_bus_err_clr_i)
     );
 
     assign trng_entropy_clear_o = trng_reset_active;
@@ -538,7 +557,9 @@ module sep_crypto #(
         .intr_hmac_err_o         (intr_hmac_err_o),
         .alert_rx_i              (crypto_alert_rx[0:0]),
         .alert_tx_o              (crypto_alert_tx[0:0]),
-        .idle_o                  (/* UNUSED */)
+        .idle_o                  (/* UNUSED */),
+        .bus_err_o               (hmac_bus_err_o),
+        .bus_err_clr_i           (hmac_bus_err_clr_i)
     );
 
 
@@ -567,7 +588,9 @@ module sep_crypto #(
         .imem_sram_req_o              (sep_crypto_pka_imem_sram_req_o),
         .imem_sram_rsp_i              (sep_crypto_pka_imem_sram_rsp_i),
         .dmem_sram_req_o              (sep_crypto_pka_dmem_sram_req_o),
-        .dmem_sram_rsp_i              (sep_crypto_pka_dmem_sram_rsp_i)
+        .dmem_sram_rsp_i              (sep_crypto_pka_dmem_sram_rsp_i),
+        .bus_err_o                    (otbn_bus_err_o),
+        .bus_err_clr_i                (otbn_bus_err_clr_i)
     );
 
 
@@ -590,7 +613,9 @@ module sep_crypto #(
         .edn_rsp_i           (crypto_edn_rsp[0]),
         .alert_rx_i          (crypto_alert_rx[4:3]),
         .alert_tx_o          (crypto_alert_tx[4:3]),
-        .idle_o              (/* UNUSED */)
+        .idle_o              (/* UNUSED */),
+        .bus_err_o           (aes_bus_err_o),
+        .bus_err_clr_i       (aes_bus_err_clr_i)
     );
 
 
@@ -616,7 +641,9 @@ module sep_crypto #(
         .intr_kmac_err_o         (intr_kmac_err_o),
         .alert_rx_i              (crypto_alert_rx[6:5]),
         .alert_tx_o              (crypto_alert_tx[6:5]),
-        .idle_o                  (/* UNUSED */)
+        .idle_o                  (/* UNUSED */),
+        .bus_err_o               (kmac_bus_err_o),
+        .bus_err_clr_i           (kmac_bus_err_clr_i)
     );
 
 
