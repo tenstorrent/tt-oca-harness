@@ -730,11 +730,15 @@ packed data, FIFO contents, and stall state.</p>
 <p>There is no atomic reset boundary across the entropy consumers. Alarm recovery
 stops new TRNG CSR traffic before asserting the TRNG reset. A native EDN request
 already in flight stalls while the adapter clears and resumes with fresh entropy
-after reinitialization; the Key Manager AXI-Stream leg stalls similarly.
-Firmware may wait for consumers to become idle and reset them when policy
-requires aborting their operations, but consumer reset is not required by the
-TRNG reset coordinator. After release, firmware fully reinitializes ESRC, CSRNG, and
-EDN and waits for fresh entropy progress before releasing consumers. The
+after reinitialization. Firmware may wait for AES, KMAC, or OTBN to become idle
+and reset them when policy requires aborting their operations, but that is not
+required by the TRNG reset coordinator.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
+The SEP host must keep the Key Manager idle before asserting the TRNG reset;
+see <a href="#sep-trng-reset">[sep-trng-reset]</a>. After release, firmware fully reinitializes ESRC, CSRNG,
+and EDN and waits for fresh entropy progress before releasing consumers. The
 post-mux adapters reset even when an external source is selected, so an
 external stream is interrupted and cleanly restarted; the external TRNG CSR
 passthrough itself is unaffected.</p>

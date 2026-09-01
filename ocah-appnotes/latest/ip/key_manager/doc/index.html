@@ -1868,6 +1868,14 @@ in the status register, increments COUNT_BAD, and sends the aggregated
 error interrupt to the KMCSR (IRQ_STATUS.DRBG_ERR).</p>
 </div>
 <div class="paragraph">
+<p>The sampler is not in the TRNG reset domain. The SEP host must keep the
+Key Manager idle before requesting a TRNG reset. A TRNG reset that drops
+TVALID while the sampler is asserting TREADY is the stream-error case
+above. A reset that interrupts byte assembly leaves leftover bytes that
+mix with the next beats into one DATA word. Holding the Key Manager in
+software reset clears sampler FSM state and is sufficient.</p>
+</div>
+<div class="paragraph">
 <p>Error interrupt aggregation: The DRBG Sampler sends an aggregated pulsed
 interrupt to KMCSR whenever a sampler error occurs (timeout or stream
 error). KMCSR sets IRQ_STATUS.DRBG_ERR (sticky, W1C) when this interrupt

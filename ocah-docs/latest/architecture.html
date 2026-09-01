@@ -9354,11 +9354,15 @@ packed data, FIFO contents, and stall state.</p>
 <p>There is no atomic reset boundary across the entropy consumers. Alarm recovery
 stops new TRNG CSR traffic before asserting the TRNG reset. A native EDN request
 already in flight stalls while the adapter clears and resumes with fresh entropy
-after reinitialization; the Key Manager AXI-Stream leg stalls similarly.
-Firmware may wait for consumers to become idle and reset them when policy
-requires aborting their operations, but consumer reset is not required by the
-TRNG reset coordinator. After release, firmware fully reinitializes ESRC, CSRNG, and
-EDN and waits for fresh entropy progress before releasing consumers. The
+after reinitialization. Firmware may wait for AES, KMAC, or OTBN to become idle
+and reset them when policy requires aborting their operations, but that is not
+required by the TRNG reset coordinator.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
+The SEP host must keep the Key Manager idle before asserting the TRNG reset;
+see <a href="#sep-trng-reset">Resetting the TRNG</a>. After release, firmware fully reinitializes ESRC, CSRNG,
+and EDN and waits for fresh entropy progress before releasing consumers. The
 post-mux adapters reset even when an external source is selected, so an
 external stream is interrupted and cleanly restarted; the external TRNG CSR
 passthrough itself is unaffected.</p>
@@ -10324,14 +10328,24 @@ responsive. While the TRNG reset is active, its pending EDN request, half-packed
 word, FIFO contents, and fill-stall state are synchronously cleared.</p>
 </div>
 <div class="paragraph">
-<p>Consumers are not part of the reset coordinator. Native EDN requests receive no
-acknowledgement while the post-mux adapter is clearing, remain asserted, and are
-serviced with fresh entropy after the chain restarts. The Key Manager
-AXI-Stream leg stalls in the same way. Software may wait for consumers to become
-idle and hold them in reset when policy requires aborting in-flight operations,
-but this is not required to assert the TRNG reset. Following reset release,
-software reprograms ESRC, waits for startup health testing, locks the certified
-configuration, instantiates CSRNG, and enables EDN.
+<p>Consumers are not part of the reset coordinator. Native EDN requests from AES,
+KMAC, and OTBN receive no acknowledgement while the post-mux adapter is
+clearing, remain asserted, and are serviced with fresh entropy after the chain
+restarts. Software may wait for those consumers to become idle and hold them in
+reset when policy requires aborting in-flight operations, but that is not
+required to assert the TRNG reset.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager stream has no post-mux adapter, so TRNG reset does not scrub
+it. If the DRBG sampler is requesting or assembling a word when the reset
+asserts, the next DATA read can mix leftover bytes with new beats, or the
+sampler can flag a stream error. The SEP host must keep the Key Manager idle
+before asserting the TRNG reset. Holding KM in software reset is sufficient;
+hardware does not enforce the ordering.</p>
+</div>
+<div class="paragraph">
+<p>Following reset release, software reprograms ESRC, waits for startup health
+testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.</p>
 </div>
 </div>

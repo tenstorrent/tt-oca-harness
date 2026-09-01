@@ -365,7 +365,7 @@ sequence below applies only to streams firmware explicitly changes to 0.</p>
 <h4 id="bring-up-sequence-at-a-glance"><a class="anchor" href="#bring-up-sequence-at-a-glance"></a><a class="link" href="#bring-up-sequence-at-a-glance">2.2.1. Bring-up sequence at a glance</a></h4>
 <div class="imageblock kroki">
 <div class="content">
-<img src="_images/ocah-trng-bring-up-7e09ccae4f770d91ffdb0c5c8e008ecbceb5ceb5.svg" alt="ocah-trng-bring-up">
+<img src="_images/ocah-trng-bring-up-ff5e754b0f3d7d0cb229e6dfeea0dd7f666c60f3.svg" alt="ocah-trng-bring-up">
 </div>
 </div>
 </div>
@@ -379,10 +379,13 @@ register literals. Several control fields use MuBi4 encodings, for which true is
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Prevent new entropy-dependent operations during initialization. On first boot,
-initialize entropy before accepting crypto work. A runtime recovery may either
-let an in-flight consumer stall until fresh entropy is available or, after the
-consumer is idle, hold it in software reset to abort its operation.</p>
+<p>Prevent new entropy-dependent operations during initialization. On first
+boot, initialize entropy before accepting crypto work; the Key Manager is
+held in software reset, which keeps it idle. A runtime recovery must wait
+until KM is idle, or hold it in software reset, before pulsing the TRNG
+reset. AES, KMAC, and OTBN may stall until fresh entropy is available, or,
+after each is idle, firmware may hold them in software reset to abort their
+operations.</p>
 </li>
 <li>
 <p>Reset the internal entropy chain by clearing and then setting
@@ -522,8 +525,10 @@ operation is not recovery: the consumer can wait indefinitely for entropy.</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Stop dispatching new entropy-dependent operations. If policy requires aborting
-in-flight work, wait for each consumer to become idle, save <code>SW_RESET_N</code>, and
+<p>Stop dispatching new entropy-dependent operations. The Key Manager must be
+idle before the TRNG reset is asserted: wait until it is not consuming
+entropy, or hold it in software reset. If policy requires aborting AES, KMAC,
+or OTBN in-flight work, wait for each to become idle, save <code>SW_RESET_N</code>, and
 hold those consumers in reset.</p>
 </li>
 <li>
@@ -549,9 +554,14 @@ succeeds.</p>
 reset the post-mux adapters suppress acknowledgements and discard buffered
 entropy. A request already asserted by AES, KMAC, or OTBN remains asserted and
 is serviced with fresh entropy after the adapter and internal chain restart.
-The Key Manager AXI-Stream leg similarly stalls until fresh data is valid.
-Resetting consumers is therefore an operation-abort policy, not a prerequisite
-for the coordinated TRNG reset.</p>
+Resetting those consumers is an operation-abort policy, not a prerequisite for
+the coordinated TRNG reset.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager AXI-Stream has no post-mux adapter, so TRNG reset does not
+scrub it. A reset while the DRBG sampler is requesting or assembling a word can
+mix leftover bytes into the next DATA read or raise a stream error. The Key
+Manager must be idle before the SEP host asserts the TRNG reset.</p>
 </div>
 <div class="paragraph">
 <p>Do not try to recover only ESRC with <code>CTRL[0]</code>. A shared TRNG reset invalidates
