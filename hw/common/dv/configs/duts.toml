@@ -39,3 +39,6 @@ root = "hw/common/dv/vip/ocah_axi_vip/dv"
 # registered here.
 [duts.cross_trigger_port]
 root = "hw/ip/cross_trigger/cross_trigger_port/dv"
+
+[duts.cross_trigger_matrix]
+root = "hw/ip/cross_trigger/cross_trigger_matrix/dv"
