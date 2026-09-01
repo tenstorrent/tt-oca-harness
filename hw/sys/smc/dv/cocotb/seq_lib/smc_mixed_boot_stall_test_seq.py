@@ -60,7 +60,9 @@ class smc_mixed_boot_stall_test_seq(SmcCsrSeq):
         )
 
         await self._wait_pin(dut.tb_boot_stall_combined_o, 1, "HOLD_COMBINED", 2000)
-        assert int(dut.tb_boot_stall_jtag_ovrd_i.value) == 0, "JTAG ovrd active; GPIO-alone not proven"
+        assert int(dut.tb_boot_stall_jtag_ovrd_i.value) == 0, (
+            "JTAG ovrd active; GPIO-alone not proven"
+        )
         self.gpio_gate_ok = True
         cocotb.log.info(
             "CHK-MIXED-BOOT-STALL-GPIO: combined=1 ovrd=0 pad57 held (GPIO-alone stall)"
@@ -71,16 +73,12 @@ class smc_mixed_boot_stall_test_seq(SmcCsrSeq):
         await self._wait_pin(dut.tb_boot_stall_combined_o, 0, "OVRD_COMBINED", 2000)
         assert int(dut.tb_hold_cpu_boot.value) == 1, "pad hold dropped during JTAG ovrd"
         self.ovrd_release_ok = True
-        cocotb.log.info(
-            "CHK-MIXED-BOOT-STALL-OVRD: ovrd=1 val=0 combined=0 pad57 held"
-        )
+        cocotb.log.info("CHK-MIXED-BOOT-STALL-OVRD: ovrd=1 val=0 combined=0 pad57 held")
 
         dut.tb_boot_stall_jtag_val_i.value = 1
         await self._stay(dut, combined_expect=0, label="VAL1")
         self.val1_lockout_ok = True
-        cocotb.log.info(
-            "CHK-MIXED-BOOT-STALL-VAL1: ovrd=1 val=1 did not re-stall (sticky stays 0)"
-        )
+        cocotb.log.info("CHK-MIXED-BOOT-STALL-VAL1: ovrd=1 val=1 did not re-stall (sticky stays 0)")
 
         dut.tb_boot_stall_jtag_val_i.value = 0
         dut.tb_boot_stall_jtag_ovrd_i.value = 0

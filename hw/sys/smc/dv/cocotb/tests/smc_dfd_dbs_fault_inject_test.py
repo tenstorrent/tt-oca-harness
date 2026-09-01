@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_dfd_dbs_fault_inject_test_seq import (
     smc_dfd_dbs_fault_inject_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -30,8 +30,5 @@ class smc_dfd_dbs_fault_inject_test(smc_base_test):
             type(self).__name__,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                "TB_GLUE only: tb_dfd_fault_inject latched 0xDB5C_AFE1 "
-                "(not DUT DFD RTL)"
-            ),
+            details=("TB_GLUE only: tb_dfd_fault_inject latched 0xDB5C_AFE1 (not DUT DFD RTL)"),
         )

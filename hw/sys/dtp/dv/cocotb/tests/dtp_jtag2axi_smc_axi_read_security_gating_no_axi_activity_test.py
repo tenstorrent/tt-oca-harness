@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_smc_axi_rd_test_seq import dtp_jtag2axi_smc_axi_rd_test_seq

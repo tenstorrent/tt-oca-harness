@@ -10,30 +10,16 @@ from cocotb.triggers import RisingEdge
 from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-STATUS = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
-)
-PROGRAM_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
-)
-READ_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR"
-)
-READ_DATA = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR"
-)
-PROG_TMO = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR"
-)
-READ_TMO = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR"
-)
+STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
+READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
+READ_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR")
+PROG_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR")
+READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
 
 PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-PROG_RB = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm"
-)
+PROG_RB = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm")
 PROG_EN = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 PROG_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
@@ -44,18 +30,14 @@ READ_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm"
 TMO_EN_P = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bm"
 )
-TMO_EN_R = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm"
-)
+TMO_EN_R = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm")
 TMO_CYC_RST_P = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_reset"
 )
 TMO_CYC_RST_R = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset"
 )
-REQ_ERR = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm"
-)
+REQ_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm")
 REQ_ERR_CLR = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm"
 )
@@ -112,19 +94,13 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         st = await self._program("PROG_TMO", idle=False)
         otp = int(dut.tb_efuse_programmed_word0.value)
         assert st & PROG_ERR, f"short program timeout expected status=1 got 0x{st:x}"
-        assert otp == OTP_WORD0_MARKER, (
-            f"timed-out program sticky-OR OTP: 0x{otp:08x}"
-        )
+        assert otp == OTP_WORD0_MARKER, f"timed-out program sticky-OR OTP: 0x{otp:08x}"
         self.prog_tmo_ok = True
-        cocotb.log.info(
-            "CHK-EFUSE-TMO-PROG: CTRL=0x%x OTP=0x%x tmo=0x%x", st, otp, got
-        )
+        cocotb.log.info("CHK-EFUSE-TMO-PROG: CTRL=0x%x OTP=0x%x tmo=0x%x", st, otp, got)
 
         st_hold = await self.csr_read("PROG_TMO_HOLD", PROGRAM_CTRL)
         stat_hold = await self.csr_read("STATUS_HOLD", STATUS)
-        assert st_hold & PROG_ERR, (
-            f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
-        )
+        assert st_hold & PROG_ERR, f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
         # PROGRAM_STATUS is live HW from the last op; writing 0 does not
         # clear it. EFUSE_REQ_ERROR stays 0 on this timeout path (STATUS
         # after sense is typically 0x1). Next PROGRAM completion is the
@@ -151,9 +127,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         st, data = await self._read("READ_TMO")
         assert data == 0, f"timed-out read data=0x{data:x} want 0"
         self.read_tmo_ok = True
-        cocotb.log.info(
-            "CHK-EFUSE-TMO-RD: CTRL=0x%x data=0x%x tmo=0x%x", st, data, got
-        )
+        cocotb.log.info("CHK-EFUSE-TMO-RD: CTRL=0x%x data=0x%x tmo=0x%x", st, data, got)
 
         await self.csr_write("READ_TMO_DEF", READ_TMO, TMO_CYC_RST_R)
         await self._clear_req_err()

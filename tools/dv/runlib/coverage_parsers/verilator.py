@@ -15,7 +15,6 @@ from ..coverage_model import (
     stable_id,
 )
 
-
 VERILATOR_METRIC_MAP = {
     "line": "line",
     "toggle": "toggle",

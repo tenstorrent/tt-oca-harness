@@ -28,8 +28,8 @@ from .buildcache import (
     apply_option_env,
     build_fingerprint,
     build_options_cfg,
-    build_verilator_cfg,
     build_vcs_cfg,
+    build_verilator_cfg,
     build_xcelium_cfg,
     cache_key_extra,
     effective_build_jobs,
@@ -141,7 +141,9 @@ def required_path(cfg: dict[str, Any], key: str, section: str, where: str) -> st
     """
     value = cfg.get(key)
     if not isinstance(value, str) or not value.strip():
-        raise ConfigError(f"{where}: [{section}].{key} is required and must be a non-empty string (declare it in your sim_cfg)")
+        raise ConfigError(
+            f"{where}: [{section}].{key} is required and must be a non-empty string (declare it in your sim_cfg)"
+        )
     return value.strip()
 
 
@@ -269,11 +271,7 @@ def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> li
     if not scope:
         return []
     path = repo_path(root, scope)
-    text = (
-        path.read_text(encoding="utf-8", errors="replace")
-        if path.is_file()
-        else "<missing>"
-    )
+    text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else "<missing>"
     return [f"verilator_public_scope={scope}", "verilator_public_scope_text=" + text]
 
 
@@ -316,7 +314,9 @@ def _target_build_metadata(
     return metadata
 
 
-def _cocotb_target_build_metadata(info: dict[str, Any], tool: str, *, status: str | None = None) -> dict[str, Any]:
+def _cocotb_target_build_metadata(
+    info: dict[str, Any], tool: str, *, status: str | None = None
+) -> dict[str, Any]:
     return _target_build_metadata(
         target_name=str(info["target_name"]),
         tool=tool,
@@ -364,10 +364,12 @@ def _xcelium_wave_tcl(
     ]
     if start_ps is not None and start_ps > 0:
         lines.append(f"run {format_time_ps(start_ps)}")
-    lines.extend([
-        f"database -open waves -into {db_path} -event -default",
-        "probe -create [scope -tops] -all -depth to_cells -database waves",
-    ])
+    lines.extend(
+        [
+            f"database -open waves -into {db_path} -event -default",
+            "probe -create [scope -tops] -all -depth to_cells -database waves",
+        ]
+    )
     if end_ps is not None:
         duration = max(0, int(end_ps) - int(start_ps or 0))
         if duration > 0:
@@ -446,7 +448,9 @@ def _vcs_wave_env(env: dict[str, str], wave_format: str, dry_run: bool) -> dict[
     return env
 
 
-def item_artifact_dir(run_dir: Path, item: str, *, seed: int | None = None, attempt: int = 0, nest: bool = False) -> Path:
+def item_artifact_dir(
+    run_dir: Path, item: str, *, seed: int | None = None, attempt: int = 0, nest: bool = False
+) -> Path:
     """Per-test (test-major) artifact directory.
 
     Single-test invocations stay flat at ``<run_dir>/<item>``. Regression/group runs always nest
@@ -458,14 +462,24 @@ def item_artifact_dir(run_dir: Path, item: str, *, seed: int | None = None, atte
     return base
 
 
-def artifact_root(run_dir: Path, stage: str, item: str | None = None, *, seed: int | None = None, attempt: int = 0, nest: bool = False) -> Path:
+def artifact_root(
+    run_dir: Path,
+    stage: str,
+    item: str | None = None,
+    *,
+    seed: int | None = None,
+    attempt: int = 0,
+    nest: bool = False,
+) -> Path:
     """Run-shared stages live under ``stages/<stage>/``; per-test stages are test-major."""
     if item is None:
         return run_dir / "stages" / stage
     return item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
 
 
-def seed_for_item(catalog: TestCatalog, sim_cfg: dict[str, Any], args: argparse.Namespace, item: str) -> int:
+def seed_for_item(
+    catalog: TestCatalog, sim_cfg: dict[str, Any], args: argparse.Namespace, item: str
+) -> int:
     if args.seed is not None:
         return int(args.seed)
     test = catalog.tests.get(item)
@@ -641,7 +655,11 @@ def console_from_args(args: argparse.Namespace) -> Console:
     console = getattr(args, "_ui_console", None)
     if console is not None:
         return console
-    return Console(getattr(args, "ui", "auto"), quiet=getattr(args, "quiet", False), verbose=getattr(args, "verbose", False))
+    return Console(
+        getattr(args, "ui", "auto"),
+        quiet=getattr(args, "quiet", False),
+        verbose=getattr(args, "verbose", False),
+    )
 
 
 def compact_leaf_ui(args: argparse.Namespace, stage_name: str, item: str | None) -> bool:
@@ -820,9 +838,7 @@ def run_subprocess(
                 terminate_process_group(proc)
                 log.write(f"\n# TIMEOUT: command exceeded {timeout_sec}s and was killed\n")
                 log.flush()
-                raise StageTimeoutError(
-                    f"`{argv[0]}` exceeded timeout of {timeout_sec}s"
-                )
+                raise StageTimeoutError(f"`{argv[0]}` exceeded timeout of {timeout_sec}s")
             return proc.returncode
         finally:
             with _ACTIVE_SUBPROCESS_LOCK:
@@ -937,7 +953,9 @@ def cocotb_public_scope(vlt_path: str):
         cls._build_command = make_wrapper(original, vlt_path)
         patched.append((cls, original))
     if not patched:
-        raise ConfigError("configured Verilator public_scope but no cocotb Verilator runner was patched")
+        raise ConfigError(
+            "configured Verilator public_scope but no cocotb Verilator runner was patched"
+        )
     try:
         yield
     finally:
@@ -975,14 +993,25 @@ def generate_filelist(
     flist_cmd = ["bender", "script", "flist-plus", *target_args]
     if dry_run or verbose:
         print("CMD  : " + " ".join(shlex.quote(part) for part in checkout_cmd), flush=True)
-        print("CMD  : " + " ".join(shlex.quote(part) for part in flist_cmd) + f" > {bender_out}", flush=True)
+        print(
+            "CMD  : " + " ".join(shlex.quote(part) for part in flist_cmd) + f" > {bender_out}",
+            flush=True,
+        )
         if exclude_files:
-            print("NOTE : drop from filelist (build.exclude_files): " + ", ".join(exclude_files), flush=True)
+            print(
+                "NOTE : drop from filelist (build.exclude_files): " + ", ".join(exclude_files),
+                flush=True,
+            )
 
     script_body = "#!/usr/bin/env bash\nset -euo pipefail\n"
     script_body += "cd " + shlex.quote(str(root)) + "\n"
     script_body += " ".join(shlex.quote(part) for part in checkout_cmd) + "\n"
-    script_body += " ".join(shlex.quote(part) for part in flist_cmd) + " > " + shlex.quote(str(bender_out)) + "\n"
+    script_body += (
+        " ".join(shlex.quote(part) for part in flist_cmd)
+        + " > "
+        + shlex.quote(str(bender_out))
+        + "\n"
+    )
     write_text_file(script_path, script_body, dry_run)
     write_env_snapshot(env_path, os.environ, dry_run)
     if not dry_run:
@@ -991,16 +1020,22 @@ def generate_filelist(
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with log_path.open("w", encoding="utf-8") as log:
             log.write("# cmd: " + " ".join(shlex.quote(part) for part in checkout_cmd) + "\n")
-            proc = subprocess.run(checkout_cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            proc = subprocess.run(
+                checkout_cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            )
             log.write(proc.stdout)
             if verbose and not quiet:
                 print(proc.stdout, end="")
             if proc.returncode:
                 return proc.returncode
 
-            log.write("# cmd: " + " ".join(shlex.quote(part) for part in flist_cmd) + f" > {bender_out}\n")
+            log.write(
+                "# cmd: " + " ".join(shlex.quote(part) for part in flist_cmd) + f" > {bender_out}\n"
+            )
             with bender_out.open("w", encoding="utf-8") as handle:
-                proc = subprocess.run(flist_cmd, cwd=root, stdout=handle, stderr=subprocess.PIPE, text=True)
+                proc = subprocess.run(
+                    flist_cmd, cwd=root, stdout=handle, stderr=subprocess.PIPE, text=True
+                )
             log.write(proc.stderr)
             if verbose and not quiet:
                 print(proc.stderr, end="")
@@ -1018,14 +1053,18 @@ def generate_filelist(
                         kept.append(line)
                 bender_out.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
-    incdirs = [repo_path(root, value) for value in as_str_list(build.get("incdirs"), "build.incdirs")]
+    incdirs = [
+        repo_path(root, value) for value in as_str_list(build.get("incdirs"), "build.incdirs")
+    ]
     # `stubs` are DUT-local OVERRIDE sources that replace the real RTL for a module. `sources` are
     # ADDITIVE tb components (e.g. SEP's mem responders) that may reference DUT package types, so they
     # go AFTER the bender filelist where those packages are already declared.
     # FIXME(transition): `stubs` is a transitional alias kept for DTP/SMC/SEP; remove it (and the
     # `build.exclude_files` filter above) once the licensed/non-Verilator sources are gone upstream.
     stubs = [repo_path(root, value) for value in as_str_list(build.get("stubs"), "build.stubs")]
-    sources = [repo_path(root, value) for value in as_str_list(build.get("sources"), "build.sources")]
+    sources = [
+        repo_path(root, value) for value in as_str_list(build.get("sources"), "build.sources")
+    ]
 
     # Stub selection/placement is tool-dependent, because "which duplicate module definition wins"
     # differs and because some stubs shadow real RTL that IS present in the bender graph:
@@ -1089,7 +1128,10 @@ def verilator_compile(
     work_dir = required_path(build, "work_dir", "build", str(flow.path))
     mdir = repo_path(root, str(tool_cfg.get("mdir", work_dir)))
     argv = ["verilator", "--cc"]
-    argv.extend(as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args") or ["--timing", "-sv", "--language", "1800-2023"])
+    argv.extend(
+        as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
+        or ["--timing", "-sv", "--language", "1800-2023"]
+    )
     if build.get("top_module"):
         argv.extend(["--top-module", str(build["top_module"])])
     argv.extend(target_flags(compile_target, "verilator"))
@@ -1126,13 +1168,29 @@ COCOTB_RUNNER_TOOLS = {"verilator", "xcelium"}
 COCOTB_MAKE_TOOLS = {"vcs"}
 
 
-def _cocotb_build_args(tool: str, flow: Flow, root: Path, build: dict[str, Any], run_target: dict[str, Any], compile_target: dict[str, Any], options: dict[str, Any], filelist: Path, args: argparse.Namespace) -> list[str]:
-    defines = [f"+define+{d}" for d in (config_list(run_target, "defines") or config_list(compile_target, "defines"))]
+def _cocotb_build_args(
+    tool: str,
+    flow: Flow,
+    root: Path,
+    build: dict[str, Any],
+    run_target: dict[str, Any],
+    compile_target: dict[str, Any],
+    options: dict[str, Any],
+    filelist: Path,
+    args: argparse.Namespace,
+) -> list[str]:
+    defines = [
+        f"+define+{d}"
+        for d in (config_list(run_target, "defines") or config_list(compile_target, "defines"))
+    ]
     defines += [f"+define+{d}" for d in (args.define or [])]
     if tool == "verilator":
         verilator_cfg = build_verilator_cfg(build)
         return [
-            *(as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args") or ["--timing", "-sv", "--language", "1800-2023"]),
+            *(
+                as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
+                or ["--timing", "-sv", "--language", "1800-2023"]
+            ),
             *target_flags(run_target, "verilator"),
             *(args.comp_arg or []),
             *defines,
@@ -1325,7 +1383,9 @@ def c_compile_stage(
     # `--rebuild` (or `[build.options].rebuild`) forces a clean firmware build: drop the declared
     # outputs first so an incremental build tool (e.g. make) cannot skip up-to-date objects.
     build_options = config_section(config_section(sim_cfg, "build"), "options")
-    if (bool(getattr(args, "rebuild", False)) or bool(build_options.get("rebuild", False))) and not args.dry_run:
+    if (
+        bool(getattr(args, "rebuild", False)) or bool(build_options.get("rebuild", False))
+    ) and not args.dry_run:
         for path in outputs:
             if path.is_file():
                 path.unlink()
@@ -1365,7 +1425,9 @@ def c_compile_stage(
             "outputs": [repo_rel(root, path) for path in outputs],
             "status": "PASS" if rc == 0 else "FAIL",
         }
-        (stage_dir / "c_compile.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (stage_dir / "c_compile.json").write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
     return rc
 
 
@@ -1461,7 +1523,9 @@ def _cocotb_build_info(
         base_build /= _safe_build_component(target_name)
     if args.cov:
         base_build /= "coverage"
-    build_args = _cocotb_build_args(tool, flow, root, build, run_target, compile_target, options, filelist, args)
+    build_args = _cocotb_build_args(
+        tool, flow, root, build, run_target, compile_target, options, filelist, args
+    )
 
     wave_format = _wave_format(args, tool)
     cov = coverage_cfg(sim_cfg)
@@ -1484,9 +1548,7 @@ def _cocotb_build_info(
 
     if wave_format and tool == "verilator":
         if wave_format not in {"fst", "vcd"}:
-            raise ConfigError(
-                f"Verilator cocotb waves support `fst` or `vcd`, got `{args.waves}`"
-            )
+            raise ConfigError(f"Verilator cocotb waves support `fst` or `vcd`, got `{args.waves}`")
         trace_arg = "--trace-fst" if wave_format == "fst" else "--trace"
         if trace_arg not in build_args:
             build_args.append(trace_arg)
@@ -1497,7 +1559,11 @@ def _cocotb_build_info(
         tool_ver = xcelium_version(root)
     else:
         tool_ver = vcs_version(root)
-    filelist_text = filelist.read_text(encoding="utf-8", errors="replace") if filelist.is_file() else str(filelist)
+    filelist_text = (
+        filelist.read_text(encoding="utf-8", errors="replace")
+        if filelist.is_file()
+        else str(filelist)
+    )
     public_scope_extra = (
         _verilator_public_scope_fingerprint(root, build) if tool == "verilator" else []
     )
@@ -1638,7 +1704,9 @@ def _cocotb_vcs_makefile(
         ],
         text=True,
     ).splitlines()
-    env["PYTHONPATH"] = os.pathsep.join(str(path) for path in [*python_paths, *venv_site] if str(path))
+    env["PYTHONPATH"] = os.pathsep.join(
+        str(path) for path in [*python_paths, *venv_site] if str(path)
+    )
     env["VIRTUAL_ENV"] = str(vcs_python.parents[1])
     env["RANDOM_SEED"] = str(seed)
     env["PATH"] = os.pathsep.join([str(vcs_python.parent), env.get("PATH", "")])
@@ -1658,9 +1726,7 @@ def _cocotb_vcs_makefile(
         "",
         *_make_append("COMPILE_ARGS", compile_args),
         *_make_append("SIM_ARGS", sim_args),
-        *vcs_simv_compile_deps(
-            _vcs_top_file(root, build), _vcs_local_sources(root, build)
-        ),
+        *vcs_simv_compile_deps(_vcs_top_file(root, build), _vcs_local_sources(root, build)),
         "",
         f"include $(shell {_cocotb_config_exe(vcs_python)} --makefiles)/Makefile.sim",
         "",
@@ -1764,7 +1830,12 @@ def cocotb_build(
             public_scope_vlt = str(repo_path(root, _scope_rel))
             console.artifact("public_scope", public_scope_vlt)
     console.artifact("build", f"{info['sim_build']} (rebuild={info['rebuild']})")
-    write_script(script_path, root, [sys.executable, "-c", "from cocotb.runner import get_runner"], args.dry_run)
+    write_script(
+        script_path,
+        root,
+        [sys.executable, "-c", "from cocotb.runner import get_runner"],
+        args.dry_run,
+    )
     write_env_snapshot(env_path, env, args.dry_run)
     if args.dry_run:
         _mark_cocotb_prebuilt(args, target_name)
@@ -1778,13 +1849,20 @@ def cocotb_build(
                 get_runner = get_cocotb_runner()
                 runner = get_runner(tool)
             with progress_step(console, f"cocotb {tool} build model", args.quiet):
-                with scoped_environ(env), cocotb_make_jobs(_build_jobs), cocotb_public_scope(public_scope_vlt):
+                with (
+                    scoped_environ(env),
+                    cocotb_make_jobs(_build_jobs),
+                    cocotb_public_scope(public_scope_vlt),
+                ):
                     runner.build(
                         sources=[],
                         hdl_toplevel=info["top_module"],
                         build_dir=info["sim_build"],
                         build_args=info["build_args"],
-                        includes=[repo_path(root, value) for value in as_str_list(build.get("incdirs"), "build.incdirs")],
+                        includes=[
+                            repo_path(root, value)
+                            for value in as_str_list(build.get("incdirs"), "build.incdirs")
+                        ],
                         waves=bool(_wave_format(args, tool)),
                         always=info["rebuild"],
                     )
@@ -1855,10 +1933,12 @@ def _cocotb_make_sim(
                     shutil.copy2(src, make_dir / src.name)
         # cocotb's classic VCS make flow runs in make_dir, so stage the time-0 image there.
         _run_sim_prestage(
-            root, cocotb_data, item, seed, make_dir,
-            sim_args=_render_run_test_args(
-                run_mode, catalog.tests[item], seed, root
-            ),
+            root,
+            cocotb_data,
+            item,
+            seed,
+            make_dir,
+            sim_args=_render_run_test_args(run_mode, catalog.tests[item], seed, root),
         )
     # The make flow compiles and runs in one invocation, so the timeout bounds both.
     timeout_sec = resolve_timeout_sec(sim_cfg, catalog.tests[item], run_mode, args)
@@ -1939,9 +2019,7 @@ def cocotb_sim(
     seed: int,
 ) -> int:
     if tool not in COCOTB_RUNNER_TOOLS | COCOTB_MAKE_TOOLS:
-        raise ConfigError(
-            f"cocotb sim supports tool verilator|xcelium|vcs, got `{tool}`"
-        )
+        raise ConfigError(f"cocotb sim supports tool verilator|xcelium|vcs, got `{tool}`")
     if tool in COCOTB_MAKE_TOOLS:
         return _cocotb_make_sim(
             flow,
@@ -2061,7 +2139,11 @@ def cocotb_sim(
                     shutil.copy2(asset, item_dir / asset.name)
         # cocotb runner chdir's to item_dir, so a time-0 image hook writes there.
         _run_sim_prestage(
-            root, cocotb_data, item, seed, item_dir,
+            root,
+            cocotb_data,
+            item,
+            seed,
+            item_dir,
             sim_args=_render_run_test_args(
                 selected_run_mode(sim_cfg, catalog.tests[item], args),
                 test,
@@ -2308,7 +2390,9 @@ def _vcs_uum_elab_args(
     return elab
 
 
-def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+def _vcs_resolve_build(
+    flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace
+) -> dict[str, Any]:
     """Resolve the (fingerprinted) VCS build dir and simv path. Shared by build and sim stages so
     the sim stage locates the exact simv the build stage produced."""
     build = build_cfg(flow, sim_cfg)
@@ -2335,7 +2419,11 @@ def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: ar
     if wave_format:
         elab_args.append("-debug_access+all")
 
-    filelist_text = filelist.read_text(encoding="utf-8", errors="replace") if filelist.is_file() else str(filelist)
+    filelist_text = (
+        filelist.read_text(encoding="utf-8", errors="replace")
+        if filelist.is_file()
+        else str(filelist)
+    )
     fingerprint = build_fingerprint(
         build_args=elab_args,
         top_module=top,
@@ -2363,7 +2451,15 @@ def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: ar
     }
 
 
-def vcs_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace, log_path: Path, script_path: Path, env_path: Path) -> int:
+def vcs_analyze(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+) -> int:
     """Three-step `compile` stage: analyze sources into the work library with vlogan."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     vcs_cfg = info["vcs_cfg"]
@@ -2393,10 +2489,31 @@ def vcs_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.
     else:
         argv = analyze_argv
     console_from_args(args).artifact("build", info["build_dir"])
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=info["build_dir"], verbose=args.verbose, timeout_sec=args.timeout)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=info["build_dir"],
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+    )
 
 
-def vcs_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace, log_path: Path, script_path: Path, env_path: Path, *, include_filelist: bool) -> int:
+def vcs_build(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    *,
+    include_filelist: bool,
+) -> int:
     """Elaborate to a `simv`. `include_filelist=True` is the two-step combined build (vcs -f ...);
     `False` is the three-step elaborate that consumes the already-analyzed library."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
@@ -2429,10 +2546,33 @@ def vcs_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Na
     console = console_from_args(args)
     console.artifact("build", build_dir)
     console.artifact("simv", info["simv"])
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=build_dir, verbose=args.verbose, timeout_sec=args.timeout)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=build_dir,
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+    )
 
 
-def vcs_sim(flow: Flow, root: Path, sim_cfg: dict[str, Any], catalog: TestCatalog, item: str, args: argparse.Namespace, item_dir: Path, log_path: Path, script_path: Path, env_path: Path, seed: int) -> int:
+def vcs_sim(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    catalog: TestCatalog,
+    item: str,
+    args: argparse.Namespace,
+    item_dir: Path,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    seed: int,
+) -> int:
     """Run a built simv for one test/seed. The simv is reused across all seeds."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     simv = info["simv"]
@@ -2476,7 +2616,19 @@ def vcs_sim(flow: Flow, root: Path, sim_cfg: dict[str, Any], catalog: TestCatalo
     if not args.dry_run:
         results_dir.mkdir(parents=True, exist_ok=True)
     timeout_sec = resolve_timeout_sec(sim_cfg, test, run_mode, args)
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=item_dir, env=env, verbose=args.verbose, timeout_sec=timeout_sec)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=item_dir,
+        env=env,
+        verbose=args.verbose,
+        timeout_sec=timeout_sec,
+    )
 
 
 # --- Xcelium (Cadence) stages -------------------------------------------------------------------
@@ -2502,7 +2654,9 @@ def _xcelium_common(xcelium_cfg: dict[str, Any], framework: str) -> list[str]:
     return common
 
 
-def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+def _xcelium_resolve_build(
+    flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace
+) -> dict[str, Any]:
     """Resolve the (fingerprinted) Xcelium build dir + snapshot name. Shared by build and sim stages
     so the sim stage locates the exact snapshot the build stage produced."""
     build = build_cfg(flow, sim_cfg)
@@ -2515,7 +2669,9 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
         raise ConfigError(f"{flow.path}: [build].top_module is required")
     filelist = repo_path(root, str(build.get("filelist", "")))
     # Same `build/<framework>/<tool>/` convention as the VCS resolver above.
-    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "xcelium"
+    base_build = (
+        repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "xcelium"
+    )
     snapshot = str(xcelium_cfg.get("snapshot", top))
 
     elab_args = [
@@ -2528,7 +2684,11 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
     if wave_format:
         elab_args += ["-access", "+rwc"]
 
-    filelist_text = filelist.read_text(encoding="utf-8", errors="replace") if filelist.is_file() else str(filelist)
+    filelist_text = (
+        filelist.read_text(encoding="utf-8", errors="replace")
+        if filelist.is_file()
+        else str(filelist)
+    )
     fingerprint = build_fingerprint(
         build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
         top_module=top,
@@ -2555,7 +2715,15 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
     }
 
 
-def xcelium_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace, log_path: Path, script_path: Path, env_path: Path) -> int:
+def xcelium_analyze(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+) -> int:
     """Three-step `compile` stage: analyze sources into the work library with xmvlog."""
     info = _xcelium_resolve_build(flow, root, sim_cfg, args)
     xcelium_cfg = info["xcelium_cfg"]
@@ -2572,10 +2740,31 @@ def xcelium_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argpa
         str(info["filelist"]),
     ]
     console_from_args(args).artifact("build", info["build_dir"])
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=info["build_dir"], verbose=args.verbose, timeout_sec=args.timeout)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=info["build_dir"],
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+    )
 
 
-def xcelium_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace, log_path: Path, script_path: Path, env_path: Path, *, include_filelist: bool) -> int:
+def xcelium_build(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    *,
+    include_filelist: bool,
+) -> int:
     """Elaborate to a snapshot. `include_filelist=True` is the two-step combined build
     (`xrun -elaborate -f <filelist>`); `False` is the three-step `xmelab` after analysis."""
     info = _xcelium_resolve_build(flow, root, sim_cfg, args)
@@ -2606,10 +2795,33 @@ def xcelium_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argpars
     console = console_from_args(args)
     console.artifact("build", build_dir)
     console.artifact("snapshot", info["snapshot"])
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=build_dir, verbose=args.verbose, timeout_sec=args.timeout)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=build_dir,
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+    )
 
 
-def xcelium_sim(flow: Flow, root: Path, sim_cfg: dict[str, Any], catalog: TestCatalog, item: str, args: argparse.Namespace, item_dir: Path, log_path: Path, script_path: Path, env_path: Path, seed: int) -> int:
+def xcelium_sim(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    catalog: TestCatalog,
+    item: str,
+    args: argparse.Namespace,
+    item_dir: Path,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    seed: int,
+) -> int:
     """Run a built snapshot for one test/seed with xmsim. The snapshot is reused across all seeds."""
     info = _xcelium_resolve_build(flow, root, sim_cfg, args)
     xcelium_cfg = info["xcelium_cfg"]
@@ -2650,7 +2862,18 @@ def xcelium_sim(flow: Flow, root: Path, sim_cfg: dict[str, Any], catalog: TestCa
     if not args.dry_run:
         results_dir.mkdir(parents=True, exist_ok=True)
     timeout_sec = resolve_timeout_sec(sim_cfg, test, run_mode, args)
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=item_dir, verbose=args.verbose, timeout_sec=timeout_sec)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=item_dir,
+        verbose=args.verbose,
+        timeout_sec=timeout_sec,
+    )
 
 
 # --- Coverage merge/report ----------------------------------------------------------------------
@@ -2728,9 +2951,7 @@ def _coverage_auxiliary_files(
     ]
     missing = [path for path in paths if not Path(path).is_file()]
     if missing:
-        raise ConfigError(
-            f"coverage.{key} references missing file(s): {', '.join(missing)}"
-        )
+        raise ConfigError(f"coverage.{key} references missing file(s): {', '.join(missing)}")
     return paths
 
 
@@ -2802,7 +3023,19 @@ def _closure_scalar_metrics(details: Any) -> dict[str, float]:
     return metrics
 
 
-def coverage_stage(flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, run_dir: Path, phase: str, args: argparse.Namespace, log_path: Path, script_path: Path, env_path: Path, quiet: bool) -> int:
+def coverage_stage(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    tool: str,
+    run_dir: Path,
+    phase: str,
+    args: argparse.Namespace,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    quiet: bool,
+) -> int:
     cov = coverage_cfg(sim_cfg)
     tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
     if not tool_cov:
@@ -2909,21 +3142,16 @@ def coverage_stage(flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, r
                 for entry in native_policy_manifest(policy)
             ],
             "legacy_exclusions": [
-                {"path": repo_rel(root, path), "sha256": _file_sha256(path)}
-                for path in exclusions
+                {"path": repo_rel(root, path), "sha256": _file_sha256(path)} for path in exclusions
             ],
             "legacy_waivers": [
-                {"path": repo_rel(root, path), "sha256": _file_sha256(path)}
-                for path in waivers
+                {"path": repo_rel(root, path), "sha256": _file_sha256(path)} for path in waivers
             ],
         }
         if design_db is not None:
             manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
         write_json(manifest_path, manifest)
-        input_paths = [
-            str(repo_path(root, entry.path))
-            for entry in discovery.inputs
-        ]
+        input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
         argv = [
             *render_tokens(template, ctx, input_paths),
             *native_policy_args(policy, tool=tool, phase="merge"),
@@ -2960,9 +3188,7 @@ def coverage_stage(flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, r
 
     manifest = load_manifest(manifest_path)
     if manifest.get("dut") != flow.name or manifest.get("tool") != tool:
-        raise CoverageError(
-            "coverage manifest DUT/tool does not match the requested report stage"
-        )
+        raise CoverageError("coverage manifest DUT/tool does not match the requested report stage")
     merged_value = (manifest.get("artifacts") or {}).get("merged")
     if not isinstance(merged_value, str):
         raise CoverageError("coverage manifest does not record a merged database")
@@ -3021,9 +3247,7 @@ def coverage_stage(flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, r
     write_json(raw_details_path, details.to_dict())
     details = apply_coverage_policy(details, policy)
     if details.policy_application.get("policy"):
-        details.policy_application["policy"] = repo_rel(
-            root, details.policy_application["policy"]
-        )
+        details.policy_application["policy"] = repo_rel(root, details.policy_application["policy"])
     for entry in details.policy_application.get("native_files", []):
         if isinstance(entry, dict) and entry.get("path"):
             entry["path"] = repo_rel(root, entry["path"])
@@ -3033,9 +3257,7 @@ def coverage_stage(flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, r
     metrics = dict(scalar_metrics)
     metrics.update(_closure_scalar_metrics(details))
     compatibility_threshold_met = total_percent >= threshold
-    policy_threshold_met = all(
-        bool(outcome.get("met")) for outcome in details.thresholds
-    )
+    policy_threshold_met = all(bool(outcome.get("met")) for outcome in details.thresholds)
     threshold_met = compatibility_threshold_met and policy_threshold_met
     status = "PASS" if threshold_met else "FAIL"
     holes_summary = effective_details.get("holes_summary", {})
@@ -3059,9 +3281,7 @@ def coverage_stage(flow: Flow, root: Path, sim_cfg: dict[str, Any], tool: str, r
         "policy_fingerprint": details.policy_fingerprint,
         "holes_summary": holes_summary,
         "inputs": [
-            entry.get("path")
-            for entry in manifest.get("inputs", [])
-            if isinstance(entry, dict)
+            entry.get("path") for entry in manifest.get("inputs", []) if isinstance(entry, dict)
         ],
         "artifacts": {
             "merged": repo_rel(root, merged),
@@ -3176,7 +3396,18 @@ def formal_run_stage(
         argv.append(script)
     argv += args.formal_arg or []
     console_from_args(args).artifact("formal_app", f"{app_name} ({tool})")
-    return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=cwd, verbose=args.verbose, timeout_sec=args.timeout)
+    return run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=cwd,
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+    )
 
 
 def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str:
@@ -3192,13 +3423,17 @@ def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str
         if framework == "uvm":
             if tool == "vcs":
                 return "vcs_uvm_build"
-            raise ConfigError(f"{where}: framework `uvm` has no `hdl_compile` adapter for tool `{tool}` yet")
+            raise ConfigError(
+                f"{where}: framework `uvm` has no `hdl_compile` adapter for tool `{tool}` yet"
+            )
         return "cocotb_build"
     if kind == "sim":
         if framework == "uvm":
             if tool == "vcs":
                 return "vcs_sim"
-            raise ConfigError(f"{where}: framework `uvm` has no `sim` adapter for tool `{tool}` yet")
+            raise ConfigError(
+                f"{where}: framework `uvm` has no `sim` adapter for tool `{tool}` yet"
+            )
         return "cocotb_sim"
     return kind
 
@@ -3222,7 +3457,13 @@ def run_stage(
     setattr(args, "_simulators", simulators)
     stage = flow_stages(flow)[stage_name]
     kind = _resolve_stage_kind(str(stage.get("kind", "")), flow.framework, tool, flow.path)
-    seed = seed_override if seed_override is not None else (seed_for_item(catalog, sim_cfg, args, item) if item else as_int(args.seed, "seed") or 1)
+    seed = (
+        seed_override
+        if seed_override is not None
+        else (
+            seed_for_item(catalog, sim_cfg, args, item) if item else as_int(args.seed, "seed") or 1
+        )
+    )
     stage_dir = artifact_root(run_dir, stage_name, item, seed=seed, attempt=attempt, nest=nest)
     if stage_name in {"c_compile", "formal"}:
         stage_dir = artifact_root(run_dir, stage_name, None)
@@ -3296,22 +3537,79 @@ def run_stage(
                 log_path.write_text(note + "\n", encoding="utf-8")
             rc = 0
         elif kind == "coverage_merge":
-            rc = coverage_stage(flow, root, sim_cfg, tool, run_dir, "merge", args, log_path, script_path, env_path, args.quiet)
+            rc = coverage_stage(
+                flow,
+                root,
+                sim_cfg,
+                tool,
+                run_dir,
+                "merge",
+                args,
+                log_path,
+                script_path,
+                env_path,
+                args.quiet,
+            )
         elif kind == "coverage_report":
-            rc = coverage_stage(flow, root, sim_cfg, tool, run_dir, "report", args, log_path, script_path, env_path, args.quiet)
+            rc = coverage_stage(
+                flow,
+                root,
+                sim_cfg,
+                tool,
+                run_dir,
+                "report",
+                args,
+                log_path,
+                script_path,
+                env_path,
+                args.quiet,
+            )
         elif kind == "clean":
             rc = clean_stage(stage, root, ctx, args.dry_run)
         elif kind == "c_compile":
-            rc = c_compile_stage(flow, root, sim_cfg, catalog, item, args, tool, stage_dir, log_path, script_path, env_path, seed)
+            rc = c_compile_stage(
+                flow,
+                root,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                tool,
+                stage_dir,
+                log_path,
+                script_path,
+                env_path,
+                seed,
+            )
         elif kind == "formal_run":
-            rc = formal_run_stage(flow, root, sim_cfg, catalog, item, args, tool, simulators, log_path, script_path, env_path)
+            rc = formal_run_stage(
+                flow,
+                root,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                tool,
+                simulators,
+                log_path,
+                script_path,
+                env_path,
+            )
         elif kind in {"bender_filelist", "verilator_filelist"}:
             # The `native` profile's cocotb framework maps the logical `flist` stage to `bender_filelist` for
             # every tool (VCS runs via cocotb's classic make, not the dedicated vcs_* stages), so the
             # tool-dependent stub ordering has to key off the actual target tool here.
             rc = generate_filelist(
-                flow, root, sim_cfg, args.dry_run, log_path, script_path, env_path, args.quiet,
-                verbose=args.verbose, tool=tool,
+                flow,
+                root,
+                sim_cfg,
+                args.dry_run,
+                log_path,
+                script_path,
+                env_path,
+                args.quiet,
+                verbose=args.verbose,
+                tool=tool,
             )
         elif kind == "verilator_compile":
             if tool != "verilator":
@@ -3324,9 +3622,21 @@ def run_stage(
                     log_path.write_text(note + "\n", encoding="utf-8")
                 rc = 0
             else:
-                rc = generate_filelist(flow, root, sim_cfg, args.dry_run, log_path, script_path, env_path, args.quiet, verbose=args.verbose)
+                rc = generate_filelist(
+                    flow,
+                    root,
+                    sim_cfg,
+                    args.dry_run,
+                    log_path,
+                    script_path,
+                    env_path,
+                    args.quiet,
+                    verbose=args.verbose,
+                )
                 if rc == 0:
-                    rc = verilator_compile(flow, root, sim_cfg, stage_name, tool, args, log_path, script_path, env_path)
+                    rc = verilator_compile(
+                        flow, root, sim_cfg, stage_name, tool, args, log_path, script_path, env_path
+                    )
         elif kind == "cocotb_build":
             rc = cocotb_build(
                 flow,
@@ -3347,11 +3657,26 @@ def run_stage(
         elif kind in {"cocotb_verilator", "cocotb_sim"}:
             if item is None:
                 raise ConfigError(f"{kind} stage requires a test item")
-            rc = cocotb_sim(flow, root, sim_cfg, catalog, item, args, tool, stage_dir, log_path, script_path, env_path, seed)
+            rc = cocotb_sim(
+                flow,
+                root,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                tool,
+                stage_dir,
+                log_path,
+                script_path,
+                env_path,
+                seed,
+            )
             # Mirror the documented metadata shape enough for cache/debug consumers. Detailed cache
             # decisions are made inside `cocotb_sim`; this records the invariant stage-level inputs.
             metadata["build_cache"] = {
-                "enabled": bool(build_cfg(flow, sim_cfg).get("options", {}).get("cache_enabled", False)),
+                "enabled": bool(
+                    build_cfg(flow, sim_cfg).get("options", {}).get("cache_enabled", False)
+                ),
                 "rebuild": bool(args.rebuild),
             }
             metadata["target_build"] = _cocotb_target_build_metadata(
@@ -3359,11 +3684,24 @@ def run_stage(
                 tool,
             )
         elif kind == "vcs_filelist":
-            rc = generate_filelist(flow, root, sim_cfg, args.dry_run, log_path, script_path, env_path, args.quiet, verbose=args.verbose, tool="vcs")
+            rc = generate_filelist(
+                flow,
+                root,
+                sim_cfg,
+                args.dry_run,
+                log_path,
+                script_path,
+                env_path,
+                args.quiet,
+                verbose=args.verbose,
+                tool="vcs",
+            )
         elif kind == "vcs_analyze":
             rc = vcs_analyze(flow, root, sim_cfg, args, log_path, script_path, env_path)
         elif kind == "vcs_compile":
-            rc = vcs_build(flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=True)
+            rc = vcs_build(
+                flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=True
+            )
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],
@@ -3372,7 +3710,9 @@ def run_stage(
                 fingerprint=info["fingerprint"],
             )
         elif kind == "vcs_elaborate":
-            rc = vcs_build(flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=False)
+            rc = vcs_build(
+                flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=False
+            )
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],
@@ -3391,7 +3731,16 @@ def run_stage(
                 elab_log = stage_dir / "logs" / f"{stage_suffix}.elaborate.log"
                 elab_script = stage_dir / "scripts" / f"{stage_suffix}.elaborate.sh"
                 elab_env = stage_dir / "env" / f"{stage_suffix}.elaborate.env"
-                rc = vcs_build(flow, root, sim_cfg, args, elab_log, elab_script, elab_env, include_filelist=False)
+                rc = vcs_build(
+                    flow,
+                    root,
+                    sim_cfg,
+                    args,
+                    elab_log,
+                    elab_script,
+                    elab_env,
+                    include_filelist=False,
+                )
                 if rc != 0:
                     log_path = elab_log
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
@@ -3404,7 +3753,19 @@ def run_stage(
         elif kind == "vcs_sim":
             if item is None:
                 raise ConfigError("vcs_sim stage requires a test item")
-            rc = vcs_sim(flow, root, sim_cfg, catalog, item, args, stage_dir, log_path, script_path, env_path, seed)
+            rc = vcs_sim(
+                flow,
+                root,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                stage_dir,
+                log_path,
+                script_path,
+                env_path,
+                seed,
+            )
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],
@@ -3413,11 +3774,23 @@ def run_stage(
                 fingerprint=info["fingerprint"],
             )
         elif kind == "xrun_filelist":
-            rc = generate_filelist(flow, root, sim_cfg, args.dry_run, log_path, script_path, env_path, args.quiet, verbose=args.verbose)
+            rc = generate_filelist(
+                flow,
+                root,
+                sim_cfg,
+                args.dry_run,
+                log_path,
+                script_path,
+                env_path,
+                args.quiet,
+                verbose=args.verbose,
+            )
         elif kind == "xrun_analyze":
             rc = xcelium_analyze(flow, root, sim_cfg, args, log_path, script_path, env_path)
         elif kind == "xrun_compile":
-            rc = xcelium_build(flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=True)
+            rc = xcelium_build(
+                flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=True
+            )
             info = _xcelium_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],
@@ -3426,7 +3799,9 @@ def run_stage(
                 fingerprint=info["fingerprint"],
             )
         elif kind == "xrun_elaborate":
-            rc = xcelium_build(flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=False)
+            rc = xcelium_build(
+                flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=False
+            )
             info = _xcelium_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],
@@ -3437,7 +3812,19 @@ def run_stage(
         elif kind == "xrun_sim":
             if item is None:
                 raise ConfigError("xrun_sim stage requires a test item")
-            rc = xcelium_sim(flow, root, sim_cfg, catalog, item, args, stage_dir, log_path, script_path, env_path, seed)
+            rc = xcelium_sim(
+                flow,
+                root,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                stage_dir,
+                log_path,
+                script_path,
+                env_path,
+                seed,
+            )
             info = _xcelium_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],
@@ -3448,20 +3835,14 @@ def run_stage(
         else:
             raise ConfigError(f"{flow.path}: unsupported native stage kind `{kind}`")
 
-        if (
-            stage_name in {"sim", "regress"}
-            and item is not None
-            and args.cov
-        ):
+        if stage_name in {"sim", "regress"} and item is not None and args.cov:
             tool_cov = coverage_cfg(sim_cfg).get(tool, {})
             if not isinstance(tool_cov, dict):
                 raise ConfigError(f"coverage.{tool} must be a table")
             native_coverage = coverage_artifact_path(tool_cov, stage_dir / "coverage")
             target_build = metadata.get("target_build")
             fingerprint = (
-                target_build.get("fingerprint")
-                if isinstance(target_build, dict)
-                else None
+                target_build.get("fingerprint") if isinstance(target_build, dict) else None
             )
             metadata["coverage"] = {
                 "requested": True,
@@ -3478,11 +3859,7 @@ def run_stage(
                     f"{native_coverage}"
                 )
 
-        if (
-            stage_name in {"hdl_compile", "elaborate"}
-            and args.cov
-            and tool == "vcs"
-        ):
+        if stage_name in {"hdl_compile", "elaborate"} and args.cov and tool == "vcs":
             vcs_cov = coverage_cfg(sim_cfg).get("vcs", {})
             if isinstance(vcs_cov, dict):
                 design_db = _coverage_design_db(flow, root, sim_cfg, vcs_cov, args)
@@ -3501,10 +3878,26 @@ def run_stage(
         status = "PASS" if rc == 0 else "FAIL"
         reason = "process completed successfully" if rc == 0 else f"process exited {rc}"
         bucket_kind = FAILURE_BUCKET_BY_STAGE.get(stage_name, "tool_error")
-        if rc != 0 and stage_name == "cov_report" and log_path.is_file() and "COVERAGE THRESHOLD:" in log_path.read_text(encoding="utf-8", errors="replace"):
+        if (
+            rc != 0
+            and stage_name == "cov_report"
+            and log_path.is_file()
+            and "COVERAGE THRESHOLD:" in log_path.read_text(encoding="utf-8", errors="replace")
+        ):
             bucket_kind = "coverage_threshold"
             reason = "coverage threshold not met"
-        buckets = None if rc == 0 else [{"kind": bucket_kind, "signature": reason, "count": 1, "examples": [repo_rel(root, log_path)]}]
+        buckets = (
+            None
+            if rc == 0
+            else [
+                {
+                    "kind": bucket_kind,
+                    "signature": reason,
+                    "count": 1,
+                    "examples": [repo_rel(root, log_path)],
+                }
+            ]
+        )
         parser = None
         if stage_name in {"sim", "regress"} and not args.dry_run:
             decision = parse_stage_result(
@@ -3531,7 +3924,14 @@ def run_stage(
         rc = 124
         status = "TIMEOUT"
         reason = str(exc)
-        buckets = [{"kind": "timeout", "signature": reason[:120], "count": 1, "examples": [repo_rel(root, log_path)]}]
+        buckets = [
+            {
+                "kind": "timeout",
+                "signature": reason[:120],
+                "count": 1,
+                "examples": [repo_rel(root, log_path)],
+            }
+        ]
         parser = None
         console.event("error", reason)
     except Exception as exc:
@@ -3540,8 +3940,19 @@ def run_stage(
         reason = str(exc)
         # Cause-based bucketing: a config problem is a config_error no matter which stage it
         # surfaced in; only unclassified process failures fall back to the per-stage default.
-        bucket_kind = "config_error" if isinstance(exc, ConfigError) else FAILURE_BUCKET_BY_STAGE.get(stage_name, "tool_error")
-        buckets = [{"kind": bucket_kind, "signature": reason[:120], "count": 1, "examples": [repo_rel(root, log_path)]}]
+        bucket_kind = (
+            "config_error"
+            if isinstance(exc, ConfigError)
+            else FAILURE_BUCKET_BY_STAGE.get(stage_name, "tool_error")
+        )
+        buckets = [
+            {
+                "kind": bucket_kind,
+                "signature": reason[:120],
+                "count": 1,
+                "examples": [repo_rel(root, log_path)],
+            }
+        ]
         parser = None
         console.event("error", reason)
 
@@ -3571,9 +3982,7 @@ def run_stage(
             except CoverageError:
                 manifest = {}
             manifest_artifacts = (
-                manifest.get("artifacts")
-                if isinstance(manifest.get("artifacts"), dict)
-                else {}
+                manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
             )
             if manifest_artifacts.get("merged"):
                 artifacts["coverage"] = manifest_artifacts["merged"]
@@ -3601,9 +4010,7 @@ def run_stage(
         if raw_details_path.is_file():
             artifacts["coverage_details_raw"] = repo_rel(root, raw_details_path)
         if application_path.is_file():
-            artifacts["coverage_policy_application"] = repo_rel(
-                root, application_path
-            )
+            artifacts["coverage_policy_application"] = repo_rel(root, application_path)
     if stage_name in {"sim", "regress"} and item and wave_active(args):
         wave_format = _wave_format(args, tool)
         waves_dir = stage_dir / "waves"
@@ -3685,7 +4092,9 @@ def run_stage(
         reason=reason,
         parser=parser,
         metadata=metadata,
-        target=target_name if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"} else None,
+        target=target_name
+        if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"}
+        else None,
     )
     # Structured-result guarantee: every executed leaf ends with results/results.xml —
     # the framework's own file when it wrote one, a synthesized single-testcase file

@@ -58,9 +58,7 @@ class smu_smc_mailbox_int_test_seq:
             try:
                 n = len(signal)
             except TypeError as exc:
-                raise AssertionError(
-                    f"width observe fail: cannot measure {name}"
-                ) from exc
+                raise AssertionError(f"width observe fail: cannot measure {name}") from exc
         if n <= 0:
             raise AssertionError(f"width observe fail: {name} n_bits={n}")
         return int(n)
@@ -79,16 +77,10 @@ class smu_smc_mailbox_int_test_seq:
             await RisingEdge(clk)
             last = self._sample(signal, label)
             if last == expect:
-                self._timeout_paths.append(
-                    f"{label}: bound={bound} ok last={last}"
-                )
+                self._timeout_paths.append(f"{label}: bound={bound} ok last={last}")
                 return last
-        self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED last={last}"
-        )
-        raise AssertionError(
-            f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect}"
-        )
+        self._timeout_paths.append(f"{label}: bound={bound} EXPIRED last={last}")
+        raise AssertionError(f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect}")
 
     async def _wait_width(
         self,
@@ -115,8 +107,7 @@ class smu_smc_mailbox_int_test_seq:
                 )
                 return last_w, last_val
         self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED "
-            f"last=width={last_w}/val={last_val}"
+            f"{label}: bound={bound} EXPIRED last=width={last_w}/val={last_val}"
         )
         raise AssertionError(
             f"TIMEOUT {label}: bound={bound} "
@@ -151,9 +142,7 @@ class smu_smc_mailbox_int_test_seq:
             label="s1_primary_release",
         )
         if not hasattr(dut, "ext_mailbox_interrupts"):
-            raise AssertionError(
-                "unobservable: tb_top.ext_mailbox_interrupts missing"
-            )
+            raise AssertionError("unobservable: tb_top.ext_mailbox_interrupts missing")
         mbx = dut.ext_mailbox_interrupts
         baseline = self._sample(mbx, "ext_mailbox_interrupts")
         baseline_w = self._nbits(mbx, "ext_mailbox_interrupts")
@@ -194,10 +183,7 @@ class smu_smc_mailbox_int_test_seq:
             f"NUM_MAILBOXES={self.NUM_MAILBOXES})",
         )
         if width != self.NUM_MAILBOXES:
-            raise AssertionError(
-                f"SMC-MBX-IRQ-EXT.S2 width={width} "
-                f"expect={self.NUM_MAILBOXES}"
-            )
+            raise AssertionError(f"SMC-MBX-IRQ-EXT.S2 width={width} expect={self.NUM_MAILBOXES}")
 
         # cleared: end observation window; confirm DUT-driven idle (no force)
         for _ in range(self.SETTLE_CYCLES):
@@ -219,8 +205,7 @@ class smu_smc_mailbox_int_test_seq:
         checked_val = self._sample(mbx, "ext_mailbox_interrupts")
         if checked_w != self.NUM_MAILBOXES:
             raise AssertionError(
-                f"SMC-MBX-IRQ-EXT.S2 checked_cleared width={checked_w} "
-                f"expect={self.NUM_MAILBOXES}"
+                f"SMC-MBX-IRQ-EXT.S2 checked_cleared width={checked_w} expect={self.NUM_MAILBOXES}"
             )
         if checked_val != baseline:
             raise AssertionError(
@@ -229,21 +214,17 @@ class smu_smc_mailbox_int_test_seq:
             )
         self._mark_lifecycle(
             "checked_cleared",
-            "readback cleared for SMC-MBX-IRQ-EXT.S2 "
-            f"(width={checked_w} val=0x{checked_val:x})",
+            f"readback cleared for SMC-MBX-IRQ-EXT.S2 (width={checked_w} val=0x{checked_val:x})",
         )
 
         lc_order = ["set", "observed", "cleared", "checked_cleared"]
         for phase in lc_order:
             if phase not in self._lifecycle_ts:
-                raise AssertionError(
-                    f"CHK-SMC-MBX-IRQ-EXT-S2 lifecycle missing: {phase}"
-                )
+                raise AssertionError(f"CHK-SMC-MBX-IRQ-EXT-S2 lifecycle missing: {phase}")
         for a, b in zip(lc_order, lc_order[1:]):
             if self._lifecycle_ts[a] >= self._lifecycle_ts[b]:
                 raise AssertionError(
-                    f"CHK-SMC-MBX-IRQ-EXT-S2 lifecycle order fail: "
-                    f"{a} not before {b}"
+                    f"CHK-SMC-MBX-IRQ-EXT-S2 lifecycle order fail: {a} not before {b}"
                 )
 
         detail = (
@@ -265,8 +246,7 @@ class smu_smc_mailbox_int_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S3",
-            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry "
-            "+ last-state",
+            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last-state",
         )
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
@@ -278,13 +258,9 @@ class smu_smc_mailbox_int_test_seq:
             )
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}")
         self._log(
             "CHK-TIMEOUT-PATHS: Finite bound on S3; expiry fails with "
             f"last-state diagnostics (paths={n_paths} "
@@ -298,9 +274,7 @@ class smu_smc_mailbox_int_test_seq:
         )
 
         self._step_ts["PASS"] = time.monotonic()
-        self._log(
-            "SMU_ALL_004 sequence complete (PASS term recorded for NONVAC fence)"
-        )
+        self._log("SMU_ALL_004 sequence complete (PASS term recorded for NONVAC fence)")
 
         order = ["S1", "S2", "S3", "PASS"]
         for step_id in order:
@@ -310,14 +284,12 @@ class smu_smc_mailbox_int_test_seq:
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
         deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
-            for a, b in zip(order, order[1:])
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
         positive_deltas = sum(1 for d in deltas_ns if d > 0)
         if positive_deltas != 3:
             raise AssertionError(
-                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
-                f"deltas_ns={deltas_ns}"
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} deltas_ns={deltas_ns}"
             )
         self._log("CHK-NONVAC: Ordered fence S1<S2<S3<PASS all hold")
         sb.expect_eq(

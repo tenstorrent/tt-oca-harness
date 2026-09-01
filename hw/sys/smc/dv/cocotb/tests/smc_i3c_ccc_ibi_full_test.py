@@ -10,7 +10,6 @@ testlists/deferred.toml (needs_i3c_dat_dct).
 from __future__ import annotations
 
 import pyuvm
-
 from smc_base_test import smc_base_test
 
 

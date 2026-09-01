@@ -37,9 +37,7 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
             if last == 0:
                 return last
             await RisingEdge(dut.clk_smc_i)
-        raise AssertionError(
-            f"{label}: COLD_WARM last=0x{last:x} want=0 after {_CSR_BOUND} polls"
-        )
+        raise AssertionError(f"{label}: COLD_WARM last=0x{last:x} want=0 after {_CSR_BOUND} polls")
 
     async def body(self) -> None:
         dut = cocotb.top

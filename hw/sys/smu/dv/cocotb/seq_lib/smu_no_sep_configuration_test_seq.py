@@ -94,9 +94,7 @@ class smu_no_sep_configuration_test_seq:
                 f"expect {self.EXPECTED_TIMEOUT_PATHS}"
             )
         for i, line in enumerate(self._timeout_paths):
-            if "bound=" not in line or (
-                "ok last=" not in line and "EXPIRED last=" not in line
-            ):
+            if "bound=" not in line or ("ok last=" not in line and "EXPIRED last=" not in line):
                 raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] shape fail: {line}")
         chk_to = (
             "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
@@ -119,13 +117,10 @@ class smu_no_sep_configuration_test_seq:
         pairs_ok = sum(
             1
             for a, b in zip(order, order[1:])
-            if a in self._step_ts
-            and b in self._step_ts
-            and self._step_ts[a] < self._step_ts[b]
+            if a in self._step_ts and b in self._step_ts and self._step_ts[a] < self._step_ts[b]
         )
         chk_nonvac = (
-            f"CHK-NONVAC: ordered fence S1<S2<PASS "
-            f"(pairs_ok={pairs_ok} expect={len(order) - 1})"
+            f"CHK-NONVAC: ordered fence S1<S2<PASS (pairs_ok={pairs_ok} expect={len(order) - 1})"
         )
         self._log(chk_nonvac)
         sb.expect_eq(

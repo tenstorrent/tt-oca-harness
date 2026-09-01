@@ -42,8 +42,7 @@ class DtpScoreboard(uvm_subscriber):
             self.checks_by_kind["idcode"] += 1
             if (item.result & 0xFFFF_FFFF) != DTP_DEFAULT_IDCODE:
                 self._fail(
-                    f"IDCODE mismatch: expected 0x{DTP_DEFAULT_IDCODE:08x}, "
-                    f"got 0x{item.result:08x}"
+                    f"IDCODE mismatch: expected 0x{DTP_DEFAULT_IDCODE:08x}, got 0x{item.result:08x}"
                 )
             else:
                 self.logger.info("IDCODE check OK: 0x%08x", item.result)
@@ -98,8 +97,8 @@ class DtpScoreboard(uvm_subscriber):
                     )
 
     def check_phase(self) -> None:
-        assert not self.errors, (
-            f"DTP scoreboard found {len(self.errors)} error(s): " + "; ".join(self.errors)
+        assert not self.errors, f"DTP scoreboard found {len(self.errors)} error(s): " + "; ".join(
+            self.errors
         )
         breakdown = " ".join(f"{kind}={count}" for kind, count in self.checks_by_kind.items())
         if self.items_seen and not self.checks:

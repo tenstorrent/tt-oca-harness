@@ -46,15 +46,15 @@ This package covers *IEEE 1149.1 only*.  IJTAG (IEEE 1687) instruments stay in
 ``bfm/ijtag_vip/``.  Boundary-scan (EXTEST/SAMPLE) is out of scope.
 """
 
-from .ocah_jtag_master_agent import OcahJtagMasterAgent
 from .ocah_jtag_checker import OcahJtagChecker, OcahJtagCheckerError
-from .ocah_jtag_master_config import OcahJtagMasterConfig
 from .ocah_jtag_device import OcahJtagDevice, OcahJtagRegister
-from .ocah_jtag_master_driver import OcahJtagMasterDriver, OcahJtagMasterDriverError
 from .ocah_jtag_item import OcahJtagScanItem, OcahJtagStateItem
+from .ocah_jtag_master_agent import OcahJtagMasterAgent
+from .ocah_jtag_master_config import OcahJtagMasterConfig
+from .ocah_jtag_master_driver import OcahJtagMasterDriver, OcahJtagMasterDriverError
 from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
-from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
 from .ocah_jtag_master_sequence import OcahJtagMasterSequence
+from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
 from .ocah_jtag_slave_agent import OcahJtagSlaveAgent
 from .ocah_jtag_slave_config import OcahJtagSlaveConfig
 from .ocah_jtag_slave_driver import (

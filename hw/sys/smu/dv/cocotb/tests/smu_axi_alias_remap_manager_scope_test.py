@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_axi_alias_remap_manager_scope_test_seq import (
     smu_axi_alias_remap_manager_scope_test_seq,
 )

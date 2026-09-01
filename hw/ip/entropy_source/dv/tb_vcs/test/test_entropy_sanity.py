@@ -15,8 +15,9 @@ Test Plan: See TEST_ENTROPY_SANITY.md for detailed step-by-step flow
 """
 
 import cocotb
+
 from test.test_base import *
-from test.test_config import get_custom_config, DecorrelatorConfig
+from test.test_config import DecorrelatorConfig, get_custom_config
 
 
 @cocotb.test()
@@ -41,10 +42,10 @@ async def test_entropy_sanity(dut):
     # All other settings use defaults from test_config.py
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            bypass_mask=0x0        # All lanes decorrelate (no bypass)
+            bypass_mask=0x0  # All lanes decorrelate (no bypass)
         ),
-        decorrelator_samples=50,   # Collect 50 samples
-        fifo_verification_enable=True  # Enable FIFO readout verification
+        decorrelator_samples=50,  # Collect 50 samples
+        fifo_verification_enable=True,  # Enable FIFO readout verification
     )
 
     # ========================================================================

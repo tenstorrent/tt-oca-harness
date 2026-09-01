@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_irq_sources_priority_test_seq import (
     smc_uart_irq_sources_priority_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -30,8 +30,5 @@ class smc_uart_irq_sources_priority_test(smc_base_test):
             type(self).__name__,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                f"IRQ gating={seq.gating_ok} clear={seq.clear_ok} "
-                f"priority={seq.priority_ok}"
-            ),
+            details=(f"IRQ gating={seq.gating_ok} clear={seq.clear_ok} priority={seq.priority_ok}"),
         )

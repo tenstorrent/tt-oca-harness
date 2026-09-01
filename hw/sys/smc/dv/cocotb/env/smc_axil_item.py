@@ -14,7 +14,6 @@ class SmcAxilOp(Enum):
 
 
 class SmcAxilItem(uvm_sequence_item):
-
     def __init__(self, name: str = "SmcAxilItem") -> None:
         super().__init__(name)
         self.op: SmcAxilOp = SmcAxilOp.SAMPLE
