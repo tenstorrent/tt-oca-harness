@@ -133,9 +133,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
             self.log_iteration(
                 idx + 1, beats, "series read incr narrow addr=0x%08x obs=0x%x", addr, obs
             )
-            self.assert_equal(
-                f"series_wr_rd_incr_narrow.rdata#{idx}", obs, exp, f"addr=0x{addr:x}"
-            )
+            self.assert_equal(f"series_wr_rd_incr_narrow.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
             self.operation_count += 1
         _, _, _, _, status = await self.read_series_ctrl(size=size)
         self.status = status

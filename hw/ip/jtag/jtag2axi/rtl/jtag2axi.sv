@@ -277,6 +277,7 @@ module jtag2axi #(
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthRangeOk_A, (DATA_WIDTH >= 8) && (DATA_WIDTH <= 1024))
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthPow2_A,    (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(AtopWidthIs6_A,     ATOP_WIDTH == 6)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(AddrWidthCoversBeatOffset_A, ADDR_WIDTH >= $clog2(DATA_WIDTH / 8))
 
     //--------------------------------------------------------------------------
     // JTAG TDR Shared Shift Register and Update Latches (TCK Domain)

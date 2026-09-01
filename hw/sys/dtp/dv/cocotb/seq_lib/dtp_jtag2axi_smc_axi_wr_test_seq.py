@@ -172,9 +172,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"series_incr_narrow.axi#{idx}",
             )
             observed = self.read_mem_int(addr, size)
-            self.assert_equal(
-                f"series_incr_narrow.mem#{idx}", observed, data, f"addr=0x{addr:x}"
-            )
+            self.assert_equal(f"series_incr_narrow.mem#{idx}", observed, data, f"addr=0x{addr:x}")
             self.operation_count += 1
         _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
         self.assert_equal("series_incr_narrow.status", status, DtpJtag2AxiStatus.SUCCESS)
