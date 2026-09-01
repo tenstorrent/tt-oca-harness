@@ -15,7 +15,7 @@
 # INTEGRITY_RESET_GLITCH : combinational logic in JTAG domain async reset paths
 #=======================================================================================================================
 # Two groups of violations share the same root cause: a flop output drives an async
-# reset pin through a single-gate combinational cell (prim_or2 or prim_and2).
+# reset pin through a single-gate combinational cell (prim_or2, prim_and2, or prim_inv).
 #
 # Group 1 -- 3DCR scan register update flops (5 violations: PTAP + 4 STAPs):
 #   u_*stap*/u_3dcr_scan_reg/gen_rst_n_reset.u_update_flop reset pin is driven by
@@ -29,10 +29,10 @@
 #
 # Group 2 -- IC Reset enable-control scan register update flop (1 violation):
 #   u_reset_enable_control_scan_reg/gen_rst_n_reset.u_update_flop reset pin is driven
-#   by reset_enable_control_scan_ctrl.rst_n combining:
-#     - u_reset_hold_scan_reg/gen_rst_n_reset.u_update_flop/q_o  (TCK-domain scan flop)
-#     - u_test_logic_reset_flop/q_o                               (JTAG TLR soft reset)
-#   Both sources are TCK-domain flops; the combinational merge is glitch-free because
+#   by u_rst_n_or (prim_or2) combining:
+#     - u_reset_hold_inv/out_o     (prim_inv of u_reset_hold_scan_reg, TCK-domain)
+#     - scan_ctrl_i.rst_n          (TAP !test_logic_reset, TCK-domain TLR)
+#   Both sources are TCK-domain flops; the primitive merge is glitch-free because
 #   both inputs only toggle synchronously with TCK.
 #
 # The "glitch" concern only applies when a flop output changes asynchronously relative
@@ -46,7 +46,7 @@ waive_violation -add {ocah_dtp_INTEGRITY_RESET_GLITCH_3dcr_scan_regs} \
     -app { rdc } -tag { INTEGRITY_RESET_GLITCH } -user { bmelton } -timestamp { 15-05-2026 11:30:00 }
 
 waive_violation -add {ocah_dtp_INTEGRITY_RESET_GLITCH_ic_reset_scan_reg} \
-    -comment {IC Reset enable-control scan register update flop async reset is driven by the combinational merge of u_reset_hold_scan_reg output (TCK-domain scan flop) and the JTAG TLR flop output (also TCK-domain). Both sources are TCK-synchronous; no asynchronous glitch is possible on the combined reset net.} \
+    -comment {IC Reset enable-control scan register update flop async reset is driven through prim_or2 of prim_inv(u_reset_hold_scan_reg) and TAP TLR (scan_ctrl_i.rst_n). Both sources are TCK-synchronous; no asynchronous glitch is possible on the combined reset net.} \
     -filter {(Tag == "INTEGRITY_RESET_GLITCH") AND (ContainerInstance =~ "*u_jtag_ptap*")} \
     -app { rdc } -tag { INTEGRITY_RESET_GLITCH } -user { bmelton } -timestamp { 15-05-2026 11:30:00 }
 
