@@ -225,8 +225,8 @@ module sep_wrapper
         .efuse_shim_command_req_o  (efuse_shim_command_req),
         .efuse_shim_command_resp_i (efuse_shim_command_resp),
 
-        .sep_external_axi_req_o  (axi_extension_axi_req),
-        .sep_external_axi_resp_i (axi_extension_axi_resp)
+        .sep_external_axi_req_o   (axi_extension_axi_req),
+        .sep_external_axi_resp_i  (axi_extension_axi_resp)
     );
 
     /////////////////////////

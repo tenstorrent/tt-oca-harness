@@ -267,8 +267,9 @@ module sep_crypto_otbn_wrapper
     // ========================================================================
 
     otbn #(
-        .Stub    (1'b0),
-        .RegFile (otbn_pkg::RegFileFF)
+        .Stub        (1'b0),
+        .FeatStubMai (1'b1),
+        .RegFile     (otbn_pkg::RegFileFF)
     ) u_otbn (
         .clk_i,
         .rst_ni,
