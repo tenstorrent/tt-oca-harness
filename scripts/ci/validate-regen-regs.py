@@ -13,19 +13,8 @@ from pathlib import Path
 
 
 def tracked_generated_python(tree: Path) -> list[Path]:
-    result = subprocess.run(
-        [
-            "git",
-            "-C",
-            str(tree),
-            "ls-files",
-            "-z",
-            "--",
-            ":(glob)**/gen/py/*.py",
-        ],
-        check=True,
-        capture_output=True,
-    )
+    args = ["git", "-C", str(tree), "ls-files", "-z", "--", ":(glob)**/gen/py/*.py"]
+    result = subprocess.run(args, check=True, capture_output=True)
     return [tree / Path(raw.decode()) for raw in result.stdout.split(b"\0") if raw]
 
 
@@ -35,29 +24,24 @@ def generated_json(tree: Path) -> list[Path]:
 
 def main() -> int:
     trees = [Path(arg).resolve() for arg in (sys.argv[1:] or ["."])]
-    nested_roots = {
-        tree: [other for other in trees if other != tree and other.is_relative_to(tree)]
-        for tree in trees
-    }
 
+    # A set (not a list) de-duplicates JSON files found twice because one
+    # requested tree is nested inside another, e.g. "." also globs "nonfree".
     python_count = 0
-    json_count = 0
+    json_paths: set[Path] = set()
     for tree in trees:
         for path in tracked_generated_python(tree):
-            source = path.read_text(encoding="utf-8")
-            compile(source, str(path), "exec")
+            compile(path.read_text(encoding="utf-8"), str(path), "exec")
             python_count += 1
+        json_paths.update(generated_json(tree))
 
-        for path in generated_json(tree):
-            if any(path.is_relative_to(nested) for nested in nested_roots[tree]):
-                continue
-            with path.open(encoding="utf-8") as stream:
-                json.load(stream)
-            json_count += 1
+    for path in json_paths:
+        with path.open(encoding="utf-8") as stream:
+            json.load(stream)
 
     print(
         f"Validated {python_count} generated Python header(s) and "
-        f"{json_count} generated JSON model(s)"
+        f"{len(json_paths)} generated JSON model(s)"
     )
     return 0
 

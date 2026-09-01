@@ -7,19 +7,12 @@ set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
-if (($# == 0)); then
-  set -- .
-fi
+(($# == 0)) && set -- .
 
 check_clean() {
-  local tree=$1
-  local status
-
+  local tree=$1 status
   status=$(git -C "$tree" status --porcelain=v1 --untracked-files=all)
-  if [[ -z "$status" ]]; then
-    return
-  fi
-
+  [[ -z "$status" ]] && return
   echo "ERROR: register collateral is stale in '$tree'." >&2
   printf '%s\n' "$status" >&2
   git -C "$tree" --no-pager diff >&2
@@ -28,9 +21,7 @@ check_clean() {
 }
 
 is_preserved_output() {
-  local tree=$1
-  local path=$2
-
+  local tree=$1 path=$2
   [[ $(git -C "$tree" rev-parse --show-toplevel) == "$ROOT" ]] &&
     [[ "$path" == "hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv" ||
       "$path" == "hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv" ]]
@@ -41,17 +32,14 @@ for tree in "$@"; do
   check_clean "$tree"
 done
 
-# The Make clean target removes every currently declared output and ignored
-# build artifact. Deleting any remaining tracked register outputs additionally
-# proves that obsolete files, which are no longer Make targets, are not retained.
-# The eFuse-bank SV is deliberately hand-edited and classified as external RTL,
-# so it is the sole generated-derived output preserved across this check.
+# ocah-regen-regs-clean removes every declared Make output; deleting any
+# tracked register file that survives that proves it is an obsolete,
+# no-longer-generated artifact. The eFuse-bank SV is hand-edited and
+# classified as external RTL, so it is the one file this check preserves.
 make ocah-regen-regs-clean
 for tree in "$@"; do
   while IFS= read -r -d '' path; do
-    if is_preserved_output "$tree" "$path"; then
-      continue
-    fi
+    is_preserved_output "$tree" "$path" && continue
     rm -f -- "$tree/$path"
   done < <(
     git -C "$tree" ls-files -z -- \
@@ -68,8 +56,6 @@ python3 hw/sys/sep/dv/cocotb/env/sep_reg_meta.py
 
 stale=0
 for tree in "$@"; do
-  if ! check_clean "$tree"; then
-    stale=1
-  fi
+  check_clean "$tree" || stale=1
 done
 exit "$stale"
