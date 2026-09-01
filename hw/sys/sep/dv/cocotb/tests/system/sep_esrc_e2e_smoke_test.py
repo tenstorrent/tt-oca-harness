@@ -11,11 +11,11 @@ generators, wait for a seed, then enable EDN last.
 
 The KM only pulls from the EDN->KM stream when its own PicoRV32 requests entropy
 (km_drbg_sampler asserts TREADY on a CPU DATA read or an enabled prefetch -- never
-autonomously). So this test releases the KM CPU and runs a tiny KM ROM image
-(km_rom_entropy.parhex, loaded via +km_rom_hex in crypto.toml) that
-disables the sampler read-timeout and issues a single blocking DRBG DATA read --
-making the KM genuinely consume one genbits word (a real tvalid && tready
-handshake) and store it to KM SRAM word0.
+autonomously). After the TRNG reset and reinitialization sequence completes, this
+test releases the KM CPU and runs a tiny KM ROM image (km_rom_entropy.parhex,
+loaded via +km_rom_hex in crypto.toml) that disables the sampler read-timeout and
+issues a single blocking DRBG DATA read -- making the KM genuinely consume one
+genbits word (a real tvalid && tready handshake) and store it to KM SRAM word0.
 
 This is a positive-evidence alive smoke (no vacuous pass): the force is proven to
 have taken (lane-0 DUT noise_i tracks the driven bit), a seed is accumulated, the
@@ -32,7 +32,6 @@ not this smoke.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 
@@ -44,10 +43,6 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
 
-        # Release the KM PicoRV32 so it runs km_rom_entropy.parhex; its blocking
-        # DRBG DATA read then waits for the entropy stream and consumes a word.
-        await self.start_seq(sep_km_release_seq("km_release"))
-
         # Shared entropy bring-up: starts the STRICT CHK1..CHK5 scoreboard (report()
         # fails on any stage mismatch; CHK2 actual data = AXI frontdoor FIFO_RDATA),
         # drives the ESRC noise, and runs the reference suite config order through EDN-enable.
@@ -55,6 +50,10 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         # reset, so this smoke also proves AXIS2==pool native routing. This smoke
         # does not drain the 0x1095_0000 FIFO aperture.
         await self.bring_up_entropy(strict=True, score_sinks={"pool": "golden"})
+
+        # Release the KM only after the initial TRNG reset/reinitialization. Its
+        # blocking DRBG DATA read then consumes one word from the live stream.
+        await self.start_seq(sep_km_release_seq("km_release"))
 
         # Concurrent FIFO_RDATA drain so the FIFO never overflows during the long
         # genbits/KM phase (forked after the last bring-up write so it owns the AXI

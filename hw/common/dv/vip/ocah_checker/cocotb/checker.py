@@ -54,9 +54,7 @@ class OcahChecker:
         self.name = name
         self.fail_fast = fail_fast
         self.log = logger or logging.getLogger(name)
-        self.required_ids = frozenset(
-            self._validate_id(check_id) for check_id in required_ids
-        )
+        self.required_ids = frozenset(self._validate_id(check_id) for check_id in required_ids)
         self.findings: list[OcahCheckFinding] = []
         self._seen_ids: set[str] = set()
 
@@ -153,9 +151,7 @@ class OcahChecker:
         if self.check_count == 0:
             problems.append("zero checks executed")
         if failures:
-            problems.append(
-                "failed IDs: " + ", ".join(finding.check_id for finding in failures)
-            )
+            problems.append("failed IDs: " + ", ".join(finding.check_id for finding in failures))
         if missing:
             problems.append("missing required IDs: " + ", ".join(missing))
 
@@ -203,9 +199,7 @@ class OcahChecker:
     @staticmethod
     def _validate_id(check_id: str) -> str:
         if not isinstance(check_id, str) or not _CHECK_ID_RE.fullmatch(check_id):
-            raise ValueError(
-                f"invalid checker ID {check_id!r}; expected CHK-[A-Z0-9][A-Z0-9_-]*"
-            )
+            raise ValueError(f"invalid checker ID {check_id!r}; expected CHK-[A-Z0-9][A-Z0-9_-]*")
         return check_id
 
     @staticmethod

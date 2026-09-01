@@ -15,23 +15,38 @@ import re
 from pathlib import Path
 
 from env.sep_seeded_rng import SepSeededRng
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 _SEP_RTL = Path(__file__).resolve().parents[3] / "rtl"
 _REPO = Path(__file__).resolve().parents[6]
 _PKG = _SEP_RTL / "sep_crypto_pkg.sv"
 _UVM = (
-    _REPO / "vendor" / "chipsalliance" / "adams-bridge" / "upstream"
-    / "src" / "abr_top" / "rtl" / "abr_reg_uvm.sv"
+    _REPO
+    / "vendor"
+    / "chipsalliance"
+    / "adams-bridge"
+    / "upstream"
+    / "src"
+    / "abr_top"
+    / "rtl"
+    / "abr_reg_uvm.sv"
 )
 _PARAMS = (
-    _REPO / "vendor" / "chipsalliance" / "adams-bridge" / "upstream"
-    / "src" / "abr_top" / "rtl" / "abr_params_pkg.sv"
+    _REPO
+    / "vendor"
+    / "chipsalliance"
+    / "adams-bridge"
+    / "upstream"
+    / "src"
+    / "abr_top"
+    / "rtl"
+    / "abr_params_pkg.sv"
 )
 
 
 def _pkg_u32(name: str) -> int:
-    text = _PKG.read_text()
+    text = _PKG.read_text(encoding="utf-8")
     m = re.search(rf"localparam logic \[31:0\] {name} = 32'h([0-9A-Fa-f_]+);", text)
     if not m:
         raise RuntimeError(f"{name} not found in {_PKG}")
@@ -39,7 +54,7 @@ def _pkg_u32(name: str) -> int:
 
 
 def _uvm_reg_off(name: str) -> int:
-    text = _UVM.read_text()
+    text = _UVM.read_text(encoding="utf-8")
     m = re.search(rf"add_reg\(this\.{name}, 'h([0-9a-fA-F]+)\)", text)
     if not m:
         raise RuntimeError(f"{name} add_reg not found in {_UVM}")
@@ -47,7 +62,7 @@ def _uvm_reg_off(name: str) -> int:
 
 
 def _uvm_array_base(name: str) -> int:
-    text = _UVM.read_text()
+    text = _UVM.read_text(encoding="utf-8")
     m = re.search(
         rf"add_reg\(this\.{name}\[i0\], 'h([0-9a-fA-F]+) \+ i0\*'h4\)",
         text,
@@ -58,7 +73,7 @@ def _uvm_array_base(name: str) -> int:
 
 
 def _uvm_submap_off(name: str) -> int:
-    text = _UVM.read_text()
+    text = _UVM.read_text(encoding="utf-8")
     m = re.search(
         rf"add_submap\(this\.{name}\.default_map, 'h([0-9a-fA-F]+)\)",
         text,
@@ -69,7 +84,7 @@ def _uvm_submap_off(name: str) -> int:
 
 
 def _mldsa_core_name() -> tuple[int, int]:
-    text = _PARAMS.read_text()
+    text = _PARAMS.read_text(encoding="utf-8")
     m = re.search(
         r"MLDSA_CORE_NAME\s*=\s*64'h([0-9A-Fa-f]+)_([0-9A-Fa-f]+);",
         text,
@@ -193,7 +208,7 @@ def _selftest() -> None:
     assert ABR_SEED - ABR_BASE == 0x58
     assert ABR_PUBKEY - ABR_BASE == 0x1000
     assert ABR_ERROR_INTR - ABR_INTR == 0x14
-    assert ABR_ERROR_TRIG - ABR_INTR == 0x1c
+    assert ABR_ERROR_TRIG - ABR_INTR == 0x1C
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D

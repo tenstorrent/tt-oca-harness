@@ -31,7 +31,6 @@ from __future__ import annotations
 import os
 
 import pyuvm
-
 from cpu.sep_rom_ot_dma_boot_test import _ROM_DIR, sep_rom_ot_dma_boot_test
 
 

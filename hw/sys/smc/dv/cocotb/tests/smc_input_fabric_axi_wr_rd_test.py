@@ -8,10 +8,10 @@ DV-CARD:          SMC_004   ANCHOR: smc_input_fabric_axi_wr_rd_test
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_input_output_fabric_wr_rd_test_seq import (
     smc_input_output_fabric_wr_rd_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

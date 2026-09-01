@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.3
-:revdate: 2026-08-21
+:revnumber: 0.0.4
+:revdate: 2026-08-31
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -940,22 +940,86 @@ SEP-related DTP configuration is not exposed as an SMU config-struct field.
 The SMU derives SEP debug/STAP enablement from the module parameter `SEP` and
 wires the corresponding DTP interfaces internally to the SEP block when `SEP=1`.
 
-The DTP IC_RESET TDR is composed of three independent struct-typed slices. The
-SMU passes `smc_pkg::jtag_smc_reset_ctrl_t` into the DTP's `ic_reset_smc_t`
-parameter (with `JTAG_IC_RESET_SMC_ENABLE=1`), `sep_pkg::jtag_sep_reset_ctrl_t`
-into `ic_reset_sep_t` (with `JTAG_IC_RESET_SEP_ENABLE=SEP`), and exposes the
-external slice via the SMU's own `ic_reset_ext_t` type parameter and
-`jtag_ic_reset_ext_o` port (gated by `JTAG_IC_RESET_ENABLE`). Each slice's
-`.ovrd`/`.val` sub-structs must be the same width; `jtag_ptap` interleaves them
-into the `{enable, control}` bit order required by the JTAG specification.
+[[ic-reset-tdr-structure]]
+==== IC_RESET TDR Structure
 
-The SMC and SEP slices are consumed inside the SMU and have no port. The
-external slice is reserved for the adopter: set `ic_reset_ext_t` to a struct
-carrying the reset overrides needed by logic instantiated outside the SMU and
-route `jtag_ic_reset_ext_o` to that logic. The struct is defined by the adopter,
-not by the OCAH packages; the parameter default
+The DTP primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+independently enabled slices plus a single `reset_hold` bit nearest TDO. At the
+SMU the scan order from TDI to TDO is:
+
+[source]
+----
+TDI → SMC slice → SEP slice → external slice → reset_hold → TDO
+----
+
+The SMU enables the SMC slice unconditionally, the SEP slice when `SEP=1`
+(otherwise that slice has width 0 and is omitted), and the external slice when
+`JTAG_IC_RESET_ENABLE` is set. Each slice is a packed struct with `.ovrd` and
+`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`
+and interleaves the halves into the `{reset_enable, reset_control}` pair IEEE
+§17 requires per port. Declaration order within each half is the TDI-to-TDO
+scan order: the first field is nearest TDI.
+
+[cols="<18%,<12%,<28%,<42%",options="header"]
+|===
+|Slice |Ports |Defined by |Consumed by
+|SMC |68 |OCAH (`smc_pkg::jtag_smc_reset_ctrl_t`) |SMC reset unit; SMU-internal, no SMU port
+|SEP |7 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
+|External |`$bits(ic_reset_ext_t)/2` |Adopter (`ic_reset_ext_t`) |SMU output `jtag_ic_reset_ext_o`
+|`reset_hold` |1 bit |IEEE 1149.1 §17 |Nearest TDO; not a reset port
+|===
+
+The TDR length is `2 * (SMC ports + SEP ports + external ports) + 1`. Programming
+order and `reset_enable` polarity are in the DTP JTAG chapter of the Technical
+Reference Manual.
+
+===== SMC slice (TDI to TDO)
+
+The SMC slice covers the SMC reset domains and the 32 managed-subsystem (SS)
+cold and warm resets. Vector index `[31]` of each SS field is nearer TDI than
+`[0]`.
+
+[cols="<35%,<65%",options="header"]
+|===
+|Port |Reset domain
+|`ss_warm_reset_n[31:0]` |Per-subsystem warm reset
+|`ss_cold_reset_n[31:0]` |Per-subsystem cold reset
+|`cold_reset_n` |SMC cold reset
+|`cool_reset_n` |SMC cool reset
+|`warm_reset_n` |SMC warm reset
+|`fuse_reset_n` |Fuse reset (nearest the SEP slice)
+|===
+
+===== SEP slice (TDI to TDO)
+
+When `SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
+Manager, and TRNG resets consumed by `sep_reset_ctrl`. `trng_jtag_rst_n` is
+nearest TDI.
+
+[cols="<35%,<65%",options="header"]
+|===
+|Port |Reset domain
+|`trng_jtag_rst_n` |TRNG
+|`sep_reset_n` |SEP main reset
+|`kmac_jtag_rst_n` |KMAC
+|`hmac_jtag_rst_n` |HMAC
+|`aes_jtag_rst_n` |AES
+|`otbn_jtag_rst_n` |OTBN
+|`km_jtag_rst_n` |Key Manager (nearest the external slice)
+|===
+
+===== External slice (adopter-defined)
+
+The external slice is reserved for reset overrides on logic instantiated
+outside the SMU. OCAH does not name its ports. Set the SMU type parameter
+`ic_reset_ext_t` to a packed struct with `.ovrd` and `.val` halves of equal
+width, and route `jtag_ic_reset_ext_o` to that logic. The parameter default
 (`jtag_tap_pkg::jtag_ic_reset_default_t`) is a single-override stub. Clear
 `JTAG_IC_RESET_ENABLE` when no external overrides are required.
+
+Declare a new external override at each half's MSB so already-assigned TDR
+positions do not shift. Extra subsystem reset controls beyond the SMC slice
+use this typed port.
 
 ==== DTP Parameter Pass-Through
 
@@ -1865,6 +1929,7 @@ rule below. The reference mapping uses these names:
 |`d0nt_stdbuf`    |Size only   |`prim_stdbuf`
 |`d0nt_stdinv`    |Size only   |`prim_flop_*sync_*` reset inverter
 |`d0nt_an`        |Size only   |`prim_and2`
+|`d0nt_ao222`     |Size only   |`prim_ao222`
 |`d0nt_wrap_sync` |Size only   |`prim_flop_*sync_*` synchronizer flops
 |===
 

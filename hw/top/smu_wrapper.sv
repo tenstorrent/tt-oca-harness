@@ -217,20 +217,7 @@ module smu_wrapper
     output smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o[31:0],
     output logic  sync_irq_o,
 
-    // CPU Memory Signals (SMC-side CPU cache/SRAM banks; macro interfaces
-    // passed straight through, see hw/top/README.md)
-    output chipyard_4core_mem_pkg::rom_req_t            rom_intf_req_o,
-    input  chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp_i,
-    output chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req_o      [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::scratch_ram_rsp_t    scratch_ram_intf_rsp_i      [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_icache_tag_req_t  l1_icache_tag_intf_req_o    [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i    [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_icache_data_req_t l1_icache_data_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t l1_icache_data_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o    [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i    [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+    // CPU ROM/scratch/L1$ are absorbed by smc_ip_integration (not ports).
 
     // Memory Init
     input  logic  disable_sram_auto_init_i,
@@ -271,6 +258,8 @@ module smu_wrapper
     input  logic  entropy_rosc_sample_clk_i,
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
+    input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,
 
     input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_extintsrc_req_i,
 
@@ -316,6 +305,30 @@ module smu_wrapper
     smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select;
+    // CPU mem macros (smu <-> smc_ip_integration)
+    chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
+    chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
+    chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+    chipyard_4core_mem_pkg::scratch_ram_rsp_t    scratch_ram_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_tag_req_t  l1_icache_tag_intf_req
+        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_data_req_t l1_icache_data_intf_req
+        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_data_rsp_t l1_icache_data_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_tag_req_t  l1_dcache_tag_intf_req
+        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_intf_req
+        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
@@ -400,6 +413,19 @@ module smu_wrapper
         .pad2core_en_o (pad2core_en),
         .core2pad_en_o (core2pad_en),
 
+        .rom_intf_req_o            (rom_intf_req),
+        .rom_intf_rsp_i            (rom_intf_rsp),
+        .scratch_ram_intf_req_o    (scratch_ram_intf_req),
+        .scratch_ram_intf_rsp_i    (scratch_ram_intf_rsp),
+        .l1_icache_tag_intf_req_o  (l1_icache_tag_intf_req),
+        .l1_icache_tag_intf_rsp_i  (l1_icache_tag_intf_rsp),
+        .l1_icache_data_intf_req_o (l1_icache_data_intf_req),
+        .l1_icache_data_intf_rsp_i (l1_icache_data_intf_rsp),
+        .l1_dcache_tag_intf_req_o  (l1_dcache_tag_intf_req),
+        .l1_dcache_tag_intf_rsp_i  (l1_dcache_tag_intf_rsp),
+        .l1_dcache_data_intf_req_o (l1_dcache_data_intf_req),
+        .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp),
+
         .smc_efuse_bank_ctrl_req_o     (smc_efuse_bank_ctrl_req),
         .smc_efuse_bank_ctrl_resp_i    (smc_efuse_bank_ctrl_resp),
         .smc_efuse_shim_command_req_o  (smc_efuse_shim_command_req),
@@ -456,6 +482,19 @@ module smu_wrapper
         .core2pad_en_i (core2pad_en),
 
         .gpio_pad_io (gpio_pad_io),
+
+        .rom_intf_req            (rom_intf_req),
+        .rom_intf_rsp            (rom_intf_rsp),
+        .scratch_ram_intf_req    (scratch_ram_intf_req),
+        .scratch_ram_intf_rsp    (scratch_ram_intf_rsp),
+        .l1_icache_tag_intf_req  (l1_icache_tag_intf_req),
+        .l1_icache_tag_intf_rsp  (l1_icache_tag_intf_rsp),
+        .l1_icache_data_intf_req (l1_icache_data_intf_req),
+        .l1_icache_data_intf_rsp (l1_icache_data_intf_rsp),
+        .l1_dcache_tag_intf_req  (l1_dcache_tag_intf_req),
+        .l1_dcache_tag_intf_rsp  (l1_dcache_tag_intf_rsp),
+        .l1_dcache_data_intf_req (l1_dcache_data_intf_req),
+        .l1_dcache_data_intf_rsp (l1_dcache_data_intf_rsp),
 
         .efuse_debug_bus_o (smc_efuse_debug_bus_o)
     );

@@ -28,10 +28,10 @@ from cocotb.triggers import Timer
 
 from ocah_uart_vip import OcahUartConsole, OcahUartMonitor
 
-
 # ---------------------------------------------------------------------------
 # Example 1 — Basic loopback: send a string and read it back line-by-line
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_uart_loopback(dut):
@@ -42,12 +42,12 @@ async def example_uart_loopback(dut):
     # Construct the console wrapper.  Both baud and log file can also be set
     # via plusargs: +uart_baud=115200 and +uart_log=/tmp/smc_uart.log
     console = OcahUartConsole(
-        dut.uart_txd,       # TX signal handle  (DUT pin name may differ)
-        dut.uart_rxd,       # RX signal handle
+        dut.uart_txd,  # TX signal handle  (DUT pin name may differ)
+        dut.uart_rxd,  # RX signal handle
         dut.clk,
         name="smc_console",
         baud=115200,
-        timeout_us=2_000,   # 2 ms per-byte timeout
+        timeout_us=2_000,  # 2 ms per-byte timeout
     )
 
     # Init signals before the first clock edge to avoid X propagation.
@@ -77,7 +77,7 @@ async def example_uart_loopback(dut):
     stats = console.get_statistics()
     cocotb.log.info("Console stats: %s", stats)
     assert stats["bytes_sent"] > 0
-    assert stats["lines_received"] == 4   # "ping" + 3 numbered lines
+    assert stats["lines_received"] == 4  # "ping" + 3 numbered lines
 
     cocotb.log.info("example_uart_loopback PASSED")
 
@@ -86,6 +86,7 @@ async def example_uart_loopback(dut):
 # Example 2 — Pattern matching with expect()
 # ---------------------------------------------------------------------------
 
+
 @cocotb.test()
 async def example_uart_expect(dut):
     """Boot SMC and wait for the firmware boot banner."""
@@ -93,7 +94,9 @@ async def example_uart_expect(dut):
     cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
 
     console = OcahUartConsole(
-        dut.uart_txd, dut.uart_rxd, dut.clk,
+        dut.uart_txd,
+        dut.uart_rxd,
+        dut.clk,
         name="smc_boot",
         baud=115200,
         timeout_us=10_000,  # firmware may take a few ms to print
@@ -104,7 +107,7 @@ async def example_uart_expect(dut):
     # any line containing "SMC" and "ready" (case-insensitive).
     banner = await console.expect(
         r"(?i)smc.*ready",
-        timeout_us=50_000,   # 50 ms budget for firmware boot
+        timeout_us=50_000,  # 50 ms budget for firmware boot
     )
     cocotb.log.info("Boot banner received: %r", banner)
 
@@ -120,21 +123,18 @@ async def example_uart_expect(dut):
 # Example 3 — Passive monitor alongside a console driver
 # ---------------------------------------------------------------------------
 
+
 @cocotb.test()
 async def example_uart_monitor(dut):
     """Attach a passive monitor to observe both TX and RX bytes."""
 
     cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
 
-    console = OcahUartConsole(
-        dut.uart_txd, dut.uart_rxd, dut.clk, name="console", baud=115200
-    )
+    console = OcahUartConsole(dut.uart_txd, dut.uart_rxd, dut.clk, name="console", baud=115200)
     console.init_signals()
 
     # Passive monitor taps the same lines without interfering.
-    monitor = OcahUartMonitor(
-        dut.uart_txd, dut.uart_rxd, dut.clk, name="uart_mon", baud=115200
-    )
+    monitor = OcahUartMonitor(dut.uart_txd, dut.uart_rxd, dut.clk, name="uart_mon", baud=115200)
 
     # Accumulate observed bytes for post-test checking.
     observed_tx: list = []
@@ -144,14 +144,14 @@ async def example_uart_monitor(dut):
     monitor.add_rx_callback(lambda b: observed_rx.append(b))
     await monitor.start()
 
-    await Timer(100, units="ns")   # settle
+    await Timer(100, units="ns")  # settle
 
     # Send a known string; DUT loops it back.
     test_str = "hello"
     await console.send_string(test_str + "\n")
     await console.read_line(timeout_us=5_000)
 
-    await Timer(500, units="ns")   # allow monitor to drain
+    await Timer(500, units="ns")  # allow monitor to drain
     await monitor.stop()
 
     # Verify the monitor captured what was sent.
@@ -171,15 +171,14 @@ async def example_uart_monitor(dut):
 # Example 4 — Baud-rate reconfiguration
 # ---------------------------------------------------------------------------
 
+
 @cocotb.test()
 async def example_uart_baud_change(dut):
     """Change baud rate mid-test."""
 
     cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
 
-    console = OcahUartConsole(
-        dut.uart_txd, dut.uart_rxd, dut.clk, name="baud_test", baud=9600
-    )
+    console = OcahUartConsole(dut.uart_txd, dut.uart_rxd, dut.clk, name="baud_test", baud=9600)
     console.init_signals()
     await Timer(100, units="ns")
 

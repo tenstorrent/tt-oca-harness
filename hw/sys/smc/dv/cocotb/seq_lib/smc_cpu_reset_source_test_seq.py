@@ -35,17 +35,14 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
                 return last
             await RisingEdge(cocotb.top.clk_smc_i)
         raise AssertionError(
-            f"{label}: RESET_TIMEOUT last=0x{last:x} applied want={want} "
-            f"after {_CSR_BOUND} polls"
+            f"{label}: RESET_TIMEOUT last=0x{last:x} applied want={want} after {_CSR_BOUND} polls"
         )
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
         ctrl0 = await self.csr_read("RESET_CTRL_IDLE", RESET_CTRL)
-        assert (ctrl0 & CORE0_N) != 0, (
-            f"core0_reset_n already 0: RESET_CTRL=0x{ctrl0:x}"
-        )
+        assert (ctrl0 & CORE0_N) != 0, f"core0_reset_n already 0: RESET_CTRL=0x{ctrl0:x}"
         tmo0 = await self._await_applied(0, "IDLE")
         self.idle_ok = True
         cocotb.log.info(
@@ -57,9 +54,7 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
         await self.csr_write("RESET_CTRL_CORE0_LO", RESET_CTRL, ctrl0 & ~CORE0_N)
         tmo1 = await self._await_applied(1, "ASSERT")
         ctrl1 = await self.csr_read("RESET_CTRL_ASSERTED", RESET_CTRL)
-        assert (ctrl1 & CORE0_N) == 0, (
-            f"core0_reset_n did not stick: RESET_CTRL=0x{ctrl1:x}"
-        )
+        assert (ctrl1 & CORE0_N) == 0, f"core0_reset_n did not stick: RESET_CTRL=0x{ctrl1:x}"
         self.assert_ok = True
         cocotb.log.info(
             "CHK-CPU-RST-SW: core0_reset_n=0 RESET_TIMEOUT=0x%x applied=1",
@@ -69,9 +64,7 @@ class smc_cpu_reset_source_test_seq(SmcCsrSeq):
         await self.csr_write("RESET_CTRL_CORE0_HI", RESET_CTRL, ctrl1 | CORE0_N)
         tmo2 = await self._await_applied(0, "RELEASE")
         ctrl2 = await self.csr_read("RESET_CTRL_RELEASED", RESET_CTRL)
-        assert (ctrl2 & CORE0_N) != 0, (
-            f"core0_reset_n did not release: RESET_CTRL=0x{ctrl2:x}"
-        )
+        assert (ctrl2 & CORE0_N) != 0, f"core0_reset_n did not release: RESET_CTRL=0x{ctrl2:x}"
         self.release_ok = True
         cocotb.log.info(
             "CHK-CPU-RST-REL: core0_reset_n=1 RESET_TIMEOUT=0x%x applied=0",

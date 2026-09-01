@@ -173,7 +173,9 @@ def pack_csrng_cmd(acmd: int, glen: int = 0, clen: int = 0, flags: int = 0) -> i
     return ((glen & 0xFFF) << 12) | ((flags & 0xF) << 8) | ((clen & 0xF) << 4) | (acmd & 0x7)
 
 
-async def wait_for_endpoint_axis_word(dut, endpoint: int = 0, cycles: int = E2E_AXIS_TIMEOUT_CYCLES) -> int:
+async def wait_for_endpoint_axis_word(
+    dut, endpoint: int = 0, cycles: int = E2E_AXIS_TIMEOUT_CYCLES
+) -> int:
     """Wait for one endpoint AXI-Stream word to become visible without consuming it."""
     for _ in range(cycles):
         await RisingEdge(dut.clk_i)
@@ -208,7 +210,9 @@ async def wait_for_csrng_cmd_done(dut, cycles: int = E2E_AXIS_TIMEOUT_CYCLES) ->
     raise AssertionError("Timed out waiting for CSRNG command completion")
 
 
-async def read_csrng_genbits_words(dut, words: int = 4, cycles: int = E2E_AXIS_TIMEOUT_CYCLES) -> List[int]:
+async def read_csrng_genbits_words(
+    dut, words: int = 4, cycles: int = E2E_AXIS_TIMEOUT_CYCLES
+) -> List[int]:
     """Wait for one software genbits block, then read out its 32-bit words."""
     for _ in range(cycles):
         genbits_vld, resp = await axil32_read(dut, "csrng", CSRNG_GENBITS_VLD_OFFSET)
@@ -273,7 +277,9 @@ async def test_entropy_to_csrng_software_path(dut):
     await wait_for_csrng_cmd_done(dut)
 
     await wait_for_csrng_sw_cmd_ready(dut)
-    resp = await axil32_write(dut, "csrng", CSRNG_CMD_REQ_OFFSET, pack_csrng_cmd(CSRNG_ACMD_GEN, glen=1))
+    resp = await axil32_write(
+        dut, "csrng", CSRNG_CMD_REQ_OFFSET, pack_csrng_cmd(CSRNG_ACMD_GEN, glen=1)
+    )
     assert resp == AXI_RESP_OKAY
     genbits_words = await read_csrng_genbits_words(dut)
     await wait_for_csrng_cmd_done(dut)
@@ -308,7 +314,9 @@ async def test_entropy_to_edn_end_to_end(dut):
 
     resp = await axil32_write(dut, "edn", EDN_BOOT_INS_CMD_OFFSET, pack_csrng_cmd(CSRNG_ACMD_INS))
     assert resp == AXI_RESP_OKAY
-    resp = await axil32_write(dut, "edn", EDN_BOOT_GEN_CMD_OFFSET, pack_csrng_cmd(CSRNG_ACMD_GEN, glen=1))
+    resp = await axil32_write(
+        dut, "edn", EDN_BOOT_GEN_CMD_OFFSET, pack_csrng_cmd(CSRNG_ACMD_GEN, glen=1)
+    )
     assert resp == AXI_RESP_OKAY
     resp = await axil32_write(dut, "edn", EDN_CTRL_OFFSET, edn_ctrl)
     assert resp == AXI_RESP_OKAY
@@ -553,12 +561,24 @@ async def test_control_plane_idle_and_passthrough(dut):
 
     for _ in range(4):
         await RisingEdge(dut.clk_i)
-        assert int(dut.intr_cs_cmd_req_done_o.value) == int(dut.u_dut.u_csrng.intr_cs_cmd_req_done_o.value)
-        assert int(dut.intr_cs_entropy_req_o.value) == int(dut.u_dut.u_csrng.intr_cs_entropy_req_o.value)
-        assert int(dut.intr_cs_hw_inst_exc_o.value) == int(dut.u_dut.u_csrng.intr_cs_hw_inst_exc_o.value)
-        assert int(dut.intr_cs_fatal_err_o.value) == int(dut.u_dut.u_csrng.intr_cs_fatal_err_o.value)
-        assert int(dut.intr_edn_cmd_req_done_o.value) == int(dut.u_dut.u_edn.intr_edn_cmd_req_done_o.value)
-        assert int(dut.intr_edn_fatal_err_o.value) == int(dut.u_dut.u_edn.intr_edn_fatal_err_o.value)
+        assert int(dut.intr_cs_cmd_req_done_o.value) == int(
+            dut.u_dut.u_csrng.intr_cs_cmd_req_done_o.value
+        )
+        assert int(dut.intr_cs_entropy_req_o.value) == int(
+            dut.u_dut.u_csrng.intr_cs_entropy_req_o.value
+        )
+        assert int(dut.intr_cs_hw_inst_exc_o.value) == int(
+            dut.u_dut.u_csrng.intr_cs_hw_inst_exc_o.value
+        )
+        assert int(dut.intr_cs_fatal_err_o.value) == int(
+            dut.u_dut.u_csrng.intr_cs_fatal_err_o.value
+        )
+        assert int(dut.intr_edn_cmd_req_done_o.value) == int(
+            dut.u_dut.u_edn.intr_edn_cmd_req_done_o.value
+        )
+        assert int(dut.intr_edn_fatal_err_o.value) == int(
+            dut.u_dut.u_edn.intr_edn_fatal_err_o.value
+        )
         assert int(dut.csrng_alert_p_o.value) == int(dut.csrng_inner_alert_p_o.value)
         assert int(dut.csrng_alert_n_o.value) == int(dut.csrng_inner_alert_n_o.value)
         assert int(dut.edn_alert_p_o.value) == int(dut.edn_inner_alert_p_o.value)

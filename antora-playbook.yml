@@ -36,6 +36,12 @@ content:
       branches: HEAD
       start_path: doc/contributing
       edit_url: false
+asciidoc:
+  attributes:
+    kroki-default-format: svg
+    kroki-fetch-diagram: true
+  extensions:
+    - asciidoctor-kroki
 ui:
   bundle:
     # Pinned 2026-07-24 to the latest antora-ui-default commit at the time

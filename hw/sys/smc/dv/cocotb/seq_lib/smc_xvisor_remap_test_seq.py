@@ -57,6 +57,4 @@ class smc_xvisor_remap_test_seq(SmcCsrSeq):
                 addr,
                 expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
             )
-        assert self.accesses == len(XVISOR_REMAP_ATTRS_ADDRS), (
-            "XVISOR_REMAP sweep count mismatch"
-        )
+        assert self.accesses == len(XVISOR_REMAP_ATTRS_ADDRS), "XVISOR_REMAP sweep count mismatch"

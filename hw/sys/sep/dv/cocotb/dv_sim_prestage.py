@@ -117,17 +117,32 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_efuse_sense_test": {"mode": "preload", "preload": str(_DEFAULT_EFUSE_PRELOAD)},
     # LC stitch: starts at TEST_DEV (lc_raw=0x0) with SIP/SYS pins.
     "sep_efuse_lcc_lc_state_stitch_test": {
-        "mode": "random", "lc_raw": 0x0, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     # PROD-lifecycle real-sense tests (lc_raw=0x1 = LC_PROD).
     "sep_efuse_jtag_axil_el2_cpu_mux_test": {"mode": "random", "lc_raw": 0x1},
     "sep_fabric_inbound_filter_rule_matrix_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     "sep_sec_dis_override_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     "sep_lcc_uvm_inbound_filter_gating_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN),
+    },
     "sep_efuse_km_axil_cpu_mux_coexist_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": {"CHIPLET_UID": 0xDEAD_BEEF}},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": {"CHIPLET_UID": 0xDEAD_BEEF},
+    },
     "sep_km_kmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_aes_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_hmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},

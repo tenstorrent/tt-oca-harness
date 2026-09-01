@@ -19,7 +19,7 @@ module sep_wrapper
     import km_intf_pkg::*;
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
-    parameter int unsigned EXT_TRNG_NUM_AXIS = 2,
+    parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
         input  logic clk_i,
@@ -65,6 +65,10 @@ module sep_wrapper
         output logic        dmi_active,
 
         output sep_cpu_trace_t sep_cpu_trace,
+
+        // CPU lockstep control/status; names match sep's ports for the .* binding
+        input  sep_lockstep_ctrl_t   lockstep_ctrl_i,
+        output sep_lockstep_status_t lockstep_status_o,
 
         input logic [31:1] rst_vec,
         input logic [31:1] jtag_id,
