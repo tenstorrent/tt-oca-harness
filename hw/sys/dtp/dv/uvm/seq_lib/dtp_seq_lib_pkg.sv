@@ -24,6 +24,7 @@ package dtp_seq_lib_pkg;
 
     import ocah_jtag_uvm_pkg::*;
     import ocah_axi_uvm_pkg::*;   // shared AXI cfg/evidence handles
+    import ocah_checker_uvm_pkg::*; // protocol-neutral named-evidence base
     import jtag_tap_pkg::*;       // DUT one-hot tap_state_e for scan-path checks
     import jtag_inst_reg_pkg::*;
 
@@ -83,5 +84,11 @@ package dtp_seq_lib_pkg;
     `include "dtp_stap_scan_test_seq.svh"
     `include "dtp_dbg_disable_scan_matrix_test_seq.svh"
     `include "dtp_dbg_disable_jtag2axi_matrix_test_seq.svh"
+
+    // Cross-trigger scenarios (XTRIG CSR / CTP protocols / CTM routing).
+    `include "dtp_xtrig_base_test_seq.svh"
+    `include "dtp_xtrig_csr_test_seq.svh"
+    `include "dtp_xtrig_route_test_seq.svh"
+    `include "dtp_ctm_route_test_seq.svh"
 
 endpackage : dtp_seq_lib_pkg
