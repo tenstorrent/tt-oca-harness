@@ -4,9 +4,11 @@
 
 sep_cpu_ctrl.rdl implements one bit (pka_cg_enable[0:0]); RTL sinks it into an
 unused net. This test is the iconic clock-gate vehicle: it proves the
-implemented bit stores, and that AES / HMAC / OTBN / SW_DEBUG CSRs still
-complete OKAY with the bit 0 and 1. That is decode / stub-const, not a live
-per-IP gate -- no bit in this map clocks an IP off.
+implemented bit stores, and that AES / HMAC / OTBN / SW_DEBUG CSRs read the
+same value with the bit set and clear. That is decode / stub-const, not a live
+per-IP gate -- no bit in this map clocks an IP off. Completing OKAY on both
+polarities is not the contract: a witness that moved with the enable would
+still answer.
 
 no_cpu / +skip_fuse_sense. Distinct from sep_crypto_per_ip_reset_isolation_test
 (SW_RESET_N isolation) and from the address-map CLOCK_GATE_CTRL storage poke.

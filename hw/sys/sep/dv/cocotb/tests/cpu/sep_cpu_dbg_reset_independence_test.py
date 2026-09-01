@@ -1,33 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP CPU debug-reset domain-isolation test (PyUVM).
+"""SEP CPU reset-observable baseline and liveness (PyUVM).
 
-CPU-complex Phase-2 rep CPU debug-reset independence. reference provenance:
+CPU-complex reset-observable baseline and liveness. reference provenance:
 clock/sep_clock_uvm_reset_assertion_deassertion_test (dbg_rstb path) +
 clock/sep_clock_uvm_jtag_clock_independence_test.
 
-Proves the EL2 debugger reset ``dbg_rstb_i`` is reset-domain-isolated from the
-system/CPU reset: pulsing ``dbg_rstb_i`` low (with ``rst_ni`` held released) must
-NOT disturb the system reset ``sep_reset_n`` (``dbg_sep_reset_n_o``) or the CPU
-warm reset ``sep_cpu_reset_n`` (``sep_cpu_reset_n_o``). This is the safety-relevant,
-fully-frontdoor half of the spec property -- the positive "debug logic was reset"
-confirmation needs JTAG-DTM debug-module access not wired on bare sep (deferred,
-see the VPLAN card; no backdoor probe is added).
+Proves the two reset observables are released at rest and that the CPU
+observable is live under a real reset source. ``dbg_rstb_i`` isolation is not
+claimed: in ``lsu_stub_all_live`` the pin has no netlist path to either
+observable, so a pulse-and-check assert cannot fail.
 
 ``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:21) brought out as a
 controllable top-level port; ``sep_base_test`` default-drives it released (1).
 
 Checks (each asserts an exact value; ``self.rd`` resolves X->0, so the ==1
 released checks fail on a stuck/X reset tree):
-  CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released
-                 (the isolation checker is not trivially always-true).
-  CHK-LIVE     : a real reset source (wdt_rst_ni_i low) DOES drop sep_cpu_reset_n
+  CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released.
+  CHK-LIVE     : a real reset source (wdt_rst_ni_i low) drops sep_cpu_reset_n
                  to 0, then restores it -- so the observable is live, not stuck-1.
 
-NOT covered: the dbg_rstb_i isolation claim itself. In this build the pin has no
-path to either observable, so a pulse-and-check assert cannot fail. See the long
-note in run_scenario for why, and what closing it would take. Do not re-add such
-a check without both a run-mode change and a positive debug-domain observable.
+Closing the isolation claim needs a cpu run-mode so the pin reaches ``sep_cpu``
+and a specification statement to check it against. Do not add a pulse-and-check
+without both.
 
 no_cpu / +skip_fuse_sense (reset-observable only; no AXI traffic, no OTP read).
 """
@@ -45,7 +40,7 @@ _SETTLE = 5
 
 @pyuvm.test()
 class sep_cpu_dbg_reset_independence_test(sep_base_test):
-    """Pulse dbg_rstb_i and verify the system/CPU reset domain is undisturbed."""
+    """Baseline release and liveness of the CPU reset observable."""
 
     build_env = False
 

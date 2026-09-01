@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP external-SRAM datapath-breadth test (PyUVM).
 
-Memory-subsystem Phase-2 rep SRAM datapath breadth. reference provenance: uvm_tests/sram
+Memory-subsystem SRAM datapath breadth. reference provenance: uvm_tests/sram
 sep_sram_uvm_byte_strobe / byte_pattern / data_pattern / addr_boundary /
 write_read / sequential_access. Exercises the external scratch SRAM
-(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the Phase-1
+(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the
 smoke (a single 64-bit R/W + one 32-bit partial).
 
 `[RANDCFG]` -- ``SepSramBreadthCfg`` is the single source of truth for both the
@@ -32,7 +32,8 @@ positive PASS line):
   CHK-PATTERN  : each cfg data pattern reads back exactly.
   CHK-BOUNDARY : the base word and the top valid word R/W read back exactly.
   CHK-SEQ      : a run of consecutive single-beat 64-bit words, per-word integrity.
-  CHK-NONVAC   : a distinct unwritten word differs from the written pattern.
+  CHK-NONVAC   : two addresses hold complementary written values, so a
+                 stuck read path fails.
 
 no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 """

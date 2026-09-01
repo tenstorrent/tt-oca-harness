@@ -99,10 +99,10 @@ class SepSramBreadthCfg:
         self.seq_offset = self._aligned(rng, 0x3000, 0x3F00)
         self.seq_seed = rng.getrandbits(64)
 
-        # Non-vacuity: a distinct unwritten word adjacent to a written one.
+        # Non-vacuity: two adjacent words written with complementary patterns.
         self.nonvac_wr_offset = self._aligned(rng, 0x4000, 0x5000)
         self.nonvac_rd_offset = self.nonvac_wr_offset + 8
-        self.nonvac_pattern = rng.getrandbits(64) | 1  # ensure nonzero
+        self.nonvac_pattern = rng.getrandbits(64)
 
     @staticmethod
     def _aligned(rng: SepSeededRng, lo: int, hi: int) -> int:
