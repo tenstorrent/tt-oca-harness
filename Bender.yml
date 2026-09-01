@@ -146,7 +146,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "66ce4f176e812900e34f874caa0ea0b0d3928f65" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "7a452ce59e355ea6dbaec5241217ba3fca057664" }
     include_from_upstream:
       - "src"
       - "include"
@@ -948,7 +948,6 @@ sources:
       - hw/sys/sep/rtl/kmac_wrapper.sv
       - hw/sys/sep/rtl/sep.sv
       - hw/sys/sep/rtl/sep_cpu.sv
-      - hw/sys/sep/rtl/axi_lite_isolate.sv
       - hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv
       - hw/sys/sep/rtl/sep_trng.sv
       - hw/sys/sep/rtl/sep_crypto.sv

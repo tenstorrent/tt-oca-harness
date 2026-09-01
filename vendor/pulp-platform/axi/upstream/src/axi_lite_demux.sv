@@ -464,9 +464,6 @@ module axi_lite_demux #(
     ar_stable: assert property( @(posedge clk_i) (slv_ar_valid && !slv_ar_ready)
                                |=> $stable(slv_ar_chan.ar)) else
       $fatal(1, "slv_ar_chan unstable with valid set.");
-    // The select binds once the request is presented at a master port (its W route is committed
-    // on first presentation); a request stalled at the select FIFO gate is not yet committed and
-    // its select may still change.  Mirrors the `slv_*_select_stable` contract of `axi_demux`.
     aw_select_stable: assert property( @(posedge clk_i) ((|mst_aw_valids) && !slv_aw_ready)
                                |=> $stable(slv_aw_chan.select)) else
       $fatal(1, "slv_aw_select unstable with the AW presented at a master port.");

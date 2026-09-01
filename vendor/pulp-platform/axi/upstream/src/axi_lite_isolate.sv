@@ -10,9 +10,6 @@
 /// AXI4-Lite variant of `axi_isolate`: isolates the master port from the slave port.  When the
 /// isolation is not active, the two ports are directly connected.
 ///
-/// This module counts how many open transactions are currently in flight on the read and write
-/// channels.
-///
 /// The isolation interface has two signals: `isolate_i` and `isolated_o`.  When `isolate_i` is
 /// asserted, all open transactions are gracefully terminated.  When no transactions are in flight
 /// anymore, the `isolated_o` output is asserted.  As long as `isolated_o` is asserted, all output
@@ -72,13 +69,10 @@ module axi_lite_isolate #(
   `AXI_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t)
   `AXI_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t)
 
-  // Capacity of the isolation core, derived from the maximum number of transactions the
-  // demux admits.  A write occupies a W-select FIFO slot from AW acceptance until its W beat and
-  // a B-select FIFO slot from then until its B response, so at most 2*MaxTrans writes (and
-  // MaxTrans reads, bounded by the R-select FIFO) can be past the demux at once.  Sizing the
-  // inner one above that makes its counter-saturation stall unreachable: a host request stalled
-  // at isolation onset is then always stalled by the demux itself, where it is not yet committed
-  // to a port and can still be steered to the error slave.
+  // Capacity of the isolation core, sized above the demux's maximum of in-flight
+  // transactions. This makes the inner counter-saturation stall unreachable, so if a host
+  // request is stalled then it's always stalled by the demux itself, where it is not
+  // yet committed to a port and can still be steered to the error slave.
   localparam int unsigned DemuxMaxPending = 32'd2 * NumPending;
   localparam int unsigned InnerPending    =
       TerminateTransaction ? DemuxMaxPending + 32'd1 : NumPending;
@@ -110,8 +104,7 @@ module axi_lite_isolate #(
 
   if (TerminateTransaction) begin : g_terminate
     logic sel_aw_q, sel_ar_q;
-    // A request is presented at a demux master port and not yet accepted.  Requests stalled by
-    // the demux itself (select FIFO full) are not committed to a port and do not hold the select.
+    // A request is presented at a demux master port and not yet accepted.
     logic demux_aw_unaccepted, demux_ar_unaccepted;
 
     assign demux_aw_unaccepted = (demux_req[0].aw_valid | demux_req[1].aw_valid)
@@ -157,8 +150,7 @@ module axi_lite_isolate #(
     );
 
     // Error slave for the isolated demux port: accepts one transaction per direction at a time
-    // and responds with DECERR.  `aw_wait_q`/`w_wait_q`/`ar_wait_q` hold a captured request
-    // until its response is accepted: B once both AW and W have arrived, R once AR has.
+    // and responds with DECERR.
     localparam data_t DecErrData = data_t'('h1501A7ED);
 
     axi_lite_resp_t decerr_rsp;
@@ -221,8 +213,7 @@ module axi_lite_isolate #(
   `FFLARN(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
   `FFLARN(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
 
-  // Update counters.  Every AXI4-Lite transaction is a single beat, so the W and R counters
-  // move on every handshake.
+  // Update counters
   always_comb begin
     pending_aw_d  = pending_aw_q;
     update_aw_cnt = 1'b0;
