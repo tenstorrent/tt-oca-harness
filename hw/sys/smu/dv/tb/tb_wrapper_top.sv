@@ -161,12 +161,6 @@ module smu_wrapper_uvm_top (
     sep_pkg::sep_cpu_trace_t sep_cpu_trace;
     sep_pkg::sep_straps_t    sep_straps;
 
-    trace_mem_pkg::SinkMemPktIn_s
-        [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    trace_mem_pkg::SinkMemPktOut_s
-        [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
-    assign trc_resp = '0;
-
     i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
     i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
     assign i3c_dat_src = '0;
@@ -629,8 +623,6 @@ module smu_wrapper_uvm_top (
         .init_mem_done_o,
         .chiplet_is_primary_i (1'b1),
         .timer_count_o (),
-        .trace_mem_req_o (trc_req),
-        .trace_mem_resp_i (trc_resp),
 
         .test_en_i (1'b0),
         .scan_rst_ni (1'b1),
