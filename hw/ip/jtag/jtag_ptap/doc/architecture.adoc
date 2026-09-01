@@ -363,7 +363,8 @@ slices:
 * *SEP slice*: driven by the `ic_reset_sep_t` struct type and gated by
   `IC_RESET_SEP_ENABLE`. Sized from `$bits(ic_reset_sep_t)`.
 * *External slice* (nearest TDO): driven by the `ic_reset_ext_t` struct type and
-  gated by `IC_RESET_EXT_ENABLE`. Sized from `$bits(ic_reset_ext_t)`.
+  gated by `IC_RESET_EXT_ENABLE`. Sized from `$bits(ic_reset_ext_t)`. The
+  instantiator supplies this type; the PTAP does not name the external ports.
 
 Each slice's struct must contain `.ovrd` and `.val` sub-structs of identical
 width (checked via an elaboration-time assertion in `jtag_ptap`). Within
