@@ -2632,7 +2632,8 @@ filter only ever sees `tx_len==0`.
 |CHK-ALIAS-RW
 |Region start, end and attribute registers are read/write, including the 64-bit upper word.
 |CHK-AP-STEE-RW
-|The output-remap CSRs are read/write across both banks.|CHK-INFILT-CFG / CHK-OUTFILT-CFG
+|The output-remap CSRs are read/write across both banks.
+|CHK-INFILT-CFG / CHK-OUTFILT-CFG
 |Filter-configuration read/write fields (`rd`, `wr`, `ns`, `burst`, `src_id`, `group_id`) read back exactly on both the inbound and the outbound bank.
 |CHK-RO
 |The data-bus-width field reads its fixed value and ignores writes of the inverse pattern, on both filters.

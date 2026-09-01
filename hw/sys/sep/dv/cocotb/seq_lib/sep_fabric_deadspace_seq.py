@@ -343,7 +343,7 @@ class SepDeadspace:
 
     async def burst_across_extent(
         self, win
-    ) -> tuple[int, int, bool, list[int], list[tuple[int, int]]]:
+    ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
         AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
@@ -392,8 +392,11 @@ class SepDeadspace:
         # shared the window, and neither can be read as a per-beat verdict.
         mon_resps = list(captured) if len(captured) == beats else []
         # Credit from the per-beat vector when it is available: the collapsed
-        # response can only ever account for one refused beat, so crediting from
-        # it releases beats the fabric did refuse.
+        # response holds at most one entry, so crediting from it releases beats
+        # the fabric did refuse. That over-release can only make the monitor
+        # report a refusal it was told to expect, never absorb one it was not:
+        # release_expected_decerr floors at zero, so the failure direction is a
+        # spurious monitor error, not a swallowed DECERR.
         used = (sum(1 for r in mon_resps if r == RESP_DECERR) if mon_resps
                 else sum(1 for r in seq.resp_list if r == RESP_DECERR))
         if beats > used:

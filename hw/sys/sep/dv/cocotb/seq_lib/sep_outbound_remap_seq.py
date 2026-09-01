@@ -42,8 +42,8 @@ STEE_REGION_BASE = 0x1180_0000
 # sep_pkg::NUM_*_OUTPUT_REMAP_IDX_START / NUM_*_OUTPUT_REMAP_REGIONS
 IDX_START = 19
 N_REGIONS = 16
-# `outbound_filter_ctrl[32]`. A literal 16 here left entries 16-31 outside
-# every seed selection, so half the bank reported a clean pass unexercised.
+# `outbound_filter_ctrl[32]`; the count comes from the export so a seed can
+# select any entry the bank actually has.
 OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 
 # sep_outbound_mbx STDOUT window: always-ready OKAY responder on smn_outbound.
