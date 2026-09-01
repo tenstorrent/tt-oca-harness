@@ -6,8 +6,8 @@
 // The real I3CCSR map (MIPI HCI 1.2, ~1.3k register fields across I3CBASE /
 // PIOControl / I3C_EC / DAT / DCT) is defined in the bender-vendored i3c-core
 // fork under vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl.
-// That upstream tree is stubbed out of the open tree (see rtl/i3c_stub_pkg.sv
-// for the matching RTL stub), so the full map is unavailable here.
+// This file is the fallback used when that vendor tree has not been
+// materialized, so the full field detail is unavailable here.
 //
 // oca_i3c_wrap instantiates I3CCSR as an addrmap-in-addrmap, which PeakRDL
 // treats as a single external region: the generated wrapper only exposes an
