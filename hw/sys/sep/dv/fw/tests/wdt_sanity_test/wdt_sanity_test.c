@@ -212,7 +212,7 @@ int main(void) {
     printf("// STEP 6: Re-enable WDT and let it reach BITE threshold\n");
     printf("//////////////////////////////////////////////////\n\n");
 
-    // Reenable WDT
+    // Re-enable WDT
     printf("Reenabling watchdog...\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 

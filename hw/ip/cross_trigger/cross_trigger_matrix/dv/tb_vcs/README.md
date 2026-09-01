@@ -56,17 +56,19 @@ Test Descriptions
 ----------------
 
 **test_sanity**: Basic smoke test that verifies:
-- Register write/read functionality
-- Basic routing (CT_Dst[0] -> CT_Src[0])
-- Pulse propagation timing
-- Output registration
+
+* Register write/read functionality
+* Basic routing (CT_Dst[0] -> CT_Src[0])
+* Pulse propagation timing
+* Output registration
 
 **test_routing**: Comprehensive routing tests including:
-- Single source routing (all combinations)
-- Multi-source ORing
-- Broadcast routing
-- Disable output functionality
-- Register readback verification
+
+* Single source routing (all combinations)
+* Multi-source ORing
+* Broadcast routing
+* Disable output functionality
+* Register readback verification
 
 Requirements
 ------------

@@ -24,7 +24,7 @@
     parameter bit RANDOM_DELAY_RESET = 1'b1,  // 0 ~ 1
     // RANDOM_DELAY_RESET =
     // 0 => dont reset the delay flops
-    // otherwsie => reset the delay flops
+    // otherwise => reset the delay flops
 
     parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0,  // 0 ~ 1
     // RANDOM_DELAY_GRAY_CODE =
@@ -43,7 +43,7 @@
 ) (
     input logic i_clk,
     input logic [WIDTH-1:0] i_d,
-    input logic i_reset_n,  // Active Low Reset, if synchronizer is not resetable tie to 1
+    input logic i_reset_n,  // Active Low Reset, if synchronizer is not resettable tie to 1
     input logic [WIDTH*2-1:0] i_mux_sel_ovr,  // Mux Select Override Value, NOT USED FOR NOW
 
     output logic [WIDTH*2-1:0] o_mux_sel,  // Output Mux Select, NOT USED FOR NOW
@@ -85,7 +85,7 @@
 
   end
 
-  // Randomly choose a mux_sel value everytime input transitions
+  // Randomly choose a mux_sel value every time input transitions
   initial begin
     mux_sel = {WIDTH{2'd0}};
   end

@@ -2728,7 +2728,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ConfigError("--json applies to --list only")
         root = repo_root(Path(__file__))
 
-        # Diagnostics report their own findings (and must not be pre-empted by the fail-fast
+        # Diagnostics report their own findings (and must not be preempted by the fail-fast
         # validate_all below), so dispatch them first.
         if args.validate_configs:
             return cmd_validate_configs(root, adopter_overlay_path(args))

@@ -59,7 +59,7 @@
 |`xtrig_ctm_src_ack_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
 |`xtrig_ctm_dst_req_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests. |Cross trigger network |Tie to '0 if unused
 |`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode. |Cross trigger network |N/A
-|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests (SMU external ports [7:0]; port [0] reserved for SMC internally). |Clock stop requestors |Tie to '0 if unused
+|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests (SMU external ports [7:0]; port [0] reserved for SMC internally). |Clock stop requesters |Tie to '0 if unused
 
 |`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output. |GPIO pad ring |N/A
 |`xtrig_ctp_req_out_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output enable. |GPIO pad ring |N/A

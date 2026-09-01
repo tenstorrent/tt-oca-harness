@@ -1714,7 +1714,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge all targeting one fixed address (no-incr mode)
-* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
+* Each beat reuses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2012,7 +2012,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4-Lite writes through the SMC OTP bridge all targeting one fixed 32-bit address (no-incr mode)
-* Each beat re-uses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
+* Each beat reuses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2310,7 +2310,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4-Lite writes through the SEP OTP bridge all targeting one fixed 32-bit address (no-incr mode)
-* Each beat re-uses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
+* Each beat reuses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 

@@ -10,7 +10,7 @@
 this register causes the AVS response readback fifo pointer to advance.
 | 0x8 | AVS_DEBUG_READBACK | R a| This register mirrors the AVS_READBACK register, but reading it does NOT affect the
 AVS readback fifo pointer. Provided for debug purposes.
-| 0xC | AVS_LATEST_SLAVE_SUBFRAME | R a| This register contains the most recently received subframe from the AVS slave, by-passing the
+| 0xC | AVS_LATEST_SLAVE_SUBFRAME | R a| This register contains the most recently received subframe from the AVS slave, bypassing the
 AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck
 settings in a timely fashion, since the status data from the next entry in the readback fifo might
 have considerable latency relative to when it was initially received from the AVS Slave.
@@ -233,7 +233,7 @@ the AVS bus can accept the next command, thus freeing space in the cmd fifo
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
 | 23:16 | `MAX_RETRIES` | RW | 0x5 a| Maximum number of times to attempt a retry if an AVS command returns a fail
-status (either due to targetted resource being busy or CRC failure)
+status (either due to targeted resource being busy or CRC failure)
 | 15:0 | `RESYNC_INTERVAL` | RW | 0x1000 a| Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.
 |===
 
