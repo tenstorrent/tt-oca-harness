@@ -1646,7 +1646,8 @@ fusing the SHA-256 digest of an RSA-3072 public key enables the slot. An all-zer
 |===
 
 Bits 8–15 and the odd bits interleaved above (18, 19, 21, 23, 25) name PQC key slots. This
-ROM generation verifies classical signatures only, so a manifest selecting one of those is
+ROM generation verifies classical signatures only -- PQC support is deferred to a later
+release that adds combined classical + PQC signing -- so a manifest selecting one of those is
 refused as an unsupported variant rather than resolved — handing a key to a verifier that
 cannot check it would fail later under a code blaming the signature rather than the
 algorithm. Bits [31:26] are reserved; selecting one is refused.
@@ -1727,11 +1728,24 @@ modular-exponentiation program into OTBN IMEM/DMEM, supplies the modulus, signat
 expected digest, executes with a timeout, and compares the recovered PKCS#1 v1.5 encoding
 against the SHA-256 digest of the signed region.
 
-The exponent is *not* taken from the manifest. The OTBN program is the F4 variant, built for
-e = 65537 and never reading the value the manifest carries, so the ROM shall reject a public
-key whose exponent is anything else rather than verify against an exponent it will not use.
-The manifest's public key is passed to OTBN directly; the Key Manager is not involved in
-this path.
+[[req-SEP-ROM-SB-100]]*[SEP-ROM-SB-100]* The public exponent shall be e = 65537 (F4). SEP
+secure boot accepts F4 RSA keys only, and a public key carrying any other exponent shall be
+rejected. This is a permanent property of the design rather than a consequence of how the
+OTBN program happens to be built, and signing infrastructure shall not issue SEP
+secure-boot keys with any other exponent.
+
+Consistent with that, the exponent is *not* taken from the manifest: the OTBN program is the
+F4 variant, built for e = 65537 and never reading the value the manifest carries. Rejecting
+a mismatching exponent is therefore the only sound response -- the alternative is to verify
+against an exponent the verifier will not use.
+
+[[req-SEP-ROM-SB-110]]*[SEP-ROM-SB-110]* The manifest's public key shall be delivered
+directly to OTBN, and the Key Manager shall take no part in secure-boot signature
+verification. A public key is not secret, so there is nothing for key-derivation hardware to
+protect, and routing it through the Key Manager would make secure boot depend on a block the
+ROM otherwise does not use. An earlier specification described provisioning the manifest's
+public key `(n, e)` into the Key Manager through its software write port; that description
+is withdrawn and should not be reintroduced.
 
 [[fig:key_select_revoke]]
 .Key authorization, revocation, and verification
@@ -2761,14 +2775,13 @@ M-mode); release-at-hand-off unimplemented; window set doesn't match data-window
 at hand-off (SEP-ROM-PMP-060/-070/-080). Code writes neither `mseccfg` nor lock bits yet.
 RLB disposition at the jump is a deferred sub-decision (BL1 spec); `MML` deferred as
 optional hardening. |<<sec:pmp_mechanism>>
-|Exponent constraint |*open question* |The ROM requires e = 65537 exactly, because the
-OTBN program is the F4 variant. Whether that is the intended permanent constraint, or a
-consequence of the program build that should be relaxed, is undecided.
-|<<sec:secure_boot>>
-|Key Manager public-key provisioning |*open question* |An earlier specification described
-provisioning the manifest's public key into the Key Manager via its software write port.
-Neither this chapter nor the implementation does that -- the modulus goes straight to OTBN.
-If the Key Manager path was intended, it is absent from both. |<<sec:secure_boot>>
+|Exponent constraint |*by design* |Ratified: SEP secure boot accepts F4 (e = 65537) RSA keys
+only. A permanent constraint, not a consequence of the OTBN program build; any other
+exponent is rejected (SEP-ROM-SB-100). |<<sec:secure_boot>>
+|Key Manager public-key provisioning |*by design* |Not used and not planned. The modulus
+goes straight to OTBN; the Key Manager has no role in secure-boot verification
+(SEP-ROM-SB-110). The earlier specification text describing a Key Manager software-write-port
+path is withdrawn. |<<sec:secure_boot>>
 |Entropy chain bring-up |*gap* |OTBN will not leave its reseed state and the AES masking
 PRNG will not report idle until entropy source, DRBG/CSRNG and EDN are brought up. Every
 stage is disabled at reset, so this is not hardware auto-initialisation, and nothing in the
@@ -2819,9 +2832,15 @@ performs no resets. |<<sec:cpu_init>>
 production digests must land before mask finalization. |<<sec:secure_boot>>
 |ECDSA P-256 |*by design* |Defined by the format, rejected by this ROM generation.
 |<<sec:secure_boot>>
-|PQC signatures and key slots |*by design* |PQC manifest geometry is parsed, but PQC
+|PQC signatures and key slots |*deferred* |Deferred to a later release, which adds combined
+classical + PQC signing. In this generation PQC manifest geometry is parsed, but PQC
 signatures and PQC key slots are refused as an unsupported variant rather than accepted
 unverified. |<<sec:secure_boot>>
+|Multi-signer / co-signer verification |*deferred* |Deferred to the same later release.
+This generation verifies a single classical RSA-3072 signature against one root key; the
+verifier and co-signer keys that populate the `REQUIRED_SIGNERS` and `REQUIRED_ALGS` fuse
+fields arrive with it. Neither fuse field is read by this ROM. See the Life Cycle
+Controller chapter's Secure-Boot Signing Model. |<<sec:secure_boot>>
 |OTP-fuse SPI profile select |*gated* |Deliberately unimplemented pending OTP-usage
 evaluation (research R13); boot never depends on programmed fuses. |<<sec:spi>>
 |Strap-bit definition duplication |*hygiene* |Strap bit positions defined in both
@@ -2936,6 +2955,10 @@ copy after validation only |<<sec:manifest>>
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-090,SEP-ROM-SB-090>> |RSA-3072-PKCS1v15-SHA256 only; ECDSA rejected
 |<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-100,SEP-ROM-SB-100>> |F4 keys only (e = 65537); any other exponent rejected
+|<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-110,SEP-ROM-SB-110>> |Public key goes straight to OTBN; Key Manager not
+involved |<<sec:secure_boot>>
 |<<req-SEP-ROM-DEM-010,SEP-ROM-DEM-010>> |Demotion only from a validated manifest
 |<<sec:demotion>>
 |<<req-SEP-ROM-DEM-020,SEP-ROM-DEM-020>> |PROD_END: never demote; lock both registers
