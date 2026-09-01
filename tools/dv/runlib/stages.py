@@ -1269,8 +1269,7 @@ def _last_plusarg_wins(rendered: list[str]) -> list[str]:
     return [
         arg
         for index, arg in enumerate(rendered)
-        if not (arg.startswith("+") and "=" in arg)
-        or final_at[arg.split("=", 1)[0]] == index
+        if not (arg.startswith("+") and "=" in arg) or final_at[arg.split("=", 1)[0]] == index
     ]
 
 
