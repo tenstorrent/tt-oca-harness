@@ -248,10 +248,10 @@ module jtag2axi #(
         automatic int unsigned offset = beat_byte_offset(addr);
         automatic int unsigned num_bytes = size_to_bytes(axsize);
         automatic j2a_strb_t mask;
-        mask = '1;
-        if (num_bytes < BEAT_BYTES) begin
-            mask = j2a_strb_t'((j2a_strb_t'(1) << num_bytes) - 1);
+        if (num_bytes >= BEAT_BYTES) begin
+            return '1;
         end
+        mask = j2a_strb_t'((j2a_strb_t'(1) << num_bytes) - 1);
         return j2a_strb_t'(mask << offset);
     endfunction
 
