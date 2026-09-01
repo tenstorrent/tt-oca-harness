@@ -485,6 +485,24 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lockstep_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR lockstep controls: disable corruption detection, and error-injection enable. Inert unless the core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lockstep_status_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_status_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR lockstep status: corruption detected. Reads 0 unless the core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS aggregation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_id</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>

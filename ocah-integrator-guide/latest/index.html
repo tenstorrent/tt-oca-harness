@@ -3852,6 +3852,24 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lockstep_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR lockstep controls: disable corruption detection, and error-injection enable. Inert unless the core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lockstep_status_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_status_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR lockstep status: corruption detected. Reads 0 unless the core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS aggregation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_id</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -9016,6 +9034,24 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU trace output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Trace infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lockstep_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU lockstep controls, passed through to the SEP. Inert unless the SEP core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lockstep_status_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_status_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU lockstep status. Reads 0 when the SEP is absent (<code>SEP=0</code>) or the core is built without <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS aggregation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>

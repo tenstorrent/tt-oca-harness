@@ -199,10 +199,10 @@ tied to zero inside the core. Firmware programs source <code>N</code> by writing
 <div class="sect3">
 <h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">SEP CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
-<p>The PIC supports 255 external sources. Slots 1–39 are individually assigned to
+<p>The PIC supports 255 external sources. Slots 1–42 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 43–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -420,7 +420,32 @@ it has observed the fault; there is no write-one-to-clear, and an unmasked
 handler re-enters.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[40–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>40</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA register-path bus error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A CPU access to a Secure DMA register returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial). The faulting access also
+received SLVERR synchronously. Latched and held until firmware writes
+<code>DMA_BUS_ERR_CLEAR.clr</code>; unlike PIC source 39 this source is clearable, so
+firmware acknowledges it rather than masking it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA host-path integrity/bus fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Either the fabric returned a non-OKAY AXI response to a DMA transfer, or a
+TL-UL command-integrity check failed on a command issued by the DMA. The
+integrity case is a fault-detection event with no other reporting path.
+Cleared by the same <code>DMA_BUS_ERR_CLEAR.clr</code> write.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>42</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral register-bridge fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
+CSRNG, EDN and the watchdog timer. Read <code>PERIPH_BUS_ERR_STATUS</code> to identify
+which block faulted, and clear that block&#8217;s bit in <code>PERIPH_BUS_ERR_CLEAR</code>;
+clears are per-block so acknowledging one cannot discard another block&#8217;s fault.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[43–255]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
 </tr>
