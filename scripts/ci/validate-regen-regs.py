@@ -26,11 +26,7 @@ def tracked_generated_python(tree: Path) -> list[Path]:
         check=True,
         capture_output=True,
     )
-    return [
-        tree / Path(raw.decode())
-        for raw in result.stdout.split(b"\0")
-        if raw
-    ]
+    return [tree / Path(raw.decode()) for raw in result.stdout.split(b"\0") if raw]
 
 
 def generated_json(tree: Path) -> list[Path]:
