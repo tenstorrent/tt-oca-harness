@@ -131,6 +131,26 @@ This may similarly be used to run preconfigured test groups.
 Further options, including seeds and regressions are available, consult the `--help`
 flag to see usage.
 
+==== Subsystem DV Documentation
+
+Each subsystem keeps its durable DV documentation next to its testbench,
+with a `README.md` as the GitHub-native entry point. Those READMEs stay
+out of the official doc tree. The structured AsciiDoc documents are:
+
+* Shared VIP:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/common/dv/docs/index.adoc[hw/common/dv/docs/index.adoc]
+* SEP:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/index.adoc[hw/sys/sep/dv/docs/index.adoc],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/SEP_VPLAN.adoc[SEP_VPLAN.adoc],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc[SEP_TB_ARCH.adoc]
+* SMC:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/dv/docs/index.adoc[hw/sys/smc/dv/docs/index.adoc],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/dv/docs/SMC_VPLAN.adoc[SMC_VPLAN.adoc]
+* SMU:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smu/dv/docs/index.adoc[hw/sys/smu/dv/docs/index.adoc]
+* DTP:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/dtp/dv/docs/index.adoc[hw/sys/dtp/dv/docs/index.adoc]
+
 ==== Visual Debugging and Waveform Viewer
 
 When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
