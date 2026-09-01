@@ -33,3 +33,9 @@ root = "hw/sys/dtp/dv"
 # under the shared VIP tree, so it is registered here.
 [duts.ocah_axi_vip]
 root = "hw/common/dv/vip/ocah_axi_vip/dv"
+
+# Cross-trigger IP-level benches: the family nests one level below the
+# hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
+# registered here.
+[duts.cross_trigger_port]
+root = "hw/ip/cross_trigger/cross_trigger_port/dv"

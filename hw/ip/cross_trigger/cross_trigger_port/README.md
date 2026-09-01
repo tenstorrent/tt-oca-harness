@@ -10,4 +10,5 @@ Authoritative description and register maps: `hw/ip/cross_trigger/cross_trigger_
 - Registers: `hw/ip/cross_trigger/cross_trigger_port/regs/`
 
 ## Verification
-Block-level VCS notes: `dv/tb_vcs/README.md`.
+Block-level bench on the unified DV flow: `dv/README.md`
+(`python3 tools/dv/run_dv.py --dut cross_trigger_port`).
