@@ -211,8 +211,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, 1)
         else:
             raise AssertionError(
-                "coordinated TRNG isolation did not clear under the "
-                "JTAG-only reset hold"
+                "TRNG isolation did not clear during JTAG reset"
             )
 
         jtag_reset.value = 0
