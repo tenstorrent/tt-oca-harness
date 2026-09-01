@@ -259,9 +259,7 @@ sticky interrupt status bits (one per FIFO direction per condition).
 Both KM and SEP sides have a flush control bit (write-1-to-trigger).
 Writing 1 flushes all FIFOs (inbound and outbound). When SEP flushes, KM
 receives a sticky interrupt (if enabled). When KM flushes, SEP receives
-a sticky FLUSHED\_BY\_KM interrupt (if enabled). A READ_DATA AR always
-completes with an R beat, including when CTRL.FLUSH coincides with the
-accept (underflow response if the FIFO is empty after the race).
+a sticky FLUSHED\_BY\_KM interrupt (if enabled).
 
 All mailbox interrupt sources on each side (data available, overflow,
 underflow, flushed-by-other) are aggregated into a single IRQ output per

@@ -128,9 +128,7 @@ TB_CMD_OTP_WRITE_SIGINT = 0x0000002E  # Drive corrupted dual-rail on one 256-bit
 TB_CMD_SEP_MBOX_DRAIN_CTRL = 0x0000002F  # Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); arg=1 arm, 0 disarm; result = 1
 TB_CMD_ABR_SK_LOAD = 0x00000030  # Inject shared-key into ABR reg block: arg=word_index (0-7); pre-fill tb_abr_sk_load_data via DRBG_SET_NEXT_VALUE then call with arg=0xFF to assert hwset; result = 1
 TB_CMD_ABR_SK_IRQ_STATUS_READ = 0x00000031  # Read ABR ML-KEM shared-key IRQ status (abr_mlkem_sharedkey_irq signal); result = 0 or 1
-TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH = (
-    0x00000032  # SEP CTRL.FLUSH then KM READ_DATA AR on the flush-active cycle; result = 1 if R arrives
-)
+TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH = 0x00000032  # SEP CTRL.FLUSH then KM READ_DATA AR on the flush-active cycle; result = 1 if R arrives
 # Testbench command status
 TB_STATUS_IDLE = 0x00000000
 TB_STATUS_ACK = 0x00000001
