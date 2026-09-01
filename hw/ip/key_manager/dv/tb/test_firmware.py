@@ -1496,9 +1496,11 @@ class TestbenchCommandHandler:
                 self.dut._log.error("[TB CMD] SEP CTRL.FLUSH handshake timeout")
                 raise TimeoutError("SEP CTRL.FLUSH AW/W handshake")
 
-            # After the SEP write commits: cycle 0 clr=0 empty=0, cycle 1 clr=1
-            # empty=0, cycle 2 clr=0 empty=1. Handshake AR on cycle 1.
+            # After AW/W: cycle 0 clr=0 (B typically valid), cycle 1 clr=1 empty=0.
+            # Take B on cycle 0; do not wait extra cycles or AR misses the flush window.
             await RisingEdge(self.dut.clk)
+            if int(self.dut.sep_bvalid.value) == 1:
+                self.dut.sep_bready.value = 0
             self.dut.tb_km_arvalid.value = 1
             await RisingEdge(self.dut.clk)
             ar_done = int(self.dut.tb_km_arready.value) == 1
