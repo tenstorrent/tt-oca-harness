@@ -96,9 +96,7 @@ class OcahJtagMasterSequence:
     ) -> int:
         """Read IDCODE and emit CHK-IDCODE-RAW / CHK-IDCODE-MARKER evidence."""
         idcode = await self.tap.read_idcode()
-        self.checker.expect_equal(
-            "CHK-IDCODE-RAW", idcode, expected_idcode, context=context
-        )
+        self.checker.expect_equal("CHK-IDCODE-RAW", idcode, expected_idcode, context=context)
         self.checker.expect_equal(
             "CHK-IDCODE-MARKER",
             idcode & 0x1,
@@ -127,22 +125,18 @@ class OcahJtagMasterSequence:
         )
         return observed
 
-    def check_last_scan_length(self, *, is_ir: bool, expected_width: int, context: str = "") -> None:
+    def check_last_scan_length(
+        self, *, is_ir: bool, expected_width: int, context: str = ""
+    ) -> None:
         """Emit CHK-SCAN-*-LEN for the newest monitor-reconstructed scan."""
         if self.monitor is None:
             raise RuntimeError("scan-length checks require a monitor")
-        items = (
-            self.monitor.get_ir_transactions()
-            if is_ir
-            else self.monitor.get_dr_transactions()
-        )
+        items = self.monitor.get_ir_transactions() if is_ir else self.monitor.get_dr_transactions()
         if not items:
             raise AssertionError(
                 f"no reconstructed {'IR' if is_ir else 'DR'} scan observed ({context})"
             )
-        self.checker.check_scan_length(
-            items[-1], expected_width=expected_width, context=context
-        )
+        self.checker.check_scan_length(items[-1], expected_width=expected_width, context=context)
 
     def finalize(self) -> None:
         """Finalize retained findings and required named evidence."""

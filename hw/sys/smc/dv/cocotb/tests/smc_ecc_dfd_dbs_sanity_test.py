@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_diagnostic_vip_utils import check_diagnostic_observability
 from seq_lib.smc_ecc_dfd_dbs_sanity_test_seq import smc_ecc_dfd_dbs_sanity_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -27,7 +27,6 @@ class smc_ecc_dfd_dbs_sanity_test(smc_base_test):
             csr_accesses=seq.accesses,
             proxy=True,
             details=(
-                "CSR-only diagnostic surface (ECC/RAS/DFD/DBS); no fault inject "
-                "(U7-1/U7-2 pending)"
+                "CSR-only diagnostic surface (ECC/RAS/DFD/DBS); no fault inject (U7-1/U7-2 pending)"
             ),
         )

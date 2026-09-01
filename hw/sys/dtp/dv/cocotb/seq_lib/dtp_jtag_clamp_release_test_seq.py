@@ -26,7 +26,13 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
         await self.load_ir(DtpJtagInstr.CLAMP_RELEASE)
         released = await self.read_tmp_status()
         decoded = self.log_tmp_status("Initial CLAMP_RELEASE", released)
-        self.family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", decoded["persistence"], 0, context="initial release")
+        self.family_check(
+            "CHK-TMP-PERSIST",
+            "TMP_STATUS.persistence",
+            decoded["persistence"],
+            0,
+            context="initial release",
+        )
 
         patterns = self.directed_patterns(8, rng=self.rng("clamp_release"))
         self.log_step(2, "Loop through hold/release patterns")
@@ -37,7 +43,13 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
             await self.load_ir(DtpJtagInstr.CLAMP_HOLD)
             held = await self.read_tmp_status()
             decoded_held = self.log_tmp_status("After CLAMP_HOLD setup", held)
-            self.family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", decoded_held["persistence"], 1, context="hold setup")
+            self.family_check(
+                "CHK-TMP-PERSIST",
+                "TMP_STATUS.persistence",
+                decoded_held["persistence"],
+                1,
+                context="hold setup",
+            )
 
             await self.load_ir(DtpJtagInstr.BYPASS_3F)
             held = await self.read_tmp_status()
@@ -66,7 +78,13 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
         await self.load_ir(DtpJtagInstr.CLAMP_RELEASE)
         released = await self.read_tmp_status()
         decoded = self.log_tmp_status("Repeated CLAMP_RELEASE", released)
-        self.family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", decoded["persistence"], 0, context="repeated release")
+        self.family_check(
+            "CHK-TMP-PERSIST",
+            "TMP_STATUS.persistence",
+            decoded["persistence"],
+            0,
+            context="repeated release",
+        )
 
         self.log_summary("CLAMP_RELEASE TMP persistence complete", patterns=len(patterns))
         await self.finalize_family_checker()

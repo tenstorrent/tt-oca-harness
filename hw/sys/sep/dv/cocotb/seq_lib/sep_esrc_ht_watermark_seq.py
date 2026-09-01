@@ -17,9 +17,9 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import ENTROPY_SOURCE
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     DECOR_CTRL_DIV8,
@@ -133,11 +133,9 @@ class SepHtWatermark(SepAxiRegDriver):
         )
 
     async def pulse_module_enable(self) -> None:
-        await self._wr(
-            ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0))
+        await self._wr(ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0))
         await self._settle(2)
-        await self._wr(
-            ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1))
+        await self._wr(ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1))
         await self._settle(2)
 
     async def enable_sample_path(self) -> None:

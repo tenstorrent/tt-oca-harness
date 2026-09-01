@@ -11,6 +11,7 @@ Health-test *quality* is out of scope.
 from __future__ import annotations
 
 from sep_reg_meta import ENTROPY_SOURCE
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     DECOR_CTRL_DIV8,

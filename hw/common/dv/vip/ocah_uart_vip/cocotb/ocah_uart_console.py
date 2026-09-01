@@ -37,9 +37,9 @@ against DUT clock constraints — the caller is responsible.
 import logging
 import os
 import re
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from cocotb.triggers import Timer, with_timeout, SimTimeoutError
+from cocotb.triggers import SimTimeoutError, Timer, with_timeout
 
 from .ocah_uart_master_driver import OcahUartMasterDriver
 from .ocah_uart_monitor import OcahUartLineMonitor
@@ -50,6 +50,7 @@ __all__ = ["OcahUartConsole", "OcahUartError", "OcahUartImportError"]
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
+
 
 class OcahUartError(RuntimeError):
     """Raised on UART framing errors, timeouts, or unexpected data."""
@@ -69,16 +70,17 @@ class OcahUartImportError(ImportError):
 # Constants
 # ---------------------------------------------------------------------------
 
-_DEFAULT_BAUD       = 115200
-_DEFAULT_TIMEOUT_US = 1_000   # 1 ms default per-operation timeout
-_LINE_TERMINATOR    = "\n"
-_LOG_ENV_KEY        = "COCOTB_PLUSARG_uart_log"
-_BAUD_ENV_KEY       = "COCOTB_PLUSARG_uart_baud"
+_DEFAULT_BAUD = 115200
+_DEFAULT_TIMEOUT_US = 1_000  # 1 ms default per-operation timeout
+_LINE_TERMINATOR = "\n"
+_LOG_ENV_KEY = "COCOTB_PLUSARG_uart_log"
+_BAUD_ENV_KEY = "COCOTB_PLUSARG_uart_baud"
 
 
 # ---------------------------------------------------------------------------
 # OcahUartConsole
 # ---------------------------------------------------------------------------
+
 
 class OcahUartConsole:
     """
@@ -128,11 +130,11 @@ class OcahUartConsole:
         log_file: Optional[str] = None,
         raise_on_timeout: bool = True,
     ):
-        self.name             = name
-        self._clock           = clock
+        self.name = name
+        self._clock = clock
         self._default_timeout = timeout_us
         self._raise_on_timeout = raise_on_timeout
-        self.log              = logging.getLogger(name)
+        self.log = logging.getLogger(name)
 
         # Resolve plusargs: baud rate.
         env_baud = os.environ.get(_BAUD_ENV_KEY)
@@ -141,9 +143,7 @@ class OcahUartConsole:
                 baud = int(env_baud)
                 self.log.info("%s: baud overridden by plusarg to %d", name, baud)
             except ValueError:
-                self.log.warning(
-                    "%s: invalid +uart_baud value %r; using %d", name, env_baud, baud
-                )
+                self.log.warning("%s: invalid +uart_baud value %r; using %d", name, env_baud, baud)
         self._baud = baud
 
         # Resolve plusargs: log file.
@@ -162,17 +162,17 @@ class OcahUartConsole:
         # Native line engines: the master driver transmits on TXD; the line
         # monitor samples RXD.
         self._source = OcahUartMasterDriver(txd, name=f"{name}.tx", baud=baud)
-        self._sink   = OcahUartLineMonitor(rxd, name=f"{name}.rx", baud=baud)
+        self._sink = OcahUartLineMonitor(rxd, name=f"{name}.rx", baud=baud)
 
         # Line buffer: bytes accumulated since last read_line / expect call.
         self._rx_buf: bytes = b""
 
         # Statistics.
         self._stats: Dict[str, int] = {
-            "bytes_sent":     0,
+            "bytes_sent": 0,
             "bytes_received": 0,
             "lines_received": 0,
-            "timeouts":       0,
+            "timeouts": 0,
         }
 
     # ------------------------------------------------------------------
@@ -187,9 +187,7 @@ class OcahUartConsole:
         logic-1 (MARK state) from construction; this method makes the intent
         explicit and logs the initial baud setting.
         """
-        self.log.info(
-            "%s: UART initialised — baud=%d, 8N1", self.name, self._baud
-        )
+        self.log.info("%s: UART initialised — baud=%d, 8N1", self.name, self._baud)
 
     async def set_baud(self, rate: int) -> None:
         """Change the baud rate.
@@ -207,7 +205,7 @@ class OcahUartConsole:
             raise ValueError(f"{self.name}: baud rate must be positive, got {rate}")
         self._baud = rate
         self._source.baud = rate
-        self._sink.baud   = rate
+        self._sink.baud = rate
         self.log.info("%s: baud changed to %d", self.name, rate)
         # Yield one delta cycle so signals settle.
         await Timer(1, "step")
@@ -267,9 +265,7 @@ class OcahUartConsole:
     # Receive
     # ------------------------------------------------------------------
 
-    async def read_byte(
-        self, timeout_us: Optional[int] = None
-    ) -> Optional[int]:
+    async def read_byte(self, timeout_us: Optional[int] = None) -> Optional[int]:
         """Wait for and return the next received byte.
 
         Parameters
@@ -298,9 +294,7 @@ class OcahUartConsole:
         except SimTimeoutError:
             self._stats["timeouts"] += 1
             if self._raise_on_timeout:
-                raise OcahUartError(
-                    f"{self.name}: read_byte timed out after {t_us} µs"
-                )
+                raise OcahUartError(f"{self.name}: read_byte timed out after {t_us} µs")
             return None
 
         self._stats["bytes_received"] += 1
@@ -308,9 +302,7 @@ class OcahUartConsole:
         self.log.debug("%s: received byte 0x%02X", self.name, b)
         return b
 
-    async def read_bytes(
-        self, n: int, timeout_us: Optional[int] = None
-    ) -> Optional[bytes]:
+    async def read_bytes(self, n: int, timeout_us: Optional[int] = None) -> Optional[bytes]:
         """Wait for and return exactly ``n`` bytes.
 
         Parameters
@@ -424,19 +416,15 @@ class OcahUartConsole:
         OcahUartError
             If no matching line arrives within budget.
         """
-        t_us   = timeout_us if timeout_us is not None else self._default_timeout
+        t_us = timeout_us if timeout_us is not None else self._default_timeout
         regexp = re.compile(pattern)
 
         while True:
             line = await self.read_line(timeout_us=t_us, encoding=encoding)
             if line is None:
-                raise OcahUartError(
-                    f"{self.name}: expect({pattern!r}) timed out"
-                )
+                raise OcahUartError(f"{self.name}: expect({pattern!r}) timed out")
             if regexp.search(line):
-                self.log.info(
-                    "%s: expect(%r) matched line: %r", self.name, pattern, line
-                )
+                self.log.info("%s: expect(%r) matched line: %r", self.name, pattern, line)
                 return line
 
     # ------------------------------------------------------------------

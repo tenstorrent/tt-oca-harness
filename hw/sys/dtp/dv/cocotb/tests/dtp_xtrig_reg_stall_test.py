@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_xtrig_reg_stall_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
 

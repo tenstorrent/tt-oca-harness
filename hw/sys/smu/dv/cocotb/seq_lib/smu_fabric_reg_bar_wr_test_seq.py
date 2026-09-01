@@ -34,30 +34,22 @@ from seq_lib.smu_jtag_helpers import (
 FABCFG_DESTS = (
     (
         "cpu_ctrl",
-        smc_addr(
-            "SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR"
-        ),
+        smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR"),
         4,
     ),
     (
         "alias_remap",
-        smc_indexed_addr(
-            "SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
-        ),
+        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0),
         8,
     ),
     (
         "mmode_remap",
-        smc_indexed_addr(
-            "SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
-        ),
+        smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0),
         8,
     ),
     (
         "xvisor_remap",
-        smc_indexed_addr(
-            "SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
-        ),
+        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0),
         8,
     ),
     (
@@ -98,9 +90,7 @@ class smu_fabric_reg_bar_wr_test_seq:
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
-    async def _j2a_wr(
-        self, jtag, addr: int, data: int, width: int, name: str
-    ) -> None:
+    async def _j2a_wr(self, jtag, addr: int, data: int, width: int, name: str) -> None:
         size, wstrb = _j2a_size_wstrb(width)
         st, _ = await jtag2axi_single_write(
             jtag,
@@ -115,16 +105,12 @@ class smu_fabric_reg_bar_wr_test_seq:
 
     async def _j2a_rd(self, jtag, addr: int, width: int, name: str) -> int:
         size, _ = _j2a_size_wstrb(width)
-        st, rdata = await jtag2axi_single_read(
-            jtag, addr, size=size, require_complete=True
-        )
+        st, rdata = await jtag2axi_single_read(jtag, addr, size=size, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A RD {name} @0x{addr:08x} status={st}")
         return int(rdata) & _width_mask(width)
 
-    async def _wr_rd_prove(
-        self, jtag, dest: str, addr: int, width: int
-    ) -> None:
+    async def _wr_rd_prove(self, jtag, dest: str, addr: int, width: int) -> None:
         """Prove CSR delivery without claiming field semantics."""
         mask = _width_mask(width)
         all_ones = mask
@@ -140,8 +126,7 @@ class smu_fabric_reg_bar_wr_test_seq:
         rw_mask = ones & ~zeros & all_ones
         if rw_mask == 0:
             raise AssertionError(
-                f"S1 dest={dest} @0x{addr:08x} no RW bits "
-                f"(ones=0x{ones:x} zeros=0x{zeros:x})"
+                f"S1 dest={dest} @0x{addr:08x} no RW bits (ones=0x{ones:x} zeros=0x{zeros:x})"
             )
 
         pattern = (orig ^ 0xA5A5A5A5) & rw_mask

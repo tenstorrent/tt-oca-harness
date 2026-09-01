@@ -32,6 +32,10 @@ module kmac_wrapper (
     input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,
     output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,
 
+    // Register bridge fault (sticky, held until bus_err_clr_i)
+    output logic bus_err_o,
+    input  logic bus_err_clr_i,
+
     // Idle output
     output logic idle_o
 );
@@ -82,7 +86,8 @@ module kmac_wrapper (
         .axi_lite_rsp_o  (kmac_axil_resp_o),
         .tl_o            (tl_req),
         .tl_i            (tl_resp),
-        .err_o           (/* UNUSED */)
+        .err_o           (bus_err_o),
+        .err_clr_i       (bus_err_clr_i)
     );
 
     // ============================================================================

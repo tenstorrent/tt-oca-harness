@@ -62,8 +62,8 @@ Quick-start (SEP xSPI)
 See ``examples/example_jedec_id.py`` for an annotated usage snippet.
 """
 
-from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError, SpiMode
 from .ocah_sep_spi_flash import OcahSepSpiFlash, OcahSepSpiFlashError
+from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError, SpiMode
 from .ocah_spi_monitor import OcahSpiMonitor
 
 __all__ = [

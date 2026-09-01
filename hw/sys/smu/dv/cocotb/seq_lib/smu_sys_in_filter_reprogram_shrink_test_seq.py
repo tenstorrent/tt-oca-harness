@@ -66,18 +66,12 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
         _, pre = await await_smn_resp(
             master,
             VERSION_LO,
@@ -88,9 +82,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         self.s1_ok = True
         sb.expect_eq("CHK-FILTER-SHRINK-PRE-DECERR", pre, RESP_DECERR)
 
-        await program_inbound0_window(
-            jtag, 0, PASS_ALL_END, scoreboard=sb, tag="WIDE"
-        )
+        await program_inbound0_window(jtag, 0, PASS_ALL_END, scoreboard=sb, tag="WIDE")
         data_w, resp_w = await await_smn_resp(
             master,
             VERSION_LO,
@@ -115,9 +107,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         sb.expect_eq("CHK-FILTER-SHRINK-WIDE-VER", resp_w, RESP_OKAY)
         sb.expect_eq("CHK-FILTER-SHRINK-WIDE-WDT", resp_wdt, RESP_OKAY)
 
-        await program_inbound0_window(
-            jtag, NARROW_START, NARROW_END, scoreboard=sb, tag="NARROW"
-        )
+        await program_inbound0_window(jtag, NARROW_START, NARROW_END, scoreboard=sb, tag="NARROW")
         _, resp_n = await await_smn_resp(
             master,
             VERSION_LO,
@@ -133,9 +123,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
             label="narrow WDT DECERR",
         )
         if (int(wdt_data) & 0xFFFF_FFFF) != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"narrow WDT poison got 0x{int(wdt_data) & 0xFFFF_FFFF:08x}"
-            )
+            raise AssertionError(f"narrow WDT poison got 0x{int(wdt_data) & 0xFFFF_FFFF:08x}")
         self.s3_ok = True
         self._log("CHK-FILTER-SHRINK-NARROW VERSION_LO OKAY WDT DECERR")
         sb.expect_eq("CHK-FILTER-SHRINK-NARROW-VER", resp_n, RESP_OKAY)
@@ -150,9 +138,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
             label="cleared VERSION_LO DECERR",
         )
         if (int(clr_data) & 0xFFFF_FFFF) != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"cleared poison got 0x{int(clr_data) & 0xFFFF_FFFF:08x}"
-            )
+            raise AssertionError(f"cleared poison got 0x{int(clr_data) & 0xFFFF_FFFF:08x}")
         self.s4_ok = True
         self._log("AXI_FILTER_OKAY shrink clear restores BlockByDefault")
         sb.expect_eq(

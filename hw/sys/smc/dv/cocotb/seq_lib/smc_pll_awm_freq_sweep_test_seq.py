@@ -19,9 +19,9 @@ _SUB_BLOCKS = [
     ("AWM_FREQUENCY3", 0x1C0),
     ("AWM_FREQUENCY4", 0x200),
     ("AWM_FREQUENCY5", 0x240),
-    ("AWM_CGM0",       0x280),
-    ("AWM_CGM1",       0x380),
-    ("AWM_CGM2",       0x480),
+    ("AWM_CGM0", 0x280),
+    ("AWM_CGM1", 0x380),
+    ("AWM_CGM2", 0x480),
 ]
 
 

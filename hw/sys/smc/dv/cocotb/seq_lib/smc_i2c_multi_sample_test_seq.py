@@ -11,14 +11,12 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_i2c_item import SmcI2cItem, SmcI2cOp
 
 from .smc_base_test_seq import smc_base_test_seq
 
 
 class smc_i2c_multi_sample_test_seq(smc_base_test_seq):
-
     GAP_REF_CYCLES = 100
 
     def __init__(self, name: str = "smc_i2c_multi_sample_test_seq") -> None:

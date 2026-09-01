@@ -48,9 +48,7 @@ async def wait_avsbus_leave_idle(max_cycles: int = 4000) -> int:
     for _ in range(max_cycles):
         state = await sample_avsbus_cur_state()
         if state != AVS_STATE_IDLE:
-            cocotb.log.info(
-                "AVSBus FSM left IDLE: cur_state_debug=0x%x", state
-            )
+            cocotb.log.info("AVSBus FSM left IDLE: cur_state_debug=0x%x", state)
             return state
         await ClockCycles(dut.clk_smc_i, 1)
     state = await sample_avsbus_cur_state()

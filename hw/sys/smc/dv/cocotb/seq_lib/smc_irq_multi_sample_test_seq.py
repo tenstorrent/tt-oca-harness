@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_irq_item import SmcIrqItem, SmcIrqOp
 
 from .smc_base_test_seq import smc_base_test_seq

@@ -14,10 +14,11 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_mailbox_seq import KM_MBOX_WRITE_DATA, KM_MBOX_WRITE_SEPARATOR
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
-from sep_reg_meta import sym
 
 N_SLOTS = 64
 # Region 0 holds the result word; region 15 hangs in the KM IP SRAM-lock test.
@@ -61,14 +62,14 @@ class SepKmVault:
         sep = KM_MBOX_WRITE_SEPARATOR
         data = KM_MBOX_WRITE_DATA
         wr_sep = SepAxiAccessSeq(
-            "km_vault_sep", op=SepAxiOp.WRITE,
-            addr=KM_MBOX_BASE + sep, wdata=1, size=2)
+            "km_vault_sep", op=SepAxiOp.WRITE, addr=KM_MBOX_BASE + sep, wdata=1, size=2
+        )
         await self.test.start_seq(wr_sep)
         if not wr_sep.resp_ok:
             raise AssertionError("KM mailbox WRITE_SEPARATOR not OKAY")
         wr_data = SepAxiAccessSeq(
-            "km_vault_cfg", op=SepAxiOp.WRITE,
-            addr=KM_MBOX_BASE + data, wdata=cfg.cfg_word, size=2)
+            "km_vault_cfg", op=SepAxiOp.WRITE, addr=KM_MBOX_BASE + data, wdata=cfg.cfg_word, size=2
+        )
         await self.test.start_seq(wr_data)
         if not wr_data.resp_ok:
             raise AssertionError("KM mailbox WRITE_DATA not OKAY")

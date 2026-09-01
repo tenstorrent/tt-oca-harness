@@ -87,14 +87,10 @@ class smu_smc_wdt_sanity_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         sb.expect_eq("CHK-WDT-SANITY-GATE-OPEN", gate, 0)
 
@@ -102,9 +98,7 @@ class smu_smc_wdt_sanity_test_seq:
         if st_c != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT_CMP default status={st_c}")
         if (cmp0 & CMP_MASK) != CMP_DEFAULT:
-            raise AssertionError(
-                f"WDT_CMP default=0x{cmp0 & CMP_MASK:x} want 0x{CMP_DEFAULT:x}"
-            )
+            raise AssertionError(f"WDT_CMP default=0x{cmp0 & CMP_MASK:x} want 0x{CMP_DEFAULT:x}")
         self.s2_ok = True
         sb.expect_eq("CHK-WDT-CMP-DEFAULT", cmp0 & CMP_MASK, CMP_DEFAULT)
 
@@ -157,10 +151,7 @@ class smu_smc_wdt_sanity_test_seq:
                 f"WDT_CMP programmed=0x{cmp_rb & CMP_MASK:x} want 0x{CMP_PROGRAM:x}"
             )
         self.s4_ok = True
-        self._log(
-            f"WDT_UNLOCK_OK cmp=0x{cmp_rb & CMP_MASK:x} "
-            f"scale=0x{ctrl_u & SCALE_MASK:x}"
-        )
+        self._log(f"WDT_UNLOCK_OK cmp=0x{cmp_rb & CMP_MASK:x} scale=0x{ctrl_u & SCALE_MASK:x}")
         sb.expect_eq(
             "CHK-WDT-UNLOCK CMP programmed",
             cmp_rb & CMP_MASK,

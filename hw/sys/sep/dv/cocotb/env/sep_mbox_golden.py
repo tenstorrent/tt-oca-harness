@@ -36,17 +36,19 @@ from sep_reg_meta import SEP_CPU_CTRL, sym
 from env.sep_seeded_rng import SepSeededRng
 
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
-OUTBOUND_BASE = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")      # SEP/CPU aperture (CPU-LSU reachable, no filter)
-WRITE_DATA = 0x00                # 64-bit; pushes the TX FIFO (one access = one entry)
-READ_DATA = 0x08                 # 64-bit; pops the RX FIFO (empty on bare-sep)
-STATUS = 0x10                    # empty[0] full[1] wlvl_above[2] rlvl_above[3] (RO)
-ERROR_FLAGS = 0x18               # read_error[0] write_error[1] (READ-CLEAR)
-WIRQT = 0x20                     # write IRQ threshold [7:0]
-RIRQT = 0x28                     # read IRQ threshold  [7:0]
-IRQS = 0x30                      # wtirq[0] rtirq[1] eirq[2] (RW1C; level-held)
-IRQEN = 0x38                     # wtirq[0] rtirq[1] eirq[2] (RW)
-IRQP = 0x40                      # = IRQS & IRQEN (RO)
-CTRL = 0x48                      # wflush[0] rflush[1] (WO)
+OUTBOUND_BASE = sym(
+    "AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"
+)  # SEP/CPU aperture (CPU-LSU reachable, no filter)
+WRITE_DATA = 0x00  # 64-bit; pushes the TX FIFO (one access = one entry)
+READ_DATA = 0x08  # 64-bit; pops the RX FIFO (empty on bare-sep)
+STATUS = 0x10  # empty[0] full[1] wlvl_above[2] rlvl_above[3] (RO)
+ERROR_FLAGS = 0x18  # read_error[0] write_error[1] (READ-CLEAR)
+WIRQT = 0x20  # write IRQ threshold [7:0]
+RIRQT = 0x28  # read IRQ threshold  [7:0]
+IRQS = 0x30  # wtirq[0] rtirq[1] eirq[2] (RW1C; level-held)
+IRQEN = 0x38  # wtirq[0] rtirq[1] eirq[2] (RW)
+IRQP = 0x40  # = IRQS & IRQEN (RO)
+CTRL = 0x48  # wflush[0] rflush[1] (WO)
 
 # STATUS bit positions.
 ST_EMPTY = 1 << 0
@@ -69,7 +71,7 @@ ERR_WRITE = 1 << 1
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_MAILBOX = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
-MAILBOX_DEPTH = 8                # sep_pkg::MAILBOX_DEPTH
+MAILBOX_DEPTH = 8  # sep_pkg::MAILBOX_DEPTH
 # Read-from-empty returns this sentinel + SLVERR (axi_lite_mailbox.sv).
 READ_EMPTY_SENTINEL = 0xFEED_DEAD
 RESP_OKAY = 0
@@ -103,9 +105,11 @@ class SepMboxCfg:
         return min(thold, self.depth - 1)
 
     def summary(self) -> str:
-        return (f"seed={self.seed} depth={self.depth} wirqt={self.wirqt} "
-                f"first_batch={self.first_batch} payloads={len(self.payloads)} "
-                f"(random data+threshold+batch)")
+        return (
+            f"seed={self.seed} depth={self.depth} wirqt={self.wirqt} "
+            f"first_batch={self.first_batch} payloads={len(self.payloads)} "
+            f"(random data+threshold+batch)"
+        )
 
 
 class SepMboxGolden:
@@ -118,7 +122,7 @@ class SepMboxGolden:
 
     def __init__(self, cfg: SepMboxCfg) -> None:
         self.cfg = cfg
-        self.tx = 0                          # TX FIFO occupancy
+        self.tx = 0  # TX FIFO occupancy
         self.wirqt = cfg.clamped(cfg.wirqt)
 
     def push(self) -> bool:
@@ -133,10 +137,12 @@ class SepMboxGolden:
 
     def status(self) -> dict:
         """Outbound-aperture STATUS: write side == TX FIFO; read side (RX) empty."""
-        return {"full": self.tx >= self.cfg.depth,
-                "wlvl_above": self.tx > self.wirqt,
-                "empty": True,            # RX FIFO never filled on bare-sep
-                "rlvl_above": False}
+        return {
+            "full": self.tx >= self.cfg.depth,
+            "wlvl_above": self.tx > self.wirqt,
+            "empty": True,  # RX FIFO never filled on bare-sep
+            "rlvl_above": False,
+        }
 
     def wtirq(self) -> bool:
         return self.tx > self.wirqt

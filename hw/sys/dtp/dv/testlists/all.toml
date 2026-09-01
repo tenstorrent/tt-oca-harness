@@ -50,12 +50,14 @@ tests = [
     "dtp_jtag2axi_smc_axi_single_write_test",
     "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_random_ops_test",
     "dtp_jtag2axi_smc_axi_write_security_gating_test",
     "dtp_jtag2axi_smc_axi_single_write_read_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_read_random_ops_test",
@@ -208,7 +210,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 149
+expected_count = 151
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -234,12 +236,14 @@ tests = [
     "dtp_jtag2axi_smc_axi_read_random_ops_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
     "dtp_jtag2axi_smc_axi_single_write_read_test",
     "dtp_jtag2axi_smc_axi_write_security_gating_test",
     "dtp_jtag2axi_smc_axi_random_ops_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_test",
     "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
     "dtp_jtag2axi_smc_axi_single_write_test",

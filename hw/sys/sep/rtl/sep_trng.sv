@@ -37,6 +37,13 @@ module sep_trng #(
     output logic intr_edn_cmd_req_done_o,
     output logic intr_edn_fatal_err_o,
 
+    // DRBG register bridge faults, CSRNG and EDN paths reported separately
+    // (sticky, each held until its own clear)
+    output logic csrng_bus_err_o,
+    input  logic csrng_bus_err_clr_i,
+    output logic edn_bus_err_o,
+    input  logic edn_bus_err_clr_i,
+
     // Local-reset indication, consumed only as a synchronous clear downstream.
     output logic trng_reset_active_o
 );
@@ -102,7 +109,11 @@ module sep_trng #(
         .intr_cs_hw_inst_exc_o     (intr_cs_hw_inst_exc_o),
         .intr_cs_fatal_err_o       (intr_cs_fatal_err_o),
         .intr_edn_cmd_req_done_o   (intr_edn_cmd_req_done_o),
-        .intr_edn_fatal_err_o      (intr_edn_fatal_err_o)
+        .intr_edn_fatal_err_o      (intr_edn_fatal_err_o),
+        .csrng_bus_err_o           (csrng_bus_err_o),
+        .csrng_bus_err_clr_i       (csrng_bus_err_clr_i),
+        .edn_bus_err_o             (edn_bus_err_o),
+        .edn_bus_err_clr_i         (edn_bus_err_clr_i)
     );
 
     if (NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT) begin : g_endpoint_width_check
