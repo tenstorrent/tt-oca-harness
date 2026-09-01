@@ -107,9 +107,17 @@ class sep_axi_strobe_window_test(sep_base_test):
                 + ")"
             )
 
-        self.logger.info(
-            "CHK-RANDCFG PASS: %d narrow write(s) + %d window(s) from seed %d",
-            len(cfg.writes),
-            len(cfg.windows),
-            cfg.seed,
+        # A floor, not a report. The shape of the walk is seed-invariant by
+        # construction, so a seed that yields fewer cells than the walk defines
+        # means the config shrank and the compares above covered less than the
+        # card claims.
+        sizes_walked = {SIZE_BYTES[w.size] for w in cfg.writes}
+        assert sizes_walked == {1, 2, 4}, (
+            f"CHK-RANDCFG FAIL: seed {cfg.seed} walked sizes "
+            f"{sorted(sizes_walked)}; the strobe axis is exhaustive on every "
+            f"seed and must cover 1, 2 and 4 bytes"
         )
+        self.logger.info(
+            "CHK-RANDCFG PASS: %d narrow write(s), the full walk, + %d "
+            "window(s) from seed %d",
+            len(cfg.writes), len(cfg.windows), cfg.seed)

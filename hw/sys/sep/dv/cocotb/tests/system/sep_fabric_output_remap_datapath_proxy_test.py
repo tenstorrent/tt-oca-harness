@@ -18,10 +18,8 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_remap_seq import (
-    RESP_DECERR,
-    RESP_OKAY,
-    SepOutboundRemap,
-    SepOutboundRemapCfg,
+    N_REGIONS, OUTFILT_N_ENTRIES,
+    RESP_DECERR, RESP_OKAY, SepOutboundRemap, SepOutboundRemapCfg,
     remap_probe_seq,
 )
 
@@ -63,14 +61,15 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
         self.logger.info(
             "CHK-FILTER-DROP PASS: %s r%d access 0x%08x -> DECERR "
             "(outside the remapped allow window)",
-            cfg.bank,
-            cfg.forbidden_region,
-            cfg.forbidden_addr,
+            cfg.bank, cfg.forbidden_region, cfg.forbidden_addr)
+        # A floor, not a report: the seed must land inside the banks the export
+        # declares, so a config that walks off a bank fails here rather than
+        # probing an address no register answers.
+        assert 0 <= cfg.region < N_REGIONS and 0 <= cfg.entry < OUTFILT_N_ENTRIES, (
+            f"CHK-RANDCFG FAIL: seed {cfg.seed} selected region {cfg.region} of "
+            f"{N_REGIONS} and entry {cfg.entry} of {OUTFILT_N_ENTRIES}"
         )
         self.logger.info(
-            "CHK-RANDCFG PASS: bank=%s region=%d entry=%d from seed %d",
-            cfg.bank,
-            cfg.region,
-            cfg.entry,
-            cfg.seed,
-        )
+            "CHK-RANDCFG PASS: bank=%s region=%d of %d entry=%d of %d, seed %d",
+            cfg.bank, cfg.region, N_REGIONS, cfg.entry, OUTFILT_N_ENTRIES,
+            cfg.seed)

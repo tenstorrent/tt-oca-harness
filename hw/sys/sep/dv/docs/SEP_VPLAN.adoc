@@ -3981,6 +3981,8 @@ both lock flavours of one seed-selected spare.
 |A programmed region's live beat equals input plus the programmed offset (data matches identity `CLOCK_GATE_CTRL`).
 |CHK-RANDCFG
 |Region and source page from the run seed; dest is always `CLOCK_GATE_CTRL`.
+|CHK-VALID-GATE
+|`region_valid` gates the remap. The same window is reprogrammed with bounds and offset live and only the enable clear, and the beat must then read the value at the address the master issued rather than the remapped destination. Programming the window first is what separates a working gate from an address that was never in range, and the vacuity guard on `CHK-OFFSET` has already shown the two values differ. The cacheable attribute is not checked: `axi_alias_remap` drives the outbound cache bits from the region on a hit and this bench has no observable on them.
 |===
 
 '''''
@@ -4366,8 +4368,10 @@ constraint is not an open defect.
 |CPU reset-vector TDR (spec)
 |`hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register — the vector reaches the CPU through a direct wrapper input. The testbench shifts that opcode on every CPU-boot run and the sequence is inert: stimulus that reads as coverage and cannot fail. Remove it or give the claim an owner.
 
-|Remapper attributes and pass-through (spec)
-|`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. The RTL register has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. `sep_fabric_local_alias_datapath_test` proves the live-beat offset on a programmed region (`CHK-OFFSET`); the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.
+|AP/STEE output-remap attributes and pass-through (spec)
+|`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. `hw/common/axi/output_remap/rtl/output_remap.sv` has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. The vehicle on this bank is `sep_fabric_output_remap_datapath_proxy_test`, which proves a programmed window translates and that a beat outside it is refused; the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.
+
+This row is about the AP/STEE bank only. The local-master aliaser is a different block: `hw/common/axi/axi_alias_remap/rtl/axi_alias_remap.sv` carries `region_valid` per region, drives the outbound cache bits from the region on a hit, and passes an address through unchanged when no region hits. `sep_fabric_local_alias_datapath_test` covers the enable with `CHK-VALID-GATE`.
 
 |Class 2 scan-root count (spec)
 |`hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is absent from the list, and nothing lints the manifest against the RTL. That manifest is the sole input deciding what is never scan-dumpable.

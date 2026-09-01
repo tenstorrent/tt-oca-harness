@@ -10,10 +10,16 @@ programmable regions ahead of the system-peripherals routing demux
 region and proves the offset: a beat of the programmed filter page
 returns the marker written to ``CLOCK_GATE_CTRL``.
 
-Spec wants a valid bit, a cacheable attribute, and transparent
-unprogrammed regions. RTL has neither bit as specified and rewrites
-unprogrammed regions. Those checkers are not written here; a checker
-that named a missing bit would be a hard FAIL.
+CHK-VALID-GATE covers the enable. ``axi_alias_remap`` carries
+``region_valid`` per region and gates the hit on it, so a window whose
+bounds and offset are programmed with the bit clear must leave the beat
+at the address the master issued. Programming the window and clearing
+only the enable is what separates a working gate from an address that
+was never in range.
+
+The cacheable attribute is not checked here: ``axi_alias_remap`` drives
+``axi_out_req_o.aw.cache`` from the region on a hit, and this bench has
+no observable on the outbound cache bits.
 
 no_cpu, +skip_fuse_sense: the remapper does not depend on sense.
 """
@@ -23,6 +29,7 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_local_alias_seq import (
+    N_REGIONS,
     SepLocalAlias,
     SepLocalAliasCfg,
     alias_probe_seq,
@@ -71,13 +78,41 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         self.logger.info(
             "CHK-OFFSET PASS: remapped beat -> 0x%08x "
             "(data 0x%08x matches identity CLOCK_GATE_CTRL)",
-            cfg.expect_addr,
-            got,
+            cfg.expect_addr, got)
+        # Same window, enable cleared: the beat must stay where it was issued.
+        # src_pre is the pre-programming read of that address, and the vacuity
+        # guard above already proved it differs from the remapped destination,
+        # so this compare fails if the remap ignores region_valid.
+        await alias.program(cfg, valid=False)
+        gated = alias_probe_seq(cfg.access_addr)
+        await self.start_seq(gated)
+        assert gated.resp_ok, (
+            f"CHK-VALID-GATE FAIL: 0x{cfg.access_addr:08x} resp not OKAY with "
+            f"the region programmed and valid clear"
+        )
+        gated_data = gated.rdata & 0xFFFF_FFFF
+        assert gated_data != dest_data, (
+            f"CHK-VALID-GATE FAIL: access 0x{cfg.access_addr:08x} read "
+            f"0x{gated_data:08x}, the remapped destination value, with "
+            f"region {cfg.region} valid clear -- the enable does not gate"
+        )
+        assert gated_data == src_pre, (
+            f"CHK-VALID-GATE FAIL: access 0x{cfg.access_addr:08x} read "
+            f"0x{gated_data:08x} != 0x{src_pre:08x} read before the region "
+            f"was programmed -- the beat did not pass through unchanged"
         )
         self.logger.info(
-            "CHK-RANDCFG PASS: region=%d src=0x%08x dest=0x%08x from seed %d",
-            cfg.region,
-            cfg.access_addr,
-            cfg.expect_addr,
-            cfg.seed,
+            "CHK-VALID-GATE PASS: region %d programmed with valid clear leaves "
+            "0x%08x reading 0x%08x, its own value, not the remapped 0x%08x",
+            cfg.region, cfg.access_addr, gated_data, dest_data)
+
+        # A floor, not a report: the region index must be inside the bank the
+        # export declares, so a config that walks off the bank fails here.
+        assert 0 <= cfg.region < N_REGIONS, (
+            f"CHK-RANDCFG FAIL: seed {cfg.seed} selected region {cfg.region}, "
+            f"outside the {N_REGIONS}-region bank"
         )
+        self.logger.info(
+            "CHK-RANDCFG PASS: region=%d of %d src=0x%08x dest=0x%08x seed %d",
+            cfg.region, N_REGIONS, cfg.access_addr, cfg.expect_addr,
+            cfg.seed)

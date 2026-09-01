@@ -35,6 +35,9 @@ from env.sep_axi_decode_map import audit_rtl_vs_spec
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_map_refuse_seq import (
     MAPPED_CSR_ADDR,
+    ANCHOR_KEPT,
+    PROBE_FLOOR,
+    SHORT_ROW_LIMIT,
     SepAxiMapRefuse,
     SepAxiMapRefuseCfg,
 )
@@ -128,13 +131,28 @@ class sep_axi_map_refuse_test(sep_base_test):
         )
         self.logger.info(
             "CHK-NONVAC PASS: %d DECERR beat(s) observed on the bus match the "
-            "%d the master reported",
-            seen,
-            refuse.decerr,
+            "%d the master reported", seen, refuse.decerr)
+        # Floors at the run seed, not only in the module selftest: the selftest
+        # pins seeds 1-3, so without these a map or crossbar change that shrank
+        # the walk at the seed a regression actually used would still report a
+        # clean pass.
+        n_anchor = sum(1 for p in cfg.probes if p.anchor)
+        assert len(cfg.probes) >= PROBE_FLOOR, (
+            f"CHK-RANDCFG FAIL: seed {cfg.seed} walked {len(cfg.probes)} "
+            f"probes, below the floor of {PROBE_FLOOR}; a reserved row "
+            f"stopped yielding addresses"
+        )
+        assert n_anchor == ANCHOR_KEPT, (
+            f"CHK-RANDCFG FAIL: seed {cfg.seed} kept {n_anchor} anchors, "
+            f"expected {ANCHOR_KEPT}; a directed gap left the map"
+        )
+        assert len(cfg.short_regions) <= SHORT_ROW_LIMIT, (
+            f"CHK-RANDCFG FAIL: seed {cfg.seed} left "
+            f"{len(cfg.short_regions)} row(s) short of quota, above the "
+            f"{SHORT_ROW_LIMIT} the crossbar routes"
         )
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d probes (%d anchors) from seed %d",
-            len(cfg.probes),
-            sum(1 for p in cfg.probes if p.anchor),
-            cfg.seed,
-        )
+            "CHK-RANDCFG PASS: walked %d probes (floor %d) with all %d "
+            "anchors and %d short row(s) from seed %d",
+            len(cfg.probes), PROBE_FLOOR, n_anchor,
+            len(cfg.short_regions), cfg.seed)
