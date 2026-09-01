@@ -90,17 +90,13 @@ class smu_axi_alias_remap_manager_scope_test_seq:
         cocotb.log.info(msg)
 
     async def _j2a_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A WR {name} @0x{addr:08x} status={st}")
         self._log(f"J2A WR {name} @0x{addr:08x} data=0x{data:x}")
 
     async def _j2a_rd(self, jtag, addr: int, name: str) -> int:
-        st, rdata = await jtag2axi_single_read(
-            jtag, addr, require_complete=True
-        )
+        st, rdata = await jtag2axi_single_read(jtag, addr, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A RD {name} @0x{addr:08x} status={st}")
         return int(rdata)
@@ -147,10 +143,7 @@ class smu_axi_alias_remap_manager_scope_test_seq:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
         sb.expect_eq("CHK-ALIAS-REMAP-J2A-READY", idcode, 0x1)
 
-        if not (
-            PROGRAMMED_ALIAS_INPUT >= SPM_BASE + 0x100000
-            or ALIAS_END <= SPM_BASE
-        ):
+        if not (PROGRAMMED_ALIAS_INPUT >= SPM_BASE + 0x100000 or ALIAS_END <= SPM_BASE):
             raise AssertionError(
                 f"alias window [0x{PROGRAMMED_ALIAS_INPUT:x},0x{ALIAS_END:x}) "
                 f"overlaps SPM base 0x{SPM_BASE:x}"
@@ -181,9 +174,7 @@ class smu_axi_alias_remap_manager_scope_test_seq:
         # Reading the issue address via J2A also remaps → same SPM word.
         alias_rb = await self._j2a_rd(jtag, JTAG_ISSUE, "S3_ALIAS_RB")
         if (alias_rb & 0xFFFF_FFFF) != (JTAG_WDATA & 0xFFFF_FFFF):
-            raise AssertionError(
-                f"S3 alias readback 0x{alias_rb:x} want 0x{JTAG_WDATA:x}"
-            )
+            raise AssertionError(f"S3 alias readback 0x{alias_rb:x} want 0x{JTAG_WDATA:x}")
 
         self.s3_ok = True
         self._log(

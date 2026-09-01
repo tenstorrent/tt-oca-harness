@@ -25,23 +25,36 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
-from sep_base_test import sep_base_test
+from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_lcc_golden import LC_PROD, lc_state_name
-from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
-from env.sep_axi_agent import SepAxiOp
+from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_rma_token_seq import (
-    FAULT_RMA_CHIPLET, FAULT_RMA_SIP, FAULT_SEC_DISABLE,
-    IRQ_TOKEN_MATCH_FAULT, TOKEN_CMP_INJECT_COLLAPSE,
-    TOKEN_CMP_INJECT_COMMON, TOKEN_CMP_INJECT_COMMON_MATCH,
-    TOKEN_CMP_INJECT_DISAGREE, TOKEN_CMP_INJECT_OFF,
-    TOKEN_CMP_SEL_CHIPLET, TOKEN_CMP_SEL_SEC, TOKEN_CMP_SEL_SIP,
-    TOKEN_ERROR, TOKEN_MATCH, TOKEN_MATCH_FAULT, TOKEN_MISMATCH,
-    TOKEN_RMA_CHIPLET, TOKEN_RMA_SIP, TOKEN_SEC_DISABLE,
-    SepRmaTokenCfg, SepRmaTokenMatchSeq,
-    rma_lc_bit, rma_lc_raw,
+    FAULT_RMA_CHIPLET,
+    FAULT_RMA_SIP,
+    FAULT_SEC_DISABLE,
+    IRQ_TOKEN_MATCH_FAULT,
+    TOKEN_CMP_INJECT_COLLAPSE,
+    TOKEN_CMP_INJECT_COMMON,
+    TOKEN_CMP_INJECT_COMMON_MATCH,
+    TOKEN_CMP_INJECT_DISAGREE,
+    TOKEN_CMP_INJECT_OFF,
+    TOKEN_CMP_SEL_CHIPLET,
+    TOKEN_CMP_SEL_SEC,
+    TOKEN_CMP_SEL_SIP,
+    TOKEN_ERROR,
+    TOKEN_MATCH,
+    TOKEN_MATCH_FAULT,
+    TOKEN_MISMATCH,
+    TOKEN_RMA_CHIPLET,
+    TOKEN_RMA_SIP,
+    TOKEN_SEC_DISABLE,
+    SepRmaTokenCfg,
+    SepRmaTokenMatchSeq,
+    rma_lc_bit,
+    rma_lc_raw,
 )
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
@@ -61,7 +74,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-LC-FEAT PASS: %s LC=%s FEAT_CTRL=0x%016x",
-            tag, lc_state_name(raw), seq.observed_feat)
+            tag,
+            lc_state_name(raw),
+            seq.observed_feat,
+        )
 
     async def _mismatch_then_match(
         self,
@@ -83,8 +99,8 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         await self._check_lc(image, before, f"{name}-mismatch")
         self.logger.info(
-            "CHK-MISMATCH PASS: %s wrong token did not update LC (%s)",
-            name, lc_state_name(before))
+            "CHK-MISMATCH PASS: %s wrong token did not update LC (%s)", name, lc_state_name(before)
+        )
 
         good = SepRmaTokenMatchSeq(kind, token)
         await self.start_seq(good)
@@ -96,7 +112,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._check_lc(image, after, f"{name}-match")
         self.logger.info(
             "CHK-MATCH PASS: %s legal token updated LC %s -> %s",
-            name, lc_state_name(before), lc_state_name(after))
+            name,
+            lc_state_name(before),
+            lc_state_name(after),
+        )
 
     def _irq38(self) -> int:
         return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_TOKEN_MATCH_FAULT) & 1
@@ -109,7 +128,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
 
     async def _wr_fault(self, data: int) -> None:
         seq = SepAxiAccessSeq(
-            "token_fault_wr", op=SepAxiOp.WRITE, addr=TOKEN_MATCH_FAULT, wdata=data,
+            "token_fault_wr",
+            op=SepAxiOp.WRITE,
+            addr=TOKEN_MATCH_FAULT,
+            wdata=data,
             allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
@@ -147,9 +169,9 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             f"common-mode must not set a sticky bit: FAULT=0x{fault:x} irq38={irq}"
         )
         self.logger.info(
-            "CHK-COMMON-MODE PASS: all-three invert of match -> code=0x%02x, "
-            "no sticky, irq38=0",
-            code)
+            "CHK-COMMON-MODE PASS: all-three invert of match -> code=0x%02x, no sticky, irq38=0",
+            code,
+        )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         await self._set_inject(TOKEN_CMP_INJECT_COMMON_MATCH)
@@ -165,97 +187,77 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         self.logger.info(
             "CHK-COMMON-MODE-MATCH PASS: all-three invert of mismatch -> "
             "code=0x%02x, no sticky, irq38=0",
-            code)
+            code,
+        )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE)
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
         irq = self._irq38()
-        assert code == TOKEN_ERROR, (
-            f"collapsed pair must force 6'b111111, got 0x{code:02x}"
-        )
+        assert code == TOKEN_ERROR, f"collapsed pair must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"collapse did not set SIP fault: 0x{fault:x}"
         assert irq == 1, "collapse did not raise sep_internal_interrupts[38]"
         self.logger.info(
-            "CHK-COLLAPSE PASS: pair collapse -> code=0x%02x FAULT=0x%08x irq38=1",
-            code, fault)
-        self.logger.info(
-            "CHK-ERROR-CODE PASS: every match-status bit is 1 (0x%02x)", code)
-        self.logger.info(
-            "CHK-IRQ-38 PASS: sep_internal_interrupts[38] (PIC source 39) asserted")
+            "CHK-COLLAPSE PASS: pair collapse -> code=0x%02x FAULT=0x%08x irq38=1", code, fault
+        )
+        self.logger.info("CHK-ERROR-CODE PASS: every match-status bit is 1 (0x%02x)", code)
+        self.logger.info("CHK-IRQ-38 PASS: sep_internal_interrupts[38] (PIC source 39) asserted")
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
         irq = self._irq38()
-        assert code == TOKEN_MATCH, (
-            f"valid retry after release must match, got 0x{code:02x}"
-        )
+        assert code == TOKEN_MATCH, f"valid retry after release must match, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"sticky SIP fault cleared on retry: 0x{fault:x}"
         assert irq == 1, "irq38 dropped on a valid-token retry"
         await self._wr_fault(0)
         still = await self._rd_fault()
-        assert still & FAULT_RMA_SIP, (
-            f"TOKEN_MATCH_FAULT is sw=r; write 0 left 0x{still:x}"
-        )
+        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write 0 left 0x{still:x}"
         self.logger.info(
-            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq38=1, "
-            "write-0 ignored", code, still)
+            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq38=1, write-0 ignored",
+            code,
+            still,
+        )
 
         await self._set_inject(TOKEN_CMP_INJECT_DISAGREE)
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
         irq = self._irq38()
-        assert code == TOKEN_ERROR, (
-            f"two-instance disagree must force 6'b111111, got 0x{code:02x}"
-        )
+        assert code == TOKEN_ERROR, f"two-instance disagree must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"disagree lost the SIP sticky bit: 0x{fault:x}"
         assert irq == 1, "disagree did not keep irq38 asserted"
         self.logger.info(
-            "CHK-DISAGREE PASS: instance disagree -> code=0x%02x FAULT=0x%08x irq38=1",
-            code, fault)
+            "CHK-DISAGREE PASS: instance disagree -> code=0x%02x FAULT=0x%08x irq38=1", code, fault
+        )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE, TOKEN_CMP_SEL_CHIPLET)
         code = await self._present_kind(TOKEN_RMA_CHIPLET, cfg.chiplet_token)
         fault = await self._rd_fault()
-        assert code == TOKEN_ERROR, (
-            f"CHIPLET collapse must force 6'b111111, got 0x{code:02x}"
-        )
-        assert fault & FAULT_RMA_CHIPLET, (
-            f"CHIPLET collapse did not set bit 8: FAULT=0x{fault:x}"
-        )
+        assert code == TOKEN_ERROR, f"CHIPLET collapse must force 6'b111111, got 0x{code:02x}"
+        assert fault & FAULT_RMA_CHIPLET, f"CHIPLET collapse did not set bit 8: FAULT=0x{fault:x}"
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE, TOKEN_CMP_SEL_SEC)
         code = await self._present_kind(TOKEN_SEC_DISABLE, 1)
         fault = await self._rd_fault()
-        assert code == TOKEN_ERROR, (
-            f"SEC_DISABLE collapse must force 6'b111111, got 0x{code:02x}"
-        )
+        assert code == TOKEN_ERROR, f"SEC_DISABLE collapse must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_SEC_DISABLE, (
             f"SEC_DISABLE collapse did not set bit 16: FAULT=0x{fault:x}"
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
         self.logger.info(
-            "CHK-WHICH-TOKEN PASS: FAULT=0x%08x (SIP bit0 + CHIPLET bit8 + "
-            "SEC_DISABLE bit16)",
-            fault)
+            "CHK-WHICH-TOKEN PASS: FAULT=0x%08x (SIP bit0 + CHIPLET bit8 + SEC_DISABLE bit16)",
+            fault,
+        )
 
         # LC is RMA_CHIP_1: the PROD/RMA_SIP JTAG window is off, so the fault
         # CSR is a legal JTAG read. Do not treat a PROD OKAY as coverage.
-        jtag_resp, jtag_data = await self.jtag_axil_op(
-            write=False, addr=TOKEN_MATCH_FAULT)
-        assert jtag_resp == 0, (
-            f"JTAG TOKEN_MATCH_FAULT at RMA_CHIP must be OKAY, resp={jtag_resp}"
-        )
-        assert jtag_data == fault, (
-            f"JTAG TOKEN_MATCH_FAULT 0x{jtag_data:x} != AXI 0x{fault:x}"
-        )
-        self.logger.info(
-            "CHK-JTAG-FAULT PASS: JTAG read 0x%08x == AXI after RMA_CHIP",
-            jtag_data)
+        jtag_resp, jtag_data = await self.jtag_axil_op(write=False, addr=TOKEN_MATCH_FAULT)
+        assert jtag_resp == 0, f"JTAG TOKEN_MATCH_FAULT at RMA_CHIP must be OKAY, resp={jtag_resp}"
+        assert jtag_data == fault, f"JTAG TOKEN_MATCH_FAULT 0x{jtag_data:x} != AXI 0x{fault:x}"
+        self.logger.info("CHK-JTAG-FAULT PASS: JTAG read 0x%08x == AXI after RMA_CHIP", jtag_data)
 
     async def run_scenario(self) -> None:
         cfg = SepRmaTokenCfg(self.random_seed())
@@ -271,7 +273,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._mismatch_then_match(image, TOKEN_RMA_CHIPLET, cfg.chiplet_token)
 
         self.logger.info(
-            "CHK-RANDCFG PASS: SIP and CHIPLET match+mismatch walked; "
-            "tokens from seed %d", cfg.seed)
+            "CHK-RANDCFG PASS: SIP and CHIPLET match+mismatch walked; tokens from seed %d", cfg.seed
+        )
 
         await self._token_fault_path(cfg)

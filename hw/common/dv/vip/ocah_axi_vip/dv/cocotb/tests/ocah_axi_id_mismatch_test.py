@@ -20,7 +20,6 @@ import logging
 import random
 
 import cocotb
-
 from ocah_axi_vip import OcahAxiIdCapture
 from ocah_axi_vip_harness import (
     ID_MASK,
@@ -91,7 +90,11 @@ async def ocah_axi_id_mismatch_test(dut) -> None:
         expected = (awid ^ mask) & ID_MASK
         log.info(
             "corrupted write %d: issued=0x%02x mask=0x%02x observed=%s expected=0x%02x",
-            round_index, awid, mask, observed, expected,
+            round_index,
+            awid,
+            mask,
+            observed,
+            expected,
         )
         assert resp == RESP_OKAY
         assert observed is not None, "BID capture miss on the corrupted write"
@@ -131,7 +134,12 @@ async def ocah_axi_id_mismatch_test(dut) -> None:
         expected = (arid ^ mask) & ID_MASK
         log.info(
             "corrupted read %d: issued=0x%02x mask=0x%02x observed=%s expected=0x%02x rdata=0x%08x",
-            round_index, arid, mask, observed, expected, rdata,
+            round_index,
+            arid,
+            mask,
+            observed,
+            expected,
+            rdata,
         )
         assert resp == RESP_OKAY and rdata == data2, "RID corruption must not disturb read data"
         assert observed is not None, "RID capture miss on the corrupted read"

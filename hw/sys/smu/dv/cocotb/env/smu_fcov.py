@@ -10,8 +10,7 @@ tests call ``hit()`` or when ``SmuScoreboard`` tags a check with ``fcov=``.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Optional
-
+from typing import Iterable
 
 # covergroup -> coverpoint -> bin
 FCOV_BINS: dict[str, dict[str, set[str]]] = {

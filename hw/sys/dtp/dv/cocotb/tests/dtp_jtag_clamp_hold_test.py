@@ -3,7 +3,6 @@
 """DTP CLAMP_HOLD TMP instruction test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_clamp_hold_test_seq import dtp_jtag_clamp_hold_test_seq
 

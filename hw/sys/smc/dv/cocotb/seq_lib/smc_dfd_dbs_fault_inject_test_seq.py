@@ -8,10 +8,10 @@ DEFENDS only: TB public capture ports wired in tb_top.sv.
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Keep a diagnostic CSR touch so the test still exercises SEP_IN.

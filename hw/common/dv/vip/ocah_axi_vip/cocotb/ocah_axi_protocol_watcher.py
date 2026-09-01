@@ -41,10 +41,34 @@ __all__ = [
 _MAX_FINDINGS = 256
 
 _AXI4_PAYLOAD = {
-    "aw": ("awaddr", "awid", "awlen", "awsize", "awburst", "awlock", "awcache", "awprot", "awqos", "awregion", "awuser"),
+    "aw": (
+        "awaddr",
+        "awid",
+        "awlen",
+        "awsize",
+        "awburst",
+        "awlock",
+        "awcache",
+        "awprot",
+        "awqos",
+        "awregion",
+        "awuser",
+    ),
     "w": ("wdata", "wstrb", "wlast", "wuser"),
     "b": ("bid", "bresp", "buser"),
-    "ar": ("araddr", "arid", "arlen", "arsize", "arburst", "arlock", "arcache", "arprot", "arqos", "arregion", "aruser"),
+    "ar": (
+        "araddr",
+        "arid",
+        "arlen",
+        "arsize",
+        "arburst",
+        "arlock",
+        "arcache",
+        "arprot",
+        "arqos",
+        "arregion",
+        "aruser",
+    ),
     "r": ("rid", "rdata", "rresp", "rlast", "ruser"),
 }
 
@@ -212,8 +236,20 @@ class _BaseProtocolWatcher:
         }
 
     async def _run(self) -> None:
-        valid_names = {"aw": "awvalid", "w": "wvalid", "b": "bvalid", "ar": "arvalid", "r": "rvalid"}
-        ready_names = {"aw": "awready", "w": "wready", "b": "bready", "ar": "arready", "r": "rready"}
+        valid_names = {
+            "aw": "awvalid",
+            "w": "wvalid",
+            "b": "bvalid",
+            "ar": "arvalid",
+            "r": "rvalid",
+        }
+        ready_names = {
+            "aw": "awready",
+            "w": "wready",
+            "b": "bready",
+            "ar": "arready",
+            "r": "rready",
+        }
 
         while self._running:
             await RisingEdge(self.clock)

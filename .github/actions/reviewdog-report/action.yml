@@ -31,6 +31,10 @@ inputs:
     required: false
     default: 'error'
     description: 'reviewdog -fail-level; set to none to report annotations without failing the job (e.g. while a violation backlog is being worked down)'
+  reporter:
+    required: false
+    default: 'github-check'
+    description: 'reviewdog reporter; use github-pr-review when diagnostics carry suggested fixes'
 runs:
   using: 'composite'
   steps:
@@ -49,6 +53,7 @@ runs:
         RD_FORMAT: ${{ inputs.format }}
         RD_LEVEL: ${{ inputs.level }}
         RD_FAIL_LEVEL: ${{ inputs.fail-level }}
+        RD_REPORTER: ${{ inputs.reporter }}
       run: |
         set -o pipefail
         efm_flags=()
@@ -62,4 +67,4 @@ runs:
         level_flags=()
         [ -n "$RD_LEVEL" ] && level_flags=(-level="$RD_LEVEL")
         cat "$RD_LOG_FILE" \
-          | reviewdog "${efm_flags[@]}" "${fmt_flags[@]}" "${level_flags[@]}" -name="$RD_NAME" -reporter=github-check -filter-mode=nofilter -fail-level="$RD_FAIL_LEVEL"
+          | reviewdog "${efm_flags[@]}" "${fmt_flags[@]}" "${level_flags[@]}" -name="$RD_NAME" -reporter="$RD_REPORTER" -filter-mode=nofilter -fail-level="$RD_FAIL_LEVEL"

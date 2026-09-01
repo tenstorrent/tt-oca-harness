@@ -62,7 +62,9 @@ def effective_build_jobs(options: dict[str, Any], jobs: int) -> int:
     return jobs if jobs and jobs > 1 else 0
 
 
-def option_build_args(options: dict[str, Any], verilator_cfg: dict[str, Any], jobs: int) -> list[str]:
+def option_build_args(
+    options: dict[str, Any], verilator_cfg: dict[str, Any], jobs: int
+) -> list[str]:
     """Translate shared options plus `[build.verilator]` into Verilator build arguments."""
     extra: list[str] = []
     build_jobs = effective_build_jobs(options, jobs)
@@ -78,7 +80,9 @@ def option_build_args(options: dict[str, Any], verilator_cfg: dict[str, Any], jo
     return extra
 
 
-def apply_option_env(options: dict[str, Any], env: dict[str, str], verilator_cfg: dict[str, Any] | None = None) -> dict[str, str]:
+def apply_option_env(
+    options: dict[str, Any], env: dict[str, str], verilator_cfg: dict[str, Any] | None = None
+) -> dict[str, str]:
     """Enable ccache as Verilator's object cache when requested (Verilator-only)."""
     cfg = verilator_cfg or {}
     if bool(cfg.get("ccache", False)):
@@ -122,7 +126,9 @@ def vcs_build_args(options: dict[str, Any], vcs_cfg: dict[str, Any], jobs: int) 
     return extra
 
 
-def xcelium_build_args(options: dict[str, Any], xcelium_cfg: dict[str, Any], jobs: int) -> list[str]:
+def xcelium_build_args(
+    options: dict[str, Any], xcelium_cfg: dict[str, Any], jobs: int
+) -> list[str]:
     """Translate `[build.options]` + `[build.xcelium]` into Xcelium elaboration (xmelab/xrun) flags.
 
     - ``build_jobs`` -> ``-mce -mce_build_thread_count <N>`` (multi-core build)  [Verilator: --build-jobs; VCS: -j]
@@ -159,7 +165,15 @@ def binary_version(binary: str, version_args: list[str], root: Path) -> str:
     version = "unknown"
     if shutil.which(binary):
         try:
-            proc = subprocess.run([binary, *version_args], cwd=root, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=10)
+            proc = subprocess.run(
+                [binary, *version_args],
+                cwd=root,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=10,
+            )
             line = proc.stdout.strip().splitlines()[0] if proc.stdout.strip() else ""
             version = line or "unknown"
         except (OSError, subprocess.SubprocessError):
@@ -180,9 +194,7 @@ def xcelium_version(root: Path) -> str:
     return binary_version("xrun", ["-version"], root)
 
 
-def vcs_simv_compile_deps(
-    top_file: Path | None, local_sources: Sequence[Path] = ()
-) -> list[str]:
+def vcs_simv_compile_deps(top_file: Path | None, local_sources: Sequence[Path] = ()) -> list[str]:
     """Makefile lines that make ``$(SIM_BUILD)/simv`` depend on the repo-local build inputs.
 
     Cocotb's VCS recipe is ``$(SIM_BUILD)/simv: $(VERILOG_SOURCES) ... $(CUSTOM_COMPILE_DEPS)``.
@@ -237,7 +249,14 @@ def vcs_force_rebuild(sim_build: Path) -> None:
             shutil.rmtree(sim_build, ignore_errors=True)
 
 
-def build_fingerprint(*, build_args: list[str], top_module: str, tool_version: str, filelist_text: str, extra: list[str]) -> str:
+def build_fingerprint(
+    *,
+    build_args: list[str],
+    top_module: str,
+    tool_version: str,
+    filelist_text: str,
+    extra: list[str],
+) -> str:
     """Stable 12-hex digest over the declared build inputs (not per-seed)."""
     hasher = hashlib.sha256()
     for part in (top_module, tool_version, filelist_text, *build_args, *extra):

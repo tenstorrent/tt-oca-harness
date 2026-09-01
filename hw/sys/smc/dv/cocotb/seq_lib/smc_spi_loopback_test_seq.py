@@ -30,6 +30,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 try:
     from ocah_spi_vip import OcahSpiFlash, OcahSpiFlashError, SpiMode
+
     _SPI_VIP_AVAILABLE = True
 except Exception:  # noqa: BLE001
     OcahSpiFlash = None  # type: ignore[assignment]
@@ -55,15 +56,18 @@ class _MockSignal:
 
 # Small set of low-speed CSR reads exercising the SEP_IN AXI slave path.
 _PROBE_READS = [
-    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
-        0)),
-    ("LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", 0)),
-    ("AVS_NORMAL_STATUS", smc_addr(
-        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR")),
-    ("AVS_INTERRUPT", smc_addr(
-        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR")),
+    (
+        "UART_LOG_ENGINE_CTRL",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
+        ),
+    ),
+    (
+        "LOG_ENGINE_CTRL",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", 0),
+    ),
+    ("AVS_NORMAL_STATUS", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR")),
+    ("AVS_INTERRUPT", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR")),
     ("OCTS_STATUS", smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR")),
 ]
 
@@ -73,8 +77,7 @@ class smc_spi_loopback_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         assert _SPI_VIP_AVAILABLE, (
-            "ocah_spi_vip is unavailable (add hw/common/dv/vip to "
-            "PYTHONPATH via bin/setup_env.sh)"
+            "ocah_spi_vip is unavailable (add hw/common/dv/vip to PYTHONPATH via bin/setup_env.sh)"
         )
 
         # --- Library layer: OcahSpiFlash internal API round-trip.
@@ -91,31 +94,29 @@ class smc_spi_loopback_test_seq(SmcCsrSeq):
         # JEDEC ID getter (post-construction).
         expected_id = 0x20BA18
         assert flash._jedec_id == expected_id, (
-            f"JEDEC ID mismatch: got 0x{flash._jedec_id:06X}, "
-            f"expected 0x{expected_id:06X}"
+            f"JEDEC ID mismatch: got 0x{flash._jedec_id:06X}, expected 0x{expected_id:06X}"
         )
         cocotb.log.info(
-            "OcahSpiFlash JEDEC ID readback PASS: 0x%06X", flash._jedec_id,
+            "OcahSpiFlash JEDEC ID readback PASS: 0x%06X",
+            flash._jedec_id,
         )
 
         # Reprogram JEDEC ID at runtime.
         flash.set_jedec_id(0x1F4501)
         assert flash._jedec_id == 0x1F4501, "set_jedec_id() failed"
-        cocotb.log.info("OcahSpiFlash JEDEC ID re-program PASS: 0x%06X",
-                        flash._jedec_id)
+        cocotb.log.info("OcahSpiFlash JEDEC ID re-program PASS: 0x%06X", flash._jedec_id)
 
         # Preload memory + verify.
         payload = bytes(range(64))
         flash.preload(payload)
-        assert bytes(flash._mem[:len(payload)]) == payload, (
-            "preload() memory mismatch"
-        )
+        assert bytes(flash._mem[: len(payload)]) == payload, "preload() memory mismatch"
         assert flash._mem[len(payload)] == 0xFF, (
             "memory outside preload range should remain erased (0xFF)"
         )
         cocotb.log.info(
             "OcahSpiFlash preload PASS: %d bytes; mem[64]=0x%02X",
-            len(payload), flash._mem[len(payload)],
+            len(payload),
+            flash._mem[len(payload)],
         )
 
         # SpiMode enum smoke.
@@ -138,7 +139,10 @@ class smc_spi_loopback_test_seq(SmcCsrSeq):
         for name, addr in _PROBE_READS:
             v = await self.csr_read_allow_error(name, addr)
             cocotb.log.info(
-                "SPI-loopback CSR probe: %s @ 0x%08X = 0x%08X", name, addr, v,
+                "SPI-loopback CSR probe: %s @ 0x%08X = 0x%08X",
+                name,
+                addr,
+                v,
             )
         # csr_read_allow_error() raises on no-response, so reaching here proves
         # every probed CSR was reachable; the exact-count check guards against a

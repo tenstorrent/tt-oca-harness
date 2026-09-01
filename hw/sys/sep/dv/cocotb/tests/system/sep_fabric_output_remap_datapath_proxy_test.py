@@ -16,10 +16,14 @@ sense. Outbound filter skip is tied off in RTL.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_remap_seq import (
-    RESP_DECERR, RESP_OKAY, SepOutboundRemap, SepOutboundRemapCfg,
+    N_REGIONS,
+    OUTFILT_N_ENTRIES,
+    RESP_DECERR,
+    RESP_OKAY,
+    SepOutboundRemap,
+    SepOutboundRemapCfg,
     remap_probe_seq,
 )
 
@@ -45,7 +49,11 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
         self.logger.info(
             "CHK-REMAP-TRANSLATE PASS: %s r%d access 0x%08x -> OKAY "
             "(remapped 0x%08x, not identity)",
-            cfg.bank, cfg.region, cfg.access_addr, cfg.expect_addr)
+            cfg.bank,
+            cfg.region,
+            cfg.access_addr,
+            cfg.expect_addr,
+        )
 
         self.env.axi_monitor.arm_expected_decerr(1)
         bad = remap_probe_seq(cfg.forbidden_addr, expect_error=True)
@@ -57,7 +65,19 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
         self.logger.info(
             "CHK-FILTER-DROP PASS: %s r%d access 0x%08x -> DECERR "
             "(outside the remapped allow window)",
-            cfg.bank, cfg.forbidden_region, cfg.forbidden_addr)
+            cfg.bank,
+            cfg.forbidden_region,
+            cfg.forbidden_addr,
+        )
+        # Config report, not a checker. The seed picks one region and one entry,
+        # and a bound on an index the same seed generated cannot fail. The
+        # coverage this entry does claim is asserted above, against the DUT.
         self.logger.info(
-            "CHK-RANDCFG PASS: bank=%s region=%d entry=%d from seed %d",
-            cfg.bank, cfg.region, cfg.entry, cfg.seed)
+            "output-remap config: bank=%s region=%d of %d entry=%d of %d, seed %d",
+            cfg.bank,
+            cfg.region,
+            N_REGIONS,
+            cfg.entry,
+            OUTFILT_N_ENTRIES,
+            cfg.seed,
+        )

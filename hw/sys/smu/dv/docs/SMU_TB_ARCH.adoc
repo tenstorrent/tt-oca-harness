@@ -1,0 +1,165 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-dv-testbench-architecture]]
+== SMU OCAH Open-Source Testbench Architecture
+
+=== Overview
+
+The SMU open-source environment is a PyUVM-on-cocotb testbench driven by
+`tools/dv/run_dv.py`. Verilator is the functional backend; VCS and Xcelium run
+the same Python tests when commercial coverage is wanted. There is no
+SystemVerilog UVM layer.
+
+Two DUTs share this DV root:
+
+[cols=",,",options="header",]
+|===
+|Launch name |HDL top |What it is for
+|`--dut smu` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` — the density,
+CSR and fabric surface, and the only surface `sep0_all` signs off
+|`--dut smu_wrapper` |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
+`hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
+compile profile
+|===
+
+The two are deliberately separate evidence surfaces. Logs carry `DUT_TAG=BARE`
+or `DUT_TAG=WRAPPER`, and a wrapper PASS is not merged into bare `sep0_all`
+evidence.
+
+=== Directory Structure
+
+....
+hw/sys/smu/dv/
+├── cocotb/{env,seq_lib,tests}/   # live PyUVM environment, sequences, tests
+├── cocotb/tests_deferred/        # non-enrolled bodies, catalog only
+├── cocotb_wrapper/{env,seq_lib,tests}/  # --dut smu_wrapper baseline
+├── docs/                         # this chapter set
+├── fw/                           # firmware images built for the dual-FW tests
+├── tb/                           # tb_top.sv, tb_wrapper_top.sv, public scope
+├── testlists/                    # per-feature TOML leaves + all.toml groups
+├── tools/                        # wrapper readiness gates
+├── smu_sim_cfg.toml              # --dut smu
+└── smu_wrapper_sim_cfg.toml      # --dut smu_wrapper
+....
+
+=== Environment Components
+
+`SmuEnv` (`cocotb/env/smu_env.py`) is deliberately thin. It builds the
+scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
+agents are created on demand by the sequences that need them, against
+`cocotb.top`, rather than being instantiated for every test.
+
+[cols=",",options="header",]
+|===
+|Component |Role
+|`SmuEnvCfg` |Clock periods (`ref`, `smu`, `periph`, `jtag`), idle TCK count and
+post-reset settle cycles, randomised from the run seed
+|`SmuScoreboard` |Every check in the suite goes through it; see
+<<smu-checking-strategy,Checking Strategy>>
+|`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` contracts
+|`smu_fcov.py` |Scenario-intent coverage bins, hit per test
+|===
+
+=== Clock and Reset Strategy
+
+`smu_base_test.bring_up()` starts `clk_smu_i`, `clk_ref_i`, `clk_periph_i` and
+the JTAG clock at the periods `SmuEnvCfg` derived from the seed, then releases
+the resets and waits `post_reset_settle_cycles`.
+
+Clocks must be scheduled with `cocotb.start_soon(Clock(...).start())`. A bare
+`.start()` returns a coroutine nobody awaits: every clock stays dead, the
+simulation never advances, and the test ends early looking like a fast pass.
+
+Timing is the randomised axis of this environment. `--seed N` reaches the
+sequences as `RANDOM_SEED`, `SmuEnvCfg.randomize_timing(seed)` turns it into
+clock periods and settle counts, and the chosen values are logged at the start
+of every run.
+
+=== Stimulus Strategy
+
+Sequences drive the DUT through its real pins and buses. There is no Force and
+no deposit on any enrolled test: the 2026-07-29 policy is that a body which
+needs one is not reportable as PASS and lives under `cocotb/tests_deferred/`
+with its entry in `testlists/deferred.toml`.
+
+[[smu-checking-strategy]]
+=== Checking Strategy
+
+`SmuScoreboard` enforces three things, and a test cannot opt out of any of
+them:
+
+. *No vacuous PASS.* `check_phase` raises if zero checks executed. A test that
+  drives stimulus but never compares anything fails.
+. *No invented checkboxes.* `prove_mapped_features()` runs after the scenario
+  and requires that every TOKEN mapped to this testcase in
+  `smu_evidence_map.py` was actually logged by an `expect_*` call. Tokens
+  cannot be claimed after seeing a green path.
+. *Traceable evidence.* Each satisfied check logs `EVIDENCE: <TOKEN>`, and the
+  run ends with an `EVIDENCE_SUMMARY` line. `CHK-NONVAC` is emitted by
+  `check_phase` itself once the check count is non-zero, so the non-vacuity
+  proof is in the log like any other token.
+
+`expect_eq` and `expect_true` are the only two check primitives; both take an
+optional `evidence=` argument naming the TOKEN they prove.
+
+=== Coverage Strategy
+
+Verilator does not support SystemVerilog covergroups, so scenario-intent
+coverage is collected Python-side: `smu_fcov.py` maps each testcase to the bins
+its scenario is meant to reach, and `run_phase` hits them before the scoreboard
+checks. RTL code coverage comes from the commercial simulators over the same
+tests.
+
+=== Open-Source BFM Policy
+
+[cols=",",options="header",]
+|===
+|Interface / Protocol |Open-source replacement
+|Primary JTAG TAP |`ocah_jtag_vip`
+|External SMN AXI4 |`ocah_axi_vip` (`OcahAxiSlaveAgent` / master)
+|SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
+|SMC scratch / mailbox |Backdoor read plus cocotb polling
+|Cross-trigger / iJTAG |OCAH-local model, not yet written
+|===
+
+=== Testlists
+
+`testlists/*.toml` hold the leaf entries — one `[[tests]]` table per test, with
+its module, tags and timeout. `testlists/all.toml` holds the `[[groups]]`, each
+naming the tests it contains. A test is selectable by its own name or by any
+group it belongs to.
+
+`testlists/deferred.toml` is the non-enrolled inventory. Its entries are named
+so the catalog stays complete, and they are not default-included; nothing in it
+is reportable as a PASS.
+
+=== Build and Run
+
+`run_dv.py` bootstraps its own locked `uv` environment, so there is nothing to
+install or source beyond a simulator on `PATH`.
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --validate-configs
+python3 tools/dv/run_dv.py --dut smu --list
+python3 tools/dv/run_dv.py --dut smu --items smoke
+python3 tools/dv/run_dv.py --dut smu --items sep0_all
+python3 tools/dv/run_dv.py --dut smu --items smu_smc_smoke_test --seed 1
+----
+
+`--seed` applies to a single item; a multi-item regression picks its own seeds
+and reports them per test. Results land under
+`build/runs/<timestamp>__<tool>__<label>/` with a per-test `result.json` and
+`results.xml`.
+
+The wrapper DUT additionally builds firmware images through
+`fw/build_firmware.py` into `build/firmware/`, declared per test as
+`[c_build.*].outputs` and staged into each per-test run directory.
+
+[source,bash]
+----
+python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
+python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke \
+  --stage flist --stage c_compile --stage hdl_compile --stage sim
+----

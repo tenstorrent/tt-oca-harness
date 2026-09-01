@@ -22,6 +22,13 @@ class dtp_tap_fsm_checker extends uvm_subscriber #(ocah_jtag_event);
     // the per-cycle legality result into one aggregate CHK-TAP-STATE record.
     ocah_jtag_checker m_evidence;
 
+    // JTAG scenarios must show TCK activity (a zero-cycle CHK-TAP-STATE is
+    // vacuous and fails). Tests that legitimately drive no JTAG at all (the
+    // xtrig group: CSR + cross-trigger pins only) clear this so the aggregate
+    // record is skipped instead; any TCK activity that does occur is still
+    // checked per cycle and recorded.
+    bit require_activity = 1'b1;
+
     protected ocah_jtag_tap_state_e m_model = OCAH_JTAG_TEST_LOGIC_RESET;
     protected bit m_state_seen [16];
     protected bit m_edge_seen  [16][2];
@@ -84,6 +91,7 @@ class dtp_tap_fsm_checker extends uvm_subscriber #(ocah_jtag_event);
     // the exact broken transition).
     function void report_evidence();
         if (m_evidence == null) return;
+        if (!require_activity && m_cycles == 0) return;
         void'(m_evidence.expect_true("CHK-TAP-STATE",
             (m_cycles > 0) && (m_mismatches == 0),
             $sformatf("tck_cycles=%0d mismatches=%0d", m_cycles, m_mismatches)));

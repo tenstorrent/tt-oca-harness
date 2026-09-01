@@ -15,10 +15,10 @@ from pathlib import Path
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from sep_reg_meta import ENTROPY_SOURCE
 
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
 _XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
@@ -59,10 +59,10 @@ IRQ_FILL_STALL = 37
 # (the defect the 16-bit unique-case exists to catch). A seed that only
 # probes 0x18 never sees that class: 0x18 is the unused [4:3]=11 code.
 _ALIAS_UNMAPPED = (
-    0x20,    # -> status  0x00 if [4:0] only
-    0x28,    # -> irq     0x08 if [4:0] only
-    0x30,    # -> pop     0x10 if [4:0] only
-    0x100,   # -> status  0x00 if [7:0] only
+    0x20,  # -> status  0x00 if [4:0] only
+    0x28,  # -> irq     0x08 if [4:0] only
+    0x30,  # -> pop     0x10 if [4:0] only
+    0x100,  # -> status  0x00 if [7:0] only
     0x1000,  # -> status  0x00 if [11:0] only
     0x8000,  # -> status  0x00 if [14:0] only
 )

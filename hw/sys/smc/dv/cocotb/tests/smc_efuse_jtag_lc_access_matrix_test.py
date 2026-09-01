@@ -33,9 +33,8 @@ except ImportError:  # pragma: no cover - cocotb version shim
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
-
 from seq_lib.smc_addr_map import smc_addr
+from smc_base_test import smc_base_test
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
 EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
@@ -98,7 +97,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             (LC_TEST_DEV, True, "SIGINT", True, True, True, True),
         ]
 
-        for (raw, sigint, label, blk_nonid, blk_chip, blk_pkg, blk_wr) in matrix:
+        for raw, sigint, label, blk_nonid, blk_chip, blk_pkg, blk_wr in matrix:
             await self._set_lc_state(raw, sigint)
             await self._check_read(label, "NON_ID", EFUSE_MAP_NON_ID, blk_nonid)
             await self._check_read(label, "CHIPLET_ID", EFUSE_MAP_CHIPLET_ID, blk_chip)
@@ -108,8 +107,9 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # Restore a benign lifecycle state.
         await self._set_lc_state(LC_TEST_DEV, False)
 
-        assert not self.errors, "eFuse JTAG LC access-control matrix mismatch:\n" + \
-            "\n".join(self.errors)
+        assert not self.errors, "eFuse JTAG LC access-control matrix mismatch:\n" + "\n".join(
+            self.errors
+        )
 
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
@@ -141,7 +141,12 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             got_prod = int(efw.is_prod_or_rma_sip.value)
             self.logger.info(
                 "lc decode raw=0x%x sigint=%d prod_or_rma=%d (exp raw=0x%x sigint=%d prod=%d)",
-                got_raw, got_sigint, got_prod, exp_raw, exp_sigint, exp_prod,
+                got_raw,
+                got_sigint,
+                got_prod,
+                exp_raw,
+                exp_sigint,
+                exp_prod,
             )
             if (got_raw, got_sigint, got_prod) != (exp_raw, exp_sigint, exp_prod):
                 self.errors.append(
@@ -183,9 +188,13 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         blocked = code == RESP_DECERR
         self.logger.info(
             "JTAG eFuse read  [%s] %s @0x%08x -> rdata=%s resp=%s blocked=%s (exp_block=%s)",
-            label, cls, addr,
+            label,
+            cls,
+            addr,
             "None" if rdata is None else f"0x{rdata:08x}",
-            code, blocked, expect_block,
+            code,
+            blocked,
+            expect_block,
         )
         if expect_block and not blocked:
             self.errors.append(
@@ -195,8 +204,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             )
         elif not expect_block and blocked:
             self.errors.append(
-                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was "
-                f"blocked (DECERR)"
+                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
             )
         elif expect_block and blocked and rdata != BLOCK_SIGNATURE:
             self.errors.append(
@@ -212,12 +220,15 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         blocked = code == RESP_DECERR
         self.logger.info(
             "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
-            label, addr, code, blocked, expect_block,
+            label,
+            addr,
+            code,
+            blocked,
+            expect_block,
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got "
-                f"resp={code}"
+                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got resp={code}"
             )
         elif not expect_block and blocked:
             self.errors.append(

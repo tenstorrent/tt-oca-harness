@@ -89,22 +89,17 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-B2B-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
         self._log(f"CHK-B2B-GATE-OPEN disable={gate} caps=0x{caps:04x}")
@@ -121,9 +116,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
                 f"data=0x{d0:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s2_ok = True
-        self._log(
-            f"CHK-B2B-ALLOW @0x{VERSION_LO:08x} data=0x{d0:08x} status=SUCCESS"
-        )
+        self._log(f"CHK-B2B-ALLOW @0x{VERSION_LO:08x} data=0x{d0:08x} status=SUCCESS")
         sb.expect_eq("CHK-B2B-ALLOW", d0, VERSION_LO_RESET)
 
         st_e, poison = await self._rd32(jtag, UNMAPPED)
@@ -159,8 +152,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
         st_w = await self._wr32(jtag, UNMAPPED, 0xDEAD_BEEF)
         if st_w != J2A_STATUS_DECERR:
             raise AssertionError(
-                f"unmapped WR @0x{UNMAPPED:08x} status={st_w} "
-                f"want DECERR={J2A_STATUS_DECERR}"
+                f"unmapped WR @0x{UNMAPPED:08x} status={st_w} want DECERR={J2A_STATUS_DECERR}"
             )
         st2, d2 = await self._rd32(jtag, VERSION_LO)
         if st2 != J2A_STATUS_SUCCESS or d2 != VERSION_LO_RESET:
@@ -169,9 +161,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
                 f"data=0x{d2:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s4_ok = True
-        self._log(
-            f"CHK-B2B-WR-DECERR WR status=DECERR then VERSION_LO=0x{d2:08x}"
-        )
+        self._log(f"CHK-B2B-WR-DECERR WR status=DECERR then VERSION_LO=0x{d2:08x}")
         sb.expect_eq("CHK-B2B-WR-DECERR", (st_w, d2), (J2A_STATUS_DECERR, VERSION_LO_RESET))
 
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)

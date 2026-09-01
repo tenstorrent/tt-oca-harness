@@ -59,9 +59,7 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
         repair = await self._await_status(
             DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT, _CSR_BOUND, "STATUS_REPAIR_ABORT"
         )
-        assert (repair & DFX_MBIST_ABORT) == 0, (
-            f"mbist_abort set by mem_repair pulse: 0x{repair:x}"
-        )
+        assert (repair & DFX_MBIST_ABORT) == 0, f"mbist_abort set by mem_repair pulse: 0x{repair:x}"
         dut.tb_mem_repair_abort.value = 0
         sticky = await self.csr_read(
             "STATUS_REPAIR_STICKY",
@@ -69,9 +67,7 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             expected=DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT,
         )
         self.repair_ok = True
-        cocotb.log.info(
-            "CHK-DFX-ABORT-REPAIR: STATUS_SMU=0x%x after pin 1→0 (sticky)", sticky
-        )
+        cocotb.log.info("CHK-DFX-ABORT-REPAIR: STATUS_SMU=0x%x after pin 1→0 (sticky)", sticky)
 
         dut.tb_mbist_abort.value = 1
         both = await self._await_status(
@@ -86,9 +82,7 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             expected=DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT,
         )
         self.mbist_ok = True
-        cocotb.log.info(
-            "CHK-DFX-ABORT-MBIST: STATUS_SMU=0x%x both abort sticky", both_sticky
-        )
+        cocotb.log.info("CHK-DFX-ABORT-MBIST: STATUS_SMU=0x%x both abort sticky", both_sticky)
         cocotb.log.info(
             "CHK-DFX-ABORT-BASIC: idle=%s repair=%s mbist=%s (live=0x%x)",
             self.idle_ok,

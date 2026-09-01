@@ -8,9 +8,7 @@ a real pad-level VIP exists.
 
 from __future__ import annotations
 
-import cocotb
 import pyuvm
-
 from smc_base_test import smc_base_test
 
 
