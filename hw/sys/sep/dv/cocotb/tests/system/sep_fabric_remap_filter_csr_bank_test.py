@@ -12,8 +12,8 @@ to its field). RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W
 CHK-WOSET). CSR layer only -- this entry does not prove live remap translation
 or outbound-filter drop.
 
-reference refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
-woset), sep_outbound_filter_cfg_test (, FILTER_CONFIG incl. RO
+reference refs: sep_fabric_64bit_regwidth_test (64-bit + locked/valid
+woset), sep_outbound_filter_cfg_test (FILTER_CONFIG incl. RO
 data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
 subset of sep_reg_sanity_test. Mapping: COVERED_BY. Distinct from
 sep_address_map_test (which only read-touched alias/AP remap for decode
