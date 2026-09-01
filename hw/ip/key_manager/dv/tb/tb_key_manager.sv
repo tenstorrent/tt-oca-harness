@@ -691,6 +691,40 @@ module tb_key_manager;
     assign sep_rdata   = mbox_sep_resp.r.data;
     assign sep_rresp   = mbox_sep_resp.r.resp;
 
+    // KM mailbox AR/R inject: cocotb overlaps a READ_DATA AR with SEP CTRL.FLUSH.
+    // When inject is clear, the xbar request is passed through unchanged.
+    logic        tb_km_mbox_inject = 1'b0;
+    logic        tb_km_arvalid = 1'b0;
+    logic [31:0] tb_km_araddr = 32'h0;
+    logic [2:0]  tb_km_arprot = 3'h0;
+    logic        tb_km_rready = 1'b0;
+    logic        tb_km_arready;
+    logic        tb_km_rvalid;
+    logic [31:0] tb_km_rdata;
+    logic [1:0]  tb_km_rresp;
+    km_axil_req_t tb_mbox_km_req;
+
+    always_comb begin
+        tb_mbox_km_req = u_key_manager.mbox_req;
+        if (tb_km_mbox_inject) begin
+            tb_mbox_km_req.ar_valid = tb_km_arvalid;
+            tb_mbox_km_req.ar.addr  = tb_km_araddr;
+            tb_mbox_km_req.ar.prot  = tb_km_arprot;
+            tb_mbox_km_req.r_ready  = tb_km_rready;
+        end
+    end
+
+    assign tb_km_arready = u_key_manager.u_mailbox.km_axil_resp_o.ar_ready;
+    assign tb_km_rvalid  = u_key_manager.u_mailbox.km_axil_resp_o.r_valid;
+    assign tb_km_rdata   = u_key_manager.u_mailbox.km_axil_resp_o.r.data;
+    assign tb_km_rresp   = u_key_manager.u_mailbox.km_axil_resp_o.r.resp;
+    logic tb_km_fifo_clr;
+    assign tb_km_fifo_clr = u_key_manager.u_mailbox.fifo_clr;
+
+    initial begin
+        force u_key_manager.u_mailbox.km_axil_req_i = tb_mbox_km_req;
+    end
+
     //=========================================================================
     // Behavioral ROM Model (connected to ROM interface)
     //=========================================================================

@@ -493,6 +493,9 @@ tb_sep_mbox_status_write(status_value, timeout_cycles);
 
 // Write SEP mailbox CTRL register
 tb_sep_mbox_ctrl_write(ctrl_value, timeout_cycles);
+
+// Overlap a KM READ_DATA AR with SEP CTRL.FLUSH (R must complete)
+tb_km_mbox_read_during_sep_flush(timeout_cycles);
 ```
 
 #### KM Mailbox Operations
