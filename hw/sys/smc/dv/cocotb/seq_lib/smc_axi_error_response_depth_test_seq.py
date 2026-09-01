@@ -12,9 +12,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 AXI_RESP_DECERR = 3
 
 # Alive sentinel: always-OKAY local CSR (before/after fabric-alive proof).
-ALIVE_SENTINEL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+ALIVE_SENTINEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 # Intentional unmapped holes — SPEC: hw/sys/smc/doc/memmap.adoc
 # "SMC Address Space Layout". Offsets are not decoded CSR windows; fabric
@@ -58,8 +56,7 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         self.accesses += 1
 
         assert not item.timed_out, (
-            f"{name} @ 0x{addr:08x}: timed out (expected AXI resp={expected_resp}, "
-            "not a hang)"
+            f"{name} @ 0x{addr:08x}: timed out (expected AXI resp={expected_resp}, not a hang)"
         )
         assert item.resp_code == expected_resp, (
             f"{name} @ 0x{addr:08x}: resp={item.resp_code}, expected {expected_resp}"
@@ -72,9 +69,7 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         monitor = getattr(getattr(self, "env", None), "axi_monitor", None)
         if monitor is not None:
             monitor.expected_decerr_addrs.update(
-                addr
-                for _name, addr, resp in ERROR_PROBES
-                if resp == AXI_RESP_DECERR
+                addr for _name, addr, resp in ERROR_PROBES if resp == AXI_RESP_DECERR
             )
 
         await self.csr_read("ALIVE_SENTINEL_BASELINE", ALIVE_SENTINEL)
@@ -88,6 +83,5 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
             f"AXI error-response probes must not time out (timeouts={self.timeouts})"
         )
         assert self.error_responses == len(ERROR_PROBES), (
-            f"expected {len(ERROR_PROBES)} error responses, "
-            f"got {self.error_responses}"
+            f"expected {len(ERROR_PROBES)} error responses, got {self.error_responses}"
         )

@@ -11,9 +11,9 @@ return in the current public Verilator model.
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
@@ -49,8 +49,9 @@ class smc_ijtag_basic_test_seq(smc_base_test_seq):
         self.accesses += 1
 
     async def body(self) -> None:
-        await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO,
-                         expected=CHIP_CONFIG_VERSION_LO_VALUE)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=CHIP_CONFIG_VERSION_LO_VALUE
+        )
         await self._write("SCRATCH_COLD_1", SCRATCH_COLD_1, SCRATCH_PATTERN)
         await self._read("SCRATCH_COLD_1", SCRATCH_COLD_1, expected=SCRATCH_PATTERN)
         await self._write("SCRATCH_COLD_1_RESTORE", SCRATCH_COLD_1, 0)

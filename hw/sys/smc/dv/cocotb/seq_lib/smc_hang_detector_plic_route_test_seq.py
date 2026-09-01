@@ -108,9 +108,7 @@ class smc_hang_detector_plic_route_test_seq(SmcCsrSeq):
             expect_fire[pin] = 1
             expect_fire.update({n: 1 for n in _ROUTE})
             await self._await_pins(dut, expect_fire, f"{label}_PLIC_FIRE")
-            cocotb.log.info(
-                "CHK-HANG-PLIC-%s-FIRE: source=1 periph[31]=1 PLIC source pin=1", label
-            )
+            cocotb.log.info("CHK-HANG-PLIC-%s-FIRE: source=1 periph[31]=1 PLIC source pin=1", label)
 
             await self.csr_write(f"HANG_{label}_CLR", addr, 0)
             await self._await_pins(dut, {pin: 0, **{n: 0 for n in _ROUTE}}, f"{label}_PLIC_CLR")

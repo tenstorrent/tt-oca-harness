@@ -78,7 +78,6 @@ class SmcResetDriver(uvm_driver):
 
 
 class SmcResetAgent(uvm_agent):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)

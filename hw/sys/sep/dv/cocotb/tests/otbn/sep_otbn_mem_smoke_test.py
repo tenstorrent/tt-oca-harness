@@ -5,10 +5,8 @@
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
-
 import pyuvm
-
+from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 from seq_lib.sep_otbn_mem_smoke_seq import sep_otbn_mem_smoke_seq
 

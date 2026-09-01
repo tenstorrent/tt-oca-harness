@@ -73,9 +73,7 @@ class SmcOutputAxiMonitor(uvm_component):
             "tb_output_axi_bresp",
         )
         if any(not hasattr(dut, name) for name in required):
-            self.logger.info(
-                "tb_output_axi_* response ports missing; SYS_OUT monitor idle"
-            )
+            self.logger.info("tb_output_axi_* response ports missing; SYS_OUT monitor idle")
             return
 
         await self.cfg.reset_done.wait()
@@ -101,11 +99,7 @@ class SmcOutputAxiMonitor(uvm_component):
                 code = _value(dut.tb_output_axi_rresp)
                 key = code if code in (0, 1, 2, 3) else None
                 self.r_resp_tally[key] += 1
-                where = (
-                    f" @ AR 0x{self.last_araddr:x}"
-                    if self.last_araddr is not None
-                    else ""
-                )
+                where = f" @ AR 0x{self.last_araddr:x}" if self.last_araddr is not None else ""
                 if code == 3:
                     self._fail(f"R beat DECERR on SYS_OUT{where}")
                 elif code == 2 and not self.allow_slverr:
@@ -116,11 +110,7 @@ class SmcOutputAxiMonitor(uvm_component):
                 code = _value(dut.tb_output_axi_bresp)
                 key = code if code in (0, 1, 2, 3) else None
                 self.b_resp_tally[key] += 1
-                where = (
-                    f" @ AW 0x{self.last_awaddr:x}"
-                    if self.last_awaddr is not None
-                    else ""
-                )
+                where = f" @ AW 0x{self.last_awaddr:x}" if self.last_awaddr is not None else ""
                 if code == 3:
                     self._fail(f"B beat DECERR on SYS_OUT{where}")
                 elif code == 2 and not self.allow_slverr:
@@ -135,10 +125,6 @@ class SmcOutputAxiMonitor(uvm_component):
             "SMC SYS_OUT AXI monitor: %d R / %d B; R {%s}; B {%s}; 0 errors",
             self.r_beats,
             self.b_resps,
-            ", ".join(
-                f"{_RESP_NAME[k]}={v}" for k, v in self.r_resp_tally.items() if v
-            ),
-            ", ".join(
-                f"{_RESP_NAME[k]}={v}" for k, v in self.b_resp_tally.items() if v
-            ),
+            ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.r_resp_tally.items() if v),
+            ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.b_resp_tally.items() if v),
         )

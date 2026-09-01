@@ -34,11 +34,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
+from sep_base_test import sep_base_test
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "pic_irq_source_map_test")
@@ -96,8 +95,7 @@ class SepPicSrcCfg:
         return f"SCENARIO n=0x{len(self.sources):08x} src={src}"
 
     def summary(self) -> str:
-        return (f"seed={self.seed} must={self.must} extras={self.extras} "
-                f"n={len(self.sources)}")
+        return f"seed={self.seed} must={self.must} extras={self.extras} n={len(self.sources)}"
 
 
 @pyuvm.test()
@@ -122,7 +120,9 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, dtcm,
+            self.sb,
+            _ITCM_HEX,
+            dtcm,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
@@ -138,4 +138,7 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
             )
         self.logger.info(
             "CHK-RANDCFG PASS: MUST %s + extras %s (seed=%d)",
-            list(cfg.must), list(cfg.extras), cfg.seed)
+            list(cfg.must),
+            list(cfg.extras),
+            cfg.seed,
+        )

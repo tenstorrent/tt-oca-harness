@@ -109,7 +109,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         for idx in range(beats):
             addr = base + (idx * stride)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(idx + 1, beats, "series incr write addr=0x%08x data=0x%x", addr, data)
+            self.log_iteration(
+                idx + 1, beats, "series incr write addr=0x%08x data=0x%x", addr, data
+            )
             before = await self.target_activity_counts(self.target)
             await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
             await self.wait_for_target_activity(
@@ -146,7 +148,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 last_data,
             )
             before = await self.target_activity_counts(self.target)
-            await self.series_data_no_incr(last_data, size=size, target=self.target, back_to_rti=True)
+            await self.series_data_no_incr(
+                last_data, size=size, target=self.target, back_to_rti=True
+            )
             await self.wait_for_target_activity(
                 self.target,
                 before=before,
@@ -180,7 +184,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         expected_addr = base
         for idx, inc in enumerate(increments, start=1):
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(idx, len(increments), "status write addr=0x%08x inc=%d", expected_addr, inc)
+            self.log_iteration(
+                idx, len(increments), "status write addr=0x%08x inc=%d", expected_addr, inc
+            )
             before = await self.target_activity_counts(self.target)
             _, status_bit = await self.series_data_with_status(
                 data,
@@ -214,7 +220,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         for idx in range(1, self.random_count + 1):
             addr = self.random_target_aligned_addr(self.target, rng)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(idx, self.random_count, "random write addr=0x%08x data=0x%x", addr, data)
+            self.log_iteration(
+                idx, self.random_count, "random write addr=0x%08x data=0x%x", addr, data
+            )
             status, _ = await self.write_target_single_and_check(
                 self.target,
                 addr,
@@ -246,8 +254,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         # gate is repeatable, not a one-shot POR effect.
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
-            self.log_step(idx + 1, "Gate %s write with %s (pass %d)",
-                          self.target, cfg.dbg_disable_bit, idx)
+            self.log_step(
+                idx + 1, "Gate %s write with %s (pass %d)", self.target, cfg.dbg_disable_bit, idx
+            )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
             # Preload a sentinel at the gated-attempt address: the blocked
             # write must leave memory untouched, both while gated and after
@@ -372,7 +381,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             if increment:
                 await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
             else:
-                await self.series_data_no_incr(data, size=size, target=self.target, back_to_rti=True)
+                await self.series_data_no_incr(
+                    data, size=size, target=self.target, back_to_rti=True
+                )
             await self.wait_for_target_activity(
                 self.target,
                 before=before,
@@ -522,7 +533,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             addr = self.random_target_aligned_addr(self.target, rng)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             self.write_target_mem_int(self.target, addr, data, size)
-            self.log_iteration(idx, self.random_count, "random read addr=0x%08x data=0x%x", addr, data)
+            self.log_iteration(
+                idx, self.random_count, "random read addr=0x%08x data=0x%x", addr, data
+            )
             status, _ = await self.read_target_single_and_check(
                 self.target,
                 addr,
@@ -560,17 +573,22 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         # gate is repeatable, not a one-shot POR effect.
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
-            self.log_step(idx + 1, "Gate %s read with %s (pass %d)",
-                          self.target, cfg.dbg_disable_bit, idx)
+            self.log_step(
+                idx + 1, "Gate %s read with %s (pass %d)", self.target, cfg.dbg_disable_bit, idx
+            )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
             # Snapshot BEFORE the gated attempt and hold a blocked window
             # across it: any monitored transaction inside the window fails
             # (CHK-AXI-BLOCKED).
             gate_before = await self.target_activity_counts(self.target)
             self.scoreboard_begin_blocked(self.target)
-            raw = pack_single_op(DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg)
+            raw = pack_single_op(
+                DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg
+            )
             await self.write_tdr(cfg.single_op_reg, raw)
-            await self.expect_no_target_activity(self.target, 8, context=f"read_gate.{bit_name}.no_axi")
+            await self.expect_no_target_activity(
+                self.target, 8, context=f"read_gate.{bit_name}.no_axi"
+            )
             if self.axi_scoreboard is not None:
                 gate_after = await self.target_activity_counts(self.target)
                 self.axi_scoreboard.expect_no_activity(
@@ -636,6 +654,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
     @staticmethod
     def unpack_series_value(raw: int, size: int) -> tuple[int, int]:
         from env.dtp_types import unpack_series_data
+
         return unpack_series_data(raw, size)
 
     async def body(self) -> None:

@@ -15,8 +15,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 import cocotb
-
-from env.sep_efuse_image import SepEfuseImage, WORD_BITS, WORD_MASK
+from env.sep_efuse_image import WORD_BITS, WORD_MASK, SepEfuseImage
 
 
 def check_efuse_shadow_backdoor(
@@ -50,7 +49,7 @@ def check_efuse_shadow_backdoor(
         nbits = len(bits)
 
         def read_word(i: int):
-            chunk = bits[nbits - WORD_BITS * (i + 1): nbits - WORD_BITS * i]
+            chunk = bits[nbits - WORD_BITS * (i + 1) : nbits - WORD_BITS * i]
             if "x" in chunk.lower() or "z" in chunk.lower():
                 return None  # unresolved
             return int(chunk, 2)
@@ -68,13 +67,12 @@ def check_efuse_shadow_backdoor(
             if got is None:
                 errors.append(f"{name}[{k}] word{widx}: sensed X/Z (expected 0x{exp:08x})")
             elif got != exp:
-                errors.append(
-                    f"{name}[{k}] word{widx}: sensed 0x{got:08x} != expected 0x{exp:08x}"
-                )
+                errors.append(f"{name}[{k}] word{widx}: sensed 0x{got:08x} != expected 0x{exp:08x}")
     for e in errors:
         logger.error("EFUSE BACKDOOR FAIL: %s", e)
-    logger.info("eFuse backdoor check: %d words, %d error(s), secure_tm=%d",
-                checked, len(errors), secure_tm)
+    logger.info(
+        "eFuse backdoor check: %d words, %d error(s), secure_tm=%d", checked, len(errors), secure_tm
+    )
     # Guard against a vacuous "0 words, 0 error(s)" pass. Only meaningful for a
     # whole-image compare: a caller that asked for a subset via fields= is not
     # expected to span the image, and asserting the full count there would fail
@@ -85,6 +83,5 @@ def check_efuse_shadow_backdoor(
             f"{len(image.words)}: the field table does not span the image"
         )
     assert not errors, (
-        f"eFuse backdoor shadow check found {len(errors)} mismatch(es): "
-        + "; ".join(errors[:8])
+        f"eFuse backdoor shadow check found {len(errors)} mismatch(es): " + "; ".join(errors[:8])
     )

@@ -18,9 +18,9 @@ Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
 
 from __future__ import annotations
 
+from env.sep_axi_agent import SepAxiOp
 from sep_reg_meta import SEP_RESET_CTRL, sym
 
-from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 SEP_RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
@@ -80,9 +80,7 @@ class SepSwReset:
         await self._write()
         self.log.info("SW_RESET_N parked %s -> 0x%08x", ",".join(engines), self.value)
 
-    async def begin_trng_recovery(
-        self, *, reset_km: bool, release_trng: bool = True
-    ) -> int:
+    async def begin_trng_recovery(self, *, reset_km: bool, release_trng: bool = True) -> int:
         """Quiesce consumers, reset TRNG, and leave consumers held.
 
         The caller must next run ``SepEsrcConfigSeq(reset_trng=False)``, start

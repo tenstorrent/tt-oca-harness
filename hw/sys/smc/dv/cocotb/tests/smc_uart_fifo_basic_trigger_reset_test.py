@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_fifo_basic_trigger_reset_test_seq import (
     smc_uart_fifo_basic_trigger_reset_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -31,7 +31,6 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
             csr_accesses=seq.accesses,
             proxy=False,
             details=(
-                f"FIFO trig1={seq.trigger_1b_ok} trig4={seq.trigger_4b_ok} "
-                f"reset={seq.reset_ok}"
+                f"FIFO trig1={seq.trigger_1b_ok} trig4={seq.trigger_4b_ok} reset={seq.reset_ok}"
             ),
         )

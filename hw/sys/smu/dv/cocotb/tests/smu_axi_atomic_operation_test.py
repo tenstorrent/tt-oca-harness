@@ -19,7 +19,6 @@ import random
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO
 from seq_lib.smu_axi_helpers import (
     axi_read32_resp_ids_bounded,
@@ -41,9 +40,7 @@ class smu_axi_atomic_operation_test(smu_base_test):
         self.logger.info("SEED: %d non-ATOP arid=0x%x", seed, arid)
 
         await ClockCycles(dut.clk_smu_i, 50)
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
         value, resp, issued, rid = await axi_read32_resp_ids_bounded(
             master,
             SMC_CHIP_CONFIG_VERSION_LO,
@@ -63,6 +60,4 @@ class smu_axi_atomic_operation_test(smu_base_test):
             value & 0xFFFF_FFFF,
         )
 
-        self.logger.info(
-            "smu_axi_atomic_operation_test: non-ATOP path OK (ATOPs unsupported)"
-        )
+        self.logger.info("smu_axi_atomic_operation_test: non-ATOP path OK (ATOPs unsupported)")

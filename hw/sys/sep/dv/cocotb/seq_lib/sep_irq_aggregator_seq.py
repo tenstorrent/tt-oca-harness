@@ -38,6 +38,7 @@ INTR_TEST = 0x08
 class IrqSrc:
     """One interrupt source: its IP base, the bit in that IP's INTR_* registers,
     and the bit it drives in sep_internal_interrupts."""
+
     name: str
     base: int
     test_bit: int
@@ -47,11 +48,11 @@ class IrqSrc:
 # reference sep_irq_ip_to_aggregator_test_seq sources -> sep.sv aggregator bits.
 IRQ_TABLE = (
     IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
-    IrqSrc("csrng_entropy_req",  CSRNG_BASE, 1, 24),
-    IrqSrc("csrng_hw_inst_exc",  CSRNG_BASE, 2, 25),
-    IrqSrc("csrng_fatal_err",    CSRNG_BASE, 3, 26),
-    IrqSrc("edn_cmd_req_done",   EDN_BASE,   0, 27),
-    IrqSrc("edn_fatal_err",      EDN_BASE,   1, 28),
+    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, 24),
+    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, 25),
+    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, 26),
+    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, 27),
+    IrqSrc("edn_fatal_err", EDN_BASE, 1, 28),
 )
 
 
