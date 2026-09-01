@@ -109,9 +109,7 @@ def spec_regions() -> tuple[SpecRegion, ...]:
     # simulator runs cocotb under an ASCII default locale.
     lines = _SPEC.read_text(encoding="utf-8").splitlines()
     rows: list[SpecRegion] = []
-    line_re = re.compile(
-        r"^\|(0x[0-9A-Fa-f_]+)\s*\|(0x[0-9A-Fa-f_]+)\s*\|([^|]*)\|([^|]*)\|(.*)$"
-    )
+    line_re = re.compile(r"^\|(0x[0-9A-Fa-f_]+)\s*\|(0x[0-9A-Fa-f_]+)\s*\|([^|]*)\|([^|]*)\|(.*)$")
     in_table = False
     for raw in lines:
         stripped = raw.strip()
@@ -136,7 +134,8 @@ def spec_regions() -> tuple[SpecRegion, ...]:
             hi -= 1
         rows.append(
             SpecRegion(
-                lo, hi,
+                lo,
+                hi,
                 _RSV if _is_reserved(unit, desc) else unit,
                 desc,
             )
@@ -150,8 +149,7 @@ def spec_regions() -> tuple[SpecRegion, ...]:
     for r in rows:
         if r.end_addr < r.base:
             raise RuntimeError(
-                f"memory-map row runs backwards: 0x{r.base:08x}-"
-                f"0x{r.end_addr:08x} ({r.unit})"
+                f"memory-map row runs backwards: 0x{r.base:08x}-0x{r.end_addr:08x} ({r.unit})"
             )
     rows.extend(_hole_regions(rows))
     # Finest first so region_of() resolves the hierarchy the way a reader does.
@@ -172,10 +170,14 @@ def _hole_regions(rows: list[SpecRegion]) -> list[SpecRegion]:
     holes: list[SpecRegion] = []
     for parent in coarse:
         inner = sorted(
-            (r for r in rows
-             if r is not parent
-             and r.base >= parent.base and r.end_addr <= parent.end_addr
-             and (r.end_addr - r.base) < _COARSE_SPAN),
+            (
+                r
+                for r in rows
+                if r is not parent
+                and r.base >= parent.base
+                and r.end_addr <= parent.end_addr
+                and (r.end_addr - r.base) < _COARSE_SPAN
+            ),
             key=lambda r: r.base,
         )
         if not inner:
@@ -183,14 +185,24 @@ def _hole_regions(rows: list[SpecRegion]) -> list[SpecRegion]:
         cursor = parent.base
         for r in inner:
             if r.base > cursor:
-                holes.append(SpecRegion(
-                    cursor, r.base - 1, _RSV,
-                    f"described by no detailed row inside {parent.unit}"))
+                holes.append(
+                    SpecRegion(
+                        cursor,
+                        r.base - 1,
+                        _RSV,
+                        f"described by no detailed row inside {parent.unit}",
+                    )
+                )
             cursor = max(cursor, r.end_addr + 1)
         if cursor <= parent.end_addr:
-            holes.append(SpecRegion(
-                cursor, parent.end_addr, _RSV,
-                f"described by no detailed row inside {parent.unit}"))
+            holes.append(
+                SpecRegion(
+                    cursor,
+                    parent.end_addr,
+                    _RSV,
+                    f"described by no detailed row inside {parent.unit}",
+                )
+            )
     return holes
 
 
@@ -201,9 +213,7 @@ def _addrmap_symbols() -> dict[str, int]:
     literal, so the rule text alone does not carry the bound.
     """
     text = _ADDRMAP_PKG.read_text(encoding="utf-8")
-    sym_re = re.compile(
-        r"localparam\s+longint\s+unsigned\s+(\w+)\s*=\s*64'h([0-9A-Fa-f_]+)\s*;"
-    )
+    sym_re = re.compile(r"localparam\s+longint\s+unsigned\s+(\w+)\s*=\s*64'h([0-9A-Fa-f_]+)\s*;")
     return {n: _hexint(v) for n, v in sym_re.findall(text)}
 
 
@@ -214,7 +224,7 @@ def _resolve_bound(expr: str, syms: dict[str, int]) -> int:
     resolving to a plausible wrong number -- a bound this cross-check cannot
     read must stop the parse, not silently drop the rule.
     """
-    expr = re.sub(r"\b\d+'\s*", "", expr)           # width casts
+    expr = re.sub(r"\b\d+'\s*", "", expr)  # width casts
     expr = expr.replace("och_sep_top_addrmap_pkg::", "")
     expr = expr.replace("(", " ").replace(")", " ").strip()
     total = 0
@@ -254,9 +264,7 @@ def rtl_ranges() -> tuple[RtlRange, ...]:
         for i, s, e in rule_re.findall(text)
     ]
     if not out:
-        raise RuntimeError(
-            f"no AddrMap rules parsed from {_XBAR}; the table format changed"
-        )
+        raise RuntimeError(f"no AddrMap rules parsed from {_XBAR}; the table format changed")
     return tuple(out)
 
 
@@ -324,9 +332,9 @@ def _selftest() -> None:
     assert len(rtl) >= 14, f"only {len(rtl)} AddrMap rules parsed"
     # The dma_csr rule spans the secure_dma register extent, NOT the 4 kB spec
     # aperture: secure_dma_reg_top decodes 9 bits, so a wider window aliases.
-    assert any(
-        r.start_addr == 0x1080_0000 and r.end_addr == 0x1080_0150 for r in rtl
-    ), "dma_csr AddrMap rule not found"
+    assert any(r.start_addr == 0x1080_0000 and r.end_addr == 0x1080_0150 for r in rtl), (
+        "dma_csr AddrMap rule not found"
+    )
 
 
 _selftest()

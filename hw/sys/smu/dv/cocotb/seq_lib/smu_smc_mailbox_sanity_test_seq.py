@@ -73,8 +73,7 @@ class smu_smc_mailbox_sanity_test_seq:
         require_jtag_tdo_resolved(f"MBX RD {name}")
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A RD {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A RD {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & MASK32
 
@@ -91,8 +90,7 @@ class smu_smc_mailbox_sanity_test_seq:
         require_jtag_tdo_resolved(f"MBX WR {name}")
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A WR {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A WR {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(f"J2A WR {name} @0x{addr:08x} data=0x{data:08x} status=SUCCESS")
 
@@ -106,22 +104,16 @@ class smu_smc_mailbox_sanity_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         sb.expect_eq("CHK-MBX-JTAG-READY", (idcode, gate), (DTP_DEFAULT_IDCODE, 0))
 
         status = await self._rd32(jtag, STATUS, "STATUS")
         if status == (SMC_AXI_ERR_SLV_POISON & MASK32):
-            raise AssertionError(
-                f"STATUS @0x{STATUS:08x} is err_slv poison 0x{status:08x}"
-            )
+            raise AssertionError(f"STATUS @0x{STATUS:08x} is err_slv poison 0x{status:08x}")
         busy = STATUS_FULL | STATUS_WTHRESH | STATUS_RTHRESH
         if (status & STATUS_EMPTY) != STATUS_EMPTY or (status & busy) != 0:
             raise AssertionError(
@@ -139,9 +131,7 @@ class smu_smc_mailbox_sanity_test_seq:
         await self._wr32(jtag, IRQEN, IRQEN_PAT, "IRQEN")
         got = await self._rd32(jtag, IRQEN, "IRQEN")
         if got != IRQEN_PAT:
-            raise AssertionError(
-                f"IRQEN readback want 0x{IRQEN_PAT:08x} got 0x{got:08x}"
-            )
+            raise AssertionError(f"IRQEN readback want 0x{IRQEN_PAT:08x} got 0x{got:08x}")
         self.s3_ok = True
         sb.expect_eq("CHK-MBX-IRQEN", got, IRQEN_PAT, evidence="SMC_MBX_CSR_OK")
 
@@ -151,9 +141,7 @@ class smu_smc_mailbox_sanity_test_seq:
             raise AssertionError(f"IRQEN clear want 0 got 0x{clr:08x}")
         status2 = await self._rd32(jtag, STATUS, "STATUS-POST")
         if status2 == (SMC_AXI_ERR_SLV_POISON & MASK32):
-            raise AssertionError(
-                f"post-clear STATUS is err_slv poison 0x{status2:08x}"
-            )
+            raise AssertionError(f"post-clear STATUS is err_slv poison 0x{status2:08x}")
         self.s4_ok = True
         sb.expect_eq("CHK-MBX-IRQEN-CLR", clr, 0)
 

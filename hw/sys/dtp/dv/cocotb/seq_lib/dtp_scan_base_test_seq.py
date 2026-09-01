@@ -5,11 +5,11 @@
 from __future__ import annotations
 
 from env.dtp_scan_ref_model import (
-    DtpIjtagSibModel,
-    DtpStap3dcrModel,
     IJTAG_SIB_COUNT,
     IJTAG_SIB_ORDER,
     STAP_ORDER,
+    DtpIjtagSibModel,
+    DtpStap3dcrModel,
     Stap3dcrState,
 )
 from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
@@ -59,7 +59,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
     async def sample_signals(self) -> dict[str, int]:
         return (await self.sample_observables()).signals
 
-    def check_observable(self, signals: dict[str, int], name: str, expected: int, *, context: str) -> None:
+    def check_observable(
+        self, signals: dict[str, int], name: str, expected: int, *, context: str
+    ) -> None:
         assert name in signals, f"{name} is not exposed by the DTP JTAG driver"
         self.assert_equal(name, signals[name], expected, context)
 
@@ -69,11 +71,15 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.tms_step(1)
         await self.tms_step(0)
 
-    async def shift_dr_observe(self, value: int, width: int, *, context: str) -> tuple[int, dict[str, int]]:
+    async def shift_dr_observe(
+        self, value: int, width: int, *, context: str
+    ) -> tuple[int, dict[str, int]]:
         """Shift DR while staying in Shift-DR long enough to sample controls."""
         item = await self.shift_dr(value, width, back_to_rti=False)
         signals = await self.sample_signals()
-        self.log.info("%s observed TDO=0x%x width=%d signals=%s", context, item.result, width, signals)
+        self.log.info(
+            "%s observed TDO=0x%x width=%d signals=%s", context, item.result, width, signals
+        )
         await self.finish_dr_update()
         return item.result, signals
 
@@ -100,7 +106,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.shift_dr(pattern, IJTAG_SIB_COUNT)
         return state
 
-    async def observe_ijtag_controls(self, pattern: int, *, context: str) -> tuple[int, dict[str, int]]:
+    async def observe_ijtag_controls(
+        self, pattern: int, *, context: str
+    ) -> tuple[int, dict[str, int]]:
         await self.load_ir(DtpJtagInstr.SELECT_IJTAG)
         return await self.shift_dr_observe(pattern, IJTAG_SIB_COUNT, context=context)
 
@@ -114,9 +122,13 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         for name in IJTAG_SIB_ORDER:
             prefix = self.IJTAG_SIGNAL_PREFIX[name]
             expected_select = state.effective[name]
-            self.check_observable(signals, f"{prefix}_select", expected_select, context=f"{context}.{name}")
+            self.check_observable(
+                signals, f"{prefix}_select", expected_select, context=f"{context}.{name}"
+            )
 
-    async def check_ijtag_pattern(self, pattern: int, *, dbg_disable: dict[str, int] | None = None, context: str):
+    async def check_ijtag_pattern(
+        self, pattern: int, *, dbg_disable: dict[str, int] | None = None, context: str
+    ):
         """Program a SIB pattern under a disable mask and prove the outcome.
 
         Drives the full disable vector, programs the SIBs, then observes with
@@ -125,7 +137,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         closed SIB's select stays quiet. Returns the model state."""
         dbg = dict(dbg_disable or {})
         await self.set_dbg_disable_vector(dbg)
-        state = await self.program_ijtag_sibs(pattern, context=f"{context}.program", dbg_disable=dbg)
+        state = await self.program_ijtag_sibs(
+            pattern, context=f"{context}.program", dbg_disable=dbg
+        )
 
         quiet: list[str] = []
         active: list[str] = []
@@ -142,7 +156,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
                 quiet.append(f"{prefix}_select")
         window = self.start_scan_window(quiet + active)
         _, signals = await self.observe_ijtag_controls(pattern, context=f"{context}.observe")
-        self.check_scan_window(window, quiet=tuple(quiet), active=tuple(active), context=f"{context}.window")
+        self.check_scan_window(
+            window, quiet=tuple(quiet), active=tuple(active), context=f"{context}.window"
+        )
         self.check_ijtag_controls(state, signals, context=context)
         self.assert_equal(f"{context}.chain_len", state.chain_len, 3)
         return state
@@ -163,7 +179,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
 
     async def write_ptap_3dcr(self, *, config_hold: int, select: int, context: str) -> None:
         value = self.stap_model.ptap_3dcr_value(config_hold=config_hold, select=select)
-        self.log.info("%s PTAP_3DCR config_hold=%d select=%d raw=0x%x", context, config_hold, select, value)
+        self.log.info(
+            "%s PTAP_3DCR config_hold=%d select=%d raw=0x%x", context, config_hold, select, value
+        )
         self.stap_model.update_ptap(value)
         await self.write_tdr("TAP_3DCR", value)
         await self.tms_step(0)
@@ -243,7 +261,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         self.stap_model.apply_scan(**kwargs)
         return item.result
 
-    async def stap_chain_maintain(self, *, dbg_disable: dict[str, int] | None = None, context: str) -> int:
+    async def stap_chain_maintain(
+        self, *, dbg_disable: dict[str, int] | None = None, context: str
+    ) -> int:
         """State-preserving chain scan; the capture reads back stored state."""
         return await self.stap_chain_write(dbg_disable=dbg_disable, context=context)
 
@@ -262,7 +282,13 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         expected, care, chain_len = self.stap_model.expected_capture(dbg_disable)
         self.log.info(
             "%s chain readback captured=0x%08x expected=0x%0*x care=0x%0*x len=%d",
-            context, captured, (chain_len + 3) // 4, expected, (chain_len + 3) // 4, care, chain_len,
+            context,
+            captured,
+            (chain_len + 3) // 4,
+            expected,
+            (chain_len + 3) // 4,
+            care,
+            chain_len,
         )
         self.assert_equal("stap_chain_readback", captured & care, expected & care, context)
 
@@ -276,4 +302,3 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.assert_trst(cycles=5)
         await self.deassert_trst(cycles=2)
         self.stap_model.trst()
-

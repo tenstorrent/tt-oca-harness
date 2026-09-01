@@ -19,7 +19,6 @@ from .smc_base_test_seq import smc_base_test_seq
 
 
 class smc_6agent_observability_test_seq(smc_base_test_seq):
-
     def __init__(self, name: str = "smc_6agent_observability_test_seq") -> None:
         super().__init__(name)
         self.dispatch_reset = None
@@ -30,15 +29,22 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
         self.dispatch_axil = None
 
     async def body(self) -> None:
-        r = SmcResetItem("reset"); r.op = SmcResetOp.SAMPLE
+        r = SmcResetItem("reset")
+        r.op = SmcResetOp.SAMPLE
         await self.dispatch_reset(r)
-        i = SmcI2cItem("i2c"); i.op = SmcI2cOp.SAMPLE
+        i = SmcI2cItem("i2c")
+        i.op = SmcI2cOp.SAMPLE
         await self.dispatch_i2c(i)
-        ir = SmcIrqItem("irq"); ir.op = SmcIrqOp.SAMPLE
+        ir = SmcIrqItem("irq")
+        ir.op = SmcIrqOp.SAMPLE
         await self.dispatch_irq(ir)
-        g = SmcGpioItem("gpio"); g.op = SmcGpioOp.SAMPLE
+        g = SmcGpioItem("gpio")
+        g.op = SmcGpioOp.SAMPLE
         await self.dispatch_gpio(g)
-        a = SmcAxilItem("axil"); a.op = SmcAxilOp.SAMPLE
+        a = SmcAxilItem("axil")
+        a.op = SmcAxilOp.SAMPLE
         await self.dispatch_axil(a)
-        c = SmcClkItem("clk"); c.op = SmcClkOp.COUNT_EDGES; c.window_ref_cycles = 25
+        c = SmcClkItem("clk")
+        c.op = SmcClkOp.COUNT_EDGES
+        c.window_ref_cycles = 25
         await self.dispatch_clk(c)

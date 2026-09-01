@@ -18,6 +18,4 @@ class smc_gpio_ctrl_full_sweep_test_seq(SmcCsrSeq):
         for idx in idxs:
             addr = external_gpio_ctrl_addr(idx)
             await self.csr_read_decerr_zero(f"GPIO_CTRL_{idx}", addr)
-        assert self.accesses == len(idxs), (
-            f"GPIO_CTRL full sweep count mismatch: {self.accesses}"
-        )
+        assert self.accesses == len(idxs), f"GPIO_CTRL full sweep count mismatch: {self.accesses}"

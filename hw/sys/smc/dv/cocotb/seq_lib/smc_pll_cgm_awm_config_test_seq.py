@@ -12,10 +12,10 @@ from __future__ import annotations
 from .smc_csr_seq_utils import SmcCsrSeq
 
 PLL_CGM_AWM_READS = [
-    ("PLL_CGM_0",   0xC000_3100, 0),
-    ("PLL_CGM_1",   0xC000_3200, 0),
-    ("PLL_AWM_0",   0xC000_3400, 0),
-    ("PLL_AWM_1",   0xC000_3A00, 0),
+    ("PLL_CGM_0", 0xC000_3100, 0),
+    ("PLL_CGM_1", 0xC000_3200, 0),
+    ("PLL_AWM_0", 0xC000_3400, 0),
+    ("PLL_AWM_1", 0xC000_3A00, 0),
 ]
 
 

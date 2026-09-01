@@ -14,11 +14,12 @@ random subset (at least one bit, only legal bits) is generated so the broadcast
 defining-byte datapath sees the full event-mask space. DISEC mirrors whatever
 ENEC enabled so the pair is symmetric.
 """
-import cocotb
-from i3c_test_base import make_env, bring_up_and_assign
-from i3c_rand import RandMgr
 
-ENEC_CCC = 0x80   # broadcast enable events command
+import cocotb
+from i3c_rand import RandMgr
+from i3c_test_base import bring_up_and_assign, make_env
+
+ENEC_CCC = 0x80  # broadcast enable events command
 DISEC_CCC = 0x81  # broadcast disable events command
 
 # Legal event-enable bits in the ENEC/DISEC defining byte (MIPI I3C):
@@ -34,15 +35,15 @@ def rand_event_mask(r):
         for bit in EVENT_BITS:
             if r.randint(0, 1):
                 mask |= bit
-        if mask:               # at least one event bit set
+        if mask:  # at least one event bit set
             return mask
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_broadcast_ccc(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="broadcast_ccc")         # seed logged; +seed/SEED override
+    r = RandMgr(name="broadcast_ccc")  # seed logged; +seed/SEED override
 
     event_mask = rand_event_mask(r)
 

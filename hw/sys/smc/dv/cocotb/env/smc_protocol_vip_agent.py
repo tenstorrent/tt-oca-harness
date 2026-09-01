@@ -18,8 +18,6 @@ from pyuvm import (
     uvm_sequencer,
 )
 
-from .smc_protocol_vip_item import SmcProtocolVipItem
-
 
 class SmcProtocolVipDriver(uvm_driver):
     """Completes protocol VIP items and broadcasts them to the scoreboard."""

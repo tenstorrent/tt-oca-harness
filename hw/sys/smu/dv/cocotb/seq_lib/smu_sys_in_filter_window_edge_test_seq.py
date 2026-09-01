@@ -78,23 +78,15 @@ class smu_sys_in_filter_window_edge_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         sb.expect_eq("CHK-FILTER-EDGE-GATE-OPEN", gate, 0)
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
-        await program_inbound0_window(
-            jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="EDGE"
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="EDGE")
 
         data_v, resp_v = await await_smn_resp(
             master,
@@ -151,8 +143,7 @@ class smu_sys_in_filter_window_edge_test_seq:
             )
         if hi_poison != SMC_FILTER_POISON_LO:
             raise AssertionError(
-                f"above-edge poison want 0x{SMC_FILTER_POISON_LO:08x} "
-                f"got 0x{hi_poison:08x}"
+                f"above-edge poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{hi_poison:08x}"
             )
         self.s3_ok = True
         self._log(

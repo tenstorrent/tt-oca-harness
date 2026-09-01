@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_otp_vs_fabric_map_race_test_seq import (
     smu_otp_vs_fabric_map_race_test_seq,
 )
@@ -18,12 +17,10 @@ class smu_otp_vs_fabric_map_race_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_otp_vs_fabric_map_race_test "
-            "TierA OTP||fabric MAP race SEP=0"
+            "DUT_TAG=BARE smu_otp_vs_fabric_map_race_test TierA OTP||fabric MAP race SEP=0"
         )
         seq = smu_otp_vs_fabric_map_race_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (
-            f"otp_vs_fabric race incomplete s1={seq.s1_ok} s2={seq.s2_ok} "
-            f"s3={seq.s3_ok}"
+            f"otp_vs_fabric race incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok}"
         )

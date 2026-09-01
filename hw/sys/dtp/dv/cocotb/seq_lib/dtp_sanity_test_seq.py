@@ -33,9 +33,8 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
     def check_all_tap_states_visited(self) -> None:
         """Assert that this sanity scenario observed every TAP state."""
         missing = set(DtpTapState) - self.visited_tap_states
-        assert not missing, (
-            "Not all IEEE 1149.1 TAP states were visited: "
-            + ", ".join(sorted(state.name for state in missing))
+        assert not missing, "Not all IEEE 1149.1 TAP states were visited: " + ", ".join(
+            sorted(state.name for state in missing)
         )
         self.log.info("All %d IEEE 1149.1 TAP states visited", len(DtpTapState))
 

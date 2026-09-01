@@ -70,12 +70,9 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A WR32 SCRATCH_15 @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A WR32 SCRATCH_15 @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
-        self._log(
-            f"J2A WR32 SCRATCH_15 @0x{addr:08x} data=0x{data:08x} status=SUCCESS"
-        )
+        self._log(f"J2A WR32 SCRATCH_15 @0x{addr:08x} data=0x{data:08x} status=SUCCESS")
 
     async def _rd32(self, jtag, addr: int) -> int:
         st, rdata = await jtag2axi_single_read(
@@ -87,8 +84,7 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A RD32 SCRATCH_15 @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A RD32 SCRATCH_15 @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & 0xFFFF_FFFF
 
@@ -102,27 +98,20 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-CPU-REG-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
-        self._log(
-            f"CHK-CPU-REG-GATE-OPEN disable={gate} caps=0x{caps:04x}"
-        )
+        self._log(f"CHK-CPU-REG-GATE-OPEN disable={gate} caps=0x{caps:04x}")
         sb.expect_eq(
             "CHK-CPU-REG-GATE-OPEN",
             (gate, caps),
@@ -134,14 +123,9 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
         require_jtag_tdo_resolved("DEBUG_CONTROL stall")
         rb = int(await jtag.read("DEBUG_CONTROL", shift_value=stall)) & 0x1F
         if rb != stall:
-            raise AssertionError(
-                f"DEBUG_CONTROL readback=0x{rb:02x} want 0x{stall:02x}"
-            )
+            raise AssertionError(f"DEBUG_CONTROL readback=0x{rb:02x} want 0x{stall:02x}")
         self.s2_ok = True
-        self._log(
-            f"CHK-CPU-REG-STALL DEBUG_CONTROL=0x{rb:02x} "
-            "boot_stall=1 boot_stall_ovrd=1"
-        )
+        self._log(f"CHK-CPU-REG-STALL DEBUG_CONTROL=0x{rb:02x} boot_stall=1 boot_stall_ovrd=1")
         sb.expect_eq("CHK-CPU-REG-STALL", rb, stall)
 
         observed = []
@@ -149,17 +133,12 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
             await self._wr32(jtag, SCRATCH_15, pat)
             got = await self._rd32(jtag, SCRATCH_15)
             if got != pat:
-                raise AssertionError(
-                    f"SCRATCH_15 want 0x{pat:08x} got 0x{got:08x}"
-                )
+                raise AssertionError(f"SCRATCH_15 want 0x{pat:08x} got 0x{got:08x}")
             observed.append(got)
-            self._log(
-                f"CHK-JTAG2AXI-RW @0x{SCRATCH_15:08x} data=0x{got:08x}"
-            )
+            self._log(f"CHK-JTAG2AXI-RW @0x{SCRATCH_15:08x} data=0x{got:08x}")
         if observed[0] == observed[1]:
             raise AssertionError(
-                "SCRATCH_15 two-pattern compare collapsed to one value "
-                f"0x{observed[0]:08x}"
+                f"SCRATCH_15 two-pattern compare collapsed to one value 0x{observed[0]:08x}"
             )
         self.s3_ok = True
         sb.expect_eq("CHK-JTAG2AXI-RW", tuple(observed), PATTERNS)
