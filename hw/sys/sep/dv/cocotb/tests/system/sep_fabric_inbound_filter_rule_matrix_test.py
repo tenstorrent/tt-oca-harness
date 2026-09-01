@@ -50,16 +50,21 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
-
-from sep_base_test import sep_base_test
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
-from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
-from seq_lib.sep_inbound_filter_rule_seq import (
-    SepInboundFilterCfg, SepInboundFilterMatrixCfg, SepInboundFilter,
-    ext_read_seq, ext_write_seq, ext_burst_read_seq, ext_burst_write_seq,
-    RESP_OKAY, RESP_DECERR,
-)
+from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import FILTER_RW_MASK
+from seq_lib.sep_inbound_filter_rule_seq import (
+    RESP_DECERR,
+    RESP_OKAY,
+    SepInboundFilter,
+    SepInboundFilterCfg,
+    SepInboundFilterMatrixCfg,
+    ext_burst_read_seq,
+    ext_burst_write_seq,
+    ext_read_seq,
+    ext_write_seq,
+)
+from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
 _MAX_SENSE_CYCLES = 20_000
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is non-vacuous.
@@ -86,8 +91,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.start_ext_seq(seq)
         return seq.resp_code, (seq.rdata & 0xFFFF_FFFF)
 
-    async def _ext_burst_write(self, addr: int, data: int, *,
-                               expect_error: bool = False) -> int:
+    async def _ext_burst_write(self, addr: int, data: int, *, expect_error: bool = False) -> int:
         seq = ext_burst_write_seq(addr, data, expect_error=expect_error)
         await self.start_ext_seq(seq)
         return seq.resp_code
@@ -118,8 +122,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
 
         return cocotb.start_soon(_mon()), addrs
 
-    async def _ext_burst_read_watch(self, addr: int, *, expect_error: bool = False
-                                    ) -> tuple[int, int, list[int]]:
+    async def _ext_burst_read_watch(
+        self, addr: int, *, expect_error: bool = False
+    ) -> tuple[int, int, list[int]]:
         task, addrs = await self._watch_sys_csr_lite(write=False)
         try:
             resp, data = await self._ext_burst_read(addr, expect_error=expect_error)
@@ -127,8 +132,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             task.kill()
         return resp, data, list(addrs)
 
-    async def _ext_burst_write_watch(self, addr: int, data: int, *,
-                                     expect_error: bool = False) -> tuple[int, list[int]]:
+    async def _ext_burst_write_watch(
+        self, addr: int, data: int, *, expect_error: bool = False
+    ) -> tuple[int, list[int]]:
         task, addrs = await self._watch_sys_csr_lite(write=True)
         try:
             resp = await self._ext_burst_write(addr, data, expect_error=expect_error)
@@ -136,8 +142,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             task.kill()
         return resp, list(addrs)
 
-    def _expect_lite_split(self, addrs: list[int], *, start: int, nbeats: int,
-                           tag: str) -> None:
+    def _expect_lite_split(self, addrs: list[int], *, start: int, nbeats: int, tag: str) -> None:
         """AxLEN=N-1 INCR of 4-byte beats becomes N AXI-Lite singles."""
         expected = [start + i * 4 for i in range(nbeats)]
         assert addrs == expected, (
@@ -155,10 +160,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.filt.stage_target(burst_addr, burst_val)
 
         await self.filt.disable_all()
-        burst_cfg = SepInboundFilterCfg(
-            entry=0, allow_addr=burst_addr, allow_value=burst_val)
+        burst_cfg = SepInboundFilterCfg(entry=0, allow_addr=burst_addr, allow_value=burst_val)
         await self.filt.program_rule(
-            burst_cfg, read_allowed=True, write_allowed=True, allow_burst=False)
+            burst_cfg, read_allowed=True, write_allowed=True, allow_burst=False
+        )
 
         resp, data = await self._ext_read(burst_addr)
         assert resp == RESP_OKAY, (
@@ -166,44 +171,43 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"resp={resp}, expected OKAY (anti-vacuous)"
         )
         assert data == burst_val, (
-            f"CHK-BURST-DENY: single-beat rdata 0x{data:08x} != staged "
-            f"0x{burst_val:08x}"
+            f"CHK-BURST-DENY: single-beat rdata 0x{data:08x} != staged 0x{burst_val:08x}"
         )
-        resp, _, lite_ar = await self._ext_burst_read_watch(
-            burst_addr, expect_error=True)
+        resp, _, lite_ar = await self._ext_burst_read_watch(burst_addr, expect_error=True)
         assert resp == RESP_DECERR, (
             f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of "
             f"0x{burst_addr:08x} resp={resp}, expected DECERR"
         )
         self._expect_lite_split(
-            lite_ar, start=burst_addr, nbeats=0,
-            tag="CHK-BURST-TO-SINGLE deny AR")
+            lite_ar, start=burst_addr, nbeats=0, tag="CHK-BURST-TO-SINGLE deny AR"
+        )
         self.logger.info(
             "CHK-BURST-DENY PASS: allow_burst=0 single-beat OKAY rdata=0x%08x; "
             "2-beat INCR DECERR at 0x%08x",
-            burst_val, burst_addr)
+            burst_val,
+            burst_addr,
+        )
 
         await self.filt.disable_all()
         await self.filt.program_rule(
-            burst_cfg, read_allowed=True, write_allowed=True,
-            allow_burst=True, end_addr=burst_end)
+            burst_cfg, read_allowed=True, write_allowed=True, allow_burst=True, end_addr=burst_end
+        )
         start_rb = await self.filt.read_cpu(burst_cfg.start_addr_reg)
         end_rb = await self.filt.read_cpu(burst_cfg.end_addr_reg)
         assert start_rb == burst_addr, (
-            f"CHK-BURST-ALLOW: START_ADDR 0x{start_rb:08x} != programmed "
-            f"0x{burst_addr:08x}"
+            f"CHK-BURST-ALLOW: START_ADDR 0x{start_rb:08x} != programmed 0x{burst_addr:08x}"
         )
         assert end_rb == burst_end, (
             f"CHK-BURST-ALLOW: END_ADDR 0x{end_rb:08x} != programmed "
             f"0x{burst_end:08x} (page-widen must not fire)"
         )
         assert (burst_addr >> 12) != (burst_end >> 12), (
-            f"CHK-BURST-ALLOW: window 0x{burst_addr:08x}..0x{burst_end:08x} "
-            f"shares a 4 KB page"
+            f"CHK-BURST-ALLOW: window 0x{burst_addr:08x}..0x{burst_end:08x} shares a 4 KB page"
         )
         cfg_rb = await self.filt.read_cpu(burst_cfg.cfg_addr)
         expected_cfg = burst_cfg.config_word(
-            read_allowed=True, write_allowed=True, allow_burst=True)
+            read_allowed=True, write_allowed=True, allow_burst=True
+        )
         assert (cfg_rb & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (
             f"CHK-BURST-ALLOW: FILTER_CONFIG rw 0x{cfg_rb & FILTER_RW_MASK:08x} "
             f"!= 0x{expected_cfg & FILTER_RW_MASK:08x}"
@@ -214,20 +218,23 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"0x{burst_addr:08x} resp={resp}, expected OKAY"
         )
         assert data == burst_val, (
-            f"CHK-BURST-ALLOW FAIL: burst rdata 0x{data:08x} != staged "
-            f"0x{burst_val:08x}"
+            f"CHK-BURST-ALLOW FAIL: burst rdata 0x{data:08x} != staged 0x{burst_val:08x}"
         )
         self._expect_lite_split(
-            lite_ar, start=burst_addr, nbeats=2,
-            tag="CHK-BURST-TO-SINGLE allow AR")
+            lite_ar, start=burst_addr, nbeats=2, tag="CHK-BURST-TO-SINGLE allow AR"
+        )
         self.logger.info(
             "CHK-BURST-ALLOW PASS: allow_burst=1 START=0x%08x END=0x%08x "
             "(two pages); 2-beat INCR OKAY rdata=0x%08x",
-            start_rb, end_rb, data)
+            start_rb,
+            end_rb,
+            data,
+        )
         self.logger.info(
-            "CHK-BURST-TO-SINGLE PASS: AxLEN=1 read -> %d Lite AR %s "
-            "(denied burst -> 0 Lite AR)",
-            len(lite_ar), [hex(a) for a in lite_ar])
+            "CHK-BURST-TO-SINGLE PASS: AxLEN=1 read -> %d Lite AR %s (denied burst -> 0 Lite AR)",
+            len(lite_ar),
+            [hex(a) for a in lite_ar],
+        )
 
         poke_sb = burst_val ^ 0x00FF_FF00
         poke_burst = burst_val ^ 0xFFFF_0000
@@ -239,7 +246,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.filt.disable_all()
         await self.filt.stage_target(burst_addr, burst_val)
         await self.filt.program_rule(
-            burst_cfg, read_allowed=True, write_allowed=True, allow_burst=False)
+            burst_cfg, read_allowed=True, write_allowed=True, allow_burst=False
+        )
         resp = await self._ext_write(burst_addr, poke_sb)
         assert resp == RESP_OKAY, (
             f"CHK-BURST-WRITE-DENY: single-beat write of 0x{burst_addr:08x} "
@@ -251,15 +259,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"(0x{landed:08x} != 0x{poke_sb:08x})"
         )
         await self.filt.stage_target(burst_addr, burst_val)
-        resp, lite_aw = await self._ext_burst_write_watch(
-            burst_addr, poke_burst, expect_error=True)
+        resp, lite_aw = await self._ext_burst_write_watch(burst_addr, poke_burst, expect_error=True)
         assert resp == RESP_DECERR, (
             f"CHK-BURST-WRITE-DENY FAIL: allow_burst=0 2-beat INCR write of "
             f"0x{burst_addr:08x} resp={resp}, expected DECERR"
         )
         self._expect_lite_split(
-            lite_aw, start=burst_addr, nbeats=0,
-            tag="CHK-BURST-TO-SINGLE deny AW")
+            lite_aw, start=burst_addr, nbeats=0, tag="CHK-BURST-TO-SINGLE deny AW"
+        )
         after = await self.filt.read_cpu(burst_addr)
         assert after == burst_val, (
             f"CHK-BURST-WRITE-DENY FAIL: denied burst write landed "
@@ -268,17 +275,17 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self.logger.info(
             "CHK-BURST-WRITE-DENY PASS: allow_burst=0 single-beat write OKAY "
             "and landed; 2-beat INCR DECERR and did not land at 0x%08x",
-            burst_addr)
+            burst_addr,
+        )
 
         await self.filt.disable_all()
         await self.filt.program_rule(
-            burst_cfg, read_allowed=True, write_allowed=True,
-            allow_burst=True, end_addr=burst_end)
+            burst_cfg, read_allowed=True, write_allowed=True, allow_burst=True, end_addr=burst_end
+        )
         start_rb = await self.filt.read_cpu(burst_cfg.start_addr_reg)
         end_rb = await self.filt.read_cpu(burst_cfg.end_addr_reg)
         assert start_rb == burst_addr, (
-            f"CHK-BURST-WRITE-ALLOW: START_ADDR 0x{start_rb:08x} != programmed "
-            f"0x{burst_addr:08x}"
+            f"CHK-BURST-WRITE-ALLOW: START_ADDR 0x{start_rb:08x} != programmed 0x{burst_addr:08x}"
         )
         assert end_rb == burst_end, (
             f"CHK-BURST-WRITE-ALLOW: END_ADDR 0x{end_rb:08x} != programmed "
@@ -295,25 +302,31 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"(0x{landed:08x} != 0x{poke_burst:08x})"
         )
         self._expect_lite_split(
-            lite_aw, start=burst_addr, nbeats=2,
-            tag="CHK-BURST-TO-SINGLE allow AW")
+            lite_aw, start=burst_addr, nbeats=2, tag="CHK-BURST-TO-SINGLE allow AW"
+        )
         await self.filt.stage_target(burst_addr, burst_val)
         self.logger.info(
             "CHK-BURST-WRITE-ALLOW PASS: allow_burst=1 START=0x%08x END=0x%08x "
             "(two pages); 2-beat INCR write OKAY and landed 0x%08x",
-            start_rb, end_rb, poke_burst)
+            start_rb,
+            end_rb,
+            poke_burst,
+        )
         self.logger.info(
-            "CHK-BURST-TO-SINGLE PASS: AxLEN=1 write -> %d Lite AW %s "
-            "(denied burst -> 0 Lite AW)",
-            len(lite_aw), [hex(a) for a in lite_aw])
+            "CHK-BURST-TO-SINGLE PASS: AxLEN=1 write -> %d Lite AW %s (denied burst -> 0 Lite AW)",
+            len(lite_aw),
+            [hex(a) for a in lite_aw],
+        )
         self.logger.info(
             "CHK-BURST-WALK PASS: allow_burst deny + allow walked on AR and AW "
-            "of the scratch window")
+            "of the scratch window"
+        )
 
     async def _bring_up_prod_filter_active(self) -> None:
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
         image = self.select_efuse_image(
-            lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS})
+            lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
+        )
         # No image.lc_raw() == LC_PROD assert here: select_efuse_image was called with
         # lc_raw=LC_PROD and randomize() pins the field to exactly that, so the check
         # compares a value to itself. The DUT-side evidence that PROD actually took
@@ -344,15 +357,24 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         for addr, val in mcfg.windows:
             await self.filt.stage_target(addr, val)
             staged = await self.filt.read_cpu(addr)
-            assert staged == val, (
-                f"staged target 0x{addr:08x}=0x{staged:08x} != 0x{val:08x}"
-            )
+            assert staged == val, f"staged target 0x{addr:08x}=0x{staged:08x} != 0x{val:08x}"
 
         first = True
         src_match_logged = False
         src_mismatch_logged = False
-        for (entry, widx, mode, addr, val, read_ok, write_ok,
-             src_class, cfg_src_id, axi_user, expect_hit) in mcfg.cells():
+        for (
+            entry,
+            widx,
+            mode,
+            addr,
+            val,
+            read_ok,
+            write_ok,
+            src_class,
+            cfg_src_id,
+            axi_user,
+            expect_hit,
+        ) in mcfg.cells():
             await self.filt.disable_all()
             cell = SepInboundFilterCfg(entry=entry, allow_addr=addr, allow_value=val)
             cell.src_id = cfg_src_id
@@ -373,7 +395,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     self.logger.info(
                         "CHK-SRC-ID PASS: cfg_src_id=0x%x user=0x%x -> DECERR "
                         "(mismatch; allow bits do not apply)",
-                        cfg_src_id, axi_user)
+                        cfg_src_id,
+                        axi_user,
+                    )
                     src_mismatch_logged = True
             else:
                 if read_ok:
@@ -388,8 +412,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     )
                     if first:
                         self.logger.info(
-                            "CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x",
-                            addr, data)
+                            "CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x", addr, data
+                        )
                 else:
                     resp, _ = await self._ext_read(addr, user=axi_user)
                     assert resp == RESP_DECERR, (
@@ -420,7 +444,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     self.logger.info(
                         "CHK-SRC-ID PASS: cfg_src_id=0x%x user=0x%x matched "
                         "(exact source-ID, r/w allow bits still apply)",
-                        cfg_src_id, axi_user)
+                        cfg_src_id,
+                        axi_user,
+                    )
                     src_match_logged = True
 
             resp, _ = await self._ext_read(mcfg.blocked_addr, user=axi_user)
@@ -431,39 +457,63 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             if first:
                 self.logger.info(
                     "CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR (block-by-default)",
-                    mcfg.blocked_addr)
+                    mcfg.blocked_addr,
+                )
             if expect_hit and mode == "r":
                 self.logger.info(
                     "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
-                    "(DECERR) entry=%d window=%d src=%s", entry, widx, src_class)
+                    "(DECERR) entry=%d window=%d src=%s",
+                    entry,
+                    widx,
+                    src_class,
+                )
                 self.logger.info(
                     "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
-                    "(OKAY) entry=%d window=%d src=%s", entry, widx, src_class)
+                    "(OKAY) entry=%d window=%d src=%s",
+                    entry,
+                    widx,
+                    src_class,
+                )
             if expect_hit and mode == "w":
                 self.logger.info(
                     "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
-                    "(DECERR) entry=%d window=%d src=%s", entry, widx, src_class)
+                    "(DECERR) entry=%d window=%d src=%s",
+                    entry,
+                    widx,
+                    src_class,
+                )
                 self.logger.info(
                     "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
-                    "(OKAY) entry=%d window=%d src=%s", entry, widx, src_class)
+                    "(OKAY) entry=%d window=%d src=%s",
+                    entry,
+                    widx,
+                    src_class,
+                )
             self.logger.info(
                 "CHK-CELL PASS: entry=%d window=%d mode=%s src=%s addr=0x%08x",
-                entry, widx, mode, src_class, addr)
+                entry,
+                widx,
+                mode,
+                src_class,
+                addr,
+            )
             first = False
 
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "(entries %s x %d windows x rw/r/w match-all + "
             "entry0/window0 x rw/r/w match + 1 mismatch)",
-            mcfg.n_cells(), list(mcfg.entries), len(mcfg.windows))
+            mcfg.n_cells(),
+            list(mcfg.entries),
+            len(mcfg.windows),
+        )
 
         await self._check_burst_dimension(mcfg)
 
         # Restore entry 0 / window A / rw for the ownership checks.
         await self.filt.disable_all()
         win0_addr, win0_val = mcfg.windows[0]
-        self.fcfg = SepInboundFilterCfg(
-            entry=0, allow_addr=win0_addr, allow_value=win0_val)
+        self.fcfg = SepInboundFilterCfg(entry=0, allow_addr=win0_addr, allow_value=win0_val)
         await self.filt.program_rule(self.fcfg, read_allowed=True, write_allowed=True)
 
         cfg_addr = self.fcfg.cfg_addr
@@ -490,7 +540,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self.logger.info(
             "CHK-OWNERSHIP PASS: filter cfg 0x%08x -- CPU-LSU reads rule (rw 0x%08x), external "
             "R+W DECERR, rule intact",
-            cfg_addr, cpu_cfg & FILTER_RW_MASK)
+            cfg_addr,
+            cpu_cfg & FILTER_RW_MASK,
+        )
 
         self.logger.info(
-            "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
+            "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)"
+        )

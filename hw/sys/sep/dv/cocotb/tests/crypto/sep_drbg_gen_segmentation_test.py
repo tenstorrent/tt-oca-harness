@@ -30,7 +30,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_bringup_seq import SepEntropyCfg
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
@@ -68,9 +67,7 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         self.start_fifo_drain()
 
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        assert await self.wait_km_entropy_handshake(), (
-            "KM never handshook a genbits word"
-        )
+        assert await self.wait_km_entropy_handshake(), "KM never handshook a genbits word"
         assert await self.wait_km_consumed_word(), "KM never consumed a genbits word"
         # The non-zero poll above only says the KM CPU reached its store. Compare
         # the stored word against the word the DUT delivered on the AXIS endpoint,
@@ -83,8 +80,10 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         sb = self.drbg_sb
         target_blocks = SEGMENTATION_GLEN * 5
         for _ in range(400):
-            if (sb.results["CHK4_genbits"].dut_items >= target_blocks
-                    and sum(sb.completed_generate_lengths().values()) >= 2):
+            if (
+                sb.results["CHK4_genbits"].dut_items >= target_blocks
+                and sum(sb.completed_generate_lengths().values()) >= 2
+            ):
                 break
             await ClockCycles(cocotb.top.clk_i, 200)
 
@@ -111,7 +110,9 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         self.logger.info(
             "CHK4-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "
             "%d blocks; trailing CTR_DRBG Update exercised %d time(s)",
-            completed, SEGMENTATION_GLEN, completed,
+            completed,
+            SEGMENTATION_GLEN,
+            completed,
         )
 
         # Bit-exactness across those Update boundaries is the actual regression

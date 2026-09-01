@@ -56,28 +56,45 @@ after which its keyed ops pull real EDN masking entropy (scored via CHK5_kmac).
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
+from seq_lib.sep_km_mailbox_seq import KM_DEST_KMAC, SepKmMailbox
 from seq_lib.sep_kmac_seq import SepKmac
-from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_KMAC
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words (non-degenerate by construction).
 KAT_KEY = (
-    0xDEADBEEF, 0x00112233, 0x44556677, 0x8899AABB,
-    0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98,
+    0xDEADBEEF,
+    0x00112233,
+    0x44556677,
+    0x8899AABB,
+    0xCCDDEEFF,
+    0x01234567,
+    0x89ABCDEF,
+    0xFEDCBA98,
 )
 
 # Fixed message (reference KMAC_MSG): bytes 0x00..0x1f as 8 words.
 KMAC_MSG = (
-    0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F,
-    0x10111213, 0x14151617, 0x18191A1B, 0x1C1D1E1F,
+    0x00010203,
+    0x04050607,
+    0x08090A0B,
+    0x0C0D0E0F,
+    0x10111213,
+    0x14151617,
+    0x18191A1B,
+    0x1C1D1E1F,
 )
 
 # Unrelated dummy key for the negative reference.
 KMAC_DUMMY_KEY = (
-    0xDEADBEEF, 0xCAFEF00D, 0x12345678, 0x9ABCDEF0,
-    0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
+    0xDEADBEEF,
+    0xCAFEF00D,
+    0x12345678,
+    0x9ABCDEF0,
+    0x0F0E0D0C,
+    0x0B0A0908,
+    0x07060504,
+    0x03020100,
 )
 
 
@@ -103,7 +120,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # analog of the reference suite's backdoor kmac EDN ack-count (CHK-ENT). The drain keeps the
         # ESRC FIFO from overflowing during the long entropy phase.
         await self.bring_up_entropy(
-            strict=True, score_km="observe", score_sinks={"kmac": "observe"})
+            strict=True, score_km="observe", score_sinks={"kmac": "observe"}
+        )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         self.logger.info("real entropy flowing; releasing KM firmware (rom_main)")
@@ -122,8 +140,9 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         await self.swrst.release("kmac")
 
         # CHK-NEG: negative reference -- keyed MAC with an unrelated DUMMY SW key.
-        c_dummy = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=False,
-                                            sw_key=list(KMAC_DUMMY_KEY))
+        c_dummy = await self.kmac.keyed_mac(
+            list(KMAC_MSG), sideload=False, sw_key=list(KMAC_DUMMY_KEY)
+        )
         # c_dummy is the negative reference CHK-SIDE compares against, so it has to be
         # a real observation before that comparison means anything: an all-zero garbage
         # read would satisfy `a_side != c_dummy` while proving nothing. There is no
@@ -136,19 +155,28 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         )
         self.logger.info(
             "CHK-NEG dummy-key KMAC PASS: non-zero digest observed (alive, not "
-            "value-compared): c_dummy=%s", [hex(w) for w in c_dummy])
+            "value-compared): c_dummy=%s",
+            [hex(w) for w in c_dummy],
+        )
 
         # CHK-ISO: only KMAC (of the four sideload targets) is released; others parked.
         rst = await self.swrst.read_back()
-        parked = (1 << SW_RESET_N_BIT["aes"]) | (1 << SW_RESET_N_BIT["hmac"]) \
+        parked = (
+            (1 << SW_RESET_N_BIT["aes"])
+            | (1 << SW_RESET_N_BIT["hmac"])
             | (1 << SW_RESET_N_BIT["otbn"])
-        assert (rst & parked) == 0, \
+        )
+        assert (rst & parked) == 0, (
             f"key-bus isolation: AES/HMAC/OTBN not parked (SW_RESET_N=0x{rst:08x})"
-        assert rst & (1 << SW_RESET_N_BIT["kmac"]), \
+        )
+        assert rst & (1 << SW_RESET_N_BIT["kmac"]), (
             f"KMAC not released for the transfer (SW_RESET_N=0x{rst:08x})"
+        )
         self.logger.info(
             "CHK-ISO key-bus isolation PASS: only KM+KMAC released, AES/HMAC/OTBN "
-            "parked (SW_RESET_N=0x%02x)", rst)
+            "parked (SW_RESET_N=0x%02x)",
+            rst,
+        )
 
         # CHK-B: sideload the handle's key to the KMAC wrapper KEY CSRs.
         rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_KMAC)
@@ -167,16 +195,18 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         )
         self.logger.info(
             "CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)", ctl_pub)
+            "(read path alive: STATUS=%#010x)",
+            ctl_pub,
+        )
 
         # CHK-SIDE/CHK-MAC: sideload MAC, then SW-key MAC with the KNOWN key.
         a_side = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=True)
-        assert a_side != c_dummy, \
+        assert a_side != c_dummy, (
             "KMAC sideload digest equals the dummy-key digest (key not consumed)"
+        )
         self.logger.info("CHK-SIDE PASS: sideload digest != dummy-key digest")
 
-        b_swref = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=False,
-                                            sw_key=list(KAT_KEY))
+        b_swref = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=False, sw_key=list(KAT_KEY))
         assert a_side == b_swref, (
             "KMAC sideload vs SW-key(known) digest mismatch -- KMAC did not consume "
             "the exact KM-delivered key:\n"

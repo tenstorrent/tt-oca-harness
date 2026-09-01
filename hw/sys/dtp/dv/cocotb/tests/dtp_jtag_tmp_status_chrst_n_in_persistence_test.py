@@ -3,7 +3,6 @@
 """DTP TMP_STATUS persistence across chip reset test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq import (
     dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq,

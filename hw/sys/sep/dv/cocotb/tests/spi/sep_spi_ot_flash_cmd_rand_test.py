@@ -52,12 +52,11 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_flash_cmd_test")
@@ -95,10 +94,22 @@ class SepSpiFlashCmdCfg:
     # JEDEC, WRDI, RDSR, WREN, RDSR, then WREN/PP/READ (primary), FAST_READ,
     # WREN/PP/READ (neighbour), WREN/ERASE/READ (primary), READ (neighbour).
     EXPECTED_OPS = [
-        0x9F, 0x06, 0x05, 0x04, 0x05,
-        0x06, 0x02, 0x03, 0x0B,
-        0x06, 0x02, 0x03,
-        0x06, 0x20, 0x03, 0x03,
+        0x9F,
+        0x06,
+        0x05,
+        0x04,
+        0x05,
+        0x06,
+        0x02,
+        0x03,
+        0x0B,
+        0x06,
+        0x02,
+        0x03,
+        0x06,
+        0x20,
+        0x03,
+        0x03,
     ]
 
     @property
@@ -147,7 +158,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         """Patch the scenario into a per-run DTCM image; return (path, cfg). With
         +spi1_directed, skip patching and use the firmware's defaults (cfg=None)."""
         if "spi1_directed" in cocotb.plusargs:
-            self.logger.info("SPI flash command breadth directed mode (+spi1_directed): firmware defaults")
+            self.logger.info(
+                "SPI flash command breadth directed mode (+spi1_directed): firmware defaults"
+            )
             return _DTCM_HEX, None
 
         cfg = SepSpiFlashCmdCfg.from_seed(self.random_seed())
@@ -155,7 +168,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "SPI flash command breadth scenario (seed=%d): addr=0x%06x nwords=%d data=%s",
-            cfg.seed, cfg.addr, cfg.nwords, [f"0x{w:08x}" for w in cfg.data],
+            cfg.seed,
+            cfg.addr,
+            cfg.nwords,
+            [f"0x{w:08x}" for w in cfg.data],
         )
         return patched, cfg
 
@@ -176,7 +192,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         try:
             self.sb.expected_line = _BANNER
             await self.boot_firmware(
-                self.sb, _ITCM_HEX, dtcm_hex,
+                self.sb,
+                _ITCM_HEX,
+                dtcm_hex,
                 rst_vec=_ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
@@ -193,17 +211,22 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         txns = flash.get_transactions()
         for t in txns:
             din = t.get("data_in") or b""
-            self.logger.info("SPI flash command breadth diag txn: opcode=0x%02x addr=0x%06x data_in=%s",
-                             t.get("opcode", -1), t.get("addr", 0),
-                             bytes(din).hex() if din else "")
+            self.logger.info(
+                "SPI flash command breadth diag txn: opcode=0x%02x addr=0x%06x data_in=%s",
+                t.get("opcode", -1),
+                t.get("addr", 0),
+                bytes(din).hex() if din else "",
+            )
         if cfg is None:  # +spi1_directed: firmware-self-checked only
             return
 
         opcodes = [t.get("opcode") for t in txns]
         if opcodes != cfg.EXPECTED_OPS:
-            self.logger.error("SPI flash command breadth GOLDEN FAIL: opcode order %s != %s",
-                              [f"0x{o:02x}" for o in opcodes],
-                              [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: opcode order %s != %s",
+                [f"0x{o:02x}" for o in opcodes],
+                [f"0x{o:02x}" for o in cfg.EXPECTED_OPS],
+            )
             raise AssertionError("SPI flash command breadth golden: unexpected BFM opcode sequence")
 
         pp = txns[6]
@@ -211,35 +234,60 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         if pp.get("addr") != cfg.addr or bytes(pp.get("data_in") or b"") != exp_bytes:
             self.logger.error(
                 "SPI flash command breadth GOLDEN FAIL: PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
-                pp.get("addr", 0), bytes(pp.get("data_in") or b"").hex(),
-                cfg.addr, exp_bytes.hex())
-            raise AssertionError("SPI flash command breadth golden: PAGE PROGRAM addr/data mismatch")
+                pp.get("addr", 0),
+                bytes(pp.get("data_in") or b"").hex(),
+                cfg.addr,
+                exp_bytes.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: PAGE PROGRAM addr/data mismatch"
+            )
 
         neigh_pp = txns[10]
         neigh_bytes = cfg.neigh_bytes()
-        if neigh_pp.get("addr") != cfg.neigh_addr or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes:
+        if (
+            neigh_pp.get("addr") != cfg.neigh_addr
+            or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes
+        ):
             self.logger.error(
                 "SPI flash command breadth GOLDEN FAIL: neighbour PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
-                neigh_pp.get("addr", 0), bytes(neigh_pp.get("data_in") or b"").hex(),
-                cfg.neigh_addr, neigh_bytes.hex())
-            raise AssertionError("SPI flash command breadth golden: neighbour PAGE PROGRAM mismatch")
+                neigh_pp.get("addr", 0),
+                bytes(neigh_pp.get("data_in") or b"").hex(),
+                cfg.neigh_addr,
+                neigh_bytes.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: neighbour PAGE PROGRAM mismatch"
+            )
 
         erased = flash.read_memory(cfg.addr, cfg.nwords * 4)
         if erased != b"\xff" * (cfg.nwords * 4):
-            self.logger.error("SPI flash command breadth GOLDEN FAIL: post-erase mem not 0xFF: %s",
-                              erased.hex())
-            raise AssertionError("SPI flash command breadth golden: sector erase did not wipe the page")
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: post-erase mem not 0xFF: %s", erased.hex()
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: sector erase did not wipe the page"
+            )
         neigh_left = flash.read_memory(cfg.neigh_addr, cfg.nwords * 4)
         if neigh_left != neigh_bytes:
             self.logger.error(
                 "SPI flash command breadth GOLDEN FAIL: neighbour 0x%06x wiped or corrupted: %s vs %s",
-                cfg.neigh_addr, neigh_left.hex(), neigh_bytes.hex())
-            raise AssertionError("SPI flash command breadth golden: sector erase wiped the neighbour")
+                cfg.neigh_addr,
+                neigh_left.hex(),
+                neigh_bytes.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: sector erase wiped the neighbour"
+            )
         self.logger.info(
             "SPI flash command breadth GOLDEN PASS: PP@0x%06x %dB landed, erase wiped it, "
             "neighbour 0x%06x intact, opcodes=%s",
-            cfg.addr, cfg.nwords * 4, cfg.neigh_addr,
-            [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
+            cfg.addr,
+            cfg.nwords * 4,
+            cfg.neigh_addr,
+            [f"0x{o:02x}" for o in cfg.EXPECTED_OPS],
+        )
         self.logger.info(
             "CHK-RAND-REP PASS: walked BFM-visible opcodes "
-            "JEDEC/WREN/RDSR/WRDI/PP/READ/FAST/ERASE (dual/quad infra-gated)")
+            "JEDEC/WREN/RDSR/WRDI/PP/READ/FAST/ERASE (dual/quad infra-gated)"
+        )

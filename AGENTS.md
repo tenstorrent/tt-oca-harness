@@ -503,9 +503,11 @@ open files to compensate.
 | Check | Local command |
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
+| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
 | SystemVerilog lint (verible) | `make lint-sv-verible` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check` |
 | C formatting | `make format-c`, `make format-c-check` |
+| Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
@@ -514,3 +516,9 @@ plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs on
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
 `scripts/ci/diff_class.py` is the classifier.
+
+Optional staged-file checks are documented in `CONTRIBUTING.md`. Agents may
+run `make hooks-run` or the underlying lint/format checks without installing a
+hook. `make hooks-install` modifies local Git metadata and must never be run
+unless the user explicitly requests installation; setup and checkout flows
+must not activate hooks automatically.

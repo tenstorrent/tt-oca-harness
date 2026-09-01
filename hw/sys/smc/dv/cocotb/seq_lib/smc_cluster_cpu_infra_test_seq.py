@@ -15,9 +15,9 @@ without CPU firmware.
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # The CPU cluster (WDT/PLIC/CLINT) is not fully exercisable in the DUT-only OSS
@@ -27,18 +27,18 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # "never OKAY" invariant.
 CLUSTER_CPU_READS = [
     # Per-core WDT sanity
-    ("WDT_CORE0_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")),
-    ("WDT_CORE1_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR")),
-    ("WDT_CORE2_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR")),
-    ("WDT_CORE3_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR")),
+    ("WDT_CORE0_CFG", smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")),
+    ("WDT_CORE1_CFG", smc_addr("SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR")),
+    ("WDT_CORE2_CFG", smc_addr("SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR")),
+    ("WDT_CORE3_CFG", smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR")),
     # PLIC representative regs
     ("PLIC_PRIORITY_1", 0xC400_0004),
-    ("PLIC_PENDING_0",  0xC400_1000),
-    ("PLIC_ENABLE_0",   0xC400_2000),
+    ("PLIC_PENDING_0", 0xC400_1000),
+    ("PLIC_ENABLE_0", 0xC400_2000),
     # CLINT representative regs
-    ("CLINT_MSIP_0",       0xC800_0000),
+    ("CLINT_MSIP_0", 0xC800_0000),
     ("CLINT_MTIMECMP_0_LO", 0xC800_4000),
-    ("CLINT_MTIME_LO",     0xC800_BFF8),
+    ("CLINT_MTIME_LO", 0xC800_BFF8),
 ]
 
 # CPU-cluster apertures that DECERR by design here: seeded into the passive AXI
@@ -46,7 +46,10 @@ CLUSTER_CPU_READS = [
 # flagged as a hard protocol error. (The monitor otherwise treats any DECERR
 # outside its macro/boundary ranges as a failure.)
 CLUSTER_DECERR_RANGES = [
-    (smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR"), 0xC000_1000),  # per-core WDT (4 cores, stride 0x400)
+    (
+        smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR"),
+        0xC000_1000,
+    ),  # per-core WDT (4 cores, stride 0x400)
     (0xC400_0000, 0xC800_0000),  # SMC_CLUSTER_PLIC aperture
     (0xC800_0000, 0xC800_C000),  # SMC_CLUSTER_CLINT aperture
 ]
@@ -83,7 +86,8 @@ class smc_cluster_cpu_infra_test_seq(SmcCsrSeq):
         # decoded) cluster windows. Register-level decode is exercised on the
         # full chip with CPU firmware.
         self.assert_reachable_or_gated(
-            len(CLUSTER_CPU_READS), "Cluster CPU infra",
+            len(CLUSTER_CPU_READS),
+            "Cluster CPU infra",
             "cluster windows partially decode / timeout; strict per-window value "
             "deferred to full-chip with CPU firmware",
         )

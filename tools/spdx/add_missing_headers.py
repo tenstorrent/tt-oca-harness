@@ -16,11 +16,29 @@ SPDX_ID = "SPDX-License-Identifier: Apache-2.0"
 SPDX_COPY = "SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc."
 
 STYLE = {
-    ".sv": "//", ".svh": "//", ".v": "//", ".vh": "//", ".rdl": "//",
+    ".sv": "//",
+    ".svh": "//",
+    ".v": "//",
+    ".vh": "//",
+    ".rdl": "//",
     ".vlt": "//",
-    ".py": "#", ".mk": "#", ".tcl": "#", ".sh": "#", ".yml": "#", ".yaml": "#",
-    ".hjson": "#", ".toml": "#", ".cfg": "#", ".f": "#", ".core": "#",
-    ".c": "c", ".h": "c", ".cc": "c", ".cpp": "c", ".ld": "c", ".S": "c",
+    ".py": "#",
+    ".mk": "#",
+    ".tcl": "#",
+    ".sh": "#",
+    ".yml": "#",
+    ".yaml": "#",
+    ".hjson": "#",
+    ".toml": "#",
+    ".cfg": "#",
+    ".f": "#",
+    ".core": "#",
+    ".c": "c",
+    ".h": "c",
+    ".cc": "c",
+    ".cpp": "c",
+    ".ld": "c",
+    ".S": "c",
 }
 
 

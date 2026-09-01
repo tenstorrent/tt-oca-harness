@@ -70,8 +70,7 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"OTP J2A WR {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"OTP J2A WR {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(f"OTP J2A WR {name} @0x{addr:08x} data=0x{data:08x} status=SUCCESS")
 
@@ -81,12 +80,9 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"OTP J2A RD {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"OTP J2A RD {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
-        self._log(
-            f"OTP J2A RD {name} @0x{addr:08x} data=0x{int(rdata):08x} status=SUCCESS"
-        )
+        self._log(f"OTP J2A RD {name} @0x{addr:08x} data=0x{int(rdata):08x} status=SUCCESS")
         return int(rdata) & 0xFFFF_FFFF
 
     async def run(self) -> None:
@@ -100,18 +96,14 @@ class smu_dtp_otp_smc_map_rw_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-OTP-SMC-MAP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
         sigint = self._sample_int("lc_sigint_err_o") & 1
         if gate != 0:
-            raise AssertionError(
-                f"OTP J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
         if lc != SEP0_LC_STATE:
             raise AssertionError(
                 f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x} "
@@ -120,9 +112,7 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         if sigint != 0:
             raise AssertionError(f"lc_sigint_err_o={sigint} want 0 (demux err_slv)")
         self.s1_ok = True
-        self._log(
-            f"CHK-OTP-SMC-MAP-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}"
-        )
+        self._log(f"CHK-OTP-SMC-MAP-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}")
         sb.expect_eq("CHK-OTP-SMC-MAP-GATE-OPEN", gate, 0)
 
         caps = int(await jtag.read("SMC_OTP_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
@@ -138,18 +128,14 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         await self._otp_wr(jtag, BIRA, PATTERN_A, "BIRA-A")
         got_a = await self._otp_rd(jtag, BIRA, "BIRA-A")
         if got_a != PATTERN_A:
-            raise AssertionError(
-                f"BIRA readback after A want 0x{PATTERN_A:08x} got 0x{got_a:08x}"
-            )
+            raise AssertionError(f"BIRA readback after A want 0x{PATTERN_A:08x} got 0x{got_a:08x}")
         self.s3_ok = True
         sb.expect_eq("CHK-OTP-SMC-MAP-RW", got_a, PATTERN_A)
 
         await self._otp_wr(jtag, BIRA, PATTERN_C, "BIRA-C")
         got_c = await self._otp_rd(jtag, BIRA, "BIRA-C")
         if got_c != PATTERN_C:
-            raise AssertionError(
-                f"BIRA readback after C want 0x{PATTERN_C:08x} got 0x{got_c:08x}"
-            )
+            raise AssertionError(f"BIRA readback after C want 0x{PATTERN_C:08x} got 0x{got_c:08x}")
         if got_c == PATTERN_A:
             raise AssertionError("BIRA still holds PATTERN_A; write path is dead")
         self.s4_ok = True

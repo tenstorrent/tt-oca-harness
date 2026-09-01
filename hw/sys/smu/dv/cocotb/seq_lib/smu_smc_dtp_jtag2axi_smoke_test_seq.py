@@ -81,8 +81,7 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A WR32 {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A WR32 {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(f"J2A WR32 {name} @0x{addr:08x} data=0x{data:08x} status=SUCCESS")
 
@@ -96,8 +95,7 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A RD32 {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A RD32 {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & 0xFFFF_FFFF
 
@@ -113,8 +111,7 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A WR64 {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A WR64 {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(f"J2A WR64 {name} @0x{addr:08x} data=0x{data:016x} status=SUCCESS")
 
@@ -128,8 +125,7 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A RD64 {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A RD64 {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & ((1 << 64) - 1)
 
@@ -143,27 +139,20 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-JTAG2AXI-SMOKE-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
-        self._log(
-            f"CHK-JTAG2AXI-SMOKE-GATE-OPEN disable={gate} caps=0x{caps:04x}"
-        )
+        self._log(f"CHK-JTAG2AXI-SMOKE-GATE-OPEN disable={gate} caps=0x{caps:04x}")
         sb.expect_eq(
             "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
             (gate, caps),
@@ -173,38 +162,28 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         await self._wr32(jtag, SCRATCH_15, SCRATCH_PAT, "SCRATCH_15")
         got_s = await self._rd32(jtag, SCRATCH_15, "SCRATCH_15")
         if got_s != SCRATCH_PAT:
-            raise AssertionError(
-                f"SCRATCH_15 want 0x{SCRATCH_PAT:08x} got 0x{got_s:08x}"
-            )
+            raise AssertionError(f"SCRATCH_15 want 0x{SCRATCH_PAT:08x} got 0x{got_s:08x}")
         self.s2_ok = True
-        self._log(
-            f"CHK-JTAG2AXI-SMOKE-SCRATCH @0x{SCRATCH_15:08x} data=0x{got_s:08x}"
-        )
+        self._log(f"CHK-JTAG2AXI-SMOKE-SCRATCH @0x{SCRATCH_15:08x} data=0x{got_s:08x}")
         sb.expect_eq("CHK-JTAG2AXI-SMOKE-SCRATCH", got_s, SCRATCH_PAT)
 
         await self._wr64(jtag, SPM, SPM_PAT, "SPM")
         got_m = await self._rd64(jtag, SPM, "SPM")
         if got_m != SPM_PAT:
-            raise AssertionError(
-                f"SPM want 0x{SPM_PAT:016x} got 0x{got_m:016x}"
-            )
+            raise AssertionError(f"SPM want 0x{SPM_PAT:016x} got 0x{got_m:016x}")
         self.s3_ok = True
         self._log(f"CHK-JTAG2AXI-SMOKE-SPM @0x{SPM:08x} data=0x{got_m:016x}")
         sb.expect_eq("CHK-JTAG2AXI-SMOKE-SPM", got_m, SPM_PAT)
 
         mask = smc_series_data_mask(SMC_DBG_AXSIZE_8B)
         want = SERIES_PAT & mask
-        wr_st = await jtag2axi_series_incr_write(
-            jtag, SERIES_ADDR, want, poll_limit=OTP_POLL
-        )
+        wr_st = await jtag2axi_series_incr_write(jtag, SERIES_ADDR, want, poll_limit=OTP_POLL)
         if wr_st != J2A_STATUS_SUCCESS:
             raise AssertionError(
                 f"SMC series INCR WR @0x{SERIES_ADDR:08x} status={wr_st} "
                 f"want SUCCESS={J2A_STATUS_SUCCESS}"
             )
-        rd_st, got_ser = await jtag2axi_series_incr_read(
-            jtag, SERIES_ADDR, poll_limit=OTP_POLL
-        )
+        rd_st, got_ser = await jtag2axi_series_incr_read(jtag, SERIES_ADDR, poll_limit=OTP_POLL)
         got_ser &= mask
         if rd_st != J2A_STATUS_SUCCESS:
             raise AssertionError(

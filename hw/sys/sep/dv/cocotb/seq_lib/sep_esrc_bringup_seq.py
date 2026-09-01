@@ -25,9 +25,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
 from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL, SEP_RESET_CTRL
 
 # --- register map -----------------------------------------------------------
@@ -61,11 +60,11 @@ ESRC_CTRL = 0x1091_6004
 ESRC_INTR_STATUS = 0x1091_6010
 ESRC_INTR_ENABLE = 0x1091_6014
 ESRC_FIFO_CTRL = 0x1091_6020
-ESRC_FIFO_STATUS = 0x1091_6024   # [6:0] LEVEL = valid 32-bit words in the FIFO
-ESRC_FIFO_RDATA = 0x1091_6028    # read pops one word, decrements LEVEL (frontdoor drain)
+ESRC_FIFO_STATUS = 0x1091_6024  # [6:0] LEVEL = valid 32-bit words in the FIFO
+ESRC_FIFO_RDATA = 0x1091_6028  # read pops one word, decrements LEVEL (frontdoor drain)
 ESRC_HEALTH_TEST_CTRL = 0x1091_6030
 ESRC_HEALTH_TEST_WINDOW_SIZE = 0x1091_6034
-ESRC_HEALTH_TEST_STATUS = 0x1091_6040   # per-test pass/fail, read on a stall
+ESRC_HEALTH_TEST_STATUS = 0x1091_6040  # per-test pass/fail, read on a stall
 # Shared (not per-mode) health-test watermark. Offsets from
 # hw/ip/entropy_source/regs/gen/c/entropy_source_addr.h.
 ESRC_HT_WATERMARK_NUM = 0x1091_6130
@@ -96,12 +95,12 @@ EDN_RECOV_ALERT = 0x1091_5838
 
 # --- values -----------------------------------------------------------------
 CSRNG_CTRL_ENABLE = 0x0000_9666  # {FIPS_FORCE=F, READ_INT_STATE=T, SW_APP_ENABLE=T, ENABLE=T}
-EDN_CTRL_AUTO = 0x0000_9666      # {CMD_FIFO_RST=F, AUTO_REQ=T, BOOT_REQ=T, EDN_ENABLE=T}
-EDN_CTRL_BOOT = 0x0000_9966      # {CMD_FIFO_RST=F, AUTO_REQ=F, BOOT_REQ=T, EDN_ENABLE=T}
-CMD_INSTANTIATE = 0x0000_0901    # acmd=1, flag0=9 (use real entropy)
-CMD_RESEED = 0x0000_0902         # acmd=2
+EDN_CTRL_AUTO = 0x0000_9666  # {CMD_FIFO_RST=F, AUTO_REQ=T, BOOT_REQ=T, EDN_ENABLE=T}
+EDN_CTRL_BOOT = 0x0000_9966  # {CMD_FIFO_RST=F, AUTO_REQ=F, BOOT_REQ=T, EDN_ENABLE=T}
+CMD_INSTANTIATE = 0x0000_0901  # acmd=1, flag0=9 (use real entropy)
+CMD_RESEED = 0x0000_0902  # acmd=2
 RING_OSC_SAMPLECLK_ONLY = 0x00FF_F000  # SAMPLE_CLK_ENABLE on, generators off
-RING_OSC_ALL_ON = 0x00FF_FFFF          # generators + sample-clk on
+RING_OSC_ALL_ON = 0x00FF_FFFF  # generators + sample-clk on
 
 # DECORRELATOR_CTRL: SAMPLE_CLK_DIV is bits [31:12], division = field+1 (RTL
 # entropy_decorrelator.sv). 63<<12 -> divide-by-64 (the OTP-faithful default);
@@ -150,17 +149,17 @@ class SepEntropyCfg:
     FIPS defaults; /8 + small window only trades sample count for wall-clock.
     """
 
-    sample_clk_div: int = 7            # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)
-    byte_mask: int = 0xFF              # decorrelator byte mask (DUT reset default; not programmed)
-    bypass: bool = False               # decorrelator feedback bypass
-    sha_whitening: bool = True         # ESRC_CTRL.SHA256_WHITENING_ENABLE
-    glen: int = 32                     # EDN/CSRNG Generate length (128b genbits blocks)
+    sample_clk_div: int = 7  # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)
+    byte_mask: int = 0xFF  # decorrelator byte mask (DUT reset default; not programmed)
+    bypass: bool = False  # decorrelator feedback bypass
+    sha_whitening: bool = True  # ESRC_CTRL.SHA256_WHITENING_ENABLE
+    glen: int = 32  # EDN/CSRNG Generate length (128b genbits blocks)
     # EDN_CTRL_AUTO also sets BOOT_REQ. The boot Generate uses BOOT_GEN_CMD, which
     # resets to glen=4095 (0xfff003), not GENERATE_CMD. Leave False so existing
     # tests keep one open command for the whole run; set True when the test needs
     # completed Generates (the segmentation contract).
     program_boot_generate: bool = False
-    reseed_interval: int = 8           # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
+    reseed_interval: int = 8  # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
     # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
     # packer straight to the stream (`.csrng_word_valid_i (entropy_stream_vld_i)`,
@@ -170,7 +169,7 @@ class SepEntropyCfg:
     # by 12 words and mismatched CHK3_seed (and hence CHK4/CHK5) while CHK1/CHK2
     # still matched exactly.
     ingress_skip: int = 0
-    internal_drbg: bool = True         # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
+    internal_drbg: bool = True  # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
     health_ctrl: int = HEALTH_CTRL_DEFAULT
     # None leaves HEALTH_TEST_WINDOW_SIZE at its 2048-sample reset -- see the note
     # above; a shrunk window trips ALERT_THRESHOLD and hangs main_sm in AlertHang.
@@ -202,9 +201,7 @@ class SepEntropyCfg:
         disables the whole entropy source: the decorrelator keeps sampling but the
         SHA whitener never accepts a word, so no seed ever reaches CSRNG.
         """
-        return ENTROPY_SOURCE.value(
-            "CTRL", SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0
-        )
+        return ENTROPY_SOURCE.value("CTRL", SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0)
 
     @property
     def ext_trng_src_sel(self) -> int:
