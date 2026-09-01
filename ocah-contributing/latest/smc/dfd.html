@@ -548,10 +548,10 @@ sources:</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26:24</td><td>Trdstformat</td><td>RW</td><td>0x3</td><td>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2&#x27;b3 (XOR+VLT Compression), 2&#x27;b1 (XOR Compresion), 2&#x27;b0 (No Compression)</td></tr>
+<tr><td>26:24</td><td>Trdstformat</td><td>RW</td><td>0x3</td><td>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2&#x27;b3 (XOR+VLT Compression), 2&#x27;b1 (XOR Compression), 2&#x27;b0 (No Compression)</td></tr>
 <tr><td>23:20</td><td>Trdstsyncmax</td><td>RW</td><td>0x0</td><td>When trDstSyncMode is set to 2&#x27;b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.</td></tr>
 <tr><td>19:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>17:16</td><td>Trdstsyncmode</td><td>RW</td><td>0x0</td><td>When the field is set tp 2&#x27;b10, sent timestamp. All other vlaues not NA.</td></tr>
+<tr><td>17:16</td><td>Trdstsyncmode</td><td>RW</td><td>0x0</td><td>When the field is set tp 2&#x27;b10, sent timestamp. All other values not NA.</td></tr>
 <tr><td>15</td><td>Trdstinhibitsrc</td><td>R</td><td>0x0</td><td>-</td></tr>
 <tr><td>14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>13</td><td>Trdstinststallena</td><td>R</td><td>0x0</td><td>-</td></tr>
@@ -595,7 +595,7 @@ sources:</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>21</td><td>FrameClosureMode</td><td>RW</td><td>0x1</td><td>Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.</td></tr>
-<tr><td>20</td><td>FrameModeEnable</td><td>RW</td><td>0x1</td><td>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</td></tr>
+<tr><td>20</td><td>FrameModeEnable</td><td>RW</td><td>0x1</td><td>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</td></tr>
 <tr><td>19:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:12</td><td>FrameLenghtInBytes</td><td>RW</td><td>0x2</td><td>Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.</td></tr>
 <tr><td>11:4</td><td>TraceFrameFillByte</td><td>RW</td><td>0x81</td><td>Use &quot;Filler Packet&quot; to align a stream of trace packets within a frame boundary.</td></tr>
@@ -649,8 +649,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -666,8 +666,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -683,8 +683,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -700,8 +700,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -717,8 +717,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -734,8 +734,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -751,8 +751,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -768,8 +768,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -801,9 +801,9 @@ sources:</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>PosEdgeSignal1</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge</td></tr>
+<tr><td>13</td><td>PosEdgeSignal1</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge</td></tr>
 <tr><td>12:7</td><td>Signal1Select</td><td>RW</td><td>0x0</td><td>Define which signal to select for edge detection.</td></tr>
-<tr><td>6</td><td>PosEdgeSignal0</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge</td></tr>
+<tr><td>6</td><td>PosEdgeSignal0</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge</td></tr>
 <tr><td>5:0</td><td>Signal0Select</td><td>RW</td><td>0x0</td><td>Define which signal to select for edge detection.</td></tr>
 </table>
 <h3 id="CDbgEapStatus">CDbgEapStatus</h3>
@@ -959,8 +959,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -977,8 +977,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -995,8 +995,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -1013,8 +1013,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -1031,8 +1031,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -1049,8 +1049,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -1067,8 +1067,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
@@ -1085,8 +1085,8 @@ sources:</p>
 <tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
 <tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
