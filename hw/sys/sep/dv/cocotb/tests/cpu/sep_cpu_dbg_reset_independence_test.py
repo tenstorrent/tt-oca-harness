@@ -14,7 +14,7 @@ fully-frontdoor half of the spec property -- the positive "debug logic was reset
 confirmation needs JTAG-DTM debug-module access not wired on bare sep (deferred,
 see the VPLAN card; no backdoor probe is added).
 
-``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:24) brought out as a
+``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:21) brought out as a
 controllable top-level port; ``sep_base_test`` default-drives it released (1).
 
 Checks (each asserts an exact value; ``self.rd`` resolves X->0, so the ==1

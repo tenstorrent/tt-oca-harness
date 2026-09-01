@@ -47,20 +47,44 @@ class sep_clock_gate_control_test(sep_base_test):
             CLOCK_GATE_MASK,
         )
 
+        # The claim is that pka_cg_enable gates nothing, so each witness must
+        # read the SAME value with the bit set and clear. Reading it once per
+        # cell and logging the value asserts nothing: a witness that did change
+        # with the enable would still print PASS. Keep the first read per
+        # witness and compare the second against it.
+        seen: dict[str, int] = {}
         for enable, name, addr in cfg.cells():
             await gate.write_enable(enable)
             rb = await gate.read_enable()
             assert rb == (enable & CLOCK_GATE_MASK), (
                 f"cell enable={enable}: CLOCK_GATE_CTRL read 0x{rb:x}"
             )
-            got = await gate.read_witness(addr)
+            got = await gate.read_witness(addr) & 0xFFFF_FFFF
+            if name in seen:
+                assert got == seen[name], (
+                    f"CHK-STUB-CONST FAIL: witness {name} @0x{addr:08x} reads "
+                    f"0x{got:08x} with pka_cg_enable={enable} but 0x{seen[name]:08x} "
+                    f"with it clear -- the bit gates this IP"
+                )
+            else:
+                seen[name] = got
             self.logger.info(
-                "CHK-STUB-CONST PASS: enable=%d witness %s @0x%08x OKAY "
-                "(rdata=0x%08x) -- pka_cg_enable does not gate this IP",
+                "CHK-STUB-CONST: enable=%d witness %s @0x%08x OKAY rdata=0x%08x",
                 enable,
                 name,
                 addr,
-                got & 0xFFFF_FFFF,
+                got,
             )
 
-        self.logger.info("CHK-RAND-NONE PASS: walked all %d enable x witness cells", cfg.n_cells())
+        # Both polarities must have run, or the compare above never happened.
+        assert set(cfg.enables) >= {0, 1} and len(seen) == len(cfg.witnesses), (
+            f"CHK-STUB-CONST FAIL: {len(seen)} witness(es) of "
+            f"{len(cfg.witnesses)} seen over enables {list(cfg.enables)}; the "
+            f"set-versus-clear compare needs every witness on both polarities"
+        )
+        self.logger.info(
+            "CHK-STUB-CONST PASS: %d witness(es) read the same value with "
+            "pka_cg_enable set and clear (%s) -- the bit gates none of them",
+            len(seen),
+            ", ".join(f"{n}=0x{v:08x}" for n, v in sorted(seen.items())),
+        )

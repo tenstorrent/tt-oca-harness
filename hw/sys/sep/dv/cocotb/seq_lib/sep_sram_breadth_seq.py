@@ -35,7 +35,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 # OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
 # is importable from here.
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
-SEP_SRAM_SIZE = 0x0004_0000
+SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
 # Required data patterns (always present; the RANDCFG adds seed-random extras).
@@ -47,6 +47,13 @@ _REQUIRED_PATTERNS = [
     0xFFFF_FFFF_FFFF_FFFE,  # walking-0 lsb
     0xDEAD_BEEF_CAFE_BABE,
 ]
+
+
+# Floors the test asserts, so a generator or list that shrank fails the run
+# rather than reporting a clean pass over fewer cells.
+CONTIGUOUS_WSTRB_SPECS = 36  # 8 one-hot + 28 multi-byte runs on an 8-byte lane
+MIN_SEQ_WORDS = 4
+N_REQUIRED_PATTERNS = len(_REQUIRED_PATTERNS)
 
 
 def _contiguous_wstrb_specs() -> list[tuple[int, int]]:

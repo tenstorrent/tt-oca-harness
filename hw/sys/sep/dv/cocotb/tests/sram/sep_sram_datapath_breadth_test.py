@@ -41,7 +41,13 @@ from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
-from seq_lib.sep_sram_breadth_seq import SepSramBreadth, SepSramBreadthCfg
+from seq_lib.sep_sram_breadth_seq import (
+    CONTIGUOUS_WSTRB_SPECS,
+    MIN_SEQ_WORDS,
+    N_REQUIRED_PATTERNS,
+    SepSramBreadth,
+    SepSramBreadthCfg,
+)
 
 
 @pyuvm.test()
@@ -80,6 +86,13 @@ class sep_sram_datapath_breadth_test(sep_base_test):
                 f"CHK-WSTRB mask 0x{mask:02x} (off {offset} len {length}): "
                 f"0x{rb:016x} != 0x{exp:016x} (only those lanes should change)"
             )
+        # A floor, not a report. The 8-byte lane has exactly 36 contiguous runs
+        # (8 one-hot plus 28 multi-byte); a generator change that dropped some
+        # would otherwise shrink the sweep and still print PASS.
+        assert len(cfg.wstrb_specs) == CONTIGUOUS_WSTRB_SPECS, (
+            f"CHK-WSTRB FAIL: walked {len(cfg.wstrb_specs)} contiguous mask(s), "
+            f"the 8-byte lane has {CONTIGUOUS_WSTRB_SPECS}"
+        )
         self.logger.info(
             "CHK-WSTRB PASS: all %d contiguous WSTRB masks change only their byte "
             "lanes (neighbors preserved, apply_wstrb golden) @0x%08x",
@@ -94,6 +107,13 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             await self.sram.write(addr, p, length=8)
             rb = await self.sram.read(addr, length=8)
             assert rb == p, f"CHK-PATTERN 0x{p:016x} readback 0x{rb:016x}"
+        # The required patterns are the directed half of this axis; seeded
+        # extras are added on top, so the count is a floor rather than an
+        # equality.
+        assert len(cfg.pattern_values) >= N_REQUIRED_PATTERNS, (
+            f"CHK-PATTERN FAIL: walked {len(cfg.pattern_values)} pattern(s), "
+            f"below the {N_REQUIRED_PATTERNS} the directed set requires"
+        )
         self.logger.info(
             "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x",
             len(cfg.pattern_values),
@@ -125,6 +145,10 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         for i, w in enumerate(words):
             rb = await self.sram.read(addr0 + 8 * i, length=8)
             assert rb == w, f"CHK-SEQ word {i} @0x{addr0 + 8 * i:08x} 0x{rb:016x} != 0x{w:016x}"
+        assert cfg.seq_words >= MIN_SEQ_WORDS, (
+            f"CHK-SEQ FAIL: {cfg.seq_words} consecutive word(s), below the "
+            f"{MIN_SEQ_WORDS} the window requires"
+        )
         self.logger.info(
             "CHK-SEQ PASS: %d consecutive single-beat 64-bit words write->read match @0x%08x",
             cfg.seq_words,
@@ -136,12 +160,11 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         wr_addr = cfg.base_addr + cfg.nonvac_wr_offset
         rd_addr = cfg.base_addr + cfg.nonvac_rd_offset
         # Both addresses are written, with complementary patterns, and both are read
-        # back and value-checked. The previous form wrote only wr_addr and required the
-        # UNWRITTEN rd_addr to differ from the written pattern -- but rd_addr holds
-        # zero-initialised memory, and nonvac_pattern is built as `getrandbits(64) | 1`,
-        # so the check reduced to `0 != nonzero`, true by construction every run. It
-        # could not detect the stuck read path it names: a datapath returning all-zeros
-        # passed it, and so did one returning all-ones.
+        # back and value-checked. Comparing a written address against an unwritten one
+        # would not catch the stuck read path this names: zero-initialised memory
+        # differs from any non-zero pattern by construction, so a datapath returning
+        # all-zeros or all-ones would pass. Two written values that must differ from
+        # each other cannot be satisfied by a constant.
         other_pattern = (~cfg.nonvac_pattern) & ((1 << 64) - 1)
         await self.sram.write(wr_addr, cfg.nonvac_pattern, length=8)
         await self.sram.write(rd_addr, other_pattern, length=8)

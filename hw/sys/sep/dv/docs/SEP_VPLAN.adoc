@@ -437,7 +437,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_wdt_aon_timer_internals_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON timer.
+|Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
 |`sep_clock_gate_control_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -623,9 +623,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_crypto_per_ip_reset_isolation_test` (includes in-window DECERR). Drain-before-reset is proven for the shared TRNG domain in the row below; for the four accelerator domains it stays Phase 3.
 
-|Dual scratch register banks (warm vs cold reset domain)
+|Scratch bank reset domains (warm vs cold)
 |PROVEN
-|`sep_warm_cold_reset_scratch_test`. `hw/sys/sep/doc/cpu.adoc` requires two 16 x 32-bit banks distinguished by their reset properties: set 0 changes only on a software write or power-on reset, set 1 takes an additional warm reset from the watchdog. A warm reset clears the warm bank while the cold bank retains, and only a cold reset clears both — the pair that makes the domain split real rather than two banks that merely exist. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; that cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops.
+|`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split, not the bank geometry: a warm reset clears the warm bank while the cold bank retains, and only a cold reset clears both. That pair is what makes the split real rather than two banks that merely exist. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. Scope: the vehicle exercises index 0 of each bank, so the domain is proven per bank and not per register, and the bank *size* is not graded here — see <<known-limitations>> for the count the specification asks for against the count the RTL implements.
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
@@ -3106,9 +3106,10 @@ claimed: the pin has no netlist path to either observable in this build.
 |===
 
 *No scorecard row, deliberately.* The denominator rule is that the architecture
-documents define the feature set, and `dbg_rstb_i` appears in them only as a
-port-table line — an EL2 debugger reset input, with no behavioural contract and
-no isolation requirement. A feature the specification does not define is not a
+documents define the feature set. `dbg_rstb_i` is named in them — a port-table
+line in `hw/sys/sep/doc/port_table.adoc` and a sentence in the integrator guide
+describing a separate reset for the EL2 CPU debug module — but neither states a
+behavioural contract, and nothing requires isolation from the system reset. A feature the specification does not define is not a
 row, so this entry earns none and its absence is not an oversight. The two
 checkers above are worth running as a reset-tree liveness guard; they are not a
 feature credit. Closing the isolation claim needs both a run mode where
@@ -3127,7 +3128,7 @@ feature credit. Closing the isolation claim needs both a run mode where
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON timer.
+*Objective*: Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
 
 *Test Procedure*:
 
@@ -4424,6 +4425,9 @@ constraint is not an open defect.
 
 |CPU reset-vector TDR (spec)
 |`hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register — the vector reaches the CPU through a direct wrapper input. The testbench shifts that opcode on every CPU-boot run and the sequence is inert: stimulus that reads as coverage and cannot fail. Remove it or give the claim an owner.
+
+|Scratch bank register count (spec vs RTL)
+|`hw/sys/sep/doc/cpu.adoc` requires "two sets of 16 x 32-bit scratch register banks". `hw/sys/sep/regs/blocks/sep_scratch/sep_scratch.rdl` declares `SCRATCH[8]`, so each bank implements eight registers, not sixteen. The reset-domain behaviour of the banks that exist is proven; the count is not, and no test asserts it. This row is the record of the difference, not a claimed contract. Do not XFAIL.
 
 |AP/STEE output-remap attributes and pass-through (spec)
 |`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. `hw/common/axi/output_remap/rtl/output_remap.sv` has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. The vehicle on this bank is `sep_fabric_output_remap_datapath_proxy_test`, which proves a programmed window translates and that a beat outside it is refused; the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.
