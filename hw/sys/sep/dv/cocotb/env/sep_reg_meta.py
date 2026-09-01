@@ -392,7 +392,7 @@ def indexed_block_count(prefix: str) -> int:
         stem = name[: -len(marker)]
         if not stem.startswith(prefix + "_"):
             continue
-        tail = stem[len(prefix) + 1:]
+        tail = stem[len(prefix) + 1 :]
         if tail.endswith("_"):
             tail = tail[:-1]
         if tail.isdigit():

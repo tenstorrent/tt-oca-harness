@@ -83,7 +83,8 @@ class SepAxiMonitor(uvm_component):
         self.b_resps = 0
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         # Ordered RRESP capture window; None when closed. See start_beat_capture.
-        self._beat_capture: list[int] | None = None
+        # Entries are None when a beat's rresp does not resolve to an int.
+        self._beat_capture: list[int | None] | None = None
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
         # Write-channel ordering. VALID assertion is the stimulus this bench
@@ -115,9 +116,9 @@ class SepAxiMonitor(uvm_component):
         """
         self._beat_capture = []
 
-    def take_beat_capture(self) -> list[int]:
+    def take_beat_capture(self) -> list[int | None]:
         """Return the captured RRESP sequence and close the window."""
-        captured = self._beat_capture or []
+        captured: list[int | None] = self._beat_capture or []
         self._beat_capture = None
         return captured
 

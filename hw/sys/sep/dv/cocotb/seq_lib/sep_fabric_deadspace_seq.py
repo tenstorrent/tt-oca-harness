@@ -343,7 +343,7 @@ class SepDeadspace:
 
     async def burst_across_extent(
         self, win
-    ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int]]:
+    ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int | None]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
         AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
@@ -384,21 +384,31 @@ class SepDeadspace:
         )
         await self.test.start_seq(seq)
         # Per-beat responses come from the monitor; the master has only the
-        # collapsed one. Match on the burst's own start address so an unrelated
-        # read published in the same window cannot be mistaken for this one.
+        # collapsed one. The capture window records every R beat on this bus, not
+        # this burst's beats specifically, so quiescence and the length check
+        # below are what make the vector attributable to this burst.
         captured = mon.take_beat_capture()
-        # Only a sequence exactly as long as the burst is evidence: a shorter one
-        # means beats were not observed, a longer one means unrelated traffic
-        # shared the window, and neither can be read as a per-beat verdict.
-        mon_resps = list(captured) if len(captured) == beats else []
+        # Only a complete, fully resolved sequence is evidence. A shorter one
+        # means beats were not observed and a longer one means unrelated traffic
+        # shared the window, so neither is attributable to this burst. An entry
+        # that did not resolve to an int is not evidence either, and it must not
+        # be read as a refusal: the checker fails a beat that answers OKAY past
+        # the extent, so an unresolved beat there would otherwise pass by
+        # default. Rejecting the whole vector sends the window to the tally
+        # instead, where it is named rather than counted as proof.
+        usable = len(captured) == beats and all(r is not None for r in captured)
+        mon_resps = [r for r in captured if r is not None] if usable else []
         # Credit from the per-beat vector when it is available: the collapsed
         # response holds at most one entry, so crediting from it releases beats
         # the fabric did refuse. That over-release can only make the monitor
         # report a refusal it was told to expect, never absorb one it was not:
         # release_expected_decerr floors at zero, so the failure direction is a
         # spurious monitor error, not a swallowed DECERR.
-        used = (sum(1 for r in mon_resps if r == RESP_DECERR) if mon_resps
-                else sum(1 for r in seq.resp_list if r == RESP_DECERR))
+        used = (
+            sum(1 for r in mon_resps if r == RESP_DECERR)
+            if mon_resps
+            else sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        )
         if beats > used:
             mon.release_expected_decerr(beats - used)
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
@@ -414,8 +424,7 @@ class SepDeadspace:
             if past and r != RESP_DECERR:
                 mon.release_expected_decerr(1)
             singles.append((r, d))
-        return (start, list(seq.resp_list), seq.timed_out, words, singles,
-                mon_resps)
+        return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
