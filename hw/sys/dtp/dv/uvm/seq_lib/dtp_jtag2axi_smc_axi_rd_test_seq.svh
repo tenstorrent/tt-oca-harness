@@ -8,6 +8,7 @@
 //   series_write_read_incr           write an incrementing series front-door,
 //                                    then read it back per beat through
 //                                    SERIES_CTRL(READ) + SERIES_DATA_INCR
+//   series_write_read_incr_narrow    32-bit INCR write-read at beat offset +4
 //   series_write_read_no_incr        fixed-address series: every read beat
 //                                    returns the last value written
 //   series_write_read_incr_with_error  *_DATA_WITH_ERROR_STATUS mode with a
@@ -135,6 +136,74 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         check_status("series_wr_rd_incr.final", status, J2A_SUCCESS);
         emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
             "scenario=series_write_read_incr beats=%0d read_ops=%0d",
+            beats, operation_count));
+    endtask
+
+    // ------------------------------------------------------------------
+    // series_write_read_incr_narrow
+    // ------------------------------------------------------------------
+    task run_series_write_read_incr_narrow();
+        j2a_target_t t = target_smc_axi();
+        int unsigned size = 2;
+        int unsigned stride = size_bytes(size);
+        int unsigned beats = series_beats();
+        bit [63:0] base_addr;
+        bit [63:0] expected_q[$];
+        bit [63:0] data, mem, obs, addr, addr_after;
+        bit        series_reset;
+        int unsigned pl_depth, size_rd;
+        int unsigned aw0, w0, ar0;
+        int unsigned wb0;
+        j2a_status_e status;
+
+        `uvm_info(get_type_name(),
+            "=== SMC_AXI Series Write-Read 32-bit Incrementing at +4 ===", UVM_LOW)
+        reset_and_idle();
+        base_addr = (random_target_aligned_addr(t, 3) & ~64'h3F) + 64'd4;
+
+        series_ctrl_op(t, J2A_OP_WRITE, base_addr, size);
+        for (int unsigned idx = 0; idx < beats; idx++) begin
+            data = {$urandom, $urandom} & data_mask(size);
+            expected_q.push_back(data);
+            `uvm_info(get_type_name(), $sformatf(
+                "Iteration %0d/%0d: series incr narrow write addr=0x%08h data=0x%0h",
+                idx + 1, beats, base_addr + idx * stride, data), UVM_LOW)
+            sample_activity(t, aw0, w0, ar0);
+            wb0 = write_bursts_now(t);
+            series_data_incr(t, data, size);
+            wait_for_target_activity(t, aw0, w0, ar0, 1'b0,
+                $sformatf("series_wr_rd_incr_narrow.write_axi#%0d", idx));
+            wait_for_write_completion(t, wb0,
+                $sformatf("series_wr_rd_incr_narrow.commit#%0d", idx));
+            mem = read_target_mem_int(t, base_addr + idx * stride, size);
+            if (mem !== data)
+                `uvm_error("jtag2axi_data_chk", $sformatf(
+                    "series_wr_rd_incr_narrow.mem#%0d: memory 0x%0h != written 0x%0h (addr=0x%0h)",
+                    idx, mem, data, base_addr + idx * stride))
+        end
+
+        foreach (expected_q[idx]) begin
+            addr = base_addr + idx * stride;
+            series_ctrl_op(t, J2A_OP_READ, addr, size);
+            sample_activity(t, aw0, w0, ar0);
+            series_data_incr(t, '0, size);  // prime: launches the bus read
+            wait_for_target_activity(t, aw0, w0, ar0, 1'b1,
+                $sformatf("series_wr_rd_incr_narrow.read_axi#%0d", idx));
+            series_capture(t, t.series_data_incr_instr, size, obs);
+            `uvm_info(get_type_name(), $sformatf(
+                "Iteration %0d/%0d: series read incr narrow addr=0x%08h obs=0x%0h",
+                idx + 1, beats, addr, obs), UVM_LOW)
+            if (obs !== expected_q[idx])
+                `uvm_error("jtag2axi_data_chk", $sformatf(
+                    "series_wr_rd_incr_narrow.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
+                    idx, obs, expected_q[idx], addr))
+            operation_count++;
+        end
+
+        read_series_ctrl(t, size, series_reset, addr_after, pl_depth, size_rd, status);
+        check_status("series_wr_rd_incr_narrow.final", status, J2A_SUCCESS);
+        emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
+            "scenario=series_write_read_incr_narrow beats=%0d read_ops=%0d",
             beats, operation_count));
     endtask
 
@@ -394,6 +463,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         enable_all_debug();
         case (scenario)
             "series_write_read_incr":               run_series_write_read_incr();
+            "series_write_read_incr_narrow":        run_series_write_read_incr_narrow();
             "series_write_read_no_incr":            run_series_write_read_no_incr();
             "series_write_read_incr_with_error":    run_series_write_read_incr_with_error();
             "read_random_ops":                      run_read_random_ops();
