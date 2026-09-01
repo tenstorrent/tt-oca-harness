@@ -109,9 +109,11 @@ def main() -> None:
     parser.add_argument("--output_file", type=Path, required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument(
-        "--transport-timeout", type=int, default=None,
+        "--transport-timeout",
+        type=int,
+        default=None,
         help=f"pin RESERVED[1] to this value instead of drawing it "
-             f"(0, or {TIMEOUT_MIN}..{TIMEOUT_MAX})",
+        f"(0, or {TIMEOUT_MIN}..{TIMEOUT_MAX})",
     )
     args = parser.parse_args()
 

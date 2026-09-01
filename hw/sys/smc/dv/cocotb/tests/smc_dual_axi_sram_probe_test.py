@@ -1,62 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Can an inbound AXI manager reach the CPU scratch SRAM window?
+"""Measure whether an inbound AXI manager reaches the CPU scratch SRAM window.
 
-This settles a single load-bearing question. The dual OCCP boot flow needs to
-place a payload image in the *controller's* scratch SRAM, and the design
-(docs/dual_smc_occp_boot_design.md, "Seeding the controller") says to do that
-with a front-door AXI write. That was not done at first, on the strength of a
-prose comment in hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py claiming "SEP
-cannot AXI to 0xC006_xxxx", which had no RTL or test citation anywhere in the
-tree; the payload staging worked around it at considerable cost. This probe is
-what settled the question, and the staging now uses the front door.
+The dual OCCP boot flow stages a payload image in the controller's scratch SRAM
+with a front-door AXI write, so this probe establishes that the path works.
 
-A read of the decode says the comment is wrong:
+Each address is read before and after its write, and the check is that the value
+became exactly the pattern written. Three distinct patterns are used, one of them
+across a 64-byte bank stripe boundary, so neither a stuck default slave nor a
+decode that only works within one bank can satisfy it. The banks are not zeroed
+in this testbench (``disable_sram_auto_init_i`` is tied high), so the pre-write
+values are whatever the array powers up with and are not asserted on.
 
-    smc_local_xbar.sv:98-124      rule idx0 0xC0040000-0xC0160000 -> front_port
-    smc_local_xbar_pkg.sv:347     Connectivity: sep_in -> all outputs
-    smc_input_fabric.sv:396       sep_axi_in has no filter and no local/global demux
-    smc_cpu_wrapper.sv:138        front-port demux: anything but cpu_ctrl -> cluster
-    OCAH4CORECluster_TLXbar_sbus  input 0 -> output 1 covers 0xC0040000-0xC0160000
-                                  -> coherence manager -> mbus -> 32 scratch banks
+Both instances come up with boot_stall released. Holding it sticky-stalls
+``fuse_reset_n`` and keeps the whole warm reset domain in reset; the scratch
+banks hang off the CPU cluster, so its front port never responds and the probe
+hangs rather than measuring anything. Releasing means both production boot ROMs
+run, which is harmless here: the probe addresses start at SMC_ROM_STACK_END,
+above the ROM's own stack, and no I3C traffic exists in this test to make either
+ROM write there.
 
-Static analysis is not evidence, so this probe measures it.
-
-Non-vacuity: reads happen *before and after* each write, and the check is that
-the value changed to exactly the pattern written. A read that is really being
-serviced by a stuck default slave, or by an aliased register, cannot satisfy
-three distinct patterns and cannot have been holding those patterns already.
-One offset deliberately crosses a bank stripe boundary (banks stripe every 64
-bytes in smc_cpu_mem_integration.sv), so a decode that only works inside one
-bank also fails.
-
-The scratch banks are NOT zeroed in this testbench --
-tb_top.sv (SMC_DUAL half) hardcodes ``disable_sram_auto_init_i = 1'b1`` -- so the
-before-values are whatever the array powers up with and are not asserted on.
-
-Both instances are brought up with boot_stall RELEASED, which matters more than
-it looks. Pad 57 held high sticky-stalls ``fuse_reset_n`` and holds the entire
-warm reset domain (tb_top.sv:488-490, "SCRATCH_COLD_WARM hang"). With the warm
-domain held, the CPU cluster never leaves reset and its AXI front port never
-responds at all -- an earlier version of this probe held boot_stall and simply
-hung on the first read, which says nothing about reachability. The cost of
-releasing is that both production boot ROMs run; that is harmless here, because
-the probe addresses start at SMC_ROM_STACK_END and the ROM's own stack lives
-below it, and no I3C traffic exists in this test to make either ROM write there.
-
-``init_mem_done_o`` is sampled and reported but never gates the probe.
-
-The hierarchical peek is reported but NOT asserted on either. It reproduces
-smc_cpu_mem_integration's striped bank/entry decode, which is only known-good
-at offset 0 -- see docs/occp_dual_boot_jump_rootcause.md. Its disagreement with
-AXI at a non-zero offset is expected and is part of why this probe exists.
+``init_mem_done_o`` and the hierarchical scratch peek are reported but gate
+nothing. The peek reproduces smc_cpu_mem_integration's striped bank/entry decode,
+which is only known-good at offset 0, so it disagrees with AXI at other offsets.
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from smc_dual_base_test import DualCsr, SmcDualHarness
 
 # Start of the OCCP-writable SRAM window (SMC_ROM_STACK_END): the address the
@@ -127,16 +99,12 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
     for addr in PROBE_PATTERNS:
         rd = await bfm_csr.seq.read_result(addr, size=3, check_response=False)
         before[addr] = int(rd.data)
-        log.info(
-            "AXI-PROBE pre-read  %#010x -> %#018x  resp=%s", addr, before[addr], rd.resp
-        )
+        log.info("AXI-PROBE pre-read  %#010x -> %#018x  resp=%s", addr, before[addr], rd.resp)
         if int(rd.resp) != 0:
             failures.append(f"pre-read {addr:#010x} resp={rd.resp} (want OKAY)")
 
     for addr, pattern in PROBE_PATTERNS.items():
-        wr = await bfm_csr.seq.write_result(
-            addr, pattern, size=3, check_response=False
-        )
+        wr = await bfm_csr.seq.write_result(addr, pattern, size=3, check_response=False)
         log.info("AXI-PROBE write     %#010x <- %#018x  resp=%s", addr, pattern, wr.resp)
         if int(wr.resp) != 0:
             failures.append(f"write {addr:#010x} resp={wr.resp} (want OKAY)")
@@ -163,32 +131,32 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
                 f"(was {before[addr]:#018x} before the write)"
             )
 
-
     # ------------------------------------------------------------------
     # I3C CSR instance decode.
     #
-    # Regression check for a fixed (B) defect. The wrapper used to be given
-    # BASE_ADDR=0 while the fabric delivered full system addresses, so its
-    # range-based instance decode matched nothing and fell through to instance
-    # 0 -- silently, with OKAY responses. Five of six I3C controllers were
-    # unreachable. Fixed by passing the system base; see
-    # docs/i3c_instance_decode_defect.md. This asserts the decode stays correct.
+    # The wrapper's range-based instance decode only works when it is given the
+    # system base address. With BASE_ADDR=0 it matches nothing and falls through
+    # to instance 0 silently, answering OKAY, which leaves five of six
+    # controllers unreachable. Assert each instance decodes to itself.
     # ------------------------------------------------------------------
     I3C_WRAP_BASE = 0xC003_A000
     I3C_WRAP_STRIDE = 0x1000
     for inst in (0, 1, 3):
         addr = I3C_WRAP_BASE + inst * I3C_WRAP_STRIDE
-        # +0x0 is the wrapper reset/enable register the firmware itself writes
-        # first (i3c_release_reset, i3c_controller_driver.c:215-217).
-        wr = await bfm_csr.seq.write_result(addr, 0x0000_0000, size=2,
-                                            check_response=False)
+        # +0x0 is the wrapper reset/enable register i3c_release_reset() writes
+        # first.
+        wr = await bfm_csr.seq.write_result(addr, 0x0000_0000, size=2, check_response=False)
         await ClockCycles(dut.clk_periph_i, 8)
         got_addr = int(dut.tb_bfm_i3c_awaddr.value)
         got_sel = int(dut.tb_bfm_i3c_wsel.value)
         log.info(
             "AXI-PROBE i3c-decode: wrote %#010x (instance %d) resp=%s -> wrapper "
             "saw awaddr=%#010x, write_select=%d",
-            addr, inst, wr.resp, got_addr, got_sel,
+            addr,
+            inst,
+            wr.resp,
+            got_addr,
+            got_sel,
         )
         if int(wr.resp) != 0:
             failures.append(f"i3c CSR write {addr:#010x} resp={wr.resp}")
@@ -212,7 +180,7 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
         "CHK-AXI-SCRATCH-REACHABLE: bfm_axi (SEP_IN) wrote %d distinct patterns "
         "across a bank stripe boundary at %#010x and read every one of them "
         "back, each having changed from its pre-write value. The front door "
-        "reaches the CPU scratch window; smc_cpu_vip_utils.py:251-252 is wrong.",
+        "reaches the CPU scratch window.",
         len(PROBE_PATTERNS),
         PROBE_BASE,
     )

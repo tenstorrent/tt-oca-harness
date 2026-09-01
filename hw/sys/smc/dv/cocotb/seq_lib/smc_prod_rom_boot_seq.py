@@ -26,8 +26,8 @@ from .smc_cpu_vip_utils import (
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_prod_rom_defs import (
     POST_CODE_BOOT_PHASE,
-    POST_CODE_BOOT_PHASE_NAMES,
     POST_CODE_BOOT_PHASE_ERROR,
+    POST_CODE_BOOT_PHASE_NAMES,
     POST_CODE_BOOT_PHASE_OCCP_PROC,
     POST_CODE_ERROR,
     POST_CODE_ERROR_NAMES,
@@ -63,8 +63,8 @@ class smc_prod_rom_boot_seq(SmcCsrSeq):
     async def boot_prod_rom(self) -> None:
         """Program the ROM reset vector and drop boot_stall.
 
-        Requires +smc_hold_cpu_boot so pad 57 holds the tiles in fuse-reset from
-        t=0; otherwise the cores fetch before the vector is programmed. Mirrors
+        Requires +smc_hold_cpu_boot so boot_stall holds the tiles in fuse-reset
+        from t=0; otherwise the cores fetch before the vector is set. Mirrors
         smc_cpu_firmware_boot_test's first-boot path.
         """
         if "smc_hold_cpu_boot" not in cocotb.plusargs:

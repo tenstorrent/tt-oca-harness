@@ -18,7 +18,6 @@ from pathlib import Path
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, with_timeout
-
 from ocah_axi_vip import OcahAxiMasterAgent
 
 # This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
@@ -81,15 +80,30 @@ def regenerate_efuse_image(seed: int) -> None:
     randomized = img_path.parent / "efuse_config_randomized.toml"
     try:
         subprocess.run(
-            [sys.executable, str(_EFUSE_DIR / "randomize_efuse.py"),
-             str(_EFUSE_DIR / "configurations/default_efuse.toml"),
-             "--output_file", str(randomized), "--seed", str(seed)],
-            check=True, capture_output=True, text=True,
+            [
+                sys.executable,
+                str(_EFUSE_DIR / "randomize_efuse.py"),
+                str(_EFUSE_DIR / "configurations/default_efuse.toml"),
+                "--output_file",
+                str(randomized),
+                "--seed",
+                str(seed),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
         )
         result = subprocess.run(
-            [sys.executable, str(_EFUSE_DIR / "generate_efuse_preload.py"),
-             str(randomized), "--output_file", str(img_path)],
-            check=True, capture_output=True, text=True,
+            [
+                sys.executable,
+                str(_EFUSE_DIR / "generate_efuse_preload.py"),
+                str(randomized),
+                "--output_file",
+                str(img_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
         )
     except subprocess.CalledProcessError as exc:
         # Loud, not silent: a stale image from the c_build stage would still be
@@ -102,7 +116,9 @@ def regenerate_efuse_image(seed: int) -> None:
 
     cocotb.log.info(
         "eFuse image regenerated for RANDOM_SEED=%d -> %s (%s)",
-        seed, img_path, result.stdout.strip(),
+        seed,
+        img_path,
+        result.stdout.strip(),
     )
 
 
@@ -170,9 +186,7 @@ class DualCsr:
         """
         for off in range(0, len(data), BULK_CHUNK_BYTES):
             chunk = data[off : off + BULK_CHUNK_BYTES]
-            event = self.seq.init_write(
-                address=addr + off, data=chunk, size=3, prot=0
-            )
+            event = self.seq.init_write(address=addr + off, data=chunk, size=3, prot=0)
             await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
         cocotb.log.info(
             "%s write_bytes %s %#010x <- %d bytes in %d-byte chunks",
@@ -191,9 +205,7 @@ class DualCsr:
             event = self.seq.init_read(address=addr + off, length=n, size=3, prot=0)
             await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
             out += bytes(event.data.data)
-        cocotb.log.debug(
-            "%s read_bytes %s %#010x -> %d bytes", self.prefix, name, addr, length
-        )
+        cocotb.log.debug("%s read_bytes %s %#010x -> %d bytes", self.prefix, name, addr, length)
         return bytes(out)
 
 
@@ -221,8 +233,8 @@ class SmcDualHarness:
         dut.dut_chiplet_is_primary.value = 1
         dut.bfm_chiplet_is_primary.value = 1
 
-        # Boot stall (pad 57) held from t=0 so reset vectors can be programmed
-        # before either core fetches.
+        # Boot stall held from t=0 so reset vectors can be programmed before
+        # either core fetches.
         dut.dut_boot_stall_hold.value = 1 if hold_dut_boot else 0
         dut.bfm_boot_stall_hold.value = 1 if hold_bfm_boot else 0
 
@@ -231,9 +243,7 @@ class SmcDualHarness:
         dut.bfm_gpio_ext_drive_en.value = 0
         dut.bfm_gpio_ext_drive_value.value = 0
 
-    async def bring_up(
-        self, *, hold_dut_boot: bool = True, hold_bfm_boot: bool = True
-    ) -> None:
+    async def bring_up(self, *, hold_dut_boot: bool = True, hold_bfm_boot: bool = True) -> None:
         dut = self.dut
         self.log.info(
             "dual bring-up: ref=%dns smc=%dns periph=%dns (seed=%d)",
@@ -251,9 +261,7 @@ class SmcDualHarness:
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_periph_i, PERIPH_CLK_PERIOD_NS, unit="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_periph_i, PERIPH_CLK_PERIOD_NS, unit="ns").start())
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.log.info("asserting powergood on both instances")
@@ -263,9 +271,7 @@ class SmcDualHarness:
         dut.rst_cold_ni.value = 1
         await ClockCycles(dut.clk_ref_i, POST_RESET_SETTLE_CYCLES)
 
-    async def release_cpu(
-        self, csr: DualCsr, instance: str, reset_vector: int
-    ) -> None:
+    async def release_cpu(self, csr: DualCsr, instance: str, reset_vector: int) -> None:
         """Program the reset vector, release RESET_CTRL, then drop boot_stall.
 
         Mirrors the held-boot first-boot path in
@@ -292,16 +298,12 @@ class SmcDualHarness:
         )
         for idx, addr in enumerate(CPU_CTRL_RESET_VECTOR):
             await csr.write(f"RESET_VECTOR_{idx}", addr, reset_vector, length=8)
-        await csr.write(
-            "RESET_RELEASE", CPU_CTRL_RESET_CTRL, CPU_RESET_CTRL_DEFAULT, length=8
-        )
+        await csr.write("RESET_RELEASE", CPU_CTRL_RESET_CTRL, CPU_RESET_CTRL_DEFAULT, length=8)
         await ClockCycles(dut.clk_smc_i, 64)
 
         getattr(dut, f"{instance}_boot_stall_hold").value = 0
         await ClockCycles(dut.clk_smc_i, 256)
-        self.log.info(
-            "%s: released boot_stall with reset_vector=%#010x", instance, reset_vector
-        )
+        self.log.info("%s: released boot_stall with reset_vector=%#010x", instance, reset_vector)
 
     def set_gpio_override(self, instance: str, pad: int, value: int | None) -> None:
         """Drive (or release) one pad on one instance.

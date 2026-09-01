@@ -4,8 +4,7 @@
 
 Every constant here has exactly one authority in the free tree, cited at its
 definition. These are read-only views of the ROM's own contract: if the ROM
-changes an encoding, this file is wrong and the tests that use it must fail,
-which is the point of keeping the citations tight.
+changes an encoding, this file is wrong and the tests that use it must fail.
 
 Sources:
   * POST code layout / phase + error encodings
@@ -32,11 +31,6 @@ if str(_SMC_REG_PY) not in sys.path:
 
 from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_SCRATCH_1__REG_ADDR,
-    SMC_CPU_CTRL_SCRATCH_2__REG_ADDR,
-    SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
-    SMC_CPU_CTRL_SCRATCH_6__REG_ADDR,
-    SMC_CPU_CTRL_SCRATCH_7__REG_ADDR,
-    SMC_CPU_CTRL_SCRATCH_8__REG_ADDR,
 )
 
 

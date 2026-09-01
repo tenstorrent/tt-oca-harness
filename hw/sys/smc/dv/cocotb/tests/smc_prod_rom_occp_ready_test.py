@@ -15,15 +15,15 @@ credited to anything but the ROM executing.
 
 Required plusargs:
   +rom_bin64=<prod_rom.bin64>   production ROM image (staged by c_compile)
-  +smc_hold_cpu_boot            hold pad57 from t=0 until the vector is set
+  +smc_hold_cpu_boot            hold boot_stall from t=0 until the vector is set
 """
 
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_prod_rom_boot_seq import smc_prod_rom_boot_seq
 from seq_lib.smc_prod_rom_defs import describe_post_code
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

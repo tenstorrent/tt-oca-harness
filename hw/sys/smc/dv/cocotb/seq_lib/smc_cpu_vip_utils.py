@@ -66,7 +66,7 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
 CPU_FW_SRAM_MAILBOX = 0xC006_0100
 
-# smc_padring.sv: boot_stall is lsio pad 57 (was 60 before 68->65 GPIO shrink).
+# boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57
 
 # Backward-compatible aliases.
@@ -96,7 +96,7 @@ async def check_cpu_bfm_observability() -> None:
 
 
 def _set_boot_stall(asserted: bool) -> None:
-    """Drive padring pad 57 (boot_stall, active-high) via TB GPIO override."""
+    """Drive the boot_stall pad (active-high) via the TB GPIO override."""
     dut = cocotb.top
     if not hasattr(dut, "tb_gpio_ext_drive_en"):
         return
@@ -210,7 +210,8 @@ async def check_cpu_firmware_boot_contract(
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
       * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, 64B-striped across
         32 banks (vector 0xC006_0000)
-      * ``+smc_hold_cpu_boot`` — assert pad57 from time-0 (preferred for scratch)
+      * ``+smc_hold_cpu_boot`` — assert boot_stall from time-0 (preferred for
+        scratch)
 
     Paths must be absolute (or resolvable from the simulator cwd under
     ``attempt_*/make``). If both plusargs are present, scratch wins.
@@ -242,30 +243,14 @@ async def check_cpu_firmware_boot_contract(
         CPU_FW_SUCCESS_MAGIC,
     )
 
-    # Clear CSR mailbox. CPU_CTRL is peeled off the front port ahead of the
-    # cluster (smc_cpu_wrapper.sv:138), so SEP_IN reaches it whatever the
-    # cluster is doing.
+    # CPU_CTRL is decoded off the front port ahead of the cluster, so SEP_IN
+    # reaches it whatever the cluster is doing.
     #
-    # Scratch/D$ PASS is observed via tb_cpu_fw_mailbox instead of an AXI read
-    # of 0xC006_xxxx. This used to be justified with "SEP cannot AXI to
-    # 0xC006_xxxx", which is not true as an unconditional statement:
-    # hw/sys/smc/dv/cocotb/tests/smc_dual_axi_sram_probe_test measures
-    # SEP_IN writing and reading back three distinct patterns at
-    # 0xC0066400/+8/+0x40 on the same smc_wrapper RTL. The window is decoded
-    # onto the front port by smc_local_xbar.sv:98-124 (rule 0 covers
-    # 0xC0040000-0xC0160000) and sep_in has full connectivity
-    # (smc_local_xbar_pkg.sv:347).
-    #
-    # What is true is that reachability is CONDITIONAL, and this function sits
-    # on the wrong side of both conditions for part of its run:
-    #   * the scratch banks hang off the CPU cluster, so the warm domain must be
-    #     out of reset -- boot_stall held high sticky-stalls fuse_reset_n
-    #     (tb_top.sv:488-490);
-    #   * the cluster boundary only opens once EVERY core is out of reset
-    #     (smc_4core_cpu.sv:162, cluster_boundary_ready includes &rst_core_ni),
-    #     so with cores held an access to the window never gets a response at
-    #     all -- it hangs rather than erroring.
-    # The mailbox snoop needs neither condition, which is why it stays.
+    # Scratch/D$ PASS is observed via tb_cpu_fw_mailbox rather than an AXI read
+    # of the scratch window. SEP_IN does reach that window, but only with the
+    # warm domain out of reset and every core released; while boot_stall is held
+    # the access never gets a response at all. The mailbox snoop needs neither
+    # condition.
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
 
     # Capture fetch baselines BEFORE release: the I$ fill can complete

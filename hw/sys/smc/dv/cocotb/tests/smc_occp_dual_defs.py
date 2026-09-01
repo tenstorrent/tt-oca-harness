@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Constants for the dual-SMC OCCP unsecure-boot flow.
 
-Every value here is a contract with something else in the tree, cited at its
-definition. Nothing is invented for the convenience of the test.
+Every value here is a contract with firmware or RTL elsewhere in the tree, named
+at its definition. Nothing is invented for the convenience of the test.
 """
 
 from __future__ import annotations
@@ -55,12 +55,9 @@ CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold all four cores in reset while bit 8 keeps the uncore out of it. Same
 # value as smc_cpu_vip_utils.CPU_RESET_CTRL_HOLD_CORES.
 #
-# NOT usable for staging over AXI, which is the obvious thing to try. The
-# cluster boundary only opens when EVERY core is out of reset --
-# smc_4core_cpu.sv:162, cluster_boundary_ready = init_mem_complete &
-# (&rst_core_ni) & rst_uncore_ni -- so holding any core leaves the boundary
-# isolated and AXI into the scratch window simply never answers. Measured: the
-# first 64-byte chunk timed out after 20 us with the cores held this way.
+# Not usable for staging over AXI: the cluster boundary only opens when every
+# core is out of reset, so holding any core leaves the boundary isolated and AXI
+# into the scratch window never answers at all.
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
 # timeout_mode=1 so the reset is force-applied if the cluster never drains
 # (same value smc_cpu_vip_utils.CPU_RESET_TIMEOUT_FORCE uses).
@@ -74,38 +71,32 @@ CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
 SCRATCH_PASS_FAIL = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 SCRATCH_POST_CODE = SMC_CPU_CTRL_SCRATCH_1__REG_ADDR
 
-# Controller side, the firmware RNG seed. SEED_REG in fw/include/smc_test.h:22;
-# init_test() loads it into _RANDOM_LFSR
-# (:121-123) at the very start of main(), so it has to be written BEFORE the
-# controller's cores are released.
+# Controller side, the firmware RNG seed (SEED_REG in the DV firmware's
+# smc_test.h). init_test() loads it into the LFSR at the start of main(), so it
+# has to be written before the controller's cores are released.
 #
-# Leaving it 0 is not neutral: 0 is a fixed point of the LFSR at smc_test.h:138-142
-# (bit = (0^0^0^0)&1 = 0, next = (0>>1)|(0<<31) = 0), so every get_random_int()
-# returns 0 forever. Measured consequence before this was seeded: all 15 OCCP
-# WRITEs carried no body CRC, and the controller picked I3C channel 0 every run,
+# Leaving it 0 is not neutral: 0 is a fixed point of that LFSR, so every
+# get_random_int() returns 0 forever. That pins two protocol choices for the
+# whole run -- no body CRC on any OCCP WRITE, and I3C channel 0 every time,
 # leaving channels 1 and 3 wired in the testbench but never exercised.
 SCRATCH_FW_SEED = SMC_CPU_CTRL_SCRATCH_3__REG_ADDR
 
-# Controller side: the OCCP unsecure-boot host protocol. Read by
-# hw/sys/smc/dv/fw/tests/occp_unsecure_boot_test/main.c:35-40.
+# Controller side: the OCCP unsecure-boot host protocol, read by the DV
+# occp_unsecure_boot_test firmware.
 SCRATCH_BOOTCODE_ADDR = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
 SCRATCH_BOOTCODE_SIZE = SMC_CPU_CTRL_SCRATCH_6__REG_ADDR
 SCRATCH_TARGET_ADDR = SMC_CPU_CTRL_SCRATCH_7__REG_ADDR
 SCRATCH_ENTRY_OFFSET = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
 
-# Proof that the transferred image ran rests on the target's scratch 0 alone,
-# which is the same source the reference environment uses. That is not a weak
-# check here:
-#   * the transferred payload's whole body is test_pass(0) -> scratch 0
-#     (hw/sys/smc/dv/fw/tests/hello_world/hello_world.c:11);
-#   * the production boot ROM never writes it -- smc_scratchpad_set_sim_pass_fail
-#     (bootrom/prod/lib/src/smc_scratchpad.c:117) has zero call sites in the
-#     whole tree, and SMC_BOOT_SUCCESS is never stored to scratch either;
-#   * the test asserts scratch 0 is not already TEST_PASS before the transfer;
-#   * and it independently requires the target's retired PC to land inside the
-#     transferred image, which the reference does not check at all.
+# Proof that the transferred image ran rests on the target's scratch 0, which is
+# the same source the reference environment uses. Nothing else in this flow can
+# write it: the transferred payload's whole body is test_pass(0), and the
+# production boot ROM's own scratch pass/fail setter has no call sites anywhere
+# in the tree. The test also asserts scratch 0 does not already hold TEST_PASS
+# before the transfer, and separately requires the target's retired PC to land
+# inside the transferred image.
 #
-# TEST_PASS from hw/sys/smc/dv/fw/include/smc_test.h, and the same value the
+# TEST_PASS comes from the DV firmware's smc_test.h, and is the same value the
 # production ROM calls SMC_SCRATCHPAD_SIM_PASS_CODE.
 TEST_PASS = 0xACAF_ACA1
 TEST_FAIL = 0xFFFF_FFFF
@@ -122,59 +113,49 @@ OCCP_SRAM_BASE = 0xC006_6400
 # --------------------------------------------------------------------------
 # Pads
 # --------------------------------------------------------------------------
-# SMC_STATUS_GPIO. The controller firmware spins on this forever before it
-# touches the host protocol -- wait_for_target_up_gpio() in
-# fw/common/occp/occp_interfaces.c:79-87 loops while pad2core == 0, from inside
-# initialize_interface(), which runs before scratch 5-8 are read. Holding it low
-# is therefore the testbench's only lever for "controller running, but not yet
-# looking at the host protocol", which is exactly the window the payload has to
-# be staged in: staging needs all four cores out of reset (see
-# CPU_RESET_CTRL_HOLD_CORES) yet must complete before the firmware reads
-# scratch 5-8.
+# SMC_STATUS_GPIO. The controller firmware's wait_for_target_up_gpio() spins on
+# this pad forever from inside initialize_interface(), which runs before scratch
+# 5-8 are read. Holding it low is therefore the testbench's only lever for
+# "controller running, but not yet looking at the host protocol", which is
+# exactly the window the payload has to be staged in: staging needs all four
+# cores out of reset (see CPU_RESET_CTRL_HOLD_CORES) yet must complete before the
+# firmware reads scratch 5-8.
 #
-# In normal operation the TARGET drives this pad, from set_gpio_status() on the
-# success path of its OCCP init (bootrom/prod/lib/src/occp.c:259-279 -- by pad
-# number, not via the SMC_STATUS_GPIO macro, which is why that macro looks
-# unused). tb_top.sv (SMC_DUAL half) resolves the undriven value LOW, so a target that
-# never asserts readiness leaves the controller waiting, as it would in silicon.
+# In normal operation the TARGET drives this pad from set_gpio_status() on the
+# success path of its OCCP init, by pad number rather than via the
+# SMC_STATUS_GPIO macro, which is why that macro looks unused. The dual top
+# resolves the undriven value low, so a target that never asserts readiness
+# leaves the controller waiting, as it would in silicon.
 CTRL_TARGET_READY_PAD = 58
 
 # Upper bound of the standardised OCCP test window, from the firmware's own
-# header (fw/common/occp/occp_test_common.h:51,53 -- same two values the
-# reference environment uses in its smc_defines.py).
+# occp_test_common.h.
 OCCP_SRAM_UPPER = 0xC016_0000
 
 # Floor for staging inside the CONTROLLER's SRAM. Unlike the target address,
 # this one cannot use the whole window: it has to clear the controller image's
 # own .data/.bss/stack, or the payload would be overwritten by the firmware that
-# is supposed to read it.
+# is supposed to read it. The image's symbol map puts the top of its stack at
+# 0xC0070E30, rounded up here to the next 4 KB.
 #
-# Measured from occp_unsecure_boot_test.rom.sym:
-#   metal_segment_bss_target_end = 0xC006FE30
-#   _sp                          = 0xC0070E30   (__stack_size = 0x1000)
-# so the image occupies up to 0xC0070E30. Rounded up to the next 4 KB.
-#
-# Note the reference environment draws its staging address from the full window
-# starting at 0xC0066400 (smc_rom_test_master_bfm_binary_loader.py:46-48), which
-# overlaps that region. Deliberate deviation, not an oversight.
+# The reference environment stages from the bottom of the full window instead,
+# overlapping that region. Deliberate deviation, not an oversight.
 BFM_STAGING_FLOOR = 0xC007_1000
+
 
 def pick_payload_addresses(seed: int, payload_size: int) -> tuple[int, int]:
     """Draw this run's staging and target addresses, 8-byte aligned.
 
-    Both were compile-time constants until 2026-08-24, and the target one was
-    OCCP_SRAM_BASE exactly -- which is also SMC_ROM_STACK_END, the first address
-    the ROM will accept. That made two behaviours indistinguishable: a ROM that
-    reads the OCCP WRITE command's address field, and a ROM that ignores it and
-    always writes from the bottom of the window. Drawing the address per run is
-    what tells them apart, and it is what the reference environment does
-    (smc_rom_test_master_bfm_binary_loader.py:46-48, :55-57).
+    A fixed target address of OCCP_SRAM_BASE -- which is also SMC_ROM_STACK_END,
+    the first address the ROM will accept -- makes two behaviours
+    indistinguishable: a ROM that reads the OCCP WRITE command's address field,
+    and a ROM that ignores it and always writes from the bottom of the window.
+    Drawing the address per run is what tells them apart.
 
-    The transferred image does not have to be linked at the address it lands on:
-    the JUMP enters `main`, which is position independent (it materialises both
+    The transferred image does not have to be linked at the address it lands on.
+    The JUMP enters `main`, which is position independent: it materialises both
     the scratch address and TEST_PASS from immediates and parks in a relative
-    branch -- see hello_world.sram.dis). Only crt0 would care about the link
-    base, and the JUMP deliberately skips it.
+    branch. Only crt0 would care about the link base, and the JUMP skips it.
 
     Deterministic in `seed` so a failure is reproducible from the run's log.
     """
@@ -184,8 +165,7 @@ def pick_payload_addresses(seed: int, payload_size: int) -> tuple[int, int]:
         top = high - payload_size
         if top < low:
             raise AssertionError(
-                f"payload of {payload_size} bytes does not fit in "
-                f"[{low:#x}, {high:#x})"
+                f"payload of {payload_size} bytes does not fit in [{low:#x}, {high:#x})"
             )
         return rng.randint(low, top) & ~0x7
 
@@ -194,6 +174,7 @@ def pick_payload_addresses(seed: int, payload_size: int) -> tuple[int, int]:
     # Controller: above its own image (see BFM_STAGING_FLOOR).
     staging = draw(BFM_STAGING_FLOOR, OCCP_SRAM_UPPER)
     return staging, target
+
 
 # --------------------------------------------------------------------------
 # POST code (target boot ROM progress); see smc_post_code.h.
@@ -267,11 +248,10 @@ def bus_activity(dut) -> list[tuple[int, int, int]]:
     """(channel, scl_falls, starts) for each cross-wired I3C channel.
 
     Flat scalars, not an unpacked-array handle: cocotb reads every element of
-    the latter as element 0, which silently mis-attributed every per-channel
-    count until 2026-08-24. The instance number comes from the TB too
-    (tb_i3c_channel_id_N), so the label cannot drift from what is actually
-    being counted -- do not substitute SHARED_I3C_CHANNELS here, which would
-    reintroduce exactly that drift.
+    the latter as element 0, which silently mis-attributes every per-channel
+    count. The instance number comes from the TB too (tb_i3c_channel_id_N), so
+    the label cannot drift from what is being counted -- do not substitute
+    SHARED_I3C_CHANNELS here, which would reintroduce that drift.
     """
     return [
         (

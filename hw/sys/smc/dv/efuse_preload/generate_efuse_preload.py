@@ -115,9 +115,7 @@ def build_image(config: dict, schema: dict) -> int:
             if value < 0:
                 sys.exit(f"error: {block}.{field}: value must not be negative")
             if value >= (1 << span):
-                sys.exit(
-                    f"error: {block}.{field}: value does not fit in {span} bits"
-                )
+                sys.exit(f"error: {block}.{field}: value does not fit in {span} bits")
             block_value |= value << lo
 
         image |= block_value << offset
@@ -154,11 +152,11 @@ def write_image(image: int, path: Path, notation: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("config", type=Path, help="eFuse configuration TOML")
+    parser.add_argument("--output_file", type=Path, required=True, help="image to write")
     parser.add_argument(
-        "--output_file", type=Path, required=True, help="image to write"
-    )
-    parser.add_argument(
-        "--notation", choices=("hex", "binary"), default="hex",
+        "--notation",
+        choices=("hex", "binary"),
+        default="hex",
         help="hex: one 32-bit word per line (default). binary: one bit per line.",
     )
     args = parser.parse_args()

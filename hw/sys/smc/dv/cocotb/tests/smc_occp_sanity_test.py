@@ -10,7 +10,7 @@ transaction:
     u_bfm  the OCCP *controller* -- fw/tests/occp_sanity, a rom-mode DV image
 
 The controller firmware (`fw/tests/occp_sanity/main.c`) does three things:
-brings up the I3C interface (wait for the target's GPIO 58, ENTDAA, pick a
+brings up the I3C interface (wait for the target-ready pad, ENTDAA, pick a
 channel), issues `GET_VERSION` and checks the answer is `0x1`, then reports by
 sending an OCCP WRITE of the pass/fail code into the **target's** scratch 0.
 
@@ -39,9 +39,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
-from smc_virt_console import VirtConsole
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     SCRATCH_PASS_FAIL,
@@ -53,11 +51,12 @@ from smc_occp_dual_defs import (
     format_activity,
     required_plusarg,
 )
+from smc_virt_console import VirtConsole
 
 # The transaction is GET_VERSION plus one 4-byte WRITE, against the boot test's
-# 15 chunks of 1024 B. Measured on run 20260831_095200: the pass lands at
-# 939 us of sim time, i.e. ~235 poll intervals. The bound below is ~17x that,
-# which is headroom for a stalled exchange rather than a target.
+# 15 chunks of 1024 B. The pass lands at roughly 939 us of sim time, about 235
+# poll intervals; the bound below is ~17x that, which is headroom for a stalled
+# exchange rather than a target.
 SANITY_POLL_ITERS = 4000
 SANITY_POLL_CYCLES = 2000
 PROGRESS_EVERY = 200
@@ -77,7 +76,7 @@ async def smc_occp_sanity_test(_dut) -> None:
         random_seed(),
     )
 
-    # Both cores held at pad 57 from t=0 so their reset vectors can be set
+    # Both cores held at boot_stall from t=0 so their reset vectors can be set
     # before either one fetches.
     await harness.bring_up(hold_dut_boot=True, hold_bfm_boot=True)
 
@@ -93,7 +92,7 @@ async def smc_occp_sanity_test(_dut) -> None:
     bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
 
     # Target first: the controller's initialize_interface() spins on the
-    # target's GPIO 58 forever, so releasing the target first is what lets the
+    # target-ready pad forever, so releasing the target first is what lets the
     # controller past its own bring-up. No staging window is needed here --
     # unlike the boot test, nothing has to be written into the controller's
     # SRAM before it runs.
@@ -101,9 +100,7 @@ async def smc_occp_sanity_test(_dut) -> None:
     await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM)
 
     baseline_activity = bus_activity(dut)
-    cocotb.log.info(
-        "both CPUs released; I3C baseline [%s]", format_activity(baseline_activity)
-    )
+    cocotb.log.info("both CPUs released; I3C baseline [%s]", format_activity(baseline_activity))
 
     target_scratch0 = 0
     ctrl_scratch0 = 0
@@ -170,17 +167,14 @@ async def smc_occp_sanity_test(_dut) -> None:
     activity = bus_activity(dut)
     moved = [
         (ch, falls - base_falls, starts - base_starts)
-        for (ch, falls, starts), (_, base_falls, base_starts) in zip(
-            activity, baseline_activity
-        )
+        for (ch, falls, starts), (_, base_falls, base_starts) in zip(activity, baseline_activity)
         if falls > base_falls
     ]
     if moved:
         cocotb.log.info(
             "OCCP sanity bus activity: %s",
             ", ".join(
-                f"I3C{ch} (+{falls} scl_falls, +{starts} starts)"
-                for ch, falls, starts in moved
+                f"I3C{ch} (+{falls} scl_falls, +{starts} starts)" for ch, falls, starts in moved
             ),
         )
     else:

@@ -10,24 +10,24 @@ real: no testbench model stands in for either side of the protocol.
   u_dut  target:     the real production boot ROM, servicing OCCP through
          i3c_hci_driver.c
 
-The testbench does three things and then gets out of the way: write the payload
-into the controller's SRAM over its inbound AXI manager, seed the scratch 5-8
-host protocol, and release the two CPUs. Everything after that -- ENTDAA, the
+The testbench does three things: write the payload into the controller's SRAM
+over its inbound AXI manager, seed the scratch 5-8 host protocol, and release
+the two CPUs. Everything after that -- ENTDAA, the
 chunked WRITEs, the JUMP -- is firmware talking to firmware over a shared I3C
 bus.
 
 Staging is a front-door AXI write, per the design doc's "Seeding the
 controller". It needs the controller's cluster boundary open, which needs all
-four of its cores released (smc_4core_cpu.sv:162), so the staging window is held
-open instead by keeping the controller parked on its GPIO 58 target-ready
-handshake. smc_dual_axi_sram_probe_test is the measurement that the AXI path
-into the scratch window works at all.
+four of its cores released, so the staging window is held open instead by keeping
+the controller parked on its target-ready handshake.
+smc_dual_axi_sram_probe_test is the measurement that the AXI path into the
+scratch window works at all.
 
 Both the staging address and the transfer destination are drawn per run from the
-OCCP window (see pick_payload_addresses). Fixing them, as this test did until
-2026-08-24, makes "the ROM honours the WRITE command's address field" and "the
-ROM ignores it and always writes from the bottom of the window" indistinguishable
--- the old fixed target address WAS the bottom of the window.
+OCCP window (see pick_payload_addresses). Fixed addresses would make "the ROM
+honours the WRITE command's address field" and "the ROM ignores it and always
+writes from the bottom of the window" indistinguishable, since the natural fixed
+target address is the bottom of the window.
 
 What a PASS requires, all of it:
   * the target ROM reaches its OCCP command loop (POST code phase OCCP_PROC)
@@ -45,10 +45,10 @@ What a PASS requires, all of it:
     address that changes from run to run
   * a clean POST error field at the end
 
-The retired PC is what makes this non-vacuous, together with the pre-transfer
-check on scratch 0. The pass magic alone is the conventional signal and is the
-only thing the reference environment checks; requiring the core to have been
-seen executing inside the transferred address range is strictly stronger. See
+The retired PC check and the pre-transfer check on scratch 0 are what keep the
+pass from being vacuous. The pass magic alone is the conventional signal and the
+only thing the reference environment checks; requiring the core to have been seen
+executing inside the transferred address range is stronger. See
 smc_occp_dual_defs for why nothing else in this flow can write that scratch.
 
 The payload's size and entry offset are read from the build's own artifacts
@@ -70,9 +70,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
-from smc_virt_console import VirtConsole
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     CTRL_TARGET_READY_PAD,
@@ -96,6 +94,7 @@ from smc_occp_dual_defs import (
     post_code_error,
     required_plusarg,
 )
+from smc_virt_console import VirtConsole
 
 # Target ROM boot to its OCCP command loop. Measured at ~250 us of sim time in
 # the single-instance smc_prod_rom_occp_ready_test; this bound is ~10x that.
@@ -103,10 +102,10 @@ ROM_POLL_ITERS = 2000
 ROM_POLL_CYCLES = 200
 
 # The whole OCCP exchange: ENTDAA, then the payload in <=1024 B chunks, then
-# JUMP. I3C at open-drain init rates is the long pole of the whole test --
-# measured at roughly 3.2 ms of sim time per 1024 B chunk on this top, so a
-# 15 KB payload needs ~48 ms and the bound has to leave real headroom above
-# that. The poll interval is deliberately coarse: each poll costs two CSR reads
+# JUMP. I3C at open-drain init rates dominates the run time: roughly 3.2 ms of
+# sim time per 1024 B chunk on this top, so a 15 KB payload needs ~48 ms and the
+# bound has to leave real headroom above that.
+# The poll interval is deliberately coarse: each poll costs two CSR reads
 # over SEP_IN AXI, and polling faster buys nothing when the thing being waited
 # on takes milliseconds.
 OCCP_POLL_ITERS = 40_000
@@ -118,20 +117,18 @@ OCCP_POLL_CYCLES = 2_000
 # The target passing does not mean the controller agrees. The payload writes
 # TEST_PASS the moment it is entered, while the controller is still reading the
 # JUMP response -- and if that response fails its header-CRC or status check the
-# controller writes TEST_FAIL (occp_unsecure_boot_test/main.c:104-107,120), which
-# would otherwise land after this test had already declared success. Measured on
-# run 20260823_115918: the controller's last console line is its 16th
-# "OCCP: Reading response header" at 48940495ns and the test ended at 48997260ns,
-# so the JUMP response was never parsed and nobody noticed.
+# controller writes TEST_FAIL, which would otherwise land after this test had
+# already declared success. Without the grace window the controller was observed
+# still waiting on its 16th response header when the test ended, so the JUMP
+# response was never parsed and nobody noticed.
 #
-# 60 x 2000 clk_smc_i is 600 us of sim -- roughly 20x the observed
-# request-to-response round trip for a JUMP, and ~80 s of wall clock against a
-# 113-minute test.
+# 60 x 2000 clk_smc_i is 600 us of sim, roughly 20x the observed
+# request-to-response round trip for a JUMP, and a negligible share of the
+# test's wall clock.
 CTRL_VERDICT_GRACE_ITERS = 60
 # Log in-flight progress this often (here: every ~1 ms of sim time), so a stall
 # shows up while it is happening rather than only in the timeout message.
 PROGRESS_EVERY = 100
-
 
 
 # The OCCP JUMP lands on main(), never on _enter. _enter is crt0: it zeroes
@@ -163,8 +160,7 @@ def _payload_entry_offset(sym_path: str) -> int:
     for want in (PAYLOAD_LOAD_SYMBOL, PAYLOAD_ENTRY_SYMBOL):
         if want not in addrs:
             raise AssertionError(
-                f"no {want} symbol in {sym_path}; cannot derive the OCCP JUMP "
-                "entry offset"
+                f"no {want} symbol in {sym_path}; cannot derive the OCCP JUMP entry offset"
             )
     offset = addrs[PAYLOAD_ENTRY_SYMBOL] - addrs[PAYLOAD_LOAD_SYMBOL]
     if offset < 0:
@@ -203,9 +199,7 @@ async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
 def _payload_words(payload_bin: str) -> list[int]:
     """The payload as little-endian 64-bit words, straight from the image."""
     data = Path(payload_bin).read_bytes()
-    return [
-        int.from_bytes(data[i : i + 8], "little") for i in range(0, len(data), 8)
-    ]
+    return [int.from_bytes(data[i : i + 8], "little") for i in range(0, len(data), 8)]
 
 
 async def _describe_landing(dut, target_offset: int, expect_words) -> str:
@@ -275,11 +269,8 @@ def _tx_snoop(dut) -> str:
     words = [int(getattr(dut, f"tb_bfm_i3c_tx_word_{i}").value) for i in range(8)]
     return (
         f"  controller I3C TX-port writes = {count} DWORD(s)\n"
-        "  first words (LE bytes on the wire): "
-        + ", ".join(f"{w:#010x}" for w in words)
+        "  first words (LE bytes on the wire): " + ", ".join(f"{w:#010x}" for w in words)
     )
-
-
 
 
 @cocotb.test()
@@ -304,11 +295,10 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
 
     assert payload_size > 0, f"payload image {payload_bin} is empty"
     # The controller firmware reads the payload with 64-bit loads only while
-    # (i + 8) <= chunk_size and byte-at-a-time after that
-    # (occp_unsecure_boot_test/main.c:63-73). Those tail reads are unaligned and
-    # wedge the core mid-transfer, which presents as the I3C bus simply going
-    # quiet. Fail loudly here instead, because the hang is otherwise a two-hour
-    # timeout with no explanation.
+    # (i + 8) <= chunk_size, and byte-at-a-time after that. Those tail reads are
+    # unaligned and wedge the core mid-transfer, which presents as the I3C bus
+    # simply going quiet. Fail loudly here instead, because the hang is otherwise
+    # a two-hour timeout with no explanation.
     assert payload_size % 8 == 0, (
         f"payload image {payload_bin} is {payload_size} bytes, which is not a "
         "multiple of 8. The OCCP controller firmware cannot read a non-8-aligned "
@@ -328,7 +318,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         entry_offset,
     )
 
-    # Both cores held at pad 57 from t=0 so their reset vectors can be set.
+    # Both cores held at boot_stall from t=0 so their reset vectors can be set.
     await harness.bring_up(hold_dut_boot=True, hold_bfm_boot=True)
 
     # Decode both firmware virtual consoles. The controller's simputs() trace is
@@ -343,8 +333,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
 
     # ------------------------------------------------------------------
-    # 1. Bring the target up first. The controller polls GPIO 58 for target
-    #    readiness and then issues ENTDAA, so the target must already be
+    # 1. Bring the target up first. The controller polls the target-ready pad
+    #    and then issues ENTDAA, so the target must already be
     #    servicing OCCP or the first transfer is lost.
     # ------------------------------------------------------------------
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)
@@ -372,8 +362,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"rom_reads={int(dut.dut_rom_read_count.value)}"
         )
     cocotb.log.info(
-        "CHK-OCCP-TARGET-READY: target ROM in its OCCP command loop, POST %s "
-        "(trace=%s)",
+        "CHK-OCCP-TARGET-READY: target ROM in its OCCP command loop, POST %s (trace=%s)",
         describe_post_code(post),
         [hex(p) for p in phase_trace],
     )
@@ -397,11 +386,11 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     #
     #    Two constraints pull in opposite directions. Staging over AXI needs the
     #    controller's cluster boundary open, which needs ALL FOUR cores out of
-    #    reset (smc_4core_cpu.sv:162) -- so the controller cannot be held. But
-    #    the staged bytes have to be in place before its firmware reads the host
-    #    protocol out of scratch 5-8.
+    #    reset -- so the controller cannot be held. But the staged bytes have to
+    #    be in place before its firmware reads the host protocol out of
+    #    scratch 5-8.
     #
-    #    GPIO 58 resolves it. The firmware spins on that pad forever inside
+    #    The target-ready pad resolves it. The firmware spins on it inside
     #    initialize_interface(), well before it looks at scratch 5-8, so holding
     #    it low gives an unbounded window with the cores running. Released again
     #    once staging and seeding are done.
@@ -409,10 +398,9 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     harness.set_gpio_override("bfm", CTRL_TARGET_READY_PAD, 0)
 
     # Seed the controller firmware's RNG before its cores fetch, because
-    # init_test() latches it in the first instructions of main()
-    # (smc_test.h:118-123). An unseeded 0 is a fixed point of that LFSR, which
-    # silently pins two protocol choices for the whole run: body-CRC present
-    # (occp_commands.c) and which I3C channel to use (occp_interfaces.c:161).
+    # init_test() latches it in the first instructions of main(). An unseeded 0
+    # is a fixed point of that LFSR, which silently pins two protocol choices for
+    # the whole run: whether a body CRC is present, and which I3C channel to use.
     # Forced non-zero for the same reason.
     fw_seed = (random_seed() * 2_654_435_761) & 0xFFFF_FFFF or 0x1234_5678
     await bfm_csr.write("FW_SEED", SCRATCH_FW_SEED, fw_seed, length=8)
@@ -438,9 +426,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # execute) is expensive to diagnose.
     staged = await bfm_csr.read_bytes("PAYLOAD_RDBK", payload_addr, payload_size)
     if staged != payload_bytes:
-        first_bad = next(
-            i for i, (a, b) in enumerate(zip(staged, payload_bytes)) if a != b
-        )
+        first_bad = next(i for i, (a, b) in enumerate(zip(staged, payload_bytes)) if a != b)
         raise AssertionError(
             f"payload staged into the controller's SRAM at {payload_addr:#010x} "
             f"does not read back: first mismatch at byte {first_bad} "
@@ -460,9 +446,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # ------------------------------------------------------------------
     await bfm_csr.write("BOOTCODE_ADDR", SCRATCH_BOOTCODE_ADDR, payload_addr, length=8)
     await bfm_csr.write("BOOTCODE_SIZE", SCRATCH_BOOTCODE_SIZE, payload_size, length=8)
-    await bfm_csr.write(
-        "TARGET_ADDR", SCRATCH_TARGET_ADDR, target_addr, length=8
-    )
+    await bfm_csr.write("TARGET_ADDR", SCRATCH_TARGET_ADDR, target_addr, length=8)
     await bfm_csr.write("ENTRY_OFFSET", SCRATCH_ENTRY_OFFSET, entry_offset, length=8)
 
     for name, addr, expected in (
@@ -472,9 +456,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         ("ENTRY_OFFSET", SCRATCH_ENTRY_OFFSET, entry_offset),
     ):
         got = await bfm_csr.read(f"{name}_RDBK", addr, length=8)
-        assert got == expected, (
-            f"controller scratch readback {name}: {got:#x} != {expected:#x}"
-        )
+        assert got == expected, f"controller scratch readback {name}: {got:#x} != {expected:#x}"
     cocotb.log.info(
         "CHK-OCCP-HOST-PROTOCOL: controller scratch 5-8 seeded and read back "
         "(addr=%#010x size=%d target=%#010x entry_offset=%#x)",
@@ -500,14 +482,14 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     async def _fail_on_ctrl_verdict(when: str) -> None:
         """Fail if the CONTROLLER reported failure, whatever the target says.
 
-        The controller firmware only ever writes its scratch 0 to say TEST_FAIL
-        (main.c:120); on success it deliberately writes nothing there and leaves
-        the verdict to the target. So a non-zero read that equals TEST_FAIL is
-        unambiguous, and anything else is not a controller failure.
+        The controller firmware only ever writes its scratch 0 to say TEST_FAIL;
+        on success it deliberately writes nothing there and leaves the verdict to
+        the target. So a read that equals TEST_FAIL is unambiguous, and anything
+        else is not a controller failure.
 
         Without this the controller's entire response-validation path is dead
-        weight: it verifies every OCCP response's header CRC and status code
-        (occp_commands.c:131-141, 283-335) and nobody looks at the result.
+        weight: it verifies every OCCP response's header CRC and status code and
+        nobody looks at the result.
         """
         ctrl = await bfm_csr.read("CTRL_VERDICT", SCRATCH_PASS_FAIL)
         if ctrl != TEST_FAIL:
@@ -544,9 +526,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
 
         # Same reasoning for the target's POST error field. A single sample at
         # the end cannot see a mid-transfer error, because the ROM clears the
-        # field on the next successful command (smc_post_code.c:46-51, cleared
-        # at occp.c:804) -- one bad chunk followed by one good one reads back
-        # clean.
+        # field on the next successful command -- one bad chunk followed by one
+        # good one reads back clean.
         live_post = await dut_csr.read("TARGET_POST_LIVE", SCRATCH_POST_CODE)
         if post_code_error(live_post) != 0:
             bfm_console.flush()
@@ -569,9 +550,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         # pins down which half of the flow to blame if the payload never runs.
         if not transfer_landed:
             first, first_ecc = await _peek_target_scratch(dut, target_offset)
-            last, _ = await _peek_target_scratch(
-                dut, target_offset + (len(expect_words) - 1) * 8
-            )
+            last, _ = await _peek_target_scratch(dut, target_offset + (len(expect_words) - 1) * 8)
             if first == expect_words[0] and last == expect_words[-1]:
                 transfer_landed = True
                 cocotb.log.info(
@@ -587,9 +566,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         passv = await dut_csr.read("TARGET_PASS", SCRATCH_PASS_FAIL)
         if passv == TEST_FAIL:
             post = await dut_csr.read("TARGET_POST_CODE_FAIL", SCRATCH_POST_CODE)
-            landed_report = await _describe_landing(
-                dut, target_offset, expect_words
-            )
+            landed_report = await _describe_landing(dut, target_offset, expect_words)
             scan_report = await _scan_for_payload(dut, expect_words[0])
             bfm_console.flush()
             dut_console.flush()
@@ -620,8 +597,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         # only in the timeout message an hour later.
         if iteration and iteration % PROGRESS_EVERY == 0:
             cocotb.log.info(
-                "OCCP in flight (poll %d/%d): target pass=%#010x, "
-                "bus [%s], ctrl wb_pc0=%#x",
+                "OCCP in flight (poll %d/%d): target pass=%#010x, bus [%s], ctrl wb_pc0=%#x",
                 iteration,
                 OCCP_POLL_ITERS,
                 passv,
@@ -664,8 +640,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     for grace in range(CTRL_VERDICT_GRACE_ITERS):
         await ClockCycles(dut.clk_smc_i, OCCP_POLL_CYCLES)
         await _fail_on_ctrl_verdict(
-            f"{grace + 1}/{CTRL_VERDICT_GRACE_ITERS} poll intervals after the "
-            "target reported PASS"
+            f"{grace + 1}/{CTRL_VERDICT_GRACE_ITERS} poll intervals after the target reported PASS"
         )
     ctrl_scratch0 = await bfm_csr.read("CTRL_VERDICT_FINAL", SCRATCH_PASS_FAIL)
     cocotb.log.info(
@@ -676,18 +651,15 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         TEST_FAIL,
         CTRL_VERDICT_GRACE_ITERS,
     )
-    # What this check does NOT establish, stated so it is not over-read: the
-    # controller never signals success, by design (main.c:115-117, "Don't call
-    # test_pass here since we're waiting for ROM completion"), so there is no
-    # positive confirmation that it finished cleanly -- only the absence of a
+    # What this check does NOT establish: the controller never signals success
+    # while it is waiting for ROM completion, so there is no positive
+    # confirmation that it finished cleanly, only the absence of a
     # rejection. Turning that into a positive gate means waiting for its
     # "Done, waiting for ROM to complete" console line, which changes when the
     # simulation ends. See docs/occp_dual_boot_equivalence.md risk 1.
     # bfm_console.lines is the full history; tail() is only the last 40.
     if any("Done, waiting for ROM" in line for line in bfm_console.lines):
-        cocotb.log.info(
-            "controller also reached its own terminal state (console)"
-        )
+        cocotb.log.info("controller also reached its own terminal state (console)")
     else:
         cocotb.log.info(
             "NOTE: controller had not printed its terminal line when the test "
@@ -696,14 +668,12 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         )
 
     # ------------------------------------------------------------------
-    # Non-vacuity: the two halves must actually have talked on the wire.
+    # The two halves must actually have talked on the wire.
     # ------------------------------------------------------------------
     activity = bus_activity(dut)
     moved = [
         (ch, falls - base_falls, starts - base_starts)
-        for (ch, falls, starts), (_, base_falls, base_starts) in zip(
-            activity, baseline_activity
-        )
+        for (ch, falls, starts), (_, base_falls, base_starts) in zip(activity, baseline_activity)
         if falls > base_falls
     ]
     assert moved, (
@@ -720,12 +690,11 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     #
     # It decodes the CPU scratch banking with the 64-byte round-robin formula
     # that smc_cpu_mem_integration's own loader uses, and that formula is only
-    # correct at offset 0. Measured directly by smc_dual_axi_sram_probe_test:
-    # three patterns written and read back over AXI at 0xC0066400/+8/+0x40 all
-    # verified, while this same peek reported zero for every one of them. So a
+    # correct at offset 0. smc_dual_axi_sram_probe_test verified three patterns
+    # over AXI while this same peek reported zero for every one of them, so a
     # "not landed" result here means the instrument is wrong, not the DUT.
     #
-    # Non-vacuity does not depend on it. It rests on the pass magic in the
+    # The pass does not depend on the peek. It rests on the pass magic in the
     # target's scratch 0 -- which the pre-transfer check proved was not already
     # there, and which nothing in this flow but the transferred image writes
     # (see smc_occp_dual_defs) -- plus the retired-PC check below.
@@ -745,8 +714,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
 
     post = await dut_csr.read("TARGET_POST_CODE_FINAL", SCRATCH_POST_CODE)
     assert post_code_error(post) == 0, (
-        f"target ROM latched a POST error during the transfer: "
-        f"{describe_post_code(post)}"
+        f"target ROM latched a POST error during the transfer: {describe_post_code(post)}"
     )
 
     # Direct evidence that control actually transferred: the payload ends in a
@@ -754,9 +722,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # the transferred image. Sample it now rather than relying only on the
     # scratch values.
     final_pc = int(dut.dut_wb_pc0.value)
-    pc_parked_in_payload = (
-        target_addr <= final_pc < target_addr + payload_size
-    )
+    pc_parked_in_payload = target_addr <= final_pc < target_addr + payload_size
     assert pc_in_payload or pc_parked_in_payload, (
         f"target scratch shows the payload's results, but its retired PC "
         f"({final_pc:#x}) was never observed inside the transferred image "

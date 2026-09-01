@@ -19,9 +19,8 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
-from smc_occp_dual_defs import SHARED_I3C_CHANNELS
 from smc_dual_base_test import SmcDualHarness
+from smc_occp_dual_defs import SHARED_I3C_CHANNELS
 
 # Both instances must clear fuse sense within this many clk_smc cycles. The
 # single-instance smc_cpu_firmware_boot_test uses a 200k-cycle bound for the
@@ -38,10 +37,7 @@ async def _wait_high(name: str, sig, clk, bound: int) -> int:
         await ClockCycles(clk, 1)
         if _resolved(sig) and int(sig.value) == 1:
             return cycle + 1
-    raise AssertionError(
-        f"TIMEOUT {name}: still {sig.value} after {bound} clk_smc_i cycles"
-    )
-
+    raise AssertionError(f"TIMEOUT {name}: still {sig.value} after {bound} clk_smc_i cycles")
 
 
 def _check_i3c_counter_indexing(dut) -> None:
@@ -102,42 +98,43 @@ async def smc_dual_elaboration_test(_dut) -> None:
         sig = getattr(dut, name)
         assert _resolved(sig), f"{name} unresolvable after reset settle"
         assert int(sig.value) == 1, f"{name} still asserted (= {sig.value})"
-    cocotb.log.info(
-        "CHK-DUAL-RESET: dut/bfm rst_primary_smc_clk_no both deasserted"
-    )
+    cocotb.log.info("CHK-DUAL-RESET: dut/bfm rst_primary_smc_clk_no both deasserted")
 
     # eFuse sense + memory init on both sides. These are the two boot-sequencer
     # gates that would silently stall a firmware run.
     dut_fuse = await _wait_high(
-        "dut_fuse_sense_done", dut.dut_fuse_sense_done_o, dut.clk_smc_i,
+        "dut_fuse_sense_done",
+        dut.dut_fuse_sense_done_o,
+        dut.clk_smc_i,
         FUSE_SENSE_BOUND,
     )
     bfm_fuse = await _wait_high(
-        "bfm_fuse_sense_done", dut.bfm_fuse_sense_done_o, dut.clk_smc_i,
+        "bfm_fuse_sense_done",
+        dut.bfm_fuse_sense_done_o,
+        dut.clk_smc_i,
         FUSE_SENSE_BOUND,
     )
     cocotb.log.info(
-        "CHK-DUAL-FUSE-SENSE: dut done after %d cycles, bfm after %d cycles "
-        "(bound=%d)",
+        "CHK-DUAL-FUSE-SENSE: dut done after %d cycles, bfm after %d cycles (bound=%d)",
         dut_fuse,
         bfm_fuse,
         FUSE_SENSE_BOUND,
     )
 
-    # Memory init is gated by fuse_reset_n, which pad-57 boot_stall holds
-    # asserted (smc_cpu_wrapper.sv wires mem_init_reset_ni to fuse_reset_ni; the
-    # zeroing FSM in smc_4core_cpu.sv is reset by it). So while the probe holds
+    # Memory init is gated by fuse_reset_n, which boot_stall holds asserted
+    # (smc_cpu_wrapper.sv wires mem_init_reset_ni to fuse_reset_ni; the zeroing
+    # FSM in smc_4core_cpu.sv is reset by it). So while the probe holds
     # boot_stall on both instances, init_mem_done must still be LOW -- that is
-    # the boot-stall contract, and a 1 here would mean pad 57 is not reaching
-    # the reset path on this top.
+    # the boot-stall contract, and a 1 here would mean boot_stall is not
+    # reaching the reset path on this top.
     for name in ("dut_init_mem_done_o", "bfm_init_mem_done_o"):
         sig = getattr(dut, name)
         assert _resolved(sig) and int(sig.value) == 0, (
-            f"{name} = {sig.value} while boot_stall is held; pad 57 is not "
+            f"{name} = {sig.value} while boot_stall is held; boot_stall is not "
             "gating fuse_reset_n on this instance"
         )
     cocotb.log.info(
-        "CHK-DUAL-BOOT-STALL: init_mem_done low on both instances while pad 57 "
+        "CHK-DUAL-BOOT-STALL: init_mem_done low on both instances while "
         "boot_stall is held (fuse_reset_n gated)"
     )
 
