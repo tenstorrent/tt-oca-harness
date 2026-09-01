@@ -699,7 +699,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "ruff"
 version = "0.16.5"
 source = { registry = "https://pypi.org/simple" }
@@ -725,8 +724,6 @@ wheels = [
 ]
 
 [[package]]
-=======
->>>>>>> a613783c... [VP] Add the sepvp runner package and pytest harness plugin
 name = "scapy"
 version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
