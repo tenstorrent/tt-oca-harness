@@ -280,7 +280,8 @@ module smu_wrapper_uvm_top (
 `ifndef SMU_NO_SEP
     assign lcc_demote_state_1_o = u_dut.u_smu.lcc_demote_state_1_o;
     assign lcc_demote_state_2_o = u_dut.u_smu.lcc_demote_state_2_o;
-    assign lcc_feat_ctrl_o      = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_lifecycle_ctrl.feat_ctrl_o);
+    assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
+        .u_sep_lifecycle_ctrl.feat_ctrl_o);
     assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
     assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 `else
@@ -337,7 +338,7 @@ module smu_wrapper_uvm_top (
     // Lane 0's ACTUAL noise_i. With the force active this tracks the driven bit;
     // without it, it is whatever the RTL leaves there. A test compares the two so
     // "entropy flowed" cannot pass on a force that silently failed to take.
-    assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+    assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
         .u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator
         .u_decorrelator.noise_i;
 
@@ -346,9 +347,9 @@ module smu_wrapper_uvm_top (
     // at t=0 under Verilator and would hold that stale value. Explicit per-lane
     // indices because a genvar-indexed cross-hierarchy force is not allowed.
 `define SMU_ESRC_NOISE_FORCE(i)                                                \
-    force u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_entropy_source_s3c_scan       \
-        .u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i =  \
-        esrc_noise_d[i]
+    force u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng                      \
+        .u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[i]             \
+        .u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
     // Plain `always`: `force` is a procedural continuous override, so always_ff
     // semantics do not apply. No `release` is needed -- the force is plusarg
     // gated and each test is its own elaboration.
@@ -369,11 +370,11 @@ module smu_wrapper_uvm_top (
 `endif
 
 `ifndef SMU_NO_SEP
-    assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+    assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
-    assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+    assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_ack;
-    assign drbg_genbits_vld_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+    assign drbg_genbits_vld_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
     // Sticky capture. esrc_noise_took requires a driven 1 that the DUT node
     // actually shows: a match on 0 would also hold with the force absent.
