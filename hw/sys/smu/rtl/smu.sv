@@ -869,7 +869,9 @@ module smu #(
 
             .ext_boot_seq_done_i           (ext_boot_seq_done_i),
 
-            .dmi_core_enable               (1'b0),
+            // STAP access is already gated by lifecycle; the core DM AXI master
+            // reaches the SEP fabric, so the DMI uncore aperture is unused.
+            .dmi_core_enable               (1'b1),
             .dmi_uncore_enable             (1'b0),
             .dmi_uncore_en                 (/* unused */),
             .dmi_uncore_wr_en              (/* unused */),
@@ -884,6 +886,7 @@ module smu #(
 
             .jtag_id                       ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
 
+            // No external CLINT; EL2 internal timers drive mip.MTIP / mip.MSIP
             .timer_int                     (1'b0),
             .soft_int                      (1'b0),
             .extintsrc_req                 (sep_extintsrc_req_i),
