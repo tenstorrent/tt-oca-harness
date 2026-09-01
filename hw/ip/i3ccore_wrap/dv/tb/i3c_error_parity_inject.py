@@ -8,15 +8,16 @@ Scaffold for parity/CRC/frame error injection and error-status reporting.
 Compile-only: actual bit-flip injection needs an RTL force hook (see GAP
 TP-009); this runs a clean transfer then inspects the error-status path.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from i3c_test_base import make_env, bring_up_and_assign
+from i3c_test_base import bring_up_and_assign, make_env
 
 RESPONSE_PORT = 0x08C
 PIO_INTR_STATUS = 0x0A0
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_error_parity_inject(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)

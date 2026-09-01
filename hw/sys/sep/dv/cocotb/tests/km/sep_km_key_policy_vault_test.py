@@ -14,9 +14,8 @@ Result flags in KM SRAM word0 (the signed-off ``km_sram_word0_o`` probe).
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
 import pyuvm
-
+from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_vault_seq import (
     FLAG_DROP,
@@ -68,25 +67,23 @@ class sep_km_key_policy_vault_test(sep_base_test):
 
         _bit(FLAG_SLOT, "CHK-SLOT")
         self.logger.info(
-            "CHK-SLOT PASS: CTRL lock_write stuck on endpoints 0 and 63 plus seed slot")
-        _bit(FLAG_EXTENT, "CHK-EXTENT")
-        self.logger.info(
-            "CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
-        _bit(FLAG_DROP, "CHK-DROP")
-        self.logger.info(
-            "CHK-DROP PASS: locked SRAM write dropped (readback unchanged)")
-        _bit(FLAG_VIOL, "CHK-VIOL")
-        self.logger.info(
-            "CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION matching bit set")
-        _bit(FLAG_IRQ, "CHK-IRQ")
-        self.logger.info(
-            "CHK-IRQ PASS: IRQ_STATUS.SRAM_WRITE_LOCK_ERR set")
-        _bit(FLAG_W1C, "CHK-W1C")
-        self.logger.info(
-            "CHK-W1C PASS: violation and IRQ read back 0 after W1C")
-        assert word == cfg.expect, (
-            f"CHK-RANDCFG FAIL: word0=0x{word:08x} != 0x{cfg.expect:08x}"
+            "CHK-SLOT PASS: CTRL lock_write stuck on endpoints 0 and 63 plus seed slot"
         )
+        _bit(FLAG_EXTENT, "CHK-EXTENT")
+        self.logger.info("CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
+        _bit(FLAG_DROP, "CHK-DROP")
+        self.logger.info("CHK-DROP PASS: locked SRAM write dropped (readback unchanged)")
+        _bit(FLAG_VIOL, "CHK-VIOL")
+        self.logger.info("CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION matching bit set")
+        _bit(FLAG_IRQ, "CHK-IRQ")
+        self.logger.info("CHK-IRQ PASS: IRQ_STATUS.SRAM_WRITE_LOCK_ERR set")
+        _bit(FLAG_W1C, "CHK-W1C")
+        self.logger.info("CHK-W1C PASS: violation and IRQ read back 0 after W1C")
+        assert word == cfg.expect, f"CHK-RANDCFG FAIL: word0=0x{word:08x} != 0x{cfg.expect:08x}"
         self.logger.info(
             "CHK-RANDCFG PASS: slot=%d region=%d from seed %d word0=0x%08x",
-            cfg.slot, cfg.region, cfg.seed, word)
+            cfg.slot,
+            cfg.region,
+            cfg.seed,
+            word,
+        )

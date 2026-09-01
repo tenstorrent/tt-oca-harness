@@ -44,17 +44,15 @@ OSS deltas (documented): real PROD-sense replaces the reference suite's backdoor
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import os
 from pathlib import Path
 
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
-from sep_base_test import sep_base_test
 from env.sep_lcc_golden import LC_PROD
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "efuse_jtag_el2_mux_test")
@@ -63,8 +61,8 @@ _DTCM_HEX = os.path.join(_FW_DIR, "efuse_jtag_el2_mux_test.dtcm.hex")
 
 _ICCM_BASE = 0xC000_0000
 # eFuse addresses reachable on the JTAG AXI-Lite port.
-_EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")   # shadow map -> DENIED to JTAG at PROD
-_EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")    # MMR token region -> ALLOWED
+_EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")  # shadow map -> DENIED to JTAG at PROD
+_EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")  # MMR token region -> ALLOWED
 _EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
 # Token-block members beyond the two RMA TOKEN_I words already walked above.
 _EFUSE_MMR_SEC_DIS_I0 = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
@@ -137,10 +135,12 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             if not os.path.isfile(src):
                 raise FileNotFoundError(f"firmware image not found: {src} (build it first)")
             import shutil
+
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
 
         async def _load_tcm() -> None:
             from cocotb.triggers import ClockCycles
+
             dut.tcm_load_i.value = 1
             await ClockCycles(dut.clk_i, 4)
             dut.tcm_load_i.value = 0
@@ -151,12 +151,14 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         assert await self._wait_ready(), "EL2 never published CPU_READY (eFuse loop not running)"
         assert self._scratch(_SCRATCH_ERR) == 0, (
             f"CPU eFuse MMR read error count nonzero before JTAG burst: "
-            f"{self._scratch(_SCRATCH_ERR)}")
+            f"{self._scratch(_SCRATCH_ERR)}"
+        )
         ready_count = self._scratch(_SCRATCH_COUNT)
         cnt_before = await self._wait_count_gt(ready_count)
         assert cnt_before is not None, (
             f"EL2 published CPU_READY but eFuse loop counter did not advance "
-            f"from {ready_count} before the JTAG burst")
+            f"from {ready_count} before the JTAG burst"
+        )
 
         # --- JTAG MMR ops, concurrent with the CPU loop: all allowed (OKAY) ---
         cnt_after = cnt_before
@@ -166,19 +168,21 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             assert code == 0, f"JTAG MMR token1 read {i} not OKAY (resp={code})"
             token3_value = 0xE905_5000 | i
             code, _ = await self.jtag_axil_op(
-                write=True, addr=_EFUSE_MMR_TOKEN3, wdata=token3_value)
+                write=True, addr=_EFUSE_MMR_TOKEN3, wdata=token3_value
+            )
             assert code == 0, f"JTAG MMR token3 write {i} not OKAY (resp={code})"
             code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_TOKEN3)
             assert code == 0, f"JTAG MMR token3 readback {i} not OKAY (resp={code})"
             assert rdata == token3_value, (
-                f"JTAG MMR token3 readback {i} got 0x{rdata:08x}, "
-                f"expected 0x{token3_value:08x}")
+                f"JTAG MMR token3 readback {i} got 0x{rdata:08x}, expected 0x{token3_value:08x}"
+            )
             rounds = i + 1
             cnt_after = self._scratch(_SCRATCH_COUNT)
             if rounds >= _JTAG_MIN_ROUNDS and cnt_after > cnt_before:
                 break
         self.logger.info(
-            "CHK-JTAG-MMR PASS: %d JTAG MMR rounds all OKAY (mux reached eFuse)", rounds)
+            "CHK-JTAG-MMR PASS: %d JTAG MMR rounds all OKAY (mux reached eFuse)", rounds
+        )
 
         # --- LC-gated: shadow read DENIED at PROD. The RTL routes it to the JTAG
         # err-slave, which returns the SPECIFIC DECERR (resp=3) + data 0xbadcab1e;
@@ -186,12 +190,15 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_SHADOW_BASE)
         assert code == _RESP_DECERR, (
             f"JTAG shadow read at PROD must be DENIED with DECERR (resp={_RESP_DECERR}), "
-            f"got resp={code} rdata=0x{rdata:08x}")
-        assert rdata == _BADCAB1E, (
-            f"JTAG denied-read data 0x{rdata:08x} != 0x{_BADCAB1E:08x}")
+            f"got resp={code} rdata=0x{rdata:08x}"
+        )
+        assert rdata == _BADCAB1E, f"JTAG denied-read data 0x{rdata:08x} != 0x{_BADCAB1E:08x}"
         self.logger.info(
             "CHK-JTAG-DENY PASS: JTAG shadow read @0x%08x denied with DECERR (resp=%d, rdata=0x%08x)",
-            _EFUSE_SHADOW_BASE, code, rdata)
+            _EFUSE_SHADOW_BASE,
+            code,
+            rdata,
+        )
 
         # --- MMR still allowed in the restricted state ---
         code, _ = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_TOKEN1)
@@ -201,10 +208,14 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         # --- CPU progressed concurrently with the JTAG burst ---
         assert cnt_after > cnt_before, (
             f"CPU eFuse loop did not advance during JTAG burst "
-            f"(before={cnt_before}, after={cnt_after}) -- mux starved the CPU")
+            f"(before={cnt_before}, after={cnt_after}) -- mux starved the CPU"
+        )
         self.logger.info(
             "CHK-COEXIST PASS: CPU loop advanced %d->%d during %d JTAG MMR rounds",
-            cnt_before, cnt_after, rounds)
+            cnt_before,
+            cnt_after,
+            rounds,
+        )
         cpu_err = self._scratch(_SCRATCH_ERR)
         assert cpu_err == 0, f"CPU eFuse MMR read error count nonzero after JTAG burst: {cpu_err}"
         self.logger.info("CHK-CPU-MMR PASS: CPU eFuse MMR read error count stayed zero")
@@ -238,7 +249,9 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         self.logger.info(
             "CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x%08x denied "
             "with DECERR (resp=%d, rdata=0x%08x)",
-            _EFUSE_IFACE_PROGRAM, code, rdata,
+            _EFUSE_IFACE_PROGRAM,
+            code,
+            rdata,
         )
 
         self.logger.info("SEP eFuse JTAG/EL2 mux test PASS")

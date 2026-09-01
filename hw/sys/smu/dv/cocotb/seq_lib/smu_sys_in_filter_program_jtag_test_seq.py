@@ -77,21 +77,15 @@ class smu_sys_in_filter_program_jtag_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         self._log(f"CHK-FILTER-PROG-GATE-OPEN disable={gate}")
         sb.expect_eq("CHK-FILTER-PROG-GATE-OPEN", gate, 0)
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
         pre_data, pre_resp = await await_smn_resp(
             master,
             VERSION_LO,
@@ -105,40 +99,27 @@ class smu_sys_in_filter_program_jtag_test_seq:
                 f"got 0x{int(pre_data) & 0xFFFF_FFFF:08x}"
             )
         self.s2_ok = True
-        self._log(
-            f"CHK-FILTER-PROG-PRE-DECERR data=0x{int(pre_data) & 0xFFFF_FFFF:08x}"
-        )
+        self._log(f"CHK-FILTER-PROG-PRE-DECERR data=0x{int(pre_data) & 0xFFFF_FFFF:08x}")
         sb.expect_eq("CHK-FILTER-PROG-PRE-DECERR", pre_resp, RESP_DECERR)
 
-        await program_inbound0_window(
-            jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="PROG"
-        )
+        await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="PROG")
         cfg_rb = await inbound0_config_readback(jtag)
         if cfg_rb != (PASS_RW_CONFIG & 0xFFFF_FFFF):
             raise AssertionError(
                 f"INBOUND0_CONFIG readback want 0x{PASS_RW_CONFIG:x} got 0x{cfg_rb:x}"
             )
-        st_s, start_rb = await jtag2axi_single_read(
-            jtag, INBOUND0_START, require_complete=True
-        )
+        st_s, start_rb = await jtag2axi_single_read(jtag, INBOUND0_START, require_complete=True)
         require_jtag_tdo_resolved("INBOUND0_START readback")
-        st_e, end_rb = await jtag2axi_single_read(
-            jtag, INBOUND0_END, require_complete=True
-        )
+        st_e, end_rb = await jtag2axi_single_read(jtag, INBOUND0_END, require_complete=True)
         require_jtag_tdo_resolved("INBOUND0_END readback")
         if st_s != J2A_STATUS_SUCCESS or int(start_rb) != page_lo:
             raise AssertionError(
                 f"START rb status={st_s} data=0x{int(start_rb):x} want 0x{page_lo:x}"
             )
         if st_e != J2A_STATUS_SUCCESS or int(end_rb) != page_hi:
-            raise AssertionError(
-                f"END rb status={st_e} data=0x{int(end_rb):x} want 0x{page_hi:x}"
-            )
+            raise AssertionError(f"END rb status={st_e} data=0x{int(end_rb):x} want 0x{page_hi:x}")
         self.s3_ok = True
-        self._log(
-            f"CHK-FILTER-PROG-WINDOW cfg=0x{cfg_rb:x} "
-            f"page=[0x{page_lo:08x},0x{page_hi:08x}]"
-        )
+        self._log(f"CHK-FILTER-PROG-WINDOW cfg=0x{cfg_rb:x} page=[0x{page_lo:08x},0x{page_hi:08x}]")
         sb.expect_eq("CHK-FILTER-PROG-WINDOW", cfg_rb, PASS_RW_CONFIG & 0xFFFF_FFFF)
 
         post_data, post_resp = await await_smn_resp(
@@ -154,9 +135,7 @@ class smu_sys_in_filter_program_jtag_test_seq:
                 f"want 0x{VERSION_LO_RESET:08x}"
             )
         self.s4_ok = True
-        self._log(
-            f"AXI_FILTER_OKAY post VERSION_LO data=0x{int(post_data) & 0xFFFF_FFFF:08x}"
-        )
+        self._log(f"AXI_FILTER_OKAY post VERSION_LO data=0x{int(post_data) & 0xFFFF_FFFF:08x}")
         sb.expect_eq(
             "CHK-AXI-FILTER-OKAY post VERSION_LO",
             post_resp,
@@ -177,7 +156,5 @@ class smu_sys_in_filter_program_jtag_test_seq:
                 f"got 0x{int(out_data) & 0xFFFF_FFFF:08x}"
             )
         self.s5_ok = True
-        self._log(
-            f"CHK-FILTER-PROG-OUT-DECERR WDT poison=0x{int(out_data) & 0xFFFF_FFFF:08x}"
-        )
+        self._log(f"CHK-FILTER-PROG-OUT-DECERR WDT poison=0x{int(out_data) & 0xFFFF_FFFF:08x}")
         sb.expect_eq("CHK-FILTER-PROG-OUT-DECERR", out_resp, RESP_DECERR)

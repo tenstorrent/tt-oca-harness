@@ -36,8 +36,7 @@ class smu_base_test(uvm_test):
         seed = self.random_seed()
         self.cfg.randomize_timing(seed)
         self.logger.info(
-            "SMU timing: ref=%dns smu=%dns periph=%dns jtag=%dns "
-            "idle_tck=%d settle=%d (seed=%d)",
+            "SMU timing: ref=%dns smu=%dns periph=%dns jtag=%dns idle_tck=%d settle=%d (seed=%d)",
             self.cfg.ref_clk_period_ns,
             self.cfg.smu_clk_period_ns,
             self.cfg.periph_clk_period_ns,
@@ -70,12 +69,8 @@ class smu_base_test(uvm_test):
         dut = cocotb.top
         # Must schedule Clock.start() - bare .start() returns an unawaited coroutine
         # and leaves all clocks dead (sim never advances; premature shutdown).
-        cocotb.start_soon(
-            Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(
-            Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(
             Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
         )
@@ -115,8 +110,11 @@ class smu_base_test(uvm_test):
             pass
         # Idle AXI
         for name in (
-            "s_axi_awvalid", "s_axi_wvalid", "s_axi_bready",
-            "s_axi_arvalid", "s_axi_rready",
+            "s_axi_awvalid",
+            "s_axi_wvalid",
+            "s_axi_bready",
+            "s_axi_arvalid",
+            "s_axi_rready",
         ):
             getattr(dut, name).value = 0
         dut.s_axi_awid.value = 0
@@ -171,10 +169,7 @@ class smu_base_test(uvm_test):
             name="rst_primary_smc_clk_no",
         )
         self.cfg.reset_done.set()
-        self.logger.info(
-            "SMU bring-up complete (powergood + cold/primary resets released)"
-        )
-
+        self.logger.info("SMU bring-up complete (powergood + cold/primary resets released)")
 
     async def run_scenario(self) -> None:
         raise NotImplementedError("concrete SMU tests must implement run_scenario()")

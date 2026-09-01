@@ -30,8 +30,7 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
             await RisingEdge(dut.clk_ref_i)
         c1 = await self.csr_read("REF_COUNT_1", REF_COUNT, length=8)
         assert c1 > c0, (
-            f"REFERENCE_COUNTER did not advance: 0x{c0:x} -> 0x{c1:x} "
-            f"after {_REF_WAIT} ref clocks"
+            f"REFERENCE_COUNTER did not advance: 0x{c0:x} -> 0x{c1:x} after {_REF_WAIT} ref clocks"
         )
         self.advance_ok = True
         cocotb.log.info(

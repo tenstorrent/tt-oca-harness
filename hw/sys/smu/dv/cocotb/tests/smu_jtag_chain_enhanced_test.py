@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_jtag_chain_enhanced_test_seq import smu_jtag_chain_enhanced_test_seq
 from smu_base_test import smu_base_test
 
@@ -16,8 +15,7 @@ class smu_jtag_chain_enhanced_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_jtag_chain_enhanced_test "
-            "TierC DTP-JTAG-CHAIN-ENHANCED SEP=0 JTAG"
+            "DUT_TAG=BARE smu_jtag_chain_enhanced_test TierC DTP-JTAG-CHAIN-ENHANCED SEP=0 JTAG"
         )
         seq = smu_jtag_chain_enhanced_test_seq(self)
         await seq.run()

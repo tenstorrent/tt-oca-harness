@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_i2c_p0_stretch_test_seq import smc_i2c_p0_stretch_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -27,7 +27,5 @@ class smc_i2c_p0_stretch_test(smc_base_test):
             type(self).__name__,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(
-                f"TX_PENDING stretch={seq.stretch_ok} read={seq.read_ok}"
-            ),
+            details=(f"TX_PENDING stretch={seq.stretch_ok} read={seq.read_ok}"),
         )

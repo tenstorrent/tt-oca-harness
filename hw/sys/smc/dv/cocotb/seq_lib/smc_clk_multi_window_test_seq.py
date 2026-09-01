@@ -6,19 +6,17 @@ DV-CARD: SMC_CLK_MULTI_WINDOW_TEST ANCHOR: smc_clk_multi_window_test
 
 from __future__ import annotations
 
+import logging
 import os
 import random
 
-import logging
-
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
 
 _LOG = logging.getLogger(__name__)
 
@@ -52,6 +50,7 @@ def _seeded_hyst_windows(seed: int) -> tuple[int, int, int, list[int]]:
     hyst_min, hyst_mid, hyst_max = ordered[0], ordered[len(ordered) // 2], ordered[-1]
     extras = [h for h in ordered if h not in (hyst_min, hyst_mid, hyst_max)]
     return hyst_min, hyst_mid, hyst_max, extras
+
 
 DMA_SRC_ADDR = 0x0200_0000
 DMA_DST_ADDR = 0x0200_0100
@@ -124,15 +123,11 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         await self.csr_write(
             "DMA_DST_ADDRESS_LO", cg.DMA_CTRL_DST_ADDRESS_LO, DMA_DST_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_DST_ADDRESS_HI", cg.DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32
-        )
+        await self.csr_write("DMA_DST_ADDRESS_HI", cg.DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32)
         await self.csr_write(
             "DMA_SRC_ADDRESS_LO", cg.DMA_CTRL_SRC_ADDRESS_LO, DMA_SRC_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_SRC_ADDRESS_HI", cg.DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32
-        )
+        await self.csr_write("DMA_SRC_ADDRESS_HI", cg.DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32)
         await self.csr_write("DMA_LENGTH_LO", cg.DMA_CTRL_LENGTH_LO, len(DMA_PAYLOAD))
         await self.csr_write("DMA_LENGTH_HI", cg.DMA_CTRL_LENGTH_HI, 0)
         await self.csr_write("DMA_DST_STRIDE_LO", cg.DMA_CTRL_DST_STRIDE_LO, 0)
@@ -272,9 +267,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         self.measured[cell] = delay
         self.required_cells_hit.append(cell)
         cg.mark_fence(self.fence, fence_term)
-        _LOG.info(
-            "WINDOW %s hyst=%d measured_delay=%d cell=%s", step_id, hyst, delay, cell
-        )
+        _LOG.info("WINDOW %s hyst=%d measured_delay=%d cell=%s", step_id, hyst, delay, cell)
         return delay
 
     async def body(self) -> None:
@@ -346,8 +339,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
-            "CHK-NONVAC: low-window-measured < mid-window-measured < "
-            "high-window-measured < PASS",
+            "CHK-NONVAC: low-window-measured < mid-window-measured < high-window-measured < PASS",
         )
         cg.mark_fence(self.fence, "PASS")
         _LOG.info("smc_clk_multi_window_test_seq PASS")

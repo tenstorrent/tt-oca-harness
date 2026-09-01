@@ -17,14 +17,23 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
-    AP_BASE, FILTER_CONFIG, FILTER_STRIDE, F_ALLOW_NS, F_ENTRY_ENABLED,
-    F_READ_ALLOWED, F_SRC_ID_LSB, F_WRITE_ALLOWED, OUTFILT_BASE, REMAP_STRIDE,
+    AP_BASE,
+    F_ALLOW_NS,
+    F_ENTRY_ENABLED,
+    F_READ_ALLOWED,
+    F_SRC_ID_LSB,
+    F_WRITE_ALLOWED,
+    FILTER_CONFIG,
+    FILTER_STRIDE,
+    OUTFILT_BASE,
+    REMAP_STRIDE,
     STEE_BASE,
 )
-from sep_reg_meta import sym
 
 # och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
 AP_REGION_BASE = 0x1100_0000
@@ -71,8 +80,7 @@ class SepOutboundRemapCfg:
         self.offset = REMAP_TARGET_BASE
         self.access_addr = remap_access_addr(self.region_base, self.region, self.intra)
         self.expect_addr = remapped_addr(self.offset, self.intra)
-        self.forbidden_addr = remap_access_addr(
-            self.region_base, self.forbidden_region, self.intra)
+        self.forbidden_addr = remap_access_addr(self.region_base, self.forbidden_region, self.intra)
         self.forbidden_expect = remapped_addr(0, self.intra)
         if self.expect_addr == self.access_addr:
             raise RuntimeError("remap target equals identity -- vacuous")
@@ -112,8 +120,7 @@ class SepOutboundRemap(SepAxiRegDriver):
         await self._wr(ebase + FILTER_END_ADDR, cfg.expect_addr)
         await self._wr(ebase + FILTER_END_ADDR + 4, 0)
         cfg_lo = (
-            F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED | F_ALLOW_NS
-            | (0 << F_SRC_ID_LSB)
+            F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED | F_ALLOW_NS | (0 << F_SRC_ID_LSB)
         )
         await self._wr(ebase + FILTER_CONFIG, cfg_lo)
 
@@ -121,7 +128,11 @@ class SepOutboundRemap(SepAxiRegDriver):
 def remap_probe_seq(addr: int, *, expect_error: bool) -> SepAxiAccessSeq:
     """32-bit CPU-LSU read of an AP/STEE window address."""
     return SepAxiAccessSeq(
-        "outremap_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2,
+        "outremap_rd",
+        op=SepAxiOp.READ,
+        addr=addr,
+        length=4,
+        size=2,
         expect_error=expect_error,
     )
 

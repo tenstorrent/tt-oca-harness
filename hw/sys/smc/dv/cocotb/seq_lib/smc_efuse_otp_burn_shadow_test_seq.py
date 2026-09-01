@@ -21,12 +21,8 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-EFUSE_STATUS = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
-)
-EFUSE_PROGRAM_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
-)
+EFUSE_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 
 OTP_WORD0_MARKER = 0xA5A55A5A
@@ -76,8 +72,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         # store). After sense, programmed_word0 mirrors the preload marker.
         prog0 = int(dut.tb_efuse_programmed_word0.value)
         assert prog0 == OTP_WORD0_MARKER, (
-            f"programmed_word0 expected preload marker 0x{OTP_WORD0_MARKER:08x}, "
-            f"got 0x{prog0:08x}"
+            f"programmed_word0 expected preload marker 0x{OTP_WORD0_MARKER:08x}, got 0x{prog0:08x}"
         )
 
         # First PROGRAM (bit2 is clear in A5A55A5A): fail-inject must not sticky-OR.
@@ -97,9 +92,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
             prog_fail,
             (st_fail >> 26) & 1,
         )
-        assert prog_fail == OTP_WORD0_MARKER, (
-            "program-fail inject must not sticky-OR OTP bits"
-        )
+        assert prog_fail == OTP_WORD0_MARKER, "program-fail inject must not sticky-OR OTP bits"
         assert (st_fail >> 26) & 1, "program_status expected 1 on injected fail"
 
         # Second PROGRAM (bit0 is clear in A5A55A5A): success sticky-OR.
@@ -116,9 +109,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
             prog_ok,
         )
         assert (prog_ok & 1) == 1, "sticky-OR burn did not set bit0"
-        assert prog_ok == (OTP_WORD0_MARKER | 1), (
-            f"sticky-OR burn unexpected: got 0x{prog_ok:08x}"
-        )
+        assert prog_ok == (OTP_WORD0_MARKER | 1), f"sticky-OR burn unexpected: got 0x{prog_ok:08x}"
 
         status = await self.csr_read("EFUSE_STATUS", EFUSE_STATUS)
         cocotb.log.info("EFUSE_STATUS=0x%08x", status)

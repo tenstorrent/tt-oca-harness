@@ -14,11 +14,18 @@ class dtp_jtag_sample_preload_test_seq(dtp_jtag_base_test_seq):
 
     async def body(self) -> None:
         await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK", "CHK-SCAN-COUNT", "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN", "CHK-NONVAC"},
+            {
+                "CHK-TAP-RESET-TLR",
+                "CHK-IR-DECODE",
+                "CHK-BSR-LOOPBACK",
+                "CHK-SCAN-COUNT",
+                "CHK-SCAN-IR-LEN",
+                "CHK-SCAN-DR-LEN",
+                "CHK-NONVAC",
+            },
         )
         await self.reset_to_tlr()
         await self.check_loopback_patterns(DtpJtagInstr.SAMPLE_PRELOAD)
         await self.load_ir(DtpJtagInstr.BYPASS_3F)
         await self.check_loopback_scan(DtpJtagInstr.SAMPLE_PRELOAD, 0x3C)
         await self.finalize_family_checker()
-
