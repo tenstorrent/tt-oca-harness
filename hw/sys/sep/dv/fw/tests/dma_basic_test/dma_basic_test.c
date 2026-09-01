@@ -283,6 +283,33 @@ static int chk_range_regwen(void) {
     }
     wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear the error
 
+    // (a2) An inverted range: limit below base raises base_limit_error. This has
+    // to run here, while the range registers are still writable -- RANGE_REGWEN
+    // below is rw0c and one-way until reset, so after it latches, a write to
+    // BASE or LIMIT is rejected and the range stays whatever was locked in.
+    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00002000u);
+    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0x00001000u);
+    wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
+    st = dma_run(src_base, dst_base, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
+                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!(st & SECURE_DMA__STATUS__ERROR_bm) ||
+        !(err & SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm)) {
+        sep_mbx_puts("FAIL: CHK-RANGE-REGWEN limit below base did not raise "
+                     "base_limit_error (status ");
+        sep_mbx_puthex(st);
+        sep_mbx_puts(" err ");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(")\n");
+        e++;
+    }
+    if (st & SECURE_DMA__STATUS__DONE_bm) {
+        sep_mbx_puts("FAIL: CHK-RANGE-REGWEN inverted range set STATUS.done\n");
+        e++;
+    }
+    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+
     // (b) Program a full valid range, then lock it via RANGE_REGWEN rw0c.
     // Positive control first: write a NON-reset value and prove it lands. Otherwise the
     // post-lock "still reads the old value" check below is satisfied identically by a
@@ -505,27 +532,22 @@ static int chk_err_addr(void) {
     int e = 0;
     struct {
         const char *name;
-        uint32_t src, dst, width, range_base, range_limit, want;
+        uint32_t src, dst, width, want;
     } cells[] = {
         // 4-byte width demands src_addr[1:0] == 0 (secure_dma.sv: DmaSrcAddrErr).
         {"src misaligned for 4B", src_base + 1u, dst_base, SEP_DMA_WIDTH_4B,
-         0x0u, 0xFFFFFFFFu, SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
+         SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
         // and dst_addr[1:0] == 0 (DmaDstAddrErr).
         {"dst misaligned for 4B", src_base, dst_base + 2u, SEP_DMA_WIDTH_4B,
-         0x0u, 0xFFFFFFFFu, SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm},
+         SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm},
         // 2-byte width demands bit 0 clear on both.
         {"src misaligned for 2B", src_base + 1u, dst_base, SEP_DMA_WIDTH_2B,
-         0x0u, 0xFFFFFFFFu, SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
-        // An inverted enabled-memory range: limit below base (DmaBaseLimitErr).
-        {"range limit below base", src_base, dst_base, SEP_DMA_WIDTH_4B,
-         0x2000u, 0x1000u, SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm},
+         SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
     };
     const uint32_t ncells = (uint32_t)(sizeof(cells) / sizeof(cells[0]));
     const uint32_t nwords = copy_bytes / 4u;
 
     for (uint32_t c = 0; c < ncells; c++) {
-        wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, cells[c].range_base);
-        wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, cells[c].range_limit);
         uint32_t st = dma_run(cells[c].src, cells[c].dst, copy_bytes, copy_bytes,
                               cells[c].width, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
@@ -551,9 +573,9 @@ static int chk_err_addr(void) {
         wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     }
 
-    // Restore a permissive range and prove the engine still copies.
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0u);
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    // Prove the engine still copies after the refusals. The range registers are
+    // locked by now, so they are left alone; the inverted-range leg lives in
+    // CHK-RANGE-REGWEN, which runs while they are still writable.
     uint32_t snap[MAX_COPY_WORDS];
     fill_src_words(nwords, snap);
     clear_dst_words(nwords + 1, 0xA5A5A5A5u);
@@ -577,7 +599,7 @@ static int chk_err_addr(void) {
         }
     }
     if (!e) {
-        sep_mbx_puts("CHK-ERR-ADDR PASS: 4 address/range violations each raised their "
+        sep_mbx_puts("CHK-ERR-ADDR PASS: 3 misaligned descriptors each raised their "
                      "own ERROR_CODE bit exclusively, none set STATUS.done, and the "
                      "engine copied correctly afterwards\n");
     }

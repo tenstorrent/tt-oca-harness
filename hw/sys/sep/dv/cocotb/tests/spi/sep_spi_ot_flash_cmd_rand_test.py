@@ -145,8 +145,9 @@ class SepSpiFlashCmdCfg:
         0x9F,
     ]
 
-    # Index into EXPECTED_OPS of the PAGE PROGRAM issued with WEL clear.
-    WP_PP_IDX = 17
+    # Which PAGE PROGRAM in device order is the one issued with WEL clear: the
+    # functional program is first, the neighbour second, this one third.
+    WP_PP_NTH = 3
 
     @property
     def neigh_addr(self) -> int:
@@ -299,7 +300,17 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         # The write-protect PAGE PROGRAM: the device must have taken NO payload
         # from it. A device that accepted the program records the data bytes here
         # (and the memory check below would then see the pattern, not 0xFF).
-        wp_pp = txns[self.WP_PP_IDX]
+        # Locate it by position among the PAGE PROGRAMs rather than by a fixed
+        # index into every transaction: an added or reordered command elsewhere
+        # in the walk would silently move a raw index onto a different opcode.
+        pp_txns = [t for t in txns if t.get("opcode") == 0x02]
+        if len(pp_txns) < self.WP_PP_NTH:
+            raise AssertionError(
+                f"SPI flash command breadth golden: expected at least "
+                f"{self.WP_PP_NTH} PAGE PROGRAM transaction(s) at the device, "
+                f"saw {len(pp_txns)}"
+            )
+        wp_pp = pp_txns[self.WP_PP_NTH - 1]
         wp_taken = bytes(wp_pp.get("data_in") or b"")
         if wp_taken:
             self.logger.error(
@@ -338,8 +349,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 "SPI flash command breadth golden: sector erase wiped the neighbour"
             )
         self.logger.info(
-            "CHK-WP-PP/BFM PASS: the WEL-clear PAGE PROGRAM took no payload and left "
-            "0x%06x erased",
+            "CHK-WP-PP/BFM PASS: the WEL-clear PAGE PROGRAM took no payload and left 0x%06x erased",
             cfg.addr,
         )
         self.logger.info(
