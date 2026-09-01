@@ -1504,14 +1504,18 @@ class TestbenchCommandHandler:
             self.dut.tb_km_arvalid.value = 1
             await RisingEdge(self.dut.clk)
             ar_done = int(self.dut.tb_km_arready.value) == 1
+            fifo_clr = int(self.dut.tb_km_fifo_clr.value)
+            inbound_empty = int(self.dut.u_key_manager.u_mailbox.inbound_empty.value)
             self.dut._log.info(
                 f"[TB CMD] KM READ_DATA AR handshake={ar_done} "
-                f"clr={int(self.dut.tb_km_fifo_clr.value)} "
-                f"empty={int(self.dut.u_key_manager.u_mailbox.inbound_empty.value)}"
+                f"clr={fifo_clr} empty={inbound_empty}"
             )
             if not ar_done:
                 self.dut._log.error("[TB CMD] KM READ_DATA AR did not handshake on flush cycle")
                 raise TimeoutError("KM READ_DATA AR handshake")
+            if fifo_clr != 1:
+                self.dut._log.error("[TB CMD] KM READ_DATA AR handshake was not on fifo_clr")
+                raise TimeoutError("KM READ_DATA AR missed flush cycle")
 
             self.dut.tb_km_arvalid.value = 0
             self.dut.tb_km_rready.value = 1
