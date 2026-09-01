@@ -3217,7 +3217,7 @@ feature credit. Closing the isolation claim needs both a run mode where
 |CHK-STORAGE
 |The implemented bit writes and reads back in both directions.
 |CHK-STUB-CONST
-|AES STATUS, HMAC INTR_STATE, OTBN STATUS, and SW_DEBUG still complete OKAY with `pka_cg_enable` 0 and 1. The bit does not gate those IPs.
+|AES STATUS, HMAC INTR_STATE, OTBN STATUS and SW_DEBUG read the *same value* with `pka_cg_enable` set and clear, not merely OKAY on both: the first read of each witness is kept and the second, taken with the bit flipped, must match it. A witness whose value moved with the enable would answer OKAY either way, so completing the access is not the contract. Bound: these CSRs are constant in this build, so the compare catches an enable that perturbs them and cannot by itself distinguish "the bit gates nothing" from "these witnesses never change".
 |===
 *Scope limit*: the implemented contract is the designer placeholder, not a live
 per-IP clock gate.

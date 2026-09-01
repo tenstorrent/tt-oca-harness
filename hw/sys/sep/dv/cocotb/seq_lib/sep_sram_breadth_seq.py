@@ -52,8 +52,9 @@ _REQUIRED_PATTERNS = [
 # Floors the test asserts, so a generator or list that shrank fails the run
 # rather than reporting a clean pass over fewer cells.
 CONTIGUOUS_WSTRB_SPECS = 36  # 8 one-hot + 28 multi-byte runs on an 8-byte lane
-MIN_SEQ_WORDS = 4
-N_REQUIRED_PATTERNS = len(_REQUIRED_PATTERNS)
+SEQ_WORD_FLOOR = 4  # the window must confirm at least this many words
+PATTERN_FLOOR = 6  # literal, not len(_REQUIRED_PATTERNS): a floor derived
+# from the list it guards moves with every edit
 
 
 def _contiguous_wstrb_specs() -> list[tuple[int, int]]:

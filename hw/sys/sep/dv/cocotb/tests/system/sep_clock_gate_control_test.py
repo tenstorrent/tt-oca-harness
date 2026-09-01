@@ -77,10 +77,11 @@ class sep_clock_gate_control_test(sep_base_test):
             )
 
         # Both polarities must have run, or the compare above never happened.
-        assert set(cfg.enables) >= {0, 1} and len(seen) == len(cfg.witnesses), (
-            f"CHK-STUB-CONST FAIL: {len(seen)} witness(es) of "
-            f"{len(cfg.witnesses)} seen over enables {list(cfg.enables)}; the "
-            f"set-versus-clear compare needs every witness on both polarities"
+        # Only the polarity half is a guard: len(seen) tracks the same witness
+        # tuple the walk iterates, so it cannot disagree.
+        assert set(cfg.enables) >= {0, 1}, (
+            f"CHK-STUB-CONST FAIL: walked enables {list(cfg.enables)}; the "
+            f"set-versus-clear compare needs the bit both set and clear"
         )
         self.logger.info(
             "CHK-STUB-CONST PASS: %d witness(es) read the same value with "

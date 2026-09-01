@@ -43,8 +43,8 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_sram_breadth_seq import (
     CONTIGUOUS_WSTRB_SPECS,
-    MIN_SEQ_WORDS,
-    N_REQUIRED_PATTERNS,
+    PATTERN_FLOOR,
+    SEQ_WORD_FLOOR,
     SepSramBreadth,
     SepSramBreadthCfg,
 )
@@ -103,16 +103,18 @@ class sep_sram_datapath_breadth_test(sep_base_test):
     async def _chk_pattern(self) -> None:
         cfg = self.scfg
         addr = cfg.base_addr + cfg.pattern_offset
+        verified = 0
         for p in cfg.pattern_values:
             await self.sram.write(addr, p, length=8)
             rb = await self.sram.read(addr, length=8)
             assert rb == p, f"CHK-PATTERN 0x{p:016x} readback 0x{rb:016x}"
-        # The required patterns are the directed half of this axis; seeded
-        # extras are added on top, so the count is a floor rather than an
-        # equality.
-        assert len(cfg.pattern_values) >= N_REQUIRED_PATTERNS, (
-            f"CHK-PATTERN FAIL: walked {len(cfg.pattern_values)} pattern(s), "
-            f"below the {N_REQUIRED_PATTERNS} the directed set requires"
+            verified += 1
+        # Count what the DUT actually returned a matching readback for, against a
+        # literal. Comparing the configured length against a constant derived
+        # from the same list would move with any edit and could not fail.
+        assert verified >= PATTERN_FLOOR, (
+            f"CHK-PATTERN FAIL: {verified} pattern(s) verified against the DUT, "
+            f"below the floor of {PATTERN_FLOOR}"
         )
         self.logger.info(
             "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x",
@@ -142,12 +144,16 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         ]
         for i, w in enumerate(words):
             await self.sram.write(addr0 + 8 * i, w, length=8)
+        verified = 0
         for i, w in enumerate(words):
             rb = await self.sram.read(addr0 + 8 * i, length=8)
             assert rb == w, f"CHK-SEQ word {i} @0x{addr0 + 8 * i:08x} 0x{rb:016x} != 0x{w:016x}"
-        assert cfg.seq_words >= MIN_SEQ_WORDS, (
-            f"CHK-SEQ FAIL: {cfg.seq_words} consecutive word(s), below the "
-            f"{MIN_SEQ_WORDS} the window requires"
+            verified += 1
+        # The count the DUT confirmed, against a literal. Asserting the
+        # configured seq_words against its own randrange lower bound cannot fail.
+        assert verified >= SEQ_WORD_FLOOR, (
+            f"CHK-SEQ FAIL: {verified} consecutive word(s) verified, below the "
+            f"floor of {SEQ_WORD_FLOOR}"
         )
         self.logger.info(
             "CHK-SEQ PASS: %d consecutive single-beat 64-bit words write->read match @0x%08x",
