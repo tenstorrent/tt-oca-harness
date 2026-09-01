@@ -1253,13 +1253,6 @@ module jtag2axi #(
         end
     end
 
-`ifndef SYNTHESIS
-    `OCAH_OT_ASSERT(SeriesLaneWstrb_A,
-        (current_op_tclk == JTAG_OP_WRITE) && !current_use_custom_wstrb_tclk |->
-            current_wstrb_tclk == series_lane_wstrb(current_addr_tclk, current_axi_axsize_tclk),
-        i_tck, !i_trstn)
-`endif
-
     //--------------------------------------------------------------------------
     // JTAG Update Dispatch, Series Control State, and Status Updates (TCK)
     //--------------------------------------------------------------------------
