@@ -211,7 +211,13 @@ jobs:
         with:
           log-file: lint_mypy.log
           efm: '%f:%l: %m'
-          level: error
+          # warning, not error: for github-check/-pr-check reporters, `level`
+          # (not `fail-level`) is what the reviewdog check run's own PASS/FAIL
+          # status is keyed on. `error` maps to "failure" regardless of
+          # fail-level: none, which only controls reviewdog's own exit code
+          # (i.e. whether *this* Actions job fails). warning/info map to
+          # "neutral", which is what report-only actually requires here.
+          level: warning
           name: lint-python-mypy
           fail-level: none
 
@@ -314,7 +320,10 @@ jobs:
         with:
           log-file: lint_make.log
           efm: '%f:%l: %m'
-          level: error
+          # warning, not error: see the matching comment on lint-python-mypy
+          # above -- `level` (not `fail-level`) drives this check run's own
+          # PASS/FAIL status for github-check/-pr-check reporters.
+          level: warning
           name: lint-make
           # Report-only: maxbodylength/phonydeclared/uniquetargets all have
           # false-positive modes against conventions this repo relies on
