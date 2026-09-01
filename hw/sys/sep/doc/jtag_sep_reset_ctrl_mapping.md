@@ -21,56 +21,26 @@ sub-struct's MSB, so the positions already in use do not shift.
 
 | Struct Field | Override Applied In | Target Signal | RTL Path |
 |---|---|---|---|
-| `trng_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.trng` | `sep.sv` → `sep_reset_ctrl` → coordinated TRNG AXI isolate |
-| `kmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[4]` | `sep.sv` → `sep_reset_ctrl` |
-| `hmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[3]` | same |
-| `aes_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[2]` | same |
-| `otbn_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[1]` | same |
-| `km_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[0]` | same |
-
-## Not Yet Wired — Consider Adding
-
-| Field | Relevant Module | Notes |
-|---|---|---|
-| `mailbox_jtag_rst_n_val/ovrd` | `axil_mailbox` in `sep_system_peripherals` | Allows independent mailbox reset without full SEP reset. Old project had this as a dedicated TDR. |
-
-## Old TDR → New Equivalent (Name Changed)
-
-| Old TDR | Old Block | New Block in SEP | New Struct Field |
-|---------|-----------|------------------|------------------|
-| `jtag_sep_reset_n` | SEP main reset | SEP main reset | `sep_reset_n_val/ovrd` |
-| `jtag_sep_ot_hmac_reset_n` | OT HMAC | HMAC | `hmac_jtag_rst_n_val/ovrd` |
-| `jtag_sep_spacc_reset_n` | SPAcc (monolithic crypto) | **KMAC + AES** (split into OT IPs) | `kmac_jtag_rst_n` + `aes_jtag_rst_n` |
-| `jtag_sep_pka_reset_n` | PKA (public key accelerator) | **OTBN** | `otbn_jtag_rst_n` |
-| `jtag_sep_data_accel_reset_n` | Data accelerator | **KM (Key Manager)** | `km_jtag_rst_n` |
-
-## Not Applicable to New SEP
-
-| Old TDR | Why N/A |
-|---------|---------|
-| `o_jtag_sep_rsvd[16:0]` | Reserved bits, skip. |
-| `spi_{xspi,ctrl_reg,phy_reg,axi,phy,reg,xspi_reg}_jtag_rst_n_{ovrd,val}` | Cadence xSPI multi-domain reset leftovers. The harness SPI is OpenTitan `spi_controller` (`sep_ot_spi_wrap`) with a single `rst_ni` from SEP main reset; `SW_RESET_N` has no SPI bit. An integrator substituting an XIP controller at `sep_io_spi` owns that controller's reset. The seven pairs were removed from `jtag_sep_reset_ctrl_t` rather than wired; do not re-add them (that would invent reset domains the harness IP does not have and would shift IC_RESET TDR geometry). |
+| `trng_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.trng` | `sep.sv` → `sep_reset_ctrl` |
+| `kmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.kmac` | same |
+| `hmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.hmac` | same |
+| `aes_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.aes` | same |
+| `otbn_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.otbn` | same |
+| `km_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.km` | same |
 
 ## Routing Summary
 
 ```
 SMU u_dtp IC_RESET TDR, SEP slice
-  └─ jtag_ic_reset_sep_o -> jtag_sep_reset_ctrl  (SMU-internal net, no port)
-       └─ sep_wrapper (pass-through)
-            └─ sep -> sep_reset_ctrl (fans out to two paths)
-                 ├─ Path A: .sep_reset_n_{val,ovrd}
-                 │    └─ Muxes sep_reset_no from sep_intermediate_reset_ni
-                 │       (efuse-sensing-done)
-                 └─ Path B: 6 crypto/KM/TRNG overrides
-                      └─ Muxes each of 6 sw_reset_bits (trng, kmac, hmac, aes,
-                         otbn, km)
+  └─ jtag_ic_reset_sep_o -> jtag_sep_reset_ctrl  (SMU-internal net, no SMU port)
+       └─ sep u_sep_reset_ctrl
+            ├─ .sep_reset_n_{val,ovrd}
+            │    muxes sep_intermediate_reset_ni onto sep_reset_no
+            └─ per-IP .ovrd/.val (trng, kmac, hmac, aes, otbn, km)
+                 muxes (SW_RESET_N bit AND sep_reset_n) onto sep_sw_rst_no.*
 ```
 
-The SEP slice is therefore seven override/value pairs wide. The TRNG pair sits
-at the top, so the six already in use keep their TDR positions. `jtag_ptap`
-derives the slice width and the aggregate TDR geometry from the struct itself
+The SEP slice is seven override/value pairs wide. `jtag_ptap` derives the
+slice width and the aggregate TDR geometry from the struct itself
 (`NUM_SEP_IC_RESET`); see the IC_RESET TDR geometry comment there rather than
 tracking the total here.
-
-Original internal migration notes are intentionally not reproduced in the open
-tree.
