@@ -45,6 +45,7 @@ target-version = "py311"
 line-length = 100
 extend-exclude = [
   ".claude",
+  "*.md",
   "nonfree",
   "vendor",
   "**/build",
