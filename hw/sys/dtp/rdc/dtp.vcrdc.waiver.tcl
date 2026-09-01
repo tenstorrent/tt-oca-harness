@@ -117,17 +117,6 @@ waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_tlr_reset_to_siblings} \
     -filter {(Tag == "SETUP_RESET_OVERLAP") AND (SrcRstInfo:ResetName == "tlr_reset") AND ((DesRstInfo:ResetName == "stap_sep_dbg_rst") OR (DesRstInfo:ResetName == "stap_io_rst") OR (DesRstInfo:ResetName == "stap_3dcr_rst") OR (DesRstInfo:ResetName == "stap_extra0_rst") OR (DesRstInfo:ResetName == "stap_smc_dbg_rst") OR (DesRstInfo:ResetName == "ic_reset_ctrl_rst_n"))} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
-# tlr_reset is declared -sense high (IEEE 1149.1 Test-Logic-Reset). Its source
-# flop is prim_flop ResetValue(1'b1), but the Samsung foundry DFF overlay always
-# resets Q to 0, so VC Static sees the generated active-high reset not asserting
-# when trst_n_combined (active-low) reaches rst_ni. TAP state is still
-# asynchronously cleared through that rst_ni pin; the Q polarity is a cell
-# mapping limitation, not a missing assert path.
-waive_violation -add {ocah_dtp_rdc_SETUP_RESET_ASSERT_MISSING_tlr_reset} \
-    -comment {tlr_reset is the IEEE 1149.1 Test-Logic-Reset flop output, declared -sense high. The source prim_flop is parameterized ResetValue(1'b1), but the Samsung foundry DFF overlay always resets Q to 0, so VC Static reports SETUP_RESET_ASSERT_MISSING (WRONG_ASSERT_VALUE) when trst_n_combined asserts into rst_ni. The flop is still asynchronously cleared via rst_ni; the generated-reset sense is the protocol-level TLR signal, not the foundry Q polarity.} \
-    -filter {(Tag == "SETUP_RESET_ASSERT_MISSING") AND (Module == "prim_flop") AND (SeqObject == "tlr_reset")} \
-    -app { rdc } -tag { SETUP_RESET_ASSERT_MISSING } -user { bmelton } -timestamp { 01-09-2026 18:10:00 }
-
 #=======================================================================================================================
 # RDC_CORRUPT_OBSERVED : JTAG scan chain data registers with no async reset (Groups A-C)
 #=======================================================================================================================
