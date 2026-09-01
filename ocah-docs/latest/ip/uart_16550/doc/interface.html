@@ -603,7 +603,9 @@ deasserted synchronously relative to <code>clk_i</code></p>
 registers (DLL/DLM) and uses 16x oversampling</p>
 </li>
 <li>
-<p><strong>Maximum Baud Rate</strong>: Limited to <code>system_clock_frequency / 16</code></p>
+<p><strong>Maximum Baud Rate</strong>: Limited to <code>system_clock_frequency / 32</code> - a
+divisor of <code>0</code> disables the transmitter and receiver, so the smallest
+usable divisor is <code>1</code></p>
 </li>
 <li>
 <p><strong>Data Frame</strong>: Configurable start bit (always 1), 5-8 data bits,

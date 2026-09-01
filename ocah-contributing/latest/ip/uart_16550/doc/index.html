@@ -852,7 +852,9 @@ deasserted synchronously relative to <code>clk_i</code></p>
 registers (DLL/DLM) and uses 16x oversampling</p>
 </li>
 <li>
-<p><strong>Maximum Baud Rate</strong>: Limited to <code>system_clock_frequency / 16</code></p>
+<p><strong>Maximum Baud Rate</strong>: Limited to <code>system_clock_frequency / 32</code> - a
+divisor of <code>0</code> disables the transmitter and receiver, so the smallest
+usable divisor is <code>1</code></p>
 </li>
 <li>
 <p><strong>Data Frame</strong>: Configurable start bit (always 1), 5-8 data bits,
@@ -1052,7 +1054,7 @@ Control Register (Write)</p></td>
 </li>
 <li>
 <p>Calculate divisor:
-<code>divisor = clock_frequency / (16 * desired_baud_rate)</code></p>
+<code>divisor = round(clock_frequency / (16 * desired_baud_rate)) - 1</code></p>
 </li>
 <li>
 <p>Write low byte of divisor to DLL (0x00)</p>
@@ -1066,9 +1068,14 @@ Control Register (Write)</p></td>
 </ol>
 </div>
 <div class="paragraph">
+<p>The baud rate generator reloads with <code>divisor</code> and ticks at zero, so the
+resulting rate is <code>clock_frequency / (16 * (divisor + 1))</code>. A divisor of <code>0</code>
+disables the transmitter and receiver.</p>
+</div>
+<div class="paragraph">
 <p>Example for 115200 baud with 50MHz clock:
-<code>divisor = 50000000 / (16 * 115200) = 27 (0x001B)</code> - Write 0x1B to DLL -
-Write 0x00 to DLM</p>
+<code>divisor = round(50000000 / (16 * 115200)) - 1 = 26 (0x001A)</code> - Write 0x1A to
+DLL - Write 0x00 to DLM</p>
 </div>
 </div>
 <div class="sect5">
