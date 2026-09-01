@@ -1567,7 +1567,7 @@ module avsbus_controller #(
                                                ~slave_resync_pending_RS_avs_clk;
 
   assign R_avs_normal_status_F_readback_has_data = ~apb_readback_buf_empty;
-  assign R_avs_debug_readback_F_avs_slave_subframe = apb_readback_buf_empty ? 32'hDEADBEEF : apb_readback_from_fifo ;
+  assign R_avs_debug_readback_F_avs_slave_subframe = apb_readback_buf_empty ? 32'hFFFFFFFF : apb_readback_from_fifo ;
 
 
   always_comb begin
