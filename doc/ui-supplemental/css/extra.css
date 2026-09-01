@@ -217,6 +217,7 @@
 }
 
 .nav-panel-menu .nav-link,
+.nav-panel-menu .nav-text,
 .nav-panel-menu a {
     color: #ffffff !important;
     font-family: var(--oca-font-body);
