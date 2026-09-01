@@ -72,7 +72,7 @@ module axi_lite_isolate #(
   `AXI_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t)
   `AXI_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t)
 
-  // Capacity of `axi_lite_isolate_inner`, derived from the maximum number of transactions the
+  // Capacity of the isolation core, derived from the maximum number of transactions the
   // demux admits.  A write occupies a W-select FIFO slot from AW acceptance until its W beat and
   // a B-select FIFO slot from then until its B response, so at most 2*MaxTrans writes (and
   // MaxTrans reads, bounded by the R-select FIFO) can be past the demux at once.  Sizing the
@@ -85,6 +85,28 @@ module axi_lite_isolate #(
 
   axi_lite_req_t  [1:0] demux_req;
   axi_lite_resp_t [1:0] demux_rsp;
+
+  // plus 1 in clog for accounting no open transaction
+  localparam int unsigned CounterWidth = $clog2(InnerPending + 32'd1);
+  typedef logic [CounterWidth-1:0] cnt_t;
+
+  typedef enum logic [1:0] {
+    Normal,
+    Hold,
+    Drain,
+    Isolate
+  } isolate_state_e;
+  isolate_state_e state_aw_d, state_aw_q, state_ar_d, state_ar_q;
+  logic           update_aw_state,        update_ar_state;
+
+  cnt_t pending_aw_d,  pending_aw_q;
+  logic update_aw_cnt;
+
+  cnt_t pending_w_d,   pending_w_q;
+  logic update_w_cnt,  connect_w;
+
+  cnt_t pending_ar_d,  pending_ar_q;
+  logic update_ar_cnt;
 
   if (TerminateTransaction) begin : g_terminate
     logic sel_aw_q, sel_ar_q;
@@ -193,59 +215,6 @@ module axi_lite_isolate #(
     assign demux_rsp[1] = '0;
   end
 
-  axi_lite_isolate_inner #(
-    .NumPending      ( InnerPending    ),
-    .axi_lite_req_t  ( axi_lite_req_t  ),
-    .axi_lite_resp_t ( axi_lite_resp_t )
-  ) i_axi_lite_isolate (
-    .clk_i,
-    .rst_ni,
-    .slv_req_i  ( demux_req[0] ),
-    .slv_resp_o ( demux_rsp[0] ),
-    .mst_req_o,
-    .mst_resp_i,
-    .isolate_i,
-    .isolated_o
-  );
-endmodule
-
-module axi_lite_isolate_inner #(
-  parameter int unsigned NumPending      = 32'd16,
-  parameter type         axi_lite_req_t  = logic,
-  parameter type         axi_lite_resp_t = logic
-) (
-  input  logic           clk_i,
-  input  logic           rst_ni,
-  input  axi_lite_req_t  slv_req_i,
-  output axi_lite_resp_t slv_resp_o,
-  output axi_lite_req_t  mst_req_o,
-  input  axi_lite_resp_t mst_resp_i,
-  input  logic           isolate_i,
-  output logic           isolated_o
-);
-
-  // plus 1 in clog for accounting no open transaction
-  localparam int unsigned CounterWidth = $clog2(NumPending + 32'd1);
-  typedef logic [CounterWidth-1:0] cnt_t;
-
-  typedef enum logic [1:0] {
-    Normal,
-    Hold,
-    Drain,
-    Isolate
-  } isolate_state_e;
-  isolate_state_e state_aw_d, state_aw_q, state_ar_d, state_ar_q;
-  logic           update_aw_state,        update_ar_state;
-
-  cnt_t pending_aw_d,  pending_aw_q;
-  logic update_aw_cnt;
-
-  cnt_t pending_w_d,   pending_w_q;
-  logic update_w_cnt,  connect_w;
-
-  cnt_t pending_ar_d,  pending_ar_q;
-  logic update_ar_cnt;
-
   `FFLARN(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
   `FFLARN(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
   `FFLARN(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
@@ -297,8 +266,8 @@ module axi_lite_isolate_inner #(
     state_ar_d      = state_ar_q;
     update_ar_state = 1'b0;
     // Connect channel per default
-    mst_req_o       = slv_req_i;
-    slv_resp_o      = mst_resp_i;
+    mst_req_o       = demux_req[0];
+    demux_rsp[0]      = mst_resp_i;
 
     /////////////////////////////////////////////////////////////
     // Write transaction
@@ -306,16 +275,16 @@ module axi_lite_isolate_inner #(
     unique case (state_aw_q)
       Normal: begin // Normal operation
         // Cut valid handshake if a counter capacity is reached.
-        if (pending_aw_q >= cnt_t'(NumPending) || pending_w_q >= cnt_t'(NumPending)) begin
+        if (pending_aw_q >= cnt_t'(InnerPending) || pending_w_q >= cnt_t'(InnerPending)) begin
           mst_req_o.aw_valid  = 1'b0;
-          slv_resp_o.aw_ready = 1'b0;
+          demux_rsp[0].aw_ready = 1'b0;
           if (isolate_i) begin
             state_aw_d      = Drain;
             update_aw_state = 1'b1;
           end
         end else begin
           // here the AW handshake is connected normally
-          if (slv_req_i.aw_valid && !mst_resp_i.aw_ready) begin
+          if (demux_req[0].aw_valid && !mst_resp_i.aw_ready) begin
             state_aw_d      = Hold;
             update_aw_state = 1'b1;
           end else begin
@@ -337,7 +306,7 @@ module axi_lite_isolate_inner #(
       Drain: begin // cut the AW channel until counter is zero
         mst_req_o.aw        = '0;
         mst_req_o.aw_valid  = 1'b0;
-        slv_resp_o.aw_ready = 1'b0;
+        demux_rsp[0].aw_ready = 1'b0;
         if (pending_aw_q == '0) begin
           state_aw_d      = Isolate;
           update_aw_state = 1'b1;
@@ -346,9 +315,9 @@ module axi_lite_isolate_inner #(
       Isolate: begin // Cut the signals to the outputs
         mst_req_o.aw        = '0;
         mst_req_o.aw_valid  = 1'b0;
-        slv_resp_o.aw_ready = 1'b0;
-        slv_resp_o.b        = '0;
-        slv_resp_o.b_valid  = 1'b0;
+        demux_rsp[0].aw_ready = 1'b0;
+        demux_rsp[0].b        = '0;
+        demux_rsp[0].b_valid  = 1'b0;
         mst_req_o.b_ready   = 1'b0;
         if (!isolate_i) begin
           state_aw_d      = Normal;
@@ -362,7 +331,7 @@ module axi_lite_isolate_inner #(
     if ((pending_w_q == '0) && !connect_w) begin
       mst_req_o.w        = '0;
       mst_req_o.w_valid  = 1'b0;
-      slv_resp_o.w_ready = 1'b0;
+      demux_rsp[0].w_ready = 1'b0;
     end
 
     /////////////////////////////////////////////////////////////
@@ -371,16 +340,16 @@ module axi_lite_isolate_inner #(
     unique case (state_ar_q)
       Normal: begin
         // cut handshake if counter capacity is reached
-        if (pending_ar_q >= cnt_t'(NumPending)) begin
+        if (pending_ar_q >= cnt_t'(InnerPending)) begin
           mst_req_o.ar_valid  = 1'b0;
-          slv_resp_o.ar_ready = 1'b0;
+          demux_rsp[0].ar_ready = 1'b0;
           if (isolate_i) begin
             state_ar_d      = Drain;
             update_ar_state = 1'b1;
           end
         end else begin
           // here the AR handshake is connected normally
-          if (slv_req_i.ar_valid && !mst_resp_i.ar_ready) begin
+          if (demux_req[0].ar_valid && !mst_resp_i.ar_ready) begin
             state_ar_d      = Hold;
             update_ar_state = 1'b1;
           end else begin
@@ -402,7 +371,7 @@ module axi_lite_isolate_inner #(
       Drain: begin
         mst_req_o.ar        = '0;
         mst_req_o.ar_valid  = 1'b0;
-        slv_resp_o.ar_ready = 1'b0;
+        demux_rsp[0].ar_ready = 1'b0;
         if (pending_ar_q == '0) begin
           state_ar_d      = Isolate;
           update_ar_state = 1'b1;
@@ -411,9 +380,9 @@ module axi_lite_isolate_inner #(
       Isolate: begin
         mst_req_o.ar        = '0;
         mst_req_o.ar_valid  = 1'b0;
-        slv_resp_o.ar_ready = 1'b0;
-        slv_resp_o.r        = '0;
-        slv_resp_o.r_valid  = 1'b0;
+        demux_rsp[0].ar_ready = 1'b0;
+        demux_rsp[0].r        = '0;
+        demux_rsp[0].r_valid  = 1'b0;
         mst_req_o.r_ready   = 1'b0;
         if (!isolate_i) begin
           state_ar_d      = Normal;
@@ -430,7 +399,7 @@ module axi_lite_isolate_inner #(
 // pragma translate_off
 `ifndef VERILATOR
   initial begin
-    assume (NumPending > 0) else $fatal(1, "At least one pending transaction required.");
+    assume (InnerPending > 0) else $fatal(1, "At least one pending transaction required.");
   end
 `ifndef XSIM
   default disable iff (!rst_ni);
@@ -449,74 +418,4 @@ module axi_lite_isolate_inner #(
 `endif
 `endif
 // pragma translate_on
-endmodule
-
-`include "axi/assign.svh"
-
-/// Interface variant of [`axi_lite_isolate`](module.axi_lite_isolate).
-///
-/// See the documentation of the main module for the definition of ports and parameters.
-module axi_lite_isolate_intf #(
-  parameter int unsigned NUM_PENDING    = 32'd16,
-  parameter bit TERMINATE_TRANSACTION   = 1'b0,
-  parameter int unsigned AXI_ADDR_WIDTH = 32'd0,
-  parameter int unsigned AXI_DATA_WIDTH = 32'd0
-) (
-  input  logic    clk_i,
-  input  logic    rst_ni,
-  input  logic    test_i,
-  AXI_LITE.Slave  slv,
-  AXI_LITE.Master mst,
-  input  logic    isolate_i,
-  output logic    isolated_o
-);
-  typedef logic [AXI_ADDR_WIDTH-1:0]   addr_t;
-  typedef logic [AXI_DATA_WIDTH-1:0]   data_t;
-  typedef logic [AXI_DATA_WIDTH/8-1:0] strb_t;
-
-  `AXI_LITE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t)
-  `AXI_LITE_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t)
-  `AXI_LITE_TYPEDEF_B_CHAN_T(b_chan_t)
-  `AXI_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t)
-  `AXI_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t)
-
-  `AXI_LITE_TYPEDEF_REQ_T(axi_lite_req_t, aw_chan_t, w_chan_t, ar_chan_t)
-  `AXI_LITE_TYPEDEF_RESP_T(axi_lite_resp_t, b_chan_t, r_chan_t)
-
-  axi_lite_req_t  slv_req,  mst_req;
-  axi_lite_resp_t slv_resp, mst_resp;
-
-  `AXI_LITE_ASSIGN_TO_REQ(slv_req, slv)
-  `AXI_LITE_ASSIGN_FROM_RESP(slv, slv_resp)
-
-  `AXI_LITE_ASSIGN_FROM_REQ(mst, mst_req)
-  `AXI_LITE_ASSIGN_TO_RESP(mst_resp, mst)
-
-  axi_lite_isolate #(
-    .NumPending           ( NUM_PENDING           ),
-    .TerminateTransaction ( TERMINATE_TRANSACTION ),
-    .AxiAddrWidth         ( AXI_ADDR_WIDTH        ),
-    .AxiDataWidth         ( AXI_DATA_WIDTH        ),
-    .axi_lite_req_t       ( axi_lite_req_t        ),
-    .axi_lite_resp_t      ( axi_lite_resp_t       )
-  ) i_axi_lite_isolate (
-    .clk_i,
-    .rst_ni,
-    .test_i,
-    .slv_req_i  ( slv_req  ),
-    .slv_resp_o ( slv_resp ),
-    .mst_req_o  ( mst_req  ),
-    .mst_resp_i ( mst_resp ),
-    .isolate_i,
-    .isolated_o
-  );
-
-  // pragma translate_off
-  `ifndef VERILATOR
-  initial begin
-    assume (AXI_ADDR_WIDTH > 0) else $fatal(1, "AXI_ADDR_WIDTH has to be > 0.");
-    assume (AXI_DATA_WIDTH > 0) else $fatal(1, "AXI_DATA_WIDTH has to be > 0.");
-  end
-  `endif
-  // pragma translate_on
 endmodule
