@@ -124,6 +124,23 @@ class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
             mem=self.mem,
             fault_owner=self,
         )
+        self.init_signals()
+
+    def init_signals(self) -> None:
+        """Drive the B/R payload signals to a deterministic 0 idle.
+
+        Called at construction (and idempotent), so the response channels
+        idle clean from the moment the responder exists — the backend
+        otherwise initializes source payloads to X (``StreamSource._init_x``),
+        which X-propagates into the DUT on 4-state simulators until the first
+        response. Handshake signals stay owned by the backend, which already
+        drives valid low at construction.
+        """
+        for channel in (self.write_if.b_channel, self.read_if.r_channel):
+            handshake = {id(channel.valid), id(channel.ready)}
+            for handle in channel.bus._signals.values():
+                if id(handle) not in handshake:
+                    handle.setimmediatevalue(0)
 
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs):
