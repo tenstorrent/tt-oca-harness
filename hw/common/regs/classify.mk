@@ -7,7 +7,7 @@
 
 # C header omits bitfield structs (peakrdl can't represent >64-bit registers);
 # address/mask defines only.
-OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
+OCAH_REG_NO_BITFIELDS ?= key_manager oca_i3c_wrap smc smc_efuse_map sep_efuse_map
 
 # The Python header has its own list because the reason above is a peakrdl
 # c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
