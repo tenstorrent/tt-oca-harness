@@ -6,20 +6,17 @@
  *
  *  Controller-mode driver for the MIPI HCI programming model (PIO command /
  *  response / data ports + DAT + DCT), implementing the transport-agnostic
- *  I3C_Driver API declared in i3c_controller_driver.h. I3C_USE_HCI_CORE selects
- *  this implementation for the master/tests_rom build; the weak stub in
- *  i3c_controller_driver_stub.c supplies the same symbols when it is undefined.
+ *  I3C_Driver API declared in i3c_controller_driver.h. The whole file is gated
+ *  by I3C_USE_HCI_CORE, so a build that leaves it undefined supplies these
+ *  symbols from a platform driver instead.
  *
  *  Lives in common/ (linked ONLY by the tests_rom/master build, not prod_rom).
- *  Whole file gated by I3C_USE_HCI_CORE.
  *
  *  v1 scope: controller mode, POLLED (no IBI — swap IBI is a known (B) regression).
  *==========================================================================*/
 #if defined(I3C_USE_HCI_CORE)
 
-/* The transport-agnostic driver vtable + platform hooks. In this tree that API
- * lives in i3c_controller_driver.h, which is what the OCCP tests and the weak
- * stub (i3c_controller_driver_stub.c) already agree on. */
+/* The transport-agnostic driver vtable + platform hooks. */
 #include "i3c_controller_driver.h"
 /* read_reg / write_reg (via smc_reg_access.h). */
 #include "smc_defines.h"
@@ -304,10 +301,10 @@ static I3C_Status I3C_Start(I3C_Driver *drv, int sys_clk_freq) {
      * (TX underflow Ovl=0x6) structurally -- fw enqueue order no longer matters.
      *
      * OCH-fix (THLD encoding, root cause of smc_occp_mem_boundary_access seed 3270494 Ovl):
-     * the PIO DATA queues are instantiated with ThldIsPow(1) (queues.sv:196), so this field is
+     * the PIO DATA queues are instantiated with ThldIsPow(1) in queues.sv, so this field is
      * the HCI Table-42 2^(N+1) encoding, NOT an exact DWORD count. The previous value 7 meant
      * 2^8 = 256 DWORDs -- illegal (> 64-DWORD queue, spec requires <= queue size) -- and
-     * write_queue.sv:72 computes `1 << (7+1)` in 7-bit width, truncating to 0, so the start
+     * write_queue.sv computes `1 << (7+1)` in 7-bit width, truncating to 0, so the start
      * trigger degenerated to (depth >= 0) = ALWAYS TRUE and the flow_active start gate was
      * transparent from day one (the enqueue race survived). Use 2 -> 2^3 = 8 DWORDs (32 B):
      * legal, and small transfers are still released by the gate's whole-message term. */
@@ -391,7 +388,7 @@ static I3C_Status I3C_IssueENTDAA(I3C_Driver *drv) {
     uint8_t id = drv->ctx.controller_id;
 
     /* HCI DAA hands out DAT[i].dynamic_address to each responding target
-     * (flow_active.sv:1389 emits {dat_rdata.dynamic_address, parity}); static_addr=0 (DAA has
+     * (flow_active.sv emits {dat_rdata.dynamic_address, parity}); static_addr=0 (DAA has
      * no static addr). Without a preload the core would assign DA=0. Mirrors hci_setdasa.
      * dev_count MUST equal the number of targets actually on the bus. The occp bus has exactly
      * ONE target, so provision one DA (0x08) and assign one device. Over-provisioning (e.g. 11)
@@ -405,7 +402,7 @@ static I3C_Status I3C_IssueENTDAA(I3C_Driver *drv) {
     }
 
     /* AddrAssign descriptor: dev_count in DWORD0[29:26] (NOT DWORD1, which is reserved),
-     * wroc+toc set. flow_active.sv:1346 returns NotSupported(0xA) if dev_count==0 |
+     * wroc+toc set. flow_active.sv returns NotSupported(0xA) if dev_count==0 |
      * ~wroc | ~toc, so the old form (count in the 2nd word) was rejected as malformed. */
     uint32_t cmd_lo = ATTR_ADDR_ASSIGN | CMD_CCC(0x07u) | CMD_DEVIDX(0u) |
                       CMD_DEVCOUNT(daa_dev_count) | CMD_WROC | CMD_TOC;
@@ -443,7 +440,7 @@ static I3C_Status I3C_ProcessDevices(I3C_Driver *drv, I3C_DeviceInfo *devices, s
     for (uint8_t i = 0; i < I3C_MAX_DEVICES; i++) {
         uint64_t e = I3C_A(id, R_DCT_BASE) + (uint64_t)i * 16u;
         uint32_t w3 = read_reg(e + 12u);
-        /* DCT word3 = entry bits[127:96]; dct_entry_t.dynamic_address (controller_pkg.sv:83) is
+        /* DCT word3 = entry bits[127:96]; dct_entry_t.dynamic_address in controller_pkg.sv is
          * bits[103:96] = word3[7:0] = {7-bit DA, parity}, so the DA is word3[7:1]. (The old
          * (w3>>16)&0x7F read word3[22:16] = the reserved field => always 0 => "No devices found".)
          */

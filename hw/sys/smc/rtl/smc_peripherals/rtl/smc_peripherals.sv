@@ -850,12 +850,10 @@ module smc_peripherals #(
 		.telemetry_receiver_irq_o   (telemetry_irq),
 		// telemetry_receiver_debug_o is launched on SMCCLK (clk_i =
 		// gated_clk_smc_tel). It drives telemetry_debug_o directly — no CDC
-		// required. The signal was previously routed through
-		// u_smc_peripherals_cdc.telemetry_debug_telemetry_clk_i, which re-flopped
-		// it onto clk_telemetry_i and then synced it back to clk_smc_i — that
-		// manufactured a spurious SMCCLK -> TELEMETRYCLK -> SMCCLK crossing
-		// reported by VC SpyGlass as CDC_UNSYNC_CTRL on
-		// u_smc_peripherals_cdc/telemetry_debug_telemetry_clk_flopped/Q[*][*].
+		// required. Routing it through u_smc_peripherals_cdc instead would
+		// re-flop it onto clk_telemetry_i and sync it back to clk_smc_i,
+		// manufacturing a spurious SMCCLK -> TELEMETRYCLK -> SMCCLK crossing
+		// that VC SpyGlass reports as CDC_UNSYNC_CTRL.
 		.telemetry_receiver_debug_o (telemetry_debug_o)
 	);
 
@@ -995,7 +993,7 @@ module smc_peripherals #(
 		.I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
 		// The system base of instance 0, NOT the generated block-relative base.
 		// i3ccore_wrapper subtracts BASE_ADDR from the incoming address before
-		// picking an instance (i3ccore_wrapper.sv:126-146), which is the whole
+		// picking an instance (see i3ccore_wrapper.sv), which is the whole
 		// reason the parameter exists. Passing the block's own base (0) while the
 		// fabric delivers full system addresses left every range comparison
 		// unmatched, so write_select/read_select kept their initialised 0 and every

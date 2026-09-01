@@ -34,9 +34,9 @@ so the bare DUT name selects the wrapper-based TB.
 | DUT | `smc_wrapper` |
 | cocotb | `cocotb/` (`SmcEnv`) |
 | testlist | `testlists/all.toml` (deferred: `testlists/deferred.toml`, not included) |
-| macros | inside `smc_ip_integration` (pll/pvt/efuse/pads) |
+| macros | inside `smc_ip_integration` (pll/pvt/efuse/pads/I3C DAT-DCT-RLT) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR / I3C DAT ports **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |
+| still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |
 
 ## Verilator stubs policy
 

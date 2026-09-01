@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// OSS smu_wrapper harness for the native cocotb/PyUVM flow (issue #3357).
-// Instantiates hw/top/smu_wrapper.sv (logical ports); the CPU memory macros
-// come with smc_ip_integration inside it — same OSS composition pattern as
-// smc_wrapper / sep_wrapper.
+// OSS smu_wrapper harness for the native cocotb/PyUVM flow.
+// Instantiates hw/top/smu_wrapper.sv (logical ports); the CPU and I3C table
+// memory macros come with smc_ip_integration inside it, following the same OSS
+// composition pattern as smc_wrapper / sep_wrapper.
 
 `timescale 1ps/1fs
 
@@ -166,11 +166,6 @@ module smu_wrapper_uvm_top (
     trace_mem_pkg::SinkMemPktOut_s
         [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
     assign trc_resp = '0;
-
-    i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
-    i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
-    assign i3c_dat_src = '0;
-    assign i3c_dct_src = '0;
 
     assign sep_straps = '0;
     assign smu_axi_in_req = '0;
@@ -653,11 +648,6 @@ module smu_wrapper_uvm_top (
         .sep_fuse_sense_done_o,
         .clk_sep_wdt_i,
         .sep_straps_i (sep_straps),
-
-        .i3c_dat_mem_src_i (i3c_dat_src),
-        .i3c_dat_mem_sink_o (),
-        .i3c_dct_mem_src_i (i3c_dct_src),
-        .i3c_dct_mem_sink_o (),
 
         .ext_debug_bus_i ('0),
         .gpio_interrupt_o (),

@@ -76,8 +76,8 @@ mechanism.
 Most SMC tests default to `sram` mode. The OCCP master BFM tests
 (`occp_sanity`, `occp_master`) are declared `rom`-mode in
 [`hw/sys/smc/dv/fw/fw.mk`](hw/sys/smc/dv/fw/fw.mk) because they exercise the
-I3C master path and must run from the ROM address space. They link against the
-open-source weak `I3C_GetDriverInstance` stub (returns `NULL`) so the build is
+I3C master path and must run from the ROM address space. They link the in-tree
+MIPI-HCI controller driver for the vendored OCA i3c-core, so the build is
 self-contained.
 
 ### SMC boot ROM

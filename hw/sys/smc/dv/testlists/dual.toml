@@ -25,7 +25,7 @@ tags = ["build", "dual_smoke", "dual"]
 run_modes = ["dual"]
 # A ROM image is mandatory even for an elaboration probe: with neither
 # +rom_bin64 nor +rom_hex, OCAH4CORECluster_rom_ext $errors at time zero rather
-# than leaving the array X (mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv:267).
+# than leaving the array X (OCAH4CORECluster_mem_swaps.sv).
 # Both instances load the production ROM here. The probe holds boot_stall while
 # it checks the boot-stall contract, then releases it to check that memory init
 # completes -- so the ROMs do start executing near the end of the run.
@@ -62,8 +62,8 @@ target = "dual"
 seed = 1
 # Headroom, not a target. The payload is a full sram-mode image (~15 KB), and
 # every byte of it crawls over a ~2.6 MHz serial bus that Verilator simulates
-# cycle by cycle. Measured on run 20260827_135153: 54.705 ms of sim time in
-# 7564.8 s of sim stage, i.e. ~2.1 h wall at ~7.2 us of sim per wall second.
+# cycle by cycle. Roughly 55 ms of sim time takes ~2.1 h of wall clock, at
+# ~7.2 us of sim per wall second.
 timeout_sec = 21600
 tags = ["dual_ci", "dual", "occp_boot", "prod_rom"]
 run_modes = ["dual"]

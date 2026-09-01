@@ -22,8 +22,8 @@
 #
 #     total = 24576 b = 3 KB = smc_efuse_pkg::SHADOW_REG_BITS
 #
-# The generator lays blocks out in the order they appear here, so THIS ORDER IS
-# LOAD-BEARING and must match the RDL address map above. If the RDL changes,
+# The generator lays blocks out in the order they appear here, so this order
+# must match the RDL address map above. If the RDL changes,
 # this file has to change with it; there is no automatic check yet (see the
 # TODO in generate_efuse_preload.py).
 #

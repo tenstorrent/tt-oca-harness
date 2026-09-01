@@ -10,36 +10,14 @@
 // Cocotb port surface keeps the SmcEnv catalog pin names. Hierarchical XMRs
 // into the core use u_dut.u_smc.*.
 //
-// PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros and eFuse live inside
-// smc_ip_integration. DTP CSR and I3C DAT/DCT remain smc_wrapper boundary
-// ports (resp/mem idle — no TB placeholder; smc_wrapper-only DTP CSR gap —
-// SMU wires DTP internally). CPU ROM/scratch/L1$ macros come with
-// smc_ip_integration; smc_cpu_mem_dv.sv binds into it for the DV hooks.
+// PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros, eFuse, I3C DAT/DCT/RLT
+// table memories and CPU ROM/scratch/L1$ macros live inside
+// smc_ip_integration. DTP CSR remains a smc_wrapper boundary port (resp idle —
+// no TB placeholder; smc_wrapper-only DTP CSR gap — SMU wires DTP internally).
+// smc_cpu_mem_dv.sv binds into the integration for the CPU-memory DV hooks.
 //
 // Additive elaboration-alias outputs (dut_present_o / powergood_o / ...) sit
 // at the end of the port list for the thin elaboration smoke.
-//
-// ---------------------------------------------------------------------------
-// Two build configurations, one top module
-// ---------------------------------------------------------------------------
-// `SMC_DUAL selects a second SMC instance for the OCCP dual-boot flow:
-//
-//   undefined (targets.default) -- one SMC. Everything below this file has
-//                                  always had. Hierarchical XMRs use
-//                                  u_dut.u_smc.*.
-//   defined   (targets.dual)    -- two SMCs on a shared I3C bus:
-//                                    u_dut  the OCCP *target*     (production ROM)
-//                                    u_bfm  the OCCP *controller* (DV OCCP image)
-//                                  Both are smc_dual_inst (this file, bottom),
-//                                  so XMRs use u_<x>.u_smc_wrapper.u_smc.*.
-//
-// The two configurations are mutually exclusive `ifndef/`else halves rather
-// than one interleaved body. That is deliberate: the single-instance half stays
-// byte-identical to what every existing SMC test was verified against, so
-// adding the dual configuration cannot perturb it. The cost is that the clock,
-// reset and SEP_IN AXI port declarations appear in both halves.
-//
-// Design and the dual-specific risk notes: docs/dual_smc_occp_boot_design.md.
 
 `timescale 1ps/1fs
 
@@ -88,7 +66,7 @@ module smc_uvm_top
     output logic       tb_i2c0_sda /*verilator public_flat_rw*/,
     output logic       tb_i2c0_scl_dut_low /*verilator public_flat_rw*/,
     output logic       tb_i2c0_sda_dut_low /*verilator public_flat_rw*/,
-    // I2C0 SMBALERT# (pad 39): active-low; pullup-high when DUT OE released.
+    // I2C0 SMBALERT#: active-low; pullup-high when DUT OE released.
     output logic       tb_i2c0_smbalert /*verilator public_flat_rw*/,
     // LSIO enable + controller-side sense (CDC'd). Host traffic must wait until
     // enable=1 and scl_i tracks the OD bus, else FMT sits unconsumed.
@@ -108,8 +86,8 @@ module smc_uvm_top
     output logic       tb_cpu_jtag_tdo /*verilator public_flat_rw*/,
 
     // UART0 pad-level split-port for the P2 Phase A UART loopback:
-    //   pad 11 = UART0 RX (external drive -> DUT input)
-    //   pad 12 = UART0 TX (DUT output -> external observe)
+    //   UART0_RX_PAD (external drive -> DUT input)
+    //   UART0_TX_PAD (DUT output -> external observe)
     input  wire logic tb_uart0_rx_ext_drive /*verilator public_flat_rw*/,
     output logic      tb_uart0_tx_from_dut /*verilator public_flat_rw*/,
 
@@ -160,7 +138,7 @@ module smc_uvm_top
     output logic tb_boot_stall_combined_o /*verilator public_flat_rw*/,
     input  wire logic tb_boot_stall_jtag_ovrd_i /*verilator public_flat_rw*/,
     input  wire logic tb_boot_stall_jtag_val_i /*verilator public_flat_rw*/,
-    // DUT-side pad-57 sample via smc.pad2core_i (post pad-shim), not
+    // DUT-side BOOT_STALL_PAD sample via smc.pad2core_i (post pad-shim), not
     // gpio_pad_io / tb_pad_drive_* echo. Do not XMR-drive pad2core_i — it is
     // already driven by smc_ip_integration; this is observe-only.
     output logic tb_gpio_pad57 /*verilator public_flat_rw*/,
@@ -216,8 +194,8 @@ module smc_uvm_top
     output logic tb_octs_cnt_credit_from_dut /*verilator public_flat_rw*/,
     // Runtime primary/secondary strap (smc.chiplet_is_primary_i). Default 1.
     input  wire logic tb_chiplet_is_primary /*verilator public_flat_rw*/,
-    // Secondary inject into pads 55/56 (smc_padring OCTS; was 58/59 before
-    // the 68->65 GPIO shrink). pad2core enabled only when
+    // Secondary inject into pads 55/56 (smc_padring OCTS). pad2core enabled
+    // only when
     // chiplet_is_primary_i==0. Idle low when unused.
     input  wire logic tb_octs_sync_load_ext /*verilator public_flat_rw*/,
     input  wire logic tb_octs_cnt_credit_ext /*verilator public_flat_rw*/,
@@ -546,7 +524,7 @@ module smc_uvm_top
     output logic dut_init_mem_done_o /*verilator public_flat_rw*/,
     output logic bfm_init_mem_done_o /*verilator public_flat_rw*/,
 
-    // Shared I3C0 bus (pads 27/28). *_ext_low lets a cocotb VIP join the same
+    // Shared I3C0 bus. *_ext_low lets a cocotb VIP join the same
     // wired-AND as a third driver; unused by the dual-firmware flow.
     input  wire logic tb_i3c0_scl_ext_low /*verilator public_flat_rw*/,
     input  wire logic tb_i3c0_sda_ext_low /*verilator public_flat_rw*/,
@@ -556,8 +534,8 @@ module smc_uvm_top
     output logic      tb_i3c0_sda_dut_low /*verilator public_flat_rw*/,
     output logic      tb_i3c0_scl_bfm_low /*verilator public_flat_rw*/,
     output logic      tb_i3c0_sda_bfm_low /*verilator public_flat_rw*/,
-    // Bus activity counters: cheap non-vacuity evidence that the two
-    // instances actually talked, independent of any firmware-reported result.
+    // Bus activity counters: proof that the two instances actually talked,
+    // independent of any firmware-reported result.
     // Per-channel view of the three cross-wired I3C channels {0, 1, 3}. Index
     // is the position in that list, not the I3C instance number.
     //
@@ -595,7 +573,7 @@ module smc_uvm_top
     input wire logic dut_chiplet_is_primary /*verilator public_flat_rw*/,
     input wire logic bfm_chiplet_is_primary /*verilator public_flat_rw*/,
 
-    // Per-instance boot-stall hold (pad 57), driven by cocotb during bring-up.
+    // Per-instance boot-stall hold, driven by cocotb during bring-up.
     input wire logic dut_boot_stall_hold /*verilator public_flat_rw*/,
     input wire logic bfm_boot_stall_hold /*verilator public_flat_rw*/,
 
@@ -833,12 +811,6 @@ module smc_uvm_top
     smc_axil_32_32_req_t  axil_dtp_csr_req;
     smc_axil_32_32_resp_t axil_dtp_csr_resp;
 
-    // I3C DAT/DCT memory boundary exposed by the current open SMC RTL.
-    i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
-    i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
-    i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
-    i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
-
     // Direct smc_wrapper boundary ports (top-level outputs -- no XMR needed).
     logic sync_irq;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0]    gpio_interrupt;
@@ -860,8 +832,8 @@ module smc_uvm_top
     localparam int unsigned I2C2_SMBSUS_PAD = 48;
     localparam int unsigned I3C0_SCL_PAD = 27;
     localparam int unsigned I3C0_SDA_PAD = 28;
-    // Per smc_padring.sv gen_uart_connections (base 11+4*u):
-    //   pad 11 = UART0 RX (pad -> core), pad 12 = UART0 TX (core -> pad).
+    // Per smc_padring.sv gen_uart_connections (base 11+4*u): RX is pad -> core,
+    // TX is core -> pad.
     localparam int unsigned UART0_RX_PAD = 11;
     localparam int unsigned UART0_TX_PAD = 12;
     localparam int unsigned UART1_RX_PAD = 11 + (1 * 4); // pad 15
@@ -870,7 +842,7 @@ module smc_uvm_top
     localparam int unsigned UART2_TX_PAD = 12 + (2 * 4); // pad 20
     localparam int unsigned UART3_RX_PAD = 11 + (3 * 4); // pad 23
     localparam int unsigned UART3_TX_PAD = 12 + (3 * 4); // pad 24
-    // smc_padring.sv: boot_stall is lsio pad 57 (active-high; was pad 60).
+    // smc_padring.sv: boot_stall is an lsio pad, active-high.
     // Default pullup/'1 would sticky-stall fuse_reset_n and hold the warm
     // reset domain (SCRATCH_COLD_WARM hang). Drive 0 unless +smc_hold_cpu_boot.
     localparam int unsigned BOOT_STALL_PAD = 57;
@@ -901,14 +873,14 @@ module smc_uvm_top
     end
 
     // Minimal LSIO open-drain resolver for I2C0. The SMC padring maps I2C0
-    // SCL/SDA to GPIO pads 37/38. Released lines resolve high; either the DUT
+    // SCL/SDA to the I2C0 GPIO pads. Released lines resolve high; either the DUT
     // or cocotb side may pull a line low. `u_smc_peripherals` now sits one
     // level deeper (u_dut.u_smc.u_smc_peripherals) since u_dut is
     // smc_wrapper.
     //
     // +smc_i2c_shared_bus: OR I2C1/I2C2 open-drain pulls into the same resolved
     // bus and drive those pads with that value (commercial tranif1 short).
-    // Default off so existing I2C0↔VIP tests stay isolated on pads 37/38.
+    // Default off so existing I2C0↔VIP tests stay isolated.
     logic tb_i2c_shared_bus;
     logic tb_i2c1_scl_dut_low;
     logic tb_i2c1_sda_dut_low;
@@ -1068,7 +1040,7 @@ module smc_uvm_top
         end
 
         // Boot stall: released by default; held when +smc_hold_cpu_boot is set
-        // unless a test explicitly drives pad 57 via GPIO override.
+        // unless a test explicitly drives BOOT_STALL_PAD via GPIO override.
         if (!tb_gpio_ext_drive_en[BOOT_STALL_PAD]) begin
             tb_pad_drive_en[BOOT_STALL_PAD]  = 1'b1;
             tb_pad_drive_val[BOOT_STALL_PAD] = tb_hold_cpu_boot;
@@ -1101,7 +1073,7 @@ module smc_uvm_top
 
     // UART0 TX: the DUT drives one line out to the external world.
     assign tb_uart0_tx_from_dut = u_dut.u_smc.core2pad_o[UART0_TX_PAD];
-    // I2C0 SMBALERT# (pad 39): OE-aware resolve (active-low when DUT drives).
+    // I2C0 SMBALERT#: OE-aware resolve (active-low when DUT drives).
     // core2pad_en_o is active-high (~lsio_core2pad_en_ni); data is 0 when OE.
     // Under +smc_i2c_shared_bus the pad is TB-driven with the shared OD net.
     assign tb_i2c0_smbalert = tb_i2c_shared_bus
@@ -1620,20 +1592,10 @@ module smc_uvm_top
         .smc_cpu_jtag_mfr_id_i      (11'h2AA),
         .smc_cpu_jtag_part_number_i (16'h0CA0),
         .smc_cpu_jtag_version_i     (4'h1),
-        // I3C controller DAT/DCT memory boundary.
-        .i3c_dat_mem_src_i          (i3c_dat_mem_src),
-        .i3c_dat_mem_sink_o         (i3c_dat_mem_sink),
-        .i3c_dct_mem_src_i          (i3c_dct_mem_src),
-        .i3c_dct_mem_sink_o         (i3c_dct_mem_sink),
         .gpio_interrupt_o           (gpio_interrupt),
         .uart_interrupt_o           (uart_interrupt),
         .efuse_debug_bus_o          ()
     );
-
-    // I3C DAT/DCT: NO TB prim_ram (policy: no mem placeholder). Ports idle;
-    // I3C tests that need DAT/DCT are deferred until real macros exist.
-    assign i3c_dat_mem_src = '0;
-    assign i3c_dct_mem_src = '0;
 
     // Sense-done + sensed shadow probe (XMR into controller shadow regs, one
     // level deeper than bare tb_top: u_dut.u_smc.u_smc_peripherals...).
@@ -1782,11 +1744,11 @@ module smc_uvm_top
     // half documents. If that is ever violated, the two strong drives can
     // contend. Confirm on waveforms.
     //
-    // GPIO 58 is the OCCP "target up" pad (smc_padring.sv: software GPIO,
-    // formerly pad 61). The controller firmware polls it in
+    // OCCP_TARGET_UP_PAD is the OCCP "target up" pad (smc_padring.sv: software
+    // GPIO). The controller firmware polls it in
     // wait_for_target_up_gpio() (fw/common/occp/occp_interfaces.c), and the
     // target's production ROM drives it from set_gpio_status(OCCP_ERROR_NONE)
-    // (bootrom/prod/lib/src/occp.c:259-279) on the success path of OCCP init.
+    // (bootrom/prod/lib/src/occp.c) on the success path of OCCP init.
     // It uses the pad number directly rather than the SMC_STATUS_GPIO macro,
     // which is why that macro looks unused.
     //
@@ -2046,7 +2008,7 @@ module smc_uvm_top
     assign tb_i3c_start_count_2    = start_q[2];
 
     // ------------------------------------------------------------------
-    // OCCP target-up pad 58: the target drives, the controller senses.
+    // OCCP target-up pad: the target drives, the controller senses.
     // Undriven resolves LOW (pulldown semantics) so the handshake reflects the
     // target rather than the testbench -- see the header note.
     // ------------------------------------------------------------------
@@ -2107,7 +2069,7 @@ module smc_uvm_top
             bfm_pad_drive_val[OCCP_TARGET_UP_PAD] = tb_gpio58_bus;
         end
 
-        // Boot stall, per instance, unless a test overrides pad 57 directly.
+        // Boot stall, per instance, unless a test overrides the pad directly.
         if (!dut_gpio_ext_drive_en[BOOT_STALL_PAD]) begin
             dut_pad_drive_en[BOOT_STALL_PAD]  = 1'b1;
             dut_pad_drive_val[BOOT_STALL_PAD] = dut_boot_stall_hold;
@@ -2430,40 +2392,10 @@ module smc_dual_inst
     assign lc_state_idle = {{smc_pkg::LC_STATE_WIDTH{1'b1}},
                             {smc_pkg::LC_STATE_WIDTH{1'b0}}};
 
-    // I3C DAT/DCT/RLT table memories, one set per instance.
-    //
-    // smc_wrapper exposes these as boundary ports and hands out the gated I3C
-    // peripheral clock to run them (gated_clk_periph_i3c_o) plus the peripheral
-    // reset -- a complete "attach your memories here" interface. Attaching them
-    // above the wrapper is the same composition pattern
-    // hw/sys/smu/dv/tb/tb_wrapper_top.sv uses for smc_cpu_mem_integration on
-    // smu_wrapper's passthrough CPU memory ports, and it keeps the technology
-    // choice out of the wrapper.
-    //
-    // Instantiated here in smc_dual_inst rather than in the top body so each of
-    // u_dut and u_bfm gets its own independent set, which is what the OCCP flow
-    // needs: the controller's ENTDAA writes its own DAT and the target's core
+    // The I3C DAT/DCT/RLT table memories live inside smc_ip_integration, so
+    // each of u_dut and u_bfm carries its own set. The OCCP flow depends on
+    // that: the controller's ENTDAA writes its own DAT and the target's core
     // reads a different one.
-    i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
-    i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
-    i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
-    i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
-    i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
-    i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
-
-    logic gated_clk_periph_i3c;
-    logic rst_primary_periph_clk_n;
-
-    smc_i3c_mem_integration u_smc_i3c_mem_integration (
-        .clk_i          (gated_clk_periph_i3c),
-        .rst_ni         (rst_primary_periph_clk_n),
-        .dat_mem_src_o  (i3c_dat_mem_src),
-        .dat_mem_sink_i (i3c_dat_mem_sink),
-        .dct_mem_src_o  (i3c_dct_mem_src),
-        .dct_mem_sink_i (i3c_dct_mem_sink),
-        .rlt_mem_src_o  (i3c_rlt_mem_src),
-        .rlt_mem_sink_i (i3c_rlt_mem_sink)
-    );
 
     smc_wrapper u_smc_wrapper (
         .clk_smc_i                  (clk_smc_i),
@@ -2476,7 +2408,7 @@ module smc_dual_inst
         .rst_primary_ref_clk_no     (),
         .rst_primary_smc_clk_no     (rst_primary_smc_clk_no),
         .rst_wdt_smc_clk_no         (),
-        .rst_primary_periph_clk_no  (rst_primary_periph_clk_n),
+        .rst_primary_periph_clk_no  (),
         .sys_axi_in_req_i           (sys_axi_idle_req),
         .sys_axi_in_resp_o          (),
         .jtag_axi_in_req_i          (jtag_axi_idle_req),
@@ -2589,13 +2521,7 @@ module smc_dual_inst
         .smc_cpu_jtag_mfr_id_i      (11'h2AA),
         .smc_cpu_jtag_part_number_i (16'h0CA0),
         .smc_cpu_jtag_version_i     (4'h1),
-        .gated_clk_periph_i3c_o     (gated_clk_periph_i3c),
-        .i3c_dat_mem_src_i          (i3c_dat_mem_src),
-        .i3c_dat_mem_sink_o         (i3c_dat_mem_sink),
-        .i3c_dct_mem_src_i          (i3c_dct_mem_src),
-        .i3c_dct_mem_sink_o         (i3c_dct_mem_sink),
-        .i3c_rlt_mem_src_i          (i3c_rlt_mem_src),
-        .i3c_rlt_mem_sink_o         (i3c_rlt_mem_sink),
+        .gated_clk_periph_i3c_o     (),
         .gpio_interrupt_o           (),
         .uart_interrupt_o           (),
         .efuse_debug_bus_o          ()

@@ -101,14 +101,14 @@ outputs = [
 # Build the real SMC production boot ROM (hw/sys/smc/bootrom/prod) instead of a
 # DV C test. Selected by `firmware = { name = "prod_rom", mode = "bootrom" }`.
 #
-# I3C_CORE=swap is load-bearing: it defines I3C_USE_HCI_CORE, which is what
+# I3C_CORE=swap defines I3C_USE_HCI_CORE, which is what
 # selects drivers/src/i3c_hci_driver.c -- the target-side driver for the OCA
 # i3c-core this tree actually instantiates -- over the Cadence override.
 #
-# ENABLE_RELEASE_PRINTS=1 is load-bearing for DEBUGGABILITY, not for function.
+# ENABLE_RELEASE_PRINTS=1 affects debuggability only, not function.
 # The ROM's simputs() virtual console is wrapped in `#ifdef DEBUG`
-# (bootrom/prod/lib/src/virt_console.c:14), and a release build only defines
-# DEBUG when this knob is set (bootrom/prod/Makefile:95-100, 182-186; it
+# (bootrom/prod/lib/src/virt_console.c), and a release build only defines
+# DEBUG when this knob is set (bootrom/prod/Makefile; it
 # defaults to 0). Without it the target half of every dual test is a black box:
 # every gate still passes, because they read CSRs, POST codes and the retired
 # PC rather than the console -- which is exactly why its absence went unnoticed

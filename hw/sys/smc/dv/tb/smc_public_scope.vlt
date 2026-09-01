@@ -6,11 +6,7 @@
 // explodes gpio hierarchy under Verilator 5.046.
 public_flat_rw -module "smc_uvm_top" -var "*"
 // SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
-// prim_ram_2p is the I3C RLT memory, which only the SMC_DUAL build attaches
-// (smc_i3c_mem_integration in smc_dual_inst). The annotation is module-scoped,
-// so listing it here is inert in the single-instance build and saves keeping a
-// second .vlt in step -- public_scope is a [build.verilator] key and cannot be
-// overridden per target.
+// prim_ram_2p is the I3C RLT memory, instantiated in smc_ip_integration.
 public_flat_rw -module "prim_rom" -var "mem"
 public_flat_rw -module "prim_ram_1p" -var "mem"
 public_flat_rw -module "prim_ram_2p" -var "mem"
