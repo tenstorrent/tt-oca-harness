@@ -20,6 +20,7 @@ abr_read_array helpers. Outputs are FIPS-204 layout (PUBKEY=rho||t1,
 SIGNATURE=c~||z||h). Default signing computes mu internally from the raw message
 with an empty context, so the ACVP "message" maps straight to MLDSA_MSG.
 """
+
 import json
 import os
 import sys
@@ -36,7 +37,7 @@ def hex_to_words(h):
     raw = bytes.fromhex(h)
     n = len(raw)
     pad = raw + b"\x00" * ((-n) % 4)
-    words = [int.from_bytes(pad[i:i + 4], "little") for i in range(0, len(pad), 4)]
+    words = [int.from_bytes(pad[i : i + 4], "little") for i in range(0, len(pad), 4)]
     return words, n
 
 
@@ -52,7 +53,7 @@ def emit(f, name, words, nbytes, comment):
     f.write(f"/* {comment} ({nbytes} bytes, {len(words)} words) */\n")
     f.write(f"static const uint32_t {name}[{len(words)}] = {{\n")
     for i in range(0, len(words), 8):
-        f.write("    " + " ".join(f"0x{w:08x}u," for w in words[i:i + 8]) + "\n")
+        f.write("    " + " ".join(f"0x{w:08x}u," for w in words[i : i + 8]) + "\n")
     f.write("};\n\n")
 
 

@@ -36,16 +36,22 @@ governing the granule.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
-    INFILT_BASE, FILTER_STRIDE, FILTER_CONFIG,
-    F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_SRC_ID_LSB,
     F_ALLOW_BURST,
+    F_ALLOW_NS,
+    F_ENTRY_ENABLED,
+    F_READ_ALLOWED,
+    F_SRC_ID_LSB,
+    F_WRITE_ALLOWED,
+    FILTER_CONFIG,
+    FILTER_STRIDE,
+    INFILT_BASE,
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
@@ -96,8 +102,8 @@ BURST_ALLOW_SPAN = 0x2000
 # reach a neighbouring block.
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
-GRANULE_BYTES = 8            # FILTER_CONFIG.data_bus_width reset 3 => 8-byte beat
-SCRATCH_STRIDE = 0x8         # sep_scratch.rdl: 8 x 64-bit per bank
+GRANULE_BYTES = 8  # FILTER_CONFIG.data_bus_width reset 3 => 8-byte beat
+SCRATCH_STRIDE = 0x8  # sep_scratch.rdl: 8 x 64-bit per bank
 SCRATCH_BANK_REGS = 8
 # The dual scratch banks are the widen page: both banks are plain RW storage, so
 # every probe lands on a real register and an OKAY/DECERR split can only come
@@ -114,7 +120,7 @@ WIDEN_ADJ_BELOW = (
 # The last table entry: the write-once lock is sticky until reset, so it must not
 # land on an entry the matrix or burst walk reprograms.
 WIDEN_ENTRY = INFILT_N_ENTRIES - 1
-FILTER_LOCKED_HI_BIT = 31    # FILTER_CONFIG.locked[63] = bit 31 of the hi word
+FILTER_LOCKED_HI_BIT = 31  # FILTER_CONFIG.locked[63] = bit 31 of the hi word
 
 
 class SepInboundFilterWidenCfg:
@@ -135,16 +141,16 @@ class SepInboundFilterWidenCfg:
     the staged data words. Every probe runs on every seed.
     """
 
-    def __init__(self, *, window_idx: int, warm_idx: int, below_addr: int,
-                 values: list[int]) -> None:
+    def __init__(
+        self, *, window_idx: int, warm_idx: int, below_addr: int, values: list[int]
+    ) -> None:
         self.entry = WIDEN_ENTRY
         self.window_idx = window_idx
         self.window_addr = SCRATCH_COLD_0 + window_idx * SCRATCH_STRIDE
         self.window_end = self.window_addr + GRANULE_BYTES - 1
         self.page_base = WIDEN_PAGE_BASE
         self.page_end = WIDEN_PAGE_BASE + PAGE_SIZE - 1
-        self.in_page_addrs = [SCRATCH_COLD_0,
-                              SCRATCH_WARM_0 + warm_idx * SCRATCH_STRIDE]
+        self.in_page_addrs = [SCRATCH_COLD_0, SCRATCH_WARM_0 + warm_idx * SCRATCH_STRIDE]
         self.adj_addr = below_addr
         # window_addr first, then the two out-of-window in-page probes.
         self.values = list(values)
@@ -162,8 +168,7 @@ class SepInboundFilterWidenCfg:
             while v in vals:
                 v = (v + 1) & 0xFFFF_FFFF
             vals.append(v)
-        return cls(window_idx=window_idx, warm_idx=warm_idx,
-                   below_addr=below_addr, values=vals)
+        return cls(window_idx=window_idx, warm_idx=warm_idx, below_addr=below_addr, values=vals)
 
     @property
     def staged(self) -> list[tuple[int, int]]:
@@ -171,22 +176,25 @@ class SepInboundFilterWidenCfg:
         return list(zip([self.window_addr] + self.in_page_addrs, self.values))
 
     def summary(self) -> str:
-        return (f"entry={self.entry} window=0x{self.window_addr:08x}..0x{self.window_end:08x} "
-                f"page=0x{self.page_base:08x}..0x{self.page_end:08x} "
-                f"in_page={[hex(a) for a in self.in_page_addrs]} "
-                f"adjacent=0x{self.adj_addr:08x}")
+        return (
+            f"entry={self.entry} window=0x{self.window_addr:08x}..0x{self.window_end:08x} "
+            f"page=0x{self.page_base:08x}..0x{self.page_end:08x} "
+            f"in_page={[hex(a) for a in self.in_page_addrs]} "
+            f"adjacent=0x{self.adj_addr:08x}"
+        )
 
 
 class SepInboundFilterCfg:
     """One programmed allow-entry: address window + R/W enables."""
 
-    def __init__(self, *, entry: int = 0, allow_addr: int = TARGET_ADDR,
-                 allow_value: int = TARGET_VALUE) -> None:
+    def __init__(
+        self, *, entry: int = 0, allow_addr: int = TARGET_ADDR, allow_value: int = TARGET_VALUE
+    ) -> None:
         self.entry = entry
         self.allow_addr = allow_addr
         self.allow_value = allow_value
         self.blocked_addr = BLOCKED_ADDR
-        self.src_id = 0                       # 0 = match-all; else exact user[3:0]
+        self.src_id = 0  # 0 = match-all; else exact user[3:0]
 
     @property
     def cfg_addr(self) -> int:
@@ -200,8 +208,9 @@ class SepInboundFilterCfg:
     def end_addr_reg(self) -> int:
         return INFILT_BASE + self.entry * FILTER_STRIDE + FILTER_END_ADDR
 
-    def config_word(self, *, read_allowed: bool, write_allowed: bool,
-                    allow_burst: bool = False) -> int:
+    def config_word(
+        self, *, read_allowed: bool, write_allowed: bool, allow_burst: bool = False
+    ) -> int:
         """FILTER_CONFIG lo: entry_enabled + allow_ns + src_id + per-dir enables.
         Never sets the locked (woset) bit, so the entry stays reprogrammable."""
         v = F_ENTRY_ENABLED | F_ALLOW_NS | (self.src_id << F_SRC_ID_LSB)
@@ -214,8 +223,10 @@ class SepInboundFilterCfg:
         return v
 
     def summary(self) -> str:
-        return (f"entry={self.entry} allow=0x{self.allow_addr:08x} val=0x{self.allow_value:08x} "
-                f"blocked=0x{self.blocked_addr:08x} src_id={self.src_id}")
+        return (
+            f"entry={self.entry} allow=0x{self.allow_addr:08x} val=0x{self.allow_value:08x} "
+            f"blocked=0x{self.blocked_addr:08x} src_id={self.src_id}"
+        )
 
 
 class SepInboundFilterMatrixCfg:
@@ -230,8 +241,9 @@ class SepInboundFilterMatrixCfg:
     first so the allow-rule proof line still appears.
     """
 
-    def __init__(self, *, seed: int, windows: list[tuple[int, int]],
-                 widen: SepInboundFilterWidenCfg) -> None:
+    def __init__(
+        self, *, seed: int, windows: list[tuple[int, int]], widen: SepInboundFilterWidenCfg
+    ) -> None:
         self.seed = seed
         self.windows = list(windows)
         self.entries = WALK_ENTRIES
@@ -249,8 +261,11 @@ class SepInboundFilterMatrixCfg:
         vb = rng.getrandbits(32) or WINDOW_B_VALUE
         if va == vb:
             vb ^= 0xFFFF_FFFF
-        return cls(seed=seed, windows=[(TARGET_ADDR, va), (WINDOW_B_ADDR, vb)],
-                   widen=SepInboundFilterWidenCfg.from_rng(rng))
+        return cls(
+            seed=seed,
+            windows=[(TARGET_ADDR, va), (WINDOW_B_ADDR, vb)],
+            widen=SepInboundFilterWidenCfg.from_rng(rng),
+        )
 
     def cells(self):
         """Yield (entry, window_idx, mode_name, addr, value, read_ok, write_ok,
@@ -258,18 +273,38 @@ class SepInboundFilterMatrixCfg:
         for entry in self.entries:
             for widx, (addr, val) in enumerate(self.windows):
                 for name, read_ok, write_ok in self.modes:
-                    yield (entry, widx, name, addr, val, read_ok, write_ok,
-                           "match-all", 0, 0, True)
+                    yield (entry, widx, name, addr, val, read_ok, write_ok, "match-all", 0, 0, True)
         addr0, val0 = self.windows[0]
         for name, read_ok, write_ok in self.modes:
-            yield (0, 0, name, addr0, val0, read_ok, write_ok,
-                   "match", SRC_ID_MATCH, SRC_ID_MATCH & SRC_ID_USER_MASK, True)
-        yield (0, 0, "rw", addr0, val0, True, True,
-               "mismatch", SRC_ID_MATCH, SRC_ID_MISMATCH_USER, False)
+            yield (
+                0,
+                0,
+                name,
+                addr0,
+                val0,
+                read_ok,
+                write_ok,
+                "match",
+                SRC_ID_MATCH,
+                SRC_ID_MATCH & SRC_ID_USER_MASK,
+                True,
+            )
+        yield (
+            0,
+            0,
+            "rw",
+            addr0,
+            val0,
+            True,
+            True,
+            "mismatch",
+            SRC_ID_MATCH,
+            SRC_ID_MISMATCH_USER,
+            False,
+        )
 
     def n_cells(self) -> int:
-        return (len(self.entries) * len(self.windows) * len(self.modes)
-                + len(self.modes) + 1)
+        return len(self.entries) * len(self.windows) * len(self.modes) + len(self.modes) + 1
 
     def burst_window(self) -> tuple[int, int, int]:
         """Scratch window used by the burst checkers: (addr, value, end_addr).
@@ -288,10 +323,12 @@ class SepInboundFilterMatrixCfg:
 
     def summary(self) -> str:
         wins = " ".join(f"w{i}=0x{a:08x}/0x{v:08x}" for i, (a, v) in enumerate(self.windows))
-        return (f"seed={self.seed} entries={self.entries} {wins} "
-                f"blocked=0x{self.blocked_addr:08x} cells={self.n_cells()} "
-                f"src_match=0x{SRC_ID_MATCH:x} src_mismatch_user=0x{SRC_ID_MISMATCH_USER:x} "
-                f"widen[{self.widen.summary()}]")
+        return (
+            f"seed={self.seed} entries={self.entries} {wins} "
+            f"blocked=0x{self.blocked_addr:08x} cells={self.n_cells()} "
+            f"src_match=0x{SRC_ID_MATCH:x} src_mismatch_user=0x{SRC_ID_MISMATCH_USER:x} "
+            f"widen[{self.widen.summary()}]"
+        )
 
 
 class SepInboundFilter(SepAxiRegDriver):
@@ -313,8 +350,12 @@ class SepInboundFilter(SepAxiRegDriver):
         (sep_system_csr.sv), so the proof is the resp code plus the read-back.
         """
         seq = SepAxiAccessSeq(
-            "infilt_wr_tol", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-            size=self._AXI_SIZE, allow_unverified_write_resp=True,
+            "infilt_wr_tol",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
         return seq.resp_code
@@ -340,8 +381,13 @@ class SepInboundFilter(SepAxiRegDriver):
             await self.disable_entry(entry)
 
     async def program_rule(
-        self, cfg: SepInboundFilterCfg, *, read_allowed: bool, write_allowed: bool,
-        allow_burst: bool = False, end_addr: int | None = None,
+        self,
+        cfg: SepInboundFilterCfg,
+        *,
+        read_allowed: bool,
+        write_allowed: bool,
+        allow_burst: bool = False,
+        end_addr: int | None = None,
         expect_page_widen: bool = False,
     ) -> None:
         """Program the inbound filter entry.
@@ -380,39 +426,67 @@ class SepInboundFilter(SepAxiRegDriver):
         await self._wr(
             cfg.cfg_addr,
             cfg.config_word(
-                read_allowed=read_allowed, write_allowed=write_allowed,
-                allow_burst=allow_burst),
+                read_allowed=read_allowed, write_allowed=write_allowed, allow_burst=allow_burst
+            ),
         )
 
 
 def ext_read_seq(addr: int, *, user: int = 0) -> SepAxiAccessSeq:
     """A 32-bit external-master READ (run via start_ext_seq). allow_timeout stays
     False: a blocked access must return DECERR from the filter err-slave, not wedge."""
-    return SepAxiAccessSeq("infilt_ext_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2,
-                           expect_error=False, user=user)
+    return SepAxiAccessSeq(
+        "infilt_ext_rd",
+        op=SepAxiOp.READ,
+        addr=addr,
+        length=4,
+        size=2,
+        expect_error=False,
+        user=user,
+    )
 
 
-def ext_burst_read_seq(addr: int, *, user: int = 0,
-                       expect_error: bool = False) -> SepAxiAccessSeq:
+def ext_burst_read_seq(addr: int, *, user: int = 0, expect_error: bool = False) -> SepAxiAccessSeq:
     """Two-beat INCR read (AxLEN=1) on the external master."""
     return SepAxiAccessSeq(
-        "infilt_ext_burst_rd", op=SepAxiOp.READ, addr=addr,
-        length=BURST_BYTES, size=2, burst=AXI_BURST_INCR,
-        expect_error=expect_error, user=user)
+        "infilt_ext_burst_rd",
+        op=SepAxiOp.READ,
+        addr=addr,
+        length=BURST_BYTES,
+        size=2,
+        burst=AXI_BURST_INCR,
+        expect_error=expect_error,
+        user=user,
+    )
 
 
-def ext_burst_write_seq(addr: int, data: int, *, user: int = 0,
-                        expect_error: bool = False) -> SepAxiAccessSeq:
+def ext_burst_write_seq(
+    addr: int, data: int, *, user: int = 0, expect_error: bool = False
+) -> SepAxiAccessSeq:
     """Two-beat INCR write (AxLEN=1) on the external master."""
     return SepAxiAccessSeq(
-        "infilt_ext_burst_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-        length=BURST_BYTES, size=2, burst=AXI_BURST_INCR,
+        "infilt_ext_burst_wr",
+        op=SepAxiOp.WRITE,
+        addr=addr,
+        wdata=data,
+        length=BURST_BYTES,
+        size=2,
+        burst=AXI_BURST_INCR,
         expect_error=expect_error,
-        allow_unverified_write_resp=expect_error, user=user)
+        allow_unverified_write_resp=expect_error,
+        user=user,
+    )
 
 
 def ext_write_seq(addr: int, data: int, *, user: int = 0) -> SepAxiAccessSeq:
     """A 32-bit external-master WRITE (run via start_ext_seq). allow_unverified_write_resp
     so a blocked write's DECERR is tolerated for inspection (the test asserts the code)."""
-    return SepAxiAccessSeq("infilt_ext_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-                           length=4, size=2, allow_unverified_write_resp=True, user=user)
+    return SepAxiAccessSeq(
+        "infilt_ext_wr",
+        op=SepAxiOp.WRITE,
+        addr=addr,
+        wdata=data,
+        length=4,
+        size=2,
+        allow_unverified_write_resp=True,
+        user=user,
+    )

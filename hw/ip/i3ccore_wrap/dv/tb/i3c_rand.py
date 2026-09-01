@@ -47,9 +47,7 @@ class RandMgr(random.Random):
         resolved_seed = resolve_seed(seed)
         super().__init__(resolved_seed)
         self.seed = resolved_seed
-        logging.getLogger(f"i3c.rand.{name}").info(
-            "Random seed: 0x%08X", resolved_seed
-        )
+        logging.getLogger(f"i3c.rand.{name}").info("Random seed: 0x%08X", resolved_seed)
 
 
 def in_range(rng, low, high, *, corners=(), exclude=()):
@@ -59,9 +57,7 @@ def in_range(rng, low, high, *, corners=(), exclude=()):
     if not allowed:
         raise ValueError(f"no values available in inclusive range [{low}, {high}]")
 
-    valid_corners = [
-        value for value in dict.fromkeys(corners) if value in allowed
-    ]
+    valid_corners = [value for value in dict.fromkeys(corners) if value in allowed]
     if valid_corners and rng.randint(0, 1) == 0:
         return rng.choice(valid_corners)
     return rng.choice(allowed)
@@ -91,13 +87,27 @@ def rand_bytes(rng, length):
         raise ValueError("length must be non-negative")
     return bytes(rng.randrange(256) for _ in range(length))
 
+
 __all__ = [
     # re-exported generic
-    "RandMgr", "resolve_seed", "in_range", "weighted", "banded", "rand_bytes",
+    "RandMgr",
+    "resolve_seed",
+    "in_range",
+    "weighted",
+    "banded",
+    "rand_bytes",
     # i3c domain
-    "I3C_RESERVED_ADDR", "rand_i3c_addr", "rand_len", "rand_threshold",
-    "len_for_threshold", "rand_mwl", "rand_mrl", "rand_ibi_mdb",
-    "rand_ibi_payload", "I3CTransfer", "do_transfer",
+    "I3C_RESERVED_ADDR",
+    "rand_i3c_addr",
+    "rand_len",
+    "rand_threshold",
+    "len_for_threshold",
+    "rand_mwl",
+    "rand_mrl",
+    "rand_ibi_mdb",
+    "rand_ibi_payload",
+    "I3CTransfer",
+    "do_transfer",
 ]
 
 
@@ -106,9 +116,21 @@ __all__ = [
 # ---------------------------------------------------------------------------
 # Reserved I3C addresses that must never be used as a target dynamic/static
 # address (broadcast 0x7E, single-bit-error neighbours, low reserved group).
-I3C_RESERVED_ADDR = frozenset({
-    0x00, 0x01, 0x02, 0x3E, 0x5E, 0x6E, 0x76, 0x7A, 0x7C, 0x7E, 0x7F,
-})
+I3C_RESERVED_ADDR = frozenset(
+    {
+        0x00,
+        0x01,
+        0x02,
+        0x3E,
+        0x5E,
+        0x6E,
+        0x76,
+        0x7A,
+        0x7C,
+        0x7E,
+        0x7F,
+    }
+)
 
 
 def rand_i3c_addr(rng, exclude=()):
@@ -171,8 +193,7 @@ class I3CTransfer:
 
     __slots__ = ("dir", "length", "data", "dat_idx")
 
-    def randomize(self, rng, *, mwl=256, dat_idx=0, w_weight=6, r_weight=4,
-                  min_len=1):
+    def randomize(self, rng, *, mwl=256, dat_idx=0, w_weight=6, r_weight=4, min_len=1):
         self.dir = weighted(rng, [("write", w_weight), ("read", r_weight)])
         self.length = rand_len(rng, mwl, lo=min_len)
         self.data = rand_bytes(rng, self.length)
@@ -180,8 +201,7 @@ class I3CTransfer:
         return self
 
     def __repr__(self):
-        return (f"I3CTransfer(dir={self.dir} len={self.length} "
-                f"dat_idx={self.dat_idx})")
+        return f"I3CTransfer(dir={self.dir} len={self.length} dat_idx={self.dat_idx})"
 
 
 async def do_transfer(ctrl, tgt, t):
@@ -194,15 +214,13 @@ async def do_transfer(ctrl, tgt, t):
         ok, resp, rx = await ctrl.private_write(t.data, tgt, dat_idx=t.dat_idx)
         assert ok, f"write {t.length}B failed resp=0x{resp:08X}"
         assert rx == t.data, (
-            f"write {t.length}B data mismatch: "
-            f"expected={t.data.hex()} observed={bytes(rx).hex()}"
+            f"write {t.length}B data mismatch: expected={t.data.hex()} observed={bytes(rx).hex()}"
         )
     else:
         ok, resp, rx = await ctrl.private_read(tgt, t.data, dat_idx=t.dat_idx)
         assert ok, f"read {t.length}B failed resp=0x{resp:08X}"
         assert rx == t.data, (
-            f"read {t.length}B data mismatch: "
-            f"expected={t.data.hex()} observed={bytes(rx).hex()}"
+            f"read {t.length}B data mismatch: expected={t.data.hex()} observed={bytes(rx).hex()}"
         )
     return ok, resp, rx
 

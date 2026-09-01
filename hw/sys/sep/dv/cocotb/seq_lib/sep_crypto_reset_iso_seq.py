@@ -20,11 +20,11 @@ a sibling's wrapper rst_ni is untouched, so its held result survives -- the isol
 
 from __future__ import annotations
 
-from sep_reg_meta import SEP_RESET_CTRL, sym
-
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from sep_reg_meta import SEP_RESET_CTRL, sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -41,6 +41,7 @@ HMAC_DIGEST_RESET = 0
 @dataclass(frozen=True)
 class CryptoEngine:
     """One crypto engine: display name + its SW_RESET_N bit."""
+
     name: str
     rst_bit: int
 

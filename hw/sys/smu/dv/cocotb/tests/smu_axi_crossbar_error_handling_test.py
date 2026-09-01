@@ -8,7 +8,6 @@ DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_axi_crossbar_error_handling_test_seq import (
     smu_axi_crossbar_error_handling_test_seq,
 )
@@ -21,8 +20,7 @@ class smu_axi_crossbar_error_handling_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_axi_crossbar_error_handling_test "
-            "SMU_ALL_008 r18 SEP=0 (PWRGOOD-only)"
+            "DUT_TAG=BARE smu_axi_crossbar_error_handling_test SMU_ALL_008 r18 SEP=0 (PWRGOOD-only)"
         )
         seq = smu_axi_crossbar_error_handling_test_seq(self)
         await seq.run()

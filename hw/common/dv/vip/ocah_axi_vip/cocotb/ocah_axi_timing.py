@@ -50,14 +50,10 @@ class AxiTimingProfile:
     r_ready_delay: int = 0
 
     def __post_init__(self) -> None:
-        for name in ("aw_delay", "w_delay", "ar_delay",
-                     "b_ready_delay", "r_ready_delay"):
+        for name in ("aw_delay", "w_delay", "ar_delay", "b_ready_delay", "r_ready_delay"):
             val = getattr(self, name)
             if not isinstance(val, int) or val < 0:
-                raise ValueError(
-                    f"AxiTimingProfile.{name} must be a non-negative int, "
-                    f"got {val!r}"
-                )
+                raise ValueError(f"AxiTimingProfile.{name} must be a non-negative int, got {val!r}")
         if self.aw_delay and self.w_delay:
             raise ValueError(
                 "AxiTimingProfile holds the trailing write channel until the "
@@ -169,7 +165,8 @@ def apply_profile(driver, profile: AxiTimingProfile) -> None:
             chan.clear_pause_generator()
             chan.pause = True
             _OCAH_RELEASERS[chan] = cocotb.start_soon(
-                _release_on_leader_valid(chan, chans[lead[field]], cycles))
+                _release_on_leader_valid(chan, chans[lead[field]], cycles)
+            )
         else:
             chan.set_pause_generator(_hold_then_go(cycles))
 
@@ -184,8 +181,7 @@ def _selftest() -> None:
     assert p.write_order == "same-cycle", p.write_order
     assert AxiTimingProfile(aw_delay=3).write_order == "w-first"
     assert AxiTimingProfile(w_delay=3).write_order == "aw-first"
-    for bad in ({"aw_delay": 2, "w_delay": 2}, {"aw_delay": -1},
-                {"w_delay": "2"}):
+    for bad in ({"aw_delay": 2, "w_delay": 2}, {"aw_delay": -1}, {"w_delay": "2"}):
         try:
             AxiTimingProfile(**bad)
         except ValueError:
@@ -197,7 +193,6 @@ def _selftest() -> None:
     # at once.
     g_resp = _hold_then_go(2)
     assert [next(g_resp) for _ in range(4)] == [True, True, False, False]
-
 
 
 _selftest()

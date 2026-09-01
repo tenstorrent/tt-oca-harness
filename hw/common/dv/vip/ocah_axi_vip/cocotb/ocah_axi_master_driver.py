@@ -145,7 +145,9 @@ class OcahAxiMasterDriver:
             self.set_timing(timing)
 
     @classmethod
-    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs: Any) -> "OcahAxiMasterDriver":
+    def from_prefix(
+        cls, dut, prefix: str, clock, reset=None, **kwargs: Any
+    ) -> "OcahAxiMasterDriver":
         """Construct from flattened AXI4 signals using ``AxiBus``."""
         return cls(AxiBus.from_prefix(dut, prefix), clock, reset, **kwargs)
 

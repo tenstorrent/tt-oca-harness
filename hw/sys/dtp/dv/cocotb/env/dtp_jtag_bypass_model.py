@@ -25,9 +25,7 @@ def _salted_rng(seed: int, label: str) -> random.Random:
     return random.Random(seed ^ salt)
 
 
-def _directed_patterns(
-    width: int, *, seed: int, label: str, random_count: int
-) -> tuple[int, ...]:
+def _directed_patterns(width: int, *, seed: int, label: str, random_count: int) -> tuple[int, ...]:
     mask = _bit_mask(width)
     patterns = [
         0,
@@ -62,13 +60,9 @@ class DtpBypassCaseCfg:
         if self.width <= 0:
             raise ValueError(f"BYPASS width must be positive, got {self.width}")
         if self.pattern < 0 or self.pattern > _bit_mask(self.width):
-            raise ValueError(
-                f"BYPASS pattern 0x{self.pattern:x} does not fit width {self.width}"
-            )
+            raise ValueError(f"BYPASS pattern 0x{self.pattern:x} does not fit width {self.width}")
         if self.capture_bit not in (0, 1):
-            raise ValueError(
-                f"BYPASS capture_bit must be 0 or 1, got {self.capture_bit}"
-            )
+            raise ValueError(f"BYPASS capture_bit must be 0 or 1, got {self.capture_bit}")
 
     @property
     def check_id(self) -> str:

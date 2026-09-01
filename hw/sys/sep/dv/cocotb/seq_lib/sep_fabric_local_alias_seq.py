@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -31,7 +33,6 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     INFILT_BASE,
     OUTFILT_BASE,
 )
-from sep_reg_meta import sym
 
 N_REGIONS = 16
 IDX_START = 12
@@ -106,7 +107,11 @@ class SepLocalAlias(SepAxiRegDriver):
 def alias_probe_seq(addr: int) -> SepAxiAccessSeq:
     """32-bit CPU-LSU read of a remapped or identity address."""
     return SepAxiAccessSeq(
-        "alias_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2,
+        "alias_rd",
+        op=SepAxiOp.READ,
+        addr=addr,
+        length=4,
+        size=2,
     )
 
 

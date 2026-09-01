@@ -3,7 +3,6 @@
 """DTP DEBUG_CONTROL randomized clock-stop test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq import (
     dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq,

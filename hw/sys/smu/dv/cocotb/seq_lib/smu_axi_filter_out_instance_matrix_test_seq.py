@@ -100,17 +100,13 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         cocotb.log.info(msg)
 
     async def _j2a_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A WR {name} @0x{addr:08x} status={st}")
         self._log(f"J2A WR {name} @0x{addr:08x} data=0x{data:x}")
 
     async def _j2a_rd(self, jtag, addr: int, name: str) -> int:
-        st, rdata = await jtag2axi_single_read(
-            jtag, addr, require_complete=True
-        )
+        st, rdata = await jtag2axi_single_read(jtag, addr, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A RD {name} @0x{addr:08x} status={st}")
         return int(rdata)
@@ -128,15 +124,9 @@ class smu_axi_filter_out_instance_matrix_test_seq:
     ) -> int:
         """Program one outbound instance; return packed CFG (no readback)."""
         cfg = _pack_cfg(allow_ns=allow_ns, src_id=src_id)
-        await self._j2a_wr(
-            jtag, smc_indexed_addr(_OUT_START, inst), lo, f"{tag}_START"
-        )
-        await self._j2a_wr(
-            jtag, smc_indexed_addr(_OUT_END, inst), hi, f"{tag}_END"
-        )
-        await self._j2a_wr(
-            jtag, smc_indexed_addr(_OUT_CFG, inst), cfg, f"{tag}_CONFIG"
-        )
+        await self._j2a_wr(jtag, smc_indexed_addr(_OUT_START, inst), lo, f"{tag}_START")
+        await self._j2a_wr(jtag, smc_indexed_addr(_OUT_END, inst), hi, f"{tag}_END")
+        await self._j2a_wr(jtag, smc_indexed_addr(_OUT_CFG, inst), cfg, f"{tag}_CONFIG")
         return cfg
 
     async def _readback_inst(
@@ -151,15 +141,9 @@ class smu_axi_filter_out_instance_matrix_test_seq:
     ) -> None:
         rb = await self._j2a_rd(jtag, smc_indexed_addr(_OUT_CFG, inst), f"{tag}_RB")
         if (rb & _CFG_CMP_MASK) != (cfg & _CFG_CMP_MASK):
-            raise AssertionError(
-                f"{tag} CONFIG rb mismatch want=0x{cfg:x} got=0x{rb:x}"
-            )
-        rb_lo = await self._j2a_rd(
-            jtag, smc_indexed_addr(_OUT_START, inst), f"{tag}_START_RB"
-        )
-        rb_hi = await self._j2a_rd(
-            jtag, smc_indexed_addr(_OUT_END, inst), f"{tag}_END_RB"
-        )
+            raise AssertionError(f"{tag} CONFIG rb mismatch want=0x{cfg:x} got=0x{rb:x}")
+        rb_lo = await self._j2a_rd(jtag, smc_indexed_addr(_OUT_START, inst), f"{tag}_START_RB")
+        rb_hi = await self._j2a_rd(jtag, smc_indexed_addr(_OUT_END, inst), f"{tag}_END_RB")
         if (rb_lo & 0xFFF_FFFF_FFFF_FFFF) != (lo & 0xFFF_FFFF_FFFF_FFFF):
             raise AssertionError(f"{tag} START rb 0x{rb_lo:x} want 0x{lo:x}")
         if (rb_hi & 0xFFF_FFFF_FFFF_FFFF) != (hi & 0xFFF_FFFF_FFFF_FFFF):
@@ -215,8 +199,7 @@ class smu_axi_filter_out_instance_matrix_test_seq:
 
         self.s1_ok = True
         self._log(
-            "CHK-FILTER-OUT-INSTANCES-S1: out_filter_inst=0,1,8,15 DECODE "
-            "bases=smc_indexed_addr"
+            "CHK-FILTER-OUT-INSTANCES-S1: out_filter_inst=0,1,8,15 DECODE bases=smc_indexed_addr"
         )
         sb.expect_eq("CHK-FILTER-OUT-INSTANCES-S1", True, True)
 
