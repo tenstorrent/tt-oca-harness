@@ -52,12 +52,9 @@ from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 # Inbound FILTER_* per-entry register offsets (64-bit START/END as lo/hi 32-bit words).
 FILTER_START_ADDR = 0x08
 FILTER_END_ADDR = 0x10
-# filter_ctrl.rdl FILTER_CONFIG.data_bus_width reset = 3 (8-byte beat), so
-# axi_filter_wrap expands a same-beat [start,end] window and END's low bits
-# read back as 1 (which is why the RDL reset of END_ADDR is 0x7). Nothing in
-# this module needs the granule: the readback proof lives in
-# sep_reg_bit_bash_seq.inbound_addr_expected(), which models the widen across
-# the whole write sweep rather than one programmed entry.
+# Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
+# (hw/common/axi/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
+# readback model is sep_reg_bit_bash_seq.inbound_addr_expected().
 
 # Allowed target: a pure-RW scratch CSR (SEP_SW_DEBUG @ sep_cpu_ctrl+0x178) in the
 # system_csr region the smn_inbound xbar reaches post-filter. Staged with a distinctive
@@ -224,7 +221,7 @@ class SepInboundFilterCfg:
 class SepInboundFilterMatrixCfg:
     """Single source of truth for the inbound-filter RAND-REP walk.
 
-    Discrete cells (walked every seed): first and last table entries x two
+    Discrete cells (walked every seed): entries 0 and 7 x two
     address windows x {rw, read-only, write-only} at src_id=0 (match-all),
     plus entry 0 / window 0 x {rw, r, w} at src_id=5 / user=5 (exact match)
     and one src-mismatch cell (src_id=5 / user=0xA, both allows set).

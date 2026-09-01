@@ -315,9 +315,9 @@ feature has no legal knob space (a strap, a single named handshake).
 |===
 |Test Case |Run mode |VIP / Model |Description
 |`sep_fabric_inbound_filter_rule_matrix_test`
-|no_cpu, +skip_fuse_sense
+|no_cpu, real PROD fuse sense
 |ocah_axi_vip
-|Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks first and last table entries, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation.
+|Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
 |`sep_fabric_remap_filter_csr_bank_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -2541,14 +2541,17 @@ stall-duration / recovery stress are not exercised here.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks first and last table entries, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 x `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation.
+*Randomization*: RAND-REP — entries 0 and 7 × two windows × `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch, run every seed. Seed varies the window data, the entry-15 granule window, and the bound-probe registers.
+
+*Objective*: Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 x `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
 
 *Test Procedure*:
 
 [arabic]
 . Bring the lifecycle controller up in PROD so the inbound filter is active.
-. Walk first and last table entries, two windows, `{rw, r, w}`, and the source-ID match / mismatch cells — 16 cells.
+. Walk entries 0 and 7, two windows, `{rw, r, w}`, and the source-ID match / mismatch cells — 16 cells.
 . Walk `allow_burst` deny then allow on AR and AW of the scratch window (2-beat INCR, AxLEN=1). The allow window spans two 4 KB pages. The allowed burst becomes two Lite singles; the denied burst reaches none.
+. Program an 8-byte `allow_burst=1` window inside one 4 KB page on entry 15. Prove the page grant on the bus, both page edges, then freeze `allow_burst` with `FILTER_CONFIG.locked`. The lock is sticky, so this step is last.
 
 *Checkers*:
 
@@ -2570,7 +2573,7 @@ stall-duration / recovery stress are not exercised here.
 |CHK-SRC-ID
 |A non-zero `FILTER_CONFIG.src_id` matches only the external master's `user[3:0]`. The match cells keep r/w-allow gating; the mismatch cell DECERRs with both allow bits set.
 |CHK-RAND-REP
-|First and last inbound-filter entries, two address windows, `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch — 16 cells in one invocation.
+|Entries 0 and 7, two address windows, `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch — 16 cells in one invocation. Entry 15 carries the granule, bound, and lock cells.
 |CHK-BURST-DENY
 |With `allow_burst=0`, a single-beat external read of the scratch window is OKAY (anti-vacuous) and a 2-beat INCR (AxLEN=1) to the same address is DECERR. `traffic_filter.sv` `pass_burst` is not vacuously true.
 |CHK-BURST-ALLOW
@@ -2588,11 +2591,12 @@ stall-duration / recovery stress are not exercised here.
 |CHK-CONFIG-LOCK
 |`FILTER_CONFIG.locked` freezes `allow_burst`. Once locked, clearing `allow_burst` and clearing `locked` both answer SLVERR, the field keeps its value, and the frozen granule still grants the widened page. The freeze is not in the register block -- `locked` is a W1S bit with no write-enable over other fields -- but in `sep_system_csr.sv`, where a per-entry demux routes a locked entry's writes to an error slave while reads pass through. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
 |===
-*Scope*: the walk is the first and last inbound-filter entries, two address
+*Scope*: the walk is inbound-filter entries 0 and 7, two address
 windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0, then the
 `allow_burst` deny/allow pair on AR and AW of scratch and the burst-to-single
-Lite split. `CHK-OWNERSHIP` keeps CFG outside every allow window. WRAP, FIXED and
+Lite split, then the same-page 4 KB granule, page-bound, and `FILTER_CONFIG.locked`
+on entry 15. `CHK-OWNERSHIP` keeps CFG outside every allow window. WRAP, FIXED and
 `AxLEN>1` are not walked: the Lite bridges convert those bursts to singles, so the
 filter only ever sees `tx_len==0`.
 
@@ -3527,10 +3531,10 @@ both lock flavours of one seed-selected spare.
 [arabic]
 . Not a UVM RAL model.
 . `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL. `iter_register_walk` counts OFFSET symbols that lack DEFAULT/struct (`nometa`) instead of dropping them silently.
-. `SepRegBitBashCfg` is the single source of truth for both the walk and the skip reasons. ENTROPY_SOURCE registers that hardware advances while the noise source runs are excluded from the reset walk by `sep_reg_meta.reg_hw_updating()`: every register whose fields all declare `sw = r` in the generated JSON model, minus the constants named in `_CONSTANT_RO`. That set is 25 registers, of which 17 are tallied under `hw-owned; read value is not the POR value` -- the other 8 are claimed first by the `STATUS` and `RDATA` name suffixes. `sw = r` alone is not the criterion: COMPONENT_ID is software-read-only but hardwired (`entropy_source.rdl` `hw = na`, no storage in `entropy_source_reg.sv`), so it is opted back in and stays in the walk. The dead-space store compare uses the same accessor, so the two checks cannot drift apart.
+. `SepRegBitBashCfg` is the single source of truth for both the walk and the skip reasons. ENTROPY_SOURCE registers that hardware advances while the noise source runs are excluded from the reset walk by `sep_reg_meta.reg_hw_updating()`: every register whose fields all declare `sw = r` in the generated JSON model, minus the constants named in `_CONSTANT_RO`. That set is 21 registers, of which 13 are tallied under `hw-owned; read value is not the POR value` -- the other 8 are claimed first by the `STATUS` and `RDATA` name suffixes. `sw = r` alone is not the criterion: COMPONENT_ID is software-read-only but hardwired (`entropy_source.rdl` `hw = na`, no storage in `entropy_source_reg.sv`), so it is opted back in and stays in the walk. The dead-space store compare uses the same accessor, so the two checks cannot drift apart.
 . Write-lands is the anti-vacuity control: a complement write must move exactly the software-usable mask.
-. Inbound-filter START/END stay in the write sweep under the full export mask; readback is checked against the same-beat wrap model with the peer at reset (`END_ADDR` reset `0x7`). That compare pins current RTL wrap behaviour; it is not a specification check.
-. The inventory is seed-stable: export 1032, inventory 873, nometa 159, reset 484 after 389 reasoned skips -- the `reset_skip=[...]` tally in the walk line accounts for all 389. Write-lands is 19 full-mask registers (8 scratch-cold + 8 scratch-warm + 3 `SEP_CPU_CTRL`) plus 32 inbound START/END under the wrap model, plus 9 `TOUCH_BLOCKS` IP storage proofs (AES/HMAC/KMAC/OTBN/DMA/SPI/WDT and both mailboxes; write ``x``, ``(read & mask) == (x & mask)``).
+. Inbound-filter START/END stay in the write sweep under the full export mask; readback is checked against the `allow_burst=0` 8-byte granule (`hw/common/axi/axi_filter/doc/index.adoc`, `filter_ctrl.rdl`) with the peer at reset (`END_ADDR` reset `0x7`): START rounds down and END rounds up when they share a beat. The 4 KB granule is `CHK-PAGE-WIDEN` on `sep_fabric_inbound_filter_rule_matrix_test`.
+. The inventory is seed-stable: export 1024, inventory 865, nometa 159, reset 481 after 384 reasoned skips -- the `reset_skip=[...]` tally in the walk line accounts for all 384. Write-lands is 19 full-mask registers (8 scratch-cold + 8 scratch-warm + 3 `SEP_CPU_CTRL`) plus 32 inbound START/END under the wrap model. Storage touch is every admitted side-effect-free register (130 of 865). `TOUCH_BLOCKS` is the anti-vacuity list (AES/HMAC/KMAC/OTBN/DMA/SPI/WDT and both mailboxes); the sweep fails if any of those nine IPs stops offering a candidate.
 
 *Checkers*:
 
@@ -3546,9 +3550,9 @@ both lock flavours of one seed-selected spare.
 |CHK-RESERVED
 |Reserved bits (`mask_all` minus `mask`) read back 0. Counted only where the register has a non-zero reserved field: 1 of the 51 (`SEP_NMI_VEC`, reserved `0x1`).
 |CHK-BLOCK-TOUCH
-|Every side-effect-free export RW storage register — 130 of the 865-register inventory, not one per IP: write a seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. The gate is the per-register safety predicate AND the side-effect predicate; the second is required, because the first admits registers whose write drops live beats. `TOUCH_BLOCKS` is retained as the anti-vacuity list, so the sweep still fails if any of those nine IPs stops offering a candidate. Excluded registers each carry a tallied reason and the sweep accounts for all 865. Not storage, and each found by widening: hardware-owned status and state-machine observability words, the CSRNG reseed counters, an identity register, two read ports, `ENTROPY_SOURCE.FIPS_LOCK` (a sticky lock whose write froze the block and made later configuration writes in the same run look like failures), and two selectors that refuse a random mask-legal value — `HT_WATERMARK_NUM`, whose unsupported encodings sanitize, and `NOISE_OBS_CTRL`, whose mask contains a write-only singlepulse field.
+|Every side-effect-free export RW storage register — 130 of the 865-register inventory, not one per IP: write a seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. The gate is the per-register safety predicate AND the side-effect predicate; the second is required, because the first admits registers whose write drops live beats. `TOUCH_BLOCKS` is the anti-vacuity list, so the sweep fails if any of those nine IPs stops offering a candidate. Excluded registers each carry a tallied reason and the sweep accounts for all 865. Not storage: hardware-owned status and state-machine observability words, the CSRNG reseed counters, an identity register, two read ports, `ENTROPY_SOURCE.FIPS_LOCK` (a sticky lock is never a storage touch), and two selectors that refuse a random mask-legal value — `HT_WATERMARK_NUM`, whose unsupported encodings sanitize, and `NOISE_OBS_CTRL`, whose mask contains a write-only singlepulse field.
 |CHK-RANDCFG
-|The whole seed-built configuration ran in one invocation: the reset, write and TOUCH_BLOCKS walks each covered every register the cfg named. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
+|The whole seed-built configuration ran in one invocation: the reset, write and storage-touch walks each covered every register the cfg named. `TOUCH_BLOCKS` is the anti-vacuity list, not the third walk. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
 |===
 
 '''''

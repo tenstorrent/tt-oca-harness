@@ -10,7 +10,7 @@ DECERR (block-by-default); read_allowed/write_allowed gate the matched
 read/write. With smc_global_base=0 the inbound global->local remap is identity, so
 the external master drives the SEP-local address directly.
 
-Walks first and last table entries x two address windows x {rw, read-only,
+Walks entries 0 and 7 x two address windows x {rw, read-only,
 write-only} at src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at
 src_id=5 with a matching AXI user and one src-mismatch cell. SepInboundFilterMatrixCfg
 is the single source of truth. Stays at sep_debug=0 the whole time and proves
@@ -39,7 +39,7 @@ CHK-BURST-TO-SINGLE watches the system-CSR AXI-Lite AR/AW after
 singles (fabric.adoc convert burst to single). WRAP/FIXED/AxLEN>1 are
 not walked.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
-allow_burst=1 window on the last table entry. An 8-byte window inside the
+allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
 whole page, and traffic_filter.sv then compares only addr[AddrWidth-1:12].
 CHK-PAGE-WIDEN proves the 4 KB page grant ON THE BUS
@@ -61,7 +61,7 @@ CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
 cannot move: sep_system_csr.sv demuxes a locked entry's writes to an AXI-Lite
 error slave, so the attempt returns SLVERR, the field reads back unchanged,
 and the frozen bit still grants the widened page. The lock is sticky until
-reset, so this cell runs LAST on the last entry.
+reset, so this cell runs last on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
@@ -172,8 +172,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _check_burst_dimension(self, mcfg: SepInboundFilterMatrixCfg) -> None:
         """Walk allow_burst deny then allow on the scratch window.
 
-        Runs after the single-beat matrix and before ownership so a later
-        ownership FAIL still leaves the burst PASS lines in the log.
+        Runs after the single-beat matrix and before ownership.
+        CHK-CONFIG-LOCK is sticky, so the lock cell runs last on entry 15.
         """
         burst_addr, burst_val, burst_end = mcfg.burst_window()
         await self.filt.stage_target(burst_addr, burst_val)
@@ -529,7 +529,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         # security_disable read from the DUT rather than passed as a literal. This
-        # entry value-checks FEAT_CTRL against the Phase 1 lifecycle golden, so every
+        # entry value-checks FEAT_CTRL against the lifecycle golden, so every
         # input to that golden should be observed where it can be; sec_dis can be, via
         # lcc_security_disable_probe_o.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1

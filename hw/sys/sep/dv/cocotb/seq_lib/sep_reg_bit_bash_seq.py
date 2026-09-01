@@ -199,13 +199,9 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
     "CLEAR_INTR": "trigger",
 }
 
-# Entropy-complex CSRs the export marks rw but hardware owns or a lock guards.
-# Found by widening the touch to every side-effect-free register: 17 of them
-# refused a masked write and the readback held the hardware value.
-# ``FIPS_LOCK`` is the dangerous one -- the touch SET it, could not restore it,
-# and every later ENTROPY_SOURCE config write in the same run was then refused
-# because the lock had frozen the block. A sticky lock must never be a storage
-# touch: it changes the machine under the rest of the sweep.
+# Entropy-complex CSRs the export marks rw but hardware owns. A sticky
+# lock is never a storage touch: it changes the machine under the rest
+# of the sweep.
 _TOUCH_DENY_SUFFIX_HW: dict[str, str] = {
     "_STS": "hw-driven status",
     "_SM_STATE": "hw state observability",
