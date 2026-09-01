@@ -53,6 +53,7 @@ EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
 EXT_TRNG_CSR = 0x1091_7000
 EXT_TRNG_SRC_SEL = sym("SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR")
 
+
 @pyuvm.test()
 class sep_trng_reset_recovery_test(sep_base_test):
     """Prove pool scrub and fresh-only ordered TRNG recovery."""
@@ -88,7 +89,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
             if bool(level) == nonzero:
                 return level
             await ClockCycles(cocotb.top.clk_i, 20)
-        raise AssertionError(f"entropy pool did not become {'nonempty' if nonzero else 'empty'}")
+        raise AssertionError(
+            f"entropy pool did not become {'nonempty' if nonzero else 'empty'}"
+        )
 
     async def _wait_packer_depth(self, expected: int, timeout: int = 80_000) -> None:
         for _ in range(timeout):
@@ -159,7 +162,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
         for event in drain_reads:
             await with_timeout(event.wait(), 10_000, "ns")
             drain_responses.append(event.data)
-        drain_codes = [worst_resp(getattr(response, "resp", None)) for response in drain_responses]
+        drain_codes = [
+            worst_resp(getattr(response, "resp", None)) for response in drain_responses
+        ]
         # Return credits for accesses that drained without DECERR.
         self.env.axi_monitor.release_expected_decerr(
             3 - sum(1 for code in drain_codes if code == 3)
@@ -210,9 +215,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
                 break
             await ClockCycles(cocotb.top.clk_i, 1)
         else:
-            raise AssertionError(
-                "TRNG isolation did not clear during JTAG reset"
-            )
+            raise AssertionError("TRNG isolation did not clear during JTAG reset")
 
         jtag_reset.value = 0
         await ClockCycles(cocotb.top.clk_i, 4)
@@ -255,7 +258,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
             SepEsrcConfigSeq("esrc_reconfig", cfg=cfg, reset_trng=False)
         )
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_restart_gens"))
-        assert await self.wait_seed_ready(), "ESRC did not produce a fresh seed after reset"
+        assert await self.wait_seed_ready(), (
+            "ESRC did not produce a fresh seed after reset"
+        )
         await self.start_seq(SepEsrcEnableEdnSeq("edn_restart"))
         assert (await self._read(ESRC_FIPS_LOCK)).rdata & 0x1, (
             "recovery did not restore ESRC FIPS_LOCK"

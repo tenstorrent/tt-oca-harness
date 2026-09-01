@@ -4,8 +4,8 @@
 // SEP integration wrapper for the internal entropy complex.
 //
 // This groups the entropy source and DRBG behind the coordinated three-port
-// AXI-Lite reset boundary. Source selection and consumer
-// adapters remain in sep_crypto because they also serve the external TRNG path.
+// AXI-Lite reset boundary. Source selection and consumer adapters remain in
+// sep_crypto because they also serve the external TRNG path.
 
 module sep_trng #(
     parameter int unsigned NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT

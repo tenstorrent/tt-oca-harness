@@ -165,7 +165,6 @@ module sep_crypto_axi_interconnect (
         abr_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::abr_rule.start_addr) &&
             (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::abr_rule.end_addr);
 
-        // Port mapping follows sep_crypto_axi_port_e
         if (abr_write) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
         end else if (trng_write) begin
