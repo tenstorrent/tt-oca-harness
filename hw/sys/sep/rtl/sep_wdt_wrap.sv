@@ -22,7 +22,11 @@ module sep_wdt_wrap
     output logic                         wdt_timer_rst_req_o,
     // Aggregated fatal alert (alert pulse | integ_fail of all channels)
     output logic                         wdt_alert_o,
-    input  logic                         wdt_debug_sleep_mode_i
+    input  logic                         wdt_debug_sleep_mode_i,
+
+    // Register bridge fault (sticky, held until bus_err_clr_i)
+    output logic                         bus_err_o,
+    input  logic                         bus_err_clr_i
 );
 
     localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;
@@ -125,7 +129,8 @@ module sep_wdt_wrap
         .axi_lite_rsp_o  (axi_lite_resp),
         .tl_o            (tl_d_i),
         .tl_i            (tl_d_o),
-        .err_o           (/* UNUSED */)
+        .err_o           (bus_err_o),
+        .err_clr_i       (bus_err_clr_i)
     );
 
     aon_timer #(

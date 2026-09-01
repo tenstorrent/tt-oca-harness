@@ -101,8 +101,9 @@ int main(void) {
     __asm__ volatile("fence" ::: "memory");
     uint32_t after = rd(ROM_BASE + 0x00);
     // Compare against the literal from the loaded image, not against `orig` (a DUT
-    // read of the same address). `after != orig` passed for any stable read, including
-    // a path stuck at 0x0 or 0xFFFFFFFF; CHK-ROM-READ already pins this word.
+    // read of the same address). Comparing two DUT reads would hold for any stable
+    // read, including a path stuck at 0x0 or 0xFFFFFFFF; CHK-ROM-READ pins this word
+    // against the image.
     if (after != 0x89abcdefu) {
         sep_mbx_puts("FAIL: CHK-ROM-WRITE-IGNORED content changed ");
         sep_mbx_puthex(after);

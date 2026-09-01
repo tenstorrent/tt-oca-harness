@@ -14,10 +14,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from .ocah_axi_item import OcahAxiReadResult, OcahAxiWriteResult
 from .ocah_axi_master_driver import OcahAxiMasterDriver
-from .ocah_axi_results import (
-    OcahAxiReadResult,
-    OcahAxiWriteResult,
+from .ocah_axi_types import (
     axi_resp_ok,
     normalize_resp_list,
     words_from_bytes,
