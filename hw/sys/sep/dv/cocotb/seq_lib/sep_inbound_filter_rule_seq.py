@@ -356,13 +356,13 @@ class SepInboundFilter(SepAxiRegDriver):
 
         ``expect_page_widen`` must be set to program ``allow_burst=1`` with
         START and END inside one 4 KB page. Hardware then widens the range to
-        the whole page (``axi_filter_wrap.sv``), so the entry grants every
-        address in it -- in the SEP CSR region a page is a whole block. A
-        caller that wants a narrow window and sets ``allow_burst`` by habit gets
-        the page silently, and the CSR readback shows the widened bounds as if
-        they were asked for. Requiring the opt-in makes that a test failure
-        instead. The widen direction is unstated in the architecture documents;
-        see the specification question tracked against this behaviour.
+        the whole page: ``START_ADDR`` rounds down, ``END_ADDR`` rounds up,
+        and ``allow_burst=1`` selects the 4 KB granule
+        (``hw/common/axi/axi_filter/doc/index.adoc``). The entry grants every
+        address in that page -- in the SEP CSR region a page is a whole
+        block. A caller that wants a narrow window and sets ``allow_burst``
+        by habit gets the page, and the CSR readback shows the widened
+        bounds. Requiring the opt-in fails that configuration.
         """
         end = cfg.allow_addr if end_addr is None else end_addr
         if allow_burst and not expect_page_widen:
