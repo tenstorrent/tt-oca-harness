@@ -70,6 +70,13 @@ repos:
         language: system
         files: '\.ya?ml$'
 
+      - id: tomllint
+        name: Check TOML syntax with tomllint
+        entry: uv --directory . run --locked tomllint
+        language: system
+        files: '\.toml$'
+        exclude: '^hw/ip/scrambler/dv/lint/scrambler\.toml$'
+
       - id: shellcheck
         name: Lint shell scripts with shellcheck
         entry: uv --directory . run --locked shellcheck --severity=warning

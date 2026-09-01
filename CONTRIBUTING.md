@@ -82,10 +82,10 @@ Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-yaml`, `lint-markdown`, `lint-make`, `lint-shell`, and `regen-regs` on
-pull requests and pushes to `main` (`lint-sv-verible` is temporarily
-disabled). Setup jobs share `bender`, Verilator, and reviewdog artifacts;
-jobs report through `.github/actions/reviewdog-report`.
+`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`, and
+`regen-regs` on pull requests and pushes to `main` (`lint-sv-verible` is
+temporarily disabled). Setup jobs share `bender`, Verilator, and reviewdog
+artifacts; jobs report through `.github/actions/reviewdog-report`.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -104,6 +104,7 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
 | `lint-spelling` | `lint-spelling` | `make ocah-lint-spelling` and `make ocah-lint-spelling-fix` |
 | `lint-yaml` | `lint-yaml` | `make ocah-lint-yaml` |
+| `lint-toml` | `lint-toml` | `make ocah-lint-toml` |
 | `lint-markdown` | `lint-markdown` | `make ocah-lint-markdown` and `make ocah-lint-markdown-fix` |
 | `lint-make` | `lint-make` (report-only) | `make ocah-lint-make` |
 | `lint-shell` | `lint-shell` | `make ocah-lint-shell`, `make ocah-format-shell`, and `make ocah-format-shell-check` |
@@ -147,17 +148,25 @@ either can rewrite a deliberate domain term (see `[tool.codespell]`'s
 `ignore-words-list` in `pyproject.toml`) or mangle non-prose content such as
 math notation or bit-range syntax that only looks like Markdown.
 
+`lint-toml` (tomllint) checks TOML syntax only -- it carries no style rules
+and no autofix, unlike yamllint/markdownlint. It mainly guards the DV
+testlists and sim configs under `hw/**/dv/**/*.toml`, catching a malformed
+file before the runner that reads it fails with a less legible error.
+`hw/ip/scrambler/dv/lint/scrambler.toml` is excluded: despite the extension,
+`slang-tidy` parses it with its own `Checks:`/`CheckConfigs:` grammar, not
+TOML.
+
 ### Optional pre-commit checks
 
 The repository provides optional, check-only hooks for staged Python, C/C++,
-Tcl, YAML, and shell files, plus a repo-wide spelling check. They run Ruff,
-clang-format, tclfmt, tclint, codespell, yamllint, shellcheck, and shfmt from
-the locked uv environment, plus Git's whitespace/conflict-marker check. The
-hooks do not modify or stage files. `mypy`, `markdownlint`, and `checkmake`
-are deliberately left out of this bundle -- they are slow, need a separate
-Node.js toolchain, or ship as a standalone binary rather than a uv-managed
-package -- and stay CI-only; see the CI job table above for their local
-commands.
+Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
+Ruff, clang-format, tclfmt, tclint, codespell, yamllint, tomllint, shellcheck,
+and shfmt from the locked uv environment, plus Git's whitespace/conflict-marker
+check. The hooks do not modify or stage files. `mypy`, `markdownlint`, and
+`checkmake` are deliberately left out of this bundle -- they are slow, need a
+separate Node.js toolchain, or ship as a standalone binary rather than a
+uv-managed package -- and stay CI-only; see the CI job table above for their
+local commands.
 
 ```bash
 make hooks-install    # explicit opt-in for this clone

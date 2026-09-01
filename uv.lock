@@ -804,6 +804,15 @@ wheels = [
 ]
 
 [[package]]
+name = "tomllint"
+version = "0.3.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/7b/e5557c8434153ec351a927498103d220e0f4985fe1e8f3f93a2dab71310f/tomllint-0.3.6.tar.gz", hash = "sha256:7ed5d87862ba133d72a6b9590fe85445d24008c13629e71f05fbbba8693c786b", size = 6763, upload-time = "2026-08-01T05:56:31.765Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/ac/6acc186db7d697c14678d5eb511d771082d5ae4f284811927f7d246faeb1/tomllint-0.3.6-py3-none-any.whl", hash = "sha256:76d6d592b4764a25ff3da6f08a2c073d43618ecc98dd3baf198094c7b10db5a1", size = 5740, upload-time = "2026-08-01T05:56:30.815Z" },
+]
+
+[[package]]
 name = "tt-ocah-reggen"
 version = "0.1.0"
 source = { virtual = "." }
@@ -829,6 +838,7 @@ dependencies = [
     { name = "shfmt-py" },
     { name = "systemrdl-compiler" },
     { name = "tclint" },
+    { name = "tomllint" },
     { name = "yamllint" },
 ]
 
@@ -860,6 +870,7 @@ requires-dist = [
     { name = "shfmt-py", specifier = "==4.1.0" },
     { name = "systemrdl-compiler", specifier = ">=1.32.2" },
     { name = "tclint", specifier = "==0.4.2" },
+    { name = "tomllint", specifier = "==0.3.6" },
     { name = "yamllint", specifier = "==1.37.1" },
 ]
 
