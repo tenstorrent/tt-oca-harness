@@ -22,8 +22,9 @@
 // The STAP/iJTAG scan chains are looped back (scan_in = scan_out). The
 // functional ports are otherwise pin-exposed: the JTAG2AXI and SMC/SEP OTP
 // AXI-Lite managers are answered by AXI memory/RAM BFMs on flattened
-// struct <-> signal adapters, and the XTRIG CSR AXI-Lite and clock-stop
-// request inputs are driven by the env (the UVM shape ties them off below).
+// struct <-> signal adapters, and the XTRIG CSR AXI-Lite, cross-trigger
+// CTM/CTP, and clock-stop request inputs are driven by the env (the UVM
+// shape drives them from the shared AXI master agent and dtp_tb_if below).
 
 `timescale 1ps/1fs
 
@@ -1241,26 +1242,158 @@ module dtp_uvm_top
     assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
     assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
 
-    // XTRIG AXI-Lite subordinate: no CSR traffic.
-    assign xtrig_axil_awaddr  = 32'h0;
-    assign xtrig_axil_awprot  = 3'b000;
-    assign xtrig_axil_awvalid = 1'b0;
-    assign xtrig_axil_wdata   = 32'h0;
-    assign xtrig_axil_wstrb   = 4'h0;
-    assign xtrig_axil_wvalid  = 1'b0;
-    assign xtrig_axil_bready  = 1'b0;
-    assign xtrig_axil_araddr  = 32'h0;
-    assign xtrig_axil_arprot  = 3'b000;
-    assign xtrig_axil_arvalid = 1'b0;
-    assign xtrig_axil_rready  = 1'b0;
+    // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip UVM master agent
+    // drives the CSR port (the initiator mirror of the slave-port pattern:
+    // the agent's driver procedurally drives the request-side signals on the
+    // master interface, routed out to the DUT here, and the TB wires only
+    // the DUT-driven response signals back in).
+    ocah_axi_if u_xtrig_master_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign xtrig_axil_awaddr  = u_xtrig_master_if.awaddr[31:0];
+    assign xtrig_axil_awprot  = u_xtrig_master_if.awprot;
+    assign xtrig_axil_awvalid = u_xtrig_master_if.awvalid;
+    assign xtrig_axil_wdata   = u_xtrig_master_if.wdata[31:0];
+    assign xtrig_axil_wstrb   = u_xtrig_master_if.wstrb[3:0];
+    assign xtrig_axil_wvalid  = u_xtrig_master_if.wvalid;
+    assign xtrig_axil_bready  = u_xtrig_master_if.bready;
+    assign xtrig_axil_araddr  = u_xtrig_master_if.araddr[31:0];
+    assign xtrig_axil_arprot  = u_xtrig_master_if.arprot;
+    assign xtrig_axil_arvalid = u_xtrig_master_if.arvalid;
+    assign xtrig_axil_rready  = u_xtrig_master_if.rready;
 
-    // Cross-trigger CTM/CTP stimulus inputs: quiescent.
-    assign xtrig_ctm_src_ack     = '0;
-    assign xtrig_ctm_dst_req     = '0;
-    assign xtrig_ctp_req_out_din = '0;
-    assign xtrig_ctp_req_in_din  = '0;
-    assign xtrig_ctp_ack_in_din  = '0;
-    assign xtrig_ctp_ack_out_din = '0;
+    // Response-side signals: DUT subordinate -> agent driver/monitor.
+    assign u_xtrig_master_if.awready = xtrig_axil_awready;
+    assign u_xtrig_master_if.wready  = xtrig_axil_wready;
+    assign u_xtrig_master_if.bresp   = xtrig_axil_bresp;
+    assign u_xtrig_master_if.bvalid  = xtrig_axil_bvalid;
+    assign u_xtrig_master_if.bid     = '0;
+    assign u_xtrig_master_if.buser   = '0;
+    assign u_xtrig_master_if.arready = xtrig_axil_arready;
+    assign u_xtrig_master_if.rdata   = 64'(xtrig_axil_rdata);
+    assign u_xtrig_master_if.rresp   = xtrig_axil_rresp;
+    assign u_xtrig_master_if.rvalid  = xtrig_axil_rvalid;
+    assign u_xtrig_master_if.rid     = '0;
+    assign u_xtrig_master_if.rlast   = 1'b1;
+    assign u_xtrig_master_if.ruser   = '0;
+
+    ocah_axi_if u_xtrig_axil_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_xtrig_axil_if.awaddr   = 64'(xtrig_axil_awaddr);
+    assign u_xtrig_axil_if.awprot   = xtrig_axil_awprot;
+    assign u_xtrig_axil_if.awvalid  = xtrig_axil_awvalid;
+    assign u_xtrig_axil_if.awready  = xtrig_axil_awready;
+    assign u_xtrig_axil_if.awid     = '0;
+    assign u_xtrig_axil_if.awlen    = '0;
+    assign u_xtrig_axil_if.awsize   = 3'd2;
+    assign u_xtrig_axil_if.awburst  = 2'b01;
+    assign u_xtrig_axil_if.awlock   = 1'b0;
+    assign u_xtrig_axil_if.awcache  = '0;
+    assign u_xtrig_axil_if.awqos    = '0;
+    assign u_xtrig_axil_if.awregion = '0;
+    assign u_xtrig_axil_if.awuser   = '0;
+    assign u_xtrig_axil_if.wdata    = 64'(xtrig_axil_wdata);
+    assign u_xtrig_axil_if.wstrb    = 8'(xtrig_axil_wstrb);
+    assign u_xtrig_axil_if.wlast    = 1'b1;
+    assign u_xtrig_axil_if.wuser    = '0;
+    assign u_xtrig_axil_if.wvalid   = xtrig_axil_wvalid;
+    assign u_xtrig_axil_if.wready   = xtrig_axil_wready;
+    assign u_xtrig_axil_if.bid      = '0;
+    assign u_xtrig_axil_if.bresp    = xtrig_axil_bresp;
+    assign u_xtrig_axil_if.buser    = '0;
+    assign u_xtrig_axil_if.bvalid   = xtrig_axil_bvalid;
+    assign u_xtrig_axil_if.bready   = xtrig_axil_bready;
+    assign u_xtrig_axil_if.araddr   = 64'(xtrig_axil_araddr);
+    assign u_xtrig_axil_if.arprot   = xtrig_axil_arprot;
+    assign u_xtrig_axil_if.arvalid  = xtrig_axil_arvalid;
+    assign u_xtrig_axil_if.arready  = xtrig_axil_arready;
+    assign u_xtrig_axil_if.arid     = '0;
+    assign u_xtrig_axil_if.arlen    = '0;
+    assign u_xtrig_axil_if.arsize   = 3'd2;
+    assign u_xtrig_axil_if.arburst  = 2'b01;
+    assign u_xtrig_axil_if.arlock   = 1'b0;
+    assign u_xtrig_axil_if.arcache  = '0;
+    assign u_xtrig_axil_if.arqos    = '0;
+    assign u_xtrig_axil_if.arregion = '0;
+    assign u_xtrig_axil_if.aruser   = '0;
+    assign u_xtrig_axil_if.rid      = '0;
+    assign u_xtrig_axil_if.rdata    = 64'(xtrig_axil_rdata);
+    assign u_xtrig_axil_if.rresp    = xtrig_axil_rresp;
+    assign u_xtrig_axil_if.rlast    = 1'b1;
+    assign u_xtrig_axil_if.ruser    = '0;
+    assign u_xtrig_axil_if.rvalid   = xtrig_axil_rvalid;
+    assign u_xtrig_axil_if.rready   = xtrig_axil_rready;
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_xtrig_axil_sva (
+        .aclk    (clk_i),
+        .aresetn (rst_n_i),
+        .en_i    (u_tb_if.axi_sva_en),
+        .awid    ('0),
+        .awaddr  (xtrig_axil_awaddr),
+        .awlen   ('0),
+        .awsize  (3'd2),
+        .awburst (2'b01),
+        .awlock  (1'b0),
+        .awprot  (xtrig_axil_awprot),
+        .awvalid (xtrig_axil_awvalid),
+        .awready (xtrig_axil_awready),
+        .wdata   (xtrig_axil_wdata),
+        .wstrb   (xtrig_axil_wstrb),
+        .wlast   (1'b1),
+        .wvalid  (xtrig_axil_wvalid),
+        .wready  (xtrig_axil_wready),
+        .bid     ('0),
+        .bresp   (xtrig_axil_bresp),
+        .bvalid  (xtrig_axil_bvalid),
+        .bready  (xtrig_axil_bready),
+        .arid    ('0),
+        .araddr  (xtrig_axil_araddr),
+        .arlen   ('0),
+        .arsize  (3'd2),
+        .arburst (2'b01),
+        .arlock  (1'b0),
+        .arprot  (xtrig_axil_arprot),
+        .arvalid (xtrig_axil_arvalid),
+        .arready (xtrig_axil_arready),
+        .rid     ('0),
+        .rdata   (xtrig_axil_rdata),
+        .rresp   (xtrig_axil_rresp),
+        .rlast   (1'b1),
+        .rvalid  (xtrig_axil_rvalid),
+        .rready  (xtrig_axil_rready)
+    );
+
+    // XTRIG CSR request-activity pulse-counter mirrors for sequences.
+    assign u_tb_if.xtrig_axil_awvalid_count = xtrig_axil_awvalid_count;
+    assign u_tb_if.xtrig_axil_wvalid_count  = xtrig_axil_wvalid_count;
+    assign u_tb_if.xtrig_axil_arvalid_count = xtrig_axil_arvalid_count;
+
+    // Cross-trigger CTM/CTP pin surface: sequences drive the request-side
+    // vectors and observe the DUT-driven vectors through dtp_tb_if (init '0
+    // = quiescent, matching the cocotb agent's idle state).
+    assign xtrig_ctm_src_ack     = u_tb_if.xtrig_ctm_src_ack;
+    assign xtrig_ctm_dst_req     = u_tb_if.xtrig_ctm_dst_req;
+    assign xtrig_ctp_req_out_din = u_tb_if.xtrig_ctp_req_out_din;
+    assign xtrig_ctp_req_in_din  = u_tb_if.xtrig_ctp_req_in_din;
+    assign xtrig_ctp_ack_in_din  = u_tb_if.xtrig_ctp_ack_in_din;
+    assign xtrig_ctp_ack_out_din = u_tb_if.xtrig_ctp_ack_out_din;
+
+    assign u_tb_if.xtrig_ctm_src_req         = xtrig_ctm_src_req;
+    assign u_tb_if.xtrig_ctm_dst_ack         = xtrig_ctm_dst_ack;
+    assign u_tb_if.xtrig_ctp_req_out_dout    = xtrig_ctp_req_out_dout;
+    assign u_tb_if.xtrig_ctp_req_out_dout_en = xtrig_ctp_req_out_dout_en;
+    assign u_tb_if.xtrig_ctp_req_out_din_en  = xtrig_ctp_req_out_din_en;
+    assign u_tb_if.xtrig_ctp_req_in_dout     = xtrig_ctp_req_in_dout;
+    assign u_tb_if.xtrig_ctp_req_in_dout_en  = xtrig_ctp_req_in_dout_en;
+    assign u_tb_if.xtrig_ctp_req_in_din_en   = xtrig_ctp_req_in_din_en;
+    assign u_tb_if.xtrig_ctp_ack_in_dout     = xtrig_ctp_ack_in_dout;
+    assign u_tb_if.xtrig_ctp_ack_in_dout_en  = xtrig_ctp_ack_in_dout_en;
+    assign u_tb_if.xtrig_ctp_ack_in_din_en   = xtrig_ctp_ack_in_din_en;
+    assign u_tb_if.xtrig_ctp_ack_out_dout    = xtrig_ctp_ack_out_dout;
+    assign u_tb_if.xtrig_ctp_ack_out_dout_en = xtrig_ctp_ack_out_dout_en;
+    assign u_tb_if.xtrig_ctp_ack_out_din_en  = xtrig_ctp_ack_out_din_en;
 
     // Non-reusable test classes compile as part of this top (module scope).
     `include "dtp_tests.sv"
@@ -1274,6 +1407,8 @@ module dtp_uvm_top
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_otp_slave_vif", u_sep_otp_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_axi_slave_vif", u_smc_axi_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "xtrig_master_vif", u_xtrig_master_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "xtrig_axil_vif", u_xtrig_axil_if);
         run_test();
     end
 `endif

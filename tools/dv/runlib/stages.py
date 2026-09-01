@@ -2408,6 +2408,8 @@ def _vcs_resolve_build(
     # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the
     # cocotb build appends its tool subdir. Generated filelists stay directly under work_dir.
     base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "vcs"
+    if args.cov:
+        base_build /= "coverage"
 
     elab_args = [
         *_vcs_preamble(vcs_cfg, flow.framework),
@@ -2418,6 +2420,19 @@ def _vcs_resolve_build(
     wave_format = _wave_format(args, "vcs")
     if wave_format:
         elab_args.append("-debug_access+all")
+
+    # `-cm ...` instrumentation from [coverage.vcs] (simulators.toml
+    # coverage_defaults merge). The raw args feed the fingerprint; the
+    # rendered paths anchor at the resolved build dir, so they are appended
+    # after fingerprinting (both elaboration shapes consume `elab_args`).
+    coverage_compile_args: list[str] = []
+    if args.cov:
+        tool_cov = coverage_cfg(sim_cfg).get("vcs", {})
+        if not isinstance(tool_cov, dict):
+            raise ConfigError("coverage.vcs must be a table")
+        coverage_compile_args = as_str_list(
+            tool_cov.get("compile_args"), "coverage.vcs.compile_args"
+        )
 
     filelist_text = (
         filelist.read_text(encoding="utf-8", errors="replace")
@@ -2434,9 +2449,22 @@ def _vcs_resolve_build(
             *_target_fingerprint_extra(target_name, compile_target),
             *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
+            f"cov={bool(args.cov)}",
+            *coverage_compile_args,
         ],
     )
     build_dir = resolve_build_dir(base_build, options, fingerprint)
+    coverage_args = _render_list(
+        coverage_compile_args,
+        {
+            "tool": "vcs",
+            "target": target_name,
+            "build_dir": str(build_dir),
+            "build_cov_dir": str(build_dir / "cov_build.vdb"),
+            "cov_dir": str(build_dir / "coverage"),
+        },
+    )
+    elab_args += coverage_args
     return {
         "build": build,
         "target_name": target_name,
@@ -2448,6 +2476,7 @@ def _vcs_resolve_build(
         "fingerprint": fingerprint,
         "simv": build_dir / "simv",
         "elab_args": elab_args,
+        "coverage_args": coverage_args,
     }
 
 
@@ -2534,6 +2563,7 @@ def vcs_build(
                 build_options_cfg(info["build"]),
                 args,
             ),
+            *info["coverage_args"],
         ]
     argv += [
         info["top"],
@@ -2593,6 +2623,26 @@ def vcs_sim(
         *(args.sim_arg or []),
         *(args.plusarg or []),
     ]
+    if args.cov:
+        tool_cov = coverage_cfg(sim_cfg).get("vcs", {})
+        if not isinstance(tool_cov, dict):
+            raise ConfigError("coverage.vcs must be a table")
+        cov_dir = item_dir / "coverage"
+        argv += _render_list(
+            as_str_list(tool_cov.get("sim_args"), "coverage.vcs.sim_args"),
+            {
+                "tool": "vcs",
+                "target": info["target_name"],
+                "build_dir": str(info["build_dir"]),
+                "build_cov_dir": str(info["build_dir"] / "cov_build.vdb"),
+                "cov_dir": str(cov_dir),
+                "run_dir": str(item_dir),
+                "item": item,
+                "seed": str(seed),
+            },
+        )
+        if not args.dry_run:
+            cov_dir.mkdir(parents=True, exist_ok=True)
     env: dict[str, str] | None = None
     wave_format = _wave_format(args, "vcs")
     if wave_format:
@@ -2924,8 +2974,14 @@ def _coverage_design_db(
     template = tool_cov.get("design_artifact")
     if not isinstance(template, str) or not template:
         return None
-    build_info = _cocotb_build_info(flow, root, sim_cfg, args, "vcs")
-    build_dir = Path(build_info["sim_build"])
+    # The design database lands where the elaboration's `-cm_dir` pointed:
+    # the UVM framework builds through the native VCS resolver, cocotb
+    # through the cocotb build info.
+    if flow.framework == "uvm":
+        build_dir = Path(_vcs_resolve_build(flow, root, sim_cfg, args)["build_dir"])
+    else:
+        build_info = _cocotb_build_info(flow, root, sim_cfg, args, "vcs")
+        build_dir = Path(build_info["sim_build"])
     target_name = _safe_build_component(_target_name(sim_cfg))
     rendered = render_tokens(
         [template],
