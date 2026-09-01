@@ -154,4 +154,4 @@ localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_6_BASE_ADDR = 64'h4B8;
 localparam longint unsigned KM_CSR_OTP_SEP_SYS_ID_CPL_7_BASE_ADDR = 64'h4BC;
 
 
-endpackage;
+endpackage

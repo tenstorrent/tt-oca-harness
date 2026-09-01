@@ -62,9 +62,7 @@ class smu_jtag_chain_enhanced_test_seq:
         idcode = await jtag.read_idcode()
         require_jtag_tdo_resolved("IDCODE")
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:08x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:08x} got 0x{idcode:08x}")
         return idcode
 
     async def _bypass(self, jtag) -> int:
@@ -76,8 +74,7 @@ class smu_jtag_chain_enhanced_test_seq:
         want = (BYPASS_PATTERN << 1) & mask
         if got != want:
             raise AssertionError(
-                f"BYPASS TDO mismatch tdi=0x{BYPASS_PATTERN:02x} "
-                f"tdo=0x{got:02x} want 0x{want:02x}"
+                f"BYPASS TDO mismatch tdi=0x{BYPASS_PATTERN:02x} tdo=0x{got:02x} want 0x{want:02x}"
             )
         return got
 
@@ -103,8 +100,7 @@ class smu_jtag_chain_enhanced_test_seq:
             programmed = int(jtag.get_statistics()["tck_period_ns"])
             if programmed != int(period_ns):
                 raise AssertionError(
-                    f"{label}: VIP tck_period_ns={programmed} "
-                    f"want {period_ns} (plusarg pin?)"
+                    f"{label}: VIP tck_period_ns={programmed} want {period_ns} (plusarg pin?)"
                 )
             await jtag.reset_tap()
             await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)

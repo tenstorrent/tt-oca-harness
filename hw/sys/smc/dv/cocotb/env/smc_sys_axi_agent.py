@@ -57,7 +57,6 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.expect_error: bool = False
         # Soft-complete on AXI timeout. Default False. Setting True requires a
         # comment at the call site explaining why incomplete traffic is OK and
-        # a second positive evidence path (see dv_hack_cleanup_checklist.md §2.3).
         self.allow_timeout: bool = False
         self.timed_out: bool = False
         self.timeout_ns: int | None = None
@@ -125,8 +124,9 @@ class SmcSysAxiDriver(uvm_driver):
             item.rdata = int.from_bytes(resp.data, "little")
             item.resp_code = self._resp_code(resp)
             item.resp_ok = self._resp_ok(resp) or item.allow_error
-            self.logger.info("%s read  0x%014x -> 0x%x ok=%s",
-                             self.bus_name, item.addr, item.rdata, item.resp_ok)
+            self.logger.info(
+                "%s read  0x%014x -> 0x%x ok=%s", self.bus_name, item.addr, item.rdata, item.resp_ok
+            )
         elif item.op is SmcSysAxiOp.WRITE:
             event = self.axi.init_write(
                 address=item.addr,
@@ -140,8 +140,9 @@ class SmcSysAxiDriver(uvm_driver):
                 return
             item.resp_code = self._resp_code(resp)
             item.resp_ok = self._resp_ok(resp) or item.allow_error
-            self.logger.info("%s write 0x%014x <- 0x%x ok=%s",
-                             self.bus_name, item.addr, item.wdata, item.resp_ok)
+            self.logger.info(
+                "%s write 0x%014x <- 0x%x ok=%s", self.bus_name, item.addr, item.wdata, item.resp_ok
+            )
         else:
             raise ValueError(f"unknown SMC SYS AXI op {item.op}")
 

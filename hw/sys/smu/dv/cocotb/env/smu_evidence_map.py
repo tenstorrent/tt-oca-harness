@@ -8,8 +8,7 @@ Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
 
 Force-era / deferred names may still appear below for catalog continuity;
 they are **OUT** under the 2026-07-29 no-Force policy and must not be
-reported as green. Bodies: ``cocotb/tests_deferred/``. Checklist:
-``hw/sys/smc/doc/dv_hack_cleanup_checklist.md``.
+reported as green. Bodies: ``cocotb/tests_deferred/``.
 """
 
 from __future__ import annotations
@@ -155,11 +154,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-FEAT-FAB-ALLOW", "FEAT_FAB_ALLOW", "security allow path SUCCESS"),
         ("CHK-FEAT-FAB-DENY", "FEAT_FAB_DENY", "security deny contrast"),
     ],
-    "smc_reset_ctrl_test": [
+    "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
-    "smc_mailbox_int_test": [
+    "smu_smc_mailbox_int_test": [
         (
             "CHK-SMC-MBX-IRQ-EXT-S2",
             "CHK-SMC-MBX-IRQ-EXT-S2",
@@ -168,16 +167,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
     ],
-    "smc_gpio_strap_sanity_test": [
+    "smu_smc_gpio_strap_sanity_test": [
         ("CHK-SMC-STRAP", "SMC_STRAP_OK", "GPIO strap observe"),
     ],
     "smc_efuse_reg_sanity_test": [
         ("CHK-SMC-EFUSE-CSR", "SMC_EFUSE_CSR_OK", "eFuse CSR sanity"),
     ],
-    "smc_wdt_sanity_test": [
+    "smu_smc_wdt_sanity_test": [
         ("CHK-WDT-UNLOCK", "WDT_UNLOCK_OK", "WDT unlock SUCCESS"),
     ],
-    "smc_security_demote_pm_test": [
+    "smu_smc_security_demote_pm_test": [
         ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
     ],
     "smc_cpu_traffic_ext_axi_test": [
@@ -247,7 +246,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "IDCODE+BYPASS at 1/5/10/20 MHz TCK",
         ),
     ],
-    "smc_mailbox_sanity_test": [
+    "smu_smc_mailbox_sanity_test": [
         ("CHK-MBX-IRQEN", "SMC_MBX_CSR_OK", "outbound-0 IRQEN write/readback"),
     ],
     "smu_dtp_otp_sep0_err_slv_test": [
@@ -290,7 +289,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_sys_in_filter_program_jtag_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
-    "smc_wdt_timeout_irq_test": [
+    "smu_smc_wdt_timeout_irq_test": [
         ("CHK-WDT-IP0", "WDT_WDOGIP0", "WDOGIP0 sets after enable+CMP"),
     ],
     "smc_reset_unit_wdt_scratch_test": [

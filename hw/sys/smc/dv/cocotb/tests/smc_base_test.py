@@ -72,7 +72,7 @@ _PROTOCOL_VIP_TESTS = {
     "smc_sideband_protocol_smoke_test": SmcProtocolVipKind.SIDEBAND,
     "smc_sideband_avsbus_octs_bfm_test": SmcProtocolVipKind.SIDEBAND,
     "smc_octs_dual_sync_test": SmcProtocolVipKind.SIDEBAND,
-    "octs_sanity_test": SmcProtocolVipKind.SIDEBAND,
+    "smc_octs_sanity_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_sanity_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_status_depth_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_clock_config_proxy_test": SmcProtocolVipKind.SIDEBAND,
@@ -283,7 +283,9 @@ class smc_base_test(uvm_test):
         dut.rst_cool_ni.value = 1
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start())
+        cocotb.start_soon(
+            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
+        )
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood")

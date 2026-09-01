@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from cocotbext.axi import AxiResp
+from ocah_axi_vip import RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -79,27 +79,19 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         sb.expect_eq("CHK-J2ASMN-GATE-OPEN", gate, 0)
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
-        await program_inbound0_window(
-            jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="RACE"
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="RACE")
         await await_smn_resp(
             master,
             SCRATCH_COLD_ADDR,
-            AxiResp.OKAY,
+            RESP_OKAY,
             clk=dut.clk_smu_i,
             label="pre-race SCRATCH SMN ready",
         )
@@ -144,11 +136,11 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         await t_s
         if j_result.get("st") != J2A_STATUS_SUCCESS:
             raise AssertionError(f"race J2A write status={j_result.get('st')}")
-        if s_result.get("resp") != AxiResp.OKAY:
+        if s_result.get("resp") != RESP_OKAY:
             raise AssertionError(f"race SMN write resp={s_result.get('resp')}")
         self.s2_ok = True
         sb.expect_eq("CHK-J2ASMN-WR-J", j_result["st"], J2A_STATUS_SUCCESS)
-        sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], AxiResp.OKAY)
+        sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], RESP_OKAY)
 
         await ClockCycles(dut.clk_smu_i, 64)
         st_r, jdata = await jtag2axi_single_read(
@@ -164,17 +156,14 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         s_val, s_resp = await axi_read32_resp_bounded(
             master, SCRATCH_COLD_ADDR, label="post-race SMN read"
         )
-        if s_resp != AxiResp.OKAY:
+        if s_resp != RESP_OKAY:
             raise AssertionError(f"post-race SMN read resp={s_resp}")
         s_val = int(s_val) & 0xFFFF_FFFF
         if j_val != s_val:
-            raise AssertionError(
-                f"post-race J2A=0x{j_val:08x} SMN=0x{s_val:08x} disagree"
-            )
+            raise AssertionError(f"post-race J2A=0x{j_val:08x} SMN=0x{s_val:08x} disagree")
         if j_val not in (PAT_J, PAT_S):
             raise AssertionError(
-                f"post-race tear: got 0x{j_val:08x} not in "
-                f"(0x{PAT_J:08x}, 0x{PAT_S:08x})"
+                f"post-race tear: got 0x{j_val:08x} not in (0x{PAT_J:08x}, 0x{PAT_S:08x})"
             )
         self.winner = j_val
         self.s3_ok = True
@@ -186,20 +175,14 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
             evidence="RACE_J2A_SMN",
         )
 
-        st_v, r_v = await jtag2axi_single_read(
-            jtag, VERSION_LO, require_complete=True
-        )
+        st_v, r_v = await jtag2axi_single_read(jtag, VERSION_LO, require_complete=True)
         require_jtag_tdo_resolved("post-race VERSION_LO")
         if st_v != J2A_STATUS_SUCCESS or (int(r_v) & 0xFFFF_FFFF) != VERSION_LO_RESET:
-            raise AssertionError(
-                f"post-race J2A VERSION_LO status={st_v} data=0x{int(r_v):08x}"
-            )
+            raise AssertionError(f"post-race J2A VERSION_LO status={st_v} data=0x{int(r_v):08x}")
         v_smn, v_resp = await axi_read32_resp_bounded(
             master, VERSION_LO, label="post-race SMN VERSION"
         )
-        if v_resp != AxiResp.OKAY or (int(v_smn) & 0xFFFF_FFFF) != VERSION_LO_RESET:
-            raise AssertionError(
-                f"post-race SMN VERSION resp={v_resp} data=0x{int(v_smn):08x}"
-            )
+        if v_resp != RESP_OKAY or (int(v_smn) & 0xFFFF_FFFF) != VERSION_LO_RESET:
+            raise AssertionError(f"post-race SMN VERSION resp={v_resp} data=0x{int(v_smn):08x}")
         self.s4_ok = True
         sb.expect_eq("CHK-J2ASMN-VERSION", int(r_v) & 0xFFFF_FFFF, VERSION_LO_RESET)

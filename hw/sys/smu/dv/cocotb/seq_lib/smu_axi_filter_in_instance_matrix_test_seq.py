@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from cocotbext.axi import AxiProt, AxiResp
+from ocah_axi_vip import PROT_NONSECURE, PROT_PRIVILEGED, RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -58,8 +58,8 @@ _IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR"
 AXI_TIMEOUT_NS = 200_000
 FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
-SECURE_PROT = int(AxiProt.PRIVILEGED)  # 0x1 — prot[1]=0
-NS_PROT = int(AxiProt.PRIVILEGED | AxiProt.NONSECURE)  # 0x3
+SECURE_PROT = PROT_PRIVILEGED  # 0x1 — prot[1]=0
+NS_PROT = PROT_PRIVILEGED | PROT_NONSECURE  # 0x3
 
 PROBE_WDT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
 PROBE_VERSION = SMC_CHIP_CONFIG_VERSION_LO
@@ -128,16 +128,18 @@ class smu_axi_filter_in_instance_matrix_test_seq:
     ):
         async def _do():
             if write:
-                beat = await master.write(
+                result = await master.write_bytes_result(
                     addr,
                     wdata.to_bytes(4, "little"),
-                    prot=AxiProt(prot),
+                    prot=prot,
                     user=user,
+                    check_response=False,
                 )
-                return None, beat.resp
-            beat = await master.read(addr, 4, prot=AxiProt(prot), user=user)
-            val = int.from_bytes(bytes(beat.data), "little")
-            return val, beat.resp
+                return None, result.resp
+            result = await master.read_bytes_result(
+                addr, 4, prot=prot, user=user, check_response=False
+            )
+            return result.data, result.resp
 
         try:
             return await with_timeout(_do(), AXI_TIMEOUT_NS, "ns")
@@ -166,9 +168,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             )
             last = resp
             if resp == want:
-                self._log(
-                    f"FILTER_READY {label} want={resp_name(want)} poll={poll}"
-                )
+                self._log(f"FILTER_READY {label} want={resp_name(want)} poll={poll}")
                 return _val, resp
             await ClockCycles(self.dut.clk_smu_i, FILTER_READY_STEP)
         raise AssertionError(
@@ -177,17 +177,13 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         )
 
     async def _j2a_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A WR {name} @0x{addr:08x} status={st}")
         self._log(f"J2A WR {name} @0x{addr:08x} data=0x{data:x}")
 
     async def _j2a_rd(self, jtag, addr: int, name: str) -> int:
-        st, rdata = await jtag2axi_single_read(
-            jtag, addr, require_complete=True
-        )
+        st, rdata = await jtag2axi_single_read(jtag, addr, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A RD {name} @0x{addr:08x} status={st}")
         return int(rdata)
@@ -209,24 +205,16 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_CFG, inst), cfg, f"{tag}_CONFIG")
         rb = await self._j2a_rd(jtag, smc_indexed_addr(_IN_CFG, inst), f"{tag}_RB")
         if (rb & _CFG_CMP_MASK) != (cfg & _CFG_CMP_MASK):
-            raise AssertionError(
-                f"{tag} CONFIG rb mismatch want=0x{cfg:x} got=0x{rb:x}"
-            )
-        rb_lo = await self._j2a_rd(
-            jtag, smc_indexed_addr(_IN_START, inst), f"{tag}_START_RB"
-        )
-        rb_hi = await self._j2a_rd(
-            jtag, smc_indexed_addr(_IN_END, inst), f"{tag}_END_RB"
-        )
+            raise AssertionError(f"{tag} CONFIG rb mismatch want=0x{cfg:x} got=0x{rb:x}")
+        rb_lo = await self._j2a_rd(jtag, smc_indexed_addr(_IN_START, inst), f"{tag}_START_RB")
+        rb_hi = await self._j2a_rd(jtag, smc_indexed_addr(_IN_END, inst), f"{tag}_END_RB")
         if (rb_lo & 0xFFF_FFFF_FFFF_FFFF) != (lo & 0xFFF_FFFF_FFFF_FFFF):
             raise AssertionError(f"{tag} START rb 0x{rb_lo:x} want 0x{lo:x}")
         if (rb_hi & 0xFFF_FFFF_FFFF_FFFF) != (hi & 0xFFF_FFFF_FFFF_FFFF):
             raise AssertionError(f"{tag} END rb 0x{rb_hi:x} want 0x{hi:x}")
 
     async def _disable_inst(self, jtag, inst: int, tag: str) -> None:
-        await self._j2a_wr(
-            jtag, smc_indexed_addr(_IN_CFG, inst), 0, f"{tag}_DIS_I{inst}"
-        )
+        await self._j2a_wr(jtag, smc_indexed_addr(_IN_CFG, inst), 0, f"{tag}_DIS_I{inst}")
 
     async def _disable_all(self, jtag, tag: str) -> None:
         for inst in range(16):
@@ -246,9 +234,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
         sb.expect_eq("CHK-FILTER-IN-J2A-READY", idcode, 0x1)
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
 
         # ---- S4 capture: default block before any inbound filter CSR ----
         _rd, rd_resp = await self._axi_rw(
@@ -268,15 +254,14 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         )
         self.default_block_rd = rd_resp
         self.default_block_wr = wr_resp
-        if rd_resp != AxiResp.DECERR or wr_resp != AxiResp.DECERR:
+        if rd_resp != RESP_DECERR or wr_resp != RESP_DECERR:
             raise AssertionError(
                 f"S4 pre-CSR default block want DECERR/DECERR "
                 f"got {resp_name(rd_resp)}/{resp_name(wr_resp)}"
             )
         self.s4_ok = True
         self._log(
-            "CHK-FILTER-IN-DEFAULT-BLOCK-S1: post_reset inbound blocked "
-            f"@0x{PROBE_VERSION:08x}"
+            f"CHK-FILTER-IN-DEFAULT-BLOCK-S1: post_reset inbound blocked @0x{PROBE_VERSION:08x}"
         )
         sb.expect_eq("CHK-FILTER-IN-DEFAULT-BLOCK-S1", True, True)
 
@@ -296,10 +281,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
                 f"lo=0x{lo:08x} hi=0x{hi:08x} src_id={src_id} allow_ns={int(allow_ns)}"
             )
         self.s1_ok = True
-        self._log(
-            "CHK-FILTER-IN-INSTANCES-S1: inst=0,1,7,14,15 DECODE "
-            "bases=smc_indexed_addr"
-        )
+        self._log("CHK-FILTER-IN-INSTANCES-S1: inst=0,1,7,14,15 DECODE bases=smc_indexed_addr")
         sb.expect_eq("CHK-FILTER-IN-INSTANCES-S1", True, True)
 
         # ---- S2 isolation pairwise ----
@@ -319,7 +301,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_WDT,
             prot=SECURE_PROT,
             user=FILTER_SRC_ID,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S2_inst0_admit",
         )
         _v, bad = await self._axi_rw(
@@ -329,10 +311,8 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=FILTER_SRC_ID + 9,
             write=False,
         )
-        if bad != AxiResp.DECERR:
-            raise AssertionError(
-                f"S2 inst0 wrong src want DECERR got {resp_name(bad)}"
-            )
+        if bad != RESP_DECERR:
+            raise AssertionError(f"S2 inst0 wrong src want DECERR got {resp_name(bad)}")
         await self._program_inst(
             jtag,
             1,
@@ -347,7 +327,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_VERSION,
             prot=SECURE_PROT,
             user=INST1_SRC,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S2_inst1_admit",
         )
         _v, cross = await self._axi_rw(
@@ -357,7 +337,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=FILTER_SRC_ID,
             write=False,
         )
-        if cross != AxiResp.DECERR:
+        if cross != RESP_DECERR:
             raise AssertionError(
                 f"S2 cross (inst0 src on inst1 window) want DECERR got {resp_name(cross)}"
             )
@@ -384,7 +364,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_CPU_SCRATCH,
             prot=SECURE_PROT,
             user=INST3_SRC,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S3_all_match",
         )
         _v, addr_fail = await self._axi_rw(
@@ -394,10 +374,8 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=INST3_SRC,
             write=False,
         )
-        if addr_fail != AxiResp.DECERR:
-            raise AssertionError(
-                f"S3 addr_fail want DECERR got {resp_name(addr_fail)}"
-            )
+        if addr_fail != RESP_DECERR:
+            raise AssertionError(f"S3 addr_fail want DECERR got {resp_name(addr_fail)}")
         _v, src_fail = await self._axi_rw(
             master,
             PROBE_CPU_SCRATCH,
@@ -405,10 +383,8 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=INST3_SRC + 3,
             write=False,
         )
-        if src_fail != AxiResp.DECERR:
-            raise AssertionError(
-                f"S3 srcid_fail want DECERR got {resp_name(src_fail)}"
-            )
+        if src_fail != RESP_DECERR:
+            raise AssertionError(f"S3 srcid_fail want DECERR got {resp_name(src_fail)}")
         _v, prot_fail = await self._axi_rw(
             master,
             PROBE_CPU_SCRATCH,
@@ -416,10 +392,8 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             user=INST3_SRC,
             write=False,
         )
-        if prot_fail != AxiResp.DECERR:
-            raise AssertionError(
-                f"S3 prot_fail want DECERR got {resp_name(prot_fail)}"
-            )
+        if prot_fail != RESP_DECERR:
+            raise AssertionError(f"S3 prot_fail want DECERR got {resp_name(prot_fail)}")
         self.s3_ok = True
         self._log(
             "CHK-FILTER-IN-INSTANCES-S3: all_three_match,addr_fail_only,"
@@ -443,7 +417,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_VERSION,
             prot=SECURE_PROT,
             user=0,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S5_admit_rd",
         )
         await self._await_resp(
@@ -451,21 +425,18 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             PROBE_VERSION,
             prot=SECURE_PROT,
             user=0,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S5_admit_wr",
             write=True,
             wdata=0x0230_A002,
         )
         self.s5_ok = True
         self._log(
-            "CHK-FILTER-IN-DEFAULT-BLOCK-S2: configured_then_admitted "
-            f"@0x{PROBE_VERSION:08x}"
+            f"CHK-FILTER-IN-DEFAULT-BLOCK-S2: configured_then_admitted @0x{PROBE_VERSION:08x}"
         )
         sb.expect_eq("CHK-FILTER-IN-DEFAULT-BLOCK-S2", True, True)
 
-        all_ok = (
-            self.s1_ok and self.s2_ok and self.s3_ok and self.s4_ok and self.s5_ok
-        )
+        all_ok = self.s1_ok and self.s2_ok and self.s3_ok and self.s4_ok and self.s5_ok
         sb.expect_eq("CHK-FILTER-IN-INSTANCES-BASIC", all_ok, True)
         self._log(
             "CHK-FILTER-IN-INSTANCES-BASIC: "

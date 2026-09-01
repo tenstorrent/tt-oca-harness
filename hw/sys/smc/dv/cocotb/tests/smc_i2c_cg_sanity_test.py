@@ -11,9 +11,8 @@ the clock-gate enable matches the post-reset default.
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_i2c_cg_sanity_test_seq import smc_i2c_cg_sanity_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

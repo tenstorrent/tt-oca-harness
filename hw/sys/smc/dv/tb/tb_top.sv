@@ -3,9 +3,9 @@
 //
 // SMC OSS TB top for the native cocotb / PyUVM flow.
 //
-// Instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
-// smc_cpu_mem_integration). File name is tb_top.sv / module smc_uvm_top so
-// `--dut smc_wrapper` + smc_wrapper_sim_cfg.toml is the single launch entry.
+// Instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration). File name is
+// tb_top.sv / module smc_uvm_top so `--dut smc_wrapper` +
+// smc_wrapper_sim_cfg.toml is the single launch entry.
 //
 // Cocotb port surface keeps the SmcEnv catalog pin names. Hierarchical XMRs
 // into the core use u_dut.u_smc.*.
@@ -13,7 +13,8 @@
 // PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros and eFuse live inside
 // smc_ip_integration. DTP CSR and I3C DAT/DCT remain smc_wrapper boundary
 // ports (resp/mem idle — no TB placeholder; smc_wrapper-only DTP CSR gap —
-// SMU wires DTP internally). CPU ROM/scratch/L1$ via smc_cpu_mem_integration.
+// SMU wires DTP internally). CPU ROM/scratch/L1$ macros come with
+// smc_ip_integration; smc_cpu_mem_dv.sv binds into it for the DV hooks.
 //
 // Additive elaboration-alias outputs (dut_present_o / powergood_o / ...) sit
 // at the end of the port list for the thin elaboration smoke.
@@ -122,12 +123,16 @@ module smc_uvm_top
     output logic tb_sync_irq /*verilator public_flat_rw*/,
     output logic tb_gpio_irq_any /*verilator public_flat_rw*/,
     // AXI hang-detector irqs (smc_base combinational OR + per-master).
-    // smc.sv leaves axi_hang_irq_o open; lift here so cocotb can observe
-    // irq_test / independence without Force.
+    // Lifted so cocotb can observe irq_test / independence without Force.
     output logic tb_axi_hang_irq /*verilator public_flat_rw*/,
     output logic tb_axi_hang_irq_sys /*verilator public_flat_rw*/,
     output logic tb_axi_hang_irq_sep /*verilator public_flat_rw*/,
     output logic tb_axi_hang_irq_data /*verilator public_flat_rw*/,
+    // Hang IRQ on its way to the PLIC: the peripheral_interrupts[31] slot in
+    // smc_peripherals, and the cpu_interrupts bit that is the PLIC source pin
+    // on u_smc_cpu_wrapper.interrupts_i. PLIC source ID is that bit index + 1.
+    output logic tb_axi_hang_irq_periph31 /*verilator public_flat_rw*/,
+    output logic tb_axi_hang_irq_plic_src /*verilator public_flat_rw*/,
     // Boot-stall product pins: pad vs JTAG override mux, sticky processed out.
     output logic tb_boot_stall_combined_o /*verilator public_flat_rw*/,
     input  wire logic tb_boot_stall_jtag_ovrd_i /*verilator public_flat_rw*/,
@@ -423,6 +428,14 @@ module smc_uvm_top
     input  wire logic   tb_cpu_ecc_inject_sbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_dbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_probe /*verilator public_flat_rw*/,
+    // Scratch codeword poke: XOR mask into bank0 entry on a rising poke_en.
+    // One bit is a correctable error, two are not.
+    input  wire logic        tb_cpu_ecc_poke_en /*verilator public_flat_rw*/,
+    input  wire logic [31:0] tb_cpu_ecc_poke_entry /*verilator public_flat_rw*/,
+    input  wire logic [1:0]  tb_cpu_ecc_poke_mask /*verilator public_flat_rw*/,
+    // CPU cluster double-error detect (live + sticky).
+    output logic        tb_cluster_ded /*verilator public_flat_rw*/,
+    output logic        tb_cluster_ded_seen /*verilator public_flat_rw*/,
     output logic [31:0] tb_cpu_ecc_inject_fire_count /*verilator public_flat_rw*/,
     output logic        tb_cpu_scratch0_inject_fire /*verilator public_flat_rw*/,
 
@@ -1121,13 +1134,53 @@ module smc_uvm_top
     assign ej_axi_req.r_ready  = ej_axi_rready;
 
     // ------------------------------------------------------------------
-    // CPU ROM/scratch/L1$ are absorbed into smc_wrapper
-    // (u_smc_cpu_mem_integration -> OCAH4CORECluster_mems / prim_*).
-    // Observability / ECC inject map to DUT ports; images backdoor into
-    // prim_*.mem inside smc_cpu_mem_integration (SEP posture).
+    // CPU ROM/scratch/L1$ macros live inside smc_ip_integration (so both this
+    // DUT and smu_wrapper get them from one place). The TB adds no memory of
+    // its own; the DV collateral -- counters, FW mailbox, the inject hook and
+    // the image backdoors -- binds into that module.
     // ------------------------------------------------------------------
     logic        cpu_scratch0_inject_fire;
     logic [31:0] ecc_inject_fire_count_q;
+
+    // Port expressions here are elaborated in smc_ip_integration's scope, so
+    // they name that module's own memory interfaces.
+    bind smc_ip_integration smc_cpu_mem_dv u_smc_cpu_mem_dv (
+        .clk_i                (clk_smc_i),
+        .rst_ni               (rst_primary_smc_clk_ni),
+        .rom_req_i            (rom_intf_req),
+        .scratch_ram_req_i    (scratch_ram_intf_req),
+        .l1_dcache_data_req_i (l1_dcache_data_intf_req),
+        .ecc_inject_sbe_i     (smc_uvm_top.tb_cpu_ecc_inject_sbe),
+        .ecc_inject_dbe_i     (smc_uvm_top.tb_cpu_ecc_inject_dbe),
+        .ecc_poke_en_i        (smc_uvm_top.tb_cpu_ecc_poke_en),
+        .ecc_poke_entry_i     (smc_uvm_top.tb_cpu_ecc_poke_entry),
+        .ecc_poke_mask_i      (smc_uvm_top.tb_cpu_ecc_poke_mask)
+    );
+
+    // Cluster DED from the CPU (smc_4core_cpu.sv flops
+    // |{io_errors_uncorrectable_valid, uncorrectable_2} into it). Sticky, so a
+    // polling test cannot miss it.
+    logic cpu_cluster_ded;
+    logic cpu_cluster_ded_seen_q;
+    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            cpu_cluster_ded_seen_q <= 1'b0;
+        end else if (cpu_cluster_ded) begin
+            cpu_cluster_ded_seen_q <= 1'b1;
+        end
+    end
+    assign tb_cluster_ded      = cpu_cluster_ded;
+    assign tb_cluster_ded_seen = cpu_cluster_ded_seen_q;
+
+    // Bound-instance observability -> the cocotb pins (names unchanged).
+    `define CPU_MEM_DV u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv
+    assign tb_cpu_rom_read_count      = `CPU_MEM_DV.rom_read_count_q;
+    assign tb_cpu_scratch_read_count  = `CPU_MEM_DV.scratch_ram_read_count_q;
+    assign tb_cpu_scratch_write_count = `CPU_MEM_DV.scratch_ram_write_count_q;
+    assign tb_cpu_dcache_write_count  = `CPU_MEM_DV.dcache_data_write_count_q;
+    assign tb_cpu_fw_mailbox          = `CPU_MEM_DV.fw_mailbox_q;
+    assign tb_cpu_fw_mailbox_valid    = `CPU_MEM_DV.fw_mailbox_valid_q;
+    assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
 
     // Probe pin kept for cocotb init compatibility; do not OR into the score.
     logic unused_ecc_probe;
@@ -1153,12 +1206,12 @@ module smc_uvm_top
     smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl [31:0];
 
     // ------------------------------------------------------------------
-    // DUT: smc_wrapper (smc + smc_ip_integration + smc_cpu_mem_integration).
+    // DUT: smc_wrapper (smc + smc_ip_integration).
     //
     // Ports absorbed by smc_ip_integration and NOT present on this boundary:
     // smc_external_*, efuse_bank_ctrl_*, efuse_shim_command_*, pad2core_i, core2pad_o,
     // pad2core_en_o, core2pad_en_o (internal smc_wrapper nets → gpio_pad_io).
-    // CPU ROM/scratch/L1$ are absorbed by smc_cpu_mem_integration.
+    // CPU ROM/scratch/L1$ macros are inside smc_ip_integration.
     // ------------------------------------------------------------------
     smc_wrapper u_dut (
         .clk_smc_i,
@@ -1219,7 +1272,7 @@ module smc_uvm_top
         .telemetry_atvalid_i        (tb_telemetry_atvalid),
         .telemetry_afvalid_o        (tb_telemetry_afvalid),
         .telemetry_afready_i        (tb_telemetry_afready),
-        .cluster_ded_o              (),
+        .cluster_ded_o              (cpu_cluster_ded),
         .wdt_first_timeout_o        (),
         .wdt_second_timeout_o       (),
         .smc_global_base_o          (),
@@ -1247,15 +1300,6 @@ module smc_uvm_top
         .ss_config_o                (),
         .ss_reset_ctrl_o            (ss_reset_ctrl),
         .sync_irq_o                 (sync_irq),
-        .cpu_rom_read_count_o       (tb_cpu_rom_read_count),
-        .cpu_scratch_read_count_o   (tb_cpu_scratch_read_count),
-        .cpu_scratch_write_count_o  (tb_cpu_scratch_write_count),
-        .cpu_dcache_write_count_o   (tb_cpu_dcache_write_count),
-        .cpu_fw_mailbox_o           (tb_cpu_fw_mailbox),
-        .cpu_fw_mailbox_valid_o     (tb_cpu_fw_mailbox_valid),
-        .cpu_ecc_inject_sbe_i       (tb_cpu_ecc_inject_sbe),
-        .cpu_ecc_inject_dbe_i       (tb_cpu_ecc_inject_dbe),
-        .cpu_scratch0_inject_fire_o (cpu_scratch0_inject_fire),
         .disable_sram_auto_init_i   (1'b1),
         .init_mem_done_o,
         .chiplet_is_primary_i       (tb_chiplet_is_primary),
@@ -1358,6 +1402,9 @@ module smc_uvm_top
     assign tb_axi_hang_irq_sys  = u_dut.u_smc.u_smc_base.hang_irq_sys_axi;
     assign tb_axi_hang_irq_sep  = u_dut.u_smc.u_smc_base.hang_irq_sep_axi;
     assign tb_axi_hang_irq_data = u_dut.u_smc.u_smc_base.hang_irq_data_accel;
+    assign tb_axi_hang_irq_periph31 = u_dut.u_smc.peripheral_interrupts[31];
+    assign tb_axi_hang_irq_plic_src =
+        u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 31];
     assign tb_gpio_pad57      = u_dut.u_smc.pad2core_i[BOOT_STALL_PAD];
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];

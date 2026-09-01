@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
-from .paths import configs_root, repo_path
+from .paths import configs_root, repo_path, repo_rel
 
 try:
     import tomllib as _tomllib
@@ -71,7 +71,14 @@ IMPLEMENTED_STAGE_KINDS = {
 }
 
 STAGE_KIND_COMPATIBILITY = {
-    "flist": {"filelist", "bender_filelist", "verilator_filelist", "vcs_filelist", "xrun_filelist", "noop"},
+    "flist": {
+        "filelist",
+        "bender_filelist",
+        "verilator_filelist",
+        "vcs_filelist",
+        "xrun_filelist",
+        "noop",
+    },
     "hdl_compile": {
         "hdl_compile",
         "cocotb_build",
@@ -153,6 +160,9 @@ TOP_LEVEL_KEYS = {
     "formal",
     "dut",
     "tb",
+    # Injected by load_dut when --overlay/OCAH_DV_OVERLAY is active; a sim config or profile
+    # may never set it (overlays are explicit-activation only — see apply_adopter_overlay).
+    "adopter_overlay",
 }
 
 BUILD_KEYS = {
@@ -176,6 +186,16 @@ BUILD_KEYS = {
 
 # Keys a `[build].source_lists` fragment file may carry (see _expand_source_lists).
 SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
+
+# Keys an adopter overlay file (--overlay / OCAH_DV_OVERLAY) may carry (see
+# apply_adopter_overlay). The layer is append-only by design: every allowed key ADDS to the
+# merged DUT view (build inputs, target defines/flags, run args) and none can replace or
+# remove what the checked-in configs declare — so a run with an overlay differs from the
+# baseline only by the overlay's own additions.
+ADOPTER_OVERLAY_KEYS = {"description", "frameworks", "build", "sim", "target_defaults", "targets"}
+ADOPTER_OVERLAY_BUILD_KEYS = {"incdirs", "sources", "source_lists"}
+ADOPTER_OVERLAY_SIM_KEYS = {"args"}
+ADOPTER_OVERLAY_TARGET_KEYS = {"defines", "flags", "tools"}
 
 BUILD_OPTIONS_KEYS = {
     "build_jobs",
@@ -391,7 +411,9 @@ def _parse_toml_value(value: str, path: Path, line_no: int) -> Any:
     raise ConfigError(f"{path}:{line_no}: unsupported TOML value `{value}`")
 
 
-def _ensure_toml_table(data: dict[str, Any], parts: list[str], path: Path, line_no: int) -> dict[str, Any]:
+def _ensure_toml_table(
+    data: dict[str, Any], parts: list[str], path: Path, line_no: int
+) -> dict[str, Any]:
     table = data
     for part in parts:
         next_table = table.setdefault(part, {})
@@ -401,7 +423,9 @@ def _ensure_toml_table(data: dict[str, Any], parts: list[str], path: Path, line_
     return table
 
 
-def _assign_toml_value(table: dict[str, Any], key: str, value: Any, path: Path, line_no: int) -> None:
+def _assign_toml_value(
+    table: dict[str, Any], key: str, value: Any, path: Path, line_no: int
+) -> None:
     parts = [part.strip() for part in key.split(".")]
     if not all(parts):
         raise ConfigError(f"{path}:{line_no}: invalid TOML key `{key}`")
@@ -454,7 +478,9 @@ def _load_toml_subset(path: Path) -> dict[str, Any]:
             if idx > len(lines):
                 raise ConfigError(f"{path}:{line_no}: unterminated TOML value")
             value += " " + _strip_toml_comment(lines[idx - 1]).strip()
-        _assign_toml_value(current, key.strip(), _parse_toml_value(value, path, line_no), path, line_no)
+        _assign_toml_value(
+            current, key.strip(), _parse_toml_value(value, path, line_no), path, line_no
+        )
     return data
 
 
@@ -490,11 +516,15 @@ def validate_allowed_keys(section: dict[str, Any], allowed: set[str], where: str
         raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
 
 
-def validate_placeholders_in_value(value: Any, where: str, allowed: set[str] = ALL_PLACEHOLDERS) -> None:
+def validate_placeholders_in_value(
+    value: Any, where: str, allowed: set[str] = ALL_PLACEHOLDERS
+) -> None:
     if isinstance(value, str):
         unknown = sorted({name for name in PLACEHOLDER_RE.findall(value) if name not in allowed})
         if unknown:
-            raise ConfigError(f"{where}: unsupported placeholder(s): {', '.join('{' + name + '}' for name in unknown)}")
+            raise ConfigError(
+                f"{where}: unsupported placeholder(s): {', '.join('{' + name + '}' for name in unknown)}"
+            )
     elif isinstance(value, list):
         for idx, item in enumerate(value):
             validate_placeholders_in_value(item, f"{where}[{idx}]", allowed)
@@ -530,9 +560,7 @@ def validate_coverage_tool_table(
         ):
             raise ConfigError(f"{where}.{key} must be a non-empty string")
     if "parser" in table and table.get("parser") not in COVERAGE_PARSERS:
-        raise ConfigError(
-            f"{where}.parser must be one of: {', '.join(sorted(COVERAGE_PARSERS))}"
-        )
+        raise ConfigError(f"{where}.parser must be one of: {', '.join(sorted(COVERAGE_PARSERS))}")
     if "fail_under" in table:
         try:
             threshold = float(table["fail_under"])
@@ -555,9 +583,7 @@ def validate_coverage_tool_table(
             if key not in table
         ]
         if missing:
-            raise ConfigError(
-                f"{where} missing required coverage key(s): {', '.join(missing)}"
-            )
+            raise ConfigError(f"{where} missing required coverage key(s): {', '.join(missing)}")
     validate_placeholders_in_value(table, where)
 
 
@@ -571,7 +597,16 @@ def validate_stage_table(stage_name: str, stage: dict[str, Any], where: str) -> 
     if kind not in compatible:
         raise ConfigError(f"{where}: stage `{stage_name}` cannot use kind `{kind}`")
 
-    allowed = {"kind", "note", "paths", "verilator", "xcelium", "vcs", "default_executor", "resources"}
+    allowed = {
+        "kind",
+        "note",
+        "paths",
+        "verilator",
+        "xcelium",
+        "vcs",
+        "default_executor",
+        "resources",
+    }
     validate_allowed_keys(stage, allowed, f"{where} [native.stages.{stage_name}]")
     validate_placeholders_in_value(stage, f"{where} [native.stages.{stage_name}]")
 
@@ -607,7 +642,9 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
 
     scheduler = data.get("scheduler", {})
     if isinstance(scheduler, dict):
-        validate_allowed_keys(scheduler, {"default_executor", "allowed"}, f"{flow.path} [scheduler]")
+        validate_allowed_keys(
+            scheduler, {"default_executor", "allowed"}, f"{flow.path} [scheduler]"
+        )
 
     native = data.get("native", {})
     if native:
@@ -628,7 +665,9 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
     build = data.get("build", {})
     if isinstance(build, dict):
         if "manifest" in build:
-            raise ConfigError(f"{flow.path}: [build].manifest is external-only; native flow must not reference .core")
+            raise ConfigError(
+                f"{flow.path}: [build].manifest is external-only; native flow must not reference .core"
+            )
         validate_allowed_keys(build, BUILD_KEYS, f"{flow.path} [build]")
         options = build.get("options", {})
         if isinstance(options, dict):
@@ -664,8 +703,14 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
                 if isinstance(tools, dict):
                     for tool, tool_cfg in tools.items():
                         if not isinstance(tool_cfg, dict):
-                            raise ConfigError(f"{flow.path}: [{section_name}.{name}.tools.{tool}] must be a table")
-                        validate_allowed_keys(tool_cfg, TARGET_TOOL_KEYS, f"{flow.path} [{section_name}.{name}.tools.{tool}]")
+                            raise ConfigError(
+                                f"{flow.path}: [{section_name}.{name}.tools.{tool}] must be a table"
+                            )
+                        validate_allowed_keys(
+                            tool_cfg,
+                            TARGET_TOOL_KEYS,
+                            f"{flow.path} [{section_name}.{name}.tools.{tool}]",
+                        )
 
     for section_name in ("coverage", "c_build", "formal", "sim"):
         section = data.get(section_name, {})
@@ -735,7 +780,9 @@ def framework_sections(data: dict[str, Any], where: str) -> dict[str, dict[str, 
         runtime_allowed = FRAMEWORK_RUNTIME_KEYS.get(fw, set())
         unknown = sorted(set(section) - FRAMEWORK_OVERLAY_KEYS - runtime_allowed)
         if unknown:
-            raise ConfigError(f"{where}: [frameworks.{fw}] unsupported key(s): {', '.join(unknown)}")
+            raise ConfigError(
+                f"{where}: [frameworks.{fw}] unsupported key(s): {', '.join(unknown)}"
+            )
         out[fw] = section
     return out
 
@@ -786,7 +833,10 @@ def _merge_framework_config(
             f"declare at least one (profile `{profile_name}` supports: {', '.join(supported)})"
         )
     for key, hint in (
-        ("framework", "top-level `framework` is derived from the selected [frameworks.<fw>] section"),
+        (
+            "framework",
+            "top-level `framework` is derived from the selected [frameworks.<fw>] section",
+        ),
         ("cocotb", "[cocotb] moved to [frameworks.cocotb]"),
     ):
         if key in data:
@@ -871,7 +921,9 @@ def _merge_framework_config(
             seen = False
             for layer in layers:
                 layer_section = layer.get(section_name)
-                layer_target = layer_section.get(target_name) if isinstance(layer_section, dict) else None
+                layer_target = (
+                    layer_section.get(target_name) if isinstance(layer_section, dict) else None
+                )
                 values = layer_target.get("defines") if isinstance(layer_target, dict) else None
                 if isinstance(values, list):
                     seen = True
@@ -981,8 +1033,129 @@ def _expand_source_lists(data: dict[str, Any], root: Path, where: str) -> None:
             build[key] = combined
 
 
+class OverlayFrameworkMismatch(ConfigError):
+    """The adopter overlay's `frameworks` guard excludes the selected framework.
+
+    A run treats this as a hard error (the user explicitly combined the overlay with a
+    framework the overlay does not target); --validate-configs catches it to validate the
+    non-targeted views without the overlay instead of failing them.
+    """
+
+
+def _append_unique(target: dict[str, Any], key: str, extra: list[str], where: str) -> None:
+    combined = _merge_unique_strings(as_str_list(target.get(key), f"{where} `{key}`"), extra)
+    if combined:
+        target[key] = combined
+
+
+def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) -> None:
+    """Apply one adopter overlay file on top of the merged DUT view (append-only).
+
+    The overlay is the runner-side equivalent of ocah.mk's adopter include hooks: it lets an
+    adopter extend a build without editing checked-in configs (extra VIP packages, gate
+    defines such as `OCAH_<PROTO>_VENDOR_IF`, factory-override run args). It is applied ONLY
+    when `--overlay <path>` or `OCAH_DV_OVERLAY` names it — never auto-activated by the
+    presence of an adopter checkout.
+
+    Merge rules (all append-only, applied after the profile/DUT `[frameworks.<fw>]` merge and
+    before `[build].source_lists` expansion, so an overlay-supplied manifest expands like a
+    DUT-owned one):
+
+    - `[build]` `incdirs`/`sources`/`source_lists`: dedup-append AFTER the DUT's own entries.
+    - `[sim].args`: append after the merged `[sim].args` (still before run-mode/test/CLI args).
+    - `[target_defaults.<t>]`/`[targets.<t>]` `defines`/`flags` and `[...tools.<tool>].flags`:
+      dedup-append into the matching table (created when absent).
+    - `frameworks = ["uvm", ...]` (optional): compatibility guard — applying the overlay to a
+      view whose selected framework is not listed raises :class:`OverlayFrameworkMismatch`.
+
+    Applying the same overlay to the same view is deterministic and repeatable: list order is
+    preserved and the dedup rules make a re-application a no-op. The applied path is recorded
+    under the reserved `adopter_overlay` key (surfaced in result.json).
+    """
+    where = f"adopter overlay {overlay_path}"
+    if not overlay_path.is_file():
+        raise ConfigError(f"adopter overlay not found: {overlay_path}")
+    overlay = load_toml(overlay_path)
+    validate_allowed_keys(overlay, ADOPTER_OVERLAY_KEYS, where)
+
+    guard = overlay.get("frameworks")
+    if guard is not None:
+        guard_list = as_str_list(guard, f"{where} `frameworks`")
+        if not guard_list:
+            raise ConfigError(f"{where}: `frameworks` must be a non-empty list of framework names")
+        selected = str(data.get("framework", ""))
+        if selected not in guard_list:
+            raise OverlayFrameworkMismatch(
+                f"{where}: targets framework(s) {', '.join(guard_list)} but the selected view "
+                f"is `{selected or '<none>'}`"
+            )
+
+    build_overlay = config_section(overlay, "build")
+    if build_overlay:
+        validate_allowed_keys(build_overlay, ADOPTER_OVERLAY_BUILD_KEYS, f"{where} [build]")
+        build = data.setdefault("build", {})
+        if not isinstance(build, dict):
+            raise ConfigError(f"{where}: merged [build] is not a table")
+        for key in ("incdirs", "sources", "source_lists"):
+            extra = as_str_list(build_overlay.get(key), f"{where} build.{key}")
+            if extra:
+                _append_unique(build, key, extra, f"{where} merged build")
+
+    sim_overlay = config_section(overlay, "sim")
+    if sim_overlay:
+        validate_allowed_keys(sim_overlay, ADOPTER_OVERLAY_SIM_KEYS, f"{where} [sim]")
+        extra_args = as_str_list(sim_overlay.get("args"), f"{where} sim.args")
+        if extra_args:
+            sim = config_section(data, "sim")
+            data["sim"] = {
+                **sim,
+                "args": [*as_str_list(sim.get("args"), "sim.args"), *extra_args],
+            }
+
+    for section_name in ("target_defaults", "targets"):
+        section_overlay = overlay.get(section_name)
+        if section_overlay is None:
+            continue
+        if not isinstance(section_overlay, dict):
+            raise ConfigError(f"{where}: [{section_name}] must hold per-target tables")
+        section = data.setdefault(section_name, {})
+        for target_name, target_overlay in section_overlay.items():
+            target_where = f"{where} [{section_name}.{target_name}]"
+            if not isinstance(target_overlay, dict):
+                raise ConfigError(f"{target_where}: must be a table")
+            validate_allowed_keys(target_overlay, ADOPTER_OVERLAY_TARGET_KEYS, target_where)
+            target = section.setdefault(target_name, {})
+            for key in ("defines", "flags"):
+                extra = as_str_list(target_overlay.get(key), f"{target_where} `{key}`")
+                if extra:
+                    _append_unique(target, key, extra, target_where)
+            tools_overlay = target_overlay.get("tools")
+            if tools_overlay is None:
+                continue
+            if not isinstance(tools_overlay, dict):
+                raise ConfigError(f"{target_where}: `tools` must hold per-tool tables")
+            tools = target.setdefault("tools", {})
+            for tool_name, tool_overlay in tools_overlay.items():
+                tool_where = f"{target_where} tools.{tool_name}"
+                if not isinstance(tool_overlay, dict):
+                    raise ConfigError(f"{tool_where}: must be a table")
+                validate_allowed_keys(tool_overlay, TARGET_TOOL_KEYS, tool_where)
+                extra = as_str_list(tool_overlay.get("flags"), f"{tool_where} `flags`")
+                if extra:
+                    _append_unique(tools.setdefault(tool_name, {}), "flags", extra, tool_where)
+
+    data["adopter_overlay"] = repo_rel(root, overlay_path)
+
+
 def load_dut(
-    path: Path, cfg_dir: Path, *, root: Path, name: str, root_rel: str, framework: str | None = None
+    path: Path,
+    cfg_dir: Path,
+    *,
+    root: Path,
+    name: str,
+    root_rel: str,
+    framework: str | None = None,
+    adopter_overlay: Path | None = None,
 ) -> Dut:
     """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
 
@@ -1018,11 +1191,23 @@ def load_dut(
             # inheritance (every other inherited array replaces). Capture both lists before
             # deep_merge clobbers the DUT's, then re-join.
             dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
-            profile_sim_args = as_str_list(config_section(profile_cfg, "sim").get("args"), "sim.args")
+            profile_sim_args = as_str_list(
+                config_section(profile_cfg, "sim").get("args"), "sim.args"
+            )
             data = deep_merge(profile_cfg, data)
             combined_sim_args = profile_sim_args + dut_sim_args
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+
+    if "adopter_overlay" in data:
+        raise ConfigError(
+            f"{path}: `adopter_overlay` may not be set in a sim config or profile — the adopter "
+            "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
+        )
+    if adopter_overlay is not None:
+        # After the framework merge (the overlay extends the selected view) and before
+        # source-list expansion (an overlay-supplied manifest expands like a DUT-owned one).
+        apply_adopter_overlay(data, root, adopter_overlay)
 
     # Post-merge, so a framework overlay's [frameworks.<fw>.build].source_lists is visible.
     _expand_source_lists(data, root, str(path))
@@ -1094,8 +1279,7 @@ def load_simulators(root: Path) -> dict[str, Any]:
         )
         supported = as_str_list(table.get("supports_cov"), f"{path} [{tool}].supports_cov")
         if not any(
-            metric in {"line", "toggle", "branch", "fsm", "functional"}
-            for metric in supported
+            metric in {"line", "toggle", "branch", "fsm", "functional"} for metric in supported
         ):
             raise ConfigError(
                 f"{path}: [{tool}] declares coverage defaults but no normalized coverage metric"
@@ -1131,7 +1315,9 @@ def load_executors(root: Path) -> dict[str, Any]:
                 raise ConfigError(f"{path}: [{name}].binary must be a non-empty string")
             as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
             as_str_list(cfg.get("env_passthrough"), f"{name}.env_passthrough")
-            validate_placeholders_in_value(cfg.get("submit_argv", []), f"{path} [{name}].submit_argv")
+            validate_placeholders_in_value(
+                cfg.get("submit_argv", []), f"{path} [{name}].submit_argv"
+            )
         else:
             raise ConfigError(f"{path}: [{name}].kind must be `local` or `cluster`")
     return executors
@@ -1143,15 +1329,28 @@ def load_sim_cfg(flow: Dut, root: Path) -> dict[str, Any]:
 
 
 def build_cfg(flow: Flow, sim_cfg: dict[str, Any]) -> dict[str, Any]:
-    return config_section(sim_cfg, "build") if "build" in sim_cfg else config_section(flow.raw, "build")
+    return (
+        config_section(sim_cfg, "build")
+        if "build" in sim_cfg
+        else config_section(flow.raw, "build")
+    )
 
 
 def cocotb_cfg(flow: Flow, sim_cfg: dict[str, Any]) -> dict[str, Any]:
-    return config_section(sim_cfg, "cocotb") if "cocotb" in sim_cfg else config_section(flow.raw, "cocotb")
+    return (
+        config_section(sim_cfg, "cocotb")
+        if "cocotb" in sim_cfg
+        else config_section(flow.raw, "cocotb")
+    )
 
 
 def defaults_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return config_section(sim_cfg, "defaults") if "defaults" in sim_cfg else {}
+
+
+def run_modes_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    """The effective ``[run_modes]`` table (profile entries deep-merged under the DUT's)."""
+    return config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
 
 
 def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
@@ -1175,7 +1374,9 @@ def default_target_name(sim_cfg: dict[str, Any]) -> str:
 
 def target_names(sim_cfg: dict[str, Any]) -> set[str]:
     targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
-    return {name for name, value in targets.items() if isinstance(name, str) and isinstance(value, dict)}
+    return {
+        name for name, value in targets.items() if isinstance(name, str) and isinstance(value, dict)
+    }
 
 
 def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str:
@@ -1189,8 +1390,14 @@ def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[st
     keyed by `[defaults].target`.
     """
     name = name or default_target_name(sim_cfg)
-    target_defaults = config_section(sim_cfg, "target_defaults") if "target_defaults" in sim_cfg else {}
-    target_default = target_defaults.get(name, target_defaults.get("default", {})) if isinstance(target_defaults, dict) else {}
+    target_defaults = (
+        config_section(sim_cfg, "target_defaults") if "target_defaults" in sim_cfg else {}
+    )
+    target_default = (
+        target_defaults.get(name, target_defaults.get("default", {}))
+        if isinstance(target_defaults, dict)
+        else {}
+    )
     if target_default and not isinstance(target_default, dict):
         raise ConfigError(f"`target_defaults.{name}` must be a table")
     targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
@@ -1267,7 +1474,9 @@ def targeted_sim_cfg(
     # Bender target sets are target-specific compile views, so a target table overrides the generic
     # build target list. Common bender targets stay in `[build].common_bender_targets`.
     if "bender_targets" in target:
-        build["bender_targets"] = as_str_list(target.get("bender_targets"), f"targets.{target_name}.bender_targets")
+        build["bender_targets"] = as_str_list(
+            target.get("bender_targets"), f"targets.{target_name}.bender_targets"
+        )
 
     # These source lists are additive: DUT-wide sources from `[build]` plus target-owned shims/stubs.
     # `exclude_files` is likewise additive: DUT-wide drops from `[build]` plus target-owned drops
@@ -1303,7 +1512,9 @@ def targeted_sim_cfg(
         filelist_root = Path(build_dir) / "filelists" / target_name
         work_dir = target.get("work_dir", build_dir)
         if not isinstance(work_dir, str) or not work_dir:
-            raise ConfigError(f"`targets.{target_name}.work_dir` must be a non-empty string when provided")
+            raise ConfigError(
+                f"`targets.{target_name}.work_dir` must be a non-empty string when provided"
+            )
         build["work_dir"] = work_dir
         if "bender_filelist" not in target:
             build["bender_filelist"] = str(filelist_root / "bender.f")
@@ -1340,15 +1551,35 @@ def selected_run_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return selected_target(sim_cfg)
 
 
+def validate_run_mode_request(sim_cfg: dict[str, Any], requested: str, where: str) -> None:
+    """Reject a run-mode name that is not an effective ``[run_modes]`` entry.
+
+    ``where`` names the reference's source (``--run-mode``, a testlist entry, or
+    ``[defaults].run_mode``) so the error points at the thing to fix.
+    """
+    modes = run_modes_cfg(sim_cfg)
+    if str(requested) not in modes:
+        allowed = ", ".join(sorted(modes)) if modes else "none defined"
+        raise ConfigError(f"{where}: unknown run mode `{requested}` (allowed: {allowed})")
+
+
 def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any) -> dict[str, Any]:
     requested = args.run_mode
+    where = "--run-mode"
     if not requested and test and test.run_modes:
         requested = test.run_modes[0]
+        where = f"test `{test.name}` run_modes"
     if not requested:
+        # The implicit fallback is optional by design: a DUT whose tests all carry run_modes
+        # never consults it, and a DUT without a `smoke` mode must still resolve (to no mode).
         requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
-    modes = config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
-    mode = modes.get(str(requested), {}) if isinstance(modes, dict) else {}
-    return mode if isinstance(mode, dict) else {}
+        mode = run_modes_cfg(sim_cfg).get(str(requested), {})
+        return mode if isinstance(mode, dict) else {}
+    # Explicit references were already validated before stage execution (catalog load checks
+    # testlist and [defaults] names, the CLI entry checks --run-mode); this re-check keeps
+    # direct API callers on the same contract.
+    validate_run_mode_request(sim_cfg, str(requested), where)
+    return run_modes_cfg(sim_cfg)[str(requested)]
 
 
 def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
@@ -1389,7 +1620,9 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     overrides_raw = entry.get("overrides", {})
     overrides: dict[str, dict[str, Any]] = {}
     if not isinstance(overrides_raw, dict):
-        raise ConfigError(f"{where}{name}.overrides must be a table of [tests.overrides.<framework>]")
+        raise ConfigError(
+            f"{where}{name}.overrides must be a table of [tests.overrides.<framework>]"
+        )
     for fw, table in overrides_raw.items():
         if not isinstance(fw, str) or not FRAMEWORK_NAME_RE.match(fw):
             raise ConfigError(f"{where}{name}.overrides has an invalid framework key `{fw}`")
@@ -1414,6 +1647,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
+        source=source,
     )
 
 
@@ -1454,10 +1688,52 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
         if "seed" in override:
             test.seed = as_int(override.get("seed"), f"{test.name}.overrides.seed")
         if "timeout_sec" in override:
-            test.timeout_sec = as_int(override.get("timeout_sec"), f"{test.name}.overrides.timeout_sec")
+            test.timeout_sec = as_int(
+                override.get("timeout_sec"), f"{test.name}.overrides.timeout_sec"
+            )
         if "args" in override:
             # Override args append after the scenario's own args (run-stage layering).
-            test.args = [*(test.args or []), *as_str_list(override.get("args"), f"{test.name}.overrides.args")]
+            test.args = [
+                *(test.args or []),
+                *as_str_list(override.get("args"), f"{test.name}.overrides.args"),
+            ]
+
+
+def _validate_run_mode_references(flow: Flow, tests: dict[str, TestEntry]) -> None:
+    """Every explicit run-mode reference must name an effective ``[run_modes]`` entry.
+
+    Runs after include expansion, so a reference is checked no matter which included file
+    declares it. Covers per-test ``run_modes`` lists and an explicit ``[defaults].run_mode``;
+    an unknown name would otherwise resolve to an empty mode and silently drop the mode's
+    args and timeout.
+    """
+    known = set(run_modes_cfg(flow.raw))
+    for test in tests.values():
+        for mode in test.run_modes or []:
+            if mode not in known:
+                where = f"{test.source or flow.path}: test `{test.name}`"
+                validate_run_mode_request(flow.raw, mode, where)
+    default = defaults_cfg(flow.raw).get("run_mode")
+    if default is not None:
+        validate_run_mode_request(flow.raw, str(default), f"{flow.path}: [defaults].run_mode")
+
+
+def _validate_group_members(
+    tests: dict[str, TestEntry], groups: dict[str, list[str]], group_sources: dict[str, Path]
+) -> None:
+    """Every group member must name a test defined after include expansion.
+
+    An unresolved member would otherwise survive selection and surface at runtime as a
+    KeyError when the plan indexes the catalog. Only existence is checked: a test may be
+    a member of any number of groups, and a group may list tests declared in other files.
+    """
+    for name, members in groups.items():
+        missing = [member for member in members if member not in tests]
+        if missing:
+            raise ConfigError(
+                f"{group_sources[name]}: group `{name}` references missing test(s): "
+                f"{', '.join(missing)}"
+            )
 
 
 def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
@@ -1469,11 +1745,15 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
             # The clean contract says testlist paths are DUT-local. The sandbox configs still use
             # repo-relative paths, so accept both while preferring the existing repo-relative form.
             path = flow.path.parent / raw_path
-        tests, groups = _merge_testlist_data(load_toml(path), path, path.parent, root, [path])
+        tests, groups, group_sources = _merge_testlist_data(
+            load_toml(path), path, path.parent, root, [path]
+        )
         _resolve_catalog_frameworks(flow, tests, path)
+        _validate_run_mode_references(flow, tests)
+        _validate_group_members(tests, groups, group_sources)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
-    tests, groups = _merge_testlist_data(
+    tests, groups, group_sources = _merge_testlist_data(
         flow.raw,
         flow.path,
         flow.path.parent,
@@ -1482,10 +1762,12 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         validate_testlist_keys=False,
     )
     _resolve_catalog_frameworks(flow, tests, flow.path)
+    _validate_run_mode_references(flow, tests)
+    _validate_group_members(tests, groups, group_sources)
     return TestCatalog(path=None, tests=tests, groups=groups)
 
 
-def _expand_testlist(path: Path, root: Path, stack: list[Path]) -> tuple[dict, dict]:
+def _expand_testlist(path: Path, root: Path, stack: list[Path]) -> tuple[dict, dict, dict]:
     """Load one testlist file and recursively expand its includes, detecting cycles."""
     resolved = path.resolve()
     for seen in stack:
@@ -1506,14 +1788,16 @@ def _merge_testlist_data(
     stack: list[Path],
     *,
     validate_testlist_keys: bool = True,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict]:
     """Merge included testlists first, then this file's own tests/groups.
 
     Include paths are resolved relative to the including file (``base_dir``); duplicate test or
-    group names after expansion are validation errors.
+    group names after expansion are validation errors. The third returned dict maps each group
+    to the file that declared it, so cross-reference errors name the file to edit.
     """
     tests: dict[str, TestEntry] = {}
     groups: dict[str, list[str]] = {}
+    group_sources: dict[str, Path] = {}
     if validate_testlist_keys:
         validate_allowed_keys(data, TESTLIST_KEYS, str(source))
 
@@ -1523,10 +1807,8 @@ def _merge_testlist_data(
         try:
             inc_path.resolve().relative_to(root.resolve())
         except ValueError:
-            raise ConfigError(
-                f"{source}: include `{include}` resolves outside the repository root"
-            )
-        inc_tests, inc_groups = _expand_testlist(inc_path, root, stack)
+            raise ConfigError(f"{source}: include `{include}` resolves outside the repository root")
+        inc_tests, inc_groups, inc_sources = _expand_testlist(inc_path, root, stack)
         for name, test in inc_tests.items():
             if name in tests:
                 raise ConfigError(f"{source}: duplicate test `{name}` after include expansion")
@@ -1535,6 +1817,7 @@ def _merge_testlist_data(
             if name in groups:
                 raise ConfigError(f"{source}: duplicate group `{name}` after include expansion")
             groups[name] = members
+            group_sources[name] = inc_sources.get(name, inc_path)
 
     for entry in data.get("tests", []):
         if not isinstance(entry, dict):
@@ -1563,8 +1846,9 @@ def _merge_testlist_data(
                 f"expected_count is {expected}; update the group or the count"
             )
         groups[name] = members
+        group_sources[name] = source
 
-    return tests, groups
+    return tests, groups, group_sources
 
 
 def flow_stages(flow: Flow) -> dict[str, Any]:

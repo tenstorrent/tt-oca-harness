@@ -20,6 +20,13 @@ module jtag_inst_reg
     // Decoded instruction output
     output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction
 );
+    // Tie off unused fields to satisfy lint
+    logic unused_scan_ctrl;
+    assign unused_scan_ctrl = ^{scan_ctrl_i.runbist,
+                                scan_ctrl_i.test_logic_reset,
+                                scan_ctrl_i.run_test_idle,
+                                scan_ctrl_i.select,
+                                scan_ctrl_i.chrst_n};
 
     //--------------------------------------------------------------------------
     // Internal Registers
@@ -27,9 +34,14 @@ module jtag_inst_reg
     
     // Instruction register (holds current active instruction)
     jtag_instruction_decoded_e instruction_reg_q;
+    logic [$bits(jtag_instruction_decoded_e)-1:0] instruction_reg_q_bits;
     
     // Instruction shift register (used during capture/shift operations)
     jtag_instruction_e instruction_shift_reg_q;
+    logic [$bits(jtag_instruction_e)-1:0] instruction_shift_reg_q_bits;
+
+    assign instruction_reg_q = jtag_instruction_decoded_e'(instruction_reg_q_bits);
+    assign instruction_shift_reg_q = jtag_instruction_e'(instruction_shift_reg_q_bits);
     
     //--------------------------------------------------------------------------
     // Instruction Register Sequential Logic
@@ -43,7 +55,7 @@ module jtag_inst_reg
         .clk_i  (~scan_ctrl_i.tck),
         .rst_ni (scan_ctrl_i.rst_n),
         .d_i    (scan_ctrl_i.update_en ? jtag_instruction_decoded_e'(2 ** instruction_shift_reg_q) : instruction_reg_q),
-        .q_o    (instruction_reg_q)
+        .q_o    (instruction_reg_q_bits)
     );
 
     // Instruction shift register - used for capture and shift operations
@@ -69,7 +81,7 @@ module jtag_inst_reg
         .clk_i  (scan_ctrl_i.tck),
         .rst_ni (scan_ctrl_i.rst_n),
         .d_i    (instruction_shift_reg_d),
-        .q_o    (instruction_shift_reg_q)
+        .q_o    (instruction_shift_reg_q_bits)
     );
     
     //--------------------------------------------------------------------------

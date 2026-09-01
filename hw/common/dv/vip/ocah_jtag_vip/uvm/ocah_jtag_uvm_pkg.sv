@@ -19,7 +19,9 @@
 //   ocah_jtag_master_monitor.svh   — passive per-TCK step / TRST observer
 //   ocah_jtag_slave_monitor.svh    — same observation for slave-side agents
 //   ocah_jtag_scan_builder.svh     — IR/DR scan reconstruction over the step stream
-//   ocah_jtag_checker.svh          — named-evidence checker over the reference model
+//   ocah_jtag_checker.svh          — TAP-contract checker over the reference model
+//                                    and the shared ocah_checker evidence base
+//                                    (ocah_checker_uvm_pkg, issue #1132)
 //   ocah_jtag_slave_sequence.svh   — slave test-facing API (configure/inspect the device)
 //   ocah_jtag_cov.svh              — optional functional-coverage subscriber (cfg.en_cov)
 //   ocah_jtag_master_agent.svh     — master agent bundle
@@ -42,6 +44,7 @@
 package ocah_jtag_uvm_pkg;
 
     import uvm_pkg::*;
+    import ocah_checker_uvm_pkg::*;
     `include "uvm_macros.svh"
 
     `include "ocah_jtag_types.svh"

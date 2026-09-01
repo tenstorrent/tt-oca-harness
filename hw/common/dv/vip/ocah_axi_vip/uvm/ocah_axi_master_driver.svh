@@ -3,11 +3,15 @@
 //
 // Active AXI4/AXI4-Lite master driver (initiator side).
 //
-// Executes one ocah_axi_item per sequence handshake: writes run AW -> W
-// beats -> B, reads run AR -> R beats to RLAST; phases are sequential and a
-// single transaction is outstanding at a time. cfg.protocol selects
-// AXI4-Lite (single-beat; the driver itself ties the AXI4-only request
-// fields to the adapter contract values from ocah_axi_if's header).
+// Executes one ocah_axi_item per sequence handshake: writes run the AW and
+// W phases concurrently (AXI permits either arrival order; the item's
+// aw/w_valid_delay knobs skew their launch) then B, reads run AR -> R beats
+// to RLAST; a single transaction is outstanding at a time. The item's
+// b_ready_delay defers the BREADY assert, and a nonzero r_ready_delay holds
+// RREADY low after RVALID asserts while the driver samples RDATA/RRESP
+// stability into hold_stable. cfg.protocol selects AXI4-Lite (single-beat;
+// the driver itself ties the AXI4-only request fields to the adapter
+// contract values from ocah_axi_if's header).
 //
 // Wire contract (the initiator mirror of ocah_axi_slave_driver): the driver
 // SAMPLES responder-driven signals through mon_cb (race-free preponed
@@ -120,9 +124,9 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
 
     protected function void flag_timeout(ocah_axi_item it, string phase_s);
         it.timed_out = 1'b1;
-        `uvm_warning(cfg.name_tag, $sformatf(
+        `uvm_info(cfg.name_tag, $sformatf(
             "%s handshake timeout after %0d cycles: %s",
-            phase_s, cfg.timeout_cycles, it.convert2string()))
+            phase_s, cfg.timeout_cycles, it.convert2string()), UVM_MEDIUM)
     endfunction
 
     // ------------------------------------------------------------------
@@ -246,6 +250,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
 
     virtual task do_write(ocah_axi_item it);
         int unsigned beats = it.data_words.size();
+        bit aw_timed_out, w_timed_out;
         bit timed_out;
         it.resp_list.delete();
         if (beats == 0) begin
@@ -257,31 +262,38 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
                 "%0d-beat write on an AXI4-Lite master (single-beat protocol)", beats))
             return;
         end
-        // Address phase.
-        drive_aw(it, beats);
-        wait_aw(timed_out);
-        cfg.vif.awvalid <= 1'b0;
-        if (timed_out) begin
-            flag_timeout(it, "AW");
+        // Address and data phases run concurrently; each channel's valid
+        // delay skews its launch (both zero = simultaneous assert).
+        fork
+            begin : aw_phase
+                repeat (it.aw_valid_delay) @(cfg.vif.mon_cb);
+                drive_aw(it, beats);
+                wait_aw(aw_timed_out);
+                cfg.vif.awvalid <= 1'b0;
+            end
+            begin : w_phase
+                repeat (it.w_valid_delay) @(cfg.vif.mon_cb);
+                for (int unsigned beat = 0; beat < beats; beat++) begin
+                    cfg.vif.wdata  <= it.data_words[beat];
+                    cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat]
+                                         : cfg.full_strb());
+                    cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                                      ? 1'b1 : (beat == beats - 1);
+                    cfg.vif.wvalid <= 1'b1;
+                    wait_w(w_timed_out);
+                    if (w_timed_out)
+                        break;
+                end
+                cfg.vif.wvalid <= 1'b0;
+            end
+        join
+        if (aw_timed_out || w_timed_out) begin
+            flag_timeout(it, aw_timed_out ? "AW" : "W");
             return;
         end
-        // Data phase: one beat per accepted cycle.
-        for (int unsigned beat = 0; beat < beats; beat++) begin
-            cfg.vif.wdata  <= it.data_words[beat];
-            cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat]
-                                 : cfg.full_strb());
-            cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
-                              ? 1'b1 : (beat == beats - 1);
-            cfg.vif.wvalid <= 1'b1;
-            wait_w(timed_out);
-            if (timed_out) begin
-                cfg.vif.wvalid <= 1'b0;
-                flag_timeout(it, "W");
-                return;
-            end
-        end
-        cfg.vif.wvalid <= 1'b0;
-        // Response phase: sample BRESP/BID on the accepted cycle.
+        // Response phase: b_ready_delay defers the accept, then sample
+        // BRESP/BID on the accepted cycle.
+        repeat (it.b_ready_delay) @(cfg.vif.mon_cb);
         cfg.vif.bready <= 1'b1;
         wait_b(timed_out);
         cfg.vif.bready <= 1'b0;
@@ -312,6 +324,36 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
         if (timed_out) begin
             flag_timeout(it, "AR");
             return;
+        end
+        // RREADY-hold window: with a nonzero r_ready_delay, wait for RVALID
+        // with RREADY still low, then sample RDATA/RRESP stability across the
+        // hold — RVALID must stay asserted with unchanged payload until the
+        // accept (hold_stable reports it; the deferred handshake below then
+        // consumes the beat normally).
+        if (it.r_ready_delay > 0) begin
+            bit [63:0]   held_data;
+            bit [1:0]    held_resp;
+            int unsigned cycles = 0;
+            forever begin
+                @(cfg.vif.mon_cb);
+                if (cfg.vif.mon_cb.rvalid === 1'b1)
+                    break;
+                cycles++;
+                if (cfg.timeout_cycles != 0 && cycles >= cfg.timeout_cycles) begin
+                    flag_timeout(it, "R");
+                    return;
+                end
+            end
+            held_data      = cfg.vif.mon_cb.rdata;
+            held_resp      = cfg.vif.mon_cb.rresp;
+            it.hold_stable = 1'b1;
+            repeat (it.r_ready_delay) begin
+                @(cfg.vif.mon_cb);
+                if (cfg.vif.mon_cb.rvalid !== 1'b1 ||
+                    cfg.vif.mon_cb.rdata !== held_data ||
+                    cfg.vif.mon_cb.rresp !== held_resp)
+                    it.hold_stable = 1'b0;
+            end
         end
         // Data phase: accumulate beats to RLAST (Lite adapters tie rlast=1,
         // but the protocol itself bounds Lite reads to the single beat).

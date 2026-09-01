@@ -28,9 +28,7 @@ from .smc_i2c_field_masks import (
     pack_acq,
 )
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 _TARGET_ADDR = 0x10
 # Distinct bytes so an order swap fails the ACQ compare.
@@ -113,17 +111,13 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
                 break
             await Timer(1, units="us")
         if not left_idle:
-            raise AssertionError(
-                f"{label}: I2C0 host never left hostidle (STATUS=0x{status:08x})"
-            )
+            raise AssertionError(f"{label}: I2C0 host never left hostidle (STATUS=0x{status:08x})")
         for _ in range(400):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
             await Timer(10, units="us")
-        raise AssertionError(
-            f"{label}: I2C0 host stuck busy (STATUS=0x{status:08x})"
-        )
+        raise AssertionError(f"{label}: I2C0 host stuck busy (STATUS=0x{status:08x})")
 
     async def _drain_acq_until_stop(self, idx: int) -> list[int]:
         """Drain ACQ until a STOP SIGNAL entry appears."""
@@ -144,8 +138,7 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
                 saw_stop = True
         if not saw_stop:
             raise AssertionError(
-                f"I2C{idx} ACQ: no STOP SIGNAL before drain timeout; "
-                f"words={[hex(w) for w in got]}"
+                f"I2C{idx} ACQ: no STOP SIGNAL before drain timeout; words={[hex(w) for w in got]}"
             )
         return got
 
@@ -160,9 +153,7 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
         ungated = cg & ~I2C_CG_EN
         await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, ungated)
 
-        wrap1 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1
-        )
+        wrap1 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1)
         await self.csr_write("I2C1_WRAP_TARGET", wrap1, I2C_WRAP_CTRL_TARGET)
         await self._program_timing(1)
         await self.csr_write(
@@ -181,9 +172,7 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
             I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN,
         )
 
-        wrap0 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-        )
+        wrap0 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
         await self.csr_write("I2C0_WRAP_HOST", wrap0, I2C_WRAP_CTRL_HOST)
         await self._program_timing(0)
         await self.csr_write(
@@ -198,9 +187,7 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
         )
         await self.csr_write(
             "I2C0_CEVENTS_CLR",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0),
             0xF,
         )
         await self.csr_write(
@@ -214,9 +201,7 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
         await self.csr_write("I2C0_FDATA_START", fdata, I2C_FDATA_START | addr_w)
         await self.csr_write("I2C0_FDATA_REG", fdata, _REG_ADDR)
         await self.csr_write("I2C0_FDATA_LO", fdata, _DATA_LO)
-        await self.csr_write(
-            "I2C0_FDATA_HI_STOP", fdata, I2C_FDATA_STOP | _DATA_HI
-        )
+        await self.csr_write("I2C0_FDATA_HI_STOP", fdata, I2C_FDATA_STOP | _DATA_HI)
 
         await self._wait_hostidle("I2C0_P0_WRITE")
         self.acq_words = await self._drain_acq_until_stop(1)
@@ -246,8 +231,7 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
         stop_word = self.acq_words[4]
         if acq_signal(stop_word) != I2C_ACQ_SIGNAL_STOP:
             raise AssertionError(
-                f"I2C1 ACQ[4] missing STOP SIGNAL: got=0x{stop_word:x} "
-                f"sig={acq_signal(stop_word)}"
+                f"I2C1 ACQ[4] missing STOP SIGNAL: got=0x{stop_word:x} sig={acq_signal(stop_word)}"
             )
 
         cocotb.log.info(

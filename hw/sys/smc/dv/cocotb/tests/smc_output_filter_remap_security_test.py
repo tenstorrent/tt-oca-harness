@@ -3,8 +3,6 @@
 """SMC OSS output filter/remap security CSR smoke.
 
 DV-CARD:          SMC_005   ANCHOR: smc_output_filter_remap_security_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 742cda4faa03574c91d3166fdb9ce3c9b231242b544d248b14cbc297d56b1745
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 """
 
 from __future__ import annotations
@@ -12,7 +10,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ADDR,
     OUTPUT_FABRIC_ALT_DATA,
@@ -28,6 +25,7 @@ from seq_lib.smc_output_fabric_vip_utils import (
     output_fabric_model,
     output_fabric_pass_all_cfg_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

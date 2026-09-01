@@ -14,9 +14,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_cpu_vip_utils import (
-    CPU_CTRL_RESET_CTRL,
     CPU_CTRL_RESET_VECTOR_0,
-    CPU_CTRL_SCRATCH_0,
     CPU_FW_SUCCESS_MAGIC,
     CPU_RESET_CTRL_DEFAULT,
     CPU_RESET_VECTOR_ROM,
@@ -56,12 +54,13 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         # Prefer transition captured during bring-up watcher.
         if self.fuse_saw_low and self.fuse_saw_high:
             self._timeout_note(
-                f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok "
-                f"(bring-up watcher saw 0→1)"
+                f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok (bring-up watcher saw 0→1)"
             )
             return
 
-        val = int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
+        val = (
+            int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
+        )
         if val == 1 and not self.fuse_saw_low:
             raise AssertionError(
                 "tb_fuse_sense_done already 1 with no observed 0→1 transition "
@@ -78,9 +77,7 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
                 self.fuse_saw_low = True
             if v == 1 and self.fuse_saw_low:
                 self.fuse_saw_high = True
-                self._timeout_note(
-                    f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok cycles={i+1}"
-                )
+                self._timeout_note(f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok cycles={i + 1}")
                 await ClockCycles(clk, 20)
                 return
         raise AssertionError(
@@ -119,7 +116,6 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         )
 
         # S3 — program vectors, release, observe fetch + clk_smc progress
-        rom_image = cocotb.plusargs.get("smc_rom_hex")
         scratch_image = cocotb.plusargs.get("smc_scratch_ram_hex")
         boot_from_scratch = scratch_image is not None
         self._mark_step(
@@ -132,26 +128,18 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         baseline_dcache = int(dut.tb_cpu_dcache_write_count.value)
         baseline_pc = int(dut.tb_cpu_wb_pc0.value)
 
-        self.boot = await check_cpu_firmware_boot_contract(
-            self, require_image=True
-        )
+        self.boot = await check_cpu_firmware_boot_contract(self, require_image=True)
         self.accesses = getattr(self, "accesses", 0) or 4
 
         assert self.boot.get("boot_checked"), self.boot
         rom_reads = int(self.boot["rom_reads"])
         scratch_reads = int(self.boot.get("scratch_reads", 0))
-        mbox = int(
-            self.boot.get("mailbox_tb")
-            or self.boot.get("mailbox_csr")
-            or 0
-        )
+        mbox = int(self.boot.get("mailbox_tb") or self.boot.get("mailbox_csr") or 0)
         assert mbox == CPU_FW_SUCCESS_MAGIC, f"PASS magic mismatch {mbox:#x}"
 
         # Readback programmed vector (CSR path proves clk_smc fabric S2)
         vec0 = await self.csr_read("CPU_BOOT_VEC0_RDBK", CPU_CTRL_RESET_VECTOR_0)
-        expected_vec = (
-            CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
-        )
+        expected_vec = CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
         assert vec0 == expected_vec, f"vector readback {vec0:#x} != {expected_vec:#x}"
 
         dcache_now = int(dut.tb_cpu_dcache_write_count.value)
@@ -220,7 +208,6 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             "CHK-NONVAC: check_cpu_bfm_observability powergood_stable_o==1 "
             f"precedes boot; PASS magic {CPU_FW_SUCCESS_MAGIC:#x} confirms "
             "non-vacuous execution for RESET-VECTOR-FETCH / ROM-IS-TARGET / "
-            "CLK-SMC-LIVE / EFUSE-SENSE-DONE; "
-            + "; ".join(self._timeout_paths)
+            "CLK-SMC-LIVE / EFUSE-SENSE-DONE; " + "; ".join(self._timeout_paths)
         )
         self._log("SMC_002 scenario PASS")

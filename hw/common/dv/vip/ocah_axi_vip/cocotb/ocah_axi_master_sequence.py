@@ -358,7 +358,9 @@ class OcahAxiMasterSequence:
             self.timeout_ns = int(kwargs["timeout_ns"])
         unsupported = set(kwargs) - {"timeout_cycles", "timeout_ns", "default_id"}
         if unsupported:
-            self.log.warning("%s: ignored unsupported cocotbext config keys %s", self.name, sorted(unsupported))
+            raise ValueError(
+                f"{self.name}: unsupported cocotbext config keys {sorted(unsupported)}"
+            )
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level transaction counters."""
@@ -392,7 +394,8 @@ class OcahAxiMasterSequence:
     ) -> OcahAxiWriteResult:
         capture = self.driver.start_response_id_capture("b")
         event = self.driver.init_write(
-            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user))
+            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user)
+        )
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
@@ -440,7 +443,8 @@ class OcahAxiMasterSequence:
     ) -> OcahAxiReadResult:
         capture = self.driver.start_response_id_capture("r")
         event = self.driver.init_read(
-            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user))
+            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user)
+        )
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:

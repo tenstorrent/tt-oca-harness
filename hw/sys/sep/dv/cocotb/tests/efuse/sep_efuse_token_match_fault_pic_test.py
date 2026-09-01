@@ -19,11 +19,12 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_rma_token_seq import (
-    TOKEN_CMP_INJECT_COLLAPSE, TOKEN_CMP_INJECT_OFF, TOKEN_CMP_SEL_SEC,
+    TOKEN_CMP_INJECT_COLLAPSE,
+    TOKEN_CMP_INJECT_OFF,
+    TOKEN_CMP_SEL_SEC,
 )
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -67,7 +68,9 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         self.sb.expected_line = _BANNER
         cocotb.start_soon(self._inject_after_ready())
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
@@ -82,5 +85,4 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         ):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
-        self.logger.info(
-            "CHK-PIC-39 PASS: claim id 39, SEC_DISABLE sticky, mask stopped re-entry")
+        self.logger.info("CHK-PIC-39 PASS: claim id 39, SEC_DISABLE sticky, mask stopped re-entry")

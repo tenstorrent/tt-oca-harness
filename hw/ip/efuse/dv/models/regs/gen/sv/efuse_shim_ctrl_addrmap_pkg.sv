@@ -11,4 +11,4 @@ localparam longint unsigned EFUSE_SHIM_CTRL_SIZE = 64'h4;
 localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 64'h0;
 
 
-endpackage;
+endpackage

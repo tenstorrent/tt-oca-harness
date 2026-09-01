@@ -20,18 +20,16 @@ runs the real ROM -- not a backdoored payload.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import os
 from pathlib import Path
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
@@ -56,7 +54,11 @@ _MAX_RUN_CYCLES = 4_000_000
 # they show the ROM *reports* the check, not that a corrupted manifest would be
 # rejected. Nothing here corrupts one, so the negative direction is untested.
 _REQUIRED_ROM_MARKERS = (
-    "SMC_MEM_CHK", "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1", "FUSE_CHK",
+    "SMC_MEM_CHK",
+    "MANIFEST_HASH_OK",
+    "PLD_HASH_OK",
+    "BL1",
+    "FUSE_CHK",
 )
 _NO_BOOT_CYCLES = 200_000
 _PROGRESS_EVERY = 5_000
@@ -90,7 +92,9 @@ class sep_rom_non_secure_boot_test(sep_base_test):
         cocotb.start_soon(rom_console_task(self.logger, sink=self._rom_markers))
         try:
             await self.boot_firmware(
-                self.sb, _ITCM_HEX, _DTCM_HEX,
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
                 rst_vec=_ROM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
@@ -109,7 +113,8 @@ class sep_rom_non_secure_boot_test(sep_base_test):
             )
             self.logger.info(
                 "CHK-ROM-STAGES PASS: all %d required ROM/BL1 stage markers observed (%s)",
-                len(_REQUIRED_ROM_MARKERS), ", ".join(_REQUIRED_ROM_MARKERS),
+                len(_REQUIRED_ROM_MARKERS),
+                ", ".join(_REQUIRED_ROM_MARKERS),
             )
         finally:
             log_scratch_cold(self.logger)

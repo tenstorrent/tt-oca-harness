@@ -23,10 +23,10 @@ WSTRB=0x00 (all-zero strobe) is excluded (undefined per the SRAM spec).
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # SEP SRAM aperture (256 KiB). Derived from the generated Python register export
@@ -42,9 +42,9 @@ _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 _REQUIRED_PATTERNS = [
     0xAAAA_AAAA_AAAA_AAAA,
     0x5555_5555_5555_5555,
-    0x0000_0000_0000_0001,   # walking-1 lsb
-    0x8000_0000_0000_0000,   # walking-1 msb
-    0xFFFF_FFFF_FFFF_FFFE,   # walking-0 lsb
+    0x0000_0000_0000_0001,  # walking-1 lsb
+    0x8000_0000_0000_0000,  # walking-1 msb
+    0xFFFF_FFFF_FFFF_FFFE,  # walking-0 lsb
     0xDEAD_BEEF_CAFE_BABE,
 ]
 
@@ -78,7 +78,9 @@ class SepSramBreadthCfg:
 
         # Patterns: the required cells are always present; add a few seed-random extras.
         n_extra = rng.randrange(2, 5)
-        self.pattern_values = list(_REQUIRED_PATTERNS) + [rng.getrandbits(64) for _ in range(n_extra)]
+        self.pattern_values = list(_REQUIRED_PATTERNS) + [
+            rng.getrandbits(64) for _ in range(n_extra)
+        ]
         self.pattern_offset = self._aligned(rng, 0x2000, 0x3000)
 
         # Boundary: always the base word and the top valid 64-bit word.
@@ -92,7 +94,7 @@ class SepSramBreadthCfg:
         # Non-vacuity: a distinct unwritten word adjacent to a written one.
         self.nonvac_wr_offset = self._aligned(rng, 0x4000, 0x5000)
         self.nonvac_rd_offset = self.nonvac_wr_offset + 8
-        self.nonvac_pattern = rng.getrandbits(64) | 1   # ensure nonzero
+        self.nonvac_pattern = rng.getrandbits(64) | 1  # ensure nonzero
 
     @staticmethod
     def _aligned(rng: SepSeededRng, lo: int, hi: int) -> int:
@@ -119,8 +121,11 @@ class SepSramBreadth:
 
     async def write(self, addr: int, data: int, length: int = 8) -> None:
         seq = SepAxiAccessSeq(
-            f"sram_wr_0x{addr:08x}_l{length}", op=SepAxiOp.WRITE,
-            addr=addr, wdata=data, length=length,
+            f"sram_wr_0x{addr:08x}_l{length}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=length,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
@@ -128,8 +133,10 @@ class SepSramBreadth:
 
     async def read(self, addr: int, length: int = 8) -> int:
         seq = SepAxiAccessSeq(
-            f"sram_rd_0x{addr:08x}_l{length}", op=SepAxiOp.READ,
-            addr=addr, length=length,
+            f"sram_rd_0x{addr:08x}_l{length}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=length,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:

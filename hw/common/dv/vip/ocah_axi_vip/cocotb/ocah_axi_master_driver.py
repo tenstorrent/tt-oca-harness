@@ -33,7 +33,8 @@ class OcahAxiIdCapture:
 
     The watcher never raises into the test: an unresolvable (X/Z) ID on a
     completing beat, a missing ID signal, or no completing beat all yield a
-    capture miss (``finish()`` returns ``None``) with a warning logged.
+    capture miss (``finish()`` returns ``None``). A miss is ``None``, not a
+    warning — the test owns the verdict.
 
     Capture is scoped to one blocking transaction: it samples the first
     completing beat between ``start_response_id_capture()`` and
@@ -60,18 +61,22 @@ class OcahAxiIdCapture:
             except ValueError:
                 continue
             try:
-                self._captured = int(id_signal.value)
+                sampled = int(id_signal.value)
             except ValueError:
-                self._log.warning(
-                    "%s capture: unresolvable ID on completing beat: %s",
-                    self._label,
-                    id_signal.value,
-                )
-                return
+                if last is None:
+                    return
+                try:
+                    if int(last.value) == 1:
+                        return
+                except ValueError:
+                    return
+                continue
             if last is None:
+                self._captured = sampled
                 return
             try:
                 if int(last.value) == 1:
+                    self._captured = sampled
                     return
             except ValueError:
                 return
@@ -97,7 +102,8 @@ class OcahAxiIdCapture:
             await RisingEdge(self._clock)
         if not self._task.done():
             self._task.cancel()
-            self._log.warning("%s capture: no completing beat observed", self._label)
+            self._task = None
+            return None
         self._task = None
         return self._captured
 
@@ -126,6 +132,7 @@ class OcahAxiMasterDriver:
 
         self.log = logging.getLogger(name)
         self._bus, self._clock, self._reset = self._resolve_bus_clock_reset(axi4_intf, clock, reset)
+        timing = kwargs.pop("timing", None)
         self._master = AxiMaster(
             self._bus,
             self._clock,
@@ -134,9 +141,13 @@ class OcahAxiMasterDriver:
             max_burst_len=max_burst_len,
             **kwargs,
         )
+        if timing is not None:
+            self.set_timing(timing)
 
     @classmethod
-    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs: Any) -> "OcahAxiMasterDriver":
+    def from_prefix(
+        cls, dut, prefix: str, clock, reset=None, **kwargs: Any
+    ) -> "OcahAxiMasterDriver":
         """Construct from flattened AXI4 signals using ``AxiBus``."""
         return cls(AxiBus.from_prefix(dut, prefix), clock, reset, **kwargs)
 
@@ -161,6 +172,31 @@ class OcahAxiMasterDriver:
         if resolved_reset is None:
             resolved_reset = getattr(axi4_intf, "rst_ni", None)
         return bus, resolved_clock, resolved_reset
+
+    def set_timing(self, profile) -> None:
+        """Arm an ``AxiTimingProfile`` on this master's five channels.
+
+        AXI channels are independent, so AW/W ordering and response-channel
+        backpressure are legal stimulus the backend cannot otherwise produce.
+        See ocah_axi_timing.AxiTimingProfile.
+        """
+        from .ocah_axi_timing import apply_profile
+
+        apply_profile(self, profile)
+
+    @property
+    def channels(self) -> dict:
+        """The backend channel objects, keyed by AxiTimingProfile field name.
+
+        Exposed so timing control does not reach into the backend handle.
+        """
+        return {
+            "aw_delay": self._master.write_if.aw_channel,
+            "w_delay": self._master.write_if.w_channel,
+            "ar_delay": self._master.read_if.ar_channel,
+            "b_ready_delay": self._master.write_if.b_channel,
+            "r_ready_delay": self._master.read_if.r_channel,
+        }
 
     def init_signals(self) -> None:
         """Compatibility no-op; cocotbext-axi drives idle values at construction."""

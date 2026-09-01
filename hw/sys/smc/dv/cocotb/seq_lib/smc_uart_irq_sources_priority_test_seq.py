@@ -18,7 +18,14 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
@@ -26,33 +33,15 @@ UART_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
     0,
 )
-UART_RBR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
-)
-UART_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART_IIR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0
-)
-UART_LCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
-)
-UART_MCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0
-)
-UART_LSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
-)
-UART_MSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0
-)
-UART_ITR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR", 0
-)
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+UART_RBR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0)
+UART_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART_IIR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0)
+UART_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART_MCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0)
+UART_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
+UART_MSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0)
+UART_ITR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR", 0)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
@@ -67,9 +56,7 @@ ITR_TLSI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TLSI_bm")
 ITR_TDSSI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TDSSI_bm")
 ITR_TFEI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TFEI_bm")
 ITR_TRTI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TRTI_bm")
-IIR_INTERRUPT_PENDING = _field_mask(
-    _UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm"
-)
+IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
 LCR_DLAB = _field_mask(_UART_H, "UART_16550_MAIN__LCR__DLAB_bm")
@@ -98,9 +85,7 @@ def _iir_pending(iir: int) -> bool:
 class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
     """UART0 IRQ source mapping, clear paths, and priority."""
 
-    def __init__(
-        self, name: str = "smc_uart_irq_sources_priority_test_seq"
-    ) -> None:
+    def __init__(self, name: str = "smc_uart_irq_sources_priority_test_seq") -> None:
         super().__init__(name)
         self.gating_ok: bool = False
         self.clear_ok: bool = False
@@ -142,8 +127,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir) and _iir_id(iir) == forbidden:
                 raise AssertionError(
-                    f"{label}: gated source ID=0x{forbidden:x} still pending "
-                    f"IIR=0x{iir:08x}"
+                    f"{label}: gated source ID=0x{forbidden:x} still pending IIR=0x{iir:08x}"
                 )
             await Timer(100, units="ns")
 
@@ -151,8 +135,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         iir = await self.csr_read(f"{label}_POST", UART_IIR)
         if _iir_pending(iir) and _iir_id(iir) == expect_id:
             raise AssertionError(
-                f"{label}: ID=0x{expect_id:x} still pending after clear "
-                f"IIR=0x{iir:08x}"
+                f"{label}: ID=0x{expect_id:x} still pending after clear IIR=0x{iir:08x}"
             )
 
     async def _test_gating_mapping(self) -> None:
@@ -175,9 +158,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             await self.csr_write(f"{name}_ITR_MAP", UART_ITR, itr_bit)
             await self._expect_id(f"{name}_MAP", expect)
             await self.csr_write(f"{name}_ITR_CLR", UART_ITR, 0)
-            cocotb.log.info(
-                "CHK-UART-IRQ-GATE-%s: IER gate + ITR map ID=0x%x", name, expect
-            )
+            cocotb.log.info("CHK-UART-IRQ-GATE-%s: IER gate + ITR map ID=0x%x", name, expect)
 
         # Timeout maps with ERBFI; RTL bypasses IER for this source.
         await self.csr_write("TO_IER", UART_IER, IER_ERBFI)
@@ -251,9 +232,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             await self._expect_id(f"{name}_PRI", expect)
             await self.csr_write(f"{name}_ITR0", UART_ITR, 0)
             await self._clear_status()
-            cocotb.log.info(
-                "CHK-UART-IRQ-PRI-%s: winner ID=0x%x", name, expect
-            )
+            cocotb.log.info("CHK-UART-IRQ-PRI-%s: winner ID=0x%x", name, expect)
 
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)

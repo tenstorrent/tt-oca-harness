@@ -17,12 +17,13 @@
 // (doc/integrator/modules/ROOT/pages/index.adoc, "Module Variants and IP
 // Integration") and hw/top/README.md.
 //
+// The Chipyard CPU ROM/scratch/L1$ macros live here too, so both wrappers
+// pick them up from the one module they already instantiate.
+//
 // Every other technology-specific interface smc.sv exposes (I3C DAT/DCT
 // memory macros, ATB telemetry, DFD/trace, SPI-over-GPIO muxing, etc.) is
 // passed straight through by smc_wrapper.sv, left for a full-chip
-// integration to wire up. CPU ROM/scratch/L1$ macros are absorbed by the
-// companion smc_cpu_mem_integration.sv instantiated only from smc_wrapper
-// (this module stays SMU-safe without those ports).
+// integration to wire up.
 //
 // This is a reference integration example, provided for adopters to
 // substitute with their own vendor IP/macros.
@@ -45,6 +46,30 @@ module smc_ip_integration (
     output smc_pkg::smc_axil_32_32_resp_t     efuse_bank_ctrl_resp_o,
     input  smc_efuse_pkg::fuse_command_req_t  efuse_shim_command_req_i,
     output smc_efuse_pkg::fuse_command_resp_t efuse_shim_command_resp_o,
+
+    // CPU memory interfaces from SMC (ROM / scratch / L1$ macros below)
+    input  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req,
+    output chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp,
+    input  chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
+    output chipyard_4core_mem_pkg::scratch_ram_rsp_t    scratch_ram_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
+    input  chipyard_4core_mem_pkg::l1_icache_tag_req_t  l1_icache_tag_intf_req
+        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
+    output chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
+    input  chipyard_4core_mem_pkg::l1_icache_data_req_t l1_icache_data_intf_req
+        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
+    output chipyard_4core_mem_pkg::l1_icache_data_rsp_t l1_icache_data_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
+    input  chipyard_4core_mem_pkg::l1_dcache_tag_req_t  l1_dcache_tag_intf_req
+        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
+    output chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
+    input  chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_intf_req
+        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+    output chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp
+        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
 
     // GPIO pad-facing signals (from smc.sv's padring)
     output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_o,
@@ -222,6 +247,64 @@ module smc_ip_integration (
         .rst_ni     (rst_primary_smc_clk_ni),
         .axil_req_i (ext_req[ExtPvt]),
         .axil_resp_o(ext_resp[ExtPvt])
+    );
+
+    //////////////////////////////////
+    // Memory (SRAM + ROM + Caches) //
+    //////////////////////////////////
+
+    // Chipyard CPU ROM / scratch / L1$ macros, via the same prim_rom /
+    // prim_ram_1p set as SEP. Unused cfg pins match the mem_swaps defaults.
+    localparam int unsigned MEM_CFG_WIDTH = 11;
+
+    logic [MEM_CFG_WIDTH-1:0] scratch_ram_cfg [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] icache_tag_cfg  [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] icache_data_cfg [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] dcache_tag_cfg  [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] dcache_data_cfg [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] rom_cfg;
+
+    for (genvar i = 0; i < chipyard_4core_mem_pkg::NUM_SRAM_BANKS; i++) begin : gen_scratch_cfg
+        assign scratch_ram_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS; i++) begin : gen_itag_cfg
+        assign icache_tag_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS; i++) begin : gen_idata_cfg
+        assign icache_data_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS; i++) begin : gen_dtag_cfg
+        assign dcache_tag_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS; i++) begin : gen_ddata_cfg
+        assign dcache_data_cfg[i] = '0;
+    end
+    assign rom_cfg = '0;
+
+    OCAH4CORECluster_mems #(
+        .MEM_CFG_WIDTH (MEM_CFG_WIDTH)
+    ) u_mems (
+        // Memory interfaces (inputs to mems from DigitalTop)
+        .l1_icache_tag_req  (l1_icache_tag_intf_req),
+        .l1_icache_tag_rsp  (l1_icache_tag_intf_rsp),
+        .l1_icache_data_req (l1_icache_data_intf_req),
+        .l1_icache_data_rsp (l1_icache_data_intf_rsp),
+        .l1_dcache_tag_req  (l1_dcache_tag_intf_req),
+        .l1_dcache_tag_rsp  (l1_dcache_tag_intf_rsp),
+        .l1_dcache_data_req (l1_dcache_data_intf_req),
+        .l1_dcache_data_rsp (l1_dcache_data_intf_rsp),
+        .scratch_ram_req    (scratch_ram_intf_req),
+        .scratch_ram_rsp    (scratch_ram_intf_rsp),
+        .rom_req            (rom_intf_req),
+        .rom_rsp            (rom_intf_rsp),
+
+        // Memory configuration
+        .icache_tag_cfg_i  (icache_tag_cfg),
+        .icache_data_cfg_i (icache_data_cfg),
+        .dcache_tag_cfg_i  (dcache_tag_cfg),
+        .dcache_data_cfg_i (dcache_data_cfg),
+        .scratch_ram_cfg_i (scratch_ram_cfg),
+        .rom_cfg_i         (rom_cfg)
     );
 
     //////////////////////////////

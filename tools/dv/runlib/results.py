@@ -159,7 +159,9 @@ def _tests_summary(stages: list[StageResult]) -> dict[str, Any]:
     }
 
 
-def _coverage_summary(stages: list[StageResult], run_dir: Path, root: Path, coverage_requested: bool = False) -> dict[str, Any]:
+def _coverage_summary(
+    stages: list[StageResult], run_dir: Path, root: Path, coverage_requested: bool = False
+) -> dict[str, Any]:
     cov_stages = [stage for stage in stages if stage.stage in {"cov_merge", "cov_report"}]
     if not cov_stages:
         return {
@@ -207,7 +209,11 @@ def _coverage_summary(stages: list[StageResult], run_dir: Path, root: Path, cove
             data = json.loads(summary_path.read_text(encoding="utf-8"))
             summary_data = data if isinstance(data, dict) else {}
             total_percent = summary_data.get("overall_percent")
-            metrics = summary_data.get("metrics", {}) if isinstance(summary_data.get("metrics", {}), dict) else {}
+            metrics = (
+                summary_data.get("metrics", {})
+                if isinstance(summary_data.get("metrics", {}), dict)
+                else {}
+            )
             threshold = summary_data.get("threshold")
             threshold_met = summary_data.get(
                 "threshold_met",
@@ -223,9 +229,7 @@ def _coverage_summary(stages: list[StageResult], run_dir: Path, root: Path, cove
         except (OSError, json.JSONDecodeError):
             pass
     manifest_artifacts = (
-        manifest_data.get("artifacts")
-        if isinstance(manifest_data.get("artifacts"), dict)
-        else {}
+        manifest_data.get("artifacts") if isinstance(manifest_data.get("artifacts"), dict) else {}
     )
     details_data: dict[str, Any] = {}
     if details_path.is_file():
@@ -265,9 +269,7 @@ def _coverage_summary(stages: list[StageResult], run_dir: Path, root: Path, cove
         "details_available": summary_data.get(
             "details_available", details_data.get("details_available")
         ),
-        "coverage_details": (
-            repo_rel(root, details_path) if details_path.is_file() else None
-        ),
+        "coverage_details": (repo_rel(root, details_path) if details_path.is_file() else None),
         "coverage_details_raw": (
             repo_rel(root, raw_details_path) if raw_details_path.is_file() else None
         ),
@@ -277,9 +279,7 @@ def _coverage_summary(stages: list[StageResult], run_dir: Path, root: Path, cove
         "comparison_key": summary_data.get("comparison_key"),
         "scope_fingerprint": summary_data.get("scope_fingerprint"),
         "policy_fingerprint": summary_data.get("policy_fingerprint"),
-        "holes_summary": summary_data.get(
-            "holes_summary", {"details_available": False}
-        ),
+        "holes_summary": summary_data.get("holes_summary", {"details_available": False}),
         "policy_thresholds": summary_data.get("policy_thresholds", []),
         "raw_metrics": raw_metrics,
         "effective_metrics": effective_metrics,
@@ -410,15 +410,19 @@ def _buckets_for_failed_job(job: dict[str, Any]) -> list[dict[str, Any]]:
     buckets = [dict(bucket) for bucket in job.get("failure_buckets") or []]
     if buckets:
         return buckets
-    return [{
-        "kind": "unknown",
-        "signature": str(job.get("reason") or "unclassified failure")[:120],
-        "count": 1,
-        "examples": [job["log"]] if job.get("log") else [],
-    }]
+    return [
+        {
+            "kind": "unknown",
+            "signature": str(job.get("reason") or "unclassified failure")[:120],
+            "count": 1,
+            "examples": [job["log"]] if job.get("log") else [],
+        }
+    ]
 
 
-def _wave_replay_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None) -> str | None:
+def _wave_replay_command(
+    flow: Flow, tool: str, job: dict[str, Any], args: Any | None
+) -> str | None:
     seed = job.get("seed")
     item = job.get("item")
     if args is None or seed is None or not item:
@@ -538,10 +542,14 @@ def _aggregate_failure_buckets(failed: list[dict[str, Any]]) -> list[dict[str, A
             for example in [*(bucket.get("examples") or []), job.get("log")]:
                 if example and example not in examples and len(examples) < 5:
                     examples.append(example)
-    return sorted(grouped.values(), key=lambda item: (-int(item["count"]), item["kind"], item["signature"]))
+    return sorted(
+        grouped.values(), key=lambda item: (-int(item["count"]), item["kind"], item["signature"])
+    )
 
 
-def _tests_summary_from_jobs(leaves: list[tuple[dict[str, Any], list[dict[str, Any]]]]) -> dict[str, Any]:
+def _tests_summary_from_jobs(
+    leaves: list[tuple[dict[str, Any], list[dict[str, Any]]]],
+) -> dict[str, Any]:
     final_jobs = [final for final, _ in leaves]
     total = len([job for job in final_jobs if job.get("status") != "SKIP"])
     passing = sum(1 for job in final_jobs if job.get("status") == "PASS")
@@ -577,16 +585,20 @@ def _coverage_provenance(
         and payload.get("summary")
         and payload.get("total_percent") is not None
     )
-    payload.update({
-        "requested": coverage_requested,
-        "simulator": tool,
-        "coverage_backend": backend,
-        "coverage_class": "commercial_regression" if tool in SIGNOFF_COVERAGE_TOOLS else "contributor_baseline",
-        "signoff_quality": bool(has_valid_report and tool in SIGNOFF_COVERAGE_TOOLS),
-        "overall_percent": payload.get("total_percent"),
-        "report_dir": payload.get("report"),
-        "summary_json": payload.get("summary"),
-    })
+    payload.update(
+        {
+            "requested": coverage_requested,
+            "simulator": tool,
+            "coverage_backend": backend,
+            "coverage_class": "commercial_regression"
+            if tool in SIGNOFF_COVERAGE_TOOLS
+            else "contributor_baseline",
+            "signoff_quality": bool(has_valid_report and tool in SIGNOFF_COVERAGE_TOOLS),
+            "overall_percent": payload.get("total_percent"),
+            "report_dir": payload.get("report"),
+            "summary_json": payload.get("summary"),
+        }
+    )
     return payload
 
 
@@ -641,24 +653,25 @@ def regression_payload(
         if final.get("status") in NON_PASS_STATUSES
     ]
     flaky_tests = [
-        _flaky_test_record(final, attempts, flow, tool, args)
-        for final, attempts in flaky_leaves
+        _flaky_test_record(final, attempts, flow, tool, args) for final, attempts in flaky_leaves
     ]
     status = status_override or (
         aggregate_status(stages)
         if stages
-        else aggregate_status([
-            StageResult(
-                stage=str(job.get("stage", "sim")),
-                item=str(job.get("item", "")),
-                status=str(job.get("status", "UNKNOWN")),
-                return_code=int(job.get("return_code") or 0),
-                duration_sec=float(job.get("duration_sec") or 0.0),
-                started_at=str(job.get("started_at", "")),
-                ended_at=str(job.get("ended_at", "")),
-            )
-            for job in final_jobs
-        ])
+        else aggregate_status(
+            [
+                StageResult(
+                    stage=str(job.get("stage", "sim")),
+                    item=str(job.get("item", "")),
+                    status=str(job.get("status", "UNKNOWN")),
+                    return_code=int(job.get("return_code") or 0),
+                    duration_sec=float(job.get("duration_sec") or 0.0),
+                    started_at=str(job.get("started_at", "")),
+                    ended_at=str(job.get("ended_at", "")),
+                )
+                for job in final_jobs
+            ]
+        )
     )
 
     coverage = _coverage_provenance(
@@ -722,9 +735,14 @@ def regression_payload(
         "failure_buckets": failure_buckets,
         "failed_tests": failed_tests,
         "flaky_tests": flaky_tests,
-        "rerun_commands": [record["rerun"] for record in [*failed_tests, *flaky_tests] if record.get("rerun")],
+        "rerun_commands": [
+            record["rerun"] for record in [*failed_tests, *flaky_tests] if record.get("rerun")
+        ],
         "jobs": jobs,
     }
+    overlay = flow.raw.get("adopter_overlay")
+    if overlay:
+        payload["overlay"] = overlay
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -781,6 +799,11 @@ def result_payload(
     targets = _targets_summary(stages)
     if targets:
         payload["targets"] = targets
+    overlay = flow.raw.get("adopter_overlay")
+    if overlay:
+        # The adopter overlay applied to this run (--overlay / OCAH_DV_OVERLAY), so the
+        # result records the exact config layers that produced it.
+        payload["overlay"] = overlay
     skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
     if skipped:
         payload["selection"] = {"skipped_unimplemented": skipped}
