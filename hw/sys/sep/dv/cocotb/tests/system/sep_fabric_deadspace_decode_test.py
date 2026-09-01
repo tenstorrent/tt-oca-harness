@@ -33,7 +33,6 @@ never counted as a pass; a run where no window was auditable fails.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_deadspace_seq import (
     RESP_DECERR,
@@ -57,20 +56,21 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         for win in cfg.windows.values():
             snaps[win.name] = await dead.snapshot(win)
             assert snaps[win.name], (
-                f"{win.name}: watch snapshot is empty; the no-alias "
-                f"checker cannot fail"
+                f"{win.name}: watch snapshot is empty; the no-alias checker cannot fail"
             )
             # Both numbers, because they differ and the smaller one is the real
             # coverage: readable is what the read-alias compare uses, armed is
             # what the write-probe store compare can actually fail on. Printing
             # only the first reads as more coverage than the store compare has.
-            hw_updating = sum(
-                1 for addr in snaps[win.name] if addr in win.hw_updating)
+            hw_updating = sum(1 for addr in snaps[win.name] if addr in win.hw_updating)
             self.logger.info(
                 "CHK-WINDOW-LIVE PASS: %s %d allocated register(s) readable, "
                 "%d armed for the store compare (%d hardware-updating)",
-                win.name, len(snaps[win.name]),
-                len(snaps[win.name]) - hw_updating, hw_updating)
+                win.name,
+                len(snaps[win.name]),
+                len(snaps[win.name]) - hw_updating,
+                hw_updating,
+            )
 
         refused = 0
         burst_fails: list[str] = []
@@ -93,7 +93,11 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 refused += 1
                 self.logger.info(
                     "CHK-DEADSPACE-REFUSE PASS: %s %s 0x%08x refused (%s)",
-                    item.window, item.op, item.addr, tag)
+                    item.window,
+                    item.op,
+                    item.addr,
+                    tag,
+                )
 
         # Burst reachability of the refused span, and a HARD FAIL when a beat
         # lands there. `memory_map.adoc` says the span past a unit's extent
@@ -119,18 +123,27 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 burst_skipped.append(f"{win.name}: no live words before it")
                 continue
             burst_audited.append(win.name)
-            start, resps, timed_out, words, singles = \
-                await dead.burst_across_extent(win)
+            start, resps, timed_out, words, singles = await dead.burst_across_extent(win)
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
                 where = "in-extent" if start + 4 * i < win.dead_lo else "PAST"
                 self.logger.info(
                     "deadspace burst-audit: %s beat%d 0x%08x %-9s burst=0x%08x "
                     "single=0x%08x(resp=%d) beat_resp=%s",
-                    win.name, i, start + 4 * i, where, word, sdata, sresp,
-                    resps[i] if i < len(resps) else "n/a")
+                    win.name,
+                    i,
+                    start + 4 * i,
+                    where,
+                    word,
+                    sdata,
+                    sresp,
+                    resps[i] if i < len(resps) else "n/a",
+                )
             self.logger.info(
                 "deadspace burst-audit: %s beat responses=%s timed_out=%s",
-                win.name, resps, timed_out)
+                win.name,
+                resps,
+                timed_out,
+            )
 
             # A burst that never completed proves nothing either way, so it is
             # a failure of the audit rather than a silent pass.
@@ -175,7 +188,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-RANDCFG PASS: walked %d probes (%d anchors) from seed %d",
             len(cfg.probes),
             sum(1 for p in cfg.probes if p.anchor),
-            cfg.seed)
+            cfg.seed,
+        )
         # Reported, not asserted: memory_map.adoc names DECERR for the reserved
         # remainder inside an aperture, and which other error responses are
         # permitted is a specification question for the design owner.
@@ -185,7 +199,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             self.logger.info(
                 "DEADSPACE-FLAVOUR: %d refusal(s) used an error response other "
                 "than the DECERR memory_map.adoc names. The access was refused, "
-                "which is the asserted contract.", len(dead.flavour_findings))
+                "which is the asserted contract.",
+                len(dead.flavour_findings),
+            )
 
         # Adjudicate refuse/no-alias first and log their verdicts, then the
         # burst contract, so a burst failure cannot stop the other two
@@ -194,17 +210,21 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             self.logger.error(
                 "CHK-DEADSPACE-REFUSE FAIL: %d fail line(s) on %d probes "
                 "(%d accepted OKAY, %d aliased a live register)",
-                len(fails), len(cfg.probes), accepted, aliased)
+                len(fails),
+                len(cfg.probes),
+                accepted,
+                aliased,
+            )
             raise AssertionError(
                 f"CHK-DEADSPACE-REFUSE FAIL: {accepted} probe(s) accepted "
                 f"OKAY and {aliased} aliased a live register"
             )
         self.logger.info(
-            "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused",
-            len(cfg.probes))
+            "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused", len(cfg.probes)
+        )
         self.logger.info(
-            "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved "
-            "across any probe")
+            "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved across any probe"
+        )
 
         for line in burst_fails:
             self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
@@ -217,11 +237,14 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
         assert burst_audited, (
             "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
-            "contract, so it has no evidence here ("
-            + "; ".join(burst_skipped) + ")"
+            "contract, so it has no evidence here (" + "; ".join(burst_skipped) + ")"
         )
         self.logger.info(
             "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
             "that ends past its allocated extent (%s); %d not auditable (%s)",
-            len(burst_audited), len(cfg.windows), ", ".join(burst_audited),
-            len(burst_skipped), "; ".join(burst_skipped) or "none")
+            len(burst_audited),
+            len(cfg.windows),
+            ", ".join(burst_audited),
+            len(burst_skipped),
+            "; ".join(burst_skipped) or "none",
+        )

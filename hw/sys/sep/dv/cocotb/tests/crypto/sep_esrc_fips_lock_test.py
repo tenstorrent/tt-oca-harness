@@ -78,13 +78,11 @@ class sep_esrc_fips_lock_test(sep_base_test):
 
         ctrl_before, ctrl_after = await esrc.poke_reserved_ctrl_bit()
         assert ctrl_after == ctrl_before, (
-            f"CHK-CTRL-RSVD FAIL: CTRL[0] write changed "
-            f"0x{ctrl_before:08x} -> 0x{ctrl_after:08x}"
+            f"CHK-CTRL-RSVD FAIL: CTRL[0] write changed 0x{ctrl_before:08x} -> 0x{ctrl_after:08x}"
         )
         got = await esrc.read_lock()
         assert got == 1, f"CHK-CTRL-RSVD FAIL: CTRL[0] write cleared lock to {got}"
-        self.logger.info(
-            "CHK-CTRL-RSVD PASS: CTRL[0] is RAZ/WI and left FIPS_LOCK.LOCK=1")
+        self.logger.info("CHK-CTRL-RSVD PASS: CTRL[0] is RAZ/WI and left FIPS_LOCK.LOCK=1")
 
         await self.resense()
         got = await esrc.read_lock()

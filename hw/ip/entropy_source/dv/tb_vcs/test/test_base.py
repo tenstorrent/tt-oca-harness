@@ -1,45 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-import cocotb
 import random
 import sys
 from pathlib import Path
-from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ReadOnly
 from typing import Optional
 
+import cocotb
 from apb_vip import APBMaster, APBMonitor
+from cocotb.clock import Clock
+from cocotb.triggers import ReadOnly, RisingEdge
+
 from test.test_config import DEFAULT_CONFIG, TestConfig
 
 # Import auto-generated register defaults from PeakRDL
 # This is the single source of truth from the RDL file
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'data' / 'registers' / 'py_headers'))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "data" / "registers" / "py_headers"))
 from entropy_source_reg import (
-    ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT,
-    ENTROPY_SOURCE_CTRL_REG_DEFAULT,
-    ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT,
-    ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,
-    ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,
-    ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,
-    ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT,
-    ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT,
-    ENTROPY_SOURCE_FIFO_RDATA_REG_DEFAULT,
-    ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT,
-    ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT,
-    ENTROPY_SOURCE_MARKOV_TEST_PROB_THRESHOLDS_REG_DEFAULT,
-    ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT,
-    ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT,
     ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT,
-    ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT,
-    ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
-    ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
-    ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,
+    ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT,
+    ENTROPY_SOURCE_CTRL_REG_DEFAULT,
+    ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT,
+    ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT,
+    ENTROPY_SOURCE_FIFO_RDATA_REG_DEFAULT,
+    ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_DEFAULT,
@@ -52,6 +41,18 @@ from entropy_source_reg import (
     ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_REG_DEFAULT,
     ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_REG_DEFAULT,
+    ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT,
+    ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT,
+    ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT,
+    ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,
+    ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,
+    ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,
+    ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT,
+    ENTROPY_SOURCE_MARKOV_TEST_PROB_THRESHOLDS_REG_DEFAULT,
+    ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT,
+    ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,
+    ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
+    ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
 )
 
 # Legacy constant for backward compatibility
@@ -64,50 +65,254 @@ PROB_SCALE = DEFAULT_CONFIG.ro.prob_scale
 # Write mask indicates which bits are writable (1=writable, 0=read-only or reserved)
 REG_MAP = {
     # Register Name                   Address   RW/RO   Description                                          Default (from RDL)                           Write Mask
-    'COMPONENT_ID':                   (0x00,    'RO',   'Component Identification',                         ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT,     0x00000000),
-    'CTRL':                           (0x04,    'RW',   'Entropy Source Control',                           ENTROPY_SOURCE_CTRL_REG_DEFAULT,             0x13FF0112),
-    'DEBUG_CTRL':                     (0x0C,    'RW',   'Debug control to monitor internal signals',        ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT,       0x000007FF),  # SELECT_SIGNAL[7:0] + SELECT_FREQ_DIV[10:8] = 11 bits
-    'INTR_STATUS':                    (0x10,    'RW',   'Interrupt Status - Write 1 to clear',             ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,      0x11111111),
-    'INTR_ENABLE':                    (0x14,    'RW',   'Interrupt Enable',                                 ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,      0x11111111),
-    'INTR_TEST':                      (0x18,    'WO',   'Interrupt Test - Single pulse',                    ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,        0x11111111),
+    "COMPONENT_ID": (
+        0x00,
+        "RO",
+        "Component Identification",
+        ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT,
+        0x00000000,
+    ),
+    "CTRL": (0x04, "RW", "Entropy Source Control", ENTROPY_SOURCE_CTRL_REG_DEFAULT, 0x13FF0112),
+    "DEBUG_CTRL": (
+        0x0C,
+        "RW",
+        "Debug control to monitor internal signals",
+        ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT,
+        0x000007FF,
+    ),  # SELECT_SIGNAL[7:0] + SELECT_FREQ_DIV[10:8] = 11 bits
+    "INTR_STATUS": (
+        0x10,
+        "RW",
+        "Interrupt Status - Write 1 to clear",
+        ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT,
+        0x11111111,
+    ),
+    "INTR_ENABLE": (
+        0x14,
+        "RW",
+        "Interrupt Enable",
+        ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT,
+        0x11111111,
+    ),
+    "INTR_TEST": (
+        0x18,
+        "WO",
+        "Interrupt Test - Single pulse",
+        ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,
+        0x11111111,
+    ),
     # 0x1C RESERVED
-    'FIFO_CTRL':                      (0x20,    'RW',   'FIFO Control',                                     ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT,        0x00000011),
-    'FIFO_STATUS':                    (0x24,    'RO',   'FIFO Status - Level, pointers',                    ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT,      0x00000000),
-    'FIFO_RDATA':                     (0x28,    'RO',   'FIFO Read Data - Read pops 32 entropy bits',       ENTROPY_SOURCE_FIFO_RDATA_REG_DEFAULT,       0x00000000),
+    "FIFO_CTRL": (0x20, "RW", "FIFO Control", ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT, 0x00000011),
+    "FIFO_STATUS": (
+        0x24,
+        "RO",
+        "FIFO Status - Level, pointers",
+        ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "FIFO_RDATA": (
+        0x28,
+        "RO",
+        "FIFO Read Data - Read pops 32 entropy bits",
+        ENTROPY_SOURCE_FIFO_RDATA_REG_DEFAULT,
+        0x00000000,
+    ),
     # 0x2C RESERVED
-    'HEALTH_TEST_CTRL':               (0x30,    'RW',   'Health Test Control - Enable and configure',       ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT, 0x0000FF07),  # ENABLE[2:0] + REPETITION_LIMIT[15:8]
-    'HEALTH_TEST_WINDOW_SIZE':        (0x34,    'RW',   'APT and Markov Window Size',                      ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT, 0x0000FFFF),
-    'MARKOV_TEST_PROB_THRESHOLDS':    (0x38,    'RW',   'Markov Test Probability Thresholds',               ENTROPY_SOURCE_MARKOV_TEST_PROB_THRESHOLDS_REG_DEFAULT, 0xFFFFFFFF),
+    "HEALTH_TEST_CTRL": (
+        0x30,
+        "RW",
+        "Health Test Control - Enable and configure",
+        ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT,
+        0x0000FF07,
+    ),  # ENABLE[2:0] + REPETITION_LIMIT[15:8]
+    "HEALTH_TEST_WINDOW_SIZE": (
+        0x34,
+        "RW",
+        "APT and Markov Window Size",
+        ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT,
+        0x0000FFFF,
+    ),
+    "MARKOV_TEST_PROB_THRESHOLDS": (
+        0x38,
+        "RW",
+        "Markov Test Probability Thresholds",
+        ENTROPY_SOURCE_MARKOV_TEST_PROB_THRESHOLDS_REG_DEFAULT,
+        0xFFFFFFFF,
+    ),
     # 0x3C RESERVED
-    'HEALTH_TEST_STATUS':             (0x40,    'RO',   'Health Test Status - 0=pass, 1=fail',              ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT, 0x00000000),
-    'REPETITION_TEST_COUNT':          (0x44,    'RO',   'Repetition Test Count',                            ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT, 0x00000000),
+    "HEALTH_TEST_STATUS": (
+        0x40,
+        "RO",
+        "Health Test Status - 0=pass, 1=fail",
+        ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "REPETITION_TEST_COUNT": (
+        0x44,
+        "RO",
+        "Repetition Test Count",
+        ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT,
+        0x00000000,
+    ),
     # 0x48-0x4C RESERVED
-    'APT_PATTERN_COUNT_1BIT':         (0x50,    'RO',   'APT High One Count',                               ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT, 0x00000000),
-    'APT_PATTERN_COUNT_2BIT':         (0x54,    'RO',   'APT Low One Count',                                ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT, 0x00000000),
+    "APT_PATTERN_COUNT_1BIT": (
+        0x50,
+        "RO",
+        "APT High One Count",
+        ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT,
+        0x00000000,
+    ),
+    "APT_PATTERN_COUNT_2BIT": (
+        0x54,
+        "RO",
+        "APT Low One Count",
+        ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT,
+        0x00000000,
+    ),
     # 0x58-0x5C RESERVED
-    'APT_PROPORTION_1BIT':            (0x60,    'RW',   'APT High One-Count Limit',                         ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT, 0x0000FFFF),
+    "APT_PROPORTION_1BIT": (
+        0x60,
+        "RW",
+        "APT High One-Count Limit",
+        ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT,
+        0x0000FFFF,
+    ),
     # 0x64-0x6C RESERVED
-    'APT_PROPORTION_LO':              (0x70,    'RW',   'APT Low One-Count Limit',                          ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT, 0x0000FFFF),
+    "APT_PROPORTION_LO": (
+        0x70,
+        "RW",
+        "APT Low One-Count Limit",
+        ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT,
+        0x0000FFFF,
+    ),
     # 0x74-0x7C RESERVED
-    'MARKOV_TEST_COUNTS_0':           (0x80,    'RO',   'Markov Test Counts - per-lane max, min alternation', ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT, 0x00000000),
-    'RING_OSC_ENABLE':                (0x90,    'RW',   'Ring Oscillator Enables',                          ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,  0x00FFFFFF),
-    'RING_OSC_TUNE':                  (0x94,    'RW',   'Ring Oscillator Tune Control',                     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,    0x00FFFFFF),
-    'RING_OSC_CTRL':                  (0x98,    'RW',   'Ring Oscillator Sample Clock Select',              ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,    0x00000FFF),
-    'DECORRELATOR_CTRL':              (0xA0,    'RW',   'Decorrelator Control',                             ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT, 0xFFFFFFFF),
-    'DECORRELATOR_MASK':              (0xA4,    'RW',   'Decorrelator Mask',                                ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT, 0x000000FF),
+    "MARKOV_TEST_COUNTS_0": (
+        0x80,
+        "RO",
+        "Markov Test Counts - per-lane max, min alternation",
+        ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT,
+        0x00000000,
+    ),
+    "RING_OSC_ENABLE": (
+        0x90,
+        "RW",
+        "Ring Oscillator Enables",
+        ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
+        0x00FFFFFF,
+    ),
+    "RING_OSC_TUNE": (
+        0x94,
+        "RW",
+        "Ring Oscillator Tune Control",
+        ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
+        0x00FFFFFF,
+    ),
+    "RING_OSC_CTRL": (
+        0x98,
+        "RW",
+        "Ring Oscillator Sample Clock Select",
+        ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,
+        0x00000FFF,
+    ),
+    "DECORRELATOR_CTRL": (
+        0xA0,
+        "RW",
+        "Decorrelator Control",
+        ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT,
+        0xFFFFFFFF,
+    ),
+    "DECORRELATOR_MASK": (
+        0xA4,
+        "RW",
+        "Decorrelator Mask",
+        ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT,
+        0x000000FF,
+    ),
     # Individual generator health status registers (0xC0-0xEC)
-    'GENERATOR_0_HEALTH_STATUS':      (0xC0,    'RO',   'Generator 0 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_1_HEALTH_STATUS':      (0xC4,    'RO',   'Generator 1 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_2_HEALTH_STATUS':      (0xC8,    'RO',   'Generator 2 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_3_HEALTH_STATUS':      (0xCC,    'RO',   'Generator 3 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_3_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_4_HEALTH_STATUS':      (0xD0,    'RO',   'Generator 4 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_4_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_5_HEALTH_STATUS':      (0xD4,    'RO',   'Generator 5 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_5_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_6_HEALTH_STATUS':      (0xD8,    'RO',   'Generator 6 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_6_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_7_HEALTH_STATUS':      (0xDC,    'RO',   'Generator 7 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_7_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_8_HEALTH_STATUS':      (0xE0,    'RO',   'Generator 8 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_8_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_9_HEALTH_STATUS':      (0xE4,    'RO',   'Generator 9 Health Test Status',                   ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_REG_DEFAULT,   0x00000000),
-    'GENERATOR_10_HEALTH_STATUS':     (0xE8,    'RO',   'Generator 10 Health Test Status',                  ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_REG_DEFAULT,  0x00000000),
-    'GENERATOR_11_HEALTH_STATUS':     (0xEC,    'RO',   'Generator 11 Health Test Status',                  ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_REG_DEFAULT,  0x00000000),
+    "GENERATOR_0_HEALTH_STATUS": (
+        0xC0,
+        "RO",
+        "Generator 0 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_1_HEALTH_STATUS": (
+        0xC4,
+        "RO",
+        "Generator 1 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_2_HEALTH_STATUS": (
+        0xC8,
+        "RO",
+        "Generator 2 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_3_HEALTH_STATUS": (
+        0xCC,
+        "RO",
+        "Generator 3 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_3_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_4_HEALTH_STATUS": (
+        0xD0,
+        "RO",
+        "Generator 4 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_4_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_5_HEALTH_STATUS": (
+        0xD4,
+        "RO",
+        "Generator 5 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_5_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_6_HEALTH_STATUS": (
+        0xD8,
+        "RO",
+        "Generator 6 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_6_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_7_HEALTH_STATUS": (
+        0xDC,
+        "RO",
+        "Generator 7 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_7_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_8_HEALTH_STATUS": (
+        0xE0,
+        "RO",
+        "Generator 8 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_8_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_9_HEALTH_STATUS": (
+        0xE4,
+        "RO",
+        "Generator 9 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_10_HEALTH_STATUS": (
+        0xE8,
+        "RO",
+        "Generator 10 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
+    "GENERATOR_11_HEALTH_STATUS": (
+        0xEC,
+        "RO",
+        "Generator 11 Health Test Status",
+        ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
 }
 
 __all__ = [
@@ -185,10 +390,7 @@ __all__ = [
 
 
 async def start_clocks(
-    dut,
-    apb_period_ns: int = None,
-    rosc_period_ns: int = None,
-    config: TestConfig = None
+    dut, apb_period_ns: int = None, rosc_period_ns: int = None, config: TestConfig = None
 ) -> None:
     """Start APB and rosc_sample clocks."""
     cfg = config or DEFAULT_CONFIG
@@ -196,11 +398,9 @@ async def start_clocks(
     rosc_period_ns = rosc_period_ns or cfg.clock.rosc_period_ns
 
     # Prefer interface clock if present
-    apb_clk = getattr(dut, "apb", None).pclk if hasattr(
-        dut, "apb") else dut.pclk_i
+    apb_clk = getattr(dut, "apb", None).pclk if hasattr(dut, "apb") else dut.pclk_i
     cocotb.start_soon(Clock(apb_clk, apb_period_ns, units="ns").start())
-    cocotb.start_soon(
-        Clock(dut.rosc_sample_clk, rosc_period_ns, units="ns").start())
+    cocotb.start_soon(Clock(dut.rosc_sample_clk, rosc_period_ns, units="ns").start())
 
 
 async def init(
@@ -208,7 +408,7 @@ async def init(
     apb_period_ns: int = None,
     rosc_period_ns: int = None,
     reset_cycles: int = None,
-    config: TestConfig = None
+    config: TestConfig = None,
 ) -> tuple[APBMaster, APBMonitor]:
     """Start clocks, create APB master/monitor, and apply reset.
 
@@ -230,19 +430,23 @@ async def init(
     cfg = config or DEFAULT_CONFIG
 
     # Configure RO model injection control
-    if hasattr(dut, 'ro_inject_enable'):
+    if hasattr(dut, "ro_inject_enable"):
         dut.ro_inject_enable.value = cfg.ro.inject_model
         inject_status = "ENABLED" if cfg.ro.inject_enabled else "DISABLED"
         dut._log.info(f"RO Model Injection: {inject_status}")
 
     # Configure clock divider checker control
-    if hasattr(dut, 'disable_clk_divider_check'):
+    if hasattr(dut, "disable_clk_divider_check"):
         disable_value = 0 if cfg.clk_divider_check_enable else 1
         dut.disable_clk_divider_check.value = disable_value
         checker_status = "ENABLED" if cfg.clk_divider_check_enable else "DISABLED"
-        dut._log.info(f"Clock Divider Checker: {checker_status} (disable_clk_divider_check={disable_value})")
+        dut._log.info(
+            f"Clock Divider Checker: {checker_status} (disable_clk_divider_check={disable_value})"
+        )
     else:
-        dut._log.warning("Clock Divider Checker: Signal 'disable_clk_divider_check' not found in DUT!")
+        dut._log.warning(
+            "Clock Divider Checker: Signal 'disable_clk_divider_check' not found in DUT!"
+        )
         dut._log.warning("  -> Testbench may need rebuilding with updated tb_entropy_top.sv")
 
     # Initialize all model configurations from Python (single source of truth)
@@ -299,7 +503,7 @@ async def fifo_error_monitor(dut, apb: APBMaster) -> None:
     Raises:
         AssertionError: If FIFO overflow or underflow is detected
     """
-    from cocotb.triggers import RisingEdge, ReadOnly
+    from cocotb.triggers import RisingEdge
 
     try:
         # Try to access signals first to verify hierarchy
@@ -307,10 +511,14 @@ async def fifo_error_monitor(dut, apb: APBMaster) -> None:
         try:
             test_overflow = int(dut.dut.fifo_overflow.value)
             test_underflow = int(dut.dut.fifo_underflow.value)
-            dut._log.info(f"FIFO error monitor: Signal access OK (overflow={test_overflow}, underflow={test_underflow})")
+            dut._log.info(
+                f"FIFO error monitor: Signal access OK (overflow={test_overflow}, underflow={test_underflow})"
+            )
         except AttributeError as ae:
             dut._log.error(f"FIFO error monitor: Cannot access signals! {ae}")
-            dut._log.error("  Signal path: dut.dut.fifo_overflow (tb_entropy_top.entropy_source.fifo_overflow)")
+            dut._log.error(
+                "  Signal path: dut.dut.fifo_overflow (tb_entropy_top.entropy_source.fifo_overflow)"
+            )
             raise
 
         # Monitor runs on every clock edge - truly passive monitoring
@@ -395,11 +603,13 @@ async def reg_wr(master: APBMaster, reg_name: str, data: int) -> None:
         await reg_wr(apb, 'CTRL', ctrl_value)
     """
     if reg_name not in REG_MAP:
-        raise ValueError(f"Unknown register: {reg_name}. Valid registers: {', '.join(REG_MAP.keys())}")
+        raise ValueError(
+            f"Unknown register: {reg_name}. Valid registers: {', '.join(REG_MAP.keys())}"
+        )
 
     addr, access, desc, default, write_mask = REG_MAP[reg_name]
 
-    if access == 'RO':
+    if access == "RO":
         raise ValueError(f"Cannot write to read-only register: {reg_name}")
 
     await master.write(addr, data)
@@ -419,11 +629,13 @@ async def reg_rd(master: APBMaster, reg_name: str) -> int:
         value = await reg_rd(apb, 'COMPONENT_ID')
     """
     if reg_name not in REG_MAP:
-        raise ValueError(f"Unknown register: {reg_name}. Valid registers: {', '.join(REG_MAP.keys())}")
+        raise ValueError(
+            f"Unknown register: {reg_name}. Valid registers: {', '.join(REG_MAP.keys())}"
+        )
 
     addr, access, desc, default, write_mask = REG_MAP[reg_name]
 
-    if access == 'WO':
+    if access == "WO":
         raise ValueError(f"Cannot read from write-only register: {reg_name}")
 
     return await master.read(addr)
@@ -434,8 +646,14 @@ def _fp_to_scale(x: float) -> int:
     return int(x * PROB_SCALE)
 
 
-async def ro_model_set(dut, idx: int, p_bias: float = 0.5, p_corr: float = 0.5,
-                       stuck: Optional[int] = None, seed: Optional[int] = None) -> None:
+async def ro_model_set(
+    dut,
+    idx: int,
+    p_bias: float = 0.5,
+    p_corr: float = 0.5,
+    stuck: Optional[int] = None,
+    seed: Optional[int] = None,
+) -> None:
     """Configure one RO model lane via ro_cfg interface.
 
     Validates the configuration and warns about problematic combinations.
@@ -444,8 +662,7 @@ async def ro_model_set(dut, idx: int, p_bias: float = 0.5, p_corr: float = 0.5,
     try:
         cfg = dut.ro_cfg
     except AttributeError:
-        dut._log.warning(
-            "ro_cfg interface not found on DUT; skipping ro_model_set")
+        dut._log.warning("ro_cfg interface not found on DUT; skipping ro_model_set")
         return
 
     # Validate configuration (only if not using stuck-at)
@@ -473,15 +690,11 @@ async def ro_model_enable(dut, enable: bool) -> None:
         dut.ro_cfg.enable.value = 1 if enable else 0
         await RisingEdge(dut.apb.pclk)
     except AttributeError:
-        dut._log.warning(
-            "ro_cfg interface not found on DUT; skipping ro_model_enable")
+        dut._log.warning("ro_cfg interface not found on DUT; skipping ro_model_enable")
 
 
 async def ro_model_randomize_all(
-    dut,
-    num_lanes: int = None,
-    seed_base: Optional[int] = None,
-    config: TestConfig = None
+    dut, num_lanes: int = None, seed_base: Optional[int] = None, config: TestConfig = None
 ) -> None:
     """Randomize all RO model lanes with varied bias/correlation and occasional stuck-at.
     Parameters from config:
@@ -494,8 +707,7 @@ async def ro_model_randomize_all(
 
     # If interface missing, warn and return
     if not hasattr(dut, "ro_cfg"):
-        dut._log.warning(
-            "ro_cfg interface not found on DUT; skipping ro_model_randomize_all")
+        dut._log.warning("ro_cfg interface not found on DUT; skipping ro_model_randomize_all")
         return
 
     for i in range(num_lanes):
@@ -515,8 +727,7 @@ async def ro_model_randomize_all(
             elif r < (cfg.ro.stuck_probability + cfg.ro.stuck_zero_probability):
                 stuck = 0
 
-        seed_i = (
-            seed_base + i) if seed_base is not None else int(random.getrandbits(32))
+        seed_i = (seed_base + i) if seed_base is not None else int(random.getrandbits(32))
         await ro_model_set(dut, idx=i, p_bias=p_bias, p_corr=p_corr, seed=seed_i, stuck=stuck)
 
 
@@ -556,8 +767,7 @@ async def ro_model_sample_once(dut, max_tries: int = None, config: TestConfig = 
                 except Exception:
                     pass
         await RisingEdge(dut.rosc_sample_clk)
-    dut._log.debug(
-        "ro_model_sample_once: returning 0 after unresolved samples")
+    dut._log.debug("ro_model_sample_once: returning 0 after unresolved samples")
     return 0
 
 
@@ -696,11 +906,11 @@ def _validate_ro_config(dut, p_bias: float, p_corr: float) -> None:
         if p_bias >= 0.99:
             dut._log.error("  EXPECTED vs ACTUAL:")
             dut._log.error(f"  - You probably expect: ALL ONES (p_bias={p_bias:.2f})")
-            dut._log.error(f"  - You will actually get: ALL ZEROS (prev_bit=0)")
+            dut._log.error("  - You will actually get: ALL ZEROS (prev_bit=0)")
         elif p_bias <= 0.01:
             dut._log.error("  EXPECTED vs ACTUAL:")
             dut._log.error(f"  - You expect: ALL ZEROS (p_bias={p_bias:.2f})")
-            dut._log.error(f"  - You will get: ALL ZEROS (but due to correlation, not bias!)")
+            dut._log.error("  - You will get: ALL ZEROS (but due to correlation, not bias!)")
         else:
             dut._log.error("  ACTUAL BEHAVIOR:")
             dut._log.error("  - Output locked at 0 (correlation dominates)")
@@ -722,16 +932,22 @@ def _validate_ro_config(dut, p_bias: float, p_corr: float) -> None:
         dut._log.warning(f"  Current config: p_bias={p_bias:.2f}, p_corr={p_corr:.2f}")
         dut._log.warning("")
         dut._log.warning("  ISSUE:")
-        dut._log.warning(f"  - With p_corr={p_corr:.2f}, correlation dominates (~{p_corr*100:.0f}% of the time)")
-        dut._log.warning(f"  - Your p_bias={p_bias:.2f} only affects ~{(1-p_corr)*100:.0f}% of bits")
+        dut._log.warning(
+            f"  - With p_corr={p_corr:.2f}, correlation dominates (~{p_corr * 100:.0f}% of the time)"
+        )
+        dut._log.warning(
+            f"  - Your p_bias={p_bias:.2f} only affects ~{(1 - p_corr) * 100:.0f}% of bits"
+        )
         dut._log.warning("  - Output may not match your expectations!")
         dut._log.warning("")
 
         if p_bias >= 0.95:
             expected_ones_pct = p_corr * 0.0 + (1 - p_corr) * p_bias  # prev_bit starts at 0
             dut._log.warning("  EXPECTED vs LIKELY ACTUAL:")
-            dut._log.warning(f"  - You probably expect: ~{p_bias*100:.0f}% ones")
-            dut._log.warning(f"  - You will likely get: ~{expected_ones_pct*100:.0f}% ones (correlation starts at 0)")
+            dut._log.warning(f"  - You probably expect: ~{p_bias * 100:.0f}% ones")
+            dut._log.warning(
+                f"  - You will likely get: ~{expected_ones_pct * 100:.0f}% ones (correlation starts at 0)"
+            )
 
         dut._log.warning("")
         dut._log.warning("  RECOMMENDATION:")
@@ -748,9 +964,11 @@ def _validate_ro_config(dut, p_bias: float, p_corr: float) -> None:
         dut._log.info("")
         dut._log.info("  BEHAVIOR:")
         if p_bias >= 0.95:
-            dut._log.info(f"  - Output will be ~{p_bias*100:.0f}% ones (highly biased)")
+            dut._log.info(f"  - Output will be ~{p_bias * 100:.0f}% ones (highly biased)")
         else:
-            dut._log.info(f"  - Output will be ~{p_bias*100:.0f}% ones (highly biased towards zeros)")
+            dut._log.info(
+                f"  - Output will be ~{p_bias * 100:.0f}% ones (highly biased towards zeros)"
+            )
         dut._log.info(f"  - Correlation is low ({p_corr:.2f}), so bias dominates")
         dut._log.info("")
         dut._log.info("  This may be intentional. If you need EXACT patterns, consider:")
@@ -773,15 +991,10 @@ async def ro_model_word32_enable(dut, enable: bool) -> None:
         dut.ro_cfg.word32_enable.value = 1 if enable else 0
         await RisingEdge(dut.apb.pclk)
     except AttributeError:
-        dut._log.warning(
-            "ro_cfg.word32_enable not found; skipping ro_model_word32_enable")
+        dut._log.warning("ro_cfg.word32_enable not found; skipping ro_model_word32_enable")
 
 
-async def ro_model_word32_configure(
-    dut,
-    p_bias: float = 0.5,
-    p_corr: float = 0.5
-) -> None:
+async def ro_model_word32_configure(dut, p_bias: float = 0.5, p_corr: float = 0.5) -> None:
     """Configure bias and correlation for 32-bit word generation.
 
     Args:
@@ -804,14 +1017,12 @@ async def ro_model_word32_configure(
         await RisingEdge(dut.apb.pclk)
     except AttributeError:
         dut._log.warning(
-            "ro_cfg.word32_p_bias/p_corr not found; skipping ro_model_word32_configure")
+            "ro_cfg.word32_p_bias/p_corr not found; skipping ro_model_word32_configure"
+        )
 
 
 async def ro_model_word32_set(
-    dut,
-    enable: bool = True,
-    p_bias: float = 0.5,
-    p_corr: float = 0.5
+    dut, enable: bool = True, p_bias: float = 0.5, p_corr: float = 0.5
 ) -> None:
     """Configure and enable/disable 32-bit word generation mode in one call.
 
@@ -844,16 +1055,11 @@ async def ro_model_word32_read(dut) -> Optional[int]:
         word = dut.ro_cfg.word32_data.value
         return int(word)
     except (AttributeError, ValueError):
-        dut._log.warning(
-            "ro_cfg.word32_data not accessible; returning None")
+        dut._log.warning("ro_cfg.word32_data not accessible; returning None")
         return None
 
 
-async def ro_model_word32_set_fixed(
-    dut,
-    value: int,
-    enable: bool = True
-) -> None:
+async def ro_model_word32_set_fixed(dut, value: int, enable: bool = True) -> None:
     """Configure 32-bit injection to use a fixed value (not probabilistic).
 
     This bypasses the probabilistic RO_Jitter_Model generation and directly
@@ -896,20 +1102,20 @@ async def ro_model_word32_set_fixed(
 
         dut._log.debug(
             f"ro_model_word32_set_fixed: value=0x{value:08X}, "
-            f"use_fixed={enable}, word32_enable={enable}")
+            f"use_fixed={enable}, word32_enable={enable}"
+        )
 
     except AttributeError as e:
-        dut._log.error(
-            f"ro_cfg interface not available for fixed value configuration: {e}")
+        dut._log.error(f"ro_cfg interface not available for fixed value configuration: {e}")
         raise
 
 
 # Decorrelator mode constants
-DECOR_MODE_29 = 0      # DECOR_29: 29-deep XOR decorrelator (default per spec)
-DECOR_MODE_7 = 1       # DECOR_7: 7-deep XOR decorrelator (shallow)
+DECOR_MODE_29 = 0  # DECOR_29: 29-deep XOR decorrelator (default per spec)
+DECOR_MODE_7 = 1  # DECOR_7: 7-deep XOR decorrelator (shallow)
 DECOR_MODE_BYPASS = 2  # BYPASS: No decorrelation, raw bits (debug)
 DECOR_MODE_LFSR29 = 3  # LFSR_29: 29-bit Fibonacci LFSR
-DECOR_MODE_LFSR7 = 4   # LFSR_7: 7-bit Fibonacci LFSR
+DECOR_MODE_LFSR7 = 4  # LFSR_7: 7-bit Fibonacci LFSR
 
 # Mode name mapping
 _DECOR_MODE_NAMES = {
@@ -952,8 +1158,7 @@ def decor_set_mode(dut, mode: int) -> None:
         ValueError: If mode is out of range
     """
     if not hasattr(dut, "decor_cfg"):
-        raise AttributeError(
-            "decor_cfg interface not found on DUT; cannot configure decorrelator")
+        raise AttributeError("decor_cfg interface not found on DUT; cannot configure decorrelator")
 
     if mode < 0 or mode > 4:
         raise ValueError(f"Invalid decorrelator mode: {mode} (valid: 0-4)")
@@ -981,8 +1186,7 @@ def decor_set_mode_by_name(dut, mode_name: str) -> None:
     """
     if mode_name not in _DECOR_NAME_TO_MODE:
         valid_names = ", ".join(sorted(set(_DECOR_NAME_TO_MODE.keys())))
-        raise ValueError(
-            f"Invalid decorrelator mode name: '{mode_name}'. Valid: {valid_names}")
+        raise ValueError(f"Invalid decorrelator mode name: '{mode_name}'. Valid: {valid_names}")
 
     mode = _DECOR_NAME_TO_MODE[mode_name]
     decor_set_mode(dut, mode)
@@ -1021,7 +1225,7 @@ def decor_get_recommended_sample_period(mode: int) -> int:
     recommendations = {
         0: 64,  # DECOR_29: coprime with 29
         1: 16,  # DECOR_7: coprime with 7
-        2: 8,   # BYPASS: output every 8 cycles
+        2: 8,  # BYPASS: output every 8 cycles
         3: 64,  # LFSR_29: same as DECOR_29
         4: 16,  # LFSR_7: same as DECOR_7
     }
@@ -1046,31 +1250,31 @@ def decor_print_mode_info(mode: int) -> None:
             "name": "DECOR_29",
             "desc": "29-deep XOR decorrelator (spec default)",
             "bits": 8,
-            "notes": "XOR with bit from 29 cycles earlier, extracts oldest 8 bits"
+            "notes": "XOR with bit from 29 cycles earlier, extracts oldest 8 bits",
         },
         1: {
             "name": "DECOR_7",
             "desc": "7-deep XOR decorrelator (shallow variant)",
             "bits": 4,
-            "notes": "XOR with bit from 7 cycles earlier, extracts oldest 4 bits, zero-padded to 8"
+            "notes": "XOR with bit from 7 cycles earlier, extracts oldest 4 bits, zero-padded to 8",
         },
         2: {
             "name": "BYPASS",
             "desc": "No decorrelation, raw bits (debug mode)",
             "bits": 8,
-            "notes": "Accumulates last 8 raw input bits without XOR feedback"
+            "notes": "Accumulates last 8 raw input bits without XOR feedback",
         },
         3: {
             "name": "LFSR_29",
             "desc": "29-bit Fibonacci LFSR",
             "bits": 8,
-            "notes": "Polynomial x^29 + x^2 + 1, extracts MSBs [28:21]"
+            "notes": "Polynomial x^29 + x^2 + 1, extracts MSBs [28:21]",
         },
         4: {
             "name": "LFSR_7",
             "desc": "7-bit Fibonacci LFSR",
             "bits": 4,
-            "notes": "Polynomial x^7 + x^6 + 1, extracts MSBs [6:3], zero-padded to 8"
+            "notes": "Polynomial x^7 + x^6 + 1, extracts MSBs [6:3], zero-padded to 8",
         },
     }
 
@@ -1132,6 +1336,7 @@ def decor_configure(dut, mode: int, shift_dir: int = 1, log: bool = True) -> Non
 # ============================================================================
 # These functions apply Python configuration to SystemVerilog interfaces
 # Called automatically during init() - replaces old SV set_defaults()
+
 
 def ro_init(dut, config, log: bool = False) -> None:
     """Initialize RO model configuration from ROConfig instance.
@@ -1226,8 +1431,10 @@ def compressor_init(dut, config, log: bool = False) -> None:
         dut._log.info(f"Compressor configured: {config.mode_name}")
         dut._log.info(f"  Enabled:        {config.enable}")
         dut._log.info(f"  Bypass:         {config.bypass}")
-        dut._log.info(f"  Lane Mask:      0x{config.lane_mask:03X} ({config.count_active_lanes()}/12 lanes)")
-        dut._log.info(f"  Grouping:       Strided [0,4,8], [1,5,9], [2,6,10], [3,7,11]")
+        dut._log.info(
+            f"  Lane Mask:      0x{config.lane_mask:03X} ({config.count_active_lanes()}/12 lanes)"
+        )
+        dut._log.info("  Grouping:       Strided [0,4,8], [1,5,9], [2,6,10], [3,7,11]")
         dut._log.info(f"  Checker Enable: {config.checker_enable}")
         dut._log.info(f"  Checker Verbose: {config.checker_verbose}")
         dut._log.info("=" * 60)
@@ -1279,7 +1486,7 @@ def compressor_set_lane_mask(dut, lane_mask: int) -> None:
         raise AttributeError("compressor_cfg interface not found on DUT")
 
     dut.compressor_cfg.lane_mask.value = lane_mask & 0xFFF
-    active_count = bin(lane_mask).count('1')
+    active_count = bin(lane_mask).count("1")
     dut._log.info(f"Compressor lane mask set to 0x{lane_mask:03X} ({active_count}/12 lanes)")
 
 
@@ -1304,9 +1511,9 @@ def compressor_get_stats(dut) -> dict:
     """
     # Return dummy values for backward compatibility
     return {
-        'sample_count': 0,
-        'zero_count': 0,
-        'pattern_detect': 0,
+        "sample_count": 0,
+        "zero_count": 0,
+        "pattern_detect": 0,
     }
 
 
@@ -1342,9 +1549,9 @@ def decor_checker_get_stats(dut) -> dict:
         match_rate = 0.0
 
     return {
-        'check_count': check_count,
-        'mismatch_count': mismatch_count,
-        'match_rate': match_rate,
+        "check_count": check_count,
+        "mismatch_count": mismatch_count,
+        "match_rate": match_rate,
     }
 
 
@@ -1374,17 +1581,21 @@ def decor_checker_verify(dut, log=None) -> None:
 
     stats = decor_checker_get_stats(dut)
 
-    if stats['check_count'] == 0:
-        logger.warning("  [WARN] Decorrelator Checker: No checks performed (checker may be disabled)")
+    if stats["check_count"] == 0:
+        logger.warning(
+            "  [WARN] Decorrelator Checker: No checks performed (checker may be disabled)"
+        )
         return
 
     # Log that checker is alive (ran checks) - independent of pass/fail
     logger.info("  [DECOR CHECK] Decorrelator checker is ALIVE")
 
-    if stats['mismatch_count'] == 0:
+    if stats["mismatch_count"] == 0:
         logger.info(f"  [PASS] Decorrelator Checker: {stats['check_count']} checks, 0 mismatches")
     else:
-        logger.error(f"  [FAIL] Decorrelator Checker: {stats['check_count']} checks, {stats['mismatch_count']} mismatches ({stats['match_rate']:.2f}% match rate)")
+        logger.error(
+            f"  [FAIL] Decorrelator Checker: {stats['check_count']} checks, {stats['mismatch_count']} mismatches ({stats['match_rate']:.2f}% match rate)"
+        )
         raise AssertionError(
             f"Decorrelator checker failed: {stats['mismatch_count']} cycles with mismatches "
             f"out of {stats['check_count']} checks ({100.0 - stats['match_rate']:.2f}% failure rate)"
@@ -1423,9 +1634,9 @@ def compressor_checker_get_stats(dut) -> dict:
         match_rate = 0.0
 
     return {
-        'check_count': check_count,
-        'mismatch_count': mismatch_count,
-        'match_rate': match_rate,
+        "check_count": check_count,
+        "mismatch_count": mismatch_count,
+        "match_rate": match_rate,
     }
 
 
@@ -1455,17 +1666,19 @@ def compressor_checker_verify(dut, log=None) -> None:
 
     stats = compressor_checker_get_stats(dut)
 
-    if stats['check_count'] == 0:
+    if stats["check_count"] == 0:
         logger.warning("  [WARN] Compressor Checker: No checks performed (checker may be disabled)")
         return
 
     # Log that checker is alive (ran checks) - independent of pass/fail
     logger.info("  [COMP CHECK] Compressor checker is ALIVE")
 
-    if stats['mismatch_count'] == 0:
+    if stats["mismatch_count"] == 0:
         logger.info(f"  [PASS] Compressor Checker: {stats['check_count']} checks, 0 mismatches")
     else:
-        logger.error(f"  [FAIL] Compressor Checker: {stats['check_count']} checks, {stats['mismatch_count']} mismatches ({stats['match_rate']:.2f}% match rate)")
+        logger.error(
+            f"  [FAIL] Compressor Checker: {stats['check_count']} checks, {stats['mismatch_count']} mismatches ({stats['match_rate']:.2f}% match rate)"
+        )
         raise AssertionError(
             f"Compressor checker failed: {stats['mismatch_count']} mismatches "
             f"out of {stats['check_count']} checks ({100.0 - stats['match_rate']:.2f}% failure rate)"
@@ -1538,13 +1751,15 @@ async def irq_checker_verify_async(dut, apb, expected_irq: bool = True, log=None
         await irq_checker_verify_async(dut, apb, expected_irq=True)
     """
     from cocotb.triggers import Timer
-    await Timer(1, units='ns')  # Tiny delay to ensure signal settled
+
+    await Timer(1, units="ns")  # Tiny delay to ensure signal settled
     irq_checker_verify(dut, apb, expected_irq, log)
 
 
 # ============================================================================
 # FIFO Helper Functions
 # ============================================================================
+
 
 async def read_fifo_status(apb):
     """Read FIFO status register and return level, wptr, rptr.
@@ -1558,7 +1773,7 @@ async def read_fifo_status(apb):
     Example:
         level, wptr, rptr = await read_fifo_status(apb)
     """
-    status = await reg_rd(apb, 'FIFO_STATUS')
+    status = await reg_rd(apb, "FIFO_STATUS")
     level = status & 0x7F
     wptr = (status >> 8) & 0x3F
     rptr = (status >> 16) & 0x3F
@@ -1578,7 +1793,7 @@ async def check_fifo_errors(dut, apb):
     Example:
         overflow, underflow = await check_fifo_errors(dut, apb)
     """
-    intr_status = await reg_rd(apb, 'INTR_STATUS')
+    intr_status = await reg_rd(apb, "INTR_STATUS")
     overflow = (intr_status >> 8) & 0x1
     underflow = (intr_status >> 12) & 0x1
     return overflow, underflow
@@ -1594,12 +1809,13 @@ async def clear_fifo_errors(apb):
         await clear_fifo_errors(apb)
     """
     # Clear overflow (bit 8) and underflow (bit 12)
-    await reg_wr(apb, 'INTR_STATUS', 0x1100)
+    await reg_wr(apb, "INTR_STATUS", 0x1100)
 
 
 # ============================================================================
 # Test Helper Functions
 # ============================================================================
+
 
 async def enable_entropy_pipeline(apb, ro_enable: int = 0xFFF, decorr_div: int = 64):
     """Enable standard entropy pipeline configuration.
@@ -1613,15 +1829,15 @@ async def enable_entropy_pipeline(apb, ro_enable: int = 0xFFF, decorr_div: int =
         await enable_entropy_pipeline(apb)  # Standard config
         await enable_entropy_pipeline(apb, decorr_div=8)  # Fast sampling
     """
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
     # Configure sampling clocks to use external clock (not internal RO clocks)
     # Default RING_OSC_CTRL.SAMPLE_CLK_SELECT = 0xFFF selects disabled RO clocks
     # Set to 0x000 to use external clock from testbench
-    await reg_wr(apb, 'RING_OSC_CTRL', 0x000)
-    await reg_wr(apb, 'RING_OSC_ENABLE', ro_enable)
-    decorr_ctrl = ((decorr_div - 1) << 12)
-    await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl)
-    await reg_wr(apb, 'DECORRELATOR_MASK', 0x000000FF)
+    await reg_wr(apb, "RING_OSC_CTRL", 0x000)
+    await reg_wr(apb, "RING_OSC_ENABLE", ro_enable)
+    decorr_ctrl = (decorr_div - 1) << 12
+    await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl)
+    await reg_wr(apb, "DECORRELATOR_MASK", 0x000000FF)
 
 
 async def configure_health_tests(
@@ -1632,7 +1848,7 @@ async def configure_health_tests(
     rep_threshold: int = 25,
     apt_hi_limit: int = 1200,
     apt_lo_limit: int = 848,
-    markov_thresholds: int = 0x006404B0
+    markov_thresholds: int = 0x006404B0,
 ):
     """Configure health test enables and thresholds.
 
@@ -1651,10 +1867,10 @@ async def configure_health_tests(
         await configure_health_tests(apb, rep_threshold=10,
                                      apt_hi_limit=1100, apt_lo_limit=948)
     """
-    enables = (int(enable_rep) | (int(enable_apt) << 1) | (int(enable_markov) << 2))
+    enables = int(enable_rep) | (int(enable_apt) << 1) | (int(enable_markov) << 2)
     ctrl_val = enables | (rep_threshold << 8)
-    await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-    await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', markov_thresholds)
+    await reg_wr(apb, "HEALTH_TEST_CTRL", ctrl_val)
+    await reg_wr(apb, "MARKOV_TEST_PROB_THRESHOLDS", markov_thresholds)
     await configure_apt_thresholds(apb, apt_hi_limit, apt_lo_limit)
 
 
@@ -1666,8 +1882,8 @@ async def configure_apt_thresholds(apb, high_limit: int = 1200, low_limit: int =
         high_limit: Fail when the window one count exceeds this value
         low_limit: Fail when the window one count is below this value
     """
-    await reg_wr(apb, 'APT_PROPORTION_1BIT', high_limit)
-    await reg_wr(apb, 'APT_PROPORTION_LO', low_limit)
+    await reg_wr(apb, "APT_PROPORTION_1BIT", high_limit)
+    await reg_wr(apb, "APT_PROPORTION_LO", low_limit)
 
 
 async def enable_and_verify_interrupt(apb, intr_name: str, intr_bit: int, dut_log):
@@ -1683,13 +1899,15 @@ async def enable_and_verify_interrupt(apb, intr_name: str, intr_bit: int, dut_lo
         await enable_and_verify_interrupt(apb, "HEALTH_TEST_FAILED", 0, dut._log)
     """
     mask = 1 << intr_bit
-    await reg_wr(apb, 'INTR_ENABLE', mask)
-    readback = await reg_rd(apb, 'INTR_ENABLE')
+    await reg_wr(apb, "INTR_ENABLE", mask)
+    readback = await reg_rd(apb, "INTR_ENABLE")
     assert (readback & mask) == mask, f"INTR_ENABLE.{intr_name} should be 1"
     dut_log.info(f"INTR_ENABLE: 0x{readback:08X} ({intr_name} enabled)")
 
 
-async def poll_for_irq_assertion(dut, timeout_cycles: int = 10000, poll_interval: int = 100) -> bool:
+async def poll_for_irq_assertion(
+    dut, timeout_cycles: int = 10000, poll_interval: int = 100
+) -> bool:
     """Poll for irq_o assertion with timeout.
 
     Args:
@@ -1714,13 +1932,15 @@ async def poll_for_irq_assertion(dut, timeout_cycles: int = 10000, poll_interval
             dut._log.info(f"  Polling cycle {i}: irq_o={irq}")
 
         if irq == 1:
-            dut._log.info(f"  >>> irq_o ASSERTED at cycle {i} ({i*poll_interval} clocks)")
+            dut._log.info(f"  >>> irq_o ASSERTED at cycle {i} ({i * poll_interval} clocks)")
             return True
 
     return False
 
 
-async def poll_for_irq_deassertion(dut, timeout_cycles: int = 10000, poll_interval: int = 100) -> bool:
+async def poll_for_irq_deassertion(
+    dut, timeout_cycles: int = 10000, poll_interval: int = 100
+) -> bool:
     """Poll for irq_o deassertion (going LOW) with timeout.
 
     Complement to poll_for_irq_assertion(). Useful for verifying IRQ clears after
@@ -1751,7 +1971,7 @@ async def poll_for_irq_deassertion(dut, timeout_cycles: int = 10000, poll_interv
             dut._log.info(f"  Polling cycle {i}: irq_o={irq}")
 
         if irq == 0:
-            dut._log.info(f"  >>> irq_o DEASSERTED at cycle {i} ({i*poll_interval} clocks)")
+            dut._log.info(f"  >>> irq_o DEASSERTED at cycle {i} ({i * poll_interval} clocks)")
             return True
 
     dut._log.error(f"  >>> irq_o did not deassert after {timeout_cycles} cycles")
@@ -1809,7 +2029,7 @@ async def configure_ro_stuck(dut, lane_config: dict, log: bool = True):
         stuck_1_lanes = [l for l, v in lane_config.items() if v == 1]
         normal_lanes = [l for l, v in lane_config.items() if v is None]
 
-        dut._log.info(f"Configuring per-lane RO patterns:")
+        dut._log.info("Configuring per-lane RO patterns:")
         if stuck_0_lanes:
             dut._log.info(f"  Stuck-at-0: Lanes {stuck_0_lanes}")
         if stuck_1_lanes:
@@ -1835,7 +2055,7 @@ async def configure_degraded_entropy(
     num_lanes: int = 12,
     enable_bypass: bool = True,
     decorr_div: int = 63,
-    wait_cycles: int = 0
+    wait_cycles: int = 0,
 ):
     """Configure degraded entropy for health test failure injection.
 
@@ -1863,7 +2083,9 @@ async def configure_degraded_entropy(
     from cocotb.triggers import ClockCycles
 
     # Configure all RO lanes to stuck-at pattern
-    dut._log.info(f"Configuring degraded entropy: stuck-at-{stuck_value}, bypass={'ON' if enable_bypass else 'OFF'}")
+    dut._log.info(
+        f"Configuring degraded entropy: stuck-at-{stuck_value}, bypass={'ON' if enable_bypass else 'OFF'}"
+    )
     for lane in range(num_lanes):
         await ro_model_set(dut, idx=lane, stuck=stuck_value)
     dut._log.info(f"  All {num_lanes} ROs configured: stuck-at-{stuck_value}")
@@ -1872,13 +2094,13 @@ async def configure_degraded_entropy(
     if enable_bypass:
         # BYPASS all lanes: mask=0xFFF (bits [11:0])
         decorr_ctrl = ((decorr_div) << 12) | 0xFFF
-        await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl)
-        dut._log.info(f"  Decorrelator: BYPASS enabled (mask=0xFFF), div={decorr_div+1}")
+        await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl)
+        dut._log.info(f"  Decorrelator: BYPASS enabled (mask=0xFFF), div={decorr_div + 1}")
     else:
         # No bypass: mask=0x000
         decorr_ctrl = ((decorr_div) << 12) | 0x000
-        await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl)
-        dut._log.info(f"  Decorrelator: BYPASS disabled (mask=0x000), div={decorr_div+1}")
+        await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl)
+        dut._log.info(f"  Decorrelator: BYPASS disabled (mask=0x000), div={decorr_div + 1}")
 
     # Optional stabilization wait
     if wait_cycles > 0:
@@ -1905,7 +2127,7 @@ async def restore_normal_entropy_generation(dut, apb, num_lanes: int = 12, wait_
         await ro_model_set(dut, idx=lane, stuck=None)
 
     dut._log.info("Disabling decorrelator bypass...")
-    await reg_wr(apb, 'DECORRELATOR_CTRL', 0x0003F000)  # div-64, no bypass
+    await reg_wr(apb, "DECORRELATOR_CTRL", 0x0003F000)  # div-64, no bypass
 
     dut._log.info(f"Waiting {wait_cycles} cycles for stabilization...")
     await ClockCycles(dut.apb.pclk, wait_cycles)
@@ -1925,7 +2147,7 @@ async def clear_and_verify_interrupt(dut, apb, intr_bit: int, intr_name: str):
     """
     from cocotb.triggers import ClockCycles
 
-    await reg_wr(apb, 'INTR_STATUS', 1 << intr_bit)
+    await reg_wr(apb, "INTR_STATUS", 1 << intr_bit)
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status = await read_intr_status(apb)
@@ -1937,11 +2159,7 @@ async def clear_and_verify_interrupt(dut, apb, intr_bit: int, intr_name: str):
 
 
 async def health_test_isr_recovery(
-    dut, apb,
-    test_type: str,
-    restore_entropy_fn,
-    new_threshold: int,
-    dut_log=None
+    dut, apb, test_type: str, restore_entropy_fn, new_threshold: int, dut_log=None
 ):
     """Common ISR recovery flow for health test failures.
 
@@ -2010,7 +2228,9 @@ async def health_test_isr_recovery(
     dut_log.info("\nVerifying IRQ remains asserted after restoring entropy...")
     irq_after_restore = await read_irq_output(dut)
     if irq_after_restore == 1:
-        dut_log.info("  [PASS] irq_o still HIGH after restoring entropy (correct - sticky interrupt)")
+        dut_log.info(
+            "  [PASS] irq_o still HIGH after restoring entropy (correct - sticky interrupt)"
+        )
     else:
         dut_log.error("  [ERROR] irq_o went LOW after restoring entropy (should stay HIGH!)")
         assert False, "IRQ should remain asserted until W1C clears it"
@@ -2026,49 +2246,46 @@ async def health_test_isr_recovery(
         test_name = "Repetition"
         threshold_start_bit = 8
         threshold_num_bits = 8  # bits [15:8]
-        threshold_register = 'HEALTH_TEST_CTRL'
+        threshold_register = "HEALTH_TEST_CTRL"
     elif test_type == "apt":
         enable_bit = 1
         test_name = "APT"
         threshold_start_bit = None
         threshold_num_bits = None
-        threshold_register = 'APT_PROPORTION_1BIT'
+        threshold_register = "APT_PROPORTION_1BIT"
     elif test_type == "markov":
         enable_bit = 2
         test_name = "Markov"
         threshold_start_bit = None  # Separate register
         threshold_num_bits = None
-        threshold_register = 'MARKOV_TEST_PROB_THRESHOLDS'
+        threshold_register = "MARKOV_TEST_PROB_THRESHOLDS"
     else:
-        raise ValueError(f"Unknown test_type: {test_type}. Must be 'repetition', 'apt', or 'markov'")
+        raise ValueError(
+            f"Unknown test_type: {test_type}. Must be 'repetition', 'apt', or 'markov'"
+        )
 
     # Step 8a: Disable test temporarily
     dut_log.info(f"[8a] Disabling {test_name} test...")
-    ctrl_val = await reg_rd(apb, 'HEALTH_TEST_CTRL')
+    ctrl_val = await reg_rd(apb, "HEALTH_TEST_CTRL")
     ctrl_val &= ~(1 << enable_bit)
-    await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
+    await reg_wr(apb, "HEALTH_TEST_CTRL", ctrl_val)
     await ClockCycles(dut.apb.pclk, 10)
     dut_log.info(f"  {test_name} test disabled")
 
     # Step 8b: Re-enable test with new threshold (toggle clears counter)
     dut_log.info(f"[8b] Re-enabling {test_name} test (toggle clears counter)...")
-    ctrl_val |= (1 << enable_bit)
+    ctrl_val |= 1 << enable_bit
 
     if test_type == "markov":
-        await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
+        await reg_wr(apb, "HEALTH_TEST_CTRL", ctrl_val)
         markov_threshold_val = (100 << 16) | new_threshold
         await reg_wr(apb, threshold_register, markov_threshold_val)
-        dut_log.info(
-            f"  {test_name} test re-enabled with limits: "
-            f"low=100, high={new_threshold}"
-        )
+        dut_log.info(f"  {test_name} test re-enabled with limits: low=100, high={new_threshold}")
     elif test_type == "apt":
-        await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
-        window_size = await reg_rd(apb, 'HEALTH_TEST_WINDOW_SIZE') & 0xFFFF
+        await reg_wr(apb, "HEALTH_TEST_CTRL", ctrl_val)
+        window_size = await reg_rd(apb, "HEALTH_TEST_WINDOW_SIZE") & 0xFFFF
         await configure_apt_thresholds(
-            apb,
-            high_limit=new_threshold,
-            low_limit=max(0, window_size - new_threshold)
+            apb, high_limit=new_threshold, low_limit=max(0, window_size - new_threshold)
         )
         dut_log.info(
             f"  {test_name} test re-enabled with limits: "
@@ -2078,7 +2295,7 @@ async def health_test_isr_recovery(
         # Repetition has threshold in HEALTH_TEST_CTRL
         threshold_mask = ((1 << threshold_num_bits) - 1) << threshold_start_bit
         ctrl_val = (ctrl_val & ~threshold_mask) | (new_threshold << threshold_start_bit)
-        await reg_wr(apb, 'HEALTH_TEST_CTRL', ctrl_val)
+        await reg_wr(apb, "HEALTH_TEST_CTRL", ctrl_val)
         dut_log.info(f"  {test_name} test re-enabled with threshold={new_threshold}")
 
     # Step 8c: Wait for stabilization
@@ -2113,7 +2330,7 @@ async def drain_fifo_to_level(apb, target_level: int = 10, dut_log=None) -> tupl
     drain_count = 0
 
     while level > target_level:
-        await reg_rd(apb, 'FIFO_RDATA')
+        await reg_rd(apb, "FIFO_RDATA")
         drain_count += 1
         level, _, _ = await read_fifo_status(apb)
 
@@ -2126,6 +2343,7 @@ async def drain_fifo_to_level(apb, target_level: int = 10, dut_log=None) -> tupl
 # ============================================================================
 # Interrupt Verification Helper Functions
 # ============================================================================
+
 
 async def read_intr_status(apb):
     """Read INTR_STATUS register and return dict of all interrupts.
@@ -2141,12 +2359,12 @@ async def read_intr_status(apb):
         if status['fifo_overflow']:
             print("Overflow detected!")
     """
-    status = await reg_rd(apb, 'INTR_STATUS')
+    status = await reg_rd(apb, "INTR_STATUS")
     return {
-        'health_test_failed': (status >> 0) & 0x1,
-        'fifo_error': (status >> 4) & 0x1,
-        'fifo_overflow': (status >> 8) & 0x1,
-        'fifo_underflow': (status >> 12) & 0x1,
+        "health_test_failed": (status >> 0) & 0x1,
+        "fifo_error": (status >> 4) & 0x1,
+        "fifo_overflow": (status >> 8) & 0x1,
+        "fifo_underflow": (status >> 12) & 0x1,
     }
 
 
@@ -2170,6 +2388,7 @@ async def read_irq_output(dut):
 # Health Test Helper Functions
 # ============================================================================
 
+
 async def read_repetition_counter(apb):
     """Read repetition test counter value.
 
@@ -2182,7 +2401,7 @@ async def read_repetition_counter(apb):
     Example:
         count = await read_repetition_counter(apb)
     """
-    reg_val = await reg_rd(apb, 'REPETITION_TEST_COUNT')
+    reg_val = await reg_rd(apb, "REPETITION_TEST_COUNT")
     return reg_val & 0xFF
 
 
@@ -2190,9 +2409,10 @@ async def read_repetition_counter(apb):
 # High-Level Test Helper Functions (Reusable across tests)
 # ============================================================================
 
+
 def log_phase_header(dut, phase_name: str) -> None:
     """Print a phase or test header banner.
-    
+
     Args:
         dut: DUT instance
         phase_name: Phase name to display
@@ -2204,18 +2424,18 @@ def log_phase_header(dut, phase_name: str) -> None:
 
 async def configure_testbench(dut, config: TestConfig = None):
     """Phase 1: Configure testbench (clocks, reset, models).
-    
+
     Args:
         dut: DUT instance
         config: TestConfig instance (default: DEFAULT_CONFIG)
-    
+
     Returns:
         Tuple of (apb_master, monitor, config)
     """
     cfg = config or DEFAULT_CONFIG
-    
+
     log_phase_header(dut, "PHASE 1: TESTBENCH CONFIGURATION")
-    
+
     # Step 1.1: Log configuration
     dut._log.info("\n[Step 1.1] Test Configuration:")
     dut._log.info(f"  APB Clock:       {cfg.clock.apb_freq_mhz:.1f} MHz")
@@ -2224,52 +2444,55 @@ async def configure_testbench(dut, config: TestConfig = None):
     dut._log.info(f"  RO Lanes:        {cfg.ro.num_lanes}")
     dut._log.info(f"  Ref Model Mode:  {cfg.decorrelator.mode_name}")
     dut._log.info(f"  DUT Mode:        {cfg.decorrelator.dut_mode_name}")
-    
+
     # Step 1.2: Initialize testbench
     dut._log.info("\n[Step 1.2] Initializing testbench (clocks and reset)...")
     apb, mon = await init(dut, config=cfg)
     dut._log.info("  [DONE] Clocks started, reset applied")
-    
+
     # Step 1.3: Verify RO injection
     dut._log.info("\n[Step 1.3] Verifying RO injection control...")
-    if hasattr(dut, 'ro_inject_enable'):
+    if hasattr(dut, "ro_inject_enable"):
         inject_status = int(dut.ro_inject_enable.value)
         dut._log.info(f"  ro_inject_enable = {inject_status}")
-        assert inject_status == cfg.ro.inject_model, \
+        assert inject_status == cfg.ro.inject_model, (
             f"RO injection mismatch: expected {cfg.ro.inject_model}, got {inject_status}"
+        )
         dut._log.info("  [PASS] RO injection control verified")
     else:
         dut._log.warning("  [WARN] ro_inject_enable signal not found in DUT")
-    
+
     # Step 1.4: Log decorrelator config
     dut._log.info("\n[Step 1.4] Decorrelator reference model configuration:")
     dut._log.info(f"  Mode:          {cfg.decorrelator.mode_name}")
     dut._log.info(f"  Sample Period: {cfg.decorrelator.sample_period} APB clocks")
-    dut._log.info(f"  Checker:       {'ENABLED' if cfg.decorrelator.checker_enable else 'DISABLED'}")
-    
+    dut._log.info(
+        f"  Checker:       {'ENABLED' if cfg.decorrelator.checker_enable else 'DISABLED'}"
+    )
+
     # Step 1.5: Randomize RO model
     dut._log.info("\n[Step 1.5] Configuring RO model parameters...")
     await ro_model_randomize_all(dut, config=cfg)
     dut._log.info(f"  [DONE] All {cfg.ro.num_lanes} RO lanes configured")
-    
+
     # Step 1.6: Log compressor config
     dut._log.info("\n[Step 1.6] Compressor reference model configuration:")
-    if hasattr(dut, 'compressor_cfg'):
+    if hasattr(dut, "compressor_cfg"):
         enable = int(dut.compressor_cfg.enable.value)
         bypass = int(dut.compressor_cfg.bypass.value)
         lane_mask = int(dut.compressor_cfg.lane_mask.value)
         mode_name = "BYPASS" if bypass else "BIW_EXTRACTION"
-        active_lanes = bin(lane_mask).count('1')
+        active_lanes = bin(lane_mask).count("1")
         dut._log.info(f"  Mode:      {mode_name}")
         dut._log.info(f"  Enabled:   {bool(enable)}")
         dut._log.info(f"  Lane Mask: 0x{lane_mask:03X} ({active_lanes}/12 lanes)")
     else:
         dut._log.warning("  [WARN] Compressor reference model not found")
-    
+
     dut._log.info("\n" + "=" * 70)
     dut._log.info("[PHASE 1 COMPLETE] Testbench configured and ready")
     dut._log.info("=" * 70)
-    
+
     return apb, mon, cfg
 
 
@@ -2289,32 +2512,36 @@ async def program_dut_registers(dut, apb: APBMaster, config: TestConfig) -> None
     bypass_comp_bit = 1 if cfg.bypass_compressor_dut else 0
     downsample_val = cfg.downsample_rate & 0x3FF  # 10-bit field
     ctrl_val = (downsample_val << 16) | (bypass_comp_bit << 8)
-    await reg_wr(apb, 'CTRL', ctrl_val)
+    await reg_wr(apb, "CTRL", ctrl_val)
     dut._log.info(f"  CTRL = 0x{ctrl_val:08X}")
-    dut._log.info(f"    BYPASS_ENTROPY_COMPRESSOR[8] = {bypass_comp_bit} ({'bypass' if bypass_comp_bit else 'enabled'})")
-    dut._log.info(f"    DOWNSAMPLE_RATE[25:16] = {downsample_val} ({'no downsample' if downsample_val == 0 else f'drop {downsample_val}, then 1-in-{downsample_val+1}'})")
+    dut._log.info(
+        f"    BYPASS_ENTROPY_COMPRESSOR[8] = {bypass_comp_bit} ({'bypass' if bypass_comp_bit else 'enabled'})"
+    )
+    dut._log.info(
+        f"    DOWNSAMPLE_RATE[25:16] = {downsample_val} ({'no downsample' if downsample_val == 0 else f'drop {downsample_val}, then 1-in-{downsample_val + 1}'})"
+    )
 
     # Step 2.1: Program DECORRELATOR_CTRL
     dut._log.info("\n[Step 2.1] Programming DECORRELATOR_CTRL register...")
     bypass_val = cfg.decorrelator.bypass_mask if cfg.decorrelator.bypass_dut else 0x000
     decorr_ctrl_val = (cfg.decorrelator.sample_clk_div << 12) | (bypass_val & 0xFFF)
-    await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl_val)
+    await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl_val)
     dut._log.info(f"  DECORRELATOR_CTRL = 0x{decorr_ctrl_val:08X}")
 
     # Step 2.2: Enable FIFO
     dut._log.info("\n[Step 2.2] Enabling FIFO for data collection...")
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
-    dut._log.info(f"  FIFO_CTRL = 0x00000001 (FIFO enabled)")
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
+    dut._log.info("  FIFO_CTRL = 0x00000001 (FIFO enabled)")
 
     # Step 2.3: Program DECORRELATOR_MASK
     dut._log.info("\n[Step 2.3] Programming DECORRELATOR_MASK register...")
-    await reg_wr(apb, 'DECORRELATOR_MASK', 0x000000FF)
-    dut._log.info(f"  DECORRELATOR_MASK = 0xFF (8 lanes enabled)")
+    await reg_wr(apb, "DECORRELATOR_MASK", 0x000000FF)
+    dut._log.info("  DECORRELATOR_MASK = 0xFF (8 lanes enabled)")
 
     # Step 2.4: Program RING_OSC_ENABLE
     dut._log.info("\n[Step 2.4] Programming RING_OSC_ENABLE register...")
     ro_enable_val = 0x00000FFF  # Enable all 12 noise ROs
-    await reg_wr(apb, 'RING_OSC_ENABLE', ro_enable_val)
+    await reg_wr(apb, "RING_OSC_ENABLE", ro_enable_val)
     dut._log.info(f"  RING_OSC_ENABLE = 0x{ro_enable_val:08X}")
 
     dut._log.info("\n" + "=" * 70)
@@ -2324,57 +2551,57 @@ async def program_dut_registers(dut, apb: APBMaster, config: TestConfig) -> None
 
 async def collect_entropy_samples(dut, config: TestConfig, num_samples: int):
     """Phase 3: Collect entropy samples and golden compressed words.
-    
+
     Args:
         dut: DUT instance
         config: TestConfig instance
         num_samples: Number of samples to collect
-    
+
     Returns:
         Tuple of (ref_samples, golden_queue)
     """
-    from cocotb.triggers import RisingEdge, ReadOnly
-    
+    from cocotb.triggers import RisingEdge
+
     cfg = config
     log_phase_header(dut, "PHASE 3: SAMPLE COLLECTION")
-    
+
     dut._log.info(f"\n[Observe] Collecting {num_samples} decorrelator samples...")
     dut._log.info("           (Also collecting golden compressed words)")
     dut._log.info("-" * 70)
-    
+
     ref_samples = []
     golden_queue = []
 
-    if not hasattr(dut, 'entropy_bytes_vld'):
+    if not hasattr(dut, "entropy_bytes_vld"):
         dut._log.error("[ERROR] entropy_bytes_vld signal not found!")
         raise AssertionError("Required decorrelator signals not accessible")
 
     # Determine which decorrelator output to use
-    use_masked = hasattr(dut, 'entropy_bytes_masked_flat')
+    use_masked = hasattr(dut, "entropy_bytes_masked_flat")
     if use_masked:
         dut._log.info("[Info] Using entropy_bytes_masked_flat (DECORRELATOR_MASK applied)")
     else:
         dut._log.info("[Info] Using entropy_bytes_flat (unmasked, DECORRELATOR_MASK=0xFF assumed)")
-    
+
     for sample_num in range(num_samples):
         # Wait for next valid pulse
         await RisingEdge(dut.entropy_bytes_vld)
         await ReadOnly()
-        
+
         # Collect decorrelator output (prefer masked bytes to match DUT behavior)
-        if hasattr(dut, 'entropy_bytes_masked_flat'):
+        if hasattr(dut, "entropy_bytes_masked_flat"):
             # Use masked bytes (matches DUT decorrelator output with DECORRELATOR_MASK applied)
             packed = int(dut.entropy_bytes_masked_flat.value)
             ref_bytes = [(packed >> (8 * i)) & 0xFF for i in range(cfg.ro.num_lanes)]
             ref_samples.append(ref_bytes)
-        elif hasattr(dut, 'entropy_bytes_flat'):
+        elif hasattr(dut, "entropy_bytes_flat"):
             # Fallback to unmasked bytes (for backward compatibility)
             packed = int(dut.entropy_bytes_flat.value)
             ref_bytes = [(packed >> (8 * i)) & 0xFF for i in range(cfg.ro.num_lanes)]
             ref_samples.append(ref_bytes)
-        
+
         # Collect golden compressed word
-        if hasattr(dut, 'compressed_word') and hasattr(dut, 'compressed_vld'):
+        if hasattr(dut, "compressed_word") and hasattr(dut, "compressed_vld"):
             comp_vld = int(dut.compressed_vld.value)
             if comp_vld:
                 golden_word = int(dut.compressed_word.value)
@@ -2382,28 +2609,29 @@ async def collect_entropy_samples(dut, config: TestConfig, num_samples: int):
                 # Show first few
                 if sample_num < 3:
                     dut._log.info(f"  Golden[{sample_num}] = 0x{golden_word:08X}")
-        
+
         # Show sample details (first 3, last 2 only)
-        if hasattr(dut, 'entropy_bytes_flat'):
+        if hasattr(dut, "entropy_bytes_flat"):
             show_sample = (sample_num < 3) or (sample_num >= num_samples - 2)
             if show_sample:
                 hex_str = " ".join([f"0x{b:02X}" for b in ref_bytes])
                 dut._log.info(f"  Sample[{sample_num}]: {hex_str}")
             elif sample_num == 3:
-                dut._log.info(f"  ... (showing first 3 and last 2 only)")
-    
+                dut._log.info("  ... (showing first 3 and last 2 only)")
+
     dut._log.info(f"\n[Summary] Collected {len(ref_samples)} decorrelator samples")
     dut._log.info(f"[Summary] Collected {len(golden_queue)} golden compressed words")
-    
+
     dut._log.info("\n" + "=" * 70)
     dut._log.info("[PHASE 3 COMPLETE] Sample collection complete")
     dut._log.info("=" * 70)
-    
+
     return ref_samples, golden_queue
 
 
-async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_samples: int,
-                              downsample_rate: int = 0) -> None:
+async def verify_fifo_readout(
+    dut, apb: APBMaster, golden_queue: list, num_samples: int, downsample_rate: int = 0
+) -> None:
     """Phase 4: Verify FIFO readout against golden queue.
 
     Args:
@@ -2423,13 +2651,15 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
 
     # Determine drop count and downsampling behavior
     rtl_drop_count = downsample_rate  # Rate=0 means no drops, Rate=N means drop first N
-    continuous_downsample = (downsample_rate > 0)
+    continuous_downsample = downsample_rate > 0
 
     dut._log.info(f"Target samples: {num_samples}")
     dut._log.info(f"Golden queue: {len(golden_queue)} samples (all compressed_vld)")
     dut._log.info(f"Downsample rate: {downsample_rate}")
     dut._log.info(f"  RTL drops first: {rtl_drop_count}")
-    dut._log.info(f"  After drops: {'1-in-' + str(downsample_rate) + ' sampling' if continuous_downsample else 'capture all'}\n")
+    dut._log.info(
+        f"  After drops: {'1-in-' + str(downsample_rate) + ' sampling' if continuous_downsample else 'capture all'}\n"
+    )
 
     if len(golden_queue) == 0:
         dut._log.warning("[SKIP] Golden queue is empty")
@@ -2438,22 +2668,23 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
     # Disable ROs to stop entropy generation (proper way to freeze FIFO push)
     await RisingEdge(dut.apb.pclk)
     dut._log.info("[Freeze] Disabling RING_OSC_ENABLE to stop entropy generation...")
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
 
     # Wait for pipeline to drain
     from cocotb.triggers import ClockCycles
+
     await ClockCycles(dut.apb.pclk, 10)
     dut._log.info("  ROs disabled, pipeline drained\n")
 
     # Check FIFO status (FIFO stays enabled for reading)
     dut._log.info("[Step 1] Reading FIFO status...")
-    fifo_status = await reg_rd(apb, 'FIFO_STATUS')
+    fifo_status = await reg_rd(apb, "FIFO_STATUS")
     fifo_level = fifo_status & 0x7F
     dut._log.info(f"  FIFO level: {fifo_level} entries\n")
 
     # Check for errors
     dut._log.info("[Step 2] Checking for FIFO errors...")
-    intr_status = await reg_rd(apb, 'INTR_STATUS')
+    intr_status = await reg_rd(apb, "INTR_STATUS")
     fifo_overflow = (intr_status >> 8) & 0x1
     fifo_underflow = (intr_status >> 12) & 0x1
 
@@ -2467,7 +2698,7 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
 
     if len(golden_queue) <= rtl_drop_count:
         dut._log.warning(f"  Golden queue ({len(golden_queue)}) <= drop count ({rtl_drop_count})")
-        dut._log.warning(f"  Insufficient golden entries - cannot verify!")
+        dut._log.warning("  Insufficient golden entries - cannot verify!")
         return
 
     # Step 3a: Drop first entries (if any)
@@ -2487,7 +2718,9 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
     else:
         # DOWNSAMPLE_RATE=0: Capture all samples (1-in-1, no drops, no downsampling)
         adjusted_golden = after_drops
-        dut._log.info(f"  Step 3b: No downsampling (rate=0), keeping all {len(adjusted_golden)} samples")
+        dut._log.info(
+            f"  Step 3b: No downsampling (rate=0), keeping all {len(adjusted_golden)} samples"
+        )
 
     dut._log.info("")
 
@@ -2506,8 +2739,8 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
         dut._log.info(f"  FIFO has more - skip first {fifo_skip} from FIFO")
     else:
         num_to_verify = len(adjusted_golden)
-        dut._log.info(f"  Perfect alignment!")
-    
+        dut._log.info("  Perfect alignment!")
+
     dut._log.info(f"  Will verify {num_to_verify} samples\n")
 
     # Ensure we have something to verify
@@ -2521,7 +2754,7 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
     if fifo_skip > 0:
         dut._log.info(f"[Step 5] Skipping first {fifo_skip} FIFO entries...")
         for i in range(fifo_skip):
-            await reg_rd(apb, 'FIFO_RDATA')
+            await reg_rd(apb, "FIFO_RDATA")
         dut._log.info("")
 
     # Compare aligned portions
@@ -2533,27 +2766,29 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
 
     fifo_mismatch_count = 0
     for i in range(num_to_verify):
-        fifo_word = await reg_rd(apb, 'FIFO_RDATA')
+        fifo_word = await reg_rd(apb, "FIFO_RDATA")
         golden_word = adjusted_golden[golden_skip + i]
-        match = (fifo_word == golden_word)
-        
+        match = fifo_word == golden_word
+
         # Show first 5, last 2, and all mismatches
         if i < 5 or i >= num_to_verify - 2 or not match:
             status = "MATCH" if match else "MISMATCH"
-            dut._log.info(f"  [{i:2d}] FIFO: 0x{fifo_word:08X}  Golden: 0x{golden_word:08X}  [{status}]")
+            dut._log.info(
+                f"  [{i:2d}] FIFO: 0x{fifo_word:08X}  Golden: 0x{golden_word:08X}  [{status}]"
+            )
             if not match:
                 dut._log.error(f"       XOR: 0x{fifo_word ^ golden_word:08X}")
                 fifo_mismatch_count += 1
         elif i == 5:
-            dut._log.info(f"  ... (showing first 5 and last 2 only)")
-    
+            dut._log.info("  ... (showing first 5 and last 2 only)")
+
     # Report results
     if fifo_mismatch_count == 0:
         dut._log.info(f"\n[PASS] All {num_to_verify} samples matched!")
     else:
         dut._log.error(f"\n[FAIL] {fifo_mismatch_count}/{num_to_verify} mismatches!")
         raise AssertionError(f"FIFO verification failed: {fifo_mismatch_count} mismatches")
-    
+
     dut._log.info("\n" + "=" * 70)
     dut._log.info("[PHASE 4 COMPLETE] FIFO readout verified")
     dut._log.info("=" * 70)
@@ -2561,18 +2796,18 @@ async def verify_fifo_readout(dut, apb: APBMaster, golden_queue: list, num_sampl
 
 async def verify_checkers(dut) -> None:
     """Phase 5: Verify all checkers.
-    
+
     Args:
         dut: DUT instance
     """
     log_phase_header(dut, "PHASE 5: CHECKER VERIFICATION")
-    
+
     dut._log.info("\n[5.1] Decorrelator Checker Verification")
     decor_checker_verify(dut)
-    
+
     dut._log.info("\n[5.2] Compressor Checker Verification")
     compressor_checker_verify(dut)
-    
+
     dut._log.info("\n" + "=" * 70)
     dut._log.info("[PHASE 5 COMPLETE] All checker verifications passed")
     dut._log.info("=" * 70)
@@ -2580,7 +2815,7 @@ async def verify_checkers(dut) -> None:
 
 def print_test_summary(dut, config: TestConfig, ref_samples: list, golden_queue: list) -> None:
     """Print test summary.
-    
+
     Args:
         dut: DUT instance
         config: TestConfig instance
@@ -2588,26 +2823,34 @@ def print_test_summary(dut, config: TestConfig, ref_samples: list, golden_queue:
         golden_queue: List of golden compressed words
     """
     cfg = config
-    
+
     dut._log.info("\n" + "=" * 70)
     dut._log.info("TEST SUMMARY")
     dut._log.info("=" * 70)
-    
+
     dut._log.info("\nConfiguration:")
-    dut._log.info(f"  Clock: APB {cfg.clock.apb_freq_mhz:.1f} MHz, RO {cfg.clock.rosc_freq_mhz:.1f} MHz")
-    dut._log.info(f"  RO Model: {cfg.ro.num_lanes} lanes, injection {('ENABLED' if cfg.ro.inject_enabled else 'DISABLED')}")
-    dut._log.info(f"  Decorrelator: {cfg.decorrelator.mode_name}, {cfg.decorrelator.sample_period} cycle period")
-    dut._log.info(f"  DUT Mode: {cfg.decorrelator.dut_mode_name}, div-{cfg.decorrelator.actual_division} clock")
-    
+    dut._log.info(
+        f"  Clock: APB {cfg.clock.apb_freq_mhz:.1f} MHz, RO {cfg.clock.rosc_freq_mhz:.1f} MHz"
+    )
+    dut._log.info(
+        f"  RO Model: {cfg.ro.num_lanes} lanes, injection {('ENABLED' if cfg.ro.inject_enabled else 'DISABLED')}"
+    )
+    dut._log.info(
+        f"  Decorrelator: {cfg.decorrelator.mode_name}, {cfg.decorrelator.sample_period} cycle period"
+    )
+    dut._log.info(
+        f"  DUT Mode: {cfg.decorrelator.dut_mode_name}, div-{cfg.decorrelator.actual_division} clock"
+    )
+
     dut._log.info("\nResults:")
-    dut._log.info(f"  [PASS] Testbench configured")
-    dut._log.info(f"  [PASS] DUT programmed via APB")
-    dut._log.info(f"  [PASS] RO model auto-synchronized")
+    dut._log.info("  [PASS] Testbench configured")
+    dut._log.info("  [PASS] DUT programmed via APB")
+    dut._log.info("  [PASS] RO model auto-synchronized")
     dut._log.info(f"  [PASS] Decorrelator samples collected: {len(ref_samples)}")
-    
+
     if cfg.fifo_verification_enable and len(golden_queue) > 0:
         dut._log.info(f"  [PASS] FIFO readout: {len(golden_queue)} samples verified")
-    
+
     dut._log.info("\n" + "=" * 70)
     dut._log.info("[PASS] Test completed successfully!")
     dut._log.info("=" * 70)
@@ -2616,6 +2859,7 @@ def print_test_summary(dut, config: TestConfig, ref_samples: list, golden_queue:
 # ============================================================================
 # Golden Reference Model for Repetition Counter
 # ============================================================================
+
 
 class RepetitionCounterGolden:
     """Golden reference model for repetition counter
@@ -2726,28 +2970,25 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
     errors = []
 
     # Read repetition counter
-    counters['repetition'] = await reg_rd(apb, 'REPETITION_TEST_COUNT')
+    counters["repetition"] = await reg_rd(apb, "REPETITION_TEST_COUNT")
 
     # Read the retained high and low APT count views.
-    counters['apt_hi'] = await reg_rd(apb, 'APT_PATTERN_COUNT_1BIT')
-    counters['apt_lo'] = await reg_rd(apb, 'APT_PATTERN_COUNT_2BIT')
+    counters["apt_hi"] = await reg_rd(apb, "APT_PATTERN_COUNT_1BIT")
+    counters["apt_lo"] = await reg_rd(apb, "APT_PATTERN_COUNT_2BIT")
 
     # Read Markov counters. The two fields are the per-lane maximum and minimum
     # alternation count, not per-direction transition counts, so they do not sum
     # to a transition total.
-    markov_counts_0 = await reg_rd(apb, 'MARKOV_TEST_COUNTS_0')
-    counters['markov_01'] = markov_counts_0 & 0xFFFF          # Lower 16 bits
-    counters['markov_10'] = (markov_counts_0 >> 16) & 0xFFFF  # Upper 16 bits
+    markov_counts_0 = await reg_rd(apb, "MARKOV_TEST_COUNTS_0")
+    counters["markov_01"] = markov_counts_0 & 0xFFFF  # Lower 16 bits
+    counters["markov_10"] = (markov_counts_0 >> 16) & 0xFFFF  # Upper 16 bits
 
     # Logging
     if log_verbose and dut_log:
         dut_log.info("  Health Test Counters:")
         dut_log.info(f"    REP={counters['repetition']}")
-        dut_log.info(
-            f"    APT: high={counters['apt_hi']}, low={counters['apt_lo']}"
-        )
-        dut_log.info(f"    MARKOV: max={counters['markov_01']}, "
-                     f"min={counters['markov_10']}")
+        dut_log.info(f"    APT: high={counters['apt_hi']}, low={counters['apt_lo']}")
+        dut_log.info(f"    MARKOV: max={counters['markov_01']}, min={counters['markov_10']}")
 
     # Verification against expected ranges
     if expected_ranges:
@@ -2760,11 +3001,12 @@ async def verify_health_test_counters(apb, expected_ranges=None, log_verbose=Tru
             if max_val is not None and value > max_val:
                 errors.append(f"{name} counter ({value}) above maximum ({max_val})")
 
-    return {'counters': counters, 'errors': errors}
+    return {"counters": counters, "errors": errors}
 
 
-async def monitor_per_lane_health_status(apb, lanes=None, expected_failures=None,
-                                         log_details=False, dut_log=None):
+async def monitor_per_lane_health_status(
+    apb, lanes=None, expected_failures=None, log_details=False, dut_log=None
+):
     """Read and analyze per-lane health test status for all 12 generators.
 
     Args:
@@ -2786,16 +3028,12 @@ async def monitor_per_lane_health_status(apb, lanes=None, expected_failures=None
         lanes = range(12)
 
     lane_status = {}
-    failures = {
-        'repetition': [],
-        'apt': [],
-        'markov': []
-    }
+    failures = {"repetition": [], "apt": [], "markov": []}
     errors = []
 
     # Read all lane status registers
     for lane in lanes:
-        reg_name = f'GENERATOR_{lane}_HEALTH_STATUS'
+        reg_name = f"GENERATOR_{lane}_HEALTH_STATUS"
         status = await reg_rd(apb, reg_name)
         lane_status[lane] = status
 
@@ -2804,26 +3042,28 @@ async def monitor_per_lane_health_status(apb, lanes=None, expected_failures=None
         # Bit [3]: APT test failure
         # Bits [4] and [5]: Markov high- and low-threshold failures
         if status & 0x01:
-            failures['repetition'].append(lane)
+            failures["repetition"].append(lane)
         if status & 0x08:
-            failures['apt'].append(lane)
+            failures["apt"].append(lane)
         if status & 0x30:
-            failures['markov'].append(lane)
+            failures["markov"].append(lane)
 
         if log_details and dut_log:
-            rep_char = 'F' if (status & 0x01) else 'P'
-            apt_char = 'F' if (status & 0x08) else 'P'
+            rep_char = "F" if (status & 0x01) else "P"
+            apt_char = "F" if (status & 0x08) else "P"
             markov_bits = (status >> 4) & 0x3
-            dut_log.info(f"  Lane {lane:2d}: 0x{status:02X} "
-                        f"[Rep={rep_char} APT={apt_char} Markov=0x{markov_bits:X}]")
+            dut_log.info(
+                f"  Lane {lane:2d}: 0x{status:02X} "
+                f"[Rep={rep_char} APT={apt_char} Markov=0x{markov_bits:X}]"
+            )
 
     # Summary logging
     if dut_log:
-        if failures['repetition']:
+        if failures["repetition"]:
             dut_log.info(f"  Repetition failures: Lanes {failures['repetition']}")
-        if failures['apt']:
+        if failures["apt"]:
             dut_log.info(f"  APT failures: Lanes {failures['apt']}")
-        if failures['markov']:
+        if failures["markov"]:
             dut_log.info(f"  Markov failures: Lanes {failures['markov']}")
 
     # Verification against expectations
@@ -2831,18 +3071,17 @@ async def monitor_per_lane_health_status(apb, lanes=None, expected_failures=None
         for lane, expected_bits in expected_failures.items():
             actual_bits = lane_status.get(lane, 0)
             if (actual_bits & expected_bits) != expected_bits:
-                errors.append(f"Lane {lane}: expected failure bits 0x{expected_bits:02X}, "
-                            f"got 0x{actual_bits:02X}")
+                errors.append(
+                    f"Lane {lane}: expected failure bits 0x{expected_bits:02X}, "
+                    f"got 0x{actual_bits:02X}"
+                )
 
-    return {
-        'lane_status': lane_status,
-        'failures': failures,
-        'errors': errors
-    }
+    return {"lane_status": lane_status, "failures": failures, "errors": errors}
 
 
-async def verify_autotune_detune_pattern(apb, dut, expected_lanes, min_count=None,
-                                         exact_match=False, dut_log=None):
+async def verify_autotune_detune_pattern(
+    apb, dut, expected_lanes, min_count=None, exact_match=False, dut_log=None
+):
     """Verify autotune FSM detune pattern by probing RTL signals.
 
     Probes per-lane RTL signals:
@@ -2897,27 +3136,27 @@ async def verify_autotune_detune_pattern(apb, dut, expected_lanes, min_count=Non
 
         # Read per-lane health status from APB to get test_fail info
         try:
-            health_status = await reg_rd(apb, f'GENERATOR_{lane}_HEALTH_STATUS')
+            health_status = await reg_rd(apb, f"GENERATOR_{lane}_HEALTH_STATUS")
             test_fail_value = health_status & 0xFF  # All 8 bits of health status
         except Exception:
             test_fail_value = 0
 
         # Store per-lane status
-        per_lane_status.append({
-            'lane': lane,
-            'detune_i': detune_value,
-            'test_fail': test_fail_value
-        })
+        per_lane_status.append(
+            {"lane": lane, "detune_i": detune_value, "test_fail": test_fail_value}
+        )
 
         # Build composite detune bits and detuned lanes list
         if detune_value:
-            detune_bits |= (1 << lane)
+            detune_bits |= 1 << lane
             detuned_lanes.append(lane)
 
         # Log per-lane status
         if dut_log:
             status_str = "DETUNE" if detune_value else "OK    "
-            dut_log.info(f"   {lane:2d}  |    {detune_value}     |    0x{test_fail_value:02X}    | {status_str}")
+            dut_log.info(
+                f"   {lane:2d}  |    {detune_value}     |    0x{test_fail_value:02X}    | {status_str}"
+            )
 
     if dut_log:
         dut_log.info(f"\n  Composite DETUNE: 0x{detune_bits:03X} -> Lanes {detuned_lanes}")
@@ -2926,7 +3165,9 @@ async def verify_autotune_detune_pattern(apb, dut, expected_lanes, min_count=Non
 
     # Check minimum count
     if min_count is not None and len(detuned_lanes) < min_count:
-        errors.append(f"Insufficient lanes detuned: {len(detuned_lanes)}/{min_count} (expected at least {min_count})")
+        errors.append(
+            f"Insufficient lanes detuned: {len(detuned_lanes)}/{min_count} (expected at least {min_count})"
+        )
 
     # Check expected lanes are detuned
     for lane in expected_lanes:
@@ -2940,14 +3181,16 @@ async def verify_autotune_detune_pattern(apb, dut, expected_lanes, min_count=Non
                 errors.append(f"Lane {lane} unexpectedly detuned")
 
     return {
-        'detune_bits': detune_bits,
-        'detuned_lanes': detuned_lanes,
-        'per_lane_status': per_lane_status,
-        'errors': errors
+        "detune_bits": detune_bits,
+        "detuned_lanes": detuned_lanes,
+        "per_lane_status": per_lane_status,
+        "errors": errors,
     }
 
 
-async def monitor_repetition_counter_golden(dut, apb, threshold: int, duration_cycles: int) -> tuple:
+async def monitor_repetition_counter_golden(
+    dut, apb, threshold: int, duration_cycles: int
+) -> tuple:
     """Monitor repetition counter and compare CSR against golden reference
 
     Probes the entropy input to the repetition test module and builds a golden
@@ -2981,7 +3224,7 @@ async def monitor_repetition_counter_golden(dut, apb, threshold: int, duration_c
 
     dut._log.info(f"\n[GOLDEN MODEL] Monitoring repetition counter for {duration_cycles} cycles")
     dut._log.info(f"  Threshold: {threshold}")
-    dut._log.info(f"  Probing: entropy_i, entropy_valid_i")
+    dut._log.info("  Probing: entropy_i, entropy_valid_i")
 
     mismatch_count = 0
     check_interval = 100  # Check every 100 cycles
@@ -3010,7 +3253,7 @@ async def monitor_repetition_counter_golden(dut, apb, threshold: int, duration_c
 
         # Periodically check CSR against golden
         if (cycle + 1) % check_interval == 0:
-            rep_count_csr = await reg_rd(apb, 'REPETITION_TEST_COUNT')
+            rep_count_csr = await reg_rd(apb, "REPETITION_TEST_COUNT")
             csr_value = rep_count_csr & 0xFF
             golden_value = golden.get_expected_count()
 
@@ -3022,12 +3265,16 @@ async def monitor_repetition_counter_golden(dut, apb, threshold: int, duration_c
 
             if csr_value != golden_value:
                 mismatch_count += 1
-                dut._log.warning(f"  Cycle {cycle+1}: entropy_i={entropy_str}, CSR={csr_value}, Golden={golden_value} [MISMATCH]")
+                dut._log.warning(
+                    f"  Cycle {cycle + 1}: entropy_i={entropy_str}, CSR={csr_value}, Golden={golden_value} [MISMATCH]"
+                )
             else:
-                dut._log.info(f"  Cycle {cycle+1}: entropy_i={entropy_str}, CSR={csr_value}, Golden={golden_value} [OK]")
+                dut._log.info(
+                    f"  Cycle {cycle + 1}: entropy_i={entropy_str}, CSR={csr_value}, Golden={golden_value} [OK]"
+                )
 
     # Final check
-    rep_count_csr = await reg_rd(apb, 'REPETITION_TEST_COUNT')
+    rep_count_csr = await reg_rd(apb, "REPETITION_TEST_COUNT")
     final_csr = rep_count_csr & 0xFF
     final_golden = golden.get_expected_count()
 
@@ -3038,7 +3285,7 @@ async def monitor_repetition_counter_golden(dut, apb, threshold: int, duration_c
     except:
         final_entropy_str = "N/A"
 
-    dut._log.info(f"\n[GOLDEN MODEL] Final values:")
+    dut._log.info("\n[GOLDEN MODEL] Final values:")
     dut._log.info(f"  Last entropy_i: {final_entropy_str}")
     dut._log.info(f"  CSR REPETITION_TEST_COUNT: {final_csr}")
     dut._log.info(f"  Golden expected value: {final_golden}")

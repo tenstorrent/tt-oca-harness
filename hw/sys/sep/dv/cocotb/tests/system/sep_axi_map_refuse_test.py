@@ -31,9 +31,8 @@ cross-check on the specification, never the source of the expectation.
 from __future__ import annotations
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_axi_decode_map import audit_rtl_vs_spec
+from sep_base_test import sep_base_test
 from seq_lib.sep_axi_map_refuse_seq import (
     MAPPED_CSR_ADDR,
     SepAxiMapRefuse,
@@ -65,8 +64,9 @@ class sep_axi_map_refuse_test(sep_base_test):
             "CHK-OKAY FAIL: scoreboard recorded an error on the mapped control"
         )
         self.logger.info(
-            "CHK-OKAY PASS: mapped CSR 0x%08x returned OKAY with its "
-            "generated reset value", MAPPED_CSR_ADDR)
+            "CHK-OKAY PASS: mapped CSR 0x%08x returned OKAY with its generated reset value",
+            MAPPED_CSR_ADDR,
+        )
 
         # Every probe is an address no decode rule covers: a span the crossbar
         # routes is excluded when the set is built, and counted in cfg.skipped
@@ -78,7 +78,11 @@ class sep_axi_map_refuse_test(sep_base_test):
             if miss is None:
                 self.logger.info(
                     "CHK-MAP-REFUSE PASS: %s 0x%08x refused (%s, %s)",
-                    item.op, item.addr, item.unit, tag)
+                    item.op,
+                    item.addr,
+                    item.unit,
+                    tag,
+                )
             else:
                 fails.append(miss)
                 self.logger.error("CHK-MAP-REFUSE FAIL [%s]: %s", tag, miss)
@@ -103,7 +107,10 @@ class sep_axi_map_refuse_test(sep_base_test):
         self.logger.info(
             "CHK-MAP-REFUSE PASS: %d address(es) no decode rule covers were "
             "refused (%d DECERR, %d SLVERR)",
-            len(cfg.probes), refuse.decerr, refuse.slverr)
+            len(cfg.probes),
+            refuse.decerr,
+            refuse.slverr,
+        )
         # Raw-pin cross-check: the monitor counts DECERR beats it saw on the
         # bus, which is evidence independent of what the master reported. Every
         # credit armed for a DECERR was consumed by a real beat.
@@ -121,9 +128,13 @@ class sep_axi_map_refuse_test(sep_base_test):
         )
         self.logger.info(
             "CHK-NONVAC PASS: %d DECERR beat(s) observed on the bus match the "
-            "%d the master reported", seen, refuse.decerr)
+            "%d the master reported",
+            seen,
+            refuse.decerr,
+        )
         self.logger.info(
             "CHK-RANDCFG PASS: walked %d probes (%d anchors) from seed %d",
             len(cfg.probes),
             sum(1 for p in cfg.probes if p.anchor),
-            cfg.seed)
+            cfg.seed,
+        )
