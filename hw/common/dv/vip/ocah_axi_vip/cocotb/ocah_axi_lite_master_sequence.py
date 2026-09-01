@@ -16,9 +16,8 @@ from __future__ import annotations
 from typing import Any
 
 from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
-from .ocah_axi_results import (
-    OcahAxiReadResult,
-    OcahAxiWriteResult,
+from .ocah_axi_item import OcahAxiReadResult, OcahAxiWriteResult
+from .ocah_axi_types import (
     axi_resp_ok,
     bytes_to_int,
     normalize_resp_list,

@@ -86,7 +86,7 @@ ocah_axi_vip/
     ocah_axi_ref_model.py               — OcahAxiRefModel (shadow memory + response policy)
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
-    ocah_axi_results.py                 — result dataclasses + response-code helpers
+    ocah_axi_types.py                   — response/protection codes + value-conversion helpers
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
   sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
@@ -121,6 +121,12 @@ reconstruct traffic from the shared wires regardless of who generated it
 (a VIP master, a VIP responder, or the DUT itself — DTP observes purely
 DUT-generated traffic with no VIP master present), so a side token on them
 would be false labeling.
+
+The package contains only canonical component files, matching the SV-UVM
+flow's basenames one-to-one (flow-only components follow the same pattern):
+shared dataclasses live in `ocah_axi_item.py`, shared constants and value
+conversions in `ocah_axi_types.py`, and behavior lives in the component that
+owns it — support modules outside the taxonomy are not added.
 
 The checker, reference model, and scoreboard follow the shared contract in
 `hw/common/dv/docs/vip-checker-model.adoc`: named

@@ -24,7 +24,7 @@ from ocah_checker import OcahChecker
 
 from .ocah_axi_item import OcahAxiItem
 from .ocah_axi_ref_model import OcahAxiRefModel
-from .ocah_axi_results import RESP_EXOKAY, RESP_OKAY
+from .ocah_axi_types import RESP_EXOKAY, RESP_OKAY
 
 CHK_RESP = "CHK-AXI-RESP"
 CHK_RESP_EXPECTED = "CHK-AXI-RESP-EXPECTED"
