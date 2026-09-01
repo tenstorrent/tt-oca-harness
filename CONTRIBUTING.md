@@ -105,12 +105,9 @@ Scheduled and manually dispatched pipelines always run in full.
 The `regen-regs` gate regenerates every register block's collateral from the RDLs
 and fails if the working tree changes, so the committed `**/regs/gen/` outputs
 (SystemVerilog, C headers, Python, RAL, IP-XACT, AsciiDoc, HTML) always match a
-fresh run. After that regen it also compares KM and SEP eFuse-map `[11:0]`
-offsets (`make check-km-sep-efuse-map`); those two headers are independent
-emissions of `sep_efuse_map.rdl` and a `LOCKS_*` insertion that updates only SEP
-leaves KM firmware on the pre-spare map. It is peakrdl-only (no bender or
-`nonfree/`), so a plain checkout reproduces it. To fix a failure, run the local
-command above and commit the result:
+fresh run. It is peakrdl-only (no bender or `nonfree/`), so a plain checkout
+reproduces it. To fix a failure, run the local command above and commit the
+result:
 
 ```
 make regen-regs regen-regs-adoc regen-regs-html

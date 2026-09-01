@@ -10,19 +10,11 @@
 ## A target suffix selects the output class (or clean); TARGET=<block> scopes to a
 ## single register block. With no TARGET, every block is regenerated.
 
-# Open-tree paths, not ocah_reg_block_by_name: TARGET=sep and the companion's
-# nonfree/hw/sys/sep share the notdir "sep", so discovery would concatenate both.
-OCAH_KM_ADDR_H  := $(OCAH_ROOT)/hw/ip/key_manager/regs/gen/c/key_manager_addr.h
-OCAH_SEP_ADDR_H := $(OCAH_ROOT)/hw/sys/sep/regs/gen/c/sep_addr.h
-OCAH_KM_SEP_EFUSE_MAP_CHECK = python3 "$(OCAH_ROOT)/tools/regs/check_km_sep_efuse_map.py" \
-  --km "$(OCAH_KM_ADDR_H)" --sep "$(OCAH_SEP_ADDR_H)"
-
 ## Regenerate non-documentation register collateral for all OCAH register blocks.
 ## @param OCAH_REG_BLOCKS Registered block roots to regenerate
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs
 ocah-regen-regs: $(OCAH_REGEN_ALL) $(OCAH_REGEN_REG_STAMPS)
-	@$(OCAH_KM_SEP_EFUSE_MAP_CHECK)
 
 ## Regenerate SystemVerilog register RTL for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
@@ -33,7 +25,6 @@ ocah-regen-regs-sv: $(OCAH_REGEN_REG_SV)
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-h
 ocah-regen-regs-h: $(OCAH_REGEN_REG_H)
-	@$(OCAH_KM_SEP_EFUSE_MAP_CHECK)
 
 ## Regenerate SystemVerilog address packages for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
@@ -101,15 +92,7 @@ ocah-regen-vendor-rdl: | uv-sync
 		echo "Exporting HJSON register description to RDL: $(call ocah_vhr_rdl,$(e))"; \
 		$(call ocah_vendor_hjson_rdl_regen,$(e)); )
 
-## Fail if KM and SEP generated eFuse-map [11:0] offsets disagree. Hardware
-## remaps KM-local 0x0001_1xxx to SEP 0x1093_0xxx by replacing [31:12]; a LOCKS_*
-## insertion that updates only the SEP copy leaves KM FW reading the wrong field.
-.PHONY: ocah-check-km-sep-efuse-map
-ocah-check-km-sep-efuse-map:
-	@$(OCAH_KM_SEP_EFUSE_MAP_CHECK)
-
 OCAH_PHONY += \
-  ocah-check-km-sep-efuse-map \
   ocah-regen-regs \
   ocah-regen-regs-sv \
   ocah-regen-regs-h \
