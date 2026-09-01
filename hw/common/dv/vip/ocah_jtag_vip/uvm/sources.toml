@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Ordered SV compile manifest for the shared JTAG VIP. Consumed by DUT sim configs via
+# [frameworks.uvm.build].source_lists — never hand-copy these paths into a DUT config, and
+# never add them to Bender or Verilator filelists. Order is load-bearing: interface and
+# bind collateral first, the UVM package last (importers compile after it).
+description = "OCAH JTAG VIP SV-UVM compile layer (interface, cov/sva collateral, UVM package)"
+
+incdirs = [
+  "hw/common/dv/vip/ocah_checker/uvm",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm",
+]
+
+sources = [
+  # Shared protocol-neutral evidence base (extended by this VIP's checker).
+  # Every dependent VIP manifest lists it; consuming several VIPs together
+  # dedup-merges the entry, so it compiles exactly once, first.
+  "hw/common/dv/vip/ocah_checker/uvm/ocah_checker_uvm_pkg.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/cov/ocah_jtag_cov.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv",
+]

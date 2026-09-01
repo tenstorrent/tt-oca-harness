@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from pyuvm import ConfigDB, uvm_env
 
-from .smc_axil_agent import SmcAxilAgent
 from .smc_axi_monitor import SmcAxiMonitor
+from .smc_axil_agent import SmcAxilAgent
 from .smc_clk_agent import SmcClkAgent
 from .smc_gpio_agent import SmcGpioAgent
 from .smc_i2c_agent import SmcI2cAgent

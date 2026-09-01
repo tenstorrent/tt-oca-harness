@@ -62,7 +62,7 @@ APT_WINDOW = 1024
 
 # One-sided false-positive rate (SP 800-90B 4.4, alpha = 2**-20). Table 2 is
 # published for exactly this alpha.
-ALPHA = 2.0 ** -20
+ALPHA = 2.0**-20
 
 # Field widths (bits) - must match the RDL RECOMMENDED_THRESHOLDS fields.
 RCT_WIDTH = 16
@@ -110,9 +110,9 @@ def apt_limit(h_q44: int) -> int:
     # ppf at the ~2**-20 tail. Pr[X >= k] = sf(k-1) (survival function, an
     # independent evaluation path). Smallest c with sf(c-1) <= alpha:
     while binom.sf(c - 1, APT_WINDOW, p) > ALPHA:
-        c += 1                                  # c violates the bound -> loosen
+        c += 1  # c violates the bound -> loosen
     while c > 1 and binom.sf(c - 2, APT_WINDOW, p) <= ALPHA:
-        c -= 1                                  # c-1 also satisfies -> tighten
+        c -= 1  # c-1 also satisfies -> tighten
 
     return min(c, _APT_MAX, APT_WINDOW)
 
@@ -206,5 +206,6 @@ def _emit_module() -> str:
 
 if __name__ == "__main__":
     import sys
+
     _self_check()
     sys.stdout.write(_emit_module())

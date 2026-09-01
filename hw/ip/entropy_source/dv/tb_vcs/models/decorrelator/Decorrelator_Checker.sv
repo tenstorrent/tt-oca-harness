@@ -15,23 +15,6 @@
 //   - Comparison happens on ref_vld_i pulse
 //   - No separate DUT valid signal needed (DUT updates when divider reaches 0)
 //
-// Usage:
-//   Decorrelator_Checker #(
-//       .N_LANES(12),
-//       .MAX_DEPTH(29),       // Maximum decorrelator depth (DECOR_29)
-//       .SAFETY_MARGIN(2)     // Extra samples beyond calculated minimum
-//   ) u_checker (
-//       .clk_i(clk), .rstn_i(rst),
-//       .enable_i(1'b1),           // Master enable
-//       .verbose_i(1'b0),          // 0=only mismatches, 1=show matches too
-//       .dut_bytes_i(...),         // DUT decorrelator outputs
-//       .ref_bytes_i(...),         // Reference model outputs
-//       .ref_vld_i(...),           // Reference model valid (sync signal)
-//       .check_count_o(...),       // Total checks performed
-//       .mismatch_count_o(...),    // Cycles with mismatches
-//       .warmup_done_o(...)        // Warm-up complete flag
-//   );
-//
 // Author: Decorrelator Verification
 // Date: 2025-11-19
 //------------------------------------------------------------------------------

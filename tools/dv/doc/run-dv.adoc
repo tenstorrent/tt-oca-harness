@@ -110,7 +110,13 @@ reruns.
 
 Group::
 A named list of tests defined in the testlist. Groups expand in definition
-order.
+order. Every member must name a test defined after include expansion —
+catalog loading (on every run and under `--validate-configs`) rejects an
+unresolved member, naming the declaring file, the group, and the missing
+test; a test may belong to any number of groups. An optional
+`expected_count` pins the exact number of listed tests; catalog loading
+fails when the list and the count diverge, which keeps a documented
+inventory (for example a VPLAN test-case count) honest.
 
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
@@ -285,7 +291,10 @@ simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
 policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
 behind a real-run sign-off gate; Questa is unsupported. The first user is the
-DTP SV-UVM smoke flow, `--dut dtp --framework uvm`.
+DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
+guide — conventions plus the bring-up walkthrough for adding a UVM view to a
+cocotb-only DUT — is the SystemVerilog UVM Framework section of
+`hw/common/dv/docs/index.adoc` (`uvm-framework.adoc`).
 
 `--framework NAME` selects the test framework for a DUT that implements more
 than one (a DUT implements a framework by declaring a `[frameworks.<name>]`
@@ -346,12 +355,14 @@ Run-mode selection uses:
 Run-mode arguments and test arguments change runtime behavior without changing
 the selected test name.
 
-[CAUTION]
-====
-The current runner does not reject an unknown `--run-mode` name. An unknown
-name contributes no run-mode arguments or timeout, so verify the name in the
-DUT configuration before using it.
-====
+Every explicit run-mode reference must name an effective `[run_modes.<name>]`
+entry (profile entries deep-merge under the DUT's). An unknown `--run-mode`
+fails before stage execution, and catalog loading — on every run and under
+`--validate-configs` — rejects an unknown name in a test's `run_modes` list or
+in `[defaults].run_mode`, reporting the declaring file and the allowed names.
+Only the built-in `smoke` fallback (used when no CLI, test, or default names a
+mode) is optional: a DUT that defines no `smoke` mode then runs with no
+run-mode arguments or timeout.
 
 == Configuration and precedence
 
@@ -411,6 +422,88 @@ Some domains have more specific rules:
 CLI overrides are curated rather than arbitrary TOML replacement. Stable
 settings belong in checked-in configuration; pass-through flags are intended
 for one-off debugging.
+
+=== Adopter overlay layer
+
+`--overlay <path>` (or the `OCAH_DV_OVERLAY` environment variable; the flag
+wins) applies one adopter-owned TOML file on top of the merged DUT view. It
+is the runner-side equivalent of `ocah.mk`'s adopter include hooks
+(`-include nonfree/nonfree.mk`, `OCAH_ADOPTER_OVERLAY_MK`): an adopter — for
+example a commercial-VIP integration living outside this tree — extends a
+build without editing checked-in configs. The layer is *never*
+auto-activated: the presence of an adopter checkout changes nothing until a
+run names the overlay explicitly.
+
+The overlay grammar is a restricted subset of the sim-config grammar, and
+every allowed key is *append-only* — an overlay can add to the merged view
+but can never replace or remove what the checked-in configs declare, so a
+run with an overlay differs from the baseline only by the overlay's own
+additions:
+
+[cols="<2,<1,<3",options="header"]
+|===
+|Key |Merge |Purpose
+
+|`description`
+|—
+|Free-form; what this overlay integrates.
+
+|`frameworks = ["uvm", ...]`
+|guard
+|Optional compatibility guard. Selecting a framework outside the list is a
+hard error on the run path; `--validate-configs` validates non-listed views
+without the overlay and labels them `[overlay skipped: frameworks guard]`.
+
+|`[build]` `incdirs` / `sources` / `source_lists`
+|dedup-append after the DUT's own entries
+|Extra compile inputs. An overlay-supplied `source_lists` manifest expands
+exactly like a DUT-owned one (component entries ahead of DUT sources), so a
+vendor package can own its manifest the way the shipped VIPs do.
+
+|`[target_defaults.<t>]` / `[targets.<t>]` `defines` / `flags`,
+`[...tools.<tool>].flags`
+|dedup-append (tables created when absent)
+|Gate defines (e.g. `OCAH_AXI_VENDOR_IF`) and extra tool flags (e.g.
+`-ntb_opts svt`).
+
+|`[sim].args`
+|append after the merged `[sim].args`
+|Runtime args, e.g. the commercial-VIP factory override
+`+uvm_set_type_override=ocah_axi_master_env,<vendor>_axi_env` — run-mode,
+test, and CLI args still append after it.
+|===
+
+Merge position: after the profile/DUT `[frameworks.<fw>]` merge (the overlay
+extends the selected view) and before `[build].source_lists` expansion. Any
+other key is rejected, as is `adopter_overlay` appearing in a sim config or
+profile (the recorded key is reserved for the runner). Application is
+deterministic and repeatable: list order is preserved, the dedup rules make
+re-application a no-op, and the applied path is recorded as `overlay` in
+`result.json` so a result is attributable to its exact config layers.
+
+A typical commercial-VIP overlay:
+
+[source,toml]
+----
+description = "SVT AXI integration for ocah_axi_vip consumers"
+frameworks = ["uvm"]
+
+[build]
+incdirs = ["hw/common/dv/vip/axi/uvm"]          # supplies ocah_axi_vendor_if.svh
+source_lists = ["hw/common/dv/vip/axi/uvm/sources.toml"]
+
+[target_defaults.default]
+defines = ["OCAH_AXI_VENDOR_IF"]
+
+[sim]
+args = ["+uvm_set_type_override=ocah_axi_master_env,svt_ocah_axi_env"]
+----
+
+(paths resolve repo-relative inside the checkout the overlay extends, or
+absolute). The `OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
+`+"`include`"+` hooks inside the shipped `ocah_<proto>_if` interfaces, which
+pull `ocah_<proto>_vendor_if.svh` from an overlay incdir — the OSS tree
+ships no copy of those files.
 
 == Stage planning
 
@@ -677,6 +770,10 @@ warning and records it in the run's wave metadata.
 |`--run-mode NAME`
 |Override the test/default run mode.
 
+|`--overlay PATH`
+|Apply one adopter overlay config (append-only) on top of the merged DUT
+view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
+
 |`--list`
 |List selectable DUTs, or details for `--dut`. Each row shows the DUT's
 default tool; flows that cannot run on open-source tools are marked
@@ -684,7 +781,9 @@ default tool; flows that cannot run on open-source tools are marked
 fields from the merged config.
 
 |`--validate-configs`
-|Validate registries and every selectable simulation DUT. Exit `2` if any fail.
+|Validate registries and every selectable simulation DUT. Exit `2` if any
+fail. With `--overlay`, every framework view is additionally validated with
+the overlay applied (guard-excluded views fall back to base validation).
 
 |`--doctor`
 |Report configuration and tool availability. With no selected DUT/tool it is
@@ -885,6 +984,9 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
+When an adopter overlay was applied, its path is recorded under `overlay`
+(repo-relative when inside the checkout, absolute otherwise) in both the
+run-level `result.json` and `regression.json`.
 
 === Interrupted-run checkpoints
 

@@ -536,7 +536,7 @@ index 0000000..7c2ee11
 +endmodule
 diff --git a/hw/ip/spi_host/rtl/spi_controller_fsm.sv b/hw/ip/spi_host/rtl/spi_controller_fsm.sv
 new file mode 100644
-index 0000000..3f586e3
+index 0000000..d7b61cc
 --- /dev/null
 +++ b/hw/ip/spi_host/rtl/spi_controller_fsm.sv
 @@ -0,0 +1,621 @@
@@ -1156,14 +1156,14 @@ index 0000000..3f586e3
 +    // Assertions confirming valid user input
 +    `OCAH_OT_ASSERT(BidirOnlyInStdMode_A,
 +        cmd_speed_d == Standard || !(cmd_rd_en_d && cmd_wr_en_d),
-+        clk_i, rst_ni)
-+    `OCAH_OT_ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, rst_ni)
-+    `OCAH_OT_ASSERT(ValidCSID_A, csid < NumCS, clk_i, rst_ni)
++        clk_i, !rst_ni)
++    `OCAH_OT_ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, !rst_ni)
++    `OCAH_OT_ASSERT(ValidCSID_A, csid < NumCS, clk_i, !rst_ni)
 +
 +endmodule
 diff --git a/hw/ip/spi_host/rtl/spi_controller_shift_register.sv b/hw/ip/spi_host/rtl/spi_controller_shift_register.sv
 new file mode 100644
-index 0000000..c7b0ab4
+index 0000000..ecea713
 --- /dev/null
 +++ b/hw/ip/spi_host/rtl/spi_controller_shift_register.sv
 @@ -0,0 +1,120 @@
@@ -1227,7 +1227,7 @@ index 0000000..c7b0ab4
 +    logic       rx_buf_valid_q;
 +    logic       rx_buf_valid_d;
 +
-+    `OCAH_OT_ASSERT(SpeedValid, speed_i != RsvdSpd, clk_i, rst_ni)
++    `OCAH_OT_ASSERT(SpeedValid, speed_i != RsvdSpd, clk_i, !rst_ni)
 +
 +    assign next_bits  = full_cyc_i ? sd_i : sd_i_q;
 +    assign sr_shifted = speed_i == Standard ? {sr_q[6:0], next_bits[1]}   :

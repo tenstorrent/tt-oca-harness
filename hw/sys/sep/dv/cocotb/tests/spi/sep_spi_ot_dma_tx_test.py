@@ -44,19 +44,18 @@ cpu / +skip_fuse_sense.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import os
-import random
+from dataclasses import dataclass
 from pathlib import Path
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_dma_tx_test")
@@ -69,7 +68,7 @@ _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 _BANNER = "SEP SPI OT DMA TX test"
 
-_PARAM_MAGIC = 0x5A11D00E   # mirror g_spi3_params[0] in spi_ot_dma_tx_test.c
+_PARAM_MAGIC = 0x5A11D00E  # mirror g_spi3_params[0] in spi_ot_dma_tx_test.c
 _PAGE_SIZE = 256
 _SECTOR_SIZE = 4096
 _FLASH_PAGES = 32 * (_SECTOR_SIZE // _PAGE_SIZE)
@@ -108,7 +107,7 @@ class SepSpiDmaTxCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiDmaTxCfg":
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         page_indices = rng.sample(range(_FLASH_PAGES), len(_LEGAL_NWORDS))
         cases = []
         for idx, (nwords, page_idx) in enumerate(zip(_LEGAL_NWORDS, page_indices)):
@@ -148,12 +147,17 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "SPI DMA-TX breadth RAND-REP cfg: seed=%d length_cells=%s cases=%d",
-            cfg.seed, _LEGAL_NWORDS, len(cfg.cases),
+            cfg.seed,
+            _LEGAL_NWORDS,
+            len(cfg.cases),
         )
         for case in cfg.cases:
             self.logger.info(
                 "SPI DMA-TX breadth RAND-REP case[%d]: addr=0x%06x nwords=%d chunks=%d data=%s",
-                case.idx, case.addr, case.nwords, case.chunks,
+                case.idx,
+                case.addr,
+                case.nwords,
+                case.chunks,
                 [f"0x{w:08x}" for w in case.data],
             )
         return patched, cfg, cfg.cases
@@ -162,16 +166,21 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         dut = cocotb.top
         logging.getLogger("sep_spi3_flash").setLevel(logging.DEBUG)
         flash = OcahSpiFlash(
-            dut.spi_cs_n_o, dut.spi_sck_o,
-            mosi=dut.spi_mosi_o, miso=dut.spi_miso_i,
-            name="sep_spi3_flash", verbose=True,
+            dut.spi_cs_n_o,
+            dut.spi_sck_o,
+            mosi=dut.spi_mosi_o,
+            miso=dut.spi_miso_i,
+            name="sep_spi3_flash",
+            verbose=True,
         )
         await flash.start()
         dtcm_hex, cfg, cases = self._stage_dtcm()
         try:
             self.sb.expected_line = _BANNER
             await self.boot_firmware(
-                self.sb, _ITCM_HEX, dtcm_hex,
+                self.sb,
+                _ITCM_HEX,
+                dtcm_hex,
                 rst_vec=_ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
@@ -184,8 +193,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
     def _golden_check(self, flash, cfg, cases) -> None:
         txns = flash.get_transactions()
         opcodes = [t.get("opcode") for t in txns]
-        self.logger.info("SPI DMA-TX breadth diag: %d BFM txns, opcodes=%s",
-                         len(txns), [f"0x{o:02x}" for o in opcodes])
+        self.logger.info(
+            "SPI DMA-TX breadth diag: %d BFM txns, opcodes=%s",
+            len(txns),
+            [f"0x{o:02x}" for o in opcodes],
+        )
         pp_txns = [t for t in txns if t.get("opcode") == 0x02]
         wren_count = opcodes.count(0x06)
         if wren_count < len(cases) or len(pp_txns) < len(cases):
@@ -197,7 +209,8 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             exp = b"".join(w.to_bytes(4, "little") for w in case.data)
             match = next(
                 (
-                    t for t in pp_txns
+                    t
+                    for t in pp_txns
                     if t.get("addr") == case.addr and bytes(t.get("data_in") or b"") == exp
                 ),
                 None,
@@ -215,9 +228,13 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             self.logger.info(
                 "SPI DMA-TX breadth GOLDEN PASS case[%d]: DMA-fed PP@0x%06x %dB reached flash "
                 "(BFM mem == SRAM source, chunks=%d)",
-                case.idx, case.addr, case.nwords * 4, case.chunks,
+                case.idx,
+                case.addr,
+                case.nwords * 4,
+                case.chunks,
             )
         self.logger.info(
             "SPI DMA-TX breadth RAND-REP GOLDEN PASS: walked length_cells=%s with seed=%d",
-            [case.nwords for case in cases], cfg.seed,
+            [case.nwords for case in cases],
+            cfg.seed,
         )

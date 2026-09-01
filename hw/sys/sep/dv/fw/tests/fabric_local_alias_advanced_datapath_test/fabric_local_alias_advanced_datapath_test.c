@@ -4,9 +4,7 @@
 /*
  * fabric_local_alias_advanced_datapath_test
  *
- * Goal: axi_local_alias_remap 72.95% -> 90%+ (needs 17.05% improvement)
  * Strategy: Advanced local-alias datapath; deep signal coverage
- * Priority: third pass (precision optimization; significant improvement needed)
  *
  * Focus on advanced local-alias-remap datapath and deep signal-toggle coverage
  */
@@ -498,7 +496,6 @@ static int test_error_injection_advanced_recovery(void) {
 
 int main(void) {
     printf("Local Alias Advanced Datapath Test\n");
-    printf("Goals: axi_local_alias_remap 72.95%% -> 90%%+ (needs 17.05%% improvement)\n");
     printf("Strategy: Advanced local-alias datapath; deep signal coverage\n\n");
 
     // Initialize fabric system
@@ -534,7 +531,6 @@ int main(void) {
     }
 
     printf("\n=== LOCAL ALIAS ADVANCED DATAPATH TEST PASSED ===\n");
-    printf("Expected improvement: axi_local_alias_remap 72.95%% -> 90%%+ (17.05%% improvement)\n");
 
     test_pass("fabric_local_alias_advanced_datapath_test");
     return TEST_PASS;

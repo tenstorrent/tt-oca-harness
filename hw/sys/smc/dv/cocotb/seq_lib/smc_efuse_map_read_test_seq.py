@@ -16,13 +16,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # CHIPLET_ID / PACKAGE_ID are read-locked → OKAY + 0xBADCAB1E (covered by
 # smc_efuse_jtag_lc_negative_test); probe unlocked fields here.
 EFUSE_MAP_READS = [
-    ("EFUSE_MAP_LOCKS_LO", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"),
-     0xA5A5_5A5A),
-    ("EFUSE_MAP_LOCKS_HI", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4,
-     0xDEAD_BEEF),
+    ("EFUSE_MAP_LOCKS_LO", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"), 0xA5A5_5A5A),
+    ("EFUSE_MAP_LOCKS_HI", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4, 0xDEAD_BEEF),
     ("EFUSE_MAP_BIRA", smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR"), None),
-    ("EFUSE_MAP_RESERVED_0", smc_indexed_addr(
-        "SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR", 0), None),
+    ("EFUSE_MAP_RESERVED_0", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR", 0), None),
 ]
 
 

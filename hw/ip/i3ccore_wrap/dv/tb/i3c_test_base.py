@@ -14,10 +14,10 @@ Instance map (tb_i3ccore.sv):
 """
 
 import logging
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
-from i3c_api import I3CHelper, I3CController, I3CTarget
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+from i3c_api import I3CController, I3CHelper, I3CTarget
 
 # Address mapping (matches tb_i3ccore.sv INSTANCE_SPACING decode)
 CTRL_BASE = 0x0000
@@ -39,9 +39,7 @@ class TB:
     async def setup_axi_master(self):
         await Timer(100, units="ns")
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
         self.axi_master.write_if.log.setLevel(logging.ERROR)
         self.axi_master.read_if.log.setLevel(logging.ERROR)
         self.log.info("AXI-Lite master connected")
@@ -80,9 +78,9 @@ async def init_target(tgt, static_addr=DEFAULT_STATIC_ADDR, tx_buf=1, rx_buf=1):
     await tgt.configure_thresholds(tx_buf=tx_buf, tx_start=0, rx_buf=rx_buf, rx_start=0)
 
 
-async def bring_up_and_assign(ctrl, tgt,
-                              static_addr=DEFAULT_STATIC_ADDR,
-                              dynamic_addr=DEFAULT_DYNAMIC_ADDR):
+async def bring_up_and_assign(
+    ctrl, tgt, static_addr=DEFAULT_STATIC_ADDR, dynamic_addr=DEFAULT_DYNAMIC_ADDR
+):
     """
     Full bring-up: init controller + target, then SETDASA and confirm the
     target received the dynamic address. Returns the SETDASA response word.

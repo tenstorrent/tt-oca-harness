@@ -9,14 +9,12 @@ no CSR programming, all three should read 0 after cold-reset release.
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_gpio_observe_test_seq import smc_gpio_observe_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_gpio_observe_test(smc_base_test):
-
     async def run_scenario(self) -> None:
         seq = smc_gpio_observe_test_seq("gpio_observe_seq")
         await self.start_seq(seq, self.env.gpio_agent.sequencer)

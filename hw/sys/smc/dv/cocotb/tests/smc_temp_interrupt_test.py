@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""PVT temp_interrupt_i to peripheral_interrupts[27]."""
+
+from __future__ import annotations
+
+import pyuvm
+from seq_lib.smc_temp_interrupt_test_seq import smc_temp_interrupt_test_seq
+from smc_base_test import smc_base_test
+
+
+@pyuvm.test()
+class smc_temp_interrupt_test(smc_base_test):
+    """Digital temp IRQ pin; analog PVT macros not claimed."""
+
+    auto_protocol_vip = False
+
+    async def run_scenario(self) -> None:
+        seq = smc_temp_interrupt_test_seq("temp_irq_seq")
+        await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        assert seq.idle_ok and seq.rise_ok and seq.fall_ok, (
+            f"temp irq incomplete idle={seq.idle_ok} rise={seq.rise_ok} fall={seq.fall_ok}"
+        )

@@ -11,7 +11,7 @@
 #include "smu_cla_sep_cpu_debug_protocol.h"
 
 /*
- * SEP_SMU_022  smu_cla_sep_cpu_debug_control_test  --  SEP (consumer) firmware.
+ * smu_cla_sep_cpu_debug_control_test  --  SEP (consumer) firmware.
  *
  * The real SEP CPU boots from reset, brings the SMC up over the SEP->SMC port (common
  * sep_smc_bringup helpers -- force-free, no ext_in, no pc_loop_common Force), then serves as

@@ -5,10 +5,10 @@ package sep_pkg;
 
     `include "axi/typedef.svh"
 
-    // TODO: Consider including och_sep_top_reg.svh here once efuse register
-    //       naming collision is resolved (sep_efuse_map_reg.svh uses same
-    //       identifier names with offset-based addresses vs absolute addresses
-    //       in och_sep_top_reg.svh)
+    // och_sep_top_reg.svh is intentionally not included here due to an efuse
+    // register naming collision: sep_efuse_map_reg.svh uses the same identifier
+    // names with offset-based addresses, whereas och_sep_top_reg.svh uses
+    // absolute addresses.
 
     parameter bit EN_EXTERNAL_MST = 1'b1;
 
@@ -281,71 +281,9 @@ package sep_pkg;
     // AXI4-Lite definitions
     //////////
 
-    // NOTE: Don't change these values
-    // parameter int unsigned AXILITE_XBAR_LITEBRIDGE_MST_IDX = 0;  // The only master is the AXI4 to AXI4-Lite bridge
-
-    // NOTE: Don't change these values
-    // parameter int unsigned AXILITE_XBAR_SECURITY_SLV_IDX = 3;
-    // parameter int unsigned AXILITE_XBAR_IO_SLV_IDX = 2;
-    // parameter int unsigned AXILITE_XBAR_SYSTEM_SLV_IDX = 1;
     parameter int unsigned AXILITE_XBAR_EXTERNAL_SLV_IDX = 0;
 
-    // XBAR inputs are slave ports while outputs are master ports, this is the opposite of their actual roles from a system point of view
-    // parameter int unsigned AXILITE_XBAR_N_SLV = 1;  // The only master is the AXI4 to AXI4-Lite bridge
     parameter int unsigned AXILITE_XBAR_N_MST = 32'd4;  // Crypto/security + IO + SEP system peripherals + external master
-
-    // FIXME: This param has been arbitrarily set as 4 for now, could we make it smaller?
-    // parameter int unsigned AXILITE_XBAR_MAX_TRANSACTIONS = 4;
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_security = '{
-    //     idx:        AXILITE_XBAR_SECURITY_SLV_IDX,
-    //     start_addr: 32'h4000_0000,
-    //     end_addr:   32'h4400_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_io = '{
-    //     idx:        AXILITE_XBAR_IO_SLV_IDX,
-    //     start_addr: 32'h4400_0000,
-    //     end_addr:   32'h4800_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_system = '{
-    //     idx:        AXILITE_XBAR_SYSTEM_SLV_IDX,
-    //     start_addr: 32'h4800_0000,
-    //     end_addr:   32'h4C00_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_external = '{
-    //     idx:        AXILITE_XBAR_EXTERNAL_SLV_IDX,
-    //     start_addr: 32'h4C00_0000,
-    //     end_addr:   32'h5000_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t[AXILITE_XBAR_N_MST-1:0] AXILITE_ADDR_MAP = '{
-    //     sep_axilite_xbar_addr_rule_security,
-    //     sep_axilite_xbar_addr_rule_io,
-    //     sep_axilite_xbar_addr_rule_system,
-    //     sep_axilite_xbar_addr_rule_external
-    // };
-
-    // parameter axi_pkg::xbar_cfg_t AXILITE_XBAR_CFG = '{
-    //     NoSlvPorts:         AXILITE_XBAR_N_SLV,
-    //     NoMstPorts:         AXILITE_XBAR_N_MST,
-    //     MaxMstTrans:        AXILITE_XBAR_MAX_TRANSACTIONS,
-    //     MaxSlvTrans:        AXILITE_XBAR_MAX_TRANSACTIONS,
-    //     FallThrough:        1,
-    //     // LatencyMode:        axi_pkg::CUT_ALL_PORTS,
-    //     // LatencyMode:        axi_pkg::NO_LATENCY,
-    //     LatencyMode:        axi_pkg::CUT_MST_PORTS,
-    //     PipelineStages:     0,
-    //     AxiIdWidthSlvPorts: 0,
-    //     AxiIdUsedSlvPorts:  0,
-    //     UniqueIds:          0,
-    //     SelHashIds:         0,
-    //     AxiAddrWidth:       32,
-    //     AxiDataWidth:       64,
-    //     NoAddrRules:        AXILITE_XBAR_N_MST
-    // };
 
     typedef logic[CPU_ADDR_WIDTH  -1:0] sep_axilite_xbar_addr_t;
     typedef logic[CPU_DATA_WIDTH  -1:0] sep_axilite_xbar_data_t;
@@ -362,7 +300,7 @@ package sep_pkg;
     `AXI_LITE_TYPEDEF_ALL(sep_axilite_xbar, sep_axilite_xbar_addr_t, sep_axilite_xbar_data_t, sep_axilite_xbar_strb_t)
 
     //////////
-    // External interface types (FIXME: Mostly placeholders for now)
+    // External interface types (mostly placeholders for now)
     //////////
 
     typedef logic sep_private_io_req_t;
@@ -460,8 +398,9 @@ package sep_pkg;
     // Internal SEP interrupt sources occupying the low PIC slots; see the
     // sep_internal_interrupts aggregation in sep.sv for the slot map. Growing this
     // shifts the external sources up and narrows NUM_EXTERNAL_IRQS accordingly.
-    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall.
-    parameter int unsigned NUM_INTERNAL_IRQS = 38;
+    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall;
+    // 38 = eFuse token comparator redundancy fault.
+    parameter int unsigned NUM_INTERNAL_IRQS = 39;
     parameter int unsigned NUM_EXTERNAL_IRQS = pt.PIC_TOTAL_INT - NUM_INTERNAL_IRQS;
 
     /////////////////////////////////////////////
@@ -474,7 +413,7 @@ package sep_pkg;
     parameter int unsigned AP_REMAP_SEL_W = $clog2(NUM_AP_OUTPUT_REMAP_REGIONS);
     parameter int unsigned NUM_STEE_OUTPUT_REMAP_REGIONS = 16;
     parameter int unsigned STEE_REMAP_SEL_W = $clog2(NUM_STEE_OUTPUT_REMAP_REGIONS);
-    parameter int unsigned ALIAS_REMAP_IDX_START = 12; // TODO: check this over
+    parameter int unsigned ALIAS_REMAP_IDX_START = 12;
     parameter int unsigned NUM_AP_OUTPUT_REMAP_IDX_START = 19; // 512KB region granularity
     parameter int unsigned NUM_STEE_OUTPUT_REMAP_IDX_START = 19; //  512KB region granularity
 
@@ -521,6 +460,7 @@ package sep_pkg;
     /////////////////////////////////////
 
     typedef struct packed {
+        logic trng;
         logic kmac;
         logic hmac;
         logic aes;
@@ -708,6 +648,11 @@ package sep_pkg;
 
     // JTAG SEP Reset Control
     typedef struct packed {
+        // jtag_ptap sizes the SEP IC_RESET slice from $bits(type)/2 and maps the
+        // ovrd and val sub-structs independently by packed bit index. TRNG sits
+        // at each sub-struct's MSB, so it takes the new top port and the
+        // existing port indices keep their TDR positions.
+        logic trng_jtag_rst_n_ovrd;
         logic sep_reset_n_ovrd;
         logic kmac_jtag_rst_n_ovrd;
         logic hmac_jtag_rst_n_ovrd;
@@ -717,6 +662,7 @@ package sep_pkg;
     } jtag_sep_reset_ctrl_ovrd_t;
 
     typedef struct packed {
+        logic trng_jtag_rst_n_val;
         logic sep_reset_n_val;
         logic kmac_jtag_rst_n_val;
         logic hmac_jtag_rst_n_val;

@@ -252,7 +252,7 @@ module zeroer #(
 		mst_wstrb = axi_strb_t'(0);
 		mst_wlast = 1'b0;
 
-		mst_bready = 1'b1;  // TODO: ever need to backpressure responses?
+		mst_bready = 1'b1;
 
 		unique case (cur_state)
 			ST_IDLE: begin

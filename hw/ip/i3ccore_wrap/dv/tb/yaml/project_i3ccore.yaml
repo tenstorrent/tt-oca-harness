@@ -52,7 +52,6 @@ project_i3ccore: &project_i3ccore
     stop_on_fail: true
     partcomp: false
     verilog_defines:
-      SIM
       VCS
       COMMON_CELLS_ASSERTS_OFF
       I3C_USE_AXI_LITE

@@ -7,8 +7,7 @@ AXI4-Lite Master VIP for Cross Trigger Port testbench
 Implements AXI4-Lite master protocol using request/response structures.
 """
 
-import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
 
 
 class AxiLiteMaster:

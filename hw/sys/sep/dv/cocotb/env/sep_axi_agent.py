@@ -22,6 +22,7 @@ from __future__ import annotations
 from enum import Enum
 
 import cocotb
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -30,8 +31,6 @@ from pyuvm import (
     uvm_sequence_item,
     uvm_sequencer,
 )
-
-from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 
 
 class SepAxiOp(Enum):
@@ -46,7 +45,7 @@ class SepAxiItem(uvm_sequence_item):
         super().__init__(name)
         self.op: SepAxiOp = SepAxiOp.READ
         self.addr: int = 0
-        self.length: int = 4          # bytes
+        self.length: int = 4  # bytes
         # AXI AxSIZE encoding (2 => 4-byte beat). None lets cocotbext-axi pick the
         # full bus width (64-bit). OTBN IMEM/DMEM are 32-bit SECDED words and
         # reject a 64-bit beat (SLVERR), so those accesses force size=2.
@@ -71,6 +70,14 @@ class SepAxiItem(uvm_sequence_item):
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
+        # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
+        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4). Default 0 keeps
+        # every existing caller bit-identical.
+        self.user: int = 0
+        # AXI AxBURST. None lets the VIP default (INCR). Leave None everywhere
+        # except the inbound-filter burst checkers, which opt in with INCR and
+        # a multi-beat length so AxLEN != 0.
+        self.burst: int | None = None
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -80,6 +87,10 @@ class SepAxiItem(uvm_sequence_item):
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
+        # Per-beat responses. resp_code is the worst of these, which cannot say
+        # HOW MANY beats carried an error -- a caller crediting a monitor per
+        # beat needs the list.
+        self.resp_list: tuple[int, ...] = ()
         self.timed_out: bool = False
 
     def __str__(self) -> str:
@@ -137,12 +148,13 @@ class SepAxiDriver(uvm_driver):
         # this 64-bit bus. SepAxiItem.length is the transfer size.
         common = {
             "size": item.size,
-            "burst": None,
+            "burst": item.burst,
             "id": 0,
             "prot": None,
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,
             "allow_timeout": item.allow_timeout,
+            "user": item.user,
         }
         if item.op is SepAxiOp.READ:
             result = await self.axi.read_bytes_result(item.addr, item.length, **common)
@@ -154,7 +166,10 @@ class SepAxiDriver(uvm_driver):
             )
             self.logger.info(
                 "AXI read  0x%08x -> 0x%x (ok=%s resp=%d)",
-                item.addr, item.rdata, item.resp_ok, item.resp_code,
+                item.addr,
+                item.rdata,
+                item.resp_ok,
+                item.resp_code,
             )
         elif item.op is SepAxiOp.WRITE:
             result = await self.axi.write_bytes_result(
@@ -165,7 +180,10 @@ class SepAxiDriver(uvm_driver):
                 return
             self.logger.info(
                 "AXI write 0x%08x <- 0x%x (ok=%s resp=%d)",
-                item.addr, item.wdata, item.resp_ok, item.resp_code,
+                item.addr,
+                item.wdata,
+                item.resp_ok,
+                item.resp_code,
             )
         else:
             raise ValueError(f"unknown SEP AXI op {item.op}")
@@ -174,10 +192,12 @@ class SepAxiDriver(uvm_driver):
         item.timed_out = result.timed_out
         item.resp_ok = result.ok
         item.resp_code = result.resp
+        item.resp_list = tuple(getattr(result, "resp_list", ()) or ())
         if result.timed_out:
             self.logger.info(
                 "AXI %s @ 0x%08x timed out (allowed by this sequence)",
-                what, item.addr,
+                what,
+                item.addr,
             )
 
 

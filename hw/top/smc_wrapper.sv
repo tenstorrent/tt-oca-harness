@@ -5,11 +5,14 @@
 // SMC Wrapper -- OSS reference top
 //
 // Instantiates the bare smc.sv core alongside smc_ip_integration.sv (the
-// open-source macro/model set for its technology-specific IP) and
-// smc_cpu_mem_integration.sv (Chipyard CPU ROM/scratch/L1$ macros), and
-// wires them together for standalone SMC reference simulation. See the
-// integrator guide (doc/integrator/modules/ROOT/pages/index.adoc,
-// "Module Variants and IP Integration") and hw/top/README.md.
+// open-source macro/model set for its technology-specific IP) and wires the
+// two together for standalone SMC reference simulation. See the integrator
+// guide (doc/integrator/modules/ROOT/pages/index.adoc, "Module Variants and
+// IP Integration") and hw/top/README.md.
+//
+// The Chipyard CPU ROM/scratch/L1$ macros sit inside smc_ip_integration.sv
+// alongside the rest of the technology-specific IP, so smu_wrapper.sv picks
+// them up from the same module.
 //-----------------------------------------------------------------------------
 
 module smc_wrapper (
@@ -132,17 +135,7 @@ module smc_wrapper (
 
     output logic                                             sync_irq_o,
 
-    // CPU ROM/scratch/L1$ are absorbed by smc_cpu_mem_integration (not ports).
-    // DV observability / ECC inject for the absorbed macros:
-    output logic [31:0]                                      cpu_rom_read_count_o,
-    output logic [31:0]                                      cpu_scratch_read_count_o,
-    output logic [31:0]                                      cpu_scratch_write_count_o,
-    output logic [31:0]                                      cpu_dcache_write_count_o,
-    output logic [31:0]                                      cpu_fw_mailbox_o,
-    output logic                                             cpu_fw_mailbox_valid_o,
-    input  logic                                             cpu_ecc_inject_sbe_i,
-    input  logic                                             cpu_ecc_inject_dbe_i,
-    output logic                                             cpu_scratch0_inject_fire_o,
+    // CPU ROM/scratch/L1$ are absorbed by smc_ip_integration (not ports).
 
     input  logic                                             disable_sram_auto_init_i,
     output logic                                             init_mem_done_o,
@@ -156,7 +149,7 @@ module smc_wrapper (
 
     input  smc_pkg::jtag_smc_reset_ctrl_t                    jtag_reset_ctrl_i,
 
-    output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,
+    output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,
 
     output smc_pkg::xtrigger_t                                                             xtrigger_ss_o,
     input  wire smc_pkg::xtrigger_t                                                        xtrigger_ss_i,
@@ -164,8 +157,8 @@ module smc_wrapper (
     input  wire logic                                                                      tdr_dbg_ctrl_clock_stop_en_i,
     output      logic                                                                      tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-    output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
-    input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
+    output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
+    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
 
     input  logic [511:0]                                     ext_debug_bus_i,
 
@@ -224,7 +217,7 @@ module smc_wrapper (
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en;
 
-    // CPU mem macros (smc <-> smc_cpu_mem_integration)
+    // CPU mem macros (smc <-> smc_ip_integration)
     chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
     chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
     chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req
@@ -307,41 +300,20 @@ module smc_wrapper (
 
         .gpio_pad_io (gpio_pad_io),
 
+        .rom_intf_req            (rom_intf_req),
+        .rom_intf_rsp            (rom_intf_rsp),
+        .scratch_ram_intf_req    (scratch_ram_intf_req),
+        .scratch_ram_intf_rsp    (scratch_ram_intf_rsp),
+        .l1_icache_tag_intf_req  (l1_icache_tag_intf_req),
+        .l1_icache_tag_intf_rsp  (l1_icache_tag_intf_rsp),
+        .l1_icache_data_intf_req (l1_icache_data_intf_req),
+        .l1_icache_data_intf_rsp (l1_icache_data_intf_rsp),
+        .l1_dcache_tag_intf_req  (l1_dcache_tag_intf_req),
+        .l1_dcache_tag_intf_rsp  (l1_dcache_tag_intf_rsp),
+        .l1_dcache_data_intf_req (l1_dcache_data_intf_req),
+        .l1_dcache_data_intf_rsp (l1_dcache_data_intf_rsp),
+
         .efuse_debug_bus_o (efuse_debug_bus_o)
-    );
-
-    //////////////////////////////////
-    // SMC CPU memory macros       //
-    //////////////////////////////////
-
-    smc_cpu_mem_integration u_smc_cpu_mem_integration (
-        .clk_i  (clk_smc_i),
-        .rst_ni (rst_primary_smc_clk_no),
-
-        .rom_req_i (rom_intf_req),
-        .rom_rsp_o (rom_intf_rsp),
-
-        .scratch_ram_req_i (scratch_ram_intf_req),
-        .scratch_ram_rsp_o (scratch_ram_intf_rsp),
-
-        .l1_icache_tag_req_i  (l1_icache_tag_intf_req),
-        .l1_icache_tag_rsp_o  (l1_icache_tag_intf_rsp),
-        .l1_icache_data_req_i (l1_icache_data_intf_req),
-        .l1_icache_data_rsp_o (l1_icache_data_intf_rsp),
-        .l1_dcache_tag_req_i  (l1_dcache_tag_intf_req),
-        .l1_dcache_tag_rsp_o  (l1_dcache_tag_intf_rsp),
-        .l1_dcache_data_req_i (l1_dcache_data_intf_req),
-        .l1_dcache_data_rsp_o (l1_dcache_data_intf_rsp),
-
-        .rom_read_count_o          (cpu_rom_read_count_o),
-        .scratch_ram_read_count_o  (cpu_scratch_read_count_o),
-        .scratch_ram_write_count_o (cpu_scratch_write_count_o),
-        .dcache_data_write_count_o (cpu_dcache_write_count_o),
-        .fw_mailbox_o              (cpu_fw_mailbox_o),
-        .fw_mailbox_valid_o        (cpu_fw_mailbox_valid_o),
-        .ecc_inject_sbe_i          (cpu_ecc_inject_sbe_i),
-        .ecc_inject_dbe_i          (cpu_ecc_inject_dbe_i),
-        .scratch0_inject_fire_o    (cpu_scratch0_inject_fire_o)
     );
 
 endmodule

@@ -19,5 +19,10 @@ cocotb/tests/sep_dtcm.hex
 **/__pycache__/
 *.pyc
 
-# Staged real KM firmware (built artifact; build-from-source TODO)
+# Staged real KM firmware. c_compile [c_build.km_rom_main] builds it from
+# tracked source; do not commit the blob.
 cocotb/tests/rom_main.rom.parhex
+
+# KM firmware wipe-defines stamp. km_fw/Makefile keeps it outside the build tree
+# it wipes, so it lands beside the sources it guards.
+cocotb/tests/.km_rom_wipe_defines

@@ -9,12 +9,12 @@
 #include "sep_interop_protocol.h"
 
 /*
- * SEP_SMU_002  sep_interop  --  SEP (consumer) firmware.
+ * sep_interop  --  SEP (consumer) firmware.
  *
  * The real SEP CPU boots from reset, programs its SMU aperture + inbound/outbound filters so
  * the SMC-facing mailbox port and the SEP->SMC alias are reachable, then brings the SMC up
  * over the (unfiltered) SEP->SMC port using the common sep_smc_bringup helpers exactly like
- * SEP_SMU_004 (open outbound window -> wait exact SRAM cookie -> re-vector + release the SMC
+ * smu_smc_stall_sep (open outbound window -> wait exact SRAM cookie -> re-vector + release the SMC
  * cores). It then runs the mailbox handshake on the SEP-local port (OUTBOUND_MAILBOX_0 @
  * 0x10A00000): publish READY -> receive TOKEN -> reply RESPONSE -> receive ACK -> publish
  * SEP_PASS, write-1-to-clearing the mailbox read IRQ after each pop. No ext_in, no force.
@@ -49,7 +49,7 @@ __attribute__((noinline, used)) void sep_smc_interop_fail_loop(void) {
 #define SEP_MBOX_INBOUND_START 0x0000000010A00000ULL
 #define SEP_MBOX_INBOUND_END 0x0000000010A0084FULL
 /* allow_burst=0 on these sub-4KB inbound filters so the byte-granular END (0x10A0084F) stores
- * EXACTLY -- allow_burst=1 rounds a same-page window up to 0x..FFF (the SEP_SMU_003 lesson). */
+ * EXACTLY -- allow_burst=1 rounds a same-page window up to 0x..FFF, as smc_sep_xbar shows. */
 #define SEP_MBOX_INBOUND_CFG 0x0000000100030013ULL    /* read/write/enable/src_id=3          */
 #define SEP_MBOX_INBOUND_CFG_NS 0x0000000100030113ULL /* + allow_ns (non-secure)             */
 
@@ -112,7 +112,7 @@ static int run_interop_sequence(void) {
 
     /* b. Open the SEP outbound egress filter over the whole SEP->SMC region + mailbox
      *    ([0x40000000, 0x800000FF], cfg 0x0000000101000013) via the common helper, then
-     *    frontdoor-boot the SMC exactly like SEP_SMU_004: wait for the EXACT SRAM preload
+     *    frontdoor-boot the SMC exactly like smu_smc_stall_sep: wait for the EXACT SRAM preload
      *    cookie, then re-vector + release the four SMC cores. On preload timeout, publish a
      *    fail marker and stop -- never proceed on an absent/bad preload. */
     sep_smc_open_window();
@@ -124,7 +124,7 @@ static int run_interop_sequence(void) {
     }
 
     /* Gate on the SMC "up" marker BEFORE the first SMC-scratch write: POLL (read) scratch2 for
-     * SMC_UP, exactly like SEP_SMU_004 polls INIT_RELEASE_OK. This is what keeps the READY
+     * SMC_UP, exactly like smu_smc_stall_sep polls INIT_RELEASE_OK. This is what keeps the READY
      * publish below from racing the just-released SMC clearing/initing its own scratch (the race
      * that wedged the sep_axi_in write). On timeout, publish a fail marker and stop. */
     if (sep_smc_scratch_wait(SEP_INTEROP_SMC_SCRATCH2_ALIAS, SEP_INTEROP_SMC_UP,

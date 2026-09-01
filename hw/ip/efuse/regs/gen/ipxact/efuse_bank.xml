@@ -25,11 +25,6 @@
             <ipxact:name>dout</ipxact:name>
             <ipxact:description>Read Data from eFuse</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>

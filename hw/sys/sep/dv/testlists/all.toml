@@ -24,17 +24,9 @@ schema_version = 1
 # firmware tests intentionally omit target and use the full-CPU default model.
 # Keep group membership aligned with each test's first run_modes[] entry.
 #
-# Two tests currently FAIL as RTL-vs-spec reveals, not regressions. Do not
-# XFAIL them. CI `--items smoke` does not include them. A class regression
-# is expected two-red until RTL:
-#   sep_efuse_jtag_axil_el2_cpu_mux_test       CHK-JTAG-MMR-DENY
-#     (hw/sys/sep/doc/periphs.adoc: JTAG in PROD may only touch the two RMA token CSRs)
-#   sep_fabric_inbound_filter_rule_matrix_test CHK-OWNERSHIP-WINDOW
-#     (hw/sys/sep/doc/fabric.adoc: only the SEP CPU can program the inbound filter)
-#
 # Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They
 # run in the `all` and `rom_fw` groups, not `cpu`; this VPLAN does not grade them
-# (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
+# (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the
@@ -57,6 +49,7 @@ tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
     "sep_hello_world_test",
+    "sep_cpu_trace_diag_test",
     "sep_rom_non_secure_boot_test",
     "sep_rom_ot_dma_boot_test",
     "sep_rom_ot_pio_boot_test",
@@ -76,6 +69,9 @@ tests = [
     "sep_rom_sanity_test",
     "sep_spi_ot_dma_rx_test",
     "sep_esrc_e2e_smoke_test",
+    "sep_esrc_ht_watermark_arming_test",
+    "sep_esrc_fips_lock_test",
+    "sep_esrc_alert_delivery_test",
     "sep_drbg_gen_segmentation_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
@@ -91,12 +87,12 @@ tests = [
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
-    "sep_fabric_decode_error_response_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
     "sep_fabric_remap_filter_csr_bank_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
     "sep_crypto_per_ip_reset_isolation_test",
+    "sep_trng_reset_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_boot_rom_lsu_read_test",
@@ -105,6 +101,7 @@ tests = [
     "sep_spi_ot_dma_tx_test",
     "sep_warm_cold_reset_scratch_test",
     "sep_pic_irq_source_map_delivery_test",
+    "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
     "sep_cpu_dbg_reset_independence_test",
     "sep_hmac_sha_variant_rand_test",
@@ -112,6 +109,25 @@ tests = [
     "sep_kmac_mode_strength_rand_test",
     "sep_crypto_edn_multisink_arbitration_test",
     "sep_crypto_edn_round_robin_grant_test",
+    "sep_otbn_compute_rand_test",
+    "sep_clock_gate_control_test",
+    "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_set_only_monotonicity_test",
+    "sep_lcc_demote_feat_ctrl_matrix_test",
+    "sep_efuse_rma_token_rand_test",
+    "sep_sec_dis_override_test",
+    "sep_fabric_output_remap_datapath_proxy_test",
+    "sep_fabric_local_alias_datapath_test",
+    "sep_km_key_policy_vault_test",
+    "sep_reg_bit_bash_rand_test",
+    "sep_fabric_deadspace_decode_test",
+    "sep_axi_map_refuse_test",
+    "sep_axi_strobe_window_test",
+    "sep_axi_order_sweep_test",
+    "sep_axi_order_sweep_m_axi_test",
+    "sep_entropy_pool_aperture_test",
+    "sep_locked_field_access_irq_path_test",
+    "sep_abr_mldsa_keygen_kat_test",
 ]
 
 [[groups]]
@@ -119,6 +135,7 @@ tests = [
 name = "cpu"
 tests = [
     "sep_hello_world_test",
+    "sep_cpu_trace_diag_test",
     "sep_boot_rom_smoke_test",
     "sep_dma_hash_test",
     "sep_mailbox_plic_test",
@@ -129,6 +146,7 @@ tests = [
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_nmi_sanity_test",
     "sep_pic_irq_source_map_delivery_test",
+    "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
@@ -153,6 +171,9 @@ tests = [
     "sep_efuse_lcc_lc_state_stitch_test",
     "sep_clock_uvm_wdt_rst_input_reset_path_test",
     "sep_esrc_e2e_smoke_test",
+    "sep_esrc_ht_watermark_arming_test",
+    "sep_esrc_fips_lock_test",
+    "sep_esrc_alert_delivery_test",
     "sep_drbg_gen_segmentation_test",
     "sep_irq_ip_to_aggregator_test",
     "sep_drbg_real_sink_multi_km_aes_test",
@@ -162,12 +183,12 @@ tests = [
     "sep_km_hmac_sideload_kat_test",
     "sep_km_kmac_sideload_kat_test",
     "sep_lcc_uvm_inbound_filter_gating_test",
-    "sep_fabric_decode_error_response_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
     "sep_fabric_remap_filter_csr_bank_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
     "sep_crypto_per_ip_reset_isolation_test",
+    "sep_trng_reset_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_spi_ot_host_csr_irq_rand_test",
@@ -178,6 +199,25 @@ tests = [
     "sep_kmac_mode_strength_rand_test",
     "sep_crypto_edn_multisink_arbitration_test",
     "sep_crypto_edn_round_robin_grant_test",
+    "sep_otbn_compute_rand_test",
+    "sep_clock_gate_control_test",
+    "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_set_only_monotonicity_test",
+    "sep_lcc_demote_feat_ctrl_matrix_test",
+    "sep_efuse_rma_token_rand_test",
+    "sep_sec_dis_override_test",
+    "sep_fabric_output_remap_datapath_proxy_test",
+    "sep_fabric_local_alias_datapath_test",
+    "sep_km_key_policy_vault_test",
+    "sep_reg_bit_bash_rand_test",
+    "sep_fabric_deadspace_decode_test",
+    "sep_axi_map_refuse_test",
+    "sep_axi_strobe_window_test",
+    "sep_axi_order_sweep_test",
+    "sep_axi_order_sweep_m_axi_test",
+    "sep_entropy_pool_aperture_test",
+    "sep_locked_field_access_irq_path_test",
+    "sep_abr_mldsa_keygen_kat_test",
 ]
 
 [[groups]]
@@ -185,7 +225,9 @@ tests = [
 # `rom_boot` RTL target and the boot_rom* firmware profiles -- a different build
 # on both axes from cpu (default) and no_cpu (lsu_stub_all_live). Kept out of the
 # `cpu` group so a CPU class regression is one build target, and so the ROM-FW
-# owner can run `./run.sh rom_fw --regress` without dragging in the SEP suite.
+# owner can run
+# `python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress`
+# without dragging in the SEP suite.
 # Still a member of `all`: the boot path is worth exercising in a full sweep.
 name = "rom_fw"
 tests = [

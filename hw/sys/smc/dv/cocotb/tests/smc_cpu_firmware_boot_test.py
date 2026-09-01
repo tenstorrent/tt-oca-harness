@@ -3,8 +3,6 @@
 """SMC OSS PyUVM CPU firmware boot test.
 
 DV-CARD:          SMC_002   ANCHOR: smc_cpu_firmware_boot_test
-DV-CARD-REVISION: 3   RECORD-SHA256: ddd9fadb67a514e9e6ca93f099abd535d284a6fd9e9c89d61ccc78f1a56f3e40
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 
 Requires ROM preload for CHK-ROM-IS-TARGET:
   +smc_rom_hex=<rom hex>   (min_pass @ 0xC004_0000)
@@ -18,8 +16,8 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cpu_firmware_boot_test_seq import smc_cpu_firmware_boot_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

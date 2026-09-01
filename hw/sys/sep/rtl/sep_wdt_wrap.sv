@@ -49,7 +49,7 @@ module sep_wdt_wrap
     sep_pkg::sep_32_32_6_12_axi_req_t  sep_wdt_tlul_axi_req_offset;
 
     axi_dw_converter #(
-        .AxiMaxReads         (16), // TODO: Add max reads parameter to sep_pkg
+        .AxiMaxReads         (16),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
         .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -147,7 +147,7 @@ module sep_wdt_wrap
         .racl_policies_i           ('0),
         .racl_error_o              (/* UNUSED */),
 
-        .lc_escalate_en_i          (lc_ctrl_pkg::Off), // TODO: Add lifecycle controller support @nicole
+        .lc_escalate_en_i          (lc_ctrl_pkg::Off),
         .intr_wkup_timer_expired_o (/* UNUSED */),
         .intr_wdog_timer_bark_o    (intr_wdog_timer_bark_o),
         .nmi_wdog_timer_bark_o     (/* UNUSED */),

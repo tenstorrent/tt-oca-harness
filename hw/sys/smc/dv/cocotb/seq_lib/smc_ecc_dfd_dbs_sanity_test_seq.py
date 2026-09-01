@@ -14,9 +14,21 @@ from .smc_csr_seq_utils import SmcCsrSeq
 #   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
 #     RDL reset 0x0 (do not use the old false-identity window 0xC001_0208/0210).
 DIAGNOSTIC_READS = [
-    ("CHIP_CONFIG_RAS_BANK_INFO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"), 0x0),
-    ("NDMRESET_PROCESS", smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"), 0x0),
-    ("NDMRESET_CLUSTER_COUNT", smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR"), 0x4),  # regression-lock (tied HW, RDL=0)
+    (
+        "CHIP_CONFIG_RAS_BANK_INFO",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
+        0x0,
+    ),
+    (
+        "NDMRESET_PROCESS",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"),
+        0x0,
+    ),
+    (
+        "NDMRESET_CLUSTER_COUNT",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR"),
+        0x4,
+    ),  # regression-lock (tied HW, RDL=0)
     ("DFX_DEBUG_CTRL", smc_addr("SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR"), 0x0),
     ("DFX_DEBUG_BUS_MUX", smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR"), 0x0),
 ]

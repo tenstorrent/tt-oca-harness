@@ -2,12 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_REGCLK_CG_TEST ANCHOR: smc_zeroer_regclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 47e3381f135bfb76907ef06f89d4eb70bb30c6c7bb0232bb56dee36072ecbd1b
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_003 ANCHOR: smc_zeroer_regclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 93666c6c76e78b0f181dba725025d1652ff5407526e20c4421403218b24e290e
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 The P2 card extends this same anchor (additive): the P1 steps/checkers above
 are UNCHANGED (their evidence tokens must keep appearing verbatim for the
@@ -24,11 +20,11 @@ from __future__ import annotations
 import logging
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 
-from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
+from .smc_csr_seq_utils import SmcCsrSeq
 
 _LOG = logging.getLogger(__name__)
 
@@ -70,9 +66,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
 
     async def _program_cg(self, *, zeroer_en: bool, hyst: int = HYST) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (cur & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
-            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
-        )
+        nxt = (cur & ~ZEROER_CG_EN & ~CG_HYST_MASK) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
         if zeroer_en:
             nxt |= ZEROER_CG_EN
         await self.csr_write("CLOCK_GATE_CONTROL_WR", CLOCK_GATE_CONTROL, nxt, length=8)
@@ -365,9 +359,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         expected_p2_pre_pass = ["SETUP", "REG_CLK-GATED-BASELINE", "ACCESS-SWEEP(3-cells)"]
         p2_terms = [t for t, _ in self.fence if t in expected_p2_pre_pass]
         assert p2_terms == expected_p2_pre_pass, f"P2 NONVAC fence order wrong: {p2_terms}"
-        p2_nonvac_line = (
-            "CHK-NONVAC: SETUP < REG_CLK-GATED-BASELINE < ACCESS-SWEEP(3-cells) < PASS"
-        )
+        p2_nonvac_line = "CHK-NONVAC: SETUP < REG_CLK-GATED-BASELINE < ACCESS-SWEEP(3-cells) < PASS"
         _LOG.info("%s", p2_nonvac_line)
         self.chk_seen["CHK-NONVAC-P2"] = p2_nonvac_line
         cg.mark_fence(self.fence, "PASS")
@@ -390,9 +382,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         # Positive control: free-run via disable_cg, then establish idle gating.
         await self._program_cg(zeroer_en=False)
         await ClockCycles(dut.clk_smc_i, 4)
-        free = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", 4
-        )
+        free = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", 4)
         assert free == 4, f"reg_clk not free-running under disable_cg: {free}"
         await self._program_cg(zeroer_en=True)
         assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 1
@@ -406,9 +396,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         assert gate_off_lat <= 1, (
             f"reg_clk gate-off not within 1 cycle of idle: latency={gate_off_lat}"
         )
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert edges == 0, f"reg_clk still toggling idle: {edges}"
         within_1 = int(gate_off_lat <= 1)
         cg.emit_chk(
@@ -425,9 +413,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             "issue AXI4-Lite read to Zeroer DEST_ADDR; observe reg_clk resume",
         )
         delta, enabled_hits, post_resume = await self._measure_access_window()
-        assert delta <= 1, (
-            f"reg_clk resume not within 1 cycle of bus_active: delta={delta}"
-        )
+        assert delta <= 1, f"reg_clk resume not within 1 cycle of bus_active: delta={delta}"
         assert post_resume > 0, "access window empty after resume"
         assert enabled_hits == post_resume, (
             f"reg_clk missing toggles in access window: hits={enabled_hits} "
@@ -459,9 +445,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         cg.log_step("S3", "zeroer_cg_en=0; idle reg_clk stays enabled")
         await self._program_cg(zeroer_en=False)
         await ClockCycles(dut.clk_smc_i, 4)
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"reg_clk gated while disable_cg=1: edges={edges} window={IDLE_OBSERVE}"
         )
@@ -492,12 +476,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             await RisingEdge(dut.clk_smc_i)
         else:
             raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
-        )
-        assert edges == IDLE_OBSERVE, (
-            f"reg_clk gated during reset: edges={edges}"
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
+        assert edges == IDLE_OBSERVE, f"reg_clk gated during reset: edges={edges}"
         toggles_rst = int(edges == IDLE_OBSERVE)
         cg.emit_chk(
             self.chk_seen,

@@ -24,9 +24,9 @@ module smc_dfx_ctrl_status_wrap
         input  logic                                mbist_abort_i,
 
         // DFD config (DEBUG_CTRL / DEBUG_BUS_MUX)
-        output logic [dfd_cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,
+        output logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,
         output smc_pkg::dfd_enable_t                dfd_enables_o,
-        output dfd_tt_dbm_pkg::DbgMuxSelCsr_s       dbg_mux_sel_csr_o
+        output tt_dbm_pkg::DbgMuxSelMmr_s           dbg_mux_sel_csr_o
     );
 
     dfx_ctrl_status_reg_pkg::dfx_ctrl_status__in_t  dfx_csr_hwif_in;
@@ -85,7 +85,8 @@ module smc_dfx_ctrl_status_wrap
 
 	assign dbg_mux_sel_csr_o.DbmMode = dfx_csr_hwif_out.DEBUG_BUS_MUX.Dbmmode.value;
 	assign dbg_mux_sel_csr_o.DbmId = dfx_csr_hwif_out.DEBUG_BUS_MUX.Dbmid.value;
-	assign dbg_mux_sel_csr_o.Rsvd158 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Rsvd158.value;
+	assign dbg_mux_sel_csr_o.Rsvd157 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Rsvd158.value[6:0];
+	assign dbg_mux_sel_csr_o.FineGrainTime = '0;
 	assign dbg_mux_sel_csr_o.Muxselseg0 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Muxselseg0.value;
 	assign dbg_mux_sel_csr_o.Muxselseg1 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Muxselseg1.value;
 	assign dbg_mux_sel_csr_o.Muxselseg2 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Muxselseg2.value;
@@ -94,5 +95,14 @@ module smc_dfx_ctrl_status_wrap
 	assign dbg_mux_sel_csr_o.Muxselseg5 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Muxselseg5.value;
 	assign dbg_mux_sel_csr_o.Muxselseg6 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Muxselseg6.value;
 	assign dbg_mux_sel_csr_o.Muxselseg7 = dfx_csr_hwif_out.DEBUG_BUS_MUX.Muxselseg7.value;
+	// No CSR backing: the L2/L3 stages emit 4 lanes, so only seg0..3 are consulted.
+	assign dbg_mux_sel_csr_o.Muxselseg8 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg9 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg10 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg11 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg12 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg13 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg14 = '0;
+	assign dbg_mux_sel_csr_o.Muxselseg15 = '0;
 
 endmodule

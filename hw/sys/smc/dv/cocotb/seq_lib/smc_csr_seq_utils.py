@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
@@ -26,24 +25,29 @@ class SmcCsrSeq(smc_base_test_seq):
         self.accesses = 0
         self.timeouts = 0
 
-    async def csr_read(self, name: str, addr: int, expected: int | None = None,
-                       length: int = 4) -> int:
+    async def csr_read(
+        self, name: str, addr: int, expected: int | None = None, length: int = 4, prot: int = 0
+    ) -> int:
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = length
         item.expected = expected
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
         return item.rdata
 
-    async def csr_write(self, name: str, addr: int, data: int, length: int = 4) -> None:
+    async def csr_write(
+        self, name: str, addr: int, data: int, length: int = 4, prot: int = 0
+    ) -> None:
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
         item.length = length
         item.wdata = data
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
@@ -52,9 +56,7 @@ class SmcCsrSeq(smc_base_test_seq):
         for name, addr, expected in regs:
             await self.csr_read(name, addr, expected)
 
-    async def csr_read_many_allow_error(
-        self, regs: list[tuple[str, int, int | None]]
-    ) -> None:
+    async def csr_read_many_allow_error(self, regs: list[tuple[str, int, int | None]]) -> None:
         """Read a list of windows that are intentionally stubbed as AXI error
         slaves (e.g. the I3C CSR windows: smc_peripherals instantiates
         ``i3ccore_stub`` -- "TODO: stub i3c out until the updated open-source
@@ -71,7 +73,9 @@ class SmcCsrSeq(smc_base_test_seq):
     # (i3ccore_stub, prim_axi_lite_err_slv macro terminators, efuse stub, etc.).
     ERR_SLAVE_SIGNATURE = 0xBADCAB1E
 
-    async def csr_read_err_signature(self, name: str, addr: int, length: int = 4) -> int:
+    async def csr_read_err_signature(
+        self, name: str, addr: int, length: int = 4, prot: int = 0
+    ) -> int:
         """Read a window intentionally terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
         complete with an error response (SLVERR/DECERR) AND return the
@@ -85,6 +89,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.length = length
         item.allow_error = True
         item.expect_error = True  # scoreboard also enforces the error response
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
@@ -99,9 +104,7 @@ class SmcCsrSeq(smc_base_test_seq):
         )
         return item.rdata
 
-    async def csr_read_many_err_signature(
-        self, regs: list[tuple[str, int, int | None]]
-    ) -> None:
+    async def csr_read_many_err_signature(self, regs: list[tuple[str, int, int | None]]) -> None:
         """Deterministic error-signature sweep over a reg table (see
         csr_read_err_signature)."""
         for name, addr, _expected in regs:
@@ -126,14 +129,10 @@ class SmcCsrSeq(smc_base_test_seq):
             f"got resp={item.resp_code} (rdata=0x{item.rdata:x})"
         )
         got = item.rdata & mask
-        assert got == 0, (
-            f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
-        )
+        assert got == 0, f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
         return item.rdata
 
-    async def csr_read_many_decerr_zero(
-        self, regs: list[tuple[str, int, int | None]]
-    ) -> None:
+    async def csr_read_many_decerr_zero(self, regs: list[tuple[str, int, int | None]]) -> None:
         for name, addr, _expected in regs:
             await self.csr_read_decerr_zero(name, addr)
 
@@ -166,8 +165,9 @@ class SmcCsrSeq(smc_base_test_seq):
         self.accesses += 1
         return item.rdata
 
-    async def csr_read_bounded(self, name: str, addr: int, length: int = 4,
-                               timeout_ns: int = 200) -> int:
+    async def csr_read_bounded(
+        self, name: str, addr: int, length: int = 4, timeout_ns: int = 200
+    ) -> int:
         """Bounded read: tolerates DECERR **and** timeout (no-decode).
 
         Intended for coverage-gap CSR probes where the block may be
@@ -219,13 +219,9 @@ class SmcCsrSeq(smc_base_test_seq):
     # SMC_BASE_CONFIG clock-gate + I2C0 ctrl/ovrd CSRs. Used by the SMBus/PMBus
     # tests (and mirrors smc_i2c_master_target_test) to gate on real DUT behaviour
     # rather than pure VIP-side protocol math.
-    _I2C0_CLOCK_GATE_CONTROL = smc_addr(
-        "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-    )
+    _I2C0_CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
     _I2C0_CG_EN = I2C_CG_EN
-    _I2C0_CTRL = smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-    )
+    _I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
     _I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
     _I2C0_CTRL_ENABLE = 0x11
     _I2C0_OVRD_RELEASE = 0x7
@@ -243,9 +239,7 @@ class SmcCsrSeq(smc_base_test_seq):
         assert sda == exp_sda, f"{name}: DUT-driven SDA={sda}, expected {exp_sda}"
 
     # I2C0 pads 37..40 (SCL/SDA/ALERT/SUS). DATA_CTRL stride 0x10 from GPIO0.
-    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr(
-        "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0
-    )
+    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
     _GPIO_INTF_STRIDE = GPIO_INTF_STRIDE
     _I2C0_SCL_PAD = 37
     _GPIO_LSIO_SELECT = 1 << 17
@@ -283,24 +277,14 @@ class SmcCsrSeq(smc_base_test_seq):
         for _ in range(2000):
             bus_scl = int(dut.tb_i2c0_scl.value)
             scl_i = int(dut.tb_i2c0_scl_i.value)
-            en = (
-                int(dut.tb_i2c0_enable.value)
-                if hasattr(dut, "tb_i2c0_enable")
-                else -1
-            )
+            en = int(dut.tb_i2c0_enable.value) if hasattr(dut, "tb_i2c0_enable") else -1
             # Sense path is what the host needs; enable may stay 0 on Verilator
             # (i2c_wrap OOB wipe) even after WRAP I2C_EN=1 + GPIO lsio_select.
             if bus_scl == 1 and scl_i == 1:
-                cocotb.log.info(
-                    "%s ready: bus_scl=1 scl_i=1 enable=%s", label, en
-                )
+                cocotb.log.info("%s ready: bus_scl=1 scl_i=1 enable=%s", label, en)
                 return
             await ClockCycles(dut.clk_smc_i, 4)
-        en = (
-            int(dut.tb_i2c0_enable.value)
-            if hasattr(dut, "tb_i2c0_enable")
-            else -1
-        )
+        en = int(dut.tb_i2c0_enable.value) if hasattr(dut, "tb_i2c0_enable") else -1
         raise AssertionError(
             f"{label}: I2C0 LSIO sense not ready "
             f"(en={en} "
@@ -316,11 +300,9 @@ class SmcCsrSeq(smc_base_test_seq):
         broken/absent or a CSR readback mismatches. Restores clock-gate + OVRD
         state before returning. (Same proof as smc_i2c_master_target_test.)"""
         cg = await self.csr_read("I2C0_CG_SAVE", self._I2C0_CLOCK_GATE_CONTROL)
-        await self.csr_write("I2C0_UNGATE", self._I2C0_CLOCK_GATE_CONTROL,
-                             cg & ~self._I2C0_CG_EN)
+        await self.csr_write("I2C0_UNGATE", self._I2C0_CLOCK_GATE_CONTROL, cg & ~self._I2C0_CG_EN)
         await self.csr_write("I2C0_CTRL_EN", self._I2C0_CTRL, self._I2C0_CTRL_ENABLE)
-        await self.csr_read("I2C0_CTRL_EN_RB", self._I2C0_CTRL,
-                            expected=self._I2C0_CTRL_ENABLE)
+        await self.csr_read("I2C0_CTRL_EN_RB", self._I2C0_CTRL, expected=self._I2C0_CTRL_ENABLE)
         await self.csr_write("I2C0_OVRD_REL", self._I2C0_OVRD, self._I2C0_OVRD_RELEASE)
         await self._i2c0_check_line("i2c0_release", 1, 1)
         await self.csr_write("I2C0_OVRD_SCL_LOW", self._I2C0_OVRD, self._I2C0_OVRD_SCL_LOW)
@@ -329,8 +311,7 @@ class SmcCsrSeq(smc_base_test_seq):
         await self._i2c0_check_line("i2c0_sda_low", 1, 0)
         await self.csr_write("I2C0_OVRD_BOTH_LOW", self._I2C0_OVRD, self._I2C0_OVRD_BOTH_LOW)
         await self._i2c0_check_line("i2c0_both_low", 0, 0)
-        await self.csr_write("I2C0_OVRD_REL_RESTORE", self._I2C0_OVRD,
-                             self._I2C0_OVRD_RELEASE)
+        await self.csr_write("I2C0_OVRD_REL_RESTORE", self._I2C0_OVRD, self._I2C0_OVRD_RELEASE)
         await self._i2c0_check_line("i2c0_release_restore", 1, 1)
         await self.csr_write("I2C0_CG_RESTORE", self._I2C0_CLOCK_GATE_CONTROL, cg)
 
@@ -356,8 +337,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"AXI response (periph route/decode unreachable or CSR master would hang)"
         )
 
-    def assert_reachable_or_gated(self, expected_accesses: int, block: str,
-                                  gated_note: str) -> None:
+    def assert_reachable_or_gated(
+        self, expected_accesses: int, block: str, gated_note: str
+    ) -> None:
         """Reachability gate for windows that are *legitimately* clock-gated or
         absent in the current OSS bring-up (e.g. the CPU cluster before firmware
         boot, a Verilator/vendor-stubbed macro).
@@ -386,10 +368,15 @@ class SmcCsrSeq(smc_base_test_seq):
                 "%s: %d/%d window(s) reachable; %d gated/absent in this OSS "
                 "bring-up (%s). No-hang verified (every bounded probe returned); "
                 "register-level decode deferred for the gated window(s).",
-                block, reachable, expected_accesses, self.timeouts, gated_note,
+                block,
+                reachable,
+                expected_accesses,
+                self.timeouts,
+                gated_note,
             )
         else:
             cocotb.log.info(
                 "%s: all %d window(s) reachable (AXI response received).",
-                block, expected_accesses,
+                block,
+                expected_accesses,
             )

@@ -80,7 +80,7 @@ elif command -v docker >/dev/null 2>&1; then
     ENGINE=docker
     VOL=""
     PODMAN_STORAGE_FLAGS=""
-    PODMAN_RUN_FLAGS = ""
+    PODMAN_RUN_FLAGS=""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then ENGINE=none VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
 
@@ -351,10 +351,11 @@ doc_html() {
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     doc_setup "$product"
     doc_release_enabled && release_args=(--attribute release)
-    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}"\
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}" \
+        --entrypoint sh \
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-        "${release_args[@]}" \
-        --attribute "basedir=${basedir}" "$playbook"
+        -c 'npm install --no-save --no-package-lock asciidoctor-kroki@0.18.1 && antora "$@"' \
+        sh "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
 }
 
 doc_html_all() {
@@ -368,16 +369,16 @@ doc_html_all() {
     doc_setup home
     doc_setup contributing
     # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
-    # NOT @antora/lunr-extension (that's only added to the npx-based
-    # OCAH_ANTORA path in doc/doc.mk, which real CI uses via `make
-    # ocah-doc-combined-html` -- this direct-image path is separate and
-    # needs its own install). `npm install` here writes into the
+    # NOT the Node extensions used by the npx-based OCAH_ANTORA path in
+    # doc/doc.mk, which real CI uses via `make ocah-doc-combined-html`.
+    # This direct-image path is separate and needs its own install.
+    # `npm install` here writes into the
     # bind-mounted repo root, so it only needs to happen once per checkout
     # (harmless to repeat). Make sure node_modules/ is gitignored.
     "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm \
         -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_RELEASE_ARG="$release_arg" \
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
+        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 asciidoctor-kroki@0.18.1 && antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
 }
 
 doc_pdf() {

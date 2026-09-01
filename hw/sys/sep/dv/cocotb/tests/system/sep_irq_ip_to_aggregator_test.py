@@ -6,7 +6,7 @@ reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivi
 test_seq). no_cpu: with the CPU held off, the host injects each CSRNG/EDN
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv:451-461), not merely that
+exercising the IP `intr_o` -> aggregator wiring (sep.sv:524-546), not merely that
 the IP raised its own status bit.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
@@ -35,11 +35,10 @@ up is needed: +skip_fuse_sense, no_cpu.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ReadOnly, RisingEdge
 import pyuvm
-
+from cocotb.triggers import ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
-from seq_lib.sep_irq_aggregator_seq import SepIrqIp, IRQ_TABLE
+from seq_lib.sep_irq_aggregator_seq import IRQ_TABLE, SepIrqIp
 
 
 @pyuvm.test()
@@ -79,7 +78,10 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             )
             self.logger.info(
                 "STEP %s: INTR_TEST + INTR_STATE pre-cleared; aggregate bit[%d] "
-                "baseline-low confirmed (vec=0x%08x)", src.name, src.agg_idx, base_vec,
+                "baseline-low confirmed (vec=0x%08x)",
+                src.name,
+                src.agg_idx,
+                base_vec,
             )
 
             # CHK-SET: enable then inject via INTR_TEST; the mapped aggregate bit must
@@ -88,12 +90,12 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             await self.irq.inject(src)
             self.logger.info(
                 "STEP %s: interrupt enabled and INTR_TEST bit %d injected",
-                src.name, src.test_bit,
+                src.name,
+                src.test_bit,
             )
             set_ok, _ = await self._poll_agg(src.agg_idx, 1)
             assert set_ok, (
-                f"{src.name}: INTR_TEST did not propagate to "
-                f"sep_internal_interrupts[{src.agg_idx}]"
+                f"{src.name}: INTR_TEST did not propagate to sep_internal_interrupts[{src.agg_idx}]"
             )
             assert await self.irq.read_state_bit(src) == 1, (
                 f"{src.name}: INTR_STATE bit not set after INTR_TEST"
@@ -127,8 +129,13 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             self.logger.info(
                 "%s PASS: INTR_TEST -> sep_internal_interrupts[%d] 0->1->0 + "
                 "INTR_STATE RW1C + isolation (vec=0x%08x)",
-                src.name, src.agg_idx, iso)
+                src.name,
+                src.agg_idx,
+                iso,
+            )
 
         self.logger.info(
             "CHK-AGG PASS: all %d CSRNG/EDN IRQs propagate to the aggregator, "
-            "one-hot, with RW1C clear", len(IRQ_TABLE))
+            "one-hot, with RW1C clear",
+            len(IRQ_TABLE),
+        )

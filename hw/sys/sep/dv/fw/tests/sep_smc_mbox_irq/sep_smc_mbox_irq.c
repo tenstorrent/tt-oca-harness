@@ -9,11 +9,12 @@
 #include "sep_mbox_irq_protocol.h"
 
 /*
- * SEP_SMU_015  sep_smc_mbox_irq  --  SEP (PRODUCER) firmware.
+ * sep_smc_mbox_irq  --  SEP (PRODUCER) firmware.
  *
  * The real SEP CPU boots from reset, programs its SMU aperture + inbound filters (so the SMC can
  * reach every mailbox inbound port) + outbound egress window, then brings the SMC up over the
- * (unfiltered) SEP->SMC port exactly like SEP_SMU_002/004. It then walks all eight mailbox
+ * (unfiltered) SEP->SMC port exactly like sep_interop / smu_smc_stall_sep. It then walks all
+ * eight mailbox
  * channels ONE AT A TIME: for ch=0..7 it pushes token (0x15000000|ch) into the SEP-local OUTBOUND
  * port, which asserts that channel's source interrupt (packed onto SMC cpu_interrupts[256+ch]),
  * and waits for the SMC to signal "channel ch fully consumed + cleared + held quiet" via the
@@ -54,7 +55,7 @@ static inline uint32_t sep_mbox_wdata(uint32_t ch) {
 /*
  * Write a 64-bit filter field as two 32-bit stores. The SEP CPU is RV32; a WRITE_REG64 to a CSR
  * whose upper half lands off-map faults, so program every 64-bit filter field with explicit
- * 32-bit CSR writes (mirrors SEP_SMU_002).
+ * 32-bit CSR writes (mirrors sep_interop).
  */
 static inline void wr_filter_field32(uint32_t addr, uint64_t val) {
     WRITE_REG(addr + 0x0u, (uint32_t)(val & 0xFFFFFFFFu));
@@ -90,7 +91,8 @@ static int run_mbox_irq_sequence(void) {
     program_sep_setup();
 
     /* b. Open the SEP outbound egress filter over the SEP->SMC region, then frontdoor-boot the
-     *    SMC exactly like SEP_SMU_002/004: wait the EXACT SRAM cookie, then re-vector + release
+     *    SMC exactly like sep_interop / smu_smc_stall_sep: wait the EXACT SRAM cookie, then
+     *    re-vector + release
      *    the four SMC cores. On preload timeout, publish a fail marker and stop. */
     sep_smc_open_window();
     if (sep_smc_bringup_from_sram((uint32_t)SMU015_SMC_ENTRY, SMU015_SMC_IMAGE_FIRST_WORD,

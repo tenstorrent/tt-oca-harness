@@ -21,10 +21,10 @@ Usage:
 """
 
 import logging
-import sys
 import os
+import sys
 
-from cocotb.triggers import ClockCycles, Timer
+from cocotb.triggers import ClockCycles
 
 # CCC Command Codes (Direct GET commands)
 CCC_GETBCR = 0x8E  # Get Bus Characteristics Register
@@ -37,77 +37,76 @@ CCC_SETMRL = 0x8A  # Set Max Read Length
 CCC_RSTACT = 0x9A  # Direct Reset Action
 
 # Add path to register headers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../data/registers/py_headers"))
 
 from I3CCSR_reg import (
+    # DAT memory
+    DAT_MEM_BASE_ADDR,
+    I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_F_PP_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HIGH_PP_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_LOW_PP_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR,
+    # Timing registers (PP)
+    I3C_EC_SOCMGMTIF_T_R_PP_REG_REG_ADDR,
+    # Timing registers (OD)
+    I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR,
+    # Standby controller mode
+    I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR,
+    I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR,
+    I3C_EC_TTI_CONTROL_REG_ADDR,
+    I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR,
+    I3C_EC_TTI_IBI_PORT_REG_ADDR,
+    I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR,
+    # TTI (target)
+    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
+    I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR,
+    I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
+    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
+    I3C_EC_TTI_STATUS_REG_ADDR,
+    I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
+    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
     # Base registers
     I3CBASE_HC_CONTROL_REG_ADDR,
     # PIO registers
     PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
     PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_FORCE_REG_ADDR,
-    PIOCONTROL_PIO_CONTROL_REG_ADDR,
-    # Standby controller mode
-    I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR,
-    I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR,
-    # TTI (target)
-    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
-    I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR,
-    I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR,
-    I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR,
-    # Timing registers (OD)
-    I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR,
     # IBI registers
     PIOCONTROL_IBI_PORT_REG_ADDR,
-    I3C_EC_TTI_CONTROL_REG_ADDR,
-    I3C_EC_TTI_STATUS_REG_ADDR,
-    I3C_EC_TTI_IBI_PORT_REG_ADDR,
-    # Timing registers (PP)
-    I3C_EC_SOCMGMTIF_T_R_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_F_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HIGH_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_LOW_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR,
-    # DAT memory
-    DAT_MEM_BASE_ADDR,
+    PIOCONTROL_PIO_CONTROL_REG_ADDR,
+    PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
+    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
+    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
+    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
     # Ctypes Union classes for bitfield access
     BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_F_DAT_OFFSET_300_DCT_TABLE_SIZE_F_DCT_OFFSET_400_MIPI_COMMANDS_35_HC_CONTROL_reg_u,
+    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_DATA_BUFFER_THLD_CTRL_reg_u,
     PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_CONTROL_reg_u,
+    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_FORCE_reg_u,
+    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_SIGNAL_ENABLE_reg_u,
     PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_STATUS_CMD_QUEUE_READY_STAT_d0716a40_IBI_STATUS_THLD_STAT_a69a4555_RESP_READY_STAT_976af25d_RX_THLD_STAT_0f2071bf_TRANSFER_ABORT_STAT_1fe261ad_TRANSFER_ERR_STAT_8815d17d_TX_THLD_STAT_9fe979f6_reg_u,
     PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_STATUS_ENABLE_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_SIGNAL_ENABLE_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_FORCE_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_DATA_BUFFER_THLD_CTRL_reg_u,
     PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_QUEUE_THLD_CTRL_reg_u,
     STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_STBY_CR_CONTROL_reg_u,
     STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_STBY_CR_DEVICE_ADDR_reg_u,
     TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_DATA_BUFFER_THLD_CTRL_reg_u,
-    TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_QUEUE_THLD_CTRL_reg_u,
     TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_INTERRUPT_STATUS_reg_u,
+    TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_QUEUE_THLD_CTRL_reg_u,
 )
 
 # Short aliases for ctypes Union classes
@@ -127,16 +126,16 @@ TtiIntrStatus = TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_
 
 # TTI Interrupt Status bit positions (from target_transaction_interface.rdl)
 # Used for bit-testing TTI_INTERRUPT_STATUS register
-TTI_INTR_TX_DATA_THLD_BIT = 8      # tx_data_thld_stat
-TTI_INTR_RX_DATA_THLD_BIT = 9      # rx_data_thld_stat
-TTI_INTR_TX_DESC_THLD_BIT = 10     # tx_desc_thld_stat
-TTI_INTR_RX_DESC_THLD_BIT = 11     # rx_desc_thld_stat
-TTI_INTR_IBI_THLD_BIT = 12         # ibi_thld_stat
-TTI_INTR_IBI_DONE_BIT = 13         # ibi_done
-TTI_INTR_TX_DESC_COMPLETE_BIT = 26 # tx_desc_complete
+TTI_INTR_TX_DATA_THLD_BIT = 8  # tx_data_thld_stat
+TTI_INTR_RX_DATA_THLD_BIT = 9  # rx_data_thld_stat
+TTI_INTR_TX_DESC_THLD_BIT = 10  # tx_desc_thld_stat
+TTI_INTR_RX_DESC_THLD_BIT = 11  # rx_desc_thld_stat
+TTI_INTR_IBI_THLD_BIT = 12  # ibi_thld_stat
+TTI_INTR_IBI_DONE_BIT = 13  # ibi_done
+TTI_INTR_TX_DESC_COMPLETE_BIT = 26  # tx_desc_complete
 
 # TTI Control register bit positions
-TTI_CTRL_IBI_EN_BIT = 12           # ibi_en - IBI transmission enable
+TTI_CTRL_IBI_EN_BIT = 12  # ibi_en - IBI transmission enable
 
 
 class I3CHelper:
@@ -268,8 +267,9 @@ class I3CController:
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR, 1)
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR, 1)
 
-    async def configure_thresholds(self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0,
-                                   cmd_empty_buf=1, resp_buf=1):
+    async def configure_thresholds(
+        self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0, cmd_empty_buf=1, resp_buf=1
+    ):
         """Configure DATA_BUFFER_THLD_CTRL and QUEUE_THLD_CTRL using ctypes.
 
         Data buffer threshold = 2^(val+1) entries.
@@ -300,24 +300,21 @@ class I3CController:
         """
         # Enable IBI_STATUS_THLD_STAT interrupt using ctypes field access
         intr_en = await self.h.read_into(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
-            PioIntrStatusEnable
+            self.base + PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR, PioIntrStatusEnable
         )
         intr_en.f.ibi_status_thld_stat_en = 1
         await self.h.write(self.base + PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR, intr_en.val)
 
         # Configure IBI status threshold in QUEUE_THLD_CTRL
         queue_thld = await self.h.read_into(
-            self.base + PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
-            QueueThldCtrl
+            self.base + PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR, QueueThldCtrl
         )
         queue_thld.f.ibi_status_thld = ibi_threshold
         await self.h.write(self.base + PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR, queue_thld.val)
 
         # Enable IBI signal using ctypes field access
         sig_en = await self.h.read_into(
-            self.base + PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR,
-            PioIntrSignalEnable
+            self.base + PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR, PioIntrSignalEnable
         )
         sig_en.f.ibi_status_thld_signal_en = 1
         await self.h.write(self.base + PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR, sig_en.val)
@@ -333,7 +330,11 @@ class I3CController:
         self.h.log.debug("Waiting for IBI to be received on controller...")
         ok, reg = await self.h.poll_field(
             self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-            PioIntrStatus, 'ibi_status_thld_stat', max_polls, interval)
+            PioIntrStatus,
+            "ibi_status_thld_stat",
+            max_polls,
+            interval,
+        )
         return ok, reg
 
     async def read_ibi(self):
@@ -377,9 +378,11 @@ class I3CController:
             ibi_id = (ibi_status >> 8) & 0xFF
             data_length = ibi_status & 0xFF
 
-            self.h.log.debug(f"read_ibi: status=0x{ibi_status:08X}, ibi_sts={ibi_sts}, error={error}, "
-                             f"status_type={status_type}, ts={ts}, last_status={last_status}, "
-                             f"chunks={chunks}, ibi_id=0x{ibi_id:02X}, data_length={data_length}")
+            self.h.log.debug(
+                f"read_ibi: status=0x{ibi_status:08X}, ibi_sts={ibi_sts}, error={error}, "
+                f"status_type={status_type}, ts={ts}, last_status={last_status}, "
+                f"chunks={chunks}, ibi_id=0x{ibi_id:02X}, data_length={data_length}"
+            )
 
             # Check for error
             if error:
@@ -392,7 +395,9 @@ class I3CController:
                 word = await self.h.read(self.base + PIOCONTROL_IBI_PORT_REG_ADDR)
                 bytes_to_take = min(bytes_per_entry, bytes_remaining)
                 unpacked = self.h.unpack_bytes(word, bytes_to_take)
-                self.h.log.debug(f"read_ibi: data word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}")
+                self.h.log.debug(
+                    f"read_ibi: data word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}"
+                )
                 all_data.extend(unpacked)
                 bytes_remaining -= bytes_to_take
 
@@ -408,8 +413,10 @@ class I3CController:
             mdb = 0
             payload_bytes = []
 
-        self.h.log.debug(f"read_ibi: complete - ibi_id=0x{ibi_id:02X}, mdb=0x{mdb:02X}, "
-                         f"payload={[f'0x{b:02X}' for b in payload_bytes]}")
+        self.h.log.debug(
+            f"read_ibi: complete - ibi_id=0x{ibi_id:02X}, mdb=0x{mdb:02X}, "
+            f"payload={[f'0x{b:02X}' for b in payload_bytes]}"
+        )
         return True, ibi_id, mdb, payload_bytes
 
     async def set_dat_entry(self, idx, static_addr, dynamic_addr):
@@ -430,8 +437,9 @@ class I3CController:
 
         self.h.log.debug(f"setdasa: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
         # Wait for response using ctypes
-        ok, reg = await self.h.poll_field(self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-                                          PioIntrStatus, 'resp_ready_stat')
+        ok, reg = await self.h.poll_field(
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
+        )
         if ok:
             resp = await self.h.read(self.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
             err = (resp >> 28) & 0xF
@@ -459,16 +467,18 @@ class I3CController:
         rx_entries_per_interrupt = 1 << (target.rx_thld + 1)
         rx_bytes_per_interrupt = rx_entries_per_interrupt * bytes_per_entry
 
-        TTI_RX_DATA_THLD_STAT = (1 << TTI_INTR_RX_DATA_THLD_BIT)
+        TTI_RX_DATA_THLD_STAT = 1 << TTI_INTR_RX_DATA_THLD_BIT
 
-        self.h.log.debug(f"private_write: {data_len} bytes, "
-                         f"tx_thld={tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries), "
-                         f"rx_thld={rx_bytes_per_interrupt} bytes ({rx_entries_per_interrupt} entries)")
+        self.h.log.debug(
+            f"private_write: {data_len} bytes, "
+            f"tx_thld={tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries), "
+            f"rx_thld={rx_bytes_per_interrupt} bytes ({rx_entries_per_interrupt} entries)"
+        )
 
         # Wait for command queue to have space
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-            PioIntrStatus, 'cmd_queue_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "cmd_queue_ready_stat"
+        )
         if not ok:
             self.h.log.warning("private_write: timeout waiting for command queue ready")
 
@@ -477,7 +487,9 @@ class I3CController:
         cmd_hi = data_len << 16
         await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
         await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
-        self.h.log.debug(f"private_write: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
+        self.h.log.debug(
+            f"private_write: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})"
+        )
 
         bytes_written = 0
         bytes_read = 0
@@ -489,14 +501,19 @@ class I3CController:
         while True:
             loop_count += 1
             if loop_count % 100 == 0:
-                self.h.log.debug(f"private_write: loop {loop_count}, written={bytes_written}/{data_len}, read={bytes_read}/{data_len} "
-                                 f"rx_data={len(rx_data)}")
+                self.h.log.debug(
+                    f"private_write: loop {loop_count}, written={bytes_written}/{data_len}, read={bytes_read}/{data_len} "
+                    f"rx_data={len(rx_data)}"
+                )
 
             # Check if controller response is ready
             ctrl_status = await self.h.read_into(
-                self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+                self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            )
             if ctrl_status.f.resp_ready_stat:
-                self.h.log.debug(f"private_write: controller response descriptor ready, bytes_written={bytes_written}, rx_data={len(rx_data)}")
+                self.h.log.debug(
+                    f"private_write: controller response descriptor ready, bytes_written={bytes_written}, rx_data={len(rx_data)}"
+                )
                 break
 
             # Fill controller TX FIFO when TX_THLD_STAT fires
@@ -504,10 +521,14 @@ class I3CController:
                 remaining_tx = data_len - bytes_written
                 chunk = min(tx_bytes_per_interrupt, remaining_tx)
                 for i in range(0, chunk, bytes_per_entry):
-                    word = self.h.pack_bytes(data_bytes[bytes_written + i:bytes_written + i + bytes_per_entry])
+                    word = self.h.pack_bytes(
+                        data_bytes[bytes_written + i : bytes_written + i + bytes_per_entry]
+                    )
                     await self.h.write(self.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
                 bytes_written += chunk
-                self.h.log.debug(f"private_write: wrote {chunk} bytes to TX, total={bytes_written}/{data_len}")
+                self.h.log.debug(
+                    f"private_write: wrote {chunk} bytes to TX, total={bytes_written}/{data_len}"
+                )
 
             # Drain target RX FIFO when TTI_RX_DATA_THLD_STAT fires naturally
             tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
@@ -516,10 +537,14 @@ class I3CController:
                 for entry_idx in range(rx_entries_per_interrupt):
                     word = await self.h.read(target.base + I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
                     unpacked = self.h.unpack_bytes(word, bytes_per_entry)
-                    self.h.log.debug(f"private_write: RX entry[{bytes_read//4 + entry_idx}] word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}")
+                    self.h.log.debug(
+                        f"private_write: RX entry[{bytes_read // 4 + entry_idx}] word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}"
+                    )
                     rx_data.extend(unpacked)
                 bytes_read += rx_bytes_per_interrupt
-                self.h.log.debug(f"private_write: drained {rx_bytes_per_interrupt} bytes from target RX, total={len(rx_data)}")
+                self.h.log.debug(
+                    f"private_write: drained {rx_bytes_per_interrupt} bytes from target RX, total={len(rx_data)}"
+                )
 
             await ClockCycles(self.h.dut.clk, 10)
 
@@ -527,7 +552,9 @@ class I3CController:
         resp = await self.h.read(self.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
         resp_data_length = resp & 0xFFFF
         err_status = (resp >> 28) & 0xF
-        self.h.log.debug(f"private_write: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}")
+        self.h.log.debug(
+            f"private_write: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}"
+        )
 
         # Check for errors
         if err_status != 0:
@@ -536,10 +563,12 @@ class I3CController:
 
         # Validate resp_data_length is 0 (all bytes have been recieved)
         if resp_data_length != 0:
-            self.h.log.warning(f"private_write: response descriptor data_length is not 0. This means you have not recieved all bytes")
+            self.h.log.warning(
+                "private_write: response descriptor data_length is not 0. This means you have not recieved all bytes"
+            )
 
         # Wait for target RX descriptor to be ready (RX_DESC_THLD_STAT)
-        TTI_RX_DESC_THLD_STAT = (1 << TTI_INTR_RX_DESC_THLD_BIT)
+        TTI_RX_DESC_THLD_STAT = 1 << TTI_INTR_RX_DESC_THLD_BIT
         for _ in range(1000):
             tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
             if tgt_status & TTI_RX_DESC_THLD_STAT:
@@ -552,25 +581,33 @@ class I3CController:
         tgt_rx_desc = await self.h.read(target.base + I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR)
         tgt_rx_data_length = tgt_rx_desc & 0xFFFF
         tgt_rx_error = (tgt_rx_desc >> 20) & 0xFFF
-        self.h.log.debug(f"private_write: target RX descriptor=0x{tgt_rx_desc:08X}, "
-                         f"data_length={tgt_rx_data_length}, error={tgt_rx_error}")
+        self.h.log.debug(
+            f"private_write: target RX descriptor=0x{tgt_rx_desc:08X}, "
+            f"data_length={tgt_rx_data_length}, error={tgt_rx_error}"
+        )
 
         if tgt_rx_error != 0:
             self.h.log.warning(f"private_write: target RX descriptor reports error={tgt_rx_error}")
 
         if tgt_rx_data_length != data_len:
-            self.h.log.error(f"private_write: read {tgt_rx_data_length} bytes, but needed to read {data_len} bytes")
+            self.h.log.error(
+                f"private_write: read {tgt_rx_data_length} bytes, but needed to read {data_len} bytes"
+            )
 
         # Drain any remaining bytes not read during threshold interrupts (I3C HCI 6.8.1)
         remaining_bytes = tgt_rx_data_length - bytes_read
         if remaining_bytes > 0:
-            self.h.log.debug(f"private_write: draining remaining {remaining_bytes} bytes (bytes_read={bytes_read})")
+            self.h.log.debug(
+                f"private_write: draining remaining {remaining_bytes} bytes (bytes_read={bytes_read})"
+            )
             drain_entry_idx = 0
             while remaining_bytes > 0:
                 word = await self.h.read(target.base + I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
                 bytes_to_take = min(bytes_per_entry, remaining_bytes)
                 unpacked = self.h.unpack_bytes(word, bytes_to_take)
-                self.h.log.debug(f"private_write: drain entry[{bytes_read//4 + drain_entry_idx}] word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}")
+                self.h.log.debug(
+                    f"private_write: drain entry[{bytes_read // 4 + drain_entry_idx}] word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}"
+                )
                 rx_data.extend(unpacked)
                 remaining_bytes -= bytes_to_take
                 drain_entry_idx += 1
@@ -599,27 +636,31 @@ class I3CController:
         tx_entries_per_interrupt = 1 << (target.tx_thld + 1)
         tx_bytes_per_interrupt = tx_entries_per_interrupt * bytes_per_entry
 
-        TTI_TX_DATA_THLD_STAT = (1 << TTI_INTR_TX_DATA_THLD_BIT)
-        TTI_TX_DESC_COMPLETE = (1 << TTI_INTR_TX_DESC_COMPLETE_BIT)
+        TTI_TX_DATA_THLD_STAT = 1 << TTI_INTR_TX_DATA_THLD_BIT
+        TTI_TX_DESC_COMPLETE = 1 << TTI_INTR_TX_DESC_COMPLETE_BIT
 
-        self.h.log.debug(f"private_read: {data_len} bytes, "
-                         f"ctrl_rx_thld={rx_bytes_per_interrupt} bytes ({rx_entries_per_interrupt} entries), "
-                         f"tgt_tx_thld={tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries)")
+        self.h.log.debug(
+            f"private_read: {data_len} bytes, "
+            f"ctrl_rx_thld={rx_bytes_per_interrupt} bytes ({rx_entries_per_interrupt} entries), "
+            f"tgt_tx_thld={tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries)"
+        )
 
         # Issue read command FIRST (before filling target TX)
         cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 29) | (1 << 30) | (1 << 31)  # rnw=1
         cmd_hi = data_len << 16
         await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
         await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
-        self.h.log.debug(f"private_read: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
+        self.h.log.debug(
+            f"private_read: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})"
+        )
 
         bytes_written = 0  # bytes written to target TX FIFO
-        bytes_read = 0     # bytes read from controller RX FIFO
+        bytes_read = 0  # bytes read from controller RX FIFO
         rx_data = []
         loop_count = 0
 
         # Wait for target TX descriptor queue to have space
-        TTI_TX_DESC_THLD_STAT = (1 << TTI_INTR_TX_DESC_THLD_BIT)
+        TTI_TX_DESC_THLD_STAT = 1 << TTI_INTR_TX_DESC_THLD_BIT
         for _ in range(1000):
             tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
             if tgt_status & TTI_TX_DESC_THLD_STAT:
@@ -632,20 +673,26 @@ class I3CController:
         # Format: byte_count in upper 16 bits
         tx_desc = data_len << 16
         await self.h.write(target.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, tx_desc)
-        self.h.log.debug(f"private_read: wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})")
+        self.h.log.debug(
+            f"private_read: wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})"
+        )
 
         # Main loop - wait for target TX_DESC_COMPLETE
         while True:
             loop_count += 1
             if loop_count % 100 == 0:
-                self.h.log.debug(f"private_read: loop {loop_count}, written={bytes_written}/{data_len}, "
-                                 f"read={bytes_read}/{data_len}")
+                self.h.log.debug(
+                    f"private_read: loop {loop_count}, written={bytes_written}/{data_len}, "
+                    f"read={bytes_read}/{data_len}"
+                )
 
             # Check if target TX transaction is complete
             tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
             if tgt_status & TTI_TX_DESC_COMPLETE:
-                self.h.log.debug(f"private_read: target TX_DESC_COMPLETE, bytes_written={bytes_written}, "
-                                 f"bytes_read={bytes_read}")
+                self.h.log.debug(
+                    f"private_read: target TX_DESC_COMPLETE, bytes_written={bytes_written}, "
+                    f"bytes_read={bytes_read}"
+                )
                 break
 
             # Fill target TX FIFO when TX_DATA_THLD_STAT fires
@@ -653,32 +700,42 @@ class I3CController:
                 remaining_tx = data_len - bytes_written
                 chunk = min(tx_bytes_per_interrupt, remaining_tx)
                 for i in range(0, chunk, bytes_per_entry):
-                    word = self.h.pack_bytes(tx_data[bytes_written + i:bytes_written + i + bytes_per_entry])
+                    word = self.h.pack_bytes(
+                        tx_data[bytes_written + i : bytes_written + i + bytes_per_entry]
+                    )
                     await self.h.write(target.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
                 bytes_written += chunk
-                self.h.log.debug(f"private_read: wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}")
+                self.h.log.debug(
+                    f"private_read: wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}"
+                )
 
             # Drain controller RX FIFO when RX_THLD_STAT fires
             ctrl_status = await self.h.read_into(
-                self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+                self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            )
             if ctrl_status.f.rx_thld_stat:
                 self.h.log.debug(f"private_read: ctrl_status raw=0x{ctrl_status.val:08X}")
 
                 for entry_idx in range(rx_entries_per_interrupt):
                     word = await self.h.read(self.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
                     unpacked = self.h.unpack_bytes(word, bytes_per_entry)
-                    self.h.log.debug(f"private_read: RX entry[{bytes_read//4 + entry_idx}] word=0x{word:08X} -> "
-                                     f"{[f'0x{b:02X}' for b in unpacked]}")
+                    self.h.log.debug(
+                        f"private_read: RX entry[{bytes_read // 4 + entry_idx}] word=0x{word:08X} -> "
+                        f"{[f'0x{b:02X}' for b in unpacked]}"
+                    )
                     rx_data.extend(unpacked)
                 bytes_read += rx_bytes_per_interrupt
-                self.h.log.debug(f"private_read: drained {rx_bytes_per_interrupt} bytes from controller RX, "
-                                 f"total={bytes_read}")
+                self.h.log.debug(
+                    f"private_read: drained {rx_bytes_per_interrupt} bytes from controller RX, "
+                    f"total={bytes_read}"
+                )
 
             await ClockCycles(self.h.dut.clk, 10)
 
         # Wait for controller response descriptor
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, 'resp_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
+        )
         if not ok:
             self.h.log.warning("private_read: timeout waiting for controller response")
             return False, 0, []
@@ -687,7 +744,9 @@ class I3CController:
         resp = await self.h.read(self.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
         resp_data_length = resp & 0xFFFF
         err_status = (resp >> 28) & 0xF
-        self.h.log.debug(f"private_read: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}")
+        self.h.log.debug(
+            f"private_read: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}"
+        )
 
         if err_status != 0:
             self.h.log.error(f"private_read: transfer error, err_status={err_status}")
@@ -695,19 +754,25 @@ class I3CController:
 
         # For private_read, DATA_LENGTH = bytes received (should match data_len)
         if resp_data_length != data_len:
-            self.h.log.warning(f"private_read: DATA_LENGTH={resp_data_length} != expected {data_len}")
+            self.h.log.warning(
+                f"private_read: DATA_LENGTH={resp_data_length} != expected {data_len}"
+            )
 
         # Drain remaining bytes not read during threshold interrupts
         remaining_bytes = resp_data_length - bytes_read
         if remaining_bytes > 0:
-            self.h.log.debug(f"private_read: draining remaining {remaining_bytes} bytes (bytes_read={bytes_read})")
+            self.h.log.debug(
+                f"private_read: draining remaining {remaining_bytes} bytes (bytes_read={bytes_read})"
+            )
             drain_entry_idx = 0
             while remaining_bytes > 0:
                 word = await self.h.read(self.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
                 bytes_to_take = min(bytes_per_entry, remaining_bytes)
                 unpacked = self.h.unpack_bytes(word, bytes_to_take)
-                self.h.log.debug(f"private_read: drain entry[{bytes_read//4 + drain_entry_idx}] word=0x{word:08X} -> "
-                                 f"{[f'0x{b:02X}' for b in unpacked]}")
+                self.h.log.debug(
+                    f"private_read: drain entry[{bytes_read // 4 + drain_entry_idx}] word=0x{word:08X} -> "
+                    f"{[f'0x{b:02X}' for b in unpacked]}"
+                )
                 rx_data.extend(unpacked)
                 remaining_bytes -= bytes_to_take
                 drain_entry_idx += 1
@@ -730,27 +795,29 @@ class I3CController:
         """
         bytes_per_entry = 4
 
-        self.h.log.debug(f"get_ccc: ccc_code=0x{ccc_code:02X}, max_data_len={max_data_len}, dat_idx={dat_idx}")
+        self.h.log.debug(
+            f"get_ccc: ccc_code=0x{ccc_code:02X}, max_data_len={max_data_len}, dat_idx={dat_idx}"
+        )
 
         # Wait for command queue to have space
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-            PioIntrStatus, 'cmd_queue_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "cmd_queue_ready_stat"
+        )
         if not ok:
             self.h.log.warning("get_ccc: timeout waiting for command queue ready")
 
         # Build command descriptor for CCC read:
         # attr=0 (RegularTransfer), cp=1 (command present), rnw=1 (read)
         cmd_lo = (
-            (0 << 0) |          # attr = 0 (RegularTransfer)
-            (ccc_code << 7) |     # cmd = CCC code
-            (1 << 15) |           # cp = 1 (command present)
-            (dat_idx << 16) |     # dev_idx
-            (1 << 29) |           # rnw = 1 (read)
-            (1 << 30) |           # wroc = 1 (response on completion)
-            (1 << 31)             # toc = 1 (terminate on completion)
+            (0 << 0)  # attr = 0 (RegularTransfer)
+            | (ccc_code << 7)  # cmd = CCC code
+            | (1 << 15)  # cp = 1 (command present)
+            | (dat_idx << 16)  # dev_idx
+            | (1 << 29)  # rnw = 1 (read)
+            | (1 << 30)  # wroc = 1 (response on completion)
+            | (1 << 31)  # toc = 1 (terminate on completion)
         )
-        cmd_hi = max_data_len << 16     # data_length in bits [31:16]
+        cmd_hi = max_data_len << 16  # data_length in bits [31:16]
 
         # Issue command
         await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
@@ -759,7 +826,8 @@ class I3CController:
 
         # Wait for response descriptor
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, 'resp_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
+        )
         if not ok:
             self.h.log.error("get_ccc: timeout waiting for response")
             return False, []
@@ -768,7 +836,9 @@ class I3CController:
         resp = await self.h.read(self.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
         resp_data_length = resp & 0xFFFF
         err_status = (resp >> 28) & 0xF
-        self.h.log.debug(f"get_ccc: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}")
+        self.h.log.debug(
+            f"get_ccc: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}"
+        )
 
         if err_status != 0:
             self.h.log.error(f"get_ccc: transfer error, err_status={err_status}")
@@ -785,7 +855,9 @@ class I3CController:
             rx_data.extend(unpacked)
             bytes_remaining -= bytes_to_take
 
-        self.h.log.debug(f"get_ccc: received {len(rx_data)} bytes: {[f'0x{b:02X}' for b in rx_data]}")
+        self.h.log.debug(
+            f"get_ccc: received {len(rx_data)} bytes: {[f'0x{b:02X}' for b in rx_data]}"
+        )
         return True, rx_data
 
     async def getbcr(self, dat_idx=0):
@@ -862,13 +934,15 @@ class I3CController:
         data_len = len(data_bytes)
         use_immediate = data_len <= 4
 
-        self.h.log.debug(f"set_ccc: ccc_code=0x{ccc_code:02X}, data_len={data_len}, "
-                         f"dat_idx={dat_idx}, immediate={use_immediate}")
+        self.h.log.debug(
+            f"set_ccc: ccc_code=0x{ccc_code:02X}, data_len={data_len}, "
+            f"dat_idx={dat_idx}, immediate={use_immediate}"
+        )
 
         # Wait for command queue space
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-            PioIntrStatus, 'cmd_queue_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "cmd_queue_ready_stat"
+        )
         if not ok:
             self.h.log.warning("set_ccc: timeout waiting for command queue ready")
             return False, 0
@@ -881,14 +955,14 @@ class I3CController:
                 data_word |= (b & 0xFF) << (i * 8)
 
             cmd_lo = (
-                (1 << 0) |              # attr = 1 (ImmediateDataTransfer)
-                (ccc_code << 7) |       # cmd = CCC code
-                (1 << 15) |             # cp = 1 (command present)
-                (dat_idx << 16) |       # dev_idx
-                (data_len << 23) |      # dtt = data byte count
-                (0 << 29) |             # rnw = 0 (write)
-                (1 << 30) |             # wroc = 1
-                (1 << 31)               # toc = 1
+                (1 << 0)  # attr = 1 (ImmediateDataTransfer)
+                | (ccc_code << 7)  # cmd = CCC code
+                | (1 << 15)  # cp = 1 (command present)
+                | (dat_idx << 16)  # dev_idx
+                | (data_len << 23)  # dtt = data byte count
+                | (0 << 29)  # rnw = 0 (write)
+                | (1 << 30)  # wroc = 1
+                | (1 << 31)  # toc = 1
             )
             cmd_hi = data_word
 
@@ -897,13 +971,13 @@ class I3CController:
         else:
             # Regular descriptor (attr=0): data goes to TX FIFO
             cmd_lo = (
-                (0 << 0) |              # attr = 0 (RegularTransfer)
-                (ccc_code << 7) |       # cmd = CCC code
-                (1 << 15) |             # cp = 1 (command present)
-                (dat_idx << 16) |       # dev_idx
-                (0 << 29) |             # rnw = 0 (write)
-                (1 << 30) |             # wroc = 1
-                (1 << 31)               # toc = 1
+                (0 << 0)  # attr = 0 (RegularTransfer)
+                | (ccc_code << 7)  # cmd = CCC code
+                | (1 << 15)  # cp = 1 (command present)
+                | (dat_idx << 16)  # dev_idx
+                | (0 << 29)  # rnw = 0 (write)
+                | (1 << 30)  # wroc = 1
+                | (1 << 31)  # toc = 1
             )
             cmd_hi = data_len << 16
 
@@ -912,15 +986,15 @@ class I3CController:
 
             # Wait for TX threshold before pushing data
             ok, _ = await self.h.poll_field(
-                self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-                PioIntrStatus, 'tx_thld_stat')
+                self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "tx_thld_stat"
+            )
             if not ok:
                 self.h.log.warning("set_ccc: timeout waiting for tx_thld_stat")
 
             # Push data to TX FIFO
             bytes_per_entry = 4
             for i in range(0, data_len, bytes_per_entry):
-                chunk = data_bytes[i:i + bytes_per_entry]
+                chunk = data_bytes[i : i + bytes_per_entry]
                 word = self.h.pack_bytes(chunk)
                 await self.h.write(self.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
 
@@ -928,7 +1002,8 @@ class I3CController:
 
         # Wait for response
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, 'resp_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
+        )
         if not ok:
             self.h.log.error("set_ccc: timeout waiting for response")
             return False, 0
@@ -983,8 +1058,10 @@ class I3CController:
         if has_ibi_payload:
             data.append(ibi_payload_size & 0xFF)
 
-        self.h.log.debug(f"setmrl: mrl={mrl}, ibi_payload_size={ibi_payload_size}, "
-                         f"bcr=0x{bcr:02X}, has_ibi_payload={has_ibi_payload}, data_len={len(data)}")
+        self.h.log.debug(
+            f"setmrl: mrl={mrl}, ibi_payload_size={ibi_payload_size}, "
+            f"bcr=0x{bcr:02X}, has_ibi_payload={has_ibi_payload}, data_len={len(data)}"
+        )
 
         return await self.set_ccc(CCC_SETMRL, data, dat_idx)
 
@@ -1008,8 +1085,8 @@ class I3CController:
 
         # Wait for command queue space
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-            PioIntrStatus, 'cmd_queue_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "cmd_queue_ready_stat"
+        )
         if not ok:
             self.h.log.warning("rstact: timeout waiting for command queue ready")
             return False, 0
@@ -1017,14 +1094,14 @@ class I3CController:
         # Immediate descriptor with defining byte:
         # dtt = 5 means: defining byte present, 0 data bytes (data_length = dtt - 5 = 0)
         cmd_lo = (
-            (1 << 0) |              # attr = 1 (ImmediateDataTransfer)
-            (CCC_RSTACT << 7) |     # cmd = 0x9A (Direct RSTACT)
-            (1 << 15) |             # cp = 1 (command present)
-            (dat_idx << 16) |       # dev_idx
-            (5 << 23) |             # dtt = 5 (defining byte, 0 data bytes)
-            (0 << 29) |             # rnw = 0 (write)
-            (1 << 30) |             # wroc = 1
-            (1 << 31)               # toc = 1
+            (1 << 0)  # attr = 1 (ImmediateDataTransfer)
+            | (CCC_RSTACT << 7)  # cmd = 0x9A (Direct RSTACT)
+            | (1 << 15)  # cp = 1 (command present)
+            | (dat_idx << 16)  # dev_idx
+            | (5 << 23)  # dtt = 5 (defining byte, 0 data bytes)
+            | (0 << 29)  # rnw = 0 (write)
+            | (1 << 30)  # wroc = 1
+            | (1 << 31)  # toc = 1
         )
         # Defining byte goes in def_or_data_byte1 position (bits [7:0] of cmd_hi)
         cmd_hi = defining_byte & 0xFF
@@ -1036,7 +1113,8 @@ class I3CController:
 
         # Wait for response
         ok, _ = await self.h.poll_field(
-            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, 'resp_ready_stat')
+            self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
+        )
         if not ok:
             self.h.log.error("rstact: timeout waiting for response")
             return False, 0
@@ -1068,7 +1146,9 @@ class I3CTarget:
         addr_reg = StbyCrDeviceAddr()
         addr_reg.f.static_addr = static_addr
         addr_reg.f.static_addr_valid = 1
-        await self.h.write(self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR, addr_reg.val)
+        await self.h.write(
+            self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR, addr_reg.val
+        )
 
         # Configure STBY_CR_CONTROL
         ctrl = StbyCrControl()
@@ -1078,16 +1158,22 @@ class I3CTarget:
         await self.h.write(self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR, ctrl.val)
 
         # Enable TTI interrupts for data thresholds, descriptor thresholds, TX completion, and IBI
-        TTI_TX_DATA_THLD_STAT_EN = (1 << TTI_INTR_TX_DATA_THLD_BIT)
-        TTI_RX_DATA_THLD_STAT_EN = (1 << TTI_INTR_RX_DATA_THLD_BIT)
-        TTI_TX_DESC_THLD_STAT_EN = (1 << TTI_INTR_TX_DESC_THLD_BIT)
-        TTI_RX_DESC_THLD_STAT_EN = (1 << TTI_INTR_RX_DESC_THLD_BIT)
-        TTI_IBI_THLD_STAT_EN = (1 << TTI_INTR_IBI_THLD_BIT)
-        TTI_IBI_DONE_EN = (1 << TTI_INTR_IBI_DONE_BIT)
-        TTI_TX_DESC_COMPLETE_EN = (1 << TTI_INTR_TX_DESC_COMPLETE_BIT)
-        tti_intr_en = (TTI_TX_DATA_THLD_STAT_EN | TTI_RX_DATA_THLD_STAT_EN |
-                       TTI_TX_DESC_THLD_STAT_EN | TTI_RX_DESC_THLD_STAT_EN |
-                       TTI_IBI_THLD_STAT_EN | TTI_IBI_DONE_EN | TTI_TX_DESC_COMPLETE_EN)
+        TTI_TX_DATA_THLD_STAT_EN = 1 << TTI_INTR_TX_DATA_THLD_BIT
+        TTI_RX_DATA_THLD_STAT_EN = 1 << TTI_INTR_RX_DATA_THLD_BIT
+        TTI_TX_DESC_THLD_STAT_EN = 1 << TTI_INTR_TX_DESC_THLD_BIT
+        TTI_RX_DESC_THLD_STAT_EN = 1 << TTI_INTR_RX_DESC_THLD_BIT
+        TTI_IBI_THLD_STAT_EN = 1 << TTI_INTR_IBI_THLD_BIT
+        TTI_IBI_DONE_EN = 1 << TTI_INTR_IBI_DONE_BIT
+        TTI_TX_DESC_COMPLETE_EN = 1 << TTI_INTR_TX_DESC_COMPLETE_BIT
+        tti_intr_en = (
+            TTI_TX_DATA_THLD_STAT_EN
+            | TTI_RX_DATA_THLD_STAT_EN
+            | TTI_TX_DESC_THLD_STAT_EN
+            | TTI_RX_DESC_THLD_STAT_EN
+            | TTI_IBI_THLD_STAT_EN
+            | TTI_IBI_DONE_EN
+            | TTI_TX_DESC_COMPLETE_EN
+        )
         await self.h.write(self.base + I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR, tti_intr_en)
 
     async def configure_timing_od_i3c(self):
@@ -1116,8 +1202,9 @@ class I3CTarget:
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR, 1)
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR, 1)
 
-    async def configure_thresholds(self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0,
-                                   tx_desc=1, rx_desc=1):
+    async def configure_thresholds(
+        self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0, tx_desc=1, rx_desc=1
+    ):
         """Configure TTI_DATA_BUFFER_THLD_CTRL and TTI_QUEUE_THLD_CTRL using ctypes.
 
         Data buffer threshold = 2^(val+1) entries.
@@ -1149,7 +1236,7 @@ class I3CTarget:
         tti_ctrl_val = await self.h.read(self.base + I3C_EC_TTI_CONTROL_REG_ADDR)
 
         # Set IBI_EN bit
-        IBI_EN_BIT = (1 << TTI_CTRL_IBI_EN_BIT)
+        IBI_EN_BIT = 1 << TTI_CTRL_IBI_EN_BIT
         tti_ctrl_val |= IBI_EN_BIT
 
         await self.h.write(self.base + I3C_EC_TTI_CONTROL_REG_ADDR, tti_ctrl_val)
@@ -1176,10 +1263,12 @@ class I3CTarget:
         # Build IBI descriptor header
         ibi_header = (mdb << 24) | (payload_len & 0xFF)
 
-        self.h.log.debug(f"write_ibi: mdb=0x{mdb:02X}, payload_len={payload_len}, header=0x{ibi_header:08X}")
+        self.h.log.debug(
+            f"write_ibi: mdb=0x{mdb:02X}, payload_len={payload_len}, header=0x{ibi_header:08X}"
+        )
 
         # Wait for IBI queue to have space (check TTI_IBI_THLD_STAT)
-        TTI_IBI_THLD_STAT = (1 << TTI_INTR_IBI_THLD_BIT)
+        TTI_IBI_THLD_STAT = 1 << TTI_INTR_IBI_THLD_BIT
         for _ in range(1000):
             tgt_status = await self.h.read(self.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
             if tgt_status & TTI_IBI_THLD_STAT:
@@ -1196,7 +1285,7 @@ class I3CTarget:
         if payload_len > 0:
             bytes_written = 0
             while bytes_written < payload_len:
-                chunk = payload_bytes[bytes_written:bytes_written + bytes_per_entry]
+                chunk = payload_bytes[bytes_written : bytes_written + bytes_per_entry]
                 word = self.h.pack_bytes(chunk)
                 await self.h.write(self.base + I3C_EC_TTI_IBI_PORT_REG_ADDR, word)
                 self.h.log.debug(f"write_ibi: wrote payload chunk {[f'0x{b:02X}' for b in chunk]}")
@@ -1216,7 +1305,7 @@ class I3CTarget:
         """
         self.h.log.debug("Waiting for target IBI transmission complete...")
 
-        TTI_IBI_DONE_STAT = (1 << TTI_INTR_IBI_DONE_BIT)
+        TTI_IBI_DONE_STAT = 1 << TTI_INTR_IBI_DONE_BIT
         for _ in range(max_polls):
             tgt_intr_status = await self.h.read(self.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
             if tgt_intr_status & TTI_IBI_DONE_STAT:
@@ -1232,7 +1321,8 @@ class I3CTarget:
         """Wait for dynamic address assignment using ctypes."""
         for _ in range(max_polls):
             addr_reg = await self.h.read_into(
-                self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR, StbyCrDeviceAddr)
+                self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR, StbyCrDeviceAddr
+            )
             if addr_reg.f.dynamic_addr_valid:
                 return True, addr_reg.f.dynamic_addr
             await ClockCycles(self.h.dut.clk, 10)

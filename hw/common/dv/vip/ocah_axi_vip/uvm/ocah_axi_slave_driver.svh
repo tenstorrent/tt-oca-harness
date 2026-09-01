@@ -5,8 +5,9 @@
 //
 // The class analogue of sv/ocah_axi_ram_responder.sv: a sparse zero-default
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
-// ID echo, per-beat one-shot error matching (via ocah_axi_slave_config), and
-// single-outstanding registered handshakes per direction. cfg.protocol
+// ID echo, per-beat one-shot error matching (via ocah_axi_slave_config),
+// per-channel bounded READY backpressure, and single-outstanding registered
+// handshakes per direction. cfg.protocol
 // selects AXI4-Lite (single-beat, no IDs/bursts; the AXI4-only vif fields
 // are never sampled).
 //
@@ -112,15 +113,100 @@ class ocah_axi_slave_driver extends uvm_component;
         return nxt;
     endfunction
 
-    // Bounded READY stall: wait cfg.ready_stall_cycles edges before the
-    // caller asserts READY (0 = assert immediately).
-    protected task ready_stall();
-        repeat (cfg.ready_stall_cycles) @(cfg.vif.mon_cb);
+    // Channel accept tasks: complete exactly one handshake on the channel,
+    // honoring the per-channel bounded READY-stall pattern (cfg.*_stall_cycles
+    // nonzero = READY low for N sampled edges, high for one, repeating until
+    // the handshake lands — so a pending VALID completes within N+1 cycles).
+    // Stall 0 keeps the assert-and-hold behavior. The knob is re-evaluated
+    // every pattern iteration, so a stall enabled while the responder is
+    // already parked waiting for VALID still takes effect before the next
+    // handshake (the cocotb pause generators likewise apply immediately).
+    // All three return at the handshake edge (mon_cb holds that beat's
+    // sampled values) or on reset deassertion — callers re-check aresetn.
+
+    protected task accept_aw();
+        forever begin
+            if (cfg.aw_stall_cycles == 0) begin
+                cfg.vif.awready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) begin
+                    cfg.vif.awready <= 1'b0;
+                    return;
+                end
+                if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) begin
+                    cfg.vif.awready <= 1'b0;
+                    return;
+                end
+            end else begin
+                cfg.vif.awready <= 1'b0;
+                repeat (cfg.aw_stall_cycles) begin
+                    @(cfg.vif.mon_cb);
+                    if (!cfg.vif.aresetn) return;
+                end
+                cfg.vif.awready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                cfg.vif.awready <= 1'b0;
+                if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) return;
+            end
+        end
+    endtask
+
+    protected task accept_ar();
+        forever begin
+            if (cfg.ar_stall_cycles == 0) begin
+                cfg.vif.arready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) begin
+                    cfg.vif.arready <= 1'b0;
+                    return;
+                end
+                if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) begin
+                    cfg.vif.arready <= 1'b0;
+                    return;
+                end
+            end else begin
+                cfg.vif.arready <= 1'b0;
+                repeat (cfg.ar_stall_cycles) begin
+                    @(cfg.vif.mon_cb);
+                    if (!cfg.vif.aresetn) return;
+                end
+                cfg.vif.arready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                cfg.vif.arready <= 1'b0;
+                if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) return;
+            end
+        end
+    endtask
+
+    // One W beat. With stall 0, WREADY stays asserted across beats (the
+    // caller lowers it after the last beat); with a stall pattern, each
+    // beat gets its own low-for-N / high-for-one window.
+    protected task accept_w();
+        forever begin
+            if (cfg.w_stall_cycles == 0) begin
+                cfg.vif.wready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
+            end else begin
+                cfg.vif.wready <= 1'b0;
+                repeat (cfg.w_stall_cycles) begin
+                    @(cfg.vif.mon_cb);
+                    if (!cfg.vif.aresetn) return;
+                end
+                cfg.vif.wready <= 1'b1;
+                @(cfg.vif.mon_cb);
+                if (!cfg.vif.aresetn) return;
+                if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
+            end
+        end
     endtask
 
     protected task write_pump();
         bit [63:0]      addr, start_addr;
-        bit [15:0]      id;
+        bit [15:0]      id, bid_out, corrupt_mask;
         bit [7:0]       len;
         bit [2:0]       size;
         bit [1:0]       burst;
@@ -136,11 +222,7 @@ class ocah_axi_slave_driver extends uvm_component;
                 continue;
             end
             // Address phase.
-            ready_stall();
-            cfg.vif.awready <= 1'b1;
-            do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
-                !(cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready));
-            cfg.vif.awready <= 1'b0;
+            accept_aw();
             if (!cfg.vif.aresetn) continue;
             id    = cfg.vif.mon_cb.awid;
             size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
@@ -154,10 +236,8 @@ class ocah_axi_slave_driver extends uvm_component;
             beats = int'(len) + 1;
             resp  = OCAH_AXI_RESP_OKAY;
             // Data phase.
-            cfg.vif.wready <= 1'b1;
             for (int unsigned beat = 0; beat < beats; beat++) begin
-                do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
-                    !(cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready));
+                accept_w();
                 if (!cfg.vif.aresetn) break;
                 beat_resp = cfg.consume_injected(addr, OCAH_AXI_DIR_WRITE, armed);
                 if (armed) begin
@@ -180,8 +260,16 @@ class ocah_axi_slave_driver extends uvm_component;
             end
             cfg.vif.wready <= 1'b0;
             if (!cfg.vif.aresetn) continue;
-            // Response phase.
-            cfg.vif.bid    <= id;
+            // Response phase. One-shot armed BID corruption answers a wrong
+            // response ID (data path and BRESP stay untouched).
+            bid_out = id;
+            if (cfg.consume_id_corruption(OCAH_AXI_DIR_WRITE, corrupt_mask)) begin
+                bid_out = cfg.mask_id(id ^ corrupt_mask);
+                `uvm_info(get_type_name(), $sformatf(
+                    "%s: corrupting BID awid=0x%0h -> bid=0x%0h (mask=0x%0h)",
+                    cfg.name_tag, id, bid_out, corrupt_mask), UVM_LOW)
+            end
+            cfg.vif.bid    <= bid_out;
             cfg.vif.bresp  <= resp;
             cfg.vif.bvalid <= 1'b1;
             do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
@@ -194,7 +282,7 @@ class ocah_axi_slave_driver extends uvm_component;
 
     protected task read_pump();
         bit [63:0]      addr, start_addr;
-        bit [15:0]      id;
+        bit [15:0]      id, rid_out, corrupt_mask;
         bit [7:0]       len;
         bit [2:0]       size;
         bit [1:0]       burst;
@@ -207,11 +295,7 @@ class ocah_axi_slave_driver extends uvm_component;
                 continue;
             end
             // Address phase.
-            ready_stall();
-            cfg.vif.arready <= 1'b1;
-            do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
-                !(cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready));
-            cfg.vif.arready <= 1'b0;
+            accept_ar();
             if (!cfg.vif.aresetn) continue;
             id    = cfg.vif.mon_cb.arid;
             size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
@@ -223,9 +307,18 @@ class ocah_axi_slave_driver extends uvm_component;
             start_addr = cfg.vif.mon_cb.araddr;
             addr  = (start_addr >> size) << size;
             beats = int'(len) + 1;
+            // One-shot armed RID corruption applies to every beat of this one
+            // transaction (data path and RRESP stay untouched).
+            rid_out = id;
+            if (cfg.consume_id_corruption(OCAH_AXI_DIR_READ, corrupt_mask)) begin
+                rid_out = cfg.mask_id(id ^ corrupt_mask);
+                `uvm_info(get_type_name(), $sformatf(
+                    "%s: corrupting RID arid=0x%0h -> rid=0x%0h (mask=0x%0h)",
+                    cfg.name_tag, id, rid_out, corrupt_mask), UVM_LOW)
+            end
             // Data phase: one beat per accepted cycle.
             for (int unsigned beat = 0; beat < beats; beat++) begin
-                load_read_beat(addr, id, beat == beats - 1);
+                load_read_beat(addr, rid_out, beat == beats - 1);
                 cfg.vif.rvalid <= 1'b1;
                 do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
                     !(cfg.vif.mon_cb.rvalid && cfg.vif.mon_cb.rready));

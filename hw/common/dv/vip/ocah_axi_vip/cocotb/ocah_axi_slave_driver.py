@@ -37,6 +37,8 @@ class OcahFaultMixin:
     def _init_fault_state(self, name: str) -> None:
         self.write_errors: dict[int, AxiResp] = {}
         self.read_errors: dict[int, AxiResp] = {}
+        self.write_id_corrupt: int | None = None
+        self.read_id_corrupt: int | None = None
         self.log = logging.getLogger(name)
 
     def inject_error(
@@ -61,9 +63,39 @@ class OcahFaultMixin:
             write,
         )
 
+    def inject_id_corruption(
+        self,
+        *,
+        mask: int = 0x1,
+        read: bool = True,
+        write: bool = True,
+    ) -> None:
+        """Arm one-shot response-ID corruption (BID/RID XOR ``mask``).
+
+        The next selected transaction answers with ``request_id ^ mask``
+        (truncated to the ID signal width) instead of echoing the request ID,
+        so ID-observing masters can prove a wrong returned ID is
+        distinguishable from the issued one.  One-shot per direction;
+        ``clear_errors()`` disarms.
+        """
+        if int(mask) == 0:
+            raise ValueError("inject_id_corruption mask must be non-zero")
+        if write:
+            self.write_id_corrupt = int(mask)
+        if read:
+            self.read_id_corrupt = int(mask)
+        self.log.info(
+            "Injecting AXI response-ID corruption mask=0x%x read=%d write=%d",
+            mask,
+            read,
+            write,
+        )
+
     def clear_errors(self) -> None:
         self.write_errors.clear()
         self.read_errors.clear()
+        self.write_id_corrupt = None
+        self.read_id_corrupt = None
 
     def enable_backpressure(self, *, channels: Iterable[str], stall_cycles: int) -> None:
         """Drive READY low in bounded repeating windows on selected channels."""
@@ -91,6 +123,10 @@ class _FaultAxiRamWrite(AxiRamWrite):
     def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, **kwargs):
         self.fault_owner = fault_owner
         super().__init__(bus, clock, reset, reset_active_level=reset_active_level, **kwargs)
+        try:
+            self._bid_mask = (1 << len(self.bus.b.bid)) - 1
+        except (AttributeError, TypeError):
+            self._bid_mask = None
 
     async def _process_write(self):
         while True:
@@ -119,10 +155,30 @@ class _FaultAxiRamWrite(AxiRamWrite):
             b.bid = awid
             b.bresp = AxiResp.OKAY
 
+            # One-shot armed BID corruption: answer with a wrong response ID
+            # (data path and BRESP stay untouched).
+            id_corrupt = self.fault_owner.write_id_corrupt
+            if id_corrupt is not None:
+                self.fault_owner.write_id_corrupt = None
+                corrupted = awid ^ id_corrupt
+                if self._bid_mask is not None:
+                    corrupted &= self._bid_mask
+                b.bid = corrupted
+                self.log.info(
+                    "Corrupting BID awid=0x%x -> bid=0x%x (mask=0x%x)",
+                    awid,
+                    corrupted,
+                    id_corrupt,
+                )
+
             for beat in range(beats):
                 cur_word_addr = (cur_addr // self.byte_lanes) * self.byte_lanes
                 w = await self.w_channel.recv()
-                strb = int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
+                strb = (
+                    int(getattr(w, "wstrb", self.strb_mask))
+                    if self.wstrb_present
+                    else self.strb_mask
+                )
                 data = int(w.wdata).to_bytes(self.byte_lanes, "little")
                 last = int(w.wlast)
                 beat_resp = self.fault_owner.write_errors.pop(cur_word_addr, AxiResp.OKAY)
@@ -137,7 +193,9 @@ class _FaultAxiRamWrite(AxiRamWrite):
                             start_offset = offset
                         if not enabled and start_offset is not None:
                             if offset != start_offset:
-                                await self._write(cur_word_addr + start_offset, data[start_offset:offset])
+                                await self._write(
+                                    cur_word_addr + start_offset, data[start_offset:offset]
+                                )
                             start_offset = None
 
                 assert last == (beat == beats - 1)
@@ -160,6 +218,10 @@ class _FaultAxiRamRead(AxiRamRead):
     def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, **kwargs):
         self.fault_owner = fault_owner
         super().__init__(bus, clock, reset, reset_active_level=reset_active_level, **kwargs)
+        try:
+            self._rid_mask = (1 << len(self.bus.r.rid)) - 1
+        except (AttributeError, TypeError):
+            self._rid_mask = None
 
     async def _process_read(self):
         while True:
@@ -184,13 +246,34 @@ class _FaultAxiRamRead(AxiRamRead):
                 assert 0x1000 - (aligned_addr & 0xFFF) >= transfer_size
 
             cur_addr = aligned_addr
+
+            # One-shot armed RID corruption applies to every beat of this one
+            # transaction (data path and RRESP stay untouched).
+            rid = arid
+            id_corrupt = self.fault_owner.read_id_corrupt
+            if id_corrupt is not None:
+                self.fault_owner.read_id_corrupt = None
+                rid = arid ^ id_corrupt
+                if self._rid_mask is not None:
+                    rid &= self._rid_mask
+                self.log.info(
+                    "Corrupting RID arid=0x%x -> rid=0x%x (mask=0x%x)",
+                    arid,
+                    rid,
+                    id_corrupt,
+                )
+
             for beat in range(beats):
                 cur_word_addr = (cur_addr // self.byte_lanes) * self.byte_lanes
                 r = self.r_channel._transaction_obj()
-                r.rid = arid
+                r.rid = rid
                 r.rlast = beat == beats - 1
                 r.rresp = self.fault_owner.read_errors.pop(cur_word_addr, AxiResp.OKAY)
-                data = bytes(self.byte_lanes) if r.rresp != AxiResp.OKAY else await self._read(cur_word_addr, self.byte_lanes)
+                data = (
+                    bytes(self.byte_lanes)
+                    if r.rresp != AxiResp.OKAY
+                    else await self._read(cur_word_addr, self.byte_lanes)
+                )
                 r.rdata = int.from_bytes(data, "little")
                 await self.r_channel.send(r)
                 self.log.info(
@@ -208,7 +291,18 @@ class _FaultAxiRamRead(AxiRamRead):
 class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
     """cocotbext AXI4 RAM responder engine with OCAH fault-control APIs."""
 
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiSlaveDriver", **kwargs):
+    def __init__(
+        self,
+        bus,
+        clock,
+        reset=None,
+        reset_active_level=True,
+        size=2**64,
+        mem=None,
+        *,
+        name="OcahAxiSlaveDriver",
+        **kwargs,
+    ):
         self.write_if = None
         self.read_if = None
         self._init_fault_state(name)
