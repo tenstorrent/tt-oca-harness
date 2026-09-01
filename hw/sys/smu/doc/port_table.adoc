@@ -209,6 +209,8 @@
 |`sep_external_resp_i` |`sep_pkg::sep_32_64_6_12_axi_resp_t` |Input |- |SEP AXI extension port response passthrough. |Adopter peripherals |Tie to DECERR if unused
 
 |`sep_cpu_trace_o` |`sep_pkg::sep_cpu_trace_t` |Output |- |SEP CPU trace output. |Trace infrastructure |N/A
+|`sep_lockstep_ctrl_i` |`sep_pkg::sep_lockstep_ctrl_t` |Input |- |SEP CPU lockstep controls, passed through to the SEP. Inert unless the SEP core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS control |Tie to '0 if unused
+|`sep_lockstep_status_o` |`sep_pkg::sep_lockstep_status_t` |Output |- |SEP CPU lockstep status. Reads 0 when the SEP is absent (`SEP=0`) or the core is built without `RV_LOCKSTEP_ENABLE`. |Chip-level RAS aggregation |N/A
 |`lcc_demote_state_1_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 1. |External lifecycle logic |N/A
 |`lcc_demote_state_2_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 2. |External lifecycle logic |N/A
 |`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A
