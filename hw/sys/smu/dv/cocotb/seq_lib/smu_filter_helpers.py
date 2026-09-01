@@ -41,9 +41,7 @@ _F_ALLOW_NS = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm")
 _F_ALLOW_BURST = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
 _F_BUS_WIDTH_64 = filter_ctrl_field_reset_encode("DATA_BUS_WIDTH")
 
-PASS_RW_CONFIG = (
-    _F_READ | _F_WRITE | _F_ENTRY | _F_ALLOW_NS | _F_BUS_WIDTH_64 | _F_ALLOW_BURST
-)
+PASS_RW_CONFIG = _F_READ | _F_WRITE | _F_ENTRY | _F_ALLOW_NS | _F_BUS_WIDTH_64 | _F_ALLOW_BURST
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 
 SMC_VERSION_LO_ADDR = SMC_CHIP_CONFIG_VERSION_LO
@@ -80,9 +78,7 @@ async def program_inbound0_window(
         (INBOUND0_END, end, f"{tag}_END"),
         (INBOUND0_FILTER_CONFIG, config, f"{tag}_CONFIG"),
     ):
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         require_jtag_tdo_resolved(f"J2A WR {name}")
         if scoreboard is not None:
             scoreboard.expect_eq(f"JTAG2AXI {name} write", st, J2A_STATUS_SUCCESS)
@@ -90,9 +86,7 @@ async def program_inbound0_window(
 
 async def clear_inbound0_config(jtag, *, scoreboard: Any = None) -> None:
     """Clear INBOUND0 CONFIG (restore BlockByDefault deny for unprogrammed)."""
-    st, _ = await jtag2axi_single_write(
-        jtag, INBOUND0_FILTER_CONFIG, 0, require_complete=True
-    )
+    st, _ = await jtag2axi_single_write(jtag, INBOUND0_FILTER_CONFIG, 0, require_complete=True)
     require_jtag_tdo_resolved("J2A WR INBOUND0_CONFIG clear")
     if scoreboard is not None:
         scoreboard.expect_eq("JTAG2AXI INBOUND0_CONFIG clear", st, J2A_STATUS_SUCCESS)
@@ -105,9 +99,7 @@ async def program_outbound0_pass_all(jtag, *, scoreboard: Any = None) -> None:
         (OUTBOUND0_END, PASS_ALL_END, "OUTBOUND0_END"),
         (OUTBOUND0_FILTER_CONFIG, PASS_RW_CONFIG, "OUTBOUND0_CONFIG"),
     ):
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         require_jtag_tdo_resolved(f"J2A WR {name}")
         if scoreboard is not None:
             scoreboard.expect_eq(f"JTAG2AXI {name} write", st, J2A_STATUS_SUCCESS)
@@ -115,14 +107,10 @@ async def program_outbound0_pass_all(jtag, *, scoreboard: Any = None) -> None:
 
 async def inbound0_config_readback(jtag) -> int:
     """Read INBOUND0 FILTER_CONFIG (32b)."""
-    st, rdata = await jtag2axi_single_read(
-        jtag, INBOUND0_FILTER_CONFIG, require_complete=True
-    )
+    st, rdata = await jtag2axi_single_read(jtag, INBOUND0_FILTER_CONFIG, require_complete=True)
     require_jtag_tdo_resolved("J2A RD INBOUND0_CONFIG")
     if st != J2A_STATUS_SUCCESS:
-        raise AssertionError(
-            f"INBOUND0_CONFIG read status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
-        )
+        raise AssertionError(f"INBOUND0_CONFIG read status={st} want SUCCESS={J2A_STATUS_SUCCESS}")
     return int(rdata) & 0xFFFF_FFFF
 
 

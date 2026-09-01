@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import LC_WORD_IDX
 from env.sep_lcc_golden import LC_RMA_CHIP_1, LC_RMA_SIP_1
-from env.sep_rma_token import SepRmaTokenCfg
+
+# Re-exported for sep_efuse_rma_token_rand_test, which builds its golden via
+# seq_lib rather than reaching into env directly.
+from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
+from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 
 _EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
@@ -129,13 +131,16 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                 self.matched = result == _TOKEN_MATCH
                 cocotb.log.info(
                     "[rma] %s token code=0x%02x matched=%s",
-                    token_name, result, self.matched,
+                    token_name,
+                    result,
+                    self.matched,
                 )
                 return
         self.matched = False
         cocotb.log.info(
             "[rma] %s token did not settle (last code=0x%02x)",
-            token_name, self.match_code,
+            token_name,
+            self.match_code,
         )
 
 

@@ -21,7 +21,6 @@ no_cpu, +skip_fuse_sense: the remapper does not depend on sense.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_local_alias_seq import (
     SepLocalAlias,
@@ -41,18 +40,14 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
 
         pre = alias_probe_seq(cfg.access_addr)
         await self.start_seq(pre)
-        assert pre.resp_ok, (
-            f"source 0x{cfg.access_addr:08x} resp not OKAY before remap"
-        )
+        assert pre.resp_ok, f"source 0x{cfg.access_addr:08x} resp not OKAY before remap"
         src_pre = pre.rdata & 0xFFFF_FFFF
 
         alias = SepLocalAlias(self)
         await alias._wr(cfg.expect_addr, cfg.marker)
         identity = alias_probe_seq(cfg.expect_addr)
         await self.start_seq(identity)
-        assert identity.resp_ok, (
-            f"identity dest 0x{cfg.expect_addr:08x} resp not OKAY"
-        )
+        assert identity.resp_ok, f"identity dest 0x{cfg.expect_addr:08x} resp not OKAY"
         dest_data = identity.rdata & 0xFFFF_FFFF
         assert dest_data == cfg.marker, (
             f"CLOCK_GATE_CTRL wrote 0x{cfg.marker:08x} read 0x{dest_data:08x}"
@@ -66,9 +61,7 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
 
         hit = alias_probe_seq(cfg.access_addr)
         await self.start_seq(hit)
-        assert hit.resp_ok, (
-            f"remapped 0x{cfg.access_addr:08x} resp not OKAY"
-        )
+        assert hit.resp_ok, f"remapped 0x{cfg.access_addr:08x} resp not OKAY"
         got = hit.rdata & 0xFFFF_FFFF
         assert got == dest_data, (
             f"CHK-OFFSET FAIL: access 0x{cfg.access_addr:08x} read "
@@ -78,7 +71,13 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         self.logger.info(
             "CHK-OFFSET PASS: remapped beat -> 0x%08x "
             "(data 0x%08x matches identity CLOCK_GATE_CTRL)",
-            cfg.expect_addr, got)
+            cfg.expect_addr,
+            got,
+        )
         self.logger.info(
             "CHK-RANDCFG PASS: region=%d src=0x%08x dest=0x%08x from seed %d",
-            cfg.region, cfg.access_addr, cfg.expect_addr, cfg.seed)
+            cfg.region,
+            cfg.access_addr,
+            cfg.expect_addr,
+            cfg.seed,
+        )

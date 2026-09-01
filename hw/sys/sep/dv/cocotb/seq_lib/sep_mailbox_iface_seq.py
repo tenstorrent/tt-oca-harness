@@ -18,9 +18,14 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_mbox_golden import (
-    OUTBOUND_BASE, WRITE_DATA, READ_DATA, CTRL,
-    CLOCK_GATE_CTRL, CLOCK_GATE_MAILBOX,
+    CLOCK_GATE_CTRL,
+    CLOCK_GATE_MAILBOX,
+    CTRL,
+    OUTBOUND_BASE,
+    READ_DATA,
+    WRITE_DATA,
 )
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -46,8 +51,13 @@ class SepMbox(SepAxiRegDriver):
         """Push one 64-bit entry via a single 8-byte WRITE_DATA beat. Returns the AXI
         resp_code; expect_error tolerates the write-to-full SLVERR (caller asserts)."""
         seq = SepAxiAccessSeq(
-            "mbox_push64", op=SepAxiOp.WRITE, addr=OUTBOUND_BASE + WRITE_DATA,
-            wdata=value, length=8, size=None, allow_unverified_write_resp=expect_error,
+            "mbox_push64",
+            op=SepAxiOp.WRITE,
+            addr=OUTBOUND_BASE + WRITE_DATA,
+            wdata=value,
+            length=8,
+            size=None,
+            allow_unverified_write_resp=expect_error,
         )
         await self.test.start_seq(seq)
         return seq.resp_code
@@ -57,8 +67,12 @@ class SepMbox(SepAxiRegDriver):
         """Pop a 64-bit entry via READ_DATA. On bare-sep the RX FIFO is empty, so this
         returns (SLVERR, 0xFEEDDEAD); expect_error tolerates that. Returns (resp, data)."""
         seq = SepAxiAccessSeq(
-            "mbox_pop64", op=SepAxiOp.READ, addr=OUTBOUND_BASE + READ_DATA,
-            length=8, size=None, expect_error=expect_error,
+            "mbox_pop64",
+            op=SepAxiOp.READ,
+            addr=OUTBOUND_BASE + READ_DATA,
+            length=8,
+            size=None,
+            expect_error=expect_error,
         )
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata

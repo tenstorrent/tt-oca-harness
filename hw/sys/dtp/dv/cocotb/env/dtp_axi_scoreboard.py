@@ -14,9 +14,8 @@ component stays inert otherwise so existing jtag2axi tests are unaffected.
 
 from __future__ import annotations
 
-from pyuvm import ConfigDB, uvm_component
-
 from ocah_axi_vip import OcahAxiRefModel, OcahAxiScoreboard
+from pyuvm import ConfigDB, uvm_component
 
 from .dtp_types import get_jtag2axi_target
 

@@ -87,14 +87,10 @@ class smu_smc_wdt_timeout_irq_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         sb.expect_eq("CHK-WDT-TO-GATE-OPEN", gate, 0)
 
@@ -106,18 +102,14 @@ class smu_smc_wdt_timeout_irq_test_seq:
             raise AssertionError(f"WDT_CMP program status={st_c}")
         st_rb, cmp_rb = await self._rd32(jtag, WDT_CMP)
         if st_rb != J2A_STATUS_SUCCESS or (cmp_rb & CMP_MASK) != CMP_SMALL:
-            raise AssertionError(
-                f"WDT_CMP rb st={st_rb} data=0x{cmp_rb:x} want 0x{CMP_SMALL:x}"
-            )
+            raise AssertionError(f"WDT_CMP rb st={st_rb} data=0x{cmp_rb:x} want 0x{CMP_SMALL:x}")
         sb.expect_eq("CHK-WDT-TO-CMP", cmp_rb & CMP_MASK, CMP_SMALL)
 
         st_pre, ctrl_pre = await self._rd32(jtag, WDT_CTRL)
         if st_pre != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT_CTRL pre-enable status={st_pre}")
         if ctrl_pre & WDT_IP0_MASK:
-            raise AssertionError(
-                f"WDOGIP0 already set before enable CTRL=0x{ctrl_pre:08x}"
-            )
+            raise AssertionError(f"WDOGIP0 already set before enable CTRL=0x{ctrl_pre:08x}")
         sb.expect_eq("CHK-WDT-TO-IP0-PRE", ctrl_pre & WDT_IP0_MASK, 0)
 
         st_u2 = await wdt_unlock(jtag)
@@ -149,9 +141,7 @@ class smu_smc_wdt_timeout_irq_test_seq:
                 break
             await ClockCycles(dut.clk_smu_i, 512)
         if not ip0:
-            raise AssertionError(
-                f"WDOGIP0 never set (CTRL=0x{last_ctrl:08x})"
-            )
+            raise AssertionError(f"WDOGIP0 never set (CTRL=0x{last_ctrl:08x})")
         st_n, _ = await self._rd32(jtag, WDT_COUNT)
         if st_n != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT_COUNT after IP0 status={st_n}")

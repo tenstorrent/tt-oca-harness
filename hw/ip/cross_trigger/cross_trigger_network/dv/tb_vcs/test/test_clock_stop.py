@@ -8,7 +8,7 @@ Test clock stop request OR aggregation.
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+
 from test.test_base import *
 
 
@@ -44,7 +44,9 @@ async def test_clock_stop(dut):
     stop_clks = int(dut.stop_clks.value)
     cla_clock_stop = int(dut.cla_clock_stop.value)
     assert stop_clks == 1, f"stop_clks should assert for a clock stop request, got {stop_clks}"
-    assert cla_clock_stop == 1, f"cla_clock_stop should reflect the request OR tree, got {cla_clock_stop}"
+    assert cla_clock_stop == 1, (
+        f"cla_clock_stop should reflect the request OR tree, got {cla_clock_stop}"
+    )
     dut._log.info("PASS: single request asserts stop_clks and cla_clock_stop")
 
     # Test 3: Clear request and verify deassertion
@@ -55,7 +57,9 @@ async def test_clock_stop(dut):
     stop_clks = int(dut.stop_clks.value)
     cla_clock_stop = int(dut.cla_clock_stop.value)
     assert stop_clks == 0, f"stop_clks should be 0 when request cleared, got {stop_clks}"
-    assert cla_clock_stop == 0, f"cla_clock_stop should be 0 when request cleared, got {cla_clock_stop}"
+    assert cla_clock_stop == 0, (
+        f"cla_clock_stop should be 0 when request cleared, got {cla_clock_stop}"
+    )
     dut._log.info("PASS: clearing the request deasserts stop_clks and cla_clock_stop")
 
     # Test 4: Test multiple clock stop requests (OR aggregation)
@@ -66,7 +70,9 @@ async def test_clock_stop(dut):
     stop_clks = int(dut.stop_clks.value)
     cla_clock_stop = int(dut.cla_clock_stop.value)
     assert stop_clks == 1, f"stop_clks should be 1 for multiple requests, got {stop_clks}"
-    assert cla_clock_stop == 1, f"cla_clock_stop should be 1 for multiple requests, got {cla_clock_stop}"
+    assert cla_clock_stop == 1, (
+        f"cla_clock_stop should be 1 for multiple requests, got {cla_clock_stop}"
+    )
 
     # Clear one request, should still be asserted
     dut.clk_stop_req.value = 0x1
@@ -75,7 +81,9 @@ async def test_clock_stop(dut):
     stop_clks = int(dut.stop_clks.value)
     cla_clock_stop = int(dut.cla_clock_stop.value)
     assert stop_clks == 1, f"stop_clks should be 1 with one request remaining, got {stop_clks}"
-    assert cla_clock_stop == 1, f"cla_clock_stop should remain 1 with one request remaining, got {cla_clock_stop}"
+    assert cla_clock_stop == 1, (
+        f"cla_clock_stop should remain 1 with one request remaining, got {cla_clock_stop}"
+    )
     dut._log.info("PASS: OR aggregation works correctly")
 
     # Clear all

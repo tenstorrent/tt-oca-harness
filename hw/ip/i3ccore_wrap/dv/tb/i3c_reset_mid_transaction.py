@@ -13,19 +13,20 @@ random bus phase (far stronger than always resetting at the same point). After
 re-bring-up, a random post-reset transfer is self-checked. Seed from
 +seed/SEED/default.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from i3c_test_base import make_env, bring_up_and_assign
-from i3c_rand import RandMgr, I3CTransfer, do_transfer, rand_len, rand_bytes
+from i3c_rand import I3CTransfer, RandMgr, do_transfer, rand_bytes, rand_len
+from i3c_test_base import bring_up_and_assign, make_env
 
 MWL = 32
 
 
-@cocotb.test(timeout_time=3000, timeout_unit='us')
+@cocotb.test(timeout_time=3000, timeout_unit="us")
 async def test_reset_mid_transaction(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="reset_mid")             # seed logged; +seed/SEED override
+    r = RandMgr(name="reset_mid")  # seed logged; +seed/SEED override
 
     # Random pre-reset traffic
     for _ in range(r.randint(1, 3)):

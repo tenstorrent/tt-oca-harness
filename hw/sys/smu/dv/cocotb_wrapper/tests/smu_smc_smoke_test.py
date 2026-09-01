@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smu_boot_scoreboard import SmuSmcBootScoreboard
 from seq_lib.smu_smc_smoke_seq import SmuSmcSmokeSeq
 from smu_base_test import smu_base_test
