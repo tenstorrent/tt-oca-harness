@@ -350,6 +350,10 @@ feature has no legal knob space (a strap, a single named handshake).
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Narrow-write lane masking against the AXI strobe rule (IHI 0022 A3.4.3), plus write/readback of the OTBN IMEM and DMEM memory windows. The KMAC state window is not probed: it is gated by the engine's own configuration, so a probe there would test KMAC bring-up rather than the read mask. A window behind an SRAM-style adapter applies the mask on reads, unlike a register behind a register adapter, so a bridge driving that mask from the write strobe returns zeros with a correct response — only a data compare sees it.
+|`sep_axi_partial_lane_read_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Read-side counterpart of the strobe test: a read narrower than the 64-bit beat only obligates the responder to drive the addressed byte lanes (a 32-bit CSR leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every non-addressed lane undriven), so the value handed to the test must be a pure function of the addressed lanes. Every read is compared against an independent golden and repeated around a checked disturbing access, so a result that leaks undriven lanes or leftover channel state fails as a mismatch.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -654,6 +658,10 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |AXI narrow-write strobe and memory windows
 |PROVEN
 |`sep_axi_strobe_window_test`, passing on VCS and on the Verilator merge gate.
+
+|AXI narrow-read lane extraction and repeatability
+|PROVEN
+|`sep_axi_partial_lane_read_test`: all 36 byte-run slices, all 14 aligned narrow-ARSIZE cells and the CSR extremes exact and repeatable, passing on the Verilator acceptance backend.
 
 |Reserved inter-block address space
 |PROVEN
@@ -3579,7 +3587,7 @@ both lock flavours of one seed-selected spare.
 . Take the register inventory and the exclusion reasons from `sep_reg_bit_bash_seq`: `write_reason() is None` for the no-side-effect blocks, plus `touch_reason() is None` restricted to `TOUCH_BLOCKS` for plain RW storage inside the other major IPs. A second list would let two sweeps disagree about which registers are safe to write.
 . Drop the blocks where the access itself would decide the result. `WDT_TIMER` is the one today: aon_timer runs on a clock 1000 times slower than the system clock, so the AXI timeout spans about ten of its edges and whether a round trip fits depends on the phase the access arrives on. A probe there measures CDC latency against the timeout rather than channel delivery. `sep_reg_bit_bash_rand_test` covers that block's storage.
 . Prime the register with the complement under its write mask at default timing, and read it back, so a write that never lands reads as the prime rather than looking plausible.
-. Apply the cell's timing profile through the VIP master (`ocah_axi_timing.AxiTimingProfile`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
+. Apply the cell's timing profile through the VIP master (`AxiTimingProfile`, `ocah_axi_master_config`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
 . Read a second register in the same block, write it back with one software-usable bit flipped at default timing, read it again, then re-read the swept register. Deriving the value from the current contents keeps a write that never arrived from reading back correct.
 . A shadowed register commits on the second identical write. The profile arms a one-shot release, so it shapes the first write only and the committing second write goes out same-cycle. The ordering under test is the one the register sees first; the commit itself is not an ordered access.
 
@@ -3679,6 +3687,46 @@ both lock flavours of one seed-selected spare.
 |Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass. The compare is the addressed 32-bit word: the generated SEP C headers contain no 4-byte-adjacent register pair, so a 64-bit beat has no neighbour CSR in bytes 4–7 and a widened strobe has no second register to corrupt.
 |CHK-WINDOW-DATA
 |Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is named with its reason. At least one window must have been verified: a walk where none was writable proves nothing and fails.
+|===
+
+'''''
+
+[[sep_axi_partial_lane_read_test]]
+===== `sep_axi_partial_lane_read_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Testlist*: `system.toml`
+
+*Randomization*: RANDCFG — the required cells are walked exhaustively on every seed: all 36 contiguous (offset, length) byte-run slices of a 64-bit word, all 14 aligned narrow-ARSIZE cells (AxSIZE 0/1/2 at every legal lane offset), and the all-zeros/all-ones CSR patterns. The seed varies the walk order, the SRAM addresses, the 64-bit word under test and extra CSR patterns.
+
+*Objective*: A read narrower than the 64-bit CPU-LSU beat only obligates the responder to drive the addressed byte lanes: a 32-bit CSR endpoint leaves RDATA[63:32] undriven, and a narrow-ARSIZE beat leaves every non-addressed lane undriven. The VIP master samples the full beat and extracts the addressed bytes, so the value a test receives must be a pure function of the addressed lanes — exact against an independent golden and identical on re-read — regardless of what the undriven lanes carry. `sep_axi_strobe_window_test` owns the write-side lane rule; here the write is trusted and the read extraction is on trial. The contract is pinned through the public VIP read path alone, with no cocotb or cocotbext-axi global state involved.
+
+*Test Procedure*:
+
+[arabic]
+. Write a pattern to the 32-bit `SW_DEBUG` CSR, read it back twice as 4-byte reads with a checked read of the non-zero RO `SEP_LOCAL_BASE_ADDR` register between them; repeat for the all-zeros, all-ones and seed-random patterns.
+. Prime a seed-random 64-bit SRAM word and its neighbour with the complement value.
+. Read every contiguous (offset, length) byte run of the primed word, re-reading each slice after a checked full-width read of the complement neighbour.
+. Read the primed word at every aligned narrow-ARSIZE cell (AxSIZE 0/1/2 at each legal lane offset).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-CSR-LANE
+|Each pattern reads back exactly and identically on the repeat, through a beat whose upper four lanes the CSR endpoint never drives. All-zeros always runs next to all-ones and random patterns on the same register, so a dead write path or a zero-filled read cannot pass the set.
+|CHK-SRAM-SLICE
+|Every byte-run slice equals the Python slice of the primed word, and re-reads it exactly after the disturbing read. An extraction that starts at the wrong byte, takes the wrong length, or depends on leftover channel payloads fails the compare; the disturbing read is itself compared against the complement word, so the disturbance is proven to have happened.
+|CHK-ARSIZE
+|Every aligned AxSIZE-0/1/2 cell returns exactly the addressed lanes of the primed word, on beats where the responder legitimately drives nothing else.
+|CHK-RANDCFG
+|The seed, word, addresses and cell counts are logged up front, so a shrunken walk is visible rather than inferred from a PASS.
 |===
 
 '''''
