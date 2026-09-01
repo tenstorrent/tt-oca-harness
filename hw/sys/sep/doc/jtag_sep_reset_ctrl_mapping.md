@@ -49,6 +49,7 @@ sub-struct's MSB, so the positions already in use do not shift.
 | Old TDR | Why N/A |
 |---------|---------|
 | `o_jtag_sep_rsvd[16:0]` | Reserved bits, skip. |
+| `spi_{xspi,ctrl_reg,phy_reg,axi,phy,reg,xspi_reg}_jtag_rst_n_{ovrd,val}` | Cadence xSPI multi-domain reset leftovers. The harness SPI is OpenTitan `spi_controller` (`sep_ot_spi_wrap`) with a single `rst_ni` from SEP main reset; `SW_RESET_N` has no SPI bit. An integrator substituting an XIP controller at `sep_io_spi` owns that controller's reset. The seven pairs were removed from `jtag_sep_reset_ctrl_t` rather than wired; do not re-add them (that would invent reset domains the harness IP does not have and would shift IC_RESET TDR geometry). |
 
 ## Routing Summary
 
