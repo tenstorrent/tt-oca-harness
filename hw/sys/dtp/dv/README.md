@@ -290,7 +290,12 @@ An overlay is three adopter-owned files, kept outside this repository
    observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
    2-bit ID). The stock scenario, evidence arming, and looped runner are
    inherited unchanged, so the in-repo `CHK-*` checkers and the vendor
-   monitor run side by side on the same traffic.
+   monitor run side by side on the same traffic. Select the overlay class
+   per run with `--plusarg +UVM_TESTNAME=<overlay class>` on the stock
+   `--items` name: the runner emits the testlist-mapped test name only when
+   none is supplied, and a `+uvm_set_type_override` cannot swap the test
+   itself because the simulator-shipped UVM library applies command-line
+   factory overrides only after `run_test()` has created the test.
 3. **Vendor package compile unit** — the vendor library analyzed into the
    same work library before `dtp_uvm_compile.f`, then both tops elaborated
    (`dtp_uvm_top` plus the wiring top).

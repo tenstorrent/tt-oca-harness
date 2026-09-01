@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib.stages import _vcs_uvm_precompile_cmd  # noqa: E402
+from runlib.stages import _uvm_testname_override, _vcs_uvm_precompile_cmd  # noqa: E402
 
 
 def make_args(define: list | None = None) -> Namespace:
@@ -67,6 +67,26 @@ class VcsUvmPrecompileCmd(unittest.TestCase):
         expected = _vcs_defines(target, args)
         cmd = _vcs_uvm_precompile_cmd({}, target, args)
         self.assertEqual(cmd.split()[4:], expected)
+
+
+class UvmTestnameOverride(unittest.TestCase):
+    def test_absent_returns_empty(self):
+        self.assertEqual(_uvm_testname_override(["+ntb_random_seed=1", "+FOO=2"]), "")
+
+    def test_supplied_value_returned(self):
+        self.assertEqual(
+            _uvm_testname_override(["+FOO=1", "+UVM_TESTNAME=my_overlay_test"]),
+            "my_overlay_test",
+        )
+
+    def test_first_supplied_value_wins(self):
+        # Mirrors UVM's first-occurrence-wins semantics for the plusarg.
+        self.assertEqual(
+            _uvm_testname_override(["+UVM_TESTNAME=a", "+UVM_TESTNAME=b"]), "a"
+        )
+
+    def test_prefix_must_match_exactly(self):
+        self.assertEqual(_uvm_testname_override(["+UVM_TESTNAME_X=a"]), "")
 
 
 if __name__ == "__main__":
