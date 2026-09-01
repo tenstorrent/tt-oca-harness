@@ -106,13 +106,10 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             "0x%08x reading 0x%08x, its own value, not the remapped 0x%08x",
             cfg.region, cfg.access_addr, gated_data, dest_data)
 
-        # A floor, not a report: the region index must be inside the bank the
-        # export declares, so a config that walks off the bank fails here.
-        assert 0 <= cfg.region < N_REGIONS, (
-            f"CHK-RANDCFG FAIL: seed {cfg.seed} selected region {cfg.region}, "
-            f"outside the {N_REGIONS}-region bank"
-        )
+        # Config report, not a checker. The seed picks one region of the bank,
+        # and a bound on an index the same seed generated cannot fail. What this
+        # entry proves is asserted above, against the DUT.
         self.logger.info(
-            "CHK-RANDCFG PASS: region=%d of %d src=0x%08x dest=0x%08x seed %d",
+            "local-alias config: region=%d of %d src=0x%08x dest=0x%08x seed %d",
             cfg.region, N_REGIONS, cfg.access_addr, cfg.expect_addr,
             cfg.seed)

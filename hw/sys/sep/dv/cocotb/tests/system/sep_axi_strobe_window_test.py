@@ -111,13 +111,12 @@ class sep_axi_strobe_window_test(sep_base_test):
         # construction, so a seed that yields fewer cells than the walk defines
         # means the config shrank and the compares above covered less than the
         # card claims.
-        sizes_walked = {SIZE_BYTES[w.size] for w in cfg.writes}
-        assert sizes_walked == {1, 2, 4}, (
-            f"CHK-RANDCFG FAIL: seed {cfg.seed} walked sizes "
-            f"{sorted(sizes_walked)}; the strobe axis is exhaustive on every "
-            f"seed and must cover 1, 2 and 4 bytes"
-        )
+        # Config report, not a checker. The size axis is built by iterating
+        # SIZE_BYTES, so asserting the walk covers it restates the loop rather
+        # than testing anything; the module selftest pins that shape at import.
+        # The failable strobe contract is CHK-STROBE and CHK-WINDOW-DATA above.
         self.logger.info(
-            "CHK-RANDCFG PASS: %d narrow write(s), the full walk, + %d "
-            "window(s) from seed %d",
-            len(cfg.writes), len(cfg.windows), cfg.seed)
+            "strobe config: %d narrow write(s) over %d window(s), sizes %s, "
+            "seed %d",
+            len(cfg.writes), len(cfg.windows),
+            sorted({SIZE_BYTES[w.size] for w in cfg.writes}), cfg.seed)

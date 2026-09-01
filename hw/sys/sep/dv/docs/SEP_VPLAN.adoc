@@ -3450,6 +3450,8 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip
 
+*Randomization*: RANDCFG — the seed selects one bank, one remap region and one filter entry; the checkers and the addresses they compare follow from that choice. Coverage is one region of the bank per run, so the entry runs at a single seed and the card claims one cell, not a sweep.
+
 *Objective*: Live remap plus outbound-filter drop.
 
 *Test Procedure*:
@@ -3467,8 +3469,6 @@ both lock flavours of one seed-selected spare.
 |The programmed window completes OKAY at the remapped target. Identity would miss the allow window.
 |CHK-FILTER-DROP
 |A beat outside the remapped allow set is DECERR.
-|CHK-RANDCFG
-|Bank, region, and entry came from the run seed.
 |===
 
 '''''
@@ -3597,7 +3597,7 @@ both lock flavours of one seed-selected spare.
 |CHK-ORDER-STIM
 |Each cell presented the ordering it requested, read off the AW/W valid assertions rather than taken from the configured profile. Asserted per cell. The slave's handshake is logged separately and is allowed to coincide: a slave that holds WREADY until AW answers a W-first presentation same-cycle, which is its own contract, not a stimulus failure.
 |CHK-COVERAGE
-|The cell count is asserted against a floor and the verdict logged, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count, with every skipped register counted under its reason. A silent skip would let a shrinking sweep keep reporting PASS.
+|The cell count is asserted against a floor and against the cells the config presented, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count are logged. Every skipped register is counted under its reason on the configuration line the test logs first. A silent skip would let a shrinking sweep keep reporting PASS.
 |CHK-RANDCFG
 |The cell count for the seed is logged against the configured total, so a shrunken sweep is visible.
 |===
@@ -3622,7 +3622,7 @@ both lock flavours of one seed-selected spare.
 *Test Procedure*:
 
 [arabic]
-. Assert the cell floor before driving anything, so a walk shrunk by a map or routing change fails rather than reporting a clean pass over fewer cells.
+. Assert the cell floor when the walk completes, and require the compare count to equal the cells the config presented, so a walk shrunk by a map or routing change fails rather than reporting a clean pass over fewer cells.
 . Program the inbound filter from the CPU-LSU side: the filter denies by default, so five allow windows are opened over the swept extent. The window bounds follow `traffic_filter.sv`, which compares `addr[AW-1:3]` inclusively on an 8-byte granule.
 . Walk the cells exactly as the CPU-LSU sweep does.
 
@@ -3640,7 +3640,7 @@ both lock flavours of one seed-selected spare.
 |CHK-ORDER-STIM
 |Each cell presented the ordering it requested, read off the AW/W valid assertions rather than taken from the configured profile. On this path a W-first presentation is accepted before AW, which is the inbound adapter's own contract and is logged rather than treated as a stimulus failure — the opposite of the CPU-LSU register adapters, which hold WREADY until AW and answer W-first same-cycle.
 |CHK-COVERAGE
-|The cell count is asserted against a floor and the verdict logged, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count, with every skipped register counted under its reason — including the sixteen `INBOUND_FILTER_CTRL` blocks this path cannot sweep. A silent skip would let a shrinking sweep keep reporting PASS.
+|The cell count is asserted against a floor and against the cells the config presented, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count are logged. Every skipped register is counted under its reason on the configuration line the test logs first, including the sixteen `INBOUND_FILTER_CTRL` blocks this path cannot sweep. A silent skip would let a shrinking sweep keep reporting PASS.
 |CHK-RANDCFG
 |The cell count for the seed is logged against the configured total, so a shrunken sweep is visible.
 |===
@@ -3679,8 +3679,6 @@ both lock flavours of one seed-selected spare.
 |Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass. The compare is the addressed 32-bit word: the generated SEP C headers contain no 4-byte-adjacent register pair, so a 64-bit beat has no neighbour CSR in bytes 4–7 and a widened strobe has no second register to corrupt.
 |CHK-WINDOW-DATA
 |Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is named with its reason. At least one window must have been verified: a walk where none was writable proves nothing and fails.
-|CHK-RANDCFG
-|The narrow-write and window counts for the seed are logged, so a shrunken walk is visible.
 |===
 
 '''''
@@ -3979,8 +3977,6 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-OFFSET
 |A programmed region's live beat equals input plus the programmed offset (data matches identity `CLOCK_GATE_CTRL`).
-|CHK-RANDCFG
-|Region and source page from the run seed; dest is always `CLOCK_GATE_CTRL`.
 |CHK-VALID-GATE
 |`region_valid` gates the remap. The same window is reprogrammed with bounds and offset live and only the enable clear, and the beat must then read the value at the address the master issued rather than the remapped destination. Programming the window first is what separates a working gate from an address that was never in range, and the vacuity guard on `CHK-OFFSET` has already shown the two values differ. The cacheable attribute is not checked: `axi_alias_remap` drives the outbound cache bits from the region on a hit and this bench has no observable on them.
 |===

@@ -86,12 +86,11 @@ SHORT_ROW_LIMIT = 5
 # short_regions, so the count is held on its own.
 ANCHOR_KEPT = 6
 
-# Reserved gaps walked every seed WHERE THE CROSSBAR DOES NOT ROUTE THEM. Four
-# of these sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
+# Reserved gaps walked on every seed the crossbar does not route: one address
+# just past the end of a live block, which is where a truncating decoder aliases
+# first. Four sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
 # 0x1093_8000, 0x10A4_0000) and are dropped when the set is built, so six
 # survive. See ANCHOR_KEPT.
-# Reserved gaps that stay in the probe set on every seed: one address just past
-# the end of a live block, which is where a truncating decoder aliases first.
 _ANCHORS: tuple[tuple[int, str], ...] = (
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),

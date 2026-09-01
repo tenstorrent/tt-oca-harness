@@ -62,14 +62,10 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
             "CHK-FILTER-DROP PASS: %s r%d access 0x%08x -> DECERR "
             "(outside the remapped allow window)",
             cfg.bank, cfg.forbidden_region, cfg.forbidden_addr)
-        # A floor, not a report: the seed must land inside the banks the export
-        # declares, so a config that walks off a bank fails here rather than
-        # probing an address no register answers.
-        assert 0 <= cfg.region < N_REGIONS and 0 <= cfg.entry < OUTFILT_N_ENTRIES, (
-            f"CHK-RANDCFG FAIL: seed {cfg.seed} selected region {cfg.region} of "
-            f"{N_REGIONS} and entry {cfg.entry} of {OUTFILT_N_ENTRIES}"
-        )
+        # Config report, not a checker. The seed picks one region and one entry,
+        # and a bound on an index the same seed generated cannot fail. The
+        # coverage this entry does claim is asserted above, against the DUT.
         self.logger.info(
-            "CHK-RANDCFG PASS: bank=%s region=%d of %d entry=%d of %d, seed %d",
+            "output-remap config: bank=%s region=%d of %d entry=%d of %d, seed %d",
             cfg.bank, cfg.region, N_REGIONS, cfg.entry, OUTFILT_N_ENTRIES,
             cfg.seed)
