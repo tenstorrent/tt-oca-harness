@@ -66,18 +66,20 @@ No internal tool mounts are required anywhere in the flow.
 The boot ROM and DV-engine firmware compile against picolibc, which bare
 riscv-gnu-toolchain installs typically lack; those builds fall back automatically to
 the `ocah-toolchain` container via `scripts/docker-run.sh run-here` (build it once
-with `./scripts/docker-run.sh build`; see `tools/docker/README.md`). On hosts where
-rootless podman's `--userns=keep-id` fails, extract the image rootfs once and set
+with `./scripts/docker-run.sh build`; see `tools/docker/README.md`). That is the
+same image the containerized flow below uses. On hosts where rootless podman's
+`--userns=keep-id` fails, extract the image rootfs once and set
 `OCAH_TOOLCHAIN_ROOTFS=<dir>` to use the engine-less bubblewrap backend instead.
 
 ## Containerized build & run
 
 For hosts with no usable native toolchain at all, the whole VP can be built AND run
-in the `ocah-vp-toolchain` container (native C++20 toolchain, apt Boost/OpenSSL, the
-RISC-V firmware toolchain, and the runner's Python — see `tools/docker/Dockerfile.vp`):
+in the `ocah-toolchain` container — one image carries the native C++20 toolchain,
+apt Boost/OpenSSL, the RISC-V firmware toolchain and the runner's Python (see
+`tools/docker/Dockerfile`):
 
 ```bash
-./scripts/docker-run.sh vp-build      # build the image once
+./scripts/docker-run.sh build         # build the image once (vp-build is an alias)
 make -C virtual_platform vp VP_CONTAINER=1        # deps (SystemC/CCI) + sep-vp
 make -C virtual_platform vp-test VP_CONTAINER=1   # pytest suites, in-container
 make -C virtual_platform boot-run VP_CONTAINER=1 BOOT_ARGS="--boot primary"
@@ -88,8 +90,14 @@ A container-built `sep-vp` links the container's glibc and cannot run on older
 hosts, so `VP_CONTAINER=1` routes the run/test targets into the container too.
 Artifacts are partitioned per environment (`local-ctr/`, `tt-oca-harness-model/vp/build-ctr`)
 and never mix with a native build. Where rootless podman's `--userns=keep-id`
-fails, extract the VP image rootfs and set `OCAH_VP_TOOLCHAIN_ROOTFS=<dir>` for the
-engine-less bubblewrap backend (same pattern as `OCAH_TOOLCHAIN_ROOTFS`).
+fails, extract the image rootfs and set `OCAH_TOOLCHAIN_ROOTFS=<dir>` for the
+engine-less bubblewrap backend; on a host with both engines installed,
+`OCAH_ENGINE=docker` (or `podman`) pins which one is used.
+
+`.github/workflows/vp.yml` runs both flows — a native build on the runner and a
+`VP_CONTAINER=1` build in this image — on every PR that touches the VP, plus
+nightly. It is the reference for the exact commands and dependencies each path
+needs.
 
 The `sepvp` runner's design — status channels, overlay `.ini` generation, fuse maps —
 is documented in [`sepvp/README.md`](sepvp/README.md).

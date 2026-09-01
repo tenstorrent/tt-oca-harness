@@ -1,13 +1,15 @@
 # OCAH containers
 
-`tools/docker/Dockerfile` builds **only** the RISC-V DV firmware image
-(`ocah-toolchain`). Docs and EDA use **pulled** public images.
-`scripts/docker-run.sh` is the shared front door: each subcommand picks an
-image.
+`tools/docker/Dockerfile` builds the one locally-built image, `ocah-toolchain`,
+which carries **both** the RISC-V DV firmware toolchain and everything the SEP
+virtual platform needs to build and run `sep-vp`. Docs and EDA use **pulled**
+public images. `scripts/docker-run.sh` is the shared front door: each
+subcommand picks an image.
 
 | Need | Image | How you get it | `docker-run.sh` |
 |------|--------|----------------|-----------------|
 | DV firmware (`riscv64-unknown-elf-gcc`, picolibc) | `ocah-toolchain` | **Build** from `tools/docker/Dockerfile` | `build`, `run`, `shell`, `verify` |
+| SEP virtual platform (`g++`, cmake, Boost/OpenSSL, runner Python) | `ocah-toolchain` (same image) | **Build** from `tools/docker/Dockerfile` | `vp-build`, `vp-run`, `vp-shell`, `vp-verify` |
 | Docs HTML | `docker.io/antora/antora:3.1.10` | Pull | `doc-html` |
 | Docs PDF | digest-pinned `docker.io/asciidoctor/docker-asciidoctor` | Pull (see [Pinned image digests](#pinned-image-digests)) | `doc-pdf` |
 | EDA (yosys + PDKs; also slang/verible in-container) | [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools) | Pull | `eda-run`, `eda-shell` |
@@ -61,7 +63,35 @@ Interactive shell for debugging:
 ./scripts/docker-run.sh shell
 ```
 
-Override the image tag with `OCAH_DOCKER_IMAGE=my-tag`.
+Override the image tag with `OCAH_DOCKER_IMAGE=my-tag`. On a host that has both
+podman and docker installed, pin the engine with `OCAH_ENGINE=docker` (or
+`podman`) instead of taking whichever is found first.
+
+## Virtual platform (`sep-vp`)
+
+The same image also builds and runs the SEP virtual platform, for hosts with no
+usable native C++20 toolchain. On top of the firmware packages it carries `g++`,
+`cmake`, autotools, Boost (`iostreams`, `program_options`, `log`) and OpenSSL
+dev libraries, and the runner's Python (`pexpect`, `pytest`, `yaml`, `toml`,
+`pyelftools`, plus the `tt-boot-manifest` packer's `cryptography`,
+`ruamel.yaml`, `tomlkit`, `bitarray`). Boost and OpenSSL from apt clear the VP's
+floors, so `virtual_platform/Makefile` resolves both to `/usr` and only builds
+SystemC and CCI from source.
+
+```bash
+./scripts/docker-run.sh vp-verify                  # g++ and cmake versions
+make -C virtual_platform vp      VP_CONTAINER=1    # deps (SystemC/CCI) + sep-vp
+make -C virtual_platform vp-test VP_CONTAINER=1    # pytest suites, in-container
+./scripts/docker-run.sh vp-shell                   # interactive, repo bound 1:1
+```
+
+`vp-build` and `vp-run` are aliases for `build` and `run-here` — one image now
+serves both toolchains. They are kept because a container-built `sep-vp` links
+the container's glibc and **must also run in the container**, which is why the
+VP path uses the 1:1 host-path mount rather than `/work`: `VP_CONTAINER=1`
+forwards the run/test targets into the container too, and partitions artifacts
+into `local-ctr/` and `vp/build-ctr` so they never mix with a native build. See
+`virtual_platform/README.md`.
 
 ## Container user (UID/GID mapping)
 
@@ -162,8 +192,11 @@ own default user instead.
 | SEP | **Pass** | `--specs=picolibc.specs` in `toolchain.mk` |
 | KM | **Pass** | Same specs on compile; `-nostdlib` at link (headers only) |
 | SMC | **Pass** | Same specs on compile |
+| `sep-vp` | **Pass** | `vp-verify` (g++/cmake), then `make -C virtual_platform vp VP_CONTAINER=1` |
 
-All three subsystems use `--specs=picolibc.specs` for compile-time headers.
+All three firmware subsystems use `--specs=picolibc.specs` for compile-time
+headers. The `vp` workflow (`.github/workflows/vp.yml`) exercises the VP row on
+every relevant PR and nightly.
 
 ## Pinned image digests
 
@@ -195,12 +228,19 @@ the change.
   but the `apt-get install` package versions inside it still float with
   whatever is current in Debian trixie at build time. Pin specific package
   versions too if that level of reproducibility becomes important.
+- Carrying both toolchains makes the image substantially larger than a
+  firmware-only one (roughly 2.4 GB installed versus 1.7 GB), which everyone
+  building DV firmware now pays. That is the accepted cost of a single image:
+  a separate VP image would have to duplicate the RISC-V toolchain anyway, and
+  two images meant two Dockerfile hashes, two tarball caches and two rootfs
+  extractions to keep in sync.
 
 ## Files
 
 | Path | Role |
 |------|------|
-| `tools/docker/Dockerfile` | Builds `ocah-toolchain` (firmware only) |
-| `scripts/docker-run.sh` | Multi-image helper (`build`/`run`/`doc-*`/`eda-*`) |
+| `tools/docker/Dockerfile` | Builds `ocah-toolchain` (firmware **and** virtual platform) |
+| `scripts/docker-run.sh` | Multi-image helper (`build`/`run`/`vp-*`/`doc-*`/`eda-*`) |
+| `.github/workflows/vp.yml` | CI: builds and tests `sep-vp` natively and in this image |
 | `hw/common/dv/fw/compile.mk` | Firmware build engine (native or `run`) |
 | `flows/common.mk` | Lint/synth helpers (`eda-run` for synth; native-or-fail for slang/verible) |

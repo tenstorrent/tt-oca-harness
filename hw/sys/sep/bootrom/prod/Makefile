@@ -300,7 +300,7 @@ ifneq ($(shell command -v uv 2>/dev/null),)
 PACK_RUN := uv run --no-project --with-editable "$(TT_BOOT_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
 else
-# uv-less fallback (e.g. the ocah-vp-toolchain container, which carries the
+# uv-less fallback (e.g. the ocah-toolchain container, which carries the
 # packer's deps as distro packages: python3-{cryptography,ruamel.yaml,tomlkit,
 # bitarray}). The submodule maps package-dir {tt_boot_manifest = "src"}, which
 # plain PYTHONPATH can't express — a symlink shim reproduces it. Kept a single
@@ -326,7 +326,7 @@ ensure-pack-deps:
 	  echo "       Either install uv (https://docs.astral.sh/uv/getting-started/installation/,"; \
 	  echo "       tools/dv/run_dv.py requires the same tool, so this is a one-off), or"; \
 	  echo "       provide python3 with cryptography, ruamel.yaml, tomlkit and bitarray"; \
-	  echo "       (the ocah-vp-toolchain container carries them as distro packages)."; \
+	  echo "       (the ocah-toolchain container carries them as distro packages)."; \
 	  exit 1; }
 
 # manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.

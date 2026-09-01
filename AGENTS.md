@@ -159,10 +159,18 @@ All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
+That one image also carries the SEP virtual platform's toolchain (g++, cmake, Boost,
+OpenSSL, the runner's Python), so `make -C virtual_platform vp VP_CONTAINER=1` builds and
+runs `sep-vp` in it. The `vp-*` subcommands are aliases onto the same image.
+
 ```bash
 ./scripts/docker-run.sh build     # build the image once
 ./scripts/docker-run.sh verify    # prints the compiler version and multilib list
+./scripts/docker-run.sh vp-verify # the VP side: g++ and cmake versions
 ```
+
+On a host with both podman and docker installed, `OCAH_ENGINE=docker` (or `podman`) pins
+which one `docker-run.sh` uses instead of taking whichever it finds first.
 
 With the companion's `OCAH_DOCKER_CACHE_DIR` set, `docker-run.sh` loads the image from that
 shared cache instead of building it; otherwise it builds locally from the Dockerfile.
@@ -173,8 +181,11 @@ runs natively on the host. Not every testbench does this — check its Makefile 
 assuming.
 
 When `OCAH_TOOLCHAIN_ROOTFS` points at an extracted toolchain rootfs and `bwrap` is
-installed, `docker-run.sh` uses bubblewrap instead of a container engine. It is an opt-in
-either way: the companion sets it for you, and anyone can set it by hand. That path fails
+installed, `docker-run.sh` uses bubblewrap instead of a container engine. The rootfs must
+come from the merged image: both `usr/bin/riscv64-unknown-elf-gcc` and `usr/bin/g++` are
+probed, and a rootfs missing either is rejected up front with a warning and an automatic
+fall back to the container engine. It is an opt-in either way: the companion sets it for
+you, and anyone can set it by hand. That path fails
 when the checkout sits on a filesystem whose mountpoint bwrap cannot create inside its
 read-only rootfs, typically a networked or site-specific mount:
 
