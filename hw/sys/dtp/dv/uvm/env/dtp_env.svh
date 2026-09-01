@@ -28,14 +28,27 @@ class dtp_env extends uvm_env;
     // cfg.require_checks.
     ocah_axi_config m_smc_otp_axi_cfg;
     ocah_axi_env m_smc_otp_axi_env;
+    ocah_axi_config m_sep_otp_axi_cfg;
+    ocah_axi_env m_sep_otp_axi_env;
     ocah_axi_config m_smc_axi_cfg;
     ocah_axi_env m_smc_axi_env;
+    ocah_axi_config m_xtrig_axi_cfg;
+    ocah_axi_env m_xtrig_axi_env;
+
+    // Active shared-VIP AXI master: the initiator driving the XTRIG CSR
+    // AXI-Lite port (XTRIG sequences issue CSR traffic through the env's
+    // m_sequencer via ocah_axi_master_sequence).
+    ocah_axi_master_config m_xtrig_master_cfg;
+    ocah_axi_master_env    m_xtrig_master_env;
 
     // Active shared-VIP slave agents: the memory-backed responders answering
-    // the SMC OTP AXI-Lite port and the SMC fabric AXI4 port (sequences
-    // program error injection and backdoor memory via each agent's seq).
+    // the SMC/SEP OTP AXI-Lite ports and the SMC fabric AXI4 port (sequences
+    // program error injection, backdoor memory, and bounded READY
+    // backpressure via each agent's seq).
     ocah_axi_slave_config m_smc_otp_slave_cfg;
     ocah_axi_slave_agent  m_smc_otp_slave_agent;
+    ocah_axi_slave_config m_sep_otp_slave_cfg;
+    ocah_axi_slave_agent  m_sep_otp_slave_agent;
     ocah_axi_slave_config m_smc_axi_slave_cfg;
     ocah_axi_slave_agent  m_smc_axi_slave_agent;
 
@@ -81,6 +94,20 @@ class dtp_env extends uvm_env;
                                           m_smc_otp_axi_cfg);
         m_smc_otp_axi_env = ocah_axi_env::type_id::create("m_smc_otp_axi_env", this);
 
+        m_sep_otp_axi_cfg = ocah_axi_config::type_id::create("m_sep_otp_axi_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "sep_otp_axil_vif",
+                                                      m_sep_otp_axi_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `sep_otp_axil_vif` not found in uvm_config_db")
+        m_sep_otp_axi_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+        m_sep_otp_axi_cfg.addr_width = 32;
+        m_sep_otp_axi_cfg.data_width = 32;
+        m_sep_otp_axi_cfg.id_width   = 0;
+        m_sep_otp_axi_cfg.name_tag   = "dtp_sep_otp_axil";
+        uvm_config_db#(ocah_axi_config)::set(this, "m_sep_otp_axi_env*", "cfg",
+                                          m_sep_otp_axi_cfg);
+        m_sep_otp_axi_env = ocah_axi_env::type_id::create("m_sep_otp_axi_env", this);
+
         m_smc_axi_cfg = ocah_axi_config::type_id::create("m_smc_axi_cfg");
         if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "m_axi_vif",
                                                       m_smc_axi_cfg.vif))
@@ -93,6 +120,39 @@ class dtp_env extends uvm_env;
         m_smc_axi_cfg.name_tag   = "dtp_smc_axi";
         uvm_config_db#(ocah_axi_config)::set(this, "m_smc_axi_env*", "cfg", m_smc_axi_cfg);
         m_smc_axi_env = ocah_axi_env::type_id::create("m_smc_axi_env", this);
+
+        m_xtrig_axi_cfg = ocah_axi_config::type_id::create("m_xtrig_axi_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "xtrig_axil_vif",
+                                                      m_xtrig_axi_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `xtrig_axil_vif` not found in uvm_config_db")
+        m_xtrig_axi_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+        m_xtrig_axi_cfg.addr_width = 32;
+        m_xtrig_axi_cfg.data_width = 32;
+        m_xtrig_axi_cfg.id_width   = 0;
+        m_xtrig_axi_cfg.name_tag   = "dtp_xtrig_axil";
+        // Monitor + coverage only: the memory-shadow ref-model/scoreboard
+        // pairing cannot describe the XTRIG CSR block (volatile status
+        // reads, reset-cleared selects, DECERR on unmapped decode); CSR
+        // read/response checking is owned by the XTRIG sequences' evidence.
+        m_xtrig_axi_cfg.en_scoreboard = 1'b0;
+        uvm_config_db#(ocah_axi_config)::set(this, "m_xtrig_axi_env*", "cfg",
+                                          m_xtrig_axi_cfg);
+        m_xtrig_axi_env = ocah_axi_env::type_id::create("m_xtrig_axi_env", this);
+
+        m_xtrig_master_cfg = ocah_axi_master_config::type_id::create("m_xtrig_master_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "xtrig_master_vif",
+                                                      m_xtrig_master_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `xtrig_master_vif` not found in uvm_config_db")
+        m_xtrig_master_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+        m_xtrig_master_cfg.addr_width = 32;
+        m_xtrig_master_cfg.data_width = 32;
+        m_xtrig_master_cfg.id_width   = 0;
+        m_xtrig_master_cfg.name_tag   = "dtp_xtrig_master";
+        uvm_config_db#(ocah_axi_master_config)::set(this, "m_xtrig_master_env*", "cfg",
+                                                    m_xtrig_master_cfg);
+        m_xtrig_master_env = ocah_axi_master_env::type_id::create("m_xtrig_master_env", this);
 
         m_smc_otp_slave_cfg = ocah_axi_slave_config::type_id::create("m_smc_otp_slave_cfg");
         if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_otp_slave_vif",
@@ -109,6 +169,22 @@ class dtp_env extends uvm_env;
                                                    "slave_cfg", m_smc_otp_slave_cfg);
         m_smc_otp_slave_agent =
             ocah_axi_slave_agent::type_id::create("m_smc_otp_slave_agent", this);
+
+        m_sep_otp_slave_cfg = ocah_axi_slave_config::type_id::create("m_sep_otp_slave_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "sep_otp_slave_vif",
+                                                      m_sep_otp_slave_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `sep_otp_slave_vif` not found in uvm_config_db")
+        m_sep_otp_slave_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+        m_sep_otp_slave_cfg.addr_width = 32;
+        m_sep_otp_slave_cfg.data_width = 32;
+        m_sep_otp_slave_cfg.id_width   = 0;
+        m_sep_otp_slave_cfg.mem_bytes  = 65536;
+        m_sep_otp_slave_cfg.name_tag   = "dtp_sep_otp_slave";
+        uvm_config_db#(ocah_axi_slave_config)::set(this, "m_sep_otp_slave_agent*",
+                                                   "slave_cfg", m_sep_otp_slave_cfg);
+        m_sep_otp_slave_agent =
+            ocah_axi_slave_agent::type_id::create("m_sep_otp_slave_agent", this);
 
         m_smc_axi_slave_cfg = ocah_axi_slave_config::type_id::create("m_smc_axi_slave_cfg");
         if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_axi_slave_vif",

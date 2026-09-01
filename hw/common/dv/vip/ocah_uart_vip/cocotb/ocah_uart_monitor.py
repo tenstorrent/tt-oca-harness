@@ -216,14 +216,14 @@ class OcahUartLineMonitor:
             bits = self._bits
             bit_ns = max(1, round(1e9 / self._baud))
 
-            await Timer(max(1, bit_ns // 2), "ns")   # centre of start bit
+            await Timer(max(1, bit_ns // 2), "ns")  # centre of start bit
             if self._sample() != 0:
                 self._stats["glitches"] += 1
                 continue
 
             framing_error = False
             b = 0
-            for k in range(bits):                    # data-bit centres
+            for k in range(bits):  # data-bit centres
                 await Timer(bit_ns, "ns")
                 bit = self._sample()
                 if bit is None:
@@ -231,15 +231,13 @@ class OcahUartLineMonitor:
                     bit = 0
                 b |= bit << k
 
-            await Timer(bit_ns, "ns")                # centre of stop bit
+            await Timer(bit_ns, "ns")  # centre of stop bit
             if self._sample() != 1:
                 framing_error = True
 
             if framing_error:
                 self._stats["framing_errors"] += 1
-                self.log.warning(
-                    "%s: framing error around byte 0x%02X", self.name, b
-                )
+                self.log.warning("%s: framing error around byte 0x%02X", self.name, b)
 
             self.log.debug("%s: RX byte 0x%02X", self.name, b)
             self._stats["bytes_sampled"] += 1
@@ -292,11 +290,11 @@ class OcahUartMonitor:
         baud: int = _DEFAULT_BAUD,
         max_history: int = _HISTORY_MAX,
     ):
-        self.name   = name
+        self.name = name
         self._clock = clock
-        self._baud  = baud
+        self._baud = baud
         self._max_history = max_history
-        self.log    = logging.getLogger(name)
+        self.log = logging.getLogger(name)
 
         # Separate passive line monitors for TX and RX.
         self._tx_tap = OcahUartLineMonitor(txd, name=f"{name}.tx", baud=baud)
@@ -308,7 +306,7 @@ class OcahUartMonitor:
         self._tx_history: List[int] = []
         self._rx_history: List[int] = []
 
-        self._running  = False
+        self._running = False
         self._tx_task: Optional[Any] = None
         self._rx_task: Optional[Any] = None
 
@@ -344,14 +342,24 @@ class OcahUartMonitor:
         if self._running:
             return
         self._running = True
-        self._tx_task = cocotb.start_soon(self._drain_loop(
-            self._tx_tap, self._tx_history, self._tx_callbacks, "TX",
-            "tx_bytes_observed",
-        ))
-        self._rx_task = cocotb.start_soon(self._drain_loop(
-            self._rx_tap, self._rx_history, self._rx_callbacks, "RX",
-            "rx_bytes_observed",
-        ))
+        self._tx_task = cocotb.start_soon(
+            self._drain_loop(
+                self._tx_tap,
+                self._tx_history,
+                self._tx_callbacks,
+                "TX",
+                "tx_bytes_observed",
+            )
+        )
+        self._rx_task = cocotb.start_soon(
+            self._drain_loop(
+                self._rx_tap,
+                self._rx_history,
+                self._rx_callbacks,
+                "RX",
+                "rx_bytes_observed",
+            )
+        )
         self.log.info("%s: passive monitoring started (baud=%d)", self.name, self._baud)
 
     async def stop(self) -> None:
@@ -388,9 +396,7 @@ class OcahUartMonitor:
                 if len(history) > self._max_history:
                     history.pop(0)
                 self._stats[stat_key] += 1
-                self.log.debug(
-                    "%s: [%s] byte 0x%02X", self.name, direction, byte_val
-                )
+                self.log.debug("%s: [%s] byte 0x%02X", self.name, direction, byte_val)
                 _fire_callbacks(callbacks, byte_val)
 
     # ------------------------------------------------------------------

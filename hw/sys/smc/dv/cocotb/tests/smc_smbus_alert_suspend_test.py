@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_smbus_alert_suspend_test_seq import (
     smc_smbus_alert_suspend_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -21,12 +21,7 @@ class smc_smbus_alert_suspend_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_smbus_alert_suspend_test_seq("smbus_alert_suspend_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert (
-            seq.alert_seen
-            and seq.ara_ok
-            and seq.alert_cleared
-            and seq.suspend_ok
-        ), (
+        assert seq.alert_seen and seq.ara_ok and seq.alert_cleared and seq.suspend_ok, (
             f"alert_suspend incomplete alert={seq.alert_seen} ara={seq.ara_ok} "
             f"clr={seq.alert_cleared} sus={seq.suspend_ok}"
         )
@@ -36,7 +31,6 @@ class smc_smbus_alert_suspend_test(smc_base_test):
             csr_accesses=seq.accesses,
             proxy=False,
             details=(
-                f"DUT-internal SMBALERT/ARA/SMBSUS "
-                f"ara_ok={seq.ara_ok} sus_ok={seq.suspend_ok}"
+                f"DUT-internal SMBALERT/ARA/SMBSUS ara_ok={seq.ara_ok} sus_ok={seq.suspend_ok}"
             ),
         )

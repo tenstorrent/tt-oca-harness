@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 # SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR (offset 0x18; shifted from 0x30
@@ -75,8 +75,8 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
             await self._write(f"{name}_RESTORE", addr, 0)
             await self._read(f"{name}_RESTORE", addr)
 
-        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
-                          self.clock_gate_value)
-        await self._read("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
-                         expected=self.clock_gate_value)
+        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value)
+        await self._read(
+            "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, expected=self.clock_gate_value
+        )
         assert self.accesses == 19, "expected mailbox CSR access sequence"

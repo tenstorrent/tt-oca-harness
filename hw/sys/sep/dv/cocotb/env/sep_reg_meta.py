@@ -78,11 +78,7 @@ def _default_type_keys() -> list[str]:
     """Type prefixes that have a generated ``_REG_DEFAULT`` (cached)."""
     keys = getattr(_default_type_keys, "_cache", None)
     if keys is None:
-        keys = [
-            n[: -len("_REG_DEFAULT")]
-            for n in vars(sep_reg)
-            if n.endswith("_REG_DEFAULT")
-        ]
+        keys = [n[: -len("_REG_DEFAULT")] for n in vars(sep_reg) if n.endswith("_REG_DEFAULT")]
         _default_type_keys._cache = keys
     return keys
 
@@ -116,10 +112,7 @@ class RegBlock:
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
                 return alias
         norm = _normalize_inst_name(name)
-        hits = [
-            key for key in _default_type_keys()
-            if key.endswith("_" + norm) or key == norm
-        ]
+        hits = [key for key in _default_type_keys() if key.endswith("_" + norm) or key == norm]
         if len(hits) == 1:
             return hits[0]
         if len(hits) > 1:
@@ -196,8 +189,7 @@ class RegBlock:
         fields = {field: width for field, _ctype, width in struct._fields_}
         if field_name not in fields:
             raise KeyError(
-                f"{self.block}.{name}.{field_name} not found; "
-                f"known fields: {sorted(fields)}"
+                f"{self.block}.{name}.{field_name} not found; known fields: {sorted(fields)}"
             )
         view = union()
         view.val = 0
@@ -268,7 +260,7 @@ class CHeaderRegBlock:
             if len(parts) < 3 or parts[0] != "#define" or not parts[1].startswith(prefix):
                 continue
             name, raw = parts[1], parts[2]
-            body = name[len(prefix):]
+            body = name[len(prefix) :]
             for suffix in self._SUFFIXES:
                 if not body.endswith("_" + suffix):
                     continue
@@ -309,8 +301,7 @@ class CHeaderRegBlock:
         unknown = set(overrides) - set(known)
         if unknown:
             raise KeyError(
-                f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; "
-                f"known: {sorted(known)}"
+                f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; known: {sorted(known)}"
             )
         total = 0
         for name, meta in known.items():
@@ -374,12 +365,50 @@ def block_names() -> list[str]:
     (``AXIL_MAILBOX`` vs ``AXIL_MAILBOX_OUTBOUND_MAILBOX_0``).
     """
     names = [
-        n[: -len("_REG_MAP_BASE_ADDR")]
-        for n in vars(sep_reg)
-        if n.endswith("_REG_MAP_BASE_ADDR")
+        n[: -len("_REG_MAP_BASE_ADDR")] for n in vars(sep_reg) if n.endswith("_REG_MAP_BASE_ADDR")
     ]
     names.sort(key=len, reverse=True)
     return names
+
+
+def indexed_block_count(prefix: str) -> int:
+    """How many ``<prefix>_<n>_`` blocks the generated header declares.
+
+    The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
+    count belongs to the register export, not to a sequence. Two sweeps that
+    each carry their own literal will disagree the moment the array changes, and
+    the one that is short simply never reaches the tail entries: a sweep that
+    selects from 16 of 32 entries reports a clean pass over half the bank.
+
+    Indices must be contiguous from zero. A gap means the header and the RDL
+    disagree, and a sweep built on the count would silently skip the hole.
+    """
+    found = set()
+    marker = "_REG_MAP_BASE_ADDR"
+    for name in vars(sep_reg):
+        if not name.endswith(marker):
+            continue
+        stem = name[: -len(marker)]
+        if not stem.startswith(prefix + "_"):
+            continue
+        tail = stem[len(prefix) + 1 :]
+        if tail.endswith("_"):
+            tail = tail[:-1]
+        if tail.isdigit():
+            found.add(int(tail))
+    if not found:
+        raise KeyError(
+            f"no {prefix}_<n> blocks in the generated register header "
+            f"({_GEN_PY}/sep_reg.py); check the prefix or regenerate"
+        )
+    if found != set(range(len(found))):
+        missing = sorted(set(range(max(found) + 1)) - found)
+        raise KeyError(
+            f"{prefix} block indices are not contiguous from 0: "
+            f"{len(found)} found, missing {missing}"
+        )
+    return len(found)
 
 
 def block_size(block: str) -> int:
@@ -406,13 +435,19 @@ def _load_py_module(path: Path, name: str):
 def _ip_reg_path(ip: str) -> Path:
     """Generated Python register header for an OpenTitan or OCAH IP."""
     if ip == "entropy_source":
-        return (
-            _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py"
-            / "entropy_source_reg.py"
-        )
+        return _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
     return (
-        _REPO_ROOT / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
-        / ip / "regs" / "gen" / "py" / f"{ip}_reg.py"
+        _REPO_ROOT
+        / "vendor"
+        / "lowRISC"
+        / "opentitan"
+        / "overlay"
+        / "regs"
+        / ip
+        / "regs"
+        / "gen"
+        / "py"
+        / f"{ip}_reg.py"
     )
 
 
@@ -499,9 +534,9 @@ class RegisterWalk:
     export: int
     # Dropped OFFSET symbols, split by cause so a change of cause is visible
     # rather than absorbed into one figure. All three are real code paths.
-    no_default: int = 0     # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
+    no_default: int = 0  # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
     unknown_block: int = 0  # the symbol stem matches no known block prefix
-    duplicate: int = 0      # a (block, register) pair already walked
+    duplicate: int = 0  # a (block, register) pair already walked
 
     @property
     def nometa(self) -> int:
@@ -546,7 +581,7 @@ def iter_register_walk() -> RegisterWalk:
             prefix = candidate + "_"
             if stem.startswith(prefix):
                 block = candidate
-                reg = stem[len(prefix):]
+                reg = stem[len(prefix) :]
                 break
         if block is None:
             unknown_block += 1
@@ -619,10 +654,7 @@ def reg_write_destructive(block: str) -> frozenset[str]:
     return frozenset(
         name
         for name, fields in _reg_field_access(block).items()
-        if any(
-            onwrite in ("woclr", "woset")
-            for _field, _sw, onwrite, _onread, _pulse in fields
-        )
+        if any(onwrite in ("woclr", "woset") for _field, _sw, onwrite, _onread, _pulse in fields)
     )
 
 
@@ -652,7 +684,7 @@ def iter_addrs() -> list[tuple[str, str, int]]:
             prefix = candidate + "_"
             if stem.startswith(prefix):
                 block = candidate
-                reg = stem[len(prefix):]
+                reg = stem[len(prefix) :]
                 break
         if block is None or (block, reg) in seen:
             continue
@@ -660,6 +692,7 @@ def iter_addrs() -> list[tuple[str, str, int]]:
         found.append((block, reg, int(getattr(sep_reg, sym_name))))
     found.sort(key=lambda item: (item[2], item[0], item[1]))
     return found
+
 
 SEP_CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 ENTROPY_SOURCE = CHeaderRegBlock("ENTROPY_SOURCE", ip_c_header("entropy_source"))
@@ -682,17 +715,17 @@ def _selftest() -> int:
     cpu = SEP_CPU_CTRL
     checks = [
         # (register, offset, reset, mask)
-        ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),          # pka_cg_enable[0:0], placeholder
-        ("PKA_CTRL", 0x020, 0x0, 0x7),                 # 3 x 1-bit placeholder fields
+        ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),  # pka_cg_enable[0:0], placeholder
+        ("PKA_CTRL", 0x020, 0x0, 0x7),  # 3 x 1-bit placeholder fields
         # reserved[0:0] placeholder: real sw=rw storage, but NOT a software-usable
         # field, so the implemented mask is 0. Storage is pinned separately below.
         ("TIMEOUT_ENABLE", 0x068, 0x0, 0x0),
         ("SEP_LOCAL_BASE_ADDR", 0x0C8, 0xD000_0000, 0xFFFF_FFFF),
         ("SEP_REGION_SIZE", 0x0D0, 0x0100_0000, 0xFFFF_FFFF),
-        ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),           # bank_chip[3:0] + bank_instance[7:4]
+        ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),  # bank_chip[3:0] + bank_instance[7:4]
         ("SEP_NMI_VEC", 0x180, 0xC000_0100, 0xFFFF_FFFE),  # bit 0 is rsvd
-        ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),         # sel[2:0] = 0x7
-        ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),    # distinct type, must NOT alias to _SEL
+        ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),  # sel[2:0] = 0x7
+        ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),  # distinct type, must NOT alias to _SEL
         ("SEP_VERSION_ID", 0x1000, 0xDEAD_BEEF, 0xFFFF_FFFF),
     ]
     failures = []
@@ -700,7 +733,9 @@ def _selftest() -> int:
         got = (cpu.offset(name), cpu.reset32(name), cpu.mask32(name))
         want = (offset, reset, mask)
         if got != want:
-            failures.append(f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}")
+            failures.append(
+                f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}"
+            )
 
     # Every TIMEOUT_COUNT_* instance must resolve its own offset but share the
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
@@ -721,10 +756,12 @@ def _selftest() -> int:
     # implemented/storage masks differ by exactly the reserved bit.
     if cpu.mask32_all("TIMEOUT_ENABLE") != 0x1:
         failures.append(
-            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1")
+            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1"
+        )
     if cpu.mask32_all("SEP_NMI_VEC") != 0xFFFF_FFFF:
         failures.append(
-            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff")
+            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff"
+        )
     if cpu.offset("TIMEOUT_COUNT_DMA") == cpu.offset("TIMEOUT_COUNT_SYS_IN"):
         failures.append("TIMEOUT_COUNT_* instances collapsed to one offset")
 
@@ -776,20 +813,16 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1024, 865, 159):
+    if (walk.export, walk.inventory, walk.nometa) != (1028, 869, 159):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1024/865/159"
+            f"{walk.nometa} != 1028/869/159"
         )
     if walk.inventory < 100:
-        failures.append(
-            f"iter_registers returned {walk.inventory} entries; expected 100+"
-        )
+        failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
     esrc_ro = reg_sw_readonly("entropy_source")
     if len(esrc_ro) != 21:
-        failures.append(
-            f"entropy_source sw-readonly count {len(esrc_ro)} != 21"
-        )
+        failures.append(f"entropy_source sw-readonly count {len(esrc_ro)} != 21")
     if "HT_WATERMARK" not in esrc_ro or "HT_WATERMARK_NUM" in esrc_ro:
         failures.append(f"entropy_source sw-readonly set is wrong: {sorted(esrc_ro)}")
     by_key = {(info.block, info.name): info for info in regs}
@@ -809,8 +842,7 @@ def _selftest() -> int:
     if ot_reg_map_size("edn") != 0x48:
         failures.append(f"edn size {hex(ot_reg_map_size('edn'))} != 0x48")
     if ot_reg_map_size("entropy_source") != 0x17C:
-        failures.append(
-            f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
+        failures.append(f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
 
     if failures:
         for line in failures:

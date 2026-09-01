@@ -68,9 +68,7 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
 
         checker.expect_true(
             "CHK-NONVAC",
-            len(set(states)) == len(states)
-            and min(trst_cycles) >= 2
-            and idcode_ok == len(states),
+            len(set(states)) == len(states) and min(trst_cycles) >= 2 and idcode_ok == len(states),
             context=(
                 f"start_states={len(set(states))} "
                 f"trst_cycles={trst_cycles} idcode_recovered={idcode_ok}/{len(states)}"

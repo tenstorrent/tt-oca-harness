@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_axil_item import SmcAxilItem, SmcAxilOp
 from env.smc_clk_item import SmcClkItem, SmcClkOp
 from env.smc_gpio_item import SmcGpioItem, SmcGpioOp

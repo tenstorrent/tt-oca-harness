@@ -77,7 +77,7 @@ class OcahAxiLiteSlaveSequence:
         data = self.read(addr, length)
         lines = []
         for off in range(0, len(data), width):
-            chunk = data[off:off + width]
+            chunk = data[off : off + width]
             lines.append(f"{addr + off:08x}: " + " ".join(f"{byte:02x}" for byte in chunk))
         return "\n".join(lines)
 

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_axil_item import SmcAxilItem, SmcAxilOp
 
 from .smc_base_test_seq import smc_base_test_seq
@@ -25,8 +24,7 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
         dut = cocotb.top
         cocotb.log.info("STEP S1: SETUP clocks/resets")
         cocotb.log.info(
-            "STEP S2: INSTRUMENTATION-ONLY 8x SmcAxilItem SAMPLE "
-            "(any_master_active==0)"
+            "STEP S2: INSTRUMENTATION-ONLY 8x SmcAxilItem SAMPLE (any_master_active==0)"
         )
         for i in range(8):
             it = SmcAxilItem(f"s{i}")
@@ -38,8 +36,7 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
                 await ClockCycles(dut.clk_smc_i, self.GAP_SMC_CYCLES)
         for s in self.samples:
             assert s.resolvable, f"{s.get_name()} X/Z"
-            assert s.any_master_active == 0, \
-                f"AXI master active in sample {s.get_name()}"
+            assert s.any_master_active == 0, f"AXI master active in sample {s.get_name()}"
         cocotb.log.info(
             "CHK-NONVAC: all 8 SmcAxilItem SAMPLE ops (s0..s7) complete and "
             "each resolves any_master_active to a defined 0/1 value "

@@ -56,6 +56,8 @@ include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
+include $(OCAH_ROOT)/flows/lint/ruff.mk
+include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
 ## Generate the filelist for the OCAH repository.

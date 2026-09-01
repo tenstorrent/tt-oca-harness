@@ -23,10 +23,10 @@ is always clocked (no CLOCK_GATE_CTRL ungate needed).
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -67,15 +67,19 @@ class SepWdtCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        self.wkup_thold = rng.randrange(4, 33)                   # small: expires in <=32 ticks
-        self.wkup_high_thold = rng.randrange(0x4_0000, 0x10_0001)  # large: no expiry in the count window
-        self.bark_prelock = rng.randrange(1, 0x1_0000)             # nonzero pre-lock BARK_THOLD
-        self.bark_postlock = self.bark_prelock ^ 0xFFFF        # distinct locked-write attempt
+        self.wkup_thold = rng.randrange(4, 33)  # small: expires in <=32 ticks
+        self.wkup_high_thold = rng.randrange(
+            0x4_0000, 0x10_0001
+        )  # large: no expiry in the count window
+        self.bark_prelock = rng.randrange(1, 0x1_0000)  # nonzero pre-lock BARK_THOLD
+        self.bark_postlock = self.bark_prelock ^ 0xFFFF  # distinct locked-write attempt
 
     def summary(self) -> str:
-        return (f"seed={self.seed} wkup_thold={self.wkup_thold} "
-                f"wkup_high_thold=0x{self.wkup_high_thold:x} "
-                f"bark_prelock=0x{self.bark_prelock:04x} bark_postlock=0x{self.bark_postlock:04x}")
+        return (
+            f"seed={self.seed} wkup_thold={self.wkup_thold} "
+            f"wkup_high_thold=0x{self.wkup_high_thold:x} "
+            f"bark_prelock=0x{self.bark_prelock:04x} bark_postlock=0x{self.bark_postlock:04x}"
+        )
 
 
 class SepWdtAon(SepAxiRegDriver):
@@ -93,8 +97,12 @@ class SepWdtAon(SepAxiRegDriver):
         """Write tolerating a non-OKAY response (a REGWEN-locked register may reject
         the write); return the AXI resp_code. The proof is the read-back value."""
         seq = SepAxiAccessSeq(
-            "wdt_wr_tol", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-            size=self._AXI_SIZE, allow_unverified_write_resp=True,
+            "wdt_wr_tol",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
         return seq.resp_code

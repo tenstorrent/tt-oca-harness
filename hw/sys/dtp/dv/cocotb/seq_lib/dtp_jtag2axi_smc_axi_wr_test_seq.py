@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, DtpJtagInstr, pack_single_op
 
-from .dtp_jtag2axi_base_test_seq import AXI_MEM_SIZE, dtp_jtag2axi_base_test_seq
+from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 
 DEFAULT_AXI_ADDR = 0x40
 DEFAULT_AXI_DATA = 0x0123_4567_89AB_CDEF
@@ -105,9 +105,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             context="write_readback.read",
         )
         self.status = (
-            read_item.status
-            if read_item.status != DtpJtag2AxiStatus.SUCCESS
-            else write_item.status
+            read_item.status if read_item.status != DtpJtag2AxiStatus.SUCCESS else write_item.status
         )
         self.operation_count += 2
 
@@ -144,6 +142,41 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
         self.assert_equal("series_incr.status", status, DtpJtag2AxiStatus.SUCCESS)
         self.assert_equal("series_incr.addr_after", addr_after, base + (beats * stride))
+        self.status = status
+
+    async def run_series_write_incr_narrow(self) -> None:
+        self.log_banner("SMC_AXI_SERIES_DATA_INCR 32-bit Write Sweep at Beat Offset +4")
+        await self.reset_tap()
+        rng = self.rng("series_write_incr_narrow")
+        size = 2
+        stride = self.size_bytes(size)
+        beats = max(2, min(self.random_count, 6))
+        base = (self.random_aligned_addr(rng, 3) & ~0x3F) + 4
+        self.log_step(1, "Program SERIES_CTRL for 32-bit incrementing writes at +4")
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size)
+        for idx in range(beats):
+            addr = base + (idx * stride)
+            data = rng.getrandbits(64) & self.data_mask(size)
+            self.log_iteration(
+                idx + 1,
+                beats,
+                "series incr narrow write addr=0x%08x data=0x%x",
+                addr,
+                data,
+            )
+            before = await self.axi_activity_counts()
+            await self.series_data_incr(data, size=size, back_to_rti=True)
+            await self.wait_for_smc_axi_activity(
+                before=before,
+                read=False,
+                context=f"series_incr_narrow.axi#{idx}",
+            )
+            observed = self.read_mem_int(addr, size)
+            self.assert_equal(f"series_incr_narrow.mem#{idx}", observed, data, f"addr=0x{addr:x}")
+            self.operation_count += 1
+        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
+        self.assert_equal("series_incr_narrow.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal("series_incr_narrow.addr_after", addr_after, base + (beats * stride))
         self.status = status
 
     async def run_series_write_no_incr(self) -> None:
@@ -352,6 +385,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             "single_write": self.run_single_write,
             "single_write_data_verify": self.run_single_write_data_verify,
             "series_write_incr": self.run_series_write_incr,
+            "series_write_incr_narrow": self.run_series_write_incr_narrow,
             "series_write_no_incr": self.run_series_write_no_incr,
             "series_write_incr_with_error": self.run_series_write_incr_with_error,
             "random_ops": self.run_random_ops,

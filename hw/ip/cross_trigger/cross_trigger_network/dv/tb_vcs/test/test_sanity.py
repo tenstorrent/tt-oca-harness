@@ -9,12 +9,18 @@ Tests AXI-Lite crossbar routing to CTPs and CTM.
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+
 from test.test_base import (
-    start_clocks, init, init_axil, axil_write, axil_read, wait_cycles,
-    get_ctp_addr, get_ctm_src_config_addr,
     CTP_REG_CONFIG,
-    AxiLiteMaster
+    AxiLiteMaster,
+    axil_read,
+    axil_write,
+    get_ctm_src_config_addr,
+    get_ctp_addr,
+    init,
+    init_axil,
+    start_clocks,
+    wait_cycles,
 )
 
 
@@ -59,8 +65,7 @@ async def test_sanity(dut):
     dut._log.info("Test 3: Reading CTP[0] CONFIG register...")
     ctp0_config_addr = get_ctp_addr(0, CTP_REG_CONFIG)
     config_val = await axil_read(dut, axil, ctp0_config_addr)
-    dut._log.info(
-        f"CTP[0] CONFIG @ 0x{ctp0_config_addr:08X} = 0x{config_val:08X}")
+    dut._log.info(f"CTP[0] CONFIG @ 0x{ctp0_config_addr:08X} = 0x{config_val:08X}")
 
     # Test 4: Write and readback CTP[0] CONFIG
     dut._log.info("Test 4: Write/readback CTP[0] CONFIG...")
@@ -75,8 +80,7 @@ async def test_sanity(dut):
     dut._log.info("Test 5: Reading CTP[1] CONFIG register...")
     ctp1_config_addr = get_ctp_addr(1, CTP_REG_CONFIG)
     config_val = await axil_read(dut, axil, ctp1_config_addr)
-    dut._log.info(
-        f"CTP[1] CONFIG @ 0x{ctp1_config_addr:08X} = 0x{config_val:08X}")
+    dut._log.info(f"CTP[1] CONFIG @ 0x{ctp1_config_addr:08X} = 0x{config_val:08X}")
 
     # Test 6: Verify clock stop output is inactive at reset
     dut._log.info("Test 6: Verify clock stop output...")

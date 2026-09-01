@@ -8,7 +8,8 @@ Tests for Wire-OR mode operation including pulse stretching and signal inversion
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
+
 from test.test_base import *
 
 
@@ -25,11 +26,11 @@ async def test_wire_or_pulse_stretching(dut):
     await axil.initialize_bus()
 
     # Configure Wire-OR mode
-    await reg_write(dut, axil, 'CONFIG', 0x0)  # MODE=0
+    await reg_write(dut, axil, "CONFIG", 0x0)  # MODE=0
 
     # Test different STRETCH_MULT values
     for stretch_val in [0, 1, 10, 100]:
-        await reg_write(dut, axil, 'STRETCH_MULT', stretch_val)
+        await reg_write(dut, axil, "STRETCH_MULT", stretch_val)
 
         # Send pulse
         dut.u_dut.ct_src_i.value = 1
@@ -48,8 +49,9 @@ async def test_wire_or_pulse_stretching(dut):
 
         # Verify pulse width = STRETCH_MULT + 1
         expected_cycles = stretch_val + 1
-        assert busy_cycles == expected_cycles, \
+        assert busy_cycles == expected_cycles, (
             f"Pulse width mismatch: {busy_cycles} != {expected_cycles} for STRETCH_MULT={stretch_val}"
+        )
 
     dut._log.info("Wire-OR pulse stretching test passed!")
 
@@ -67,15 +69,15 @@ async def test_wire_or_signal_inversion(dut):
     await axil.initialize_bus()
 
     # Configure Wire-OR mode without inversion
-    await reg_write(dut, axil, 'CONFIG', 0x0)  # MODE=0, INVERT=0
-    await reg_write(dut, axil, 'STRETCH_MULT', 10)
+    await reg_write(dut, axil, "CONFIG", 0x0)  # MODE=0, INVERT=0
+    await reg_write(dut, axil, "STRETCH_MULT", 10)
 
     # Check pad output (should be low when not active)
     await RisingEdge(dut.clk)
     dout_no_invert = dut.ct_req_out_dout.value
 
     # Configure with inversion
-    await reg_write(dut, axil, 'CONFIG', 0x2)  # MODE=0, INVERT=1
+    await reg_write(dut, axil, "CONFIG", 0x2)  # MODE=0, INVERT=1
 
     await RisingEdge(dut.clk)
     dout_with_invert = dut.ct_req_out_dout.value
@@ -99,8 +101,8 @@ async def test_wire_or_back_to_back_pulses(dut):
     await axil.initialize_bus()
 
     # Configure Wire-OR mode
-    await reg_write(dut, axil, 'CONFIG', 0x0)
-    await reg_write(dut, axil, 'STRETCH_MULT', 10)
+    await reg_write(dut, axil, "CONFIG", 0x0)
+    await reg_write(dut, axil, "STRETCH_MULT", 10)
 
     # Send first pulse
     dut.u_dut.ct_src_i.value = 1

@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 
 import cocotb
-
 from ocah_uart_vip import OcahUartConsole, OcahUartError, OcahUartImportError
 
 # Keep historical SMC error name.
@@ -53,8 +52,7 @@ class SmcUartVip:
         self.source = self._console._source
         self.sink = self._console._sink
         self.log.info(
-            "SmcUartVip bound via OcahUartConsole: baud=%d bits=%d "
-            "(rx pad 11, tx pad 12)",
+            "SmcUartVip bound via OcahUartConsole: baud=%d bits=%d (rx pad 11, tx pad 12)",
             baud,
             bits,
         )
@@ -68,9 +66,7 @@ class SmcUartVip:
         """Capture one byte from DUT UART0 TX (pad 12)."""
         value = await self._console.read_byte(timeout_us=timeout_us)
         if value is None:
-            raise SmcUartVipError(
-                f"UART capture timed out after {timeout_us} us (no DUT TX byte)"
-            )
+            raise SmcUartVipError(f"UART capture timed out after {timeout_us} us (no DUT TX byte)")
         self.log.info("UART captured DUT TX byte 0x%02X", value)
         return int(value)
 
@@ -86,8 +82,7 @@ async def uart_pin_wire_proof(byte_val: int = 0x55, baud: int = 115200) -> bool:
     dut = cocotb.top
     tx_val = dut.tb_uart0_tx_from_dut.value
     cocotb.log.info(
-        "UART pin-wire proof: drove 0x%02X @%d baud; tb_uart0_tx_from_dut=%s "
-        "(resolvable=%s)",
+        "UART pin-wire proof: drove 0x%02X @%d baud; tb_uart0_tx_from_dut=%s (resolvable=%s)",
         byte_val,
         baud,
         str(tx_val),

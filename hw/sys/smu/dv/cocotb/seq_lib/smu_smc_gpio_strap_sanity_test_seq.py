@@ -22,8 +22,7 @@ STRAPS_LO_ADDR = smc_addr("SMC_TOP_SMC_RESET_UNIT_STRAPS_LO_BASE_ADDR")
 STRAPS_HI_ADDR = smc_addr("SMC_TOP_SMC_RESET_UNIT_STRAPS_HI_BASE_ADDR")
 if STRAPS_HI_ADDR != STRAPS_LO_ADDR + 4:
     raise RuntimeError(
-        f"STRAPS_HI 0x{STRAPS_HI_ADDR:08x} is not STRAPS_LO+4 "
-        f"(0x{STRAPS_LO_ADDR + 4:08x})"
+        f"STRAPS_HI 0x{STRAPS_HI_ADDR:08x} is not STRAPS_LO+4 (0x{STRAPS_LO_ADDR + 4:08x})"
     )
 STRAPS_HI_MASK = reset_unit_u32("RESET_UNIT__STRAPS_HI__STRAPS_bm")
 # Both halves non-zero so HI cannot vacuously pass as stuck-0.
@@ -84,14 +83,10 @@ class smu_smc_gpio_strap_sanity_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         sb.expect_eq("CHK-STRAP-GATE-OPEN", gate, 0)
 
