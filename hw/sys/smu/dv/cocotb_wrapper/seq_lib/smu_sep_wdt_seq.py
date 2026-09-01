@@ -17,4 +17,4 @@ class SmuSepWdtSeq(SepTerminalLoopSeq):
     PASS_SYM = "smu_sep_wdt_pass_loop"
     FAIL_SYMS = {"wdt": "smu_sep_wdt_fail_loop"}
     SYM_DEFAULT = "sep_smu_wdt.tcm.sym"
-    EVIDENCE = ('SEP_REAL_FW_WDT_OK', 'SEP_WDT_CSR_PATH_OK')
+    EVIDENCE = ("SEP_REAL_FW_WDT_OK", "SEP_WDT_CSR_PATH_OK")

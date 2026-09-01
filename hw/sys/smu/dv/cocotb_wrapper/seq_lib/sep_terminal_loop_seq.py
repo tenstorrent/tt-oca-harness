@@ -140,7 +140,9 @@ class SepTerminalLoopSeq:
                         verdict = ("fail", fail_pcs[pc])
 
             boot_rom_seen |= bool(
-                self._rd(self.dut.sep_boot_rom_fetch_seen_o, "sep_boot_rom_fetch_seen_o")
+                self._rd(
+                    self.dut.sep_boot_rom_fetch_seen_o, "sep_boot_rom_fetch_seen_o"
+                )
             )
             iccm_seen |= bool(
                 self._rd(self.dut.sep_iccm_fetch_seen_o, "sep_iccm_fetch_seen_o")

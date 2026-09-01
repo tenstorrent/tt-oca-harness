@@ -45,8 +45,9 @@ J2A_SIZE_4B = 0b10
 J2A_SIZE_8B = 0b11
 
 
-def single_op_payload(op: int, addr: int, *, size: int = J2A_SIZE_8B,
-                      data: int = 0, wstrb: int = 0) -> int:
+def single_op_payload(
+    op: int, addr: int, *, size: int = J2A_SIZE_8B, data: int = 0, wstrb: int = 0
+) -> int:
     """Pack a SINGLE_OP DR, LSB-first: OP2 | SIZE2 | WSTRB8 | DATA64 | ADDR56.
 
     `op` sits in the LOWEST bits -- architecture.adoc lists it at [1:0] -- and
@@ -128,10 +129,17 @@ def make_wrapper_ptap(period_ns: float = 100) -> OcahJtagMasterDriver:
     #   CAPS      [13:12] rd_pl_depth, [11:10] wr_pl_depth, [9:7] data_size,
     #             [6:1] addr_size, [0] bus_type
     #   SINGLE_OP OP2 | SIZE2 | WSTRB8 | DATA64 | ADDR56 = 132 bits
-    device.add_reg("SMC_JTAG2AXI_CAPS", SMC_JTAG2AXI_CAPS_LEN,
-                   ptap_ir_opcode("SMC_JTAG2AXI_CAPS_INSTR"))
-    device.add_reg("SMC_AXI_SINGLE_OP", SMC_AXI_SINGLE_OP_LEN,
-                   ptap_ir_opcode("SMC_AXI_SINGLE_OP_INSTR"), write=True)
+    device.add_reg(
+        "SMC_JTAG2AXI_CAPS",
+        SMC_JTAG2AXI_CAPS_LEN,
+        ptap_ir_opcode("SMC_JTAG2AXI_CAPS_INSTR"),
+    )
+    device.add_reg(
+        "SMC_AXI_SINGLE_OP",
+        SMC_AXI_SINGLE_OP_LEN,
+        ptap_ir_opcode("SMC_AXI_SINGLE_OP_INSTR"),
+        write=True,
+    )
 
     jtag = OcahJtagMasterDriver(
         cocotb.top,

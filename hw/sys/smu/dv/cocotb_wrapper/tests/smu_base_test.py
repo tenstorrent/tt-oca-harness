@@ -79,8 +79,11 @@ class smu_base_test(uvm_test):
         # entropy-consuming sequences already assert the plusarg is present.
         if cocotb.plusargs.get("esrc_noise_force") is not None:
             cocotb.start_soon(
-                Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns,
-                      units="ns").start()
+                Clock(
+                    dut.entropy_rosc_sample_clk_i,
+                    self.cfg.entropy_clk_period_ns,
+                    units="ns",
+                ).start()
             )
 
     async def jtag_tap_reset(self, pulses: int = 8) -> None:

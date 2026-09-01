@@ -66,7 +66,9 @@ class SmuSepSanitySeq:
         heartbeat = max(1, max_cycles // 20)
 
         self.log.info("=" * 70)
-        self.log.info("TEST: real SEP DV sanity firmware (HMAC + KMAC KAT) in the OSS wrapper")
+        self.log.info(
+            "TEST: real SEP DV sanity firmware (HMAC + KMAC KAT) in the OSS wrapper"
+        )
         self.log.info("=" * 70)
 
         sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_sanity.tcm.sym"))
@@ -104,7 +106,9 @@ class SmuSepSanitySeq:
                 )
             )
 
-            done = bool(self.test.read_int(self.dut.fw_done_o, "fw_done_o", allow_xz=True))
+            done = bool(
+                self.test.read_int(self.dut.fw_done_o, "fw_done_o", allow_xz=True)
+            )
             if done:
                 passed = bool(
                     self.test.read_int(self.dut.fw_pass_o, "fw_pass_o", allow_xz=True)
@@ -127,7 +131,6 @@ class SmuSepSanitySeq:
                     "w_valid=%s w_fired=%s w_last=%s b_valid=%s "
                     "aw_len=%d aw_size=%d aw_burst=%d aw_id=0x%x aw_ctrl_x=%s "
                     "aw_valid_cyc=%d aw_ready_cyc=%d w_valid_cyc=%d w_ready_cyc=%d "
-
                     "first_aw_addr=0x%x last_word=0x%08x "
                     "sep_aperture=[0x%x +0x%x]",
                     cycle,
@@ -144,63 +147,95 @@ class SmuSepSanitySeq:
                         "smu_axi_out_write_count_o",
                         allow_xz=True,
                     ),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_aw_valid_seen_o,
-                        "smu_axi_out_aw_valid_seen_o",
-                        allow_xz=True,
-                    )),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_aw_fired_seen_o,
-                        "smu_axi_out_aw_fired_seen_o",
-                        allow_xz=True,
-                    )),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_w_valid_seen_o,
-                        "smu_axi_out_w_valid_seen_o",
-                        allow_xz=True,
-                    )),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_w_fired_seen_o,
-                        "smu_axi_out_w_fired_seen_o",
-                        allow_xz=True,
-                    )),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_w_last_seen_o,
-                        "smu_axi_out_w_last_seen_o",
-                        allow_xz=True,
-                    )),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_b_valid_seen_o,
-                        "smu_axi_out_b_valid_seen_o",
-                        allow_xz=True,
-                    )),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_aw_valid_seen_o,
+                            "smu_axi_out_aw_valid_seen_o",
+                            allow_xz=True,
+                        )
+                    ),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_aw_fired_seen_o,
+                            "smu_axi_out_aw_fired_seen_o",
+                            allow_xz=True,
+                        )
+                    ),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_w_valid_seen_o,
+                            "smu_axi_out_w_valid_seen_o",
+                            allow_xz=True,
+                        )
+                    ),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_w_fired_seen_o,
+                            "smu_axi_out_w_fired_seen_o",
+                            allow_xz=True,
+                        )
+                    ),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_w_last_seen_o,
+                            "smu_axi_out_w_last_seen_o",
+                            allow_xz=True,
+                        )
+                    ),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_b_valid_seen_o,
+                            "smu_axi_out_b_valid_seen_o",
+                            allow_xz=True,
+                        )
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_first_aw_len_o,
-                        "smu_axi_out_first_aw_len_o", allow_xz=True),
+                        "smu_axi_out_first_aw_len_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_first_aw_size_o,
-                        "smu_axi_out_first_aw_size_o", allow_xz=True),
+                        "smu_axi_out_first_aw_size_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_first_aw_burst_o,
-                        "smu_axi_out_first_aw_burst_o", allow_xz=True),
+                        "smu_axi_out_first_aw_burst_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_first_aw_id_o,
-                        "smu_axi_out_first_aw_id_o", allow_xz=True),
-                    bool(self.test.read_int(
-                        self.dut.smu_axi_out_first_aw_ctrl_x_o,
-                        "smu_axi_out_first_aw_ctrl_x_o", allow_xz=True)),
+                        "smu_axi_out_first_aw_id_o",
+                        allow_xz=True,
+                    ),
+                    bool(
+                        self.test.read_int(
+                            self.dut.smu_axi_out_first_aw_ctrl_x_o,
+                            "smu_axi_out_first_aw_ctrl_x_o",
+                            allow_xz=True,
+                        )
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_aw_valid_cycles_o,
-                        "smu_axi_out_aw_valid_cycles_o", allow_xz=True),
+                        "smu_axi_out_aw_valid_cycles_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_aw_ready_cycles_o,
-                        "smu_axi_out_aw_ready_cycles_o", allow_xz=True),
+                        "smu_axi_out_aw_ready_cycles_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_w_valid_cycles_o,
-                        "smu_axi_out_w_valid_cycles_o", allow_xz=True),
+                        "smu_axi_out_w_valid_cycles_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_w_ready_cycles_o,
-                        "smu_axi_out_w_ready_cycles_o", allow_xz=True),
+                        "smu_axi_out_w_ready_cycles_o",
+                        allow_xz=True,
+                    ),
                     self.test.read_int(
                         self.dut.smu_axi_out_first_aw_addr_o,
                         "smu_axi_out_first_aw_addr_o",

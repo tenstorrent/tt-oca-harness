@@ -129,9 +129,7 @@ class SmuSepSmcNotifySeq:
             aw_seen = bool(
                 self._rd(cocotb.top.smu_axi_out_aw_valid_seen_o, "aw_valid_seen")
             )
-            w_last = bool(
-                self._rd(cocotb.top.smu_axi_out_w_last_seen_o, "w_last_seen")
-            )
+            w_last = bool(self._rd(cocotb.top.smu_axi_out_w_last_seen_o, "w_last_seen"))
             errors.append(
                 f"SEP issued {smn_aw} outbound AW but no write completed at the "
                 f"SMU boundary; boundary saw aw_valid={aw_seen} w_last={w_last} "

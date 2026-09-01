@@ -99,7 +99,9 @@ class SmuSepLccFlowSeq:
             ), "ITCM image and symbol table are from different firmwares"
 
         self.log.info("=" * 70)
-        self.log.info("TEST: SEP lifecycle posture, firmware-driven, traced to consumers")
+        self.log.info(
+            "TEST: SEP lifecycle posture, firmware-driven, traced to consumers"
+        )
         self.log.info("=" * 70)
 
         # Posture before the firmware touches anything. Every later claim is a
@@ -183,10 +185,14 @@ class SmuSepLccFlowSeq:
         self.log.info(
             "CHK-SEP-LCC-FANOUT: PASS (demote1 %s->%s, demote2 %s->%s, "
             "feat_ctrl 0x%016x->0x%016x, dbg_disable 0x%04x->0x%04x, SMC lc_state=0x%02x)",
-            format(before["demote1"], "#04b"), format(after["demote1"], "#04b"),
-            format(before["demote2"], "#04b"), format(after["demote2"], "#04b"),
-            before["feat_ctrl"], after["feat_ctrl"],
-            before["dbg_disable"], after["dbg_disable"],
+            format(before["demote1"], "#04b"),
+            format(after["demote1"], "#04b"),
+            format(before["demote2"], "#04b"),
+            format(after["demote2"], "#04b"),
+            before["feat_ctrl"],
+            after["feat_ctrl"],
+            before["dbg_disable"],
+            after["dbg_disable"],
             after["smc_lc_state"],
         )
         self.log.info(

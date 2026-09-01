@@ -277,7 +277,9 @@ class SmuSepExtAxiSeq(SepTerminalLoopSeq):
                     break
                 await RisingEdge(self.dut.clk_smu_i)
 
-        assert self.error is None, f"ext_in master failed at '{self.stage}': {self.error}"
+        assert self.error is None, (
+            f"ext_in master failed at '{self.stage}': {self.error}"
+        )
         assert self.stage == "complete", (
             f"ext_in master did not finish the protocol (stopped at '{self.stage}') "
             "even though the SEP reached its pass loop -- the SEP verdict alone "

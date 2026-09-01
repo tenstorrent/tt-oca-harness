@@ -117,7 +117,9 @@ class SmuDtpSepSmcChainSeq:
         pass_pc = addr_of(syms, PASS_SYM)
 
         self.log.info("=" * 70)
-        self.log.info("TEST: DTP-SEP-SMC chain -- SEP decides, DTP enforces, SMC serves")
+        self.log.info(
+            "TEST: DTP-SEP-SMC chain -- SEP decides, DTP enforces, SMC serves"
+        )
         self.log.info("=" * 70)
 
         # 1. SMC: it boots from ROM and lands later than the SEP, so wait for

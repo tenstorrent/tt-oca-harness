@@ -17,4 +17,4 @@ class SmuSepDmaSeq(SepTerminalLoopSeq):
     PASS_SYM = "smu_sep_dma_pass_loop"
     FAIL_SYMS = {"dma": "smu_sep_dma_fail_loop"}
     SYM_DEFAULT = "sep_smu_dma.tcm.sym"
-    EVIDENCE = ('SEP_REAL_FW_DMA_OK', 'SEP_DMA_CSR_PATH_OK')
+    EVIDENCE = ("SEP_REAL_FW_DMA_OK", "SEP_DMA_CSR_PATH_OK")

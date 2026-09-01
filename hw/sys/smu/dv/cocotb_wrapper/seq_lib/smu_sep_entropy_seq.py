@@ -82,7 +82,9 @@ class SmuSepEntropySeq:
         )
 
         self.log.info("=" * 70)
-        self.log.info("TEST: SEP firmware entropy bring-up, with entropy proven to flow")
+        self.log.info(
+            "TEST: SEP firmware entropy bring-up, with entropy proven to flow"
+        )
         self.log.info("=" * 70)
 
         noise = SmuEsrcNoiseDriver(self.dut)
@@ -98,7 +100,9 @@ class SmuSepEntropySeq:
         def chain() -> tuple[bool, bool, bool, bool]:
             return (
                 bool(self._rd(self.dut.esrc_noise_took_o, "esrc_noise_took_o")),
-                bool(self._rd(self.dut.drbg_seed_valid_seen_o, "drbg_seed_valid_seen_o")),
+                bool(
+                    self._rd(self.dut.drbg_seed_valid_seen_o, "drbg_seed_valid_seen_o")
+                ),
                 bool(self._rd(self.dut.drbg_es_ack_seen_o, "drbg_es_ack_seen_o")),
                 bool(self._rd(self.dut.drbg_genbits_seen_o, "drbg_genbits_seen_o")),
             )
@@ -123,7 +127,12 @@ class SmuSepEntropySeq:
                 self.log.info(
                     "entropy heartbeat cycle=%d traces=%d noise_took=%s "
                     "seed_valid=%s es_ack=%s genbits=%s",
-                    cycle, traces, noise_took, seed_valid, es_ack, genbits,
+                    cycle,
+                    traces,
+                    noise_took,
+                    seed_valid,
+                    es_ack,
+                    genbits,
                 )
 
         noise_took, seed_valid, es_ack, genbits = chain()
@@ -131,7 +140,10 @@ class SmuSepEntropySeq:
         self.log.info(
             "chain: noise_took=%s -> seed_valid=%s -> es_ack=%s -> genbits=%s "
             "(firmware verdict=%s, traces=%d)",
-            noise_took, seed_valid, es_ack, genbits,
+            noise_took,
+            seed_valid,
+            es_ack,
+            genbits,
             verdict[1] if verdict and verdict[1] else (verdict[0] if verdict else None),
             traces,
         )

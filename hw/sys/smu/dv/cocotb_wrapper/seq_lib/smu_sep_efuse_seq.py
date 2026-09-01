@@ -17,4 +17,4 @@ class SmuSepEfuseSeq(SepTerminalLoopSeq):
     PASS_SYM = "smu_sep_efuse_pass_loop"
     FAIL_SYMS = {"efuse": "smu_sep_efuse_fail_loop"}
     SYM_DEFAULT = "sep_smu_efuse.tcm.sym"
-    EVIDENCE = ('SEP_REAL_FW_EFUSE_OK', 'SEP_EFUSE_CSR_PATH_OK')
+    EVIDENCE = ("SEP_REAL_FW_EFUSE_OK", "SEP_EFUSE_CSR_PATH_OK")

@@ -143,8 +143,10 @@ class SmuSepDbgGatingSeq:
             "debug AXI after a SINGLE_OP read of 0x%08x: AW %d->%d AR %d->%d "
             "(launched=%s)",
             J2A_READ_ADDR,
-            before_aw, after_aw,
-            before_ar, after_ar,
+            before_aw,
+            after_aw,
+            before_ar,
+            after_ar,
             launched,
         )
 
@@ -167,13 +169,20 @@ class SmuSepDbgGatingSeq:
             self.log.info(
                 "CHK-SEP-DBG-GATED: PASS (lc_state=0x%02x, dbg_disable=0x%04x, and "
                 "the bridge launched nothing: AW=%d AR=%d unchanged)",
-                lc_state, dbg_disable, after_aw, after_ar,
+                lc_state,
+                dbg_disable,
+                after_aw,
+                after_ar,
             )
         else:
             self.log.info(
                 "CHK-SEP-DBG-OPEN: PASS (lc_state=0x%02x, dbg_disable clear, and the "
                 "bridge launched the transaction: AW %d->%d AR %d->%d)",
-                lc_state, before_aw, after_aw, before_ar, after_ar,
+                lc_state,
+                before_aw,
+                after_aw,
+                before_ar,
+                after_ar,
             )
         for token in ("SEP_DBG_DISABLE_ENFORCED_OK", "SEP_LCC_TO_DTP_GATING_OK"):
             self.log.info("EVIDENCE: %s", token)
