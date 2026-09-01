@@ -491,6 +491,10 @@ This allows the debugger to load or dump contiguous regions of address space.
 Note that this is a variable-length data register. The length is n bits where
 n = 8*(2**AXI_SERIES_CTRL.size).
 
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+and Capture-DR returns the payload from those lanes.
+
 image::jtag2axi_series_data_incr0.png[AXI Series Data INCR Diagram (size 0),scaledwidth=90.0%]
 
 image::jtag2axi_series_data_incr1-2-3.png[AXI Series Data INCR Diagram (sizes 1-3),scaledwidth=90.0%]
@@ -514,6 +518,10 @@ This is useful for repeated polling or triggering.
 Note that this is a variable-length data register. The length is n bits where
 n = 8*(2**AXI_SERIES_CTRL.size).
 
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+and Capture-DR returns the payload from those lanes.
+
 image::jtag2axi_series_data_noincr0-1.png[AXI Series Data NO_INCR Diagram (sizes 0-1),scaledwidth=90.0%]
 
 image::jtag2axi_series_data_noincr2-3.png[AXI Series Data NO_INCR Diagram (sizes 2-3),scaledwidth=90.0%]
@@ -536,6 +544,10 @@ during a block operation.
 
 Note that this is a variable-length data register. The length is n+1 bits where
 n = 8*(2**AXI_SERIES_CTRL.size).
+
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+and Capture-DR returns the payload from those lanes.
 
 image::jtag2axi_series_data_error0-1.png[AXI Series Data With Error Status (sizes 0-1),scaledwidth=90.0%]
 

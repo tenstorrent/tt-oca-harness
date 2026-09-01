@@ -453,8 +453,8 @@ monitoring. The cross-trigger interface (`xtrigger_pads_i`, `xtrigger_pads_o`, `
 `halt_clock_global_i` input array accepts clock halt requests from external debug agents.
 
 Trace memory interfaces (`trace_mem_req_o` and `trace_mem_resp_i`) connect to trace RAM
-instances for storing captured debug data. The testbench shows example debug infrastructure
-connections that can be adapted to your debug requirements.
+instances for storing captured debug data. `smc_ip_integration.sv` shows an example set of
+RAM instances that can be adapted to your debug requirements.
 
 ==== Bring-Up Sequence
 

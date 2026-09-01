@@ -234,13 +234,12 @@ runtime modification of the vector once locked.
 The NMI is non-maskable: it cannot be suppressed by `mstatus.MIE` or any PIC
 configuration register.
 
-===== Timer and Software Interrupts (TBD)
+===== Timer and Software Interrupts
 
-The `timer_int` and `soft_int` pins of the VeeR EL2 core are both tied to zero
-at the SMU integration boundary; external CLINT-style delivery is not yet
-routed. The VeeR core contains independent internal timers that generate
-standard RISC-V `mip.MTIP` and `mip.MSIP` interrupts without requiring an
-external signal; those remain functional.
+The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
+the SMU integration boundary. There is no external CLINT-style delivery path.
+The VeeR core contains independent internal timers that generate standard RISC-V
+`mip.MTIP` and `mip.MSIP` interrupts without requiring an external signal.
 
 
 [[sep-pic-registers]]
