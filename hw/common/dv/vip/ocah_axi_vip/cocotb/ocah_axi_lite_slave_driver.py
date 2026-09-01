@@ -33,7 +33,9 @@ class _FaultAxiLiteRamWrite(AxiLiteRamWrite):
             prot = AxiProt(int(getattr(aw, "awprot", AxiProt.NONSECURE)))
             w = await self.w_channel.recv()
             data = int(w.wdata).to_bytes(self.byte_lanes, "little")
-            strb = int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
+            strb = (
+                int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
+            )
             b = self.b_channel._transaction_obj()
             b.bresp = self.fault_owner.write_errors.pop(addr, AxiResp.OKAY)
 
@@ -70,7 +72,11 @@ class _FaultAxiLiteRamRead(AxiLiteRamRead):
             prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
             r = self.r_channel._transaction_obj()
             r.rresp = self.fault_owner.read_errors.pop(addr, AxiResp.OKAY)
-            data = bytes(self.byte_lanes) if r.rresp != AxiResp.OKAY else await self._read(addr, self.byte_lanes)
+            data = (
+                bytes(self.byte_lanes)
+                if r.rresp != AxiResp.OKAY
+                else await self._read(addr, self.byte_lanes)
+            )
             r.rdata = int.from_bytes(data, "little")
             await self.r_channel.send(r)
             self.log.info(
@@ -84,7 +90,18 @@ class _FaultAxiLiteRamRead(AxiLiteRamRead):
 class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
     """cocotbext AXI4-Lite RAM responder engine with OCAH fault-control APIs."""
 
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiLiteSlaveDriver", **kwargs):
+    def __init__(
+        self,
+        bus,
+        clock,
+        reset=None,
+        reset_active_level=True,
+        size=2**64,
+        mem=None,
+        *,
+        name="OcahAxiLiteSlaveDriver",
+        **kwargs,
+    ):
         self.write_if = None
         self.read_if = None
         self._init_fault_state(name)

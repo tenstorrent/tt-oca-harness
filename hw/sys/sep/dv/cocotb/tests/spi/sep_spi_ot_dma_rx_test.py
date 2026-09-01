@@ -29,10 +29,9 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_dma_rx_test")
@@ -78,7 +77,9 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # build_phase, which resets it to the hello_world default).
             self.sb.expected_line = _BANNER
             await self.boot_firmware(
-                self.sb, _ITCM_HEX, _DTCM_HEX,
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
                 rst_vec=_ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,

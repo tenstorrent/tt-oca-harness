@@ -35,11 +35,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
+from sep_base_test import sep_base_test
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_basic_test")
@@ -107,7 +106,12 @@ class sep_dma_basic_test(sep_base_test):
         patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "DMA basic RANDCFG seed=%d src_off=0x%x dst_off=0x%x nbytes=%d fill=0x%08x",
-            cfg.seed, cfg.src_off, cfg.dst_off, cfg.nbytes, cfg.fill_seed)
+            cfg.seed,
+            cfg.src_off,
+            cfg.dst_off,
+            cfg.nbytes,
+            cfg.fill_seed,
+        )
         self._dma_cfg = cfg
         return patched
 
@@ -117,7 +121,9 @@ class sep_dma_basic_test(sep_base_test):
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, dtcm,
+            self.sb,
+            _ITCM_HEX,
+            dtcm,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
@@ -138,4 +144,6 @@ class sep_dma_basic_test(sep_base_test):
             )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
-            cfg.seed, cfg.nbytes)
+            cfg.seed,
+            cfg.nbytes,
+        )

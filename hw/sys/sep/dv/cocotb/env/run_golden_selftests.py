@@ -55,8 +55,9 @@ def main() -> int:
             failures.append(name)
 
     if failures:
-        print(f"\n{len(failures)} golden self-test(s) FAILED: {', '.join(failures)}",
-              file=sys.stderr)
+        print(
+            f"\n{len(failures)} golden self-test(s) FAILED: {', '.join(failures)}", file=sys.stderr
+        )
         return 1
     print(f"\nAll {len(_GOLDENS)} golden self-tests passed.")
     return 0

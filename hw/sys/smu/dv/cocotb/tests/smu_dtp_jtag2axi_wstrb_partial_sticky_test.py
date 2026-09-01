@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq import (
     smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq,
 )

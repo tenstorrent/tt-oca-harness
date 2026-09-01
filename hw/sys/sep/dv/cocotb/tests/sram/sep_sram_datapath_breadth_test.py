@@ -40,9 +40,8 @@ no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
-from seq_lib.sep_sram_breadth_seq import SepSramBreadthCfg, SepSramBreadth
+from seq_lib.sep_sram_breadth_seq import SepSramBreadth, SepSramBreadthCfg
 
 
 @pyuvm.test()
@@ -61,7 +60,8 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         await self._chk_nonvac()
         self.logger.info(
             "SRAM datapath breadth PASS: SRAM datapath breadth verified "
-            "(wstrb / pattern / boundary / seq / nonvac)")
+            "(wstrb / pattern / boundary / seq / nonvac)"
+        )
 
     async def _chk_wstrb(self) -> None:
         cfg = self.scfg
@@ -78,11 +78,14 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             exp = SepSramBreadth.apply_wstrb(cfg.wstrb_init, wr_data, offset, length)
             assert rb == exp, (
                 f"CHK-WSTRB mask 0x{mask:02x} (off {offset} len {length}): "
-                f"0x{rb:016x} != 0x{exp:016x} (only those lanes should change)")
+                f"0x{rb:016x} != 0x{exp:016x} (only those lanes should change)"
+            )
         self.logger.info(
             "CHK-WSTRB PASS: all %d contiguous WSTRB masks change only their byte "
             "lanes (neighbors preserved, apply_wstrb golden) @0x%08x",
-            len(cfg.wstrb_specs), addr)
+            len(cfg.wstrb_specs),
+            addr,
+        )
 
     async def _chk_pattern(self) -> None:
         cfg = self.scfg
@@ -93,7 +96,9 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             assert rb == p, f"CHK-PATTERN 0x{p:016x} readback 0x{rb:016x}"
         self.logger.info(
             "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x",
-            len(cfg.pattern_values), addr)
+            len(cfg.pattern_values),
+            addr,
+        )
 
     async def _chk_boundary(self) -> None:
         base, top = self.scfg.boundary_addrs
@@ -106,21 +111,25 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         assert rb_b == bval, f"CHK-BOUNDARY base 0x{rb_b:016x} != 0x{bval:016x}"
         assert rb_t == tval, f"CHK-BOUNDARY top@0x{top:08x} 0x{rb_t:016x} != 0x{tval:016x}"
         self.logger.info(
-            "CHK-BOUNDARY PASS: base 0x%08x and top valid word 0x%08x R/W exact",
-            base, top)
+            "CHK-BOUNDARY PASS: base 0x%08x and top valid word 0x%08x R/W exact", base, top
+        )
 
     async def _chk_seq(self) -> None:
         cfg = self.scfg
         addr0 = cfg.base_addr + cfg.seq_offset
-        words = [(cfg.seq_seed + (i << 4) + i) & 0xFFFF_FFFF_FFFF_FFFF for i in range(cfg.seq_words)]
+        words = [
+            (cfg.seq_seed + (i << 4) + i) & 0xFFFF_FFFF_FFFF_FFFF for i in range(cfg.seq_words)
+        ]
         for i, w in enumerate(words):
             await self.sram.write(addr0 + 8 * i, w, length=8)
         for i, w in enumerate(words):
             rb = await self.sram.read(addr0 + 8 * i, length=8)
-            assert rb == w, f"CHK-SEQ word {i} @0x{addr0 + 8*i:08x} 0x{rb:016x} != 0x{w:016x}"
+            assert rb == w, f"CHK-SEQ word {i} @0x{addr0 + 8 * i:08x} 0x{rb:016x} != 0x{w:016x}"
         self.logger.info(
             "CHK-SEQ PASS: %d consecutive single-beat 64-bit words write->read match @0x%08x",
-            cfg.seq_words, addr0)
+            cfg.seq_words,
+            addr0,
+        )
 
     async def _chk_nonvac(self) -> None:
         cfg = self.scfg
@@ -140,12 +149,16 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         got_rd = await self.sram.read(rd_addr, length=8)
         assert got_wr == cfg.nonvac_pattern, (
             f"CHK-NONVAC @0x{wr_addr:08x} read 0x{got_wr:016x} != written "
-            f"0x{cfg.nonvac_pattern:016x}")
+            f"0x{cfg.nonvac_pattern:016x}"
+        )
         assert got_rd == other_pattern, (
             f"CHK-NONVAC @0x{rd_addr:08x} read 0x{got_rd:016x} != written "
             f"0x{other_pattern:016x} -- a stuck read path returns the same value for "
-            f"both addresses")
+            f"both addresses"
+        )
         self.logger.info(
             "CHK-NONVAC PASS: two addresses hold complementary values "
             "(0x%016x / 0x%016x), so the read path is not a stuck constant",
-            got_wr, got_rd)
+            got_wr,
+            got_rd,
+        )

@@ -11,64 +11,30 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 _SMC_ADDR_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "smc_addr.h"
 _FILTER_CTRL_H = (
-    _REPO_ROOT
-    / "hw"
-    / "common"
-    / "axi"
-    / "axi_filter"
-    / "regs"
-    / "gen"
-    / "c"
-    / "filter_ctrl.h"
+    _REPO_ROOT / "hw" / "common" / "axi" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 )
-_CPU_CTRL_H = (
-    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
-)
+_CPU_CTRL_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _CHIP_CONFIG_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "chip_config.h"
 )
 _SYSTEM_TIMER_OCTS_H = (
-    _REPO_ROOT
-    / "hw"
-    / "ip"
-    / "system_timer_octs"
-    / "regs"
-    / "gen"
-    / "c"
-    / "system_timer_octs.h"
+    _REPO_ROOT / "hw" / "ip" / "system_timer_octs" / "regs" / "gen" / "c" / "system_timer_octs.h"
 )
 _WDT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "wdt.h"
-_RESET_UNIT_H = (
-    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"
-)
+_RESET_UNIT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"
 _AXIL_MAILBOX_H = (
-    _REPO_ROOT
-    / "hw"
-    / "ip"
-    / "axi_lite_mailbox_unit"
-    / "regs"
-    / "gen"
-    / "c"
-    / "axil_mailbox.h"
+    _REPO_ROOT / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox.h"
 )
 
-_DEFINE_RE = re.compile(
-    r"^\s*#define\s+(SMC_TOP_\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$"
-)
-_ANY_DEFINE_RE = re.compile(
-    r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$"
-)
+_DEFINE_RE = re.compile(r"^\s*#define\s+(SMC_TOP_\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
+_ANY_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
 # Indexed: #define NAME(idx) (0xBASE + (idx * 0xSTRIDE))
 _INDEXED_RE = re.compile(
     r"^\s*#define\s+(SMC_TOP_\w+_BASE_ADDR)\(\w+\)\s+"
     r"\(0x([0-9A-Fa-f]+)\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)\s*\)\s*$"
 )
-_BM_RE = re.compile(
-    r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bm)\s+(0x[0-9A-Fa-f]+)\s*$"
-)
-_BP_RE = re.compile(
-    r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bp)\s+(\d+)\s*$"
-)
+_BM_RE = re.compile(r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bm)\s+(0x[0-9A-Fa-f]+)\s*$")
+_BP_RE = re.compile(r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bp)\s+(\d+)\s*$")
 _RESET_RE = re.compile(
     r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_reset)\s+(0x[0-9A-Fa-f]+|\d+)\s*$"
 )
@@ -240,15 +206,11 @@ def smc_indexed_stride(symbol: str) -> int:
 
 
 # Canonical smoke probe: CHIP_CONFIG.VERSION_LO
-SMC_CHIP_CONFIG_VERSION_LO = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"
-)
+SMC_CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 SMC_CHIP_CONFIG_VERSION_LO_RESET = c_header_u32(
     _CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"
 )
-SMC_CHIP_CONFIG_CHIP_ID = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"
-)
+SMC_CHIP_CONFIG_CHIP_ID = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")
 
 
 def smc_local_xbar_unmapped_gap() -> int:
@@ -260,8 +222,7 @@ def smc_local_xbar_unmapped_gap() -> int:
     gap = ((wdt_end + reset) // 2) & ~0xFFF
     if not (wdt_end <= gap < reset):
         raise RuntimeError(
-            f"unmapped gap 0x{gap:08x} not in [WDT end 0x{wdt_end:08x}, "
-            f"RESET_UNIT 0x{reset:08x})"
+            f"unmapped gap 0x{gap:08x} not in [WDT end 0x{wdt_end:08x}, RESET_UNIT 0x{reset:08x})"
         )
     return gap
 

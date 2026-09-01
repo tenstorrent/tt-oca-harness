@@ -3,7 +3,6 @@
 """DTP ZERO_LENGTH_BYPASS instruction test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_zero_length_bypass_test_seq import dtp_jtag_zero_length_bypass_test_seq
 

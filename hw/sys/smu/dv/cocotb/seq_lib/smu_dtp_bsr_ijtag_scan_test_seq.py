@@ -104,9 +104,7 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
 
         idcode = await raw.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-DTP-BSR-IJTAG-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         idle_bsr = self._sample_bit("tb_bsr_select")
@@ -127,15 +125,10 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
                 f"bsr_tcks={unsel['bsr_tcks']} tck_n={unsel['tck_n']}"
             )
         self.s1_ok = True
-        self._log(
-            f"CHK-DTP-BSR-UNSEL-IDCODE tck_n={unsel['tck_n']} "
-            f"bsr_tcks={unsel['bsr_tcks']}"
-        )
+        self._log(f"CHK-DTP-BSR-UNSEL-IDCODE tck_n={unsel['tck_n']} bsr_tcks={unsel['bsr_tcks']}")
         sb.expect_eq("CHK-DTP-BSR-UNSEL-IDCODE", unsel["bsr_tcks"], 0)
 
-        extest = await self._scan_and_observe(
-            jtag, DTP_IR_EXTEST, 0xA5, DTP_BSR_MODEL_LEN
-        )
+        extest = await self._scan_and_observe(jtag, DTP_IR_EXTEST, 0xA5, DTP_BSR_MODEL_LEN)
         if extest["bsr_tcks"] != EXPECTED_BSR_SEL_TCK:
             raise AssertionError(
                 f"EXTEST bsr_tcks={extest['bsr_tcks']} want {EXPECTED_BSR_SEL_TCK} "
@@ -161,9 +154,7 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
         await jtag.reset_to_tlr()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
 
-        sample = await self._scan_and_observe(
-            jtag, DTP_IR_SAMPLE_PRELOAD, 0x5A, DTP_BSR_MODEL_LEN
-        )
+        sample = await self._scan_and_observe(jtag, DTP_IR_SAMPLE_PRELOAD, 0x5A, DTP_BSR_MODEL_LEN)
         if sample["bsr_tcks"] != EXPECTED_BSR_SEL_TCK:
             raise AssertionError(
                 f"SAMPLE_PRELOAD bsr_tcks={sample['bsr_tcks']} "

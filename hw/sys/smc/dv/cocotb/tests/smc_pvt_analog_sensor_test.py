@@ -9,7 +9,6 @@ See testlists/deferred.toml.
 from __future__ import annotations
 
 import pyuvm
-
 from smc_base_test import smc_base_test
 
 

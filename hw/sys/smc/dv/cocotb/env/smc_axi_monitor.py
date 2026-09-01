@@ -92,10 +92,19 @@ class SmcAxiMonitor(uvm_component):
         sig = {
             name: getattr(dut, f"s_axi_{name}", None)
             for name in (
-                "arvalid", "arready", "araddr",
-                "awvalid", "awready", "awaddr",
-                "rvalid", "rready", "rdata", "rresp",
-                "bvalid", "bready", "bresp",
+                "arvalid",
+                "arready",
+                "araddr",
+                "awvalid",
+                "awready",
+                "awaddr",
+                "rvalid",
+                "rready",
+                "rdata",
+                "rresp",
+                "bvalid",
+                "bready",
+                "bresp",
             )
         }
         required = ("rvalid", "rready", "rdata", "rresp", "bvalid", "bready", "bresp")
@@ -120,13 +129,15 @@ class SmcAxiMonitor(uvm_component):
                 if _is_all_x(sig["rdata"]):
                     where = (
                         f" @ last AR 0x{self.last_araddr:014x}"
-                        if self.last_araddr is not None else ""
+                        if self.last_araddr is not None
+                        else ""
                     )
                     self._fail(f"R beat returned all-X data{where}")
                 if code == 3:
                     where = (
                         f" @ last AR 0x{self.last_araddr:014x}"
-                        if self.last_araddr is not None else ""
+                        if self.last_araddr is not None
+                        else ""
                     )
                     if self._decerr_expected(self.last_araddr):
                         self.logger.info("R beat DECERR (expected)%s", where)
@@ -139,7 +150,8 @@ class SmcAxiMonitor(uvm_component):
                 if code == 3:
                     where = (
                         f" @ last AW 0x{self.last_awaddr:014x}"
-                        if self.last_awaddr is not None else ""
+                        if self.last_awaddr is not None
+                        else ""
                     )
                     if self._decerr_expected(self.last_awaddr):
                         self.logger.info("B beat DECERR (expected)%s", where)

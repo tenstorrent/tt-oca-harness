@@ -35,10 +35,8 @@ no_cpu / +skip_fuse_sense (reset-observable only; no AXI traffic, no OTP read).
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
-
 import pyuvm
-
+from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 
 # Cycles to let the combinational/async reset path settle after a reset-input edge.
@@ -66,12 +64,9 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         await self.bring_up_no_cpu()
 
         # CHK-BASELINE: dbg_rstb_i high -> system/CPU reset domain released.
-        await self._check_reset(
-            dut.dbg_sep_reset_n_o, "CHK-BASELINE sep_reset_n released", 1)
-        await self._check_reset(
-            dut.sep_cpu_reset_n_o, "CHK-BASELINE sep_cpu_reset_n released", 1)
-        self.logger.info(
-            "CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
+        await self._check_reset(dut.dbg_sep_reset_n_o, "CHK-BASELINE sep_reset_n released", 1)
+        await self._check_reset(dut.sep_cpu_reset_n_o, "CHK-BASELINE sep_cpu_reset_n released", 1)
+        self.logger.info("CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
 
         # No CHK-ISO. This test elaborates lsu_stub_all_live, whose CPU stub
         # declares dbg_rstb_i and never reads it. Against the real CPU, sep.sv
@@ -87,18 +82,23 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         dut.wdt_rst_ni_i.value = 0
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(
-            dut.sep_cpu_reset_n_o, "CHK-LIVE wdt_rst_ni=0 drops sep_cpu_reset_n", 0)
+            dut.sep_cpu_reset_n_o, "CHK-LIVE wdt_rst_ni=0 drops sep_cpu_reset_n", 0
+        )
         # The main SEP reset is CPU-reset-only-gated, so it stays released here.
         await self._check_reset(
-            dut.dbg_sep_reset_n_o, "CHK-LIVE wdt_rst_ni=0 leaves sep_reset_n", 1)
+            dut.dbg_sep_reset_n_o, "CHK-LIVE wdt_rst_ni=0 leaves sep_reset_n", 1
+        )
         dut.wdt_rst_ni_i.value = 1
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(
-            dut.sep_cpu_reset_n_o, "CHK-LIVE wdt_rst_ni=1 restores sep_cpu_reset_n", 1)
+            dut.sep_cpu_reset_n_o, "CHK-LIVE wdt_rst_ni=1 restores sep_cpu_reset_n", 1
+        )
         self.logger.info(
             "CHK-LIVE PASS: sep_cpu_reset_n is reset-responsive (wdt drops it and "
-            "restores it), so the observable is live rather than stuck at 1")
+            "restores it), so the observable is live rather than stuck at 1"
+        )
 
         self.logger.info(
             "CPU debug-reset observables PASS: baseline released + reset-responsive "
-            "(baseline / liveness-contrast; dbg_rstb isolation NOT covered)")
+            "(baseline / liveness-contrast; dbg_rstb isolation NOT covered)"
+        )

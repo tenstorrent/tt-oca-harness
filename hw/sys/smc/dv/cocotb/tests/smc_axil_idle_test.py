@@ -8,8 +8,8 @@ busses must stay idle after cold reset release.
 """
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_axil_idle_test_seq import smc_axil_idle_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

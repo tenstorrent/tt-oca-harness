@@ -118,9 +118,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
                     check_response=False,
                 )
                 return None, result.resp
-            result = await master.read_bytes_result(
-                addr, 4, prot=SECURE_PROT, check_response=False
-            )
+            result = await master.read_bytes_result(addr, 4, prot=SECURE_PROT, check_response=False)
             return result.data & 0xFFFF_FFFF, result.resp
 
         try:
@@ -130,23 +128,18 @@ class smu_ext_axi_global_addr_smoke_test_seq:
                 f"TIMEOUT axi {'wr' if write else 'rd'} @0x{addr:08x}: {exc}"
             ) from exc
 
-    async def _await_axi_ok(
-        self, master, addr: int, *, write: bool, wdata: int, label: str
-    ):
+    async def _await_axi_ok(self, master, addr: int, *, write: bool, wdata: int, label: str):
         last = None
         last_val = None
         for poll in range(FILTER_READY_POLLS):
-            val, resp = await self._axi_rw32(
-                master, addr, write=write, wdata=wdata
-            )
+            val, resp = await self._axi_rw32(master, addr, write=write, wdata=wdata)
             last, last_val = resp, val
             if resp == RESP_OKAY:
                 self._log(f"FILTER_READY {label} poll={poll}")
                 return val, resp
             await ClockCycles(self.dut.clk_smu_i, FILTER_READY_STEP)
         raise AssertionError(
-            f"TIMEOUT FILTER_READY {label}: last={resp_name(last)} "
-            f"data={last_val!r}"
+            f"TIMEOUT FILTER_READY {label}: last={resp_name(last)} data={last_val!r}"
         )
 
     async def _open_inbound_wide(self, jtag) -> None:
@@ -175,9 +168,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
         await self._j2a_wr32(jtag, REGION_SIZE_REG, REGION_SIZE, "REGION_SIZE")
         rb = await self._j2a_rd32(jtag, GLOBAL_BASE_REG, "GLOBAL_BASE_RB")
         if rb != global_base:
-            raise AssertionError(
-                f"GLOBAL_BASE rb 0x{rb:08x} want 0x{global_base:08x}"
-            )
+            raise AssertionError(f"GLOBAL_BASE rb 0x{rb:08x} want 0x{global_base:08x}")
 
     async def run(self) -> None:
         sb = self.test.env.scoreboard
@@ -257,8 +248,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
                 f"want=0x{PATTERN_S2:08x}/OKAY @0x{global_addr_2:08x}"
             )
         self._log(
-            "CHK-BASE-EQ-S2: offset_preserved after GLOBAL_BASE move "
-            f"base2=0x{GLOBAL_BASE_2:08x}"
+            f"CHK-BASE-EQ-S2: offset_preserved after GLOBAL_BASE move base2=0x{GLOBAL_BASE_2:08x}"
         )
         sb.expect_eq("CHK-BASE-EQ-S2", val2, PATTERN_S2)
         self.s2_ok = True

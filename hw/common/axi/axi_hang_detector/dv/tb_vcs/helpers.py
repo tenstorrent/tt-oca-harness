@@ -12,7 +12,7 @@ drives the monitored-bus probes the detector watches.
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 
 CLK_PERIOD_NS = 10
 
@@ -32,25 +32,25 @@ def idle_snoop(dut) -> None:
     """Hold the monitored bus idle so no transaction is outstanding."""
     dut.snoop_aw_valid_i.value = 0
     dut.snoop_aw_ready_i.value = 0
-    dut.snoop_w_valid_i.value  = 0
-    dut.snoop_b_valid_i.value  = 0
-    dut.snoop_b_ready_i.value  = 0
+    dut.snoop_w_valid_i.value = 0
+    dut.snoop_b_valid_i.value = 0
+    dut.snoop_b_ready_i.value = 0
     dut.snoop_ar_valid_i.value = 0
     dut.snoop_ar_ready_i.value = 0
-    dut.snoop_r_valid_i.value  = 0
-    dut.snoop_r_ready_i.value  = 0
-    dut.snoop_r_last_i.value   = 0
+    dut.snoop_r_valid_i.value = 0
+    dut.snoop_r_ready_i.value = 0
+    dut.snoop_r_last_i.value = 0
 
 
 def init_dut(dut) -> None:
     """Drive all DUT inputs to a known idle state (call before starting clock)."""
-    dut.clk_i.value  = 0
+    dut.clk_i.value = 0
     dut.rst_ni.value = 0
 
     # Config wires idle (detector disabled)
-    dut.enable_i.value    = 0
-    dut.irq_en_i.value    = 0
-    dut.irq_test_i.value  = 0
+    dut.enable_i.value = 0
+    dut.irq_en_i.value = 0
+    dut.irq_test_i.value = 0
     dut.threshold_i.value = 0
 
     idle_snoop(dut)
@@ -69,8 +69,8 @@ async def setup_dut(dut) -> None:
 async def configure(dut, threshold: int, enable: bool = True, irq_en: bool = True) -> None:
     """Set the timeout threshold and enable/irq_en. Takes effect on the next edge."""
     dut.threshold_i.value = threshold
-    dut.enable_i.value    = 1 if enable else 0
-    dut.irq_en_i.value    = 1 if irq_en else 0
+    dut.enable_i.value = 1 if enable else 0
+    dut.irq_en_i.value = 1 if irq_en else 0
     await RisingEdge(dut.clk_i)
 
 
@@ -103,11 +103,11 @@ async def complete_read(dut) -> None:
     """Complete one read: r_valid & r_ready & r_last for one cycle."""
     dut.snoop_r_valid_i.value = 1
     dut.snoop_r_ready_i.value = 1
-    dut.snoop_r_last_i.value  = 1
+    dut.snoop_r_last_i.value = 1
     await RisingEdge(dut.clk_i)
     dut.snoop_r_valid_i.value = 0
     dut.snoop_r_ready_i.value = 0
-    dut.snoop_r_last_i.value  = 0
+    dut.snoop_r_last_i.value = 0
 
 
 async def issue_write(dut) -> None:

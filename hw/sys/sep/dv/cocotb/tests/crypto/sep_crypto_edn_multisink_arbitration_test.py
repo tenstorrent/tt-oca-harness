@@ -51,11 +51,10 @@ from dataclasses import dataclass, field
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
+from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
@@ -63,13 +62,25 @@ from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 # arbiter, not a key contract -- same as `sep_drbg_real_sink_multi_km_aes_test`).
 # Plaintext is seed-randomized.
 AES_KEY = (
-    0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
-    0x1F1E1D1C, 0x1B1A1918, 0x17161514, 0x13121110,
+    0x0F0E0D0C,
+    0x0B0A0908,
+    0x07060504,
+    0x03020100,
+    0x1F1E1D1C,
+    0x1B1A1918,
+    0x17161514,
+    0x13121110,
 )
 # KMAC-256 keyed cell: arbitrary 256-bit key + customization; message seed-randomized.
 KMAC_KEY = (
-    0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C,
-    0x13121110, 0x17161514, 0x1B1A1918, 0x1F1E1D1C,
+    0x03020100,
+    0x07060504,
+    0x0B0A0908,
+    0x0F0E0D0C,
+    0x13121110,
+    0x17161514,
+    0x1B1A1918,
+    0x1F1E1D1C,
 )
 KMAC_S = b"crypto EDN arbiter"
 
@@ -98,8 +109,8 @@ class CryptoEdnMultisinkCfg:
     kmac_s: bytes = KMAC_S
     aes_blocks_fork: int = AES_BLOCKS_FORK
     kmac_ops_fork: int = KMAC_OPS_FORK
-    aes_pt: list = field(default_factory=list)      # resolved from seed
-    kmac_msg: list = field(default_factory=list)    # resolved from seed
+    aes_pt: list = field(default_factory=list)  # resolved from seed
+    kmac_msg: list = field(default_factory=list)  # resolved from seed
 
     @classmethod
     def randomize(cls, seed: int) -> "CryptoEdnMultisinkCfg":
@@ -118,11 +129,15 @@ class CryptoEdnMultisinkCfg:
             self.seed,
         )
         logger.info("  aes_pt   = %s", [hex(w) for w in self.aes_pt])
-        logger.info("  kmac_msg = %s (%d words)",
-                    [hex(w) for w in self.kmac_msg], len(self.kmac_msg))
+        logger.info(
+            "  kmac_msg = %s (%d words)", [hex(w) for w in self.kmac_msg], len(self.kmac_msg)
+        )
         logger.info("  aes_key/kmac_key = <fixed 256b>  kmac_s = %r", self.kmac_s)
-        logger.info("  aes_blocks_fork=%d  kmac_ops_fork=%d (pinned, budget-bounded)",
-                    self.aes_blocks_fork, self.kmac_ops_fork)
+        logger.info(
+            "  aes_blocks_fork=%d  kmac_ops_fork=%d (pinned, budget-bounded)",
+            self.aes_blocks_fork,
+            self.kmac_ops_fork,
+        )
 
 
 @pyuvm.test()
@@ -161,10 +176,10 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # crypto sinks score CHK5 ROUTING (each post-adapter beat equals the AXIS1
         # word granted that cycle). KM leg unused.
         await self.bring_up_entropy(
-            strict=True, score_km=False,
-            score_sinks={"aes": "golden", "kmac": "golden"})
+            strict=True, score_km=False, score_sinks={"aes": "golden", "kmac": "golden"}
+        )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        self.start_fifo_drain()   # frontdoor CHK2 (proven in sep_esrc_e2e_smoke)
+        self.start_fifo_drain()  # frontdoor CHK2 (proven in sep_esrc_e2e_smoke)
 
         self.aes = SepAes(self)
         self.kmac = SepKmac(self)
@@ -179,9 +194,15 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         await self.aes.configure_ecb_enc_256(sideload=False)
         aes_golden = aes256_ecb_encrypt_words(list(cfg.aes_key), aes_pt)
 
-        kmac_cfg = SepKmacCfg(mode="kmac", sec=256, msg_words=kmac_msg,
-                              outlen_bytes=32, key_words=list(cfg.kmac_key),
-                              key_bits=256, s=cfg.kmac_s)
+        kmac_cfg = SepKmacCfg(
+            mode="kmac",
+            sec=256,
+            msg_words=kmac_msg,
+            outlen_bytes=32,
+            key_words=list(cfg.kmac_key),
+            key_bits=256,
+            s=cfg.kmac_s,
+        )
         kmac_golden = kmac_family_words(**kmac_cfg.golden_kwargs())
 
         # --- CHK-NONVAC: single-engine AES baseline (correct in isolation, and with
@@ -189,17 +210,20 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # the both-beats check below). KMAC's KAT is proven under contention in the
         # fork (a masking engine reseeds once and would not re-pull per op, so putting
         # its first op in the fork lands its seeding beats in the contention window).
-        await self.aes.load_key_iv(list(cfg.aes_key))   # key-load reseed pulls crypto-EDN
+        await self.aes.load_key_iv(list(cfg.aes_key))  # key-load reseed pulls crypto-EDN
         base_ct = await self.aes.run_ecb_block(aes_pt)
         assert base_ct == aes_golden, (
             "AES baseline ct != AES-256-ECB golden:\n"
-            f"  ct    ={[hex(w) for w in base_ct]}\n  golden={[hex(w) for w in aes_golden]}")
+            f"  ct    ={[hex(w) for w in base_ct]}\n  golden={[hex(w) for w in aes_golden]}"
+        )
         assert self._kmac_beats() == 0, (
             f"KMAC took crypto-EDN beats before it was driven "
-            f"({self._kmac_beats()}) -- both-beats check would be vacuous")
+            f"({self._kmac_beats()}) -- both-beats check would be vacuous"
+        )
         self.logger.info(
             "CHK-NONVAC PASS: AES single-engine baseline reproduces its KAT "
-            "(AES-256-ECB ct==golden) with the KMAC sink idle (0 beats)")
+            "(AES-256-ECB ct==golden) with the KMAC sink idle (0 beats)"
+        )
 
         # --- CHK-BOTH-*: AES + KMAC as CONCURRENT crypto-EDN clients ---------------
         aes_before, kmac_before = self._aes_beats(), self._kmac_beats()
@@ -221,7 +245,8 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 assert ct == aes_golden, (
                     f"AES contended block-{i} ct != golden:\n"
                     f"  ct    ={[hex(w) for w in ct]}\n"
-                    f"  golden={[hex(w) for w in aes_golden]}")
+                    f"  golden={[hex(w) for w in aes_golden]}"
+                )
 
         async def kmac_arm():
             """KMAC crypto-EDN pulls: each keyed KMAC-256 op reseeds masking from EDN;
@@ -231,7 +256,8 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 assert digest == kmac_golden, (
                     f"KMAC contended op-{i} digest != golden:\n"
                     f"  digest={[hex(w) for w in digest]}\n"
-                    f"  golden={[hex(w) for w in kmac_golden]}")
+                    f"  golden={[hex(w) for w in kmac_golden]}"
+                )
 
         # TRUE fork: both arms run as concurrent cocotb tasks, so the AES and KMAC
         # masking-EDN pulls overlap and contend at the crypto arbiter in one window.
@@ -241,19 +267,26 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         await kmac_task
         self.logger.info(
             "CHK-BOTH-COMPLETE PASS: under contention AES block-0 ct==golden AND "
-            "KMAC digest==golden")
+            "KMAC digest==golden"
+        )
 
         aes_after, kmac_after = self._aes_beats(), self._kmac_beats()
         assert aes_after > aes_before, (
             f"AES took no crypto-EDN beats during the concurrent fork "
-            f"(beats {aes_before}->{aes_after})")
+            f"(beats {aes_before}->{aes_after})"
+        )
         assert kmac_after > kmac_before, (
             f"KMAC took no crypto-EDN beats during the concurrent fork "
-            f"(beats {kmac_before}->{kmac_after})")
+            f"(beats {kmac_before}->{kmac_after})"
+        )
         self.logger.info(
             "CHK-BOTH-BEATS PASS: both crypto sinks took real post-adapter EDN beats "
             "in the contention window (AES %d->%d, KMAC %d->%d)",
-            aes_before, aes_after, kmac_before, kmac_after)
+            aes_before,
+            aes_after,
+            kmac_before,
+            kmac_after,
+        )
 
         # --- CHK-OVERLAP: positive arbiter-CONTENTION proof. CHK-BOTH-BEATS only
         # proves each client took beats SOMEWHERE in the fork; this proves AES's and
@@ -267,19 +300,27 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         kmac_ft = self.drbg_sb.sink_beat_times("kmac")[kmac_before:]
         assert aes_ft and kmac_ft, (
             f"missing fork beats (AES {len(aes_ft)}, KMAC {len(kmac_ft)}) -- "
-            "cannot evaluate contention overlap")
+            "cannot evaluate contention overlap"
+        )
         overlap = aes_ft[0] <= kmac_ft[-1] and kmac_ft[0] <= aes_ft[-1]
         assert overlap, (
             "AES and KMAC crypto-EDN beat windows do not overlap during the fork "
             f"(AES [{aes_ft[0]:.0f},{aes_ft[-1]:.0f}]ns, KMAC [{kmac_ft[0]:.0f},"
             f"{kmac_ft[-1]:.0f}]ns): the arbiter served them sequentially, not "
-            "concurrently -- the 'contention' claim would be vacuous")
+            "concurrently -- the 'contention' claim would be vacuous"
+        )
         ov_lo, ov_hi = max(aes_ft[0], kmac_ft[0]), min(aes_ft[-1], kmac_ft[-1])
         self.logger.info(
             "CHK-OVERLAP PASS: AES and KMAC crypto-EDN beat windows overlap over "
             "[%.0f,%.0f]ns (AES [%.0f,%.0f], KMAC [%.0f,%.0f]) -- u_axis_edn_crypto "
             "time-multiplexed two live clients (real contention)",
-            ov_lo, ov_hi, aes_ft[0], aes_ft[-1], kmac_ft[0], kmac_ft[-1])
+            ov_lo,
+            ov_hi,
+            aes_ft[0],
+            aes_ft[-1],
+            kmac_ft[0],
+            kmac_ft[-1],
+        )
 
         # --- EOT: engine status clean, entropy health, dual-sink CHK5 routing ------
         await self.aes.check_status_clean("EOT")
@@ -294,8 +335,12 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         assert ra.mismatches == 0 and rk.mismatches == 0
         self.logger.info(
             "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_kmac match=%d equal the "
-            "AXIS1 grant-order stream (mismatch=0)", ra.matches, rk.matches)
+            "AXIS1 grant-order stream (mismatch=0)",
+            ra.matches,
+            rk.matches,
+        )
         self.logger.info(
             "CHK-MEMBERSHIP PASS: every AES and every KMAC crypto-EDN word is a CHK4 "
             "genbits-golden word (AXIS1 chained to genbits) -- one DRBG partitions "
-            "into the two contending crypto sinks; CHK1..CHK4 bit-exact; alerts zero")
+            "into the two contending crypto sinks; CHK1..CHK4 bit-exact; alerts zero"
+        )

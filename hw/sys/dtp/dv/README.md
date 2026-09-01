@@ -41,7 +41,7 @@ protocol BFMs behind a stable API:
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
-| AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
+| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM) / DUT-local `DtpFlatAxiLiteMaster` (cocotb) | The SV-UVM flow drives the CSR port through the shared VIP master (channel-skew and RREADY-hold operations included); the cocotb flattened-fixture master stays local pending the same migration. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
@@ -139,8 +139,10 @@ the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
 errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
 VCS only for now — a commercial simulator is required because Verilator has
 no SV-UVM support (see `frameworks` in `simulators.toml`); Xcelium support
-is planned but not yet signed off. `--cov` is not yet wired for this
-framework and is rejected up front.
+is planned but not yet signed off. `--cov` instruments the VCS build with
+`-cm line+cond+tgl+fsm+branch+assert` (covergroups collect into the same
+databases), writes one `simv.vdb` per test, and merges/reports through the
+standard `cov_merge`/`cov_report` stages (`urg`).
 
 ```bash
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
