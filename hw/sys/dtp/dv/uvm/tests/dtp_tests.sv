@@ -160,6 +160,37 @@ import ocah_axi_uvm_pkg::*;
 `include "dtp_scan_dbg_disable_matrix_test.svh"
 `include "dtp_jtag2axi_dbg_disable_matrix_test.svh"
 
+// Cross-trigger scenarios (XTRIG CSR / CTP protocols / CTM routing).
+`include "dtp_xtrig_base_test.svh"
+`include "dtp_xtrig_reg_stall_test.svh"
+`include "dtp_xtrig_rand_deterministic_csr_sweep_test.svh"
+`include "dtp_ctm_rand_deterministic_csr_sweep_test.svh"
+`include "dtp_ctm_rand_all_source_select_coverage_test.svh"
+`include "dtp_xtrig_axi_channel_skew_test.svh"
+`include "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test.svh"
+`include "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test.svh"
+`include "dtp_xtrig_wire_or_test.svh"
+`include "dtp_xtrig_p2p_test.svh"
+`include "dtp_xtrig_reset_test.svh"
+`include "dtp_xtrig_rand_test.svh"
+`include "dtp_xtrig_rand_deterministic_dst_port_sweep_test.svh"
+`include "dtp_ctm_wire_or_cla_to_ctp_test.svh"
+`include "dtp_ctm_wire_or_ctp_to_cla_test.svh"
+`include "dtp_ctm_wire_or_cla_to_cla_test.svh"
+`include "dtp_ctm_wire_or_ctp_to_ctp_test.svh"
+`include "dtp_ctm_p2p_cla_to_ctp_test.svh"
+`include "dtp_ctm_p2p_ctp_to_cla_test.svh"
+`include "dtp_ctm_p2p_cla_to_cla_test.svh"
+`include "dtp_ctm_p2p_ctp_to_ctp_test.svh"
+`include "dtp_ctm_reset_wire_or_mode_test.svh"
+`include "dtp_ctm_reset_p2p_mode_test.svh"
+`include "dtp_ctm_reset_all_modes_test.svh"
+`include "dtp_ctm_rand_all_scenarios_test.svh"
+`include "dtp_ctm_rand_wire_or_only_test.svh"
+`include "dtp_ctm_rand_p2p_only_test.svh"
+`include "dtp_ctm_rand_cla_to_ctp_test.svh"
+`include "dtp_ctm_rand_ctp_to_cla_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // DTP_OVERLAY_TESTS to the quoted name of an include file on its own
