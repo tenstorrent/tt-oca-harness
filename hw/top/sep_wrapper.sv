@@ -66,6 +66,10 @@ module sep_wrapper
 
         output sep_cpu_trace_t sep_cpu_trace,
 
+        // CPU lockstep control/status; names match sep's ports for the .* binding
+        input  sep_lockstep_ctrl_t   lockstep_ctrl_i,
+        output sep_lockstep_status_t lockstep_status_o,
+
         input logic [31:1] rst_vec,
         input logic [31:1] jtag_id,
 
