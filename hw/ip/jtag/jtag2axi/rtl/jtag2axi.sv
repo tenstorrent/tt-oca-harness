@@ -209,6 +209,8 @@ module jtag2axi #(
     localparam int SHARED_SR_LEN = max4(AXISINGLEOP_LEN, AXISERIESCTRL_LEN, AXISERIESDATAINCR_MAX_LEN, AXISERIESDATAWITHERRORSTATUS_MAX_LEN);
     localparam int SERIES_RSP_FIFO_SIZE = FIFO_DEPTH + 1;
     localparam int CDC_LOG_DEPTH = (FIFO_DEPTH + 2 <= 2) ? 1 : $clog2(FIFO_DEPTH + 2);
+    localparam int unsigned BEAT_BYTES = DATA_WIDTH / 8;
+    localparam int unsigned BYTE_OFFSET_BITS = (BEAT_BYTES <= 1) ? 0 : $clog2(BEAT_BYTES);
 
     //--------------------------------------------------------------------------
     // AXI Channel and Request/Response Typedefs (PULP AXI)
@@ -226,12 +228,56 @@ module jtag2axi #(
     `AXI_TYPEDEF_REQ_T    (j2a_req_t,  j2a_aw_t,   j2a_w_t,    j2a_ar_t)
     `AXI_TYPEDEF_RESP_T   (j2a_resp_t, j2a_b_t,    j2a_r_t)
 
+    // Beat-lane helpers for series transfers. Offset is current_addr modulo
+    // the data-bus width in bytes. SingleOp keeps host-packed WSTRB/DATA and
+    // does not use these.
+    function automatic int unsigned beat_byte_offset(input logic [ADDR_WIDTH-1:0] addr);
+        localparam int unsigned OffW = (BYTE_OFFSET_BITS == 0) ? 1 : BYTE_OFFSET_BITS;
+        logic [OffW-1:0] offset_bits;
+        offset_bits = '0;
+        if (BYTE_OFFSET_BITS != 0) begin
+            offset_bits = addr[OffW-1:0];
+        end
+        return (BYTE_OFFSET_BITS == 0) ? 0 : int'(offset_bits);
+    endfunction
+
+    function automatic j2a_strb_t series_lane_wstrb(
+        input logic [ADDR_WIDTH-1:0] addr,
+        input logic [2:0] axsize
+    );
+        automatic int unsigned offset = beat_byte_offset(addr);
+        automatic int unsigned num_bytes = size_to_bytes(axsize);
+        automatic j2a_strb_t mask;
+        if (num_bytes >= BEAT_BYTES) begin
+            return '1;
+        end
+        mask = j2a_strb_t'((j2a_strb_t'(1) << num_bytes) - 1);
+        return j2a_strb_t'(mask << offset);
+    endfunction
+
+    function automatic j2a_data_t series_lane_wdata(
+        input j2a_data_t data,
+        input logic [ADDR_WIDTH-1:0] addr
+    );
+        automatic int unsigned offset = beat_byte_offset(addr);
+        return j2a_data_t'(data << (8 * offset));
+    endfunction
+
+    function automatic j2a_data_t series_lane_rdata(
+        input j2a_data_t rdata,
+        input logic [ADDR_WIDTH-1:0] addr
+    );
+        automatic int unsigned offset = beat_byte_offset(addr);
+        return j2a_data_t'(rdata >> (8 * offset));
+    endfunction
+
     //--------------------------------------------------------------------------
     // Parameter Validation Assertions
     //--------------------------------------------------------------------------
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthRangeOk_A, (DATA_WIDTH >= 8) && (DATA_WIDTH <= 1024))
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthPow2_A,    (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(AtopWidthIs6_A,     ATOP_WIDTH == 6)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(AddrWidthCoversBeatOffset_A, ADDR_WIDTH >= $clog2(DATA_WIDTH / 8))
 
     //--------------------------------------------------------------------------
     // JTAG TDR Shared Shift Register and Update Latches (TCK Domain)
@@ -896,7 +942,8 @@ module jtag2axi #(
         current_tx_is_series_read_tclk &&
         !current_is_series_data_with_error_status_op_tclk &&
         !current_tx_stale_tclk;
-    assign series_rsp_fifo_din_tclk.rdata = src_resp.r.data;
+    assign series_rsp_fifo_din_tclk.rdata =
+        series_lane_rdata(src_resp.r.data, current_addr_tclk);
     assign series_rsp_fifo_din_tclk.rresp = next_status_tclk_comb;
 
     localparam int unsigned RspFifoWidth = $bits(series_read_rsp_t);
@@ -1103,7 +1150,9 @@ module jtag2axi #(
 
                 if (src_resp.r_valid && src_req.r_ready) begin
                     fsm_updates_rdata_status_tclk_comb = 1'b1;
-                    next_read_data_tclk_comb           = src_resp.r.data;
+                    next_read_data_tclk_comb = current_tx_is_from_single_buffer_tclk
+                        ? src_resp.r.data
+                        : series_lane_rdata(src_resp.r.data, current_addr_tclk);
                     next_status_tclk_comb =
                         (src_resp.r.resp == 2'b00) ? CAPTURE_STATUS_SUCCESS :
                         (src_resp.r.resp == 2'b10) ? CAPTURE_STATUS_SLVERR  :
@@ -1142,7 +1191,9 @@ module jtag2axi #(
         src_req.aw.user   = USER_WIDTH'(0);
 
         src_req.w      = '0;
-        src_req.w.data = current_data_tclk;
+        src_req.w.data = current_use_custom_wstrb_tclk
+            ? current_data_tclk
+            : series_lane_wdata(current_data_tclk, current_addr_tclk);
         src_req.w.strb = current_wstrb_tclk;
         src_req.w.last = 1'b1;
         src_req.w.user = USER_WIDTH'(0);
@@ -1188,25 +1239,16 @@ module jtag2axi #(
         end
     endgenerate
 
-    // current_wstrb: custom mask for single-buffer writes, generated mask otherwise
+    // current_wstrb: custom mask for single-buffer writes, lane-aligned
+    // generated mask for series writes.
     always_comb begin
-        for (int i = 0; i < DATA_WIDTH/8; i = i + 1) begin
-            if (current_op_tclk == JTAG_OP_WRITE) begin
-                if (current_use_custom_wstrb_tclk) begin
-                    current_wstrb_tclk[i] = current_custom_wstrb_tclk[i];
-                end else begin
-                    automatic logic [2:0] num_bytes_log2;
-                    automatic int unsigned num_active_bytes;
-                    num_bytes_log2   = current_axi_axsize_tclk;
-                    num_active_bytes = 32'd1 << num_bytes_log2;
-                    if (i < num_active_bytes) begin
-                        current_wstrb_tclk[i] = 1'b1;
-                    end else begin
-                        current_wstrb_tclk[i] = 1'b0;
-                    end
-                end
+        current_wstrb_tclk = '0;
+        if (current_op_tclk == JTAG_OP_WRITE) begin
+            if (current_use_custom_wstrb_tclk) begin
+                current_wstrb_tclk = current_custom_wstrb_tclk;
             end else begin
-                current_wstrb_tclk[i] = 1'b0;
+                current_wstrb_tclk = series_lane_wstrb(
+                    current_addr_tclk, current_axi_axsize_tclk);
             end
         end
     end
