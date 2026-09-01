@@ -17,16 +17,19 @@ sub-struct's MSB, so the positions already in use do not shift.
 |---|---|---|---|
 | `sep_reset_n_val/ovrd` | `sep_reset_ctrl` | `sep_reset_no` | `sep.sv` → `sep_reset_ctrl` |
 
-## Crypto SW Reset Overrides (via `sep_reset_ctrl`)
+## Crypto Reset Overrides (via `sep_reset_ctrl`)
 
 | Struct Field | Override Applied In | Target Signal | RTL Path |
 |---|---|---|---|
-| `trng_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_sw_rst_no.trng` | `sep.sv` → `sep_reset_ctrl` → coordinated TRNG AXI isolate |
-| `kmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[4]` | `sep.sv` → `sep_reset_ctrl` |
-| `hmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[3]` | same |
-| `aes_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[2]` | same |
-| `otbn_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[1]` | same |
-| `km_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[0]` | same |
+| `trng_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_crypto_gated_rst_no.trng` | `sep.sv` → `sep_reset_ctrl` → final reset mux |
+| `kmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_crypto_gated_rst_no.kmac` | same |
+| `hmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_crypto_gated_rst_no.hmac` | same |
+| `aes_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_crypto_gated_rst_no.aes` | same |
+| `otbn_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_crypto_gated_rst_no.otbn` | same |
+| `km_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sep_crypto_gated_rst_no.km` | same |
+
+These muxes override the final sequenced resets. JTAG can therefore
+force a domain into reset without waiting for AXI isolation.
 
 ## Not Yet Wired — Consider Adding
 
@@ -61,8 +64,8 @@ SMU u_dtp IC_RESET TDR, SEP slice
                  │    └─ Muxes sep_reset_no from sep_intermediate_reset_ni
                  │       (efuse-sensing-done)
                  └─ Path B: 6 crypto/KM/TRNG overrides
-                      └─ Muxes each of 6 sw_reset_bits (trng, kmac, hmac, aes,
-                         otbn, km)
+                      └─ Muxes each pre_jtag_rst_n onto the final
+                         sep_crypto_gated_rst_no output
 ```
 
 The SEP slice is therefore seven override/value pairs wide. The TRNG pair sits

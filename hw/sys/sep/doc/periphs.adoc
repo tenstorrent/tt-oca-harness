@@ -448,32 +448,34 @@ On power-up, `SW_RESET_N` resets to `0x3E`: KM is held in reset, while OTBN,
 AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes `1` to
 release an IP from reset and writes `0` to request its software reset.
 
-Inside `sep_reset_ctrl`, each bit is ANDed with `sep_reset_n` and then passed
-through a per-IP JTAG override mux (`jtag_sep_reset_ctrl_i`). The `sep_reset_n`
-term holds every IP in reset until eFuse sensing completes during boot.
+Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
+isolates the domain's AXI4-Lite paths, waits for outstanding transactions to
+drain, and then asserts reset. New transactions presented while isolated
+terminate with DECERR. Isolation remains asserted for the duration of reset and
+is released with reset when software removes the request.
 
-The Key Manager reset (`km_sw_rst_n`) is applied directly as the KM warm reset.
-The four crypto accelerators (`otbn`, `aes`, `hmac`, `kmac`) are AXI subordinates
-on the `sep_crypto` demux, so resetting one mid-transaction would strand an
-in-flight request and hang its master. Their reset bits are therefore treated as
-requests: `sep_crypto_axi_isolate` first isolates the accelerator's AXI port,
-draining outstanding transactions and terminating new ones with DECERR, and only
-then asserts the reset. The isolation is held for the duration of the reset and
-released when the software bit deasserts.
+An accelerator reset waits for both its host CSR path and Key Manager key path
+to isolate. A Key Manager reset waits for all of its outgoing accelerator and
+eFuse key paths. This prevents either endpoint of a key path from entering
+reset with a transaction in flight.
+
+The sequenced resets are ANDed with `sep_reset_n`, which holds every IP in reset
+until eFuse sensing completes during boot. The per-IP JTAG override muxes are
+applied last, allowing debug to force reset without waiting for isolation.
 
 [[sep-trng-reset]]
 ===== Resetting the TRNG
 
 The TRNG reset bit controls one reset domain containing the entropy source,
-CSRNG, EDN, their AXI converters, the DRBG endpoint state, and both post-mux EDN
-adapters. Because ESRC, CSRNG, and EDN occupy three independent demux ports, a
-shared coordinator requests isolation on all three and does not assert the TRNG
-reset until all three report isolated. On release, reset is removed while the
-ports remain isolated for one cycle, then all three ports reopen together.
+CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
+independent demux ports, a shared coordinator requests isolation on all three
+converted AXI4-Lite paths and does not assert the TRNG reset until all three
+report isolated. Reset and isolation are released together.
 
 The fabric entropy-pool AXI responder is not reset, so accesses remain
-responsive. While the TRNG reset is active, its pending EDN request, half-packed
-word, FIFO contents, and fill-stall state are synchronously cleared.
+responsive. While the TRNG reset is active, both post-mux EDN adapters and the
+pool synchronously clear their pending and buffered state, including the pool's
+half-packed word, FIFO contents, and fill-stall state.
 
 Consumers are not part of the reset coordinator. Native EDN requests receive no
 acknowledgement while the post-mux adapter is clearing, remain asserted, and are

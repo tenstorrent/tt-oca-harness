@@ -12,7 +12,7 @@ module aes_wrapper (
     input logic clk_i,
     input logic rst_ni,
 
-    // 32-bit AXI-Lite CSR interface (from sep_crypto interconnect, isolated)
+    // 32-bit AXI-Lite CSR interface
     input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,
     output sep_pkg::sep_32_32_axil_resp_t aes_axil_resp_o,
 

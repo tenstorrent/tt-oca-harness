@@ -349,9 +349,9 @@ module sep_crypto #(
     sep_trng #(
         .NUM_AXIS (EXT_TRNG_NUM_AXIS)
     ) u_sep_trng (
-        .clk_i,
+        .clk_i                     (clk_i),
         .rst_ni                    (gated_rst_ni.trng),
-        .entropy_rosc_sample_clk_i,
+        .entropy_rosc_sample_clk_i (entropy_rosc_sample_clk_i),
         .esrc_axil_req_i           (esrc_axil_isolated_req),
         .esrc_axil_resp_o          (esrc_axil_isolated_resp),
         .csrng_axil_req_i          (csrng_axil_isolated_req),
@@ -364,13 +364,13 @@ module sep_crypto #(
         .csrng_alert_tx_o          (crypto_alert_tx[8:7]),
         .edn_alert_rx_i            (crypto_alert_rx[10:9]),
         .edn_alert_tx_o            (crypto_alert_tx[10:9]),
-        .entropy_source_irq_o,
-        .intr_cs_cmd_req_done_o,
-        .intr_cs_entropy_req_o,
-        .intr_cs_hw_inst_exc_o,
-        .intr_cs_fatal_err_o,
-        .intr_edn_cmd_req_done_o,
-        .intr_edn_fatal_err_o,
+        .entropy_source_irq_o      (entropy_source_irq_o),
+        .intr_cs_cmd_req_done_o    (intr_cs_cmd_req_done_o),
+        .intr_cs_entropy_req_o     (intr_cs_entropy_req_o),
+        .intr_cs_hw_inst_exc_o     (intr_cs_hw_inst_exc_o),
+        .intr_cs_fatal_err_o       (intr_cs_fatal_err_o),
+        .intr_edn_cmd_req_done_o   (intr_edn_cmd_req_done_o),
+        .intr_edn_fatal_err_o      (intr_edn_fatal_err_o),
         .trng_reset_active_o       (trng_reset_active)
     );
 
@@ -382,7 +382,7 @@ module sep_crypto #(
     //////////////////
 
     hmac_wrapper hmac_wrapper_s3c_scan (
-        .clk_i,
+        .clk_i                   (clk_i),
         .rst_ni                  (gated_rst_ni.hmac),
         .hmac_axil_req_i         (hmac_axil_isolated_req),
         .hmac_axil_resp_o        (hmac_axil_isolated_resp),
@@ -427,7 +427,7 @@ module sep_crypto #(
     /////////////////
 
     aes_wrapper aes_wrapper_s3c_scan (
-        .clk_i,
+        .clk_i               (clk_i),
         .rst_ni              (gated_rst_ni.aes),
         .aes_axil_req_i      (aes_axil_isolated_req),
         .aes_axil_resp_o     (aes_axil_isolated_resp),
@@ -446,7 +446,7 @@ module sep_crypto #(
     //////////////////
 
     kmac_wrapper kmac_wrapper_s3c_scan (
-        .clk_i,
+        .clk_i                   (clk_i),
         .rst_ni                  (gated_rst_ni.kmac),
         .kmac_axil_req_i         (kmac_axil_isolated_req),
         .kmac_axil_resp_o        (kmac_axil_isolated_resp),
@@ -502,7 +502,7 @@ module sep_crypto #(
         .MASKING_EN   (sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN),
         .SRAM_LATENCY (sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY)
     ) u_sep_crypto_abr_wrapper_s3c_scan (
-        .clk_i,
+        .clk_i                 (clk_i),
         .rst_ni                (sep_reset_ni),
         // Control/status path: ABR AXI aperture off the crypto interconnect
         .abr_axi_req_i         (abr_axi_req),
@@ -534,8 +534,8 @@ module sep_crypto #(
         .ATOPs      (1'b0),
         .MaxTrans   (1)
     ) u_abr_axi_err_slv (
-        .clk_i,
-        .rst_ni,
+        .clk_i      (clk_i),
+        .rst_ni     (rst_ni),
         .test_i     (test_en_i),
         .slv_req_i  (abr_axi_req),
         .slv_resp_o (abr_axi_resp)
@@ -550,7 +550,7 @@ module sep_crypto #(
         .axil_req_t     (km_intf_pkg::km_axil_req_t),
         .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
     ) u_abr_key_err_slv (
-        .clk_i,
+        .clk_i       (clk_i),
         .rst_ni      (sep_reset_ni),
         .axil_req_i  (abr_key_axil_isolated_req),
         .axil_resp_o (abr_key_axil_isolated_resp)
