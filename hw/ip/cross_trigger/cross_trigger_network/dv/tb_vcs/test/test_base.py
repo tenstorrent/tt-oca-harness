@@ -23,6 +23,9 @@ sys.path.insert(
     0, str(Path(__file__).parents[4] / "cross_trigger_port" / "dv" / "tb_vcs" / "axil_vip")
 )
 
+# Re-exported: downstream tests `from test.test_base import AxiLiteMaster` (or `import *`).
+from axil_master import AxiLiteMaster as AxiLiteMaster  # noqa: E402
+
 # Port counts, which must match cross_trigger_network_pkg
 NUM_CTP = 16
 NUM_INT_CT = 10

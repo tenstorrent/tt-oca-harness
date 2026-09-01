@@ -12,6 +12,9 @@ from cocotb.utils import get_sim_time
 
 from . import smc_addr_map as _addr
 
+# Re-exported: callers do `import smc_cg_obs_utils as cg` then `cg.PASS_ALL_CONFIG`.
+from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG as PASS_ALL_CONFIG
+
 _LOG = logging.getLogger(__name__)
 
 # Authoritative addresses / field masks (generated headers via smc_addr_map).

@@ -17,6 +17,10 @@ from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import LC_WORD_IDX
 from env.sep_lcc_golden import LC_RMA_CHIP_1, LC_RMA_SIP_1
+
+# Re-exported for sep_efuse_rma_token_rand_test, which builds its golden via
+# seq_lib rather than reaching into env directly.
+from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
 from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 

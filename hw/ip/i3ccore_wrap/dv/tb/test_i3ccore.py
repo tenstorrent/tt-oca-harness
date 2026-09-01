@@ -31,7 +31,11 @@ from cocotb.handle import Force, Release
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
-# Import tests from other test files
+# Import tests from other test files: cocotb discovers @cocotb.test() coroutines
+# by scanning this module's namespace, so MODULE=test_i3ccore only runs these
+# too if they are (re-)imported here.
+from i3c_error_sanity import i3c_error_wrong_addr as i3c_error_wrong_addr
+from i3c_error_sanity import i3c_fifo_overflow as i3c_fifo_overflow
 
 
 def sim_handle(path, root):

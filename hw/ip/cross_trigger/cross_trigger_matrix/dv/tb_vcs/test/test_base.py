@@ -16,6 +16,9 @@ from cocotb.triggers import RisingEdge, Timer
 # Import AXI-Lite VIP
 sys.path.insert(0, str(Path(__file__).parent.parent / "axil_vip"))
 
+# Re-exported: downstream tests `from test.test_base import AxiLiteMaster` (or `import *`).
+from axil_master import AxiLiteMaster as AxiLiteMaster  # noqa: E402
+
 # Import register definitions from the generated Python header
 sys.path.insert(0, str(Path(__file__).parents[3] / "regs" / "gen" / "py"))
 import cross_trigger_matrix_reg as ctm_regs

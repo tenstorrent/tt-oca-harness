@@ -19,14 +19,15 @@ readable field reads back verbatim).
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from sep_reg_meta import sym
 
 # The generated map itself, for enumerating the eFuse register set rather than
 # naming each entry. Import order matters: sep_reg_meta puts regs/gen/py on
 # sys.path as an import side effect, so it has to come first.
 import sep_reg  # noqa: E402
-from sep_reg_meta import sym
+
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 # Stimulus randomness is deliberately the seeded, NON-cryptographic SepSeededRng, and
 # must stay that way. This generator is run TWICE per simulation from two different
