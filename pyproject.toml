@@ -29,6 +29,7 @@ dependencies = [
   "systemrdl-compiler>=1.32.2",
   "tclint==0.4.2",
   "tomllint==0.3.6",  # syntax-only: catches malformed DV testlist/sim-config TOML, no style rules
+  "types-pyyaml>=6.0.12.20260815",
   "yamllint==1.37.1",  # 1.38+ requires pathspec>=1.0.0, which conflicts with tclint's pathspec==0.11.2 pin
 ]
 

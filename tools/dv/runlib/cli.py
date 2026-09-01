@@ -1002,8 +1002,8 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         executors = load_executors(root)
         policies = validate_parser_registry(root)
         duts = load_duts(root)
-        for flow in duts.values():
-            validate_flow(flow, root, simulators, policies, executors)
+        for candidate_flow in duts.values():
+            validate_flow(candidate_flow, root, simulators, policies, executors)
     except ConfigError as exc:
         print(f"configs : FAIL: {exc}")
         print("\nResult: fix config errors first (run --validate-configs for the full list)")

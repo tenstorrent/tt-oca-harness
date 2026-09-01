@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import sys
+from typing import Callable
 
 import cocotb
 from cocotb.clock import Clock
@@ -221,10 +222,10 @@ async def mailbox_sanity_test(dut):
 
 if cocotb.SIM_NAME:
     sanity_tests = [mailbox_sanity_test]
-    stress_tests = [
+    stress_tests: list[Callable] = [
         # Add mailbox-specific stress tests here
     ]
-    tests = []
+    tests: list[Callable] = []
 
     if "+stress" in cocotb.argv:
         tests += sanity_tests
