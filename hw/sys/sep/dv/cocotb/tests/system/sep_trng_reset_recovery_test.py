@@ -36,7 +36,7 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
-from ocah_axi_vip.cocotb.ocah_axi_results import worst_resp
+from ocah_axi_vip import worst_resp
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
 

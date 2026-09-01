@@ -19,7 +19,9 @@ from cocotb.triggers import RisingEdge
 from cocotbext.axi import AxiBus, AxiMaster
 from cocotbext.axi.constants import AxiBurstType, AxiLockType, AxiProt
 
-__all__ = ["OcahAxiMasterDriver", "OcahAxiIdCapture"]
+from .ocah_axi_master_config import AxiTimingProfile
+
+__all__ = ["OcahAxiMasterDriver", "OcahAxiIdCapture", "apply_profile", "clear_profile"]
 
 
 class OcahAxiIdCapture:
@@ -172,15 +174,13 @@ class OcahAxiMasterDriver:
             resolved_reset = getattr(axi4_intf, "rst_ni", None)
         return bus, resolved_clock, resolved_reset
 
-    def set_timing(self, profile) -> None:
+    def set_timing(self, profile: AxiTimingProfile) -> None:
         """Arm an ``AxiTimingProfile`` on this master's five channels.
 
         AXI channels are independent, so AW/W ordering and response-channel
         backpressure are legal stimulus the backend cannot otherwise produce.
-        See ocah_axi_timing.AxiTimingProfile.
+        See ``AxiTimingProfile`` in ocah_axi_master_config.
         """
-        from .ocah_axi_timing import apply_profile
-
         apply_profile(self, profile)
 
     @property
@@ -373,3 +373,109 @@ class OcahAxiMasterDriver:
             raise ValueError(f"conflicting AXI IDs {primary} and {alias}")
         value = primary if primary is not None else alias
         return None if value is None else int(value)
+
+
+def _hold_then_go(cycles: int):
+    """Pause generator: hold the channel for ``cycles`` edges, then release.
+
+    The backend advances one value per clock edge from the moment the
+    generator is armed, so this counts from arming. That suits a response
+    channel, whose delay is plain backpressure and orders against nothing. The
+    write channels order against each other and use _release_on_leader_valid
+    instead.
+
+    It never StopIterations, because a generator that ends leaves the channel
+    at its last value.
+    """
+    for _ in range(cycles):
+        yield True
+    while True:
+        yield False
+
+
+# Pending release per channel. A profile armed while an earlier release is
+# still waiting would have that release clear the pause it just set, so the
+# previous one is cancelled first.
+_OCAH_RELEASERS: dict = {}
+
+
+def _is_high(sig) -> bool:
+    """True only when ``sig`` resolves to 1.
+
+    cocotb 1.x hands back a BinaryValue and 2.x a Logic, and only one of them
+    carries ``.integer``. Both render as a single character, and anything that
+    is not "1" -- including X and Z before the driver is up -- is not a VALID
+    assertion.
+    """
+    return str(sig.value) == "1"
+
+
+async def _release_on_leader_valid(trailing, leading, cycles: int) -> None:
+    """Hold ``trailing`` until ``leading`` asserts VALID, then ``cycles`` more.
+
+    VALID assertion is the only event that orders the channels. A cycle count
+    runs from when the profile is armed, which is spent before the write is
+    issued. The leading queue empties in the same delta its beat is driven, so
+    a queue-drained release fires too late to have held anything. The leading
+    handshake waits on the slave, and one that holds WREADY until AW can never
+    grant a W-first handshake, so a handshake-driven release deadlocks that
+    ordering.
+    """
+    edge = RisingEdge(trailing.clock)
+    while True:
+        await edge
+        if leading.valid is not None and _is_high(leading.valid):
+            break
+    for _ in range(cycles):
+        await edge
+    trailing.pause = False
+
+
+def apply_profile(driver, profile: AxiTimingProfile) -> None:
+    """Arm ``profile`` on ``driver``'s channels.
+
+    Channels with a zero delay are actively cleared rather than left alone, so
+    applying a profile fully replaces the previous one instead of merging with
+    it.
+    """
+    for chan in driver.channels.values():
+        task = _OCAH_RELEASERS.pop(chan, None)
+        if task is not None:
+            task.kill()
+
+    chans = driver.channels
+    # AW and W order against each other; the trailing one is held until the
+    # leading one has gone. A response channel has no peer, so its delay stays
+    # a plain countdown of backpressure.
+    lead = {"aw_delay": "w_delay", "w_delay": "aw_delay"}
+
+    for field, chan in chans.items():
+        cycles = getattr(profile, field)
+        if not cycles:
+            chan.clear_pause_generator()
+            chan.pause = False
+            continue
+        if field in lead:
+            # Pause now, synchronously: the write may be issued in this same
+            # delta, before any task the backend starts could run.
+            chan.clear_pause_generator()
+            chan.pause = True
+            _OCAH_RELEASERS[chan] = cocotb.start_soon(
+                _release_on_leader_valid(chan, chans[lead[field]], cycles))
+        else:
+            chan.set_pause_generator(_hold_then_go(cycles))
+
+
+def clear_profile(driver) -> None:
+    """Return every channel to the backend default (no pause)."""
+    apply_profile(driver, AxiTimingProfile())
+
+
+def _selftest() -> None:
+    # A response channel has no peer to order against: the countdown starts
+    # at once.
+    g_resp = _hold_then_go(2)
+    assert [next(g_resp) for _ in range(4)] == [True, True, False, False]
+
+
+_selftest()

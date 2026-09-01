@@ -37,15 +37,23 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi[_lite]_slave_config.py` | Responder memory/reset/backend knobs |
 | `cocotb/ocah_axi[_lite]_slave_driver.py` | Fault-capable RAM responder engine |
 | `cocotb/ocah_axi[_lite]_slave_sequence.py` | Test-facing responder API (backdoor/inject/backpressure) |
-| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items (side-neutral) |
+| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items and result dataclasses (side-neutral) |
 | `cocotb/ocah_axi_monitor.py` | Passive item-producing bus monitors (side-neutral) |
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
-| `cocotb/ocah_axi_results.py` | Result dataclasses and response-code helpers |
+| `cocotb/ocah_axi_types.py` | Response/protection code constants and value-conversion helpers (side-neutral) |
 | `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
 Tests always drive a side through its `*Sequence` class — usually
 `agent.sequence` — never through the raw driver; missing operations get
 added to the sequence layer first.
+
+The cocotb package contains only canonical component files, matching the
+SV-UVM flow's basenames (`uvm/ocah_axi_*.svh`) one-to-one; flow-only
+components follow the same naming pattern. Shared dataclasses live in
+`_item`, shared constants and value conversions in `_types`, and behavior
+lives in the component that owns it (e.g. `AxiTimingProfile` is a
+`_master_config` knob applied by the `_master_driver`) — support modules
+outside the taxonomy are not added.
 
 ## Import Pattern
 
