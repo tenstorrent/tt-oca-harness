@@ -107,9 +107,14 @@ class sep_axi_strobe_window_test(sep_base_test):
                 + ")"
             )
 
+        # Config report, not a checker. The size axis is built by iterating
+        # SIZE_BYTES, so asserting the walk covers it restates the loop rather
+        # than testing anything; the module selftest pins that shape at import.
+        # The failable strobe contract is CHK-STROBE and CHK-WINDOW-DATA above.
         self.logger.info(
-            "CHK-RANDCFG PASS: %d narrow write(s) + %d window(s) from seed %d",
+            "strobe config: %d narrow write(s) over %d window(s), sizes %s, seed %d",
             len(cfg.writes),
             len(cfg.windows),
+            sorted({SIZE_BYTES[w.size] for w in cfg.writes}),
             cfg.seed,
         )
