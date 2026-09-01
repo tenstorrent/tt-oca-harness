@@ -52,5 +52,53 @@ interface dtp_tb_if;
     logic [31:0] smc_otp_axil_awvalid_count;
     logic [31:0] smc_otp_axil_wvalid_count;
     logic [31:0] smc_otp_axil_arvalid_count;
+    logic [31:0] sep_otp_axil_awvalid_count;
+    logic [31:0] sep_otp_axil_wvalid_count;
+    logic [31:0] sep_otp_axil_arvalid_count;
+
+    // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
+    // boot-stall outputs and the flattened IC_RESET slice outputs.
+    logic stop_clks;
+    logic cla_clock_stop_en;
+    logic jtag_boot_stall;
+    logic jtag_boot_stall_ovrd;
+    logic jtag_ic_reset_smc_ovrd;
+    logic jtag_ic_reset_smc_ctrl_n;
+    logic jtag_ic_reset_sep_ovrd;
+    logic jtag_ic_reset_sep_ctrl_n;
+    logic jtag_ic_reset_ext_ovrd;
+    logic jtag_ic_reset_ext_ctrl_n;
+
+    // CLA clock-stop request vector (driven by debug-TDR sequences; init
+    // quiescent so unrelated tests see no requests).
+    logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
+
+    // Scan-network observables (driven by tb_top): iJTAG SIB scan controls,
+    // STAP forwarding pins, and the extended STAP host scan controls for
+    // the scan-scenario temporal windows.
+    logic jtag_dft_secure_select;
+    logic jtag_dft_secure_shift_en;
+    logic jtag_dft_secure_capture_en;
+    logic jtag_dft_secure_update_en;
+    logic jtag_dft_select;
+    logic jtag_dft_shift_en;
+    logic jtag_dft_capture_en;
+    logic jtag_dft_update_en;
+    logic jtag_dfd_select;
+    logic jtag_dfd_shift_en;
+    logic jtag_dfd_capture_en;
+    logic jtag_dfd_update_en;
+    logic jtag_stap_io_tms;
+    logic jtag_stap_io_tdo_oen;
+    logic jtag_stap_smc_tms;
+    logic jtag_stap_smc_tdo_oen;
+    logic jtag_stap_sep_tms;
+    logic jtag_stap_sep_tdo_oen;
+    logic jtag_stap_extra0_tms;
+    logic jtag_stap_extra0_tdo_oen;
+    logic jtag_stap_host_select;
+    logic jtag_stap_host_shift_en;
+    logic jtag_stap_host_capture_en;
+    logic jtag_stap_host_update_en;
 
 endinterface : dtp_tb_if
