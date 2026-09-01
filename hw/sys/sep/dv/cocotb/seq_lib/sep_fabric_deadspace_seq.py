@@ -343,7 +343,7 @@ class SepDeadspace:
 
     async def burst_across_extent(
         self, win
-    ) -> tuple[int, int, bool, list[int], list[tuple[int, int]]]:
+    ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int | None]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
         AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
@@ -354,12 +354,19 @@ class SepDeadspace:
         DECERR and never reaches the unit.
 
         Returns the start address, the responses the master reported, the
-        timeout flag, the four beats, and a single-beat read of each of the same
-        addresses. The responses cover the burst, not one entry per beat.
+        timeout flag, the four beats, a single-beat read of each of the same
+        addresses, and the per-beat response vector the passive monitor observed.
+
+        The master collapses a read burst to one response: the cocotbext-axi
+        beat loop keeps the last non-OKAY RRESP and discards the rest, so
+        ``seq.resp_list`` cannot say which beats were refused. The passive
+        monitor records every R beat separately and publishes the whole vector
+        at RLAST, so the per-beat contract is read from there instead.
         """
         beats = 4  # two live beats, then two past the extent
         start = win.dead_lo - 4 * (beats // 2)
         mon = self.test.env.axi_monitor
+        mon.start_beat_capture()
         # The later beats land in dead space, so a correct fabric answers this
         # burst with an error. Credit those beats and hand back whatever the
         # fabric did not use: without the credit the monitor reports a correct
@@ -376,7 +383,32 @@ class SepDeadspace:
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
-        used = sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        # Per-beat responses come from the monitor; the master has only the
+        # collapsed one. The capture window records every R beat on this bus, not
+        # this burst's beats specifically, so quiescence and the length check
+        # below are what make the vector attributable to this burst.
+        captured = mon.take_beat_capture()
+        # Only a complete, fully resolved sequence is evidence. A shorter one
+        # means beats were not observed and a longer one means unrelated traffic
+        # shared the window, so neither is attributable to this burst. An entry
+        # that did not resolve to an int is not evidence either, and it must not
+        # be read as a refusal: the checker fails a beat that answers OKAY past
+        # the extent, so an unresolved beat there would otherwise pass by
+        # default. Rejecting the whole vector sends the window to the tally
+        # instead, where it is named rather than counted as proof.
+        usable = len(captured) == beats and all(r is not None for r in captured)
+        mon_resps = [r for r in captured if r is not None] if usable else []
+        # Credit from the per-beat vector when it is available: the collapsed
+        # response holds at most one entry, so crediting from it releases beats
+        # the fabric did refuse. That over-release can only make the monitor
+        # report a refusal it was told to expect, never absorb one it was not:
+        # release_expected_decerr floors at zero, so the failure direction is a
+        # spurious monitor error, not a swallowed DECERR.
+        used = (
+            sum(1 for r in mon_resps if r == RESP_DECERR)
+            if mon_resps
+            else sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        )
         if beats > used:
             mon.release_expected_decerr(beats - used)
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
@@ -392,7 +424,7 @@ class SepDeadspace:
             if past and r != RESP_DECERR:
                 mon.release_expected_decerr(1)
             singles.append((r, d))
-        return start, list(seq.resp_list), seq.timed_out, words, singles
+        return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
