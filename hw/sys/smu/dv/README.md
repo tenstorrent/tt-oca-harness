@@ -4,8 +4,10 @@ OCAH open-source DV testbench for the **SMU (System Management Unit)**.
 Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 [`docs/SMU_TB_ARCH.adoc`](docs/SMU_TB_ARCH.adoc) for the testbench
-architecture and [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
-verification plan.
+architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
+verification plan, and
+[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
+for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).
@@ -16,7 +18,11 @@ Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
 
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
-**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): [`testlists/deferred.toml`](testlists/deferred.toml).
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`):
+[`testlists/deferred.toml`](testlists/deferred.toml). Every named entry is
+classified in
+[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc).
+None of those names is a v0.5.0 restore; raise stubs are not reportable as PASS.
 
 ```
 smu_<scenario>_test
