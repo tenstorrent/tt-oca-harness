@@ -764,6 +764,8 @@ module sep_uvm_top
         // New wrapper status/debug outputs: observability only, left open.
         .lc_state_o                   (),
         .dbg_disable_o                (),
+        .sep_fuse_dft_disable_o       (),
+        .smc_fuse_dft_disable_o       (),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),

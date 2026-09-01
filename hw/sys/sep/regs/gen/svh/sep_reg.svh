@@ -6168,29 +6168,20 @@ localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_DEBUG_SHIFT            
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_CHIPLET_DBG_MASK                                             = 64'h2;
 localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_CHIPLET_DBG_SHIFT                                            = 1;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_MASK                                     = 64'hFFFC;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_SHIFT                                    = 2;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_DBG_MASK                                            = 64'h4;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_DBG_SHIFT                                           = 2;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK                                               = 64'h10000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT                                              = 16;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_DBG_MASK                                            = 64'h8;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_DBG_SHIFT                                           = 3;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_MASK                                     = 64'hFFFE0000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_SHIFT                                    = 17;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_MASK                                     = 64'hFFFFF0;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_SHIFT                                    = 4;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_TEST_MASK                                           = 64'h100000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_TEST_SHIFT                                          = 32;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK                                               = 64'h1000000;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT                                              = 24;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_LO_MASK                                        = 64'h1E00000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_LO_SHIFT                                       = 33;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_TEST_MASK                                           = 64'h2000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_TEST_SHIFT                                          = 37;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_FUSE_VENDOR_TEST_MASK                                        = 64'h4000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_FUSE_VENDOR_TEST_SHIFT                                       = 38;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_MASK                                           = 64'hFF8000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_SHIFT                                          = 39;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_MASK                                     = 64'hFFFFFE000000;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_SHIFT                                    = 25;
 
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_MASK                                           = 64'hFFFF000000000000;
 localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_SHIFT                                          = 48;
@@ -9054,14 +9045,11 @@ typedef struct packed {
 
 typedef struct packed {
     logic [15:0]   func_reserved ;
-    logic [8:0]   test_reserved ;
-    logic [0:0]   fuse_vendor_test ;
-    logic [0:0]   smc_fuse_test ;
-    logic [3:0]   test_reserved_lo ;
-    logic [0:0]   sep_fuse_test ;
-    logic [14:0]   debug_reserved_dbg2 ;
+    logic [22:0]   debug_reserved_dbg2 ;
     logic [0:0]   sip_debug ;
-    logic [13:0]   debug_reserved_dbg1 ;
+    logic [19:0]   debug_reserved_dbg1 ;
+    logic [0:0]   smc_fuse_dbg ;
+    logic [0:0]   sep_fuse_dbg ;
     logic [0:0]   chiplet_dbg ;
     logic [0:0]   sep_debug ;
 } sep_efuse_map_lc_disable_reg_t;

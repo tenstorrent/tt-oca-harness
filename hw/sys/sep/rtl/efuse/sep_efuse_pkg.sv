@@ -130,23 +130,19 @@ package sep_efuse_pkg;
 
 
   // LC_DISABLE / feature-control disable vector.
-  // Spec: lifecycle_controller.adoc §2.2 (v0.5.19+).
-  // Convention: 1'b1 = feature disabled; feat_ctrl_o is inverted (enable polarity).
+  // Spec: the Disable Vector Format section of lifecycle_controller.adoc.
+  // 1'b1 = feature disabled; feat_ctrl_o is inverted (enable polarity).
   // Groups:
-  //   DBG_1 [15:0]  — gated by DEMOTE_1 (local debug)
-  //   DBG_2 [31:16] — gated by DEMOTE_2 (inter-chiplet debug bypass)
-  //   Test  [47:32] — forced to 0 when SECURE_TM=0 (final gate in LCC)
+  //   DBG_1 [23:0]  — gated by DEMOTE_1 (local debug)
+  //   DBG_2 [47:24] — gated by DEMOTE_2 (inter-chiplet debug bypass)
   //   Func  [63:48] — always gated by SIP_DIS/SYS_DIS per LC state
   typedef struct packed {
       logic [15:0]  func_reserved ;         // [63:48] Function group
-      logic [8:0]   test_reserved ;         // [47:39] Test group (reserved)
-      logic [0:0]   fuse_vendor_test ;      // [38]    FUSE_VENDOR_TEST
-      logic [0:0]   smc_fuse_test ;         // [37]    SMC_FUSE_TEST
-      logic [3:0]   test_reserved_lo ;      // [36:33] Test group (reserved, low)
-      logic [0:0]   sep_fuse_test ;         // [32]    SEP_FUSE_TEST
-      logic [14:0]  debug_reserved_dbg2 ;   // [31:17] DBG_2 reserved
-      logic [0:0]   sip_debug ;             // [16]    SIP_DBG (DBG_2)
-      logic [13:0]  debug_reserved_dbg1 ;   // [15:2]  DBG_1 reserved
+      logic [22:0]  debug_reserved_dbg2 ;   // [47:25] DBG_2 reserved
+      logic [0:0]   sip_debug ;             // [24]    SIP_DBG (DBG_2)
+      logic [19:0]  debug_reserved_dbg1 ;   // [23:4]  DBG_1 reserved
+      logic [0:0]   smc_fuse_dbg ;          // [3]     SMC_FUSE_DBG (DBG_1)
+      logic [0:0]   sep_fuse_dbg ;          // [2]     SEP_FUSE_DBG (DBG_1)
       logic [0:0]   chiplet_dbg ;           // [1]     CHIPLET_DBG (DBG_1)
       logic [0:0]   sep_debug ;             // [0]     SEP_DBG (DBG_1)
   } sep_efuse_map_lc_disable_reg_t;
@@ -522,6 +518,8 @@ package sep_efuse_pkg;
   // Class 1 storage is selected by field identity; all locations and widths
   // are derived directly from the generated RDL metadata.
   // LockFieldBits == 96: LOCKS (words 0-1) + LOCKS_SPARE (word 2) are all sensed.
+
+  // TODO: Why is NumFuseWordWidth passed in?
   localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{ 
       efuse_pkg::make_shadow_word_range(
           efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR),
@@ -780,12 +778,14 @@ package sep_efuse_pkg;
         start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR),
         end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR) - 1
     },
+    // TODO: should this have SECURE_TM_LOCK? Not in hw/sys/sep/doc/lifecycle_controller.adoc list
     '{ // RMA_CHIPLET_TOKEN_DIGEST (idx 6)
         idx: 6'd06,
         lock: {SECURE_TM_LOCK, WRITE_UNLOCK, READ_UNLOCK},
         start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR),
         end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR) - 1
     },
+    // TODO: should this have SECURE_TM_LOCK? Not in hw/sys/sep/doc/lifecycle_controller.adoc list
     '{ // RMA_SIP_TOKEN_DIGEST (idx 5)
         idx: 6'd05,
         lock: {SECURE_TM_LOCK, WRITE_UNLOCK, READ_UNLOCK},
