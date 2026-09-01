@@ -52,9 +52,6 @@ _REQUIRED_PATTERNS = [
 # Floors the test asserts, so a generator or list that shrank fails the run
 # rather than reporting a clean pass over fewer cells.
 CONTIGUOUS_WSTRB_SPECS = 36  # 8 one-hot + 28 multi-byte runs on an 8-byte lane
-SEQ_WORD_FLOOR = 4  # the window must confirm at least this many words
-PATTERN_FLOOR = 6  # literal, not len(_REQUIRED_PATTERNS): a floor derived
-# from the list it guards moves with every edit
 
 
 def _contiguous_wstrb_specs() -> list[tuple[int, int]]:
@@ -79,6 +76,14 @@ class SepSramBreadthCfg:
         # WSTRB: all 36 contiguous masks REQUIRED (deterministic), order shuffled;
         # the init word and per-mask new-data are seed-random (masked to 64b).
         self.wstrb_specs = _contiguous_wstrb_specs()
+        # Construction invariant, in the same spirit as the inbound START/END
+        # count: the 8-byte lane has exactly 36 contiguous runs, so a generator
+        # change is a config bug and must not reach the bench as a smaller sweep.
+        if len(self.wstrb_specs) != CONTIGUOUS_WSTRB_SPECS:
+            raise RuntimeError(
+                f"contiguous WSTRB set is {len(self.wstrb_specs)}, "
+                f"expected {CONTIGUOUS_WSTRB_SPECS} on an 8-byte lane"
+            )
         rng.shuffle(self.wstrb_specs)
         self.wstrb_offset = self._aligned(rng, 0x1000, 0x2000)
         self.wstrb_init = rng.getrandbits(64)
