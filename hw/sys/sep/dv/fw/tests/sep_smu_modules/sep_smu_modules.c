@@ -310,13 +310,13 @@ static int stage_kmac(void) {
 static int stage_efuse(void) {
     if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
-    /*
-     * EFUSE_TIMING_CTRL_7 is not present in every generated SEP register map.
-     * In this tree the external efuse shim block exposes only
-     * EFUSE_BANK_INIT_TIME, so the reference would not compile. Guard rather
-     * than retarget: silently pointing the check at a different register would
-     * report coverage of a register this map does not have.
-     */
+        /*
+         * EFUSE_TIMING_CTRL_7 is not present in every generated SEP register map.
+         * In this tree the external efuse shim block exposes only
+         * EFUSE_BANK_INIT_TIME, so the reference would not compile. Guard rather
+         * than retarget: silently pointing the check at a different register would
+         * report coverage of a register this map does not have.
+         */
 #ifdef OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
