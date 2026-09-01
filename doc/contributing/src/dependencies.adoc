@@ -48,9 +48,15 @@ to compile firmware and bootcode - containerised alternative available
 * *GnuMake*: Version 4.4.1
 * *Bender*: Version 0.32.0 - Used to manage Vendor RTL and code
 * *Slang*: Version 9.1+
-* *Yosys*: Version 0.60+
+* *Yosys*: Version 0.60+ - Currently only used via a container, included for completeness
 * *GCC*: Version 15.3.0+ recommended
 * *CCache*: Version 4.12.3+
+* *CMake*: Version 4.2.3+
+* The Virtual Platform for testing the SEP Firmware has the following additional dependencies, but installs and manages them itself unless configured otherwise:
+** *SystemC*: Version 3.0.2, built with C++20
+** *Boost*: Version 1.84.0
+** *OPENSSL*: Version 3.3.2
+** *SystemC CCI*: Version 1.0.2, built with the above SystemC and C++20
 
 === License Requirements
 
