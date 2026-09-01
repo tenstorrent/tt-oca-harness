@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ESRC shared HT_WATERMARK arming: selector, RESET / MODULE_ENABLE, polarity.
+"""ESRC shared HT_WATERMARK arming: selector, MODULE_ENABLE, polarity.
 
 One shared register, not a per-mode bank. Arming is health_test_clr
-(MODULE_ENABLE 0->1 or CTRL.RESET). High modes arm 0x0000; APT_LO / MARKOV_LO
-arm 0xFFFF. HT_WATERMARK_NUM lives on rst_ni, so it survives CTRL.RESET.
+(MODULE_ENABLE 0->1). High modes arm 0x0000; APT_LO / MARKOV_LO arm 0xFFFF.
 Changing the selector alone does not re-arm. An unsupported selector maps to
 REPCNT_HI. HEALTH_TEST_CTRL.ENABLE stays 0 on every arming leg so a window wrap
-cannot move the register between the event and the read.
+cannot move the register between the event and the read. The shared TRNG reset
+resets the selector and watermark together and is covered by the recovery test.
 
 SepHtWatermarkCfg is the single source of truth for the walk, the unsupported
 selector, and the low-mode fall selector.
@@ -17,9 +17,9 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import ENTROPY_SOURCE
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     DECOR_CTRL_DIV8,
@@ -48,7 +48,7 @@ SEL_NAMES = {
     MARKOV_HI: "MARKOV_HI",
     MARKOV_LO: "MARKOV_LO",
 }
-PATHS = ("module_enable", "ctrl_reset")
+PATHS = ("module_enable",)
 WATERMARK_MASK = 0xFFFF
 SEL_MASK = 0xF
 ARM_HIGH = 0x0000
@@ -66,7 +66,7 @@ def sel_name(sel: int) -> str:
 
 
 class SepHtWatermarkCfg:
-    """RANDCFG: every supported selector x both arming paths every seed.
+    """RANDCFG: every supported selector through MODULE_ENABLE every seed.
 
     Continuous knobs from the seed: which illegal HT_WATERMARK_NUM value is
     used for the unsupported->REPCNT_HI proof, and which low mode is allowed
@@ -132,20 +132,10 @@ class SepHtWatermark(SepAxiRegDriver):
             ENTROPY_SOURCE.value("HEALTH_TEST_CTRL"),
         )
 
-    async def pulse_reset(self) -> None:
-        await self._wr(
-            ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", RESET=1, MODULE_ENABLE=1))
-        await self._settle(2)
-        await self._wr(
-            ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", RESET=0, MODULE_ENABLE=1))
-        await self._settle(2)
-
     async def pulse_module_enable(self) -> None:
-        await self._wr(
-            ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", RESET=0, MODULE_ENABLE=0))
+        await self._wr(ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0))
         await self._settle(2)
-        await self._wr(
-            ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", RESET=0, MODULE_ENABLE=1))
+        await self._wr(ESRC_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1))
         await self._settle(2)
 
     async def enable_sample_path(self) -> None:

@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_sep_otp_axi_write_security_gating_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_otp_axi_test_seq import dtp_jtag2axi_otp_axi_test_seq
@@ -14,7 +13,7 @@ class dtp_jtag2axi_sep_otp_axi_write_security_gating_test(dtp_base_test):
     # Shared AXI checker: passive bus monitors + reference model compare every
     # observed transaction; the required evidence IDs and per-stream minimum
     # compared-transaction counts below make a silent no-op run fail at
-    # finalization (issue #3295 adoption).
+    # finalization.
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
@@ -24,7 +23,7 @@ class dtp_jtag2axi_sep_otp_axi_write_security_gating_test(dtp_base_test):
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
     )
-    axi_checker_stream_minimums = {'sep_otp': 2}
+    axi_checker_stream_minimums = {"sep_otp": 2}
 
     async def run_scenario(self) -> None:
         sequences = await self.start_looped_seq(

@@ -9,18 +9,22 @@ cross_trigger_network_pkg.sv; that generator was not carried into this tree, so
 the port counts below are edited by hand and must match the package.
 """
 
-import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, Timer, ReadOnly
-from typing import Optional
 import sys
 from pathlib import Path
+
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import RisingEdge, Timer
 
 # Import AXI-Lite VIP from CTP testbench. The cross_trigger IPs are siblings
 # under hw/ip/cross_trigger/, each with its testbench under dv/, so walk up to
 # that shared parent rather than to hw/.
-sys.path.insert(0, str(Path(__file__).parents[4] / 'cross_trigger_port' / 'dv' / 'tb_vcs' / 'axil_vip'))
-from axil_master import AxiLiteMaster
+sys.path.insert(
+    0, str(Path(__file__).parents[4] / "cross_trigger_port" / "dv" / "tb_vcs" / "axil_vip")
+)
+
+# Re-exported: downstream tests `from test.test_base import AxiLiteMaster` (or `import *`).
+from axil_master import AxiLiteMaster as AxiLiteMaster  # noqa: E402
 
 # Port counts, which must match cross_trigger_network_pkg
 NUM_CTP = 16
@@ -43,22 +47,23 @@ def is_internal_ct_p2p(int_ct_idx: int) -> bool:
     """Check if internal CT at given index is in P2P mode"""
     return int_ct_idx >= NUM_INT_CT_WIRE_OR
 
+
 # Address space configuration
 ADDR_CTM_SIZE = 0x200  # 512 bytes for CTM (enough for up to 64 CT_SRC register pairs, 8 bytes each)
-ADDR_CTP_SIZE = 0x10   # 16 bytes per CTP (enough for 3 registers)
+ADDR_CTP_SIZE = 0x10  # 16 bytes per CTP (enough for 3 registers)
 CTM_BASE_ADDR = 0x0000  # CTM is always at base address
 CTP_BASE_ADDR = 0x0200  # CTPs start after CTM (at 0x200)
 
 # CTP Register offsets (within each CTP's 16-byte block)
-CTP_REG_CONFIG       = 0x0
-CTP_REG_STATUS       = 0x4
+CTP_REG_CONFIG = 0x0
+CTP_REG_STATUS = 0x4
 CTP_REG_STRETCH_MULT = 0x8
 
 
 def get_ctp_addr(ctp_idx: int, reg_offset: int) -> int:
     """Calculate address for CTP register (CTPs start at 0x0200)"""
     if ctp_idx >= NUM_CTP:
-        raise ValueError(f"CTP index {ctp_idx} out of range (0-{NUM_CTP-1})")
+        raise ValueError(f"CTP index {ctp_idx} out of range (0-{NUM_CTP - 1})")
     return CTP_BASE_ADDR + (ctp_idx * ADDR_CTP_SIZE) + reg_offset
 
 
@@ -82,7 +87,7 @@ def get_ctm_src_config_addr(src_idx: int, reg_idx: int = 0) -> int:
         CONFIG_0 handles CT_Dst[31:0], CONFIG_1 handles CT_Dst[63:32]
     """
     if src_idx >= NUM_CTM_PORTS:
-        raise ValueError(f"CTM source index {src_idx} out of range (0-{NUM_CTM_PORTS-1})")
+        raise ValueError(f"CTM source index {src_idx} out of range (0-{NUM_CTM_PORTS - 1})")
     if reg_idx not in (0, 1):
         raise ValueError(f"Register index {reg_idx} must be 0 (CONFIG_0) or 1 (CONFIG_1)")
     return CTM_BASE_ADDR + (src_idx * 8) + (reg_idx * 4)

@@ -14,7 +14,16 @@ class dtp_jtag_intest_test_seq(dtp_jtag_base_test_seq):
 
     async def body(self) -> None:
         await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK", "CHK-BYPASS-DELAY", "CHK-SCAN-COUNT", "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN", "CHK-NONVAC"},
+            {
+                "CHK-TAP-RESET-TLR",
+                "CHK-IR-DECODE",
+                "CHK-BSR-LOOPBACK",
+                "CHK-BYPASS-DELAY",
+                "CHK-SCAN-COUNT",
+                "CHK-SCAN-IR-LEN",
+                "CHK-SCAN-DR-LEN",
+                "CHK-NONVAC",
+            },
         )
         await self.reset_to_tlr()
         await self.check_loopback_scan(DtpJtagInstr.SAMPLE_PRELOAD, 0x66)
@@ -22,4 +31,3 @@ class dtp_jtag_intest_test_seq(dtp_jtag_base_test_seq):
         await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, 0x5A5A)
         await self.check_loopback_scan(DtpJtagInstr.INTEST, 0x99)
         await self.finalize_family_checker()
-

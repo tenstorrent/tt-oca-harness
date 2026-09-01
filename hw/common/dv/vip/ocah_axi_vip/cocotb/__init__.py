@@ -53,7 +53,9 @@ from .ocah_axi_item import (
     OcahAxiLiteReadItem,
     OcahAxiLiteWriteItem,
     OcahAxiReadItem,
+    OcahAxiReadResult,
     OcahAxiWriteItem,
+    OcahAxiWriteResult,
 )
 from .ocah_axi_ref_model import (
     OcahAxiPrediction,
@@ -61,7 +63,7 @@ from .ocah_axi_ref_model import (
     OcahAxiRegionExpectation,
 )
 from .ocah_axi_scoreboard import OcahAxiScoreboard
-from .ocah_axi_results import (
+from .ocah_axi_types import (
     PROT_INSTRUCTION,
     PROT_NONSECURE,
     PROT_PRIVILEGED,
@@ -70,9 +72,8 @@ from .ocah_axi_results import (
     RESP_OKAY,
     RESP_SLVERR,
     RESP_TIMEOUT,
-    OcahAxiReadResult,
-    OcahAxiWriteResult,
     resp_name,
+    worst_resp,
 )
 
 
@@ -93,22 +94,27 @@ def _unavailable_class(class_name: str, backend: str):
 
 
 try:
-    from .ocah_axi_master_agent import OcahAxiMasterAgent
-    from .ocah_axi_master_config import OcahAxiMasterConfig
-    from .ocah_axi_master_driver import OcahAxiIdCapture, OcahAxiMasterDriver
-    from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
     from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
     from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
     from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
     from .ocah_axi_lite_master_sequence import OcahAxiLiteMasterError, OcahAxiLiteMasterSequence
-    from .ocah_axi_slave_agent import OcahAxiSlaveAgent
-    from .ocah_axi_slave_config import OcahAxiSlaveConfig
-    from .ocah_axi_slave_driver import OcahAxiSlaveDriver
-    from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
     from .ocah_axi_lite_slave_agent import OcahAxiLiteSlaveAgent
     from .ocah_axi_lite_slave_config import OcahAxiLiteSlaveConfig
     from .ocah_axi_lite_slave_driver import OcahAxiLiteSlaveDriver
     from .ocah_axi_lite_slave_sequence import OcahAxiLiteSlaveSequence
+    from .ocah_axi_master_agent import OcahAxiMasterAgent
+    from .ocah_axi_master_config import OcahAxiMasterConfig
+    from .ocah_axi_master_driver import (
+        OcahAxiIdCapture,
+        OcahAxiMasterDriver,
+        apply_profile,
+        clear_profile,
+    )
+    from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
+    from .ocah_axi_slave_agent import OcahAxiSlaveAgent
+    from .ocah_axi_slave_config import OcahAxiSlaveConfig
+    from .ocah_axi_slave_driver import OcahAxiSlaveDriver
+    from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
 except ModuleNotFoundError as exc:
     if "cocotbext" not in str(exc):
         raise
@@ -116,6 +122,17 @@ except ModuleNotFoundError as exc:
     OcahAxiMasterConfig = _unavailable_class("OcahAxiMasterConfig", "cocotbext-axi")
     OcahAxiMasterDriver = _unavailable_class("OcahAxiMasterDriver", "cocotbext-axi")
     OcahAxiIdCapture = _unavailable_class("OcahAxiIdCapture", "cocotbext-axi")
+
+    def apply_profile(driver, profile) -> None:
+        raise OcahAxiVipBackendError(
+            "apply_profile requires backend `cocotbext-axi`, which is not importable."
+        )
+
+    def clear_profile(driver) -> None:
+        raise OcahAxiVipBackendError(
+            "clear_profile requires backend `cocotbext-axi`, which is not importable."
+        )
+
     OcahAxiMasterSequence = _unavailable_class("OcahAxiMasterSequence", "cocotbext-axi")
     OcahAxiMasterError = OcahAxiVipBackendError
     OcahAxiLiteMasterAgent = _unavailable_class("OcahAxiLiteMasterAgent", "cocotbext-axi")
@@ -153,7 +170,13 @@ except ModuleNotFoundError as exc:
     OcahAxiLiteProtocolWatcher = _unavailable_class("OcahAxiLiteProtocolWatcher", "cocotb")
     OcahAxiWatchFinding = None
 
+from .ocah_axi_master_config import AxiTimingProfile
+
 __all__ = [
+    # Per-channel timing control (AW/W ordering, response backpressure)
+    "AxiTimingProfile",
+    "apply_profile",
+    "clear_profile",
     # Master side (AXI4 and AXI4-Lite)
     "OcahAxiMasterAgent",
     "OcahAxiMasterConfig",
@@ -205,6 +228,7 @@ __all__ = [
     "RESP_DECERR",
     "RESP_TIMEOUT",
     "resp_name",
+    "worst_resp",
     # AxPROT bit values
     "PROT_PRIVILEGED",
     "PROT_NONSECURE",

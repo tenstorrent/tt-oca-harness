@@ -27,10 +27,14 @@ ocah_reg_ch_blocks   = $(OCAH_REG_SUBCH_$(call ocah_reg_key,$(1)))
 ocah_reg_doc_blocks  = $(OCAH_REG_SUBDOC_$(call ocah_reg_key,$(1)))
 ocah_reg_sv_blocks   = $(OCAH_REG_SUBSV_$(call ocah_reg_key,$(1)))
 
+# A leaf may need a distinct generated module/package name when its RDL addrmap
+# name must remain canonical but another block with that name is also compiled.
 ocah_reg_sv_stamp = $(call ocah_reg_build,$(1))/sv.generated
+ocah_reg_sv_rename = $(OCAH_REG_SV_RENAME_$(call ocah_reg_key,$(1)))
+ocah_reg_sv_model = $(or $(call ocah_reg_sv_rename,$(1)),$(call ocah_reg_name,$(1)))
 ocah_reg_sv_outputs = \
-  $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg.sv \
-  $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg_pkg.sv
+  $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_sv_model,$(1))_reg.sv \
+  $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_sv_model,$(1))_reg_pkg.sv
 # Composite tops emit per-sub-block collateral under blocks/; leaves use the
 # single-file outputs below.
 ocah_reg_sv_block_dir = $(call ocah_reg_gen,$(1))/sv/blocks

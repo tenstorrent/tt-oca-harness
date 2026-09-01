@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_ctm_wire_or_cla_to_cla_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
 

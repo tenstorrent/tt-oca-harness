@@ -13,14 +13,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_seeded_rng import SepSeededRng
+
 from seq_lib.sep_otbn_seq import SepOtbn
 
 # DMEM: [0]=a, [4]=b, [8]=result. Base in x6.
 _LUI_X6 = 0x00000337
 _ADDI_X6 = 0x00030313
-_LW_A = 0x00032503   # lw x10, 0(x6)
-_LW_B = 0x00432583   # lw x11, 4(x6)
-_SW_R = 0x00C32423   # sw x12, 8(x6)
+_LW_A = 0x00032503  # lw x10, 0(x6)
+_LW_B = 0x00432583  # lw x11, 4(x6)
+_SW_R = 0x00C32423  # sw x12, 8(x6)
 _ECALL = 0x00000073
 # add/xor/and x12, x10, x11
 _ADD = 0x00B50633

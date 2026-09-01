@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_single_write_read_test — issue #3295 Phase B: the
+// dtp_jtag2axi_smc_axi_single_write_read_test: the
 // same single-op scenario on the SMC fabric AXI4 manager port (132-bit wide
 // TDR scans, 64-bit data, ID-tagged bursts observed by the shared monitor).
 
@@ -31,10 +31,12 @@ class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
         dtp_jtag2axi_single_op_seq seq;
         phase.raise_objection(this, "dtp_jtag2axi_smc_axi_single_write_read_test running");
         seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
-        seq.tb_vif       = m_env.tb_vif;
-        seq.target_name  = "smc_axi";
-        seq.axi_cfg      = m_env.m_smc_axi_cfg;
-        seq.axi_evidence = m_env.m_smc_axi_env.m_checker;
+        seq.tb_vif        = m_env.tb_vif;
+        seq.target_name   = "smc_axi";
+        seq.axi_cfg       = m_env.m_smc_axi_cfg;
+        seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
+        seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
+        seq.slave_seq     = m_env.m_smc_axi_slave_agent.seq;
         seq.start(m_env.m_jtag_env.m_sequencer);
         phase.drop_objection(this, "dtp_jtag2axi_smc_axi_single_write_read_test done");
     endtask

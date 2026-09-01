@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""STAP/3DCR scan scenarios for GH issue #3213."""
+"""STAP/3DCR scan scenarios."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             )
 
     async def run_stap_select(self, stap: str) -> None:
-        self.log_banner(f"GH #3213 STAP selection: {stap}")
+        self.log_banner(f"STAP selection: {stap}")
         prefix = self.stap_signal_prefix(stap)
         watch = (f"{prefix}_tdo_oen", f"{prefix}_tms")
         disable_field = STAP_DISABLE[stap]
@@ -82,12 +82,16 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
 
         async def configure(context: str, dbg: dict[str, int] | None = None) -> None:
             await self.stap_chain_write(
-                ptap_select=1, ptap_config_hold=1, sib_en={stap: 1},
-                dbg_disable=dbg, context=f"{context}.open_sib",
+                ptap_select=1,
+                ptap_config_hold=1,
+                sib_en={stap: 1},
+                dbg_disable=dbg,
+                context=f"{context}.open_sib",
             )
             await self.stap_chain_write(
                 payloads={stap: self.SELECTED_PAYLOAD},
-                dbg_disable=dbg, context=f"{context}.write_3dcr",
+                dbg_disable=dbg,
+                context=f"{context}.write_3dcr",
             )
 
         self.log_step(1, "Configure and select %s via composed TAP_3DCR scans", stap)
@@ -96,10 +100,14 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         window = self.start_scan_window(watch)
         captured = await self.stap_chain_maintain(context=f"{stap}.observe")
         edges, counts = self.check_scan_window(window, context=f"{stap}.selected_window")
-        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.selected")
+        self.check_stap_forwarding(
+            edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.selected"
+        )
         self.check_stap_chain_readback(captured, context=f"{stap}.selected_readback")
 
-        self.log_step(2, "Assert exactly %s: forwarding stops, gated update is ignored", disable_field)
+        self.log_step(
+            2, "Assert exactly %s: forwarding stops, gated update is ignored", disable_field
+        )
         await self.disable_debug_bits(disable_field)
         # A randomized deselecting payload attempted while gated must be ignored.
         attempt = {"config_hold": rng.randrange(0, 2), "stap_sel": 0, "tms_hold": 0}
@@ -111,20 +119,30 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             context=f"{stap}.gated_update_attempt",
         )
         edges, counts = self.check_scan_window(window, context=f"{stap}.gated_window")
-        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=False, context=f"{stap}.gated")
-        self.check_stap_chain_readback(captured, dbg_disable={disable_field: 1}, context=f"{stap}.gated_readback")
+        self.check_stap_forwarding(
+            edges, counts, prefix=prefix, forwarding=False, context=f"{stap}.gated"
+        )
+        self.check_stap_chain_readback(
+            captured, dbg_disable={disable_field: 1}, context=f"{stap}.gated_readback"
+        )
 
-        self.log_step(3, "Clear %s without reset: selection resumes from stored state", disable_field)
+        self.log_step(
+            3, "Clear %s without reset: selection resumes from stored state", disable_field
+        )
         await self.enable_all_debug()
         window = self.start_scan_window(watch)
         captured = await self.stap_chain_maintain(context=f"{stap}.resume")
         edges, counts = self.check_scan_window(window, context=f"{stap}.resume_window")
-        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.resume")
+        self.check_stap_forwarding(
+            edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.resume"
+        )
         self.check_stap_chain_readback(captured, context=f"{stap}.resume_readback")
 
         neighbor = STAP_ORDER[(STAP_ORDER.index(stap) + 1) % len(STAP_ORDER)]
         n_prefix = self.stap_signal_prefix(neighbor)
-        self.log_step(4, "With %s re-asserted, unrelated STAP %s stays usable", disable_field, neighbor)
+        self.log_step(
+            4, "With %s re-asserted, unrelated STAP %s stays usable", disable_field, neighbor
+        )
         await self.disable_debug_bits(disable_field)
         await self.stap_chain_write(
             sib_en={stap: 1, neighbor: 1},
@@ -137,7 +155,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             context=f"{stap}.isolation_3dcr",
         )
         window = self.start_scan_window((f"{prefix}_tdo_oen", f"{n_prefix}_tdo_oen"))
-        await self.stap_chain_maintain(dbg_disable={disable_field: 1}, context=f"{stap}.isolation_observe")
+        await self.stap_chain_maintain(
+            dbg_disable={disable_field: 1}, context=f"{stap}.isolation_observe"
+        )
         self.check_scan_window(
             window,
             active=(f"{n_prefix}_tdo_oen",),
@@ -152,7 +172,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         window = self.start_scan_window(watch)
         captured = await self.stap_chain_maintain(context=f"{stap}.recover_observe")
         edges, counts = self.check_scan_window(window, context=f"{stap}.recover_window")
-        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.recover")
+        self.check_stap_forwarding(
+            edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.recover"
+        )
         self.check_stap_chain_readback(captured, context=f"{stap}.recover_readback")
 
         await self.stap_chain_flush(context=f"{stap}.cleanup")
@@ -172,7 +194,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
     )
 
     async def run_ext_stap_scan(self) -> None:
-        self.log_banner("GH #3213 extended STAP scan interface")
+        self.log_banner("extended STAP scan interface")
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.enable")
         window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
         _, enabled = await self.shift_dr_observe(0x2, 2, context="ext.enabled_shift")
@@ -240,7 +262,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.assert_equal("config_hold.ptap_trst_cleared", trst_cleared & 0x3, 0x0)
 
     async def run_config_hold(self) -> None:
-        self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")
+        self.log_banner("PTAP/STAP CONFIG_HOLD behavior")
         # Seeded per-pass order: each self-contained sub-case starts with its
         # own 3DCR write and reset, so each loop proves a different sequencing
         # of preserve/clear behavior.
@@ -259,15 +281,19 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         )
 
     async def run_tms_hold(self) -> None:
-        self.log_banner("GH #3213 STAP TMS_HOLD behavior")
+        self.log_banner("STAP TMS_HOLD behavior")
         # Seeded per-pass STAP order: each loop walks the ports differently.
         staps = list(STAP_ORDER)
         self.rng("tms_hold_order").shuffle(staps)
         for stap in staps:
             await self.apply_trst()
             await self.write_ptap_3dcr(config_hold=1, select=1, context=f"tms_hold.{stap}.ptap")
-            await self.shift_stap_sibs(self.stap_sib_pattern(stap, 1), context=f"tms_hold.{stap}.open")
-            _, low_signals = await self.observe_stap_controls(stap, context=f"tms_hold.{stap}.low_default")
+            await self.shift_stap_sibs(
+                self.stap_sib_pattern(stap, 1), context=f"tms_hold.{stap}.open"
+            )
+            _, low_signals = await self.observe_stap_controls(
+                stap, context=f"tms_hold.{stap}.low_default"
+            )
             prefix = self.stap_signal_prefix(stap)
             self.log.info(
                 "%s sampled TMS=%d in OSS loopback; high/low parked polarity is "
@@ -275,5 +301,6 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                 stap,
                 low_signals[f"{prefix}_tms"],
             )
-        self.log_summary("TMS_HOLD", staps=STAP_ORDER, polarities=("low observable", "high OSS-limited"))
-
+        self.log_summary(
+            "TMS_HOLD", staps=STAP_ORDER, polarities=("low observable", "high OSS-limited")
+        )

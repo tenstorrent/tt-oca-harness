@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_scan_dbg_disable_matrix_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_disable_scan_matrix_test_seq import dtp_dbg_disable_scan_matrix_test_seq
 

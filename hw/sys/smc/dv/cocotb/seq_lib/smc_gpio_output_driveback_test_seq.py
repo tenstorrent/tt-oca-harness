@@ -31,8 +31,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
 _CORE2PAD = 1 << 0
-_TX_ENABLE = 1 << 4          # enable_rx_tx = 2'b01
-_IF_ENABLE = 1 << 16         # interface_enable
+_TX_ENABLE = 1 << 4  # enable_rx_tx = 2'b01
+_IF_ENABLE = 1 << 16  # interface_enable
 
 OUT_DRIVE_HIGH = _IF_ENABLE | _TX_ENABLE | _CORE2PAD
 OUT_DRIVE_LOW = _IF_ENABLE | _TX_ENABLE

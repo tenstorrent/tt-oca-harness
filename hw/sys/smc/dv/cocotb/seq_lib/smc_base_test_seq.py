@@ -48,9 +48,7 @@ class smc_base_test_seq(uvm_sequence):
                 await RisingEdge(clk)
                 if int(sig.value):
                     return
-            raise AssertionError(
-                f"{name} never asserted within {max_cycles} smc clocks"
-            )
+            raise AssertionError(f"{name} never asserted within {max_cycles} smc clocks")
 
         await _wait_high(dut.tb_fuse_sense_done, "tb_fuse_sense_done")
         # Prefer the delayed fuse_reset (matches CPU/mem-init pipe) when present.

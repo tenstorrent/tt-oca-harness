@@ -1044,8 +1044,8 @@ TEST 3.1.2: test_3_1_2_threshold_register_configuration
 
   Test Steps:
     1. Test REPETITION_LIMIT[15:8]: write/readback test values
-    2. Test APT_PROPORTION_*BIT (4 registers): write/readback (0-1023 range)
-    3. Test MARKOV_TEST_PROB_THRESHOLDS: write/readback all 4 fields [31:0]
+    2. Test APT high and low limit registers: write/readback (0-65535 range)
+    3. Test MARKOV_TEST_PROB_THRESHOLDS: write/readback high and low 16-bit fields
 
   Pass Criteria:
     [ ] All threshold registers writable/readable
@@ -1064,24 +1064,18 @@ TEST 3.1.3: test_3_1_3_register_monitoring_and_counters
     2. Poll HEALTH_TEST_STATUS to verify no false positives (STATUS=0x00)
     3. Verify counter increments with good entropy:
        - REP_COUNT < threshold
-       - APT counters match expected sample counts (with tolerances)
+       - APT maximum and minimum lane counts are consistent
        - Markov transitions balanced (15-35% each), probabilities 50-64
     4. Test saturation behavior:
        - REP_COUNT saturates at 255
        - Markov count_00 dominates with stuck-at-0
-       - APT counters match ratios with 32-bit injection
+       - APT high and low count views advance with all-ones injection
 
   Pass Criteria:
     [ ] STATUS = 0x00 with good entropy, no false positives
     [ ] Counter values reasonable, read access doesn't corrupt
     [ ] Saturation works (no wrap-around)
-    [ ] APT tolerances: 1/2/4-bit ±5%, 3-bit ±10% (Issue #4)
-
---------------------------------------------------------------------------------
-
-TEST 3.1.4: REMOVED per Issue #1014
-  Note: SAMPLE_SIZE field removed from HEALTH_TEST_CTRL. All 4 APT tests run
-        in parallel by design. Counter functionality verified in test_3.1.3.
+    [ ] APT high count is not below the APT low count
 
 ================================================================================
 CATEGORY 3.2: PIPELINE INTEGRATION (1 TEST)
@@ -1138,12 +1132,12 @@ TEST 3.3.2: test_3_3_2_apt_test_failure
   Test Steps:
     1. Enable interrupt, configure APT with aggressive thresholds
     2. Trigger failure with 32-bit injection (p_bias=0.85)
-    3. Verify APT counter ratios match expected patterns
+    3. Verify the APT high and low count views
     4. Verify irq_o, INTR_STATUS[0]=1, HEALTH_TEST_STATUS.apt_fail[3]=1
     5. Restore entropy, toggle enable, restore thresholds, W1C interrupt
 
   Pass Criteria:
-    [ ] APT detects bias, counter ratios correct, irq_o asserts
+    [ ] APT detects bias, retained counters are consistent, irq_o asserts
     [ ] Counter management works, W1C successful, recovery clean
 
 --------------------------------------------------------------------------------
@@ -1215,8 +1209,8 @@ TEST 3.4.1: test_3_4_1_threshold_at_failure_boundary
        - At boundary: 11 consecutive bits → counter=11, STATUS=1 (fail, >= threshold)
        - Above boundary: 12 consecutive bits → counter=12, STATUS=1 (fail)
        Note: Counter measures run length (consecutive identical bits)
-    2. APT 1-bit (threshold=550): Uses IRQ-based verification
-       - Below boundary: Alternating pattern (~50% ones) → no IRQ
+    2. APT (limits 474..550): Uses IRQ-based verification
+       - Inside boundaries: Unbiased entropy (~50% ones) → no IRQ
        - Above boundary: High bias pattern (~97% ones) → IRQ fires
     3. Markov (threshold=100): Uses balanced vs biased transitions
        - Below boundary: Balanced transitions (~25% each) → no fail
@@ -1335,7 +1329,7 @@ TEST 3.7.3: test_3_7_3_autotune_apt_test
   Description: Verify autotune FSM responds to APT test failures (per-lane)
 
   Test Steps:
-    1. Configure pipeline, enable AUTOTUNE (aggressive APT thresholds)
+    1. Configure pipeline, enable AUTOTUNE (APT high/low limits)
     2. Inject selective failures: even lanes biased (p_bias=0.85), odd lanes normal
     3. Monitor per-lane health status via GENERATOR_X_HEALTH_STATUS (apt_fail[3])
     4. Verify detune pattern 0x555 via rtl_detune_flat
@@ -1458,25 +1452,6 @@ TEST 5.1: test_5_1_downsample_rate_configuration
     [ ] All checkers pass, no overflow/underflow
 
 ================================================================================
-CATEGORY 5.2: STARTUP DELAY (1 TEST)
--------------------------------------
-
-TEST 5.2: test_5_2_startup_delay
-  DECOR: -    COMP: -    FIFO: -
-
-  Description: Verify STARTUP_CTRL.DELAY_CYCLES delays entropy after reset
-
-  Test Steps:
-    Test 3 delays (0, 1000, 2000 cycles): configure, reset, monitor FIFO level
-    - delay=0: FIFO>0 within 100 cycles (immediate start)
-    - delay=1000: FIFO=0 @500cy, FIFO>0 @1500cy
-    - delay=2000: FIFO=0 @500/1000/1500cy, FIFO>0 @2100cy
-
-  Pass Criteria:
-    [ ] Register writable/readable
-    [ ] Delay timing accurate (±50 cycles), system stable
-
-================================================================================
 [End of Test Plan]
 ================================================================================
 
@@ -1493,17 +1468,13 @@ DOCUMENT REVISION HISTORY
 ================================================================================
 
 Version 1.1 (December 2025) - Updated
-  - Added Suite 5: Miscellaneous (2 tests)
+  - Added Suite 5: Miscellaneous tests
   - Test 5.1: CTRL.DOWNSAMPLE_RATE configuration
-  - Test 5.2: STARTUP_CTRL.DELAY_CYCLES functionality
-  - Total tests: 56 across 5 suites
-  - Addresses coverage gaps #1 and #2 from gap analysis
-  - Low-priority auxiliary features now have basic verification
+  - Low-priority auxiliary features have basic verification
 
 Version 1.0 (December 2025) - Release
   - Production-ready test plan for release
   - 54 tests across 5 suites verified and documented
-  - Removed test_3_1_4 per Issue #1014 (SAMPLE_SIZE field removed)
   - Fixed test_4_1_3 per Issue #1055 (div-128 support)
   - Comprehensive checkers: DECOR, COMP, FIFO, IRQ
   - All tests implemented and passing

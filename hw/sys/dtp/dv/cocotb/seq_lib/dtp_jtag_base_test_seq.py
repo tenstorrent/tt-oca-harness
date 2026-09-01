@@ -30,7 +30,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     """Helpers for TAP FSM navigation, scan loopback, and BYPASS checks."""
 
     # Optional shared-VIP checker; when attached, TAP resets and every raw TMS
-    # step also emit reference-model named evidence (issue tt-oca-hw#3296).
+    # step also emit reference-model named evidence.
     tap_checker: OcahJtagChecker | None = None
     # Optional passive scan monitor; when started, load_ir/shift_dr record the
     # sequence's own scan intent so finalize can cross-check the pin-level
@@ -70,13 +70,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             logger=cocotb.log,
         )
         self.attach_tap_checker(checker)
-        self._family_negative = os.environ.get(
-            "DTP_JTAG_FAMILY_CHECKER_NEGATIVE", "0"
-        ) not in ("", "0")
+        self._family_negative = os.environ.get("DTP_JTAG_FAMILY_CHECKER_NEGATIVE", "0") not in (
+            "",
+            "0",
+        )
         if self._family_negative:
-            self.log.warning(
-                "NEGATIVE VALIDATION: family checker expectations will be corrupted"
-            )
+            self.log.warning("NEGATIVE VALIDATION: family checker expectations will be corrupted")
         self._expected_ir_widths: list[int] = []
         self._expected_dr_widths: list[int] = []
         if use_monitor:
@@ -127,15 +126,11 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
                 for idx, (item, width) in enumerate(
                     zip(ir_items, self._expected_ir_widths), start=1
                 ):
-                    checker.check_scan_length(
-                        item, expected_width=width, context=f"ir_scan#{idx}"
-                    )
+                    checker.check_scan_length(item, expected_width=width, context=f"ir_scan#{idx}")
                 for idx, (item, width) in enumerate(
                     zip(dr_items, self._expected_dr_widths), start=1
                 ):
-                    checker.check_scan_length(
-                        item, expected_width=width, context=f"dr_scan#{idx}"
-                    )
+                    checker.check_scan_length(item, expected_width=width, context=f"dr_scan#{idx}")
             checker.expect_true(
                 "CHK-NONVAC",
                 len(ir_items) > 0 and len(dr_items) > 0,

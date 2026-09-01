@@ -17,6 +17,10 @@ OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
 # is on and this list stays empty until some block proves otherwise.
 OCAH_REG_NO_BITFIELDS_PY ?=
 
+# Python field-access metadata is opt-in because generic register walkers are
+# its only consumers. It carries sw/onwrite/onread/singlepulse from the RDL.
+OCAH_REG_PY_FIELD_ACCESS_BLOCKS ?= hw/ip/entropy_source
+
 # A top is composite when its resolved RDL sits next to a regs/blocks/ dir: each
 # sub-block is generated on its own, the top keeps only its address view. Reading
 # the resolved RDL means an overlay variant reusing a canonical top inherits this.
@@ -111,6 +115,7 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
+ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
 ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
 

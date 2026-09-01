@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_base_test_seq import smc_base_test_seq
@@ -18,8 +17,11 @@ class smc_cold_reset_repeated_test_seq(smc_base_test_seq):
     RECOVER_REF_CYCLES = 700
 
     async def _send(self, op):
-        i = SmcResetItem(op.value); i.op = op
-        await self.start_item(i); await self.finish_item(i); return i
+        i = SmcResetItem(op.value)
+        i.op = op
+        await self.start_item(i)
+        await self.finish_item(i)
+        return i
 
     async def body(self) -> None:
         dut = cocotb.top

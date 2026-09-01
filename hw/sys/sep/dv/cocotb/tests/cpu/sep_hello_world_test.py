@@ -25,9 +25,8 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
 
 # OSS-owned firmware lives under the DV tree (sibling of cocotb/) so it migrates
 # with the env. parents[3] of .../cocotb/tests/cpu/<file> == the DV root.
@@ -59,7 +58,9 @@ class sep_hello_world_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,

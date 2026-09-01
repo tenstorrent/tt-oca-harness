@@ -10,28 +10,28 @@ module only owns the reset-control register so the held-result observation is a
 real crypto-datapath state, not a poked status bit.
 
 SW_RESET_N @ 0x1080_3000 (sep_reset_ctrl) is RW and ACTIVE-LOW: bit N high = IP N
-released, low = held in reset. Reset default 0x1E (km[0] held, otbn[1]/aes[2]/
-hmac[3]/kmac[4] released). A reset pulse for IP N = write (0x1E & ~(1<<N)) to
-assert, settle, then 0x1E to release -- always preserving km held (bit0=0) and the
-other engines released. The pulsed engine's whole wrapper rst_ni drops (sep_crypto.sv
+released, low = held in reset. Reset default 0x3E (km[0] held; otbn[1]/aes[2]/
+hmac[3]/kmac[4]/trng[5] released). A reset pulse for IP N clears that bit in the
+generated default, then restores the default, preserving all unrelated domains.
+The pulsed engine's whole wrapper rst_ni drops (sep_crypto.sv
 hmac_wrapper.rst_ni/aes.rst_ni fed from sep_sw_rst_no.<ip>), clearing its held result;
 a sibling's wrapper rst_ni is untouched, so its held result survives -- the isolation.
 """
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from sep_reg_meta import SEP_RESET_CTRL, sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # sep_reset_ctrl SW_RESET_N (active-low per-IP resets).
 SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
-SW_RESET_N_DEFAULT = 0x1E            # km[0] held, otbn/aes/hmac/kmac released
-RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC = 0, 1, 2, 3, 4
+SW_RESET_N_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
+RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC, RST_TRNG = 0, 1, 2, 3, 4, 5
 RESP_OKAY = 0
 RESP_DECERR = 3
 # DIGEST_0 has no generated REG_DEFAULT; OpenTitan HMAC clears it to 0 on rst_ni.
@@ -41,6 +41,7 @@ HMAC_DIGEST_RESET = 0
 @dataclass(frozen=True)
 class CryptoEngine:
     """One crypto engine: display name + its SW_RESET_N bit."""
+
     name: str
     rst_bit: int
 

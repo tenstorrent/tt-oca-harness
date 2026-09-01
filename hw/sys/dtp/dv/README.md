@@ -41,7 +41,7 @@ protocol BFMs behind a stable API:
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
-| AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
+| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM) / DUT-local `DtpFlatAxiLiteMaster` (cocotb) | The SV-UVM flow drives the CSR port through the shared VIP master (channel-skew and RREADY-hold operations included); the cocotb flattened-fixture master stays local pending the same migration. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
@@ -139,8 +139,10 @@ the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
 errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
 VCS only for now — a commercial simulator is required because Verilator has
 no SV-UVM support (see `frameworks` in `simulators.toml`); Xcelium support
-is planned but not yet signed off. `--cov` is not yet wired for this
-framework and is rejected up front.
+is planned but not yet signed off. `--cov` instruments the VCS build with
+`-cm line+cond+tgl+fsm+branch+assert` (covergroups collect into the same
+databases), writes one `simv.vdb` per test, and merges/reports through the
+standard `cov_merge`/`cov_report` stages (`urg`).
 
 ```bash
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
@@ -195,14 +197,115 @@ DTP_BASIC_JTAG_TEST_LOOPS=32 DTP_RANDOM_COUNT=10 \
 DTP_JTAG2AXI_TEST_LOOPS=32 python3 tools/dv/run_dv.py --dut dtp --items functional
 ```
 
-The SV-UVM flow follows the same floor: `dtp_sanity_test` runs 16 randomized
-TMS stress walks (`+DTP_RAND_WALKS=<n>` overrides) and the JTAG2AXI single-op
-scenario runs 16 randomized write+readback passes
-(`+DTP_JTAG2AXI_RANDOM_OPS=<n>` overrides).
+The SV-UVM flow follows the same floor with the same knob names as plusargs:
+every looped UVM test runs at least 16 scenario passes
+(`dtp_base_test.MinDefaultLoops`), each pass seeded `+ntb_random_seed` + loop
+index, resolved specific-first exactly like the cocotb environment knobs:
+
+```bash
+# Suite-wide, group, and per-test loop counts (plusarg twins of the env vars)
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items basic_jtag \
+  --plusarg +DTP_TEST_LOOPS=1
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items basic_jtag \
+  --plusarg +DTP_BASIC_JTAG_TEST_LOOPS=32 --plusarg +DTP_RANDOM_COUNT=10
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_extest_test \
+  --plusarg +DTP_JTAG_EXTEST_TEST_LOOPS=4
+```
+
+`dtp_sanity_test` additionally runs 16 randomized TMS stress walks
+(`+DTP_RAND_WALKS=<n>` overrides) and the JTAG2AXI single-op scenario runs 16
+randomized write+readback passes (`+DTP_JTAG2AXI_RANDOM_OPS=<n>` overrides).
+
+### Porting a scenario to the SV-UVM framework (`uvm =` dual mapping)
+
+One VPLAN scenario, two implementations: the testlist entry's `module`
+binding map carries both, and the same `--items` name selects either flow.
+To port a cocotb scenario:
+
+1. **Sequence** — add `uvm/seq_lib/<name>_seq.svh` mirroring the cocotb
+   `seq_lib/<name>_seq.py` semantics on the shared VIP stimulus API. Extend
+   `dtp_jtag_cmd_lib_seq` for instruction-family scenarios (per-pass family
+   evidence + scan-builder cross-checks) or `dtp_jtag2axi_base_test_seq` for
+   bridge scenarios (single/series ops, responder backdoor, error arming).
+   Start `body()` with `seed_scenario_rng()` so every pass replays from
+   `--seed`. Add the `` `include `` to `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
+2. **Test** — add `uvm/tests/<name>.svh` (file = class = scenario name)
+   extending `dtp_base_test`: override `create_scenario_seq()` and the
+   loop-count plusarg name hooks, arm the checker evidence the scenario
+   owns (required `CHK-*` IDs; `jtag_require_checks` /
+   `cfg.require_checks`), and plumb scenario handles in
+   `plumb_scenario_seq()`. Add the `` `include `` to `uvm/tests/dtp_tests.sv`.
+3. **Testlist** — change the scenario's entry to
+   `module = { cocotb = "<name>", uvm = "<name>" }`; the `uvm` value drives
+   `+UVM_TESTNAME`.
+4. **Qualify** — the group's VCS run must be green at the 16-iteration floor,
+   and each checker's negative hook must FAIL when armed (below).
+
+Checker-arming conventions: every ported test declares the evidence that
+must land (required IDs), and each evidence path has a documented negative
+hook proven to fail a run when the expectation is corrupted:
+
+```bash
+# SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
+  --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
+
+# Instruction-family checker negative validation: corrupted family
+# expectations (decoded IR, loopback, bypass delay) must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_extest_test \
+  --plusarg +DTP_JTAG_FAMILY_CHECKER_NEGATIVE
+
+# AXI scoreboard negative validation: arming the wrong expected response for
+# an injected error must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_axi_error_single_write_test \
+  --plusarg +DTP_AXI_SCOREBOARD_NEGATIVE
+```
 
 PASS/FAIL is classified by the global parser registry in
 `hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from
 `results.xml`, so a clean simulator exit alone is not enough.
+
+### Overlaying a commercial VIP (`DTP_OVERLAY_TESTS`)
+
+The SV-UVM testbench can host a commercial protocol VIP as a passive
+overlay: an adopter-side build variation that adds vendor protocol monitors
+to the stock tests without editing this tree. The seam is the
+`DTP_OVERLAY_TESTS` compile hook at the end of `uvm/tests/dtp_tests.sv` —
+define it to the quoted name of an include file on the overlay's own
+include path and that file compiles into the test manifest. The OSS flists
+never define it, so the open-source build is unchanged.
+
+An overlay is three adopter-owned files, kept outside this repository
+(vendor VIP collateral cannot be committed here):
+
+1. **Wiring top** — a second elaboration top that taps the observed port's
+   pins (e.g. `dtp_uvm_top.m_axi_*`, the SMC fabric AXI4 manager port) into
+   the vendor interface with continuous assigns, as a pure observer, and
+   publishes the virtual interface through `uvm_config_db`. Nothing in the
+   overlay may drive DUT or responder signals.
+2. **Overlay test** — the hook's include file: a class extending any stock
+   test (e.g. `dtp_jtag2axi_smc_axi_single_write_test`) whose `build_phase`
+   additionally creates the vendor env in passive mode, configured to the
+   observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
+   2-bit ID). The stock scenario, evidence arming, and looped runner are
+   inherited unchanged, so the in-repo `CHK-*` checkers and the vendor
+   monitor run side by side on the same traffic.
+3. **Vendor package compile unit** — the vendor library analyzed into the
+   same work library before `dtp_uvm_compile.f`, then both tops elaborated
+   (`dtp_uvm_top` plus the wiring top).
+
+Synopsys VIP (svt) integration notes for the AMBA AXI suite: every analysis
+step, including the UVM library pre-analysis, must carry the same
+`+define+UVM_PACKER_MAX_BYTES` value the suite expects, or the suite exits
+fatally at time zero; the suite package's compile unit must see
+`uvm_macros.svh` before the suite package (include the macros header, not
+`uvm_pkg.sv`, which resolves to a simulator wrapper) so the suite's
+methodology detection engages; `DESIGNWARE_HOME` points at the VIP
+installation root, with the suite's include and source directories on the
+include path. A healthy overlaid run shows the vendor license checkout and
+the vendor monitor's transaction tracking alongside the unchanged `CHK-*`
+evidence and the `UVM TEST PASSED` banner.
 
 ## Scope
 

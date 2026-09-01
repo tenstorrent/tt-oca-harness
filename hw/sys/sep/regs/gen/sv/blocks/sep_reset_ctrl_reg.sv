@@ -278,6 +278,10 @@ module sep_reset_ctrl_reg (
                 logic next;
                 logic load_next;
             } kmac_sw_rst_n;
+            struct {
+                logic next;
+                logic load_next;
+            } trng_sw_rst_n;
         } SW_RESET_N;
     } field_combo_t;
     field_combo_t field_combo;
@@ -299,6 +303,9 @@ module sep_reset_ctrl_reg (
             struct {
                 logic value;
             } kmac_sw_rst_n;
+            struct {
+                logic value;
+            } trng_sw_rst_n;
         } SW_RESET_N;
     } field_storage_t;
     field_storage_t field_storage;
@@ -418,6 +425,29 @@ module sep_reset_ctrl_reg (
         end
     end
     assign hwif_out.SW_RESET_N.kmac_sw_rst_n.value = field_storage.SW_RESET_N.kmac_sw_rst_n.value;
+    // Field: sep_reset_ctrl.SW_RESET_N.trng_sw_rst_n
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.SW_RESET_N.trng_sw_rst_n.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.SW_RESET_N && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.SW_RESET_N.trng_sw_rst_n.value & ~decoded_wr_biten[5:5]) | (decoded_wr_data[5:5] & decoded_wr_biten[5:5]);
+            load_next_c = '1;
+        end
+        field_combo.SW_RESET_N.trng_sw_rst_n.next = next_c;
+        field_combo.SW_RESET_N.trng_sw_rst_n.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.SW_RESET_N.trng_sw_rst_n.value <= 1'h1;
+        end else begin
+            if(field_combo.SW_RESET_N.trng_sw_rst_n.load_next) begin
+                field_storage.SW_RESET_N.trng_sw_rst_n.value <= field_combo.SW_RESET_N.trng_sw_rst_n.next;
+            end
+        end
+    end
+    assign hwif_out.SW_RESET_N.trng_sw_rst_n.value = field_storage.SW_RESET_N.trng_sw_rst_n.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -445,6 +475,7 @@ module sep_reset_ctrl_reg (
             readback_data_var[2] = field_storage.SW_RESET_N.aes_sw_rst_n.value;
             readback_data_var[3] = field_storage.SW_RESET_N.hmac_sw_rst_n.value;
             readback_data_var[4] = field_storage.SW_RESET_N.kmac_sw_rst_n.value;
+            readback_data_var[5] = field_storage.SW_RESET_N.trng_sw_rst_n.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

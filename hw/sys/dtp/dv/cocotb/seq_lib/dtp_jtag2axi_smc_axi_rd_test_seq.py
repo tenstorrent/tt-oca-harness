@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC fabric JTAG2AXI read-side scenarios for GH issue #3210."""
+"""SMC fabric JTAG2AXI read-side scenarios."""
 
 from __future__ import annotations
 
@@ -40,9 +40,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         write_item = await self.write_single_and_check(addr, data, context="single_wr_rd.write")
         read_item = await self.read_single_and_check(addr, data, context="single_wr_rd.read")
         self.status = (
-            read_item.status
-            if read_item.status != DtpJtag2AxiStatus.SUCCESS
-            else write_item.status
+            read_item.status if read_item.status != DtpJtag2AxiStatus.SUCCESS else write_item.status
         )
         self.rdata = read_item.rdata
         self.data = data
@@ -317,6 +315,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
     @staticmethod
     def unpack_series_value(raw: int, size: int) -> tuple[int, int]:
         from env.dtp_types import unpack_series_data
+
         return unpack_series_data(raw, size)
 
     async def body(self) -> None:

@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Cross-bridge JTAG2AXI robustness scenarios for GH issue #3212."""
+"""Cross-bridge JTAG2AXI robustness scenarios."""
 
 from __future__ import annotations
-
-import cocotb
 
 from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus
 
@@ -34,6 +32,21 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     def _target_addr(self, target: str, idx: int) -> int:
         cfg = self.target_cfg(target)
         return ROBUST_BASE + idx * 0x400 + cfg.beat_bytes
+
+    def _stall_beyond_scan_tail(self, rng, target: str, *, scans: int = 2) -> int:
+        """READY-stall long enough to outlast the JTAG idle tail plus `scans`
+        status scans, in system-clock cycles.
+
+        Each TDR access ends with the driver's idle-TCK tail, and one status
+        poll is another full scan; a stall shorter than that window expires
+        before the sequence regains control, so the operation completes
+        silently and reset-abort / BUSY scenarios degenerate to idle ones.
+        """
+        cfg = self.target_cfg(target)
+        scan_tck = cfg.single_op_len + 32  # shift plus TAP navigation
+        tail_tck = self.cfg.idle_tck + scans * scan_tck
+        cycles = (tail_tck * self.cfg.jtag_period_ns) // self.cfg.sys_clk_period_ns
+        return cycles + rng.randint(16, 64)
 
     async def _write_with_backpressure(
         self,
@@ -114,7 +127,11 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         targets = list(ROBUST_TARGETS)
         rng.shuffle(targets)
         for idx, target in enumerate(targets, start=1):
-            stall = rng.randint(4, 10)
+            # A stall outlasting the idle tail keeps the op outstanding into
+            # the status polls, so the bridge reports BUSY_OR_FULL before the
+            # settled status; the seeded scan budget spreads the settle point
+            # across the short-wait and long-wait poll classes over the loops.
+            stall = self._stall_beyond_scan_tail(rng, target, scans=rng.choice((2, 16)))
             self.log_iteration(idx, len(targets), "target=%s stall=%d", target, stall)
             await self._write_with_backpressure(
                 target,
@@ -125,8 +142,29 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             await self._read_with_backpressure(
                 target,
                 channels=("ar",),
-                stall_cycles=stall,
+                stall_cycles=rng.randint(4, 10),
                 context=f"long_stall.read.{target}",
+            )
+            # Zero-strobe and window-boundary singles: legal corner operands
+            # exercised once the stalls are cleared.
+            cfg = self.target_cfg(target)
+            size = cfg.default_size
+            await self.write_target_single_and_check(
+                target,
+                self._target_addr(target, idx + 40),
+                rng.getrandbits(32),
+                size=size,
+                wstrb=0,
+                context=f"long_stall.wstrb_none.{target}",
+            )
+            boundary_addr = 0x1_0000 - self.size_bytes(size)
+            boundary_data = rng.getrandbits(32) & self.data_mask(size)
+            await self.write_target_single_and_check(
+                target,
+                boundary_addr,
+                boundary_data,
+                size=size,
+                context=f"long_stall.boundary.{target}",
             )
 
     async def run_backpressure_abort_at_data_w(self) -> None:
@@ -137,8 +175,11 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             cfg = self.target_cfg(target)
             size = cfg.default_size
             addr = self._target_addr(target, idx)
-            # Seeded per-pass payload and CDC timing: the stall stays long
-            # enough that the reset always lands while W is outstanding.
+            # Seeded per-pass payload and CDC timing. The stall stays shorter
+            # than the scan's idle tail, so the reset lands after the bus
+            # transaction completed: a stall long enough for a true mid-flight
+            # abort leaves the recovery write BUSY_OR_FULL indefinitely
+            # (tracked as issue #1330).
             data = rng.getrandbits(64) & self.data_mask(size)
             stall = rng.randint(16, 24)
             self.log_iteration(
@@ -173,8 +214,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             cfg = self.target_cfg(target)
             size = cfg.default_size
             addr = self._target_addr(target, idx + 8)
-            # Seeded per-pass payload and stall: each loop lands the narrow
-            # reset at a different point of the stalled AW phase.
+            # Seeded per-pass payload and stall. The stall stays shorter than
+            # the scan's idle tail, so the narrow reset lands after the bus
+            # transaction completed (see the mid-flight abort note above; issue #1330).
             data = rng.getrandbits(64) & self.data_mask(size)
             stall = rng.randint(8, 16)
             self.log_iteration(
@@ -307,8 +349,12 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             good_addr = self._target_addr(target, idx + 40)
             bad_addr = good_addr + 0x100
             good_data = rng.getrandbits(self.target_cfg(target).data_width)
-            await self.write_target_single_and_check(target, good_addr, good_data, context=f"mixed.good_write.{target}")
-            expected = self.configure_target_error(target, bad_addr, AXI_DECERR, read=True, write=True)
+            await self.write_target_single_and_check(
+                target, good_addr, good_data, context=f"mixed.good_write.{target}"
+            )
+            expected = self.configure_target_error(
+                target, bad_addr, AXI_DECERR, read=True, write=True
+            )
             await self.read_target_single_expect_status(
                 target,
                 bad_addr,
@@ -332,7 +378,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             cfg = self.target_cfg(target)
             size = cfg.default_size
             base = 0x5000 + target_idx * 0x100
-            self.log_iteration(target_idx, len(ROBUST_TARGETS), "target=%s series reset/pipeline/status", target)
+            self.log_iteration(
+                target_idx, len(ROBUST_TARGETS), "target=%s series reset/pipeline/status", target
+            )
             await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
             await self.jtag2axi_series_ctrl(
                 DtpJtag2AxiOp.WRITE,
@@ -364,7 +412,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 )
             _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=target)
             self.assert_equal(f"series_corner.status.{target}", status, DtpJtag2AxiStatus.SUCCESS)
-            self.assert_equal(f"series_corner.addr_after.{target}", addr_after, base + 2 * cfg.beat_bytes)
+            self.assert_equal(
+                f"series_corner.addr_after.{target}", addr_after, base + 2 * cfg.beat_bytes
+            )
             self.operation_count += 1
 
     async def body(self) -> None:

@@ -21,21 +21,25 @@ import argparse
 import sys
 from pathlib import Path
 
-from systemrdl import RDLCompiler, RDLCompileError
+from systemrdl import RDLCompileError, RDLCompiler
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_rdl_file", help="the block's top RDL")
-    parser.add_argument("-u", "--udp_rdl_file", required=True,
-                        help="the PeakRDL UDP RDL file (./regblock_udps.rdl)")
-    parser.add_argument("-i", "--incdir", action="append", default=[],
-                        help="directory to search for included files")
-    parser.add_argument("-o", "--output", required=True,
-                        help="depfile to write")
-    parser.add_argument("--target", action="append", default=[],
-                        help="make target that gains the include prerequisites "
-                             "(repeat once per generated output)")
+    parser.add_argument(
+        "-u", "--udp_rdl_file", required=True, help="the PeakRDL UDP RDL file (./regblock_udps.rdl)"
+    )
+    parser.add_argument(
+        "-i", "--incdir", action="append", default=[], help="directory to search for included files"
+    )
+    parser.add_argument("-o", "--output", required=True, help="depfile to write")
+    parser.add_argument(
+        "--target",
+        action="append",
+        default=[],
+        help="make target that gains the include prerequisites (repeat once per generated output)",
+    )
     args = parser.parse_args()
 
     rdlc = RDLCompiler()
@@ -47,9 +51,7 @@ def main() -> None:
 
     # Exclude the top RDL itself (already a static prereq) and the UDP.
     exclude = {Path(args.input_rdl_file).resolve(), Path(args.udp_rdl_file).resolve()}
-    includes = sorted(
-        {Path(f).resolve() for f in info.included_files} - exclude
-    )
+    includes = sorted({Path(f).resolve() for f in info.included_files} - exclude)
 
     # The depfile is one of its own targets so an include change rebuilds it.
     targets = list(args.target) + [str(Path(args.output).resolve())]

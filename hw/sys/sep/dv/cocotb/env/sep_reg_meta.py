@@ -38,7 +38,6 @@ Usage:
 from __future__ import annotations
 
 import importlib.util
-import json
 import re
 import sys
 from dataclasses import dataclass
@@ -79,11 +78,7 @@ def _default_type_keys() -> list[str]:
     """Type prefixes that have a generated ``_REG_DEFAULT`` (cached)."""
     keys = getattr(_default_type_keys, "_cache", None)
     if keys is None:
-        keys = [
-            n[: -len("_REG_DEFAULT")]
-            for n in vars(sep_reg)
-            if n.endswith("_REG_DEFAULT")
-        ]
+        keys = [n[: -len("_REG_DEFAULT")] for n in vars(sep_reg) if n.endswith("_REG_DEFAULT")]
         _default_type_keys._cache = keys
     return keys
 
@@ -117,10 +112,7 @@ class RegBlock:
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
                 return alias
         norm = _normalize_inst_name(name)
-        hits = [
-            key for key in _default_type_keys()
-            if key.endswith("_" + norm) or key == norm
-        ]
+        hits = [key for key in _default_type_keys() if key.endswith("_" + norm) or key == norm]
         if len(hits) == 1:
             return hits[0]
         if len(hits) > 1:
@@ -190,6 +182,20 @@ class RegBlock:
             bits |= int(view.val)
         return bits
 
+    def field_mask(self, name: str, field_name: str) -> int:
+        """Bit mask for one named generated bitfield."""
+        struct = self._sym(name, "reg_t", alias_ok=True)
+        union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
+        fields = {field: width for field, _ctype, width in struct._fields_}
+        if field_name not in fields:
+            raise KeyError(
+                f"{self.block}.{name}.{field_name} not found; known fields: {sorted(fields)}"
+            )
+        view = union()
+        view.val = 0
+        setattr(view.f, field_name, (1 << fields[field_name]) - 1)
+        return int(view.val)
+
     def mask_all(self, name: str) -> int:
         """Union of EVERY field bit, reserved included -- the storage mask.
 
@@ -224,13 +230,13 @@ class RegBlock:
 
 
 class CHeaderRegBlock:
-    """Field metadata for a block whose generated Python export omits field structs.
+    """Bit positions and reset values from a generated C register header.
 
-    Some IP blocks (entropy_source is one) emit per-field metadata only into the
-    generated C header, as
+    Entropy-source sequences use the C export's
     ``<BLOCK>__<REG>__<FIELD>_{bm,bp,bw,reset}`` defines. Parse those so field
-    masks and reset values stay source-derived instead of being
-    re-encoded as magic numbers in a sequence.
+    values stay source-derived instead of being re-encoded as magic numbers.
+    Generic register access classification uses ``*_REG_FIELD_ACCESS`` from the
+    generated Python header instead.
 
     The important primitive is :meth:`value`: build a register value from named
     fields, defaulting every unnamed field to ITS RESET. That is what keeps a
@@ -254,7 +260,7 @@ class CHeaderRegBlock:
             if len(parts) < 3 or parts[0] != "#define" or not parts[1].startswith(prefix):
                 continue
             name, raw = parts[1], parts[2]
-            body = name[len(prefix):]
+            body = name[len(prefix) :]
             for suffix in self._SUFFIXES:
                 if not body.endswith("_" + suffix):
                     continue
@@ -295,8 +301,7 @@ class CHeaderRegBlock:
         unknown = set(overrides) - set(known)
         if unknown:
             raise KeyError(
-                f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; "
-                f"known: {sorted(known)}"
+                f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; known: {sorted(known)}"
             )
         total = 0
         for name, meta in known.items():
@@ -360,12 +365,50 @@ def block_names() -> list[str]:
     (``AXIL_MAILBOX`` vs ``AXIL_MAILBOX_OUTBOUND_MAILBOX_0``).
     """
     names = [
-        n[: -len("_REG_MAP_BASE_ADDR")]
-        for n in vars(sep_reg)
-        if n.endswith("_REG_MAP_BASE_ADDR")
+        n[: -len("_REG_MAP_BASE_ADDR")] for n in vars(sep_reg) if n.endswith("_REG_MAP_BASE_ADDR")
     ]
     names.sort(key=len, reverse=True)
     return names
+
+
+def indexed_block_count(prefix: str) -> int:
+    """How many ``<prefix>_<n>_`` blocks the generated header declares.
+
+    The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
+    count belongs to the register export, not to a sequence. Two sweeps that
+    each carry their own literal will disagree the moment the array changes, and
+    the one that is short simply never reaches the tail entries: a sweep that
+    selects from 16 of 32 entries reports a clean pass over half the bank.
+
+    Indices must be contiguous from zero. A gap means the header and the RDL
+    disagree, and a sweep built on the count would silently skip the hole.
+    """
+    found = set()
+    marker = "_REG_MAP_BASE_ADDR"
+    for name in vars(sep_reg):
+        if not name.endswith(marker):
+            continue
+        stem = name[: -len(marker)]
+        if not stem.startswith(prefix + "_"):
+            continue
+        tail = stem[len(prefix) + 1 :]
+        if tail.endswith("_"):
+            tail = tail[:-1]
+        if tail.isdigit():
+            found.add(int(tail))
+    if not found:
+        raise KeyError(
+            f"no {prefix}_<n> blocks in the generated register header "
+            f"({_GEN_PY}/sep_reg.py); check the prefix or regenerate"
+        )
+    if found != set(range(len(found))):
+        missing = sorted(set(range(max(found) + 1)) - found)
+        raise KeyError(
+            f"{prefix} block indices are not contiguous from 0: "
+            f"{len(found)} found, missing {missing}"
+        )
+    return len(found)
 
 
 def block_size(block: str) -> int:
@@ -389,16 +432,39 @@ def _load_py_module(path: Path, name: str):
     return module
 
 
+def _ip_reg_path(ip: str) -> Path:
+    """Generated Python register header for an OpenTitan or OCAH IP."""
+    if ip == "entropy_source":
+        return _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
+    return (
+        _REPO_ROOT
+        / "vendor"
+        / "lowRISC"
+        / "opentitan"
+        / "overlay"
+        / "regs"
+        / ip
+        / "regs"
+        / "gen"
+        / "py"
+        / f"{ip}_reg.py"
+    )
+
+
+def _ip_reg_module(ip: str):
+    """Load and cache one generated leaf-IP register header."""
+    cache = getattr(_ip_reg_module, "_cache", None)
+    if cache is None:
+        cache = _ip_reg_module._cache = {}
+    if ip not in cache:
+        cache[ip] = _load_py_module(_ip_reg_path(ip), f"{ip}_reg")
+    return cache[ip]
+
+
 def ot_reg_map_size(ip: str) -> int:
     """Allocated byte size of an OpenTitan / IP block not in the SEP header."""
-    if ip == "entropy_source":
-        path = _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
-    else:
-        path = (
-            _REPO_ROOT / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
-            / ip / "regs" / "gen" / "py" / f"{ip}_reg.py"
-        )
-    module = _load_py_module(path, f"{ip}_reg")
+    path = _ip_reg_path(ip)
+    module = _ip_reg_module(ip)
     key = f"{ip.upper()}_REG_MAP_SIZE"
     try:
         return int(getattr(module, key))
@@ -408,14 +474,7 @@ def ot_reg_map_size(ip: str) -> int:
 
 def ot_reg_offsets(ip: str) -> list[tuple[str, int]]:
     """``(name, offset)`` for every ``_REG_OFFSET`` in an OT / IP header."""
-    if ip == "entropy_source":
-        path = _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
-    else:
-        path = (
-            _REPO_ROOT / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
-            / ip / "regs" / "gen" / "py" / f"{ip}_reg.py"
-        )
-    module = _load_py_module(path, f"{ip}_reg_off")
+    module = _ip_reg_module(ip)
     out: list[tuple[str, int]] = []
     for name, val in vars(module).items():
         if name.endswith("_REG_OFFSET"):
@@ -424,118 +483,43 @@ def ot_reg_offsets(ip: str) -> list[tuple[str, int]]:
     return out
 
 
-# TEMPORARY, and DV-owned on purpose.
-#
-# Per-field software access lives in the RDL and only the JSON exporter emits it
-# (tools/regs/rdljson.py). rdlpyhdr.py compiles the same RDL and drops `sw`,
-# `woclr`, `onwrite` and `onread`, so the Python header this module otherwise
-# reads cannot answer "may software write this register".
-#
-# The generated JSON is not usable directly: `**/regs/gen/json/**` is gitignored,
-# no DV stage and no CI sim job runs `make ocah-regen-regs-json`, so on a clean
-# checkout the file does not exist and every caller here fails at import. These
-# are byte-identical copies committed under dv/, next to the other DV-owned
-# register artifacts (models/regs/sep_external.rdl).
-#
-# RETIRE THIS when rdlpyhdr.py emits per-register software access: point the
-# accessors below at the generated Python header and delete these files.
-#
-# Refresh with:
-#     make ocah-regen-regs-json
-#     cp hw/ip/entropy_source/regs/gen/json/entropy_source.json \
-#        hw/sys/sep/dv/models/regs/entropy_source_sw_access.json
-# `cmp` against that generator output is the staleness check; _json_model() also
-# cross-checks every register name against the generated Python header, which IS
-# regenerated and gated in CI, so an RDL edit cannot leave this copy stale and
-# quiet.
-_DV_MODEL_REGS = Path(__file__).resolve().parents[2] / "models" / "regs"
-_JSON_EXPORTS = {
-    "entropy_source": _DV_MODEL_REGS / "entropy_source_sw_access.json",
-}
-
-
-def _json_model(block: str) -> dict:
-    """Load a DV-owned JSON register model, cross-checked and cached."""
-    cache = getattr(_json_model, "_cache", None)
-    if cache is None:
-        cache = _json_model._cache = {}
-    if block not in cache:
-        try:
-            path = _JSON_EXPORTS[block]
-        except KeyError:
-            raise KeyError(
-                f"no JSON register model for {block!r}; add a copy under "
-                f"{_DV_MODEL_REGS} and an entry in _JSON_EXPORTS here"
-            ) from None
-        if not path.is_file():
-            raise FileNotFoundError(
-                f"{path} is missing; refresh it from the generator -- see the "
-                f"comment above _JSON_EXPORTS"
-            )
-        model = json.loads(path.read_text(encoding="utf-8"))
-        _check_json_matches_header(block, model, path)
-        cache[block] = model
-    return cache[block]
-
-
-def _check_json_matches_header(block: str, model: dict, path: Path) -> None:
-    """Fail if the committed copy has drifted from the RDL.
-
-    The copy is hand-refreshed, so an RDL edit would otherwise leave it stale and
-    the register sweeps would exclude the wrong set without any log changing.
-    The generated Python header IS regenerated and gated by the regen-regs CI
-    job, so comparing against it turns a silent drift into an import failure.
-    """
-    header = {name for name, _off in ot_reg_offsets(block)}
-    in_json = {reg["inst_name"] for reg, _fields in _iter_json_regs(model)}
-    missing = header - in_json
-    extra = in_json - header
-    if missing or extra:
+def _reg_field_access(block: str) -> dict[str, tuple]:
+    """Per-register field access emitted by the generated Python header."""
+    module = _ip_reg_module(block)
+    prefix = block.upper() + "_"
+    metadata: dict[str, tuple] = {}
+    missing: list[str] = []
+    for name, _offset in ot_reg_offsets(block):
+        symbol = f"{prefix}{name}_REG_FIELD_ACCESS"
+        fields = getattr(module, symbol, None)
+        if fields is None:
+            missing.append(symbol)
+        else:
+            metadata[name] = tuple(fields)
+    if missing:
         raise RuntimeError(
-            f"{path} has drifted from {block!r}: "
-            f"{len(missing)} register(s) in the generated header and not the "
-            f"copy {sorted(missing)[:5]}, {len(extra)} in the copy and not the "
-            f"header {sorted(extra)[:5]}. Refresh the copy -- see the comment "
-            f"above _JSON_EXPORTS."
+            f"{_ip_reg_path(block)} lacks generated field-access metadata for "
+            f"{len(missing)} register(s): {missing[:5]}; regenerate the Python "
+            "register headers"
         )
-
-
-def _iter_json_regs(node):
-    """Yield every ``reg`` node with its field children."""
-    if isinstance(node, dict):
-        children = node.get("children", [])
-        if node.get("type") == "reg":
-            yield node, [c for c in children if c.get("type") == "field"]
-        for child in children:
-            yield from _iter_json_regs(child)
-    elif isinstance(node, list):
-        for child in node:
-            yield from _iter_json_regs(child)
+    return metadata
 
 
 def reg_sw_readonly(block: str) -> frozenset[str]:
     """Registers of ``block`` that software can read but never write.
 
-    A register qualifies when every field declares ``sw_access = "r"``: no bus
-    write can store into it, so it can never be the target of an aliased or
-    wrapped write. entropy_source has 26 -- health-test counters, alert tallies,
-    FIFO and observation status, and the component ID.
-
-    Source is the generated JSON model, the only export that carries per-field
-    software access. ``rdlpyhdr.py`` emits offsets, defaults and field structs
-    and drops ``sw_access`` / ``woclr`` / ``onwrite`` / ``onread``, so a caller
-    that needs access type must come here rather than infer it from a register
-    name. Enable a block by adding its id to ``OCAH_REG_JSON_BLOCKS``
-    (``hw/common/regs/classify.mk``) and a path to ``_JSON_EXPORTS`` above.
+    A register qualifies when every generated field declares ``sw = "r"``.
+    Access semantics come from the same generated Python header as addresses
+    and reset values, so an RDL edit updates all metadata in one regen.
     """
     names = {
-        reg["inst_name"]
-        for reg, fields in _iter_json_regs(_json_model(block))
-        if fields and all(f.get("sw_access") == "r" for f in fields)
+        name
+        for name, fields in _reg_field_access(block).items()
+        if fields and all(sw == "r" for _field, sw, _onwrite, _onread, _pulse in fields)
     }
     if not names:
         raise RuntimeError(
-            f"no software-read-only registers found in the {block!r} JSON model; "
+            f"no software-read-only registers found in the {block!r} Python header; "
             f"the export schema changed and a caller filtering on this would "
             f"silently filter nothing"
         )
@@ -550,9 +534,9 @@ class RegisterWalk:
     export: int
     # Dropped OFFSET symbols, split by cause so a change of cause is visible
     # rather than absorbed into one figure. All three are real code paths.
-    no_default: int = 0     # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
+    no_default: int = 0  # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
     unknown_block: int = 0  # the symbol stem matches no known block prefix
-    duplicate: int = 0      # a (block, register) pair already walked
+    duplicate: int = 0  # a (block, register) pair already walked
 
     @property
     def nometa(self) -> int:
@@ -597,7 +581,7 @@ def iter_register_walk() -> RegisterWalk:
             prefix = candidate + "_"
             if stem.startswith(prefix):
                 block = candidate
-                reg = stem[len(prefix):]
+                reg = stem[len(prefix) :]
                 break
         if block is None:
             unknown_block += 1
@@ -664,19 +648,13 @@ def reg_write_destructive(block: str) -> frozenset[str]:
     register is not restored either -- entropy_source FIPS_LOCK.LOCK is the one
     instance. Anything that snapshots and restores must skip both.
 
-    Both spellings are checked: the export carries a boolean `woclr` field AND
-    an `onwrite` string ("", "woclr", "woset"), and `woset` appears only in the
-    latter.
-
-    `onread` in this export is only ever "" or "ruser", and `singlepulse` only
-    appears on INTR_TEST and NOISE_OBS_CTRL.FLUSH, which callers already drop by
-    name suffix, so those flavours need no entry here.
+    The generated metadata normalizes RDL shorthand such as ``woclr`` and
+    ``woset`` into the ``onwrite`` element at tuple index 2.
     """
     return frozenset(
-        reg["inst_name"]
-        for reg, fields in _iter_json_regs(_json_model(block))
-        if any(f.get("woclr") or f.get("onwrite") in ("woclr", "woset")
-               for f in fields)
+        name
+        for name, fields in _reg_field_access(block).items()
+        if any(onwrite in ("woclr", "woset") for _field, _sw, onwrite, _onread, _pulse in fields)
     )
 
 
@@ -706,7 +684,7 @@ def iter_addrs() -> list[tuple[str, str, int]]:
             prefix = candidate + "_"
             if stem.startswith(prefix):
                 block = candidate
-                reg = stem[len(prefix):]
+                reg = stem[len(prefix) :]
                 break
         if block is None or (block, reg) in seen:
             continue
@@ -714,6 +692,7 @@ def iter_addrs() -> list[tuple[str, str, int]]:
         found.append((block, reg, int(getattr(sep_reg, sym_name))))
     found.sort(key=lambda item: (item[2], item[0], item[1]))
     return found
+
 
 SEP_CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 ENTROPY_SOURCE = CHeaderRegBlock("ENTROPY_SOURCE", ip_c_header("entropy_source"))
@@ -736,17 +715,17 @@ def _selftest() -> int:
     cpu = SEP_CPU_CTRL
     checks = [
         # (register, offset, reset, mask)
-        ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),          # pka_cg_enable[0:0], placeholder
-        ("PKA_CTRL", 0x020, 0x0, 0x7),                 # 3 x 1-bit placeholder fields
+        ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),  # pka_cg_enable[0:0], placeholder
+        ("PKA_CTRL", 0x020, 0x0, 0x7),  # 3 x 1-bit placeholder fields
         # reserved[0:0] placeholder: real sw=rw storage, but NOT a software-usable
         # field, so the implemented mask is 0. Storage is pinned separately below.
         ("TIMEOUT_ENABLE", 0x068, 0x0, 0x0),
         ("SEP_LOCAL_BASE_ADDR", 0x0C8, 0xD000_0000, 0xFFFF_FFFF),
         ("SEP_REGION_SIZE", 0x0D0, 0x0100_0000, 0xFFFF_FFFF),
-        ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),           # bank_chip[3:0] + bank_instance[7:4]
+        ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),  # bank_chip[3:0] + bank_instance[7:4]
         ("SEP_NMI_VEC", 0x180, 0xC000_0100, 0xFFFF_FFFE),  # bit 0 is rsvd
-        ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),         # sel[2:0] = 0x7
-        ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),    # distinct type, must NOT alias to _SEL
+        ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),  # sel[2:0] = 0x7
+        ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),  # distinct type, must NOT alias to _SEL
         ("SEP_VERSION_ID", 0x1000, 0xDEAD_BEEF, 0xFFFF_FFFF),
     ]
     failures = []
@@ -754,7 +733,9 @@ def _selftest() -> int:
         got = (cpu.offset(name), cpu.reset32(name), cpu.mask32(name))
         want = (offset, reset, mask)
         if got != want:
-            failures.append(f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}")
+            failures.append(
+                f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}"
+            )
 
     # Every TIMEOUT_COUNT_* instance must resolve its own offset but share the
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
@@ -775,16 +756,18 @@ def _selftest() -> int:
     # implemented/storage masks differ by exactly the reserved bit.
     if cpu.mask32_all("TIMEOUT_ENABLE") != 0x1:
         failures.append(
-            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1")
+            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1"
+        )
     if cpu.mask32_all("SEP_NMI_VEC") != 0xFFFF_FFFF:
         failures.append(
-            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff")
+            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff"
+        )
     if cpu.offset("TIMEOUT_COUNT_DMA") == cpu.offset("TIMEOUT_COUNT_SYS_IN"):
         failures.append("TIMEOUT_COUNT_* instances collapsed to one offset")
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_001E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_003E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
@@ -796,6 +779,21 @@ def _selftest() -> int:
                 f"{block.block}.{name}: got {tuple(hex(v) for v in got)} "
                 f"want {(hex(addr), hex(reset))}"
             )
+
+    # Exercise the generic field-mask accessor across the complete reset map;
+    # this catches a shifted field as well as a broken single-field probe.
+    sw_reset_field_masks = {
+        "km_sw_rst_n": 0x01,
+        "otbn_sw_rst_n": 0x02,
+        "aes_sw_rst_n": 0x04,
+        "hmac_sw_rst_n": 0x08,
+        "kmac_sw_rst_n": 0x10,
+        "trng_sw_rst_n": 0x20,
+    }
+    for field, expected in sw_reset_field_masks.items():
+        got = SEP_RESET_CTRL.field_mask("SW_RESET_N", field)
+        if got != expected:
+            failures.append(f"SW_RESET_N.{field} mask {hex(got)} != {hex(expected)}")
 
     # An unknown register must raise, never silently return a wrong value.
     try:
@@ -815,20 +813,16 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1032, 873, 159):
+    if (walk.export, walk.inventory, walk.nometa) != (1024, 865, 159):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1032/873/159"
+            f"{walk.nometa} != 1024/865/159"
         )
     if walk.inventory < 100:
-        failures.append(
-            f"iter_registers returned {walk.inventory} entries; expected 100+"
-        )
+        failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
     esrc_ro = reg_sw_readonly("entropy_source")
-    if len(esrc_ro) != 26:
-        failures.append(
-            f"entropy_source sw-readonly count {len(esrc_ro)} != 26"
-        )
+    if len(esrc_ro) != 21:
+        failures.append(f"entropy_source sw-readonly count {len(esrc_ro)} != 21")
     if "HT_WATERMARK" not in esrc_ro or "HT_WATERMARK_NUM" in esrc_ro:
         failures.append(f"entropy_source sw-readonly set is wrong: {sorted(esrc_ro)}")
     by_key = {(info.block, info.name): info for info in regs}
@@ -848,14 +842,13 @@ def _selftest() -> int:
     if ot_reg_map_size("edn") != 0x48:
         failures.append(f"edn size {hex(ot_reg_map_size('edn'))} != 0x48")
     if ot_reg_map_size("entropy_source") != 0x17C:
-        failures.append(
-            f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
+        failures.append(f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
 
     if failures:
         for line in failures:
             print(f"FAIL {line}")
         return 1
-    total = len(checks) + len(_TYPE_ALIAS) + len(block_checks)
+    total = len(checks) + len(_TYPE_ALIAS) + len(block_checks) + len(sw_reset_field_masks)
     print(
         f"sep_reg_meta: {total} register(s) match the generated RDL header; "
         f"export={walk.export} inventory={walk.inventory} nometa={walk.nometa}"

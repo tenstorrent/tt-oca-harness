@@ -158,9 +158,7 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
 
     _set_boot_stall(False)
     await ClockCycles(cocotb.top.clk_smc_i, settle_cycles * 4)
-    cocotb.log.info(
-        "CPU boot: released +smc_hold_cpu_boot with vector=0x%08x", reset_vector
-    )
+    cocotb.log.info("CPU boot: released +smc_hold_cpu_boot with vector=0x%08x", reset_vector)
 
 
 async def _pulse_core_reset(seq, reset_vector: int, *, settle_cycles: int = 32) -> None:
@@ -226,8 +224,7 @@ async def check_cpu_firmware_boot_contract(
     if image_path is None:
         if require_image:
             raise AssertionError(
-                "CPU firmware boot requires +smc_rom_hex=<path> or "
-                "+smc_scratch_ram_hex=<path>"
+                "CPU firmware boot requires +smc_rom_hex=<path> or +smc_scratch_ram_hex=<path>"
             )
         return {
             "boot_checked": False,
@@ -236,12 +233,9 @@ async def check_cpu_firmware_boot_contract(
             "scratch_writes": int(dut.tb_cpu_scratch_write_count.value),
         }
 
-    reset_vector = (
-        CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
-    )
+    reset_vector = CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
     cocotb.log.info(
-        "CPU firmware boot start image=%s source=%s reset_vector=0x%08x "
-        "expected_magic=0x%08x",
+        "CPU firmware boot start image=%s source=%s reset_vector=0x%08x expected_magic=0x%08x",
         image_path,
         "scratch" if boot_from_scratch else "rom",
         reset_vector,
@@ -281,8 +275,7 @@ async def check_cpu_firmware_boot_contract(
     baseline_scratch_reads = int(dut.tb_cpu_scratch_read_count.value)
     baseline_scratch_writes = int(dut.tb_cpu_scratch_write_count.value)
     cocotb.log.info(
-        "CPU boot baselines (pre-release) rom_reads=%d scratch_reads=%d "
-        "scratch_writes=%d",
+        "CPU boot baselines (pre-release) rom_reads=%d scratch_reads=%d scratch_writes=%d",
         baseline_rom_reads,
         baseline_scratch_reads,
         baseline_scratch_writes,
@@ -297,20 +290,12 @@ async def check_cpu_firmware_boot_contract(
     # The boot image is short; poll TB sideband + CSR mailbox.
     for _ in range(2000):
         await ClockCycles(dut.clk_smc_i, 100)
-        last_csr = await seq.csr_read(
-            "CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0
-        )
+        last_csr = await seq.csr_read("CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0)
         fw_valid = int(dut.tb_cpu_fw_mailbox_valid.value)
         fw_mbox = int(dut.tb_cpu_fw_mailbox.value) if fw_valid else 0
-        last_pass = (
-            fw_mbox
-            if fw_mbox == CPU_FW_SUCCESS_MAGIC
-            else last_csr
-        )
+        last_pass = fw_mbox if fw_mbox == CPU_FW_SUCCESS_MAGIC else last_csr
         if (last_pass & CPU_FW_FAIL_MASK) == CPU_FW_FAIL_VALUE:
-            raise AssertionError(
-                f"CPU firmware reported failure code 0x{last_pass:08x}"
-            )
+            raise AssertionError(f"CPU firmware reported failure code 0x{last_pass:08x}")
         if last_pass == CPU_FW_SUCCESS_MAGIC:
             rom_reads = int(dut.tb_cpu_rom_read_count.value)
             scratch_reads = int(dut.tb_cpu_scratch_read_count.value)

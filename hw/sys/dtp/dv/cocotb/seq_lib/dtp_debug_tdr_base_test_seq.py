@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import cocotb
-
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
     DTP_EXPECTED_JTAG_CAPS,
@@ -66,9 +65,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
 
     async def read_tmp_status(self, shift_value: int = 0) -> int:
         """Read TMP_STATUS[1:0]. Bit 1 is persistence, bit 0 is BYPASS_ESCAPE."""
-        return (await self.read_tdr("TMP_STATUS", shift_value)) & self._bit_mask(
-            DTP_TMP_STATUS_LEN
-        )
+        return (await self.read_tdr("TMP_STATUS", shift_value)) & self._bit_mask(DTP_TMP_STATUS_LEN)
 
     async def write_tmp_status(self, value: int) -> None:
         """Write TMP_STATUS[1:0], used to arm BYPASS_ESCAPE."""
@@ -176,9 +173,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
 
     async def read_ic_reset(self, shift_value: int = 0) -> int:
         """Read the IC_RESET TDR."""
-        return (await self.read_tdr("IC_RESET", shift_value)) & self._bit_mask(
-            DTP_IC_RESET_LEN
-        )
+        return (await self.read_tdr("IC_RESET", shift_value)) & self._bit_mask(DTP_IC_RESET_LEN)
 
     async def write_ic_reset(
         self,
