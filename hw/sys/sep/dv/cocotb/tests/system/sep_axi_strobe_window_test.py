@@ -107,10 +107,6 @@ class sep_axi_strobe_window_test(sep_base_test):
                 + ")"
             )
 
-        # A floor, not a report. The shape of the walk is seed-invariant by
-        # construction, so a seed that yields fewer cells than the walk defines
-        # means the config shrank and the compares above covered less than the
-        # card claims.
         # Config report, not a checker. The size axis is built by iterating
         # SIZE_BYTES, so asserting the walk covers it restates the loop rather
         # than testing anything; the module selftest pins that shape at import.
