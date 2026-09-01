@@ -7,7 +7,8 @@
 // the cocotb OcahFaultMixin): error-injection tables — a beat-aligned
 // address armed for a direction answers the programmed non-OKAY response
 // ONCE, skips the memory update (writes), and returns zero data (reads) —
-// plus per-direction one-shot response-ID corruption. This table makes the
+// plus per-direction one-shot response-ID corruption and per-channel
+// bounded READY backpressure. This table makes the
 // responder MISBEHAVE on purpose; the separate passive ocah_axi_config
 // arm_expected_resp table is what classifies the observed non-OKAY as
 // EXPECTED for the scoreboard — tests arm both through their sequence layer.
@@ -30,10 +31,14 @@ class ocah_axi_slave_config extends uvm_object;
     // Backing memory footprint in bytes (power of two; addresses wrap).
     int unsigned mem_bytes = 65536;
 
-    // Bounded READY backpressure: when nonzero, READY idles low for this many
-    // accepted-clock cycles before each assertion window (never a permanent
-    // stall — mirrors the cocotb bounded pause generator).
-    int unsigned ready_stall_cycles = 0;
+    // Bounded READY backpressure, per master-driven channel (the SV-UVM
+    // mirror of the cocotb bounded pause generator): when nonzero, the
+    // responder repeats a low-for-N / high-for-one READY pattern on that
+    // channel, so every handshake completes within N+1 cycles of VALID —
+    // never a permanent stall.
+    int unsigned aw_stall_cycles = 0;
+    int unsigned w_stall_cycles  = 0;
+    int unsigned ar_stall_cycles = 0;
 
     // Stable name for log messages.
     string name_tag = "ocah_axi_slave";
@@ -125,6 +130,34 @@ class ocah_axi_slave_config extends uvm_object;
         m_inject_wr.delete();
         m_id_corrupt_rd = '0;
         m_id_corrupt_wr = '0;
+    endfunction
+
+    // Enable the bounded READY-stall pattern on the selected channels
+    // (basename parity with the cocotb enable_backpressure API; valid
+    // channel names are "aw", "w", "ar" — READY-carrying on the responder).
+    function void enable_backpressure(string channels[$], int unsigned stall_cycles);
+        foreach (channels[i]) begin
+            case (channels[i])
+                "aw": aw_stall_cycles = stall_cycles;
+                "w":  w_stall_cycles  = stall_cycles;
+                "ar": ar_stall_cycles = stall_cycles;
+                default:
+                    `uvm_fatal(get_type_name(), $sformatf(
+                        "%s: unknown backpressure channel '%s' (expected aw/w/ar)",
+                        name_tag, channels[i]))
+            endcase
+        end
+        `uvm_info(get_type_name(), $sformatf(
+            "%s: enabled backpressure channels=%p stall=%0d",
+            name_tag, channels, stall_cycles), UVM_LOW)
+    endfunction
+
+    function void disable_backpressure();
+        aw_stall_cycles = 0;
+        w_stall_cycles  = 0;
+        ar_stall_cycles = 0;
+        `uvm_info(get_type_name(), $sformatf(
+            "%s: disabled backpressure", name_tag), UVM_LOW)
     endfunction
 
     function int unsigned pending_errors();
