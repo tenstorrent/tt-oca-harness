@@ -304,13 +304,13 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         # index into every transaction: an added or reordered command elsewhere
         # in the walk would silently move a raw index onto a different opcode.
         pp_txns = [t for t in txns if t.get("opcode") == 0x02]
-        if len(pp_txns) < self.WP_PP_NTH:
+        if len(pp_txns) < cfg.WP_PP_NTH:
             raise AssertionError(
                 f"SPI flash command breadth golden: expected at least "
-                f"{self.WP_PP_NTH} PAGE PROGRAM transaction(s) at the device, "
+                f"{cfg.WP_PP_NTH} PAGE PROGRAM transaction(s) at the device, "
                 f"saw {len(pp_txns)}"
             )
-        wp_pp = pp_txns[self.WP_PP_NTH - 1]
+        wp_pp = pp_txns[cfg.WP_PP_NTH - 1]
         wp_taken = bytes(wp_pp.get("data_in") or b"")
         if wp_taken:
             self.logger.error(
