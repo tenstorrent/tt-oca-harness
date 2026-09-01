@@ -22708,6 +22708,11 @@ which was previously loaded by AXI_SERIES_CTRL, is incremented as follows:</p>
 <p>Note that this is a variable-length data register. The length is n bits where
 n = 8*(2**AXI_SERIES_CTRL.size).</p>
 </div>
+<div class="paragraph">
+<p>The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.size</code>,
+and Capture-DR returns the payload from those lanes.</p>
+</div>
 <div class="imageblock">
 <div class="content">
 <img src="_images/jtag2axi_series_data_incr0.png" alt="AXI Series Data INCR Diagram (size 0)">
@@ -22762,6 +22767,11 @@ This is useful for repeated polling or triggering.</p>
 <p>Note that this is a variable-length data register. The length is n bits where
 n = 8*(2**AXI_SERIES_CTRL.size).</p>
 </div>
+<div class="paragraph">
+<p>The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.size</code>,
+and Capture-DR returns the payload from those lanes.</p>
+</div>
 <div class="imageblock">
 <div class="content">
 <img src="_images/jtag2axi_series_data_noincr0-1.png" alt="AXI Series Data NO_INCR Diagram (sizes 0-1)">
@@ -22815,6 +22825,11 @@ during a block operation.</p>
 <div class="paragraph">
 <p>Note that this is a variable-length data register. The length is n+1 bits where
 n = 8*(2**AXI_SERIES_CTRL.size).</p>
+</div>
+<div class="paragraph">
+<p>The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.size</code>,
+and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="imageblock">
 <div class="content">
