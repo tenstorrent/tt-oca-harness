@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from ocah_axi_vip import OcahAxiMasterDriver
 from seq_lib.sep_fw_common import addr_of, load_syms
 from seq_lib.sep_terminal_loop_seq import SepTerminalLoopSeq

@@ -13,7 +13,6 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Timer
 from pyuvm import ConfigDB, uvm_test
 
-
 _COCOTB_ROOT = Path(__file__).resolve().parents[1]
 _OSS_HW_ROOT = Path(__file__).resolve().parents[5]
 for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):

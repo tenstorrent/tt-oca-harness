@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_sep_rom_tcm_load_seq import SmuSepRomTcmLoadSeq
 from smu_base_test import smu_base_test
 

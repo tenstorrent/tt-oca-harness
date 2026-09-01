@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from seq_lib.wrapper_jtag import (
     J2A_OP_READ,
     J2A_SIZE_4B,

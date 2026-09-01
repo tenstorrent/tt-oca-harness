@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_sep_smc_chain_seq import SmuDtpSepSmcChainSeq
 from smu_base_test import smu_base_test
 

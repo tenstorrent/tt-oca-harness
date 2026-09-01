@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_sep_efuse_seq import SmuSepEfuseSeq
 from smu_base_test import smu_base_test
 

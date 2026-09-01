@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_sep_entropy_seq import SmuSepEntropySeq
 from smu_base_test import smu_base_test
 

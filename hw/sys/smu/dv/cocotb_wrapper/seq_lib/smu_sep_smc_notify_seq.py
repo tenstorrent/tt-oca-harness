@@ -26,7 +26,6 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from seq_lib.sep_fw_common import format_pc_profile, load_syms
 
 SEP_BOOT_ROM_BASE = 0x1004_0000

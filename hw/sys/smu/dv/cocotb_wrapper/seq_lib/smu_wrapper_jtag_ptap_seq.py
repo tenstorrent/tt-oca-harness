@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from seq_lib.wrapper_jtag import (
     PTAP_DEFAULT_IDCODE,
     PTAP_IR_WIDTH,

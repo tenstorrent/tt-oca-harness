@@ -19,7 +19,6 @@ supply the raw noise; see seq_lib/esrc_noise.py.
 from __future__ import annotations
 
 import cocotb
-
 from seq_lib.esrc_noise import SmuEsrcNoiseDriver
 from seq_lib.sep_terminal_loop_seq import SepTerminalLoopSeq
 

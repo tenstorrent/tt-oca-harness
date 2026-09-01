@@ -32,9 +32,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from seq_lib.sep_fw_common import format_pc_profile, load_syms
-
 
 # Every stage the firmware emits. All are required: the image opens its outbound
 # window before the first beacon, so any missing one is a real stall.

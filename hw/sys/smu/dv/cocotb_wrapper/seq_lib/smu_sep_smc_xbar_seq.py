@@ -25,7 +25,6 @@ import os
 import re
 
 import cocotb
-
 from seq_lib.sep_fw_common import load_syms
 from seq_lib.sep_terminal_loop_seq import SepTerminalLoopSeq
 

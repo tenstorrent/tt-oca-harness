@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_sep_wdt_seq import SmuSepWdtSeq
 from smu_base_test import smu_base_test
 

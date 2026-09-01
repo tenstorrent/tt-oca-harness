@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_sep_bidirect_seq import SmuSepBidirectSeq
 from smu_base_test import smu_base_test
 
