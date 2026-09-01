@@ -18,7 +18,7 @@ try:
     import tomllib as _tomllib
 except ModuleNotFoundError:  # pragma: no cover
     try:
-        import tomli as _tomllib  # type: ignore[import-not-found]
+        import tomli as _tomllib  # type: ignore[import-not-found,no-redef]
     except ModuleNotFoundError:
         _tomllib = None  # type: ignore[assignment]
 
@@ -1432,11 +1432,11 @@ def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[st
                 target_flags = target_tool_cfg.get("flags")
                 if isinstance(default_flags, list) and isinstance(target_flags, list):
                     tool_cfg = dict(merged_tools.get(tool, {}))
-                    combined: list[Any] = []
+                    combined_flags: list[Any] = []
                     for value in [*default_flags, *target_flags]:
-                        if value not in combined:
-                            combined.append(value)
-                    tool_cfg["flags"] = combined
+                        if value not in combined_flags:
+                            combined_flags.append(value)
+                    tool_cfg["flags"] = combined_flags
                     merged_tools[tool] = tool_cfg
     return merged
 

@@ -46,7 +46,7 @@ _metal_trap:
 
     /*
      * Mask the mtvec MODE bits
-     * Exceptions always jump to mtvec.BASE regradless of the vectoring mode.
+     * Exceptions always jump to mtvec.BASE regardless of the vectoring mode.
      */
     andi t0, t0, METAL_MTVEC_MODE_MASK
 

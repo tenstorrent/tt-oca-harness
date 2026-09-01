@@ -31,7 +31,7 @@ int main(void) {
 
     // semaphore
     // - other cores will increment the semaphore, core 0 will write test pass once all
-    //   other cores have incremeneted the semaphore
+    //   other cores have incremented the semaphore
     uint64_t semaphore;
     if (hartid == 0) {
         do {

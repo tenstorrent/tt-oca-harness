@@ -85,7 +85,7 @@ outranks interface_enable. Use lsio_disable to gate both.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_disable</ipxact:name>
-            <ipxact:description>When set, LSIO acceses will be blocked from the GPIO interface</ipxact:description>
+            <ipxact:description>When set, LSIO accesses will be blocked from the GPIO interface</ipxact:description>
             <ipxact:bitOffset>19</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

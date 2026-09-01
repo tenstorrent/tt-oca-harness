@@ -56,14 +56,17 @@ wrapper boundary so the adopter integration can choose the required pad mapping.
 ## Troubleshooting
 
 ### Symptom: Data lines always tri-stated
+
 - Check that OE is asserted at the SPI host wrapper output.
 - Check the adopter pad integration for the expected OE polarity.
 
 ### Symptom: Data lines always driven (bus contention)
+
 - Check that OE is being deasserted during read operations
 - Verify no extra inversion in the signal path
 
 ### Symptom: Input data always 0 or X
+
 - Check that IE is being asserted during read operations
 - Verify input receiver is enabled at the pad
 

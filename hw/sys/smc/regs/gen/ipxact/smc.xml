@@ -1621,7 +1621,7 @@ outranks interface_enable. Use lsio_disable to gate both.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>lsio_disable</ipxact:name>
-              <ipxact:description>When set, LSIO acceses will be blocked from the GPIO interface</ipxact:description>
+              <ipxact:description>When set, LSIO accesses will be blocked from the GPIO interface</ipxact:description>
               <ipxact:bitOffset>19</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2004,7 +2004,7 @@ AVS readback fifo pointer. Provided for debug purposes.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>AVS_LATEST_SLAVE_SUBFRAME</ipxact:name>
-            <ipxact:description>This register contains the most recently received subframe from the AVS slave, by-passing the
+            <ipxact:description>This register contains the most recently received subframe from the AVS slave, bypassing the
 AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck
 settings in a timely fashion, since the status data from the next entry in the readback fifo might
 have considerable latency relative to when it was initially received from the AVS Slave.</ipxact:description>
@@ -2625,7 +2625,7 @@ full =&gt; response was dropped</ipxact:description>
             <ipxact:field>
               <ipxact:name>MAX_RETRIES</ipxact:name>
               <ipxact:description>Maximum number of times to attempt a retry if an AVS command returns a fail
-status (either due to targetted resource being busy or CRC failure)</ipxact:description>
+status (either due to targeted resource being busy or CRC failure)</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7441,7 +7441,7 @@ both primary and secondary are out of reset.</ipxact:description>
             <ipxact:field>
               <ipxact:name>MAX_CYCLES_EXPIRED</ipxact:name>
               <ipxact:description>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
-If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.
+If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
 This register can also be used to determine the clock skew between the primary and secondary.
 If PRIMARY, this field is always 0.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
@@ -8800,7 +8800,7 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -8812,7 +8812,7 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -9132,7 +9132,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -9144,7 +9144,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -9464,7 +9464,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -9476,7 +9476,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -9796,7 +9796,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -9808,7 +9808,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -10128,7 +10128,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -10140,7 +10140,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -10460,7 +10460,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -10472,7 +10472,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -10792,7 +10792,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -10804,7 +10804,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11124,7 +11124,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11136,7 +11136,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11456,7 +11456,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11468,7 +11468,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11788,7 +11788,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11800,7 +11800,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12120,7 +12120,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12132,7 +12132,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12452,7 +12452,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12464,7 +12464,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12784,7 +12784,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12796,7 +12796,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13116,7 +13116,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13128,7 +13128,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13448,7 +13448,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13460,7 +13460,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13780,7 +13780,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13792,7 +13792,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14112,7 +14112,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14124,7 +14124,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14444,7 +14444,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14456,7 +14456,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14776,7 +14776,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14788,7 +14788,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15108,7 +15108,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15120,7 +15120,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15440,7 +15440,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15452,7 +15452,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15772,7 +15772,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15784,7 +15784,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16104,7 +16104,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16116,7 +16116,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16436,7 +16436,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16448,7 +16448,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16768,7 +16768,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16780,7 +16780,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17100,7 +17100,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17112,7 +17112,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17432,7 +17432,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17444,7 +17444,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17764,7 +17764,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17776,7 +17776,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -18096,7 +18096,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -18108,7 +18108,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -18428,7 +18428,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -18440,7 +18440,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -18760,7 +18760,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -18772,7 +18772,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -19092,7 +19092,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -19104,7 +19104,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -19424,7 +19424,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -19436,7 +19436,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -19756,7 +19756,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -19768,7 +19768,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -20088,7 +20088,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -20100,7 +20100,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -20420,7 +20420,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -20432,7 +20432,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -20752,7 +20752,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -20764,7 +20764,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -21084,7 +21084,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -21096,7 +21096,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -21416,7 +21416,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -21428,7 +21428,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -21748,7 +21748,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -21760,7 +21760,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -22080,7 +22080,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -22092,7 +22092,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -22412,7 +22412,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -22424,7 +22424,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -22744,7 +22744,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -22756,7 +22756,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -23076,7 +23076,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -23088,7 +23088,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -23408,7 +23408,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -23420,7 +23420,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -23740,7 +23740,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -23752,7 +23752,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -24072,7 +24072,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -24084,7 +24084,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -24404,7 +24404,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -24416,7 +24416,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -24736,7 +24736,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -24748,7 +24748,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -25068,7 +25068,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -25080,7 +25080,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -25400,7 +25400,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -25412,7 +25412,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -25732,7 +25732,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -25744,7 +25744,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -26064,7 +26064,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -26076,7 +26076,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -26396,7 +26396,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -26408,7 +26408,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -26728,7 +26728,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -26740,7 +26740,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -27060,7 +27060,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -27072,7 +27072,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -27392,7 +27392,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -27404,7 +27404,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -27724,7 +27724,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -27736,7 +27736,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -28056,7 +28056,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -28068,7 +28068,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -28388,7 +28388,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -28400,7 +28400,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -28720,7 +28720,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -28732,7 +28732,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -29052,7 +29052,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -29064,7 +29064,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -29384,7 +29384,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -29396,7 +29396,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -29716,7 +29716,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -29728,7 +29728,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -32306,7 +32306,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdstsyncmode</ipxact:name>
-              <ipxact:description>When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.</ipxact:description>
+              <ipxact:description>When the field is set tp 2'b10, sent timestamp. All other values not NA.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32330,7 +32330,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdstformat</ipxact:name>
-              <ipxact:description>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)</ipxact:description>
+              <ipxact:description>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compression), 2'b0 (No Compression)</ipxact:description>
               <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32530,7 +32530,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>FrameModeEnable</ipxact:name>
-              <ipxact:description>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</ipxact:description>
+              <ipxact:description>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</ipxact:description>
               <ipxact:bitOffset>20</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32932,7 +32932,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32944,7 +32944,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33093,7 +33093,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33105,7 +33105,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33254,7 +33254,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33266,7 +33266,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33415,7 +33415,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33427,7 +33427,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33576,7 +33576,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33588,7 +33588,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33737,7 +33737,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33749,7 +33749,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33898,7 +33898,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33910,7 +33910,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34059,7 +34059,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34071,7 +34071,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34232,7 +34232,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>PosEdgeSignal0</ipxact:name>
-              <ipxact:description>Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
+              <ipxact:description>Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34256,7 +34256,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>PosEdgeSignal1</ipxact:name>
-              <ipxact:description>Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
+              <ipxact:description>Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
               <ipxact:bitOffset>13</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35024,7 +35024,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35036,7 +35036,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35198,7 +35198,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35210,7 +35210,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35372,7 +35372,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35384,7 +35384,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35546,7 +35546,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35558,7 +35558,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35720,7 +35720,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35732,7 +35732,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35894,7 +35894,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35906,7 +35906,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -36068,7 +36068,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -36080,7 +36080,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -36242,7 +36242,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -36254,7 +36254,7 @@ vendored from i3c-core and stubbed out of the open build)</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

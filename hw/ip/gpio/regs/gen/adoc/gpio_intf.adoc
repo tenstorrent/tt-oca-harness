@@ -24,7 +24,7 @@ This field does not reflect a software-forced selection via lsio_select, which r
 below the register interface - it reads 0 in that case even when LSIO drives the pad.
 | 24:22 | `Reserved` | - | - a| Reserved
 | 21:20 | `interrupt_type` | RW | 0x0 a| Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge
-| 19 | `lsio_disable` | RW | 0x0 a| When set, LSIO acceses will be blocked from the GPIO interface
+| 19 | `lsio_disable` | RW | 0x0 a| When set, LSIO accesses will be blocked from the GPIO interface
 | 18 | `interrupt_enable` | RW | 0x0 a| Interrupt Enable.
 | 17 | `lsio_select` | RW | 0x0 a| Force the LSIO interface to be used from software, when no hardware LSIO request is
 present on this pad. interface_enable has higher priority over this bit. This ranking

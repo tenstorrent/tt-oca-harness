@@ -50,6 +50,7 @@ make TEST=test_sanity WAVES=1
 ### View results
 
 Test results are saved in `sim/logs/<test_name>/`:
+
 - `vcs.log` - Compilation and simulation log
 - `cocotb_<test_name>.log` - cocotb log
 - `results_<test_name>.xml` - JUnit test results
@@ -57,20 +58,26 @@ Test results are saved in `sim/logs/<test_name>/`:
 ## Test Descriptions
 
 ### test_sanity
+
 Basic sanity test that verifies:
+
 - AXI-Lite crossbar routes correctly to CTP[0]
 - CTP register read/write works
 - CTM register read/write works
 - Clock stop output is inactive at reset
 
 ### test_routing
+
 Tests cross trigger routing through the CTM:
+
 - Configure CTM routing between CTPs
 - Verify routing configuration readback
 - Test OR-ing of multiple sources
 
 ### test_clock_stop
+
 Tests `ctn_clock_stop_ctrl` behavior inside the CTN (CLA requests, JTAG stop, and registered `stop_clks_o`):
+
 - Reset: `stop_clks` is inactive
 - CLA path: `clk_stop_req_i` OR-reduces into `stop_clks_o` and `cla_clock_stop_o` (status is CLA requests only)
 - Multiple CLA request bits: OR aggregation and partial clear
@@ -79,6 +86,7 @@ Tests `ctn_clock_stop_ctrl` behavior inside the CTN (CLA requests, JTAG stop, an
 ## Configuration
 
 The testbench uses reduced parameters for faster simulation:
+
 - NUM_CTP = 4 (vs 16 default)
 - NUM_INT_CT = 2 (vs 1 default)
 - NUM_CLK_STOP_REQ = 2 (vs 1 default)

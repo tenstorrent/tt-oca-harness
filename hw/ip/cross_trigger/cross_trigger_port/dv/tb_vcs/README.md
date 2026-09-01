@@ -23,16 +23,19 @@ Quick Start
 -----------
 
 1. Generate register files:
+
    ```bash
    make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_port
    ```
 
 2. Run sanity test:
+
    ```bash
    make test_sanity
    ```
 
 3. Run all tests:
+
    ```bash
    make test
    ```
