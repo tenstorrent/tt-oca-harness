@@ -76,22 +76,21 @@ class MapProbe:
 
 # The walk must stay at least this wide. Below it, a reserved row has stopped
 # yielding addresses and the run is proving less than it reports.
-_PROBE_FLOOR = 20
+PROBE_FLOOR = 20
 
 # Reserved rows the crossbar routes, which therefore yield no probe. They are
 # counted, and a new one has to be understood rather than absorbed.
-_SHORT_ROW_LIMIT = 5
+SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the routed filter. A drop here does not move
 # short_regions, so the count is held on its own.
-_ANCHOR_KEPT = 6
+ANCHOR_KEPT = 6
 
-# Reserved gaps walked every seed WHERE THE CROSSBAR DOES NOT ROUTE THEM. Four
-# of these sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
+# Reserved gaps walked on every seed the crossbar does not route: one address
+# just past the end of a live block, which is where a truncating decoder aliases
+# first. Four sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
 # 0x1093_8000, 0x10A4_0000) and are dropped when the set is built, so six
-# survive. See _ANCHOR_KEPT.
-# Reserved gaps that stay in the probe set on every seed: one address just past
-# the end of a live block, which is where a truncating decoder aliases first.
+# survive. See ANCHOR_KEPT.
 _ANCHORS: tuple[tuple[int, str], ...] = (
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
@@ -288,17 +287,17 @@ def _selftest() -> None:
         # correct, but the shortfall is otherwise only logged -- so a map or
         # crossbar change that routed more rows could shrink the walk toward
         # the anchors while the run still reported a clean pass.
-        assert len(c.probes) >= _PROBE_FLOOR, (
+        assert len(c.probes) >= PROBE_FLOOR, (
             f"seed {seed} built {len(c.probes)} probes, below the floor of "
-            f"{_PROBE_FLOOR}; a reserved row stopped yielding addresses"
+            f"{PROBE_FLOOR}; a reserved row stopped yielding addresses"
         )
-        assert len(c.short_regions) <= _SHORT_ROW_LIMIT, (
+        assert len(c.short_regions) <= SHORT_ROW_LIMIT, (
             f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
-            f"their quota, above the {_SHORT_ROW_LIMIT} the crossbar routes"
+            f"their quota, above the {SHORT_ROW_LIMIT} the crossbar routes"
         )
         n_anchor = sum(1 for p in c.probes if p.anchor)
-        assert n_anchor == _ANCHOR_KEPT, (
-            f"seed {seed} kept {n_anchor} anchors, expected {_ANCHOR_KEPT}; a "
+        assert n_anchor == ANCHOR_KEPT, (
+            f"seed {seed} kept {n_anchor} anchors, expected {ANCHOR_KEPT}; a "
             f"span the crossbar now routes dropped one without moving the "
             f"short-row count"
         )

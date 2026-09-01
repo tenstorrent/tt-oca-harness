@@ -18,6 +18,8 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_outbound_remap_seq import (
+    N_REGIONS,
+    OUTFILT_N_ENTRIES,
     RESP_DECERR,
     RESP_OKAY,
     SepOutboundRemap,
@@ -67,10 +69,15 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
             cfg.forbidden_region,
             cfg.forbidden_addr,
         )
+        # Config report, not a checker. The seed picks one region and one entry,
+        # and a bound on an index the same seed generated cannot fail. The
+        # coverage this entry does claim is asserted above, against the DUT.
         self.logger.info(
-            "CHK-RANDCFG PASS: bank=%s region=%d entry=%d from seed %d",
+            "output-remap config: bank=%s region=%d of %d entry=%d of %d, seed %d",
             cfg.bank,
             cfg.region,
+            N_REGIONS,
             cfg.entry,
+            OUTFILT_N_ENTRIES,
             cfg.seed,
         )

@@ -10,7 +10,7 @@ DECERR (block-by-default); read_allowed/write_allowed gate the matched
 read/write. With smc_global_base=0 the inbound global->local remap is identity, so
 the external master drives the SEP-local address directly.
 
-Walks first and last table entries x two address windows x {rw, read-only,
+Walks entries 0 and 7 x two address windows x {rw, read-only,
 write-only} at src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at
 src_id=5 with a matching AXI user and one src-mismatch cell. SepInboundFilterMatrixCfg
 is the single source of truth. Stays at sep_debug=0 the whole time and proves
@@ -37,9 +37,32 @@ CHK-BURST-TO-SINGLE watches the system-CSR AXI-Lite AR/AW after
 ``u_system_csr_a2l_1``: a denied AxLEN=1 produces zero Lite handshakes
 (filter before the converter); an allowed AxLEN=1 produces two Lite
 singles (fabric.adoc convert burst to single). WRAP/FIXED/AxLEN>1 are
-not walked. The wrap same-page 4 KB widen is a plan open item
-(fabric.adoc is silent); this test programs a two-page window so that
-rewrite does not fire.
+not walked.
+CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
+allow_burst=1 window on entry 15. An 8-byte window inside the
+dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
+whole page, and traffic_filter.sv then compares only addr[AddrWidth-1:12].
+CHK-PAGE-WIDEN proves the 4 KB page grant ON THE BUS
+(hw/common/axi/axi_filter/doc/index.adoc: START down, END up):
+an external access to an address inside the granted page but OUTSIDE the
+programmed START..END is OKAY for read and write, with the exact staged
+value. The HW-adjusted START/END readback is the setup step that shows
+the widen took effect, not the claim: a CSR mirror is not evidence of
+what the filter passes.
+CHK-PAGE-BOUND is the security contract: memory_map.adoc packs distinct
+blocks of this aperture at the same 4 KB pitch (DMA CSR 0x1080_0000, WDT
+0x1080_1000, dual scratch banks 0x1080_2000), so a page-crossing grant would
+hand access to a neighbouring block. The boundary at 0x1080_2000 is proven
+from both sides: a WDT register one page below is DECERR under the
+scratch-page grant, then the WDT page becomes the granted one, which answers
+that WDT probe and turns the scratch register DECERR. Each probe is therefore
+proven reachable, so neither DECERR can be an address-decode hole.
+CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
+cannot move: sep_system_csr.sv demuxes a locked entry's writes to an AXI-Lite
+error slave, so the attempt returns SLVERR, the field reads back unchanged,
+and the frozen bit still grants the widened page. The lock is sticky until
+reset, so this cell runs last on entry 15.
+
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
 values from seed).
@@ -52,10 +75,14 @@ import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from sep_base_test import sep_base_test
-from seq_lib.sep_fabric_csr_bank_seq import FILTER_RW_MASK
+from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
 from seq_lib.sep_inbound_filter_rule_seq import (
+    FILTER_LOCKED_HI_BIT,
+    GRANULE_BYTES,
+    PAGE_SIZE,
     RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     SepInboundFilter,
     SepInboundFilterCfg,
     SepInboundFilterMatrixCfg,
@@ -153,8 +180,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _check_burst_dimension(self, mcfg: SepInboundFilterMatrixCfg) -> None:
         """Walk allow_burst deny then allow on the scratch window.
 
-        Runs after the single-beat matrix and before ownership so a later
-        ownership FAIL still leaves the burst PASS lines in the log.
+        Runs after the single-beat matrix and before ownership.
+        CHK-CONFIG-LOCK is sticky, so the lock cell runs last on entry 15.
         """
         burst_addr, burst_val, burst_end = mcfg.burst_window()
         await self.filt.stage_target(burst_addr, burst_val)
@@ -322,6 +349,210 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             "of the scratch window"
         )
 
+    async def _check_page_widen(self, mcfg: SepInboundFilterMatrixCfg) -> None:
+        """Measure the same-page allow_burst=1 widen and its bounds, then lock it.
+
+        Runs LAST: FILTER_CONFIG.locked is sticky until reset, so once this cell
+        locks its entry no later step may reprogram or disable that entry.
+        """
+        wcfg = mcfg.widen
+        cell = SepInboundFilterCfg(
+            entry=wcfg.entry, allow_addr=wcfg.window_addr, allow_value=wcfg.values[0]
+        )
+
+        async def restage() -> None:
+            for addr, val in wcfg.staged:
+                await self.filt.stage_target(addr, val)
+
+        async def program_widen() -> None:
+            await self.filt.program_rule(
+                cell,
+                read_allowed=True,
+                write_allowed=True,
+                allow_burst=True,
+                end_addr=wcfg.window_end,
+                expect_page_widen=True,
+            )
+
+        await restage()
+        await self.filt.disable_all()
+        await program_widen()
+
+        # Setup evidence, not the contract: filter_ctrl.rdl declares
+        # START_ADDR/END_ADDR hw=rw, so axi_filter_wrap.sv writes the adjusted
+        # window back into the storage the CPU reads. Reading it here shows the
+        # rewrite took effect; a mirror register says nothing about what the
+        # filter passes, which is what the bus probes below measure.
+        start_rb = await self.filt.read_cpu(cell.start_addr_reg)
+        end_rb = await self.filt.read_cpu(cell.end_addr_reg)
+        assert start_rb == wcfg.page_base, (
+            f"CHK-PAGE-WIDEN FAIL: START_ADDR 0x{start_rb:08x} != page base "
+            f"0x{wcfg.page_base:08x} (programmed 0x{wcfg.window_addr:08x})"
+        )
+        assert end_rb == wcfg.page_end, (
+            f"CHK-PAGE-WIDEN FAIL: END_ADDR 0x{end_rb:08x} != page end "
+            f"0x{wcfg.page_end:08x} (programmed 0x{wcfg.window_end:08x})"
+        )
+        granted = end_rb - start_rb + 1
+        assert granted == PAGE_SIZE, (
+            f"CHK-PAGE-WIDEN FAIL: granted extent {granted} B != one 4 KB page"
+        )
+
+        resp, data = await self._ext_read(wcfg.window_addr)
+        assert resp == RESP_OKAY, (
+            f"CHK-PAGE-WIDEN FAIL: read inside the programmed window "
+            f"0x{wcfg.window_addr:08x} resp={resp}, expected OKAY (positive control)"
+        )
+        assert data == wcfg.values[0], (
+            f"CHK-PAGE-WIDEN FAIL: in-window rdata 0x{data:08x} != staged 0x{wcfg.values[0]:08x}"
+        )
+
+        # The widen, observed: an address in the same page but outside the
+        # programmed START..END is granted for read AND write.
+        for addr, val in wcfg.staged[1:]:
+            assert not (wcfg.window_addr <= addr <= wcfg.window_end), (
+                f"CHK-PAGE-WIDEN: probe 0x{addr:08x} is inside the programmed "
+                f"window 0x{wcfg.window_addr:08x}..0x{wcfg.window_end:08x}"
+            )
+            resp, data = await self._ext_read(addr)
+            assert resp == RESP_OKAY, (
+                f"CHK-PAGE-WIDEN FAIL: 0x{addr:08x} is outside the programmed "
+                f"window but inside its 4 KB page, resp={resp}, expected OKAY "
+                f"(the widen must grant the whole page)"
+            )
+            assert data == val, (
+                f"CHK-PAGE-WIDEN FAIL: rdata 0x{data:08x} != staged 0x{val:08x} at 0x{addr:08x}"
+            )
+            poke = val ^ 0xFFFF_0000
+            resp = await self._ext_write(addr, poke)
+            assert resp == RESP_OKAY, (
+                f"CHK-PAGE-WIDEN FAIL: write of 0x{addr:08x} (widened grant) "
+                f"resp={resp}, expected OKAY"
+            )
+            landed = await self.filt.read_cpu(addr)
+            assert landed == poke, (
+                f"CHK-PAGE-WIDEN FAIL: widened-grant write did not land "
+                f"(0x{landed:08x} != 0x{poke:08x})"
+            )
+        await restage()
+
+        probes = [wcfg.window_addr] + wcfg.in_page_addrs
+        self.logger.info(
+            "CHK-PAGE-WIDEN PASS: programmed 0x%08x..0x%08x (%d B) -> HW readback "
+            "0x%08x..0x%08x, measured granted extent %d B (one 4 KB page); probes "
+            "OKAY at %s, of which %s lie outside the programmed range",
+            wcfg.window_addr,
+            wcfg.window_end,
+            GRANULE_BYTES,
+            start_rb,
+            end_rb,
+            granted,
+            [hex(a) for a in probes],
+            [hex(a) for a in wcfg.in_page_addrs],
+        )
+
+        # The grant must stop at the page edge. The boundary at 0x1080_2000 is
+        # proven from both sides so neither probe rests on an unproven decode: the
+        # WDT register one page below is denied while the scratch page is granted,
+        # then the WDT page becomes the granted one -- which answers the WDT probe
+        # and denies the scratch register that was OKAY a moment ago.
+        adj = wcfg.adj_addr
+        rev = wcfg.in_page_addrs[0]
+        assert (adj >> 12) + 1 == (wcfg.page_base >> 12), (
+            f"CHK-PAGE-BOUND: 0x{adj:08x} is not the page below 0x{wcfg.page_base:08x}"
+        )
+        resp, _ = await self._ext_read(adj)
+        assert resp == RESP_DECERR, (
+            f"CHK-PAGE-BOUND FAIL: 0x{adj:08x} is in the page below the granted "
+            f"0x{start_rb:08x}..0x{end_rb:08x} and returned resp={resp}, expected "
+            f"DECERR -- the 4 KB grant crossed a page boundary and reached a "
+            f"neighbouring block"
+        )
+        await self.filt.disable_all()
+        adj_cell = SepInboundFilterCfg(entry=wcfg.entry, allow_addr=adj, allow_value=0)
+        await self.filt.program_rule(
+            adj_cell,
+            read_allowed=True,
+            write_allowed=False,
+            allow_burst=True,
+            end_addr=adj + GRANULE_BYTES - 1,
+            expect_page_widen=True,
+        )
+        resp, _ = await self._ext_read(adj)
+        assert resp == RESP_OKAY, (
+            f"CHK-PAGE-BOUND: 0x{adj:08x} resp={resp} with its own page granted, "
+            f"expected OKAY (so the DECERR above is the filter, not a decode hole)"
+        )
+        resp, _ = await self._ext_read(rev)
+        assert resp == RESP_DECERR, (
+            f"CHK-PAGE-BOUND FAIL: 0x{rev:08x} is in the page above the granted "
+            f"WDT page 0x{adj & ~0xFFF:08x} and returned resp={resp}, expected "
+            f"DECERR -- the grant crossed the boundary upward (0x{rev:08x} was "
+            f"OKAY under the scratch-page grant, so it is reachable)"
+        )
+        self.logger.info(
+            "CHK-PAGE-BOUND PASS: grant 0x%08x..0x%08x denies 0x%08x one page "
+            "below; with 0x%08x's own page granted it answers OKAY and 0x%08x one "
+            "page above turns DECERR -- the 4 KB grant stops at both page edges",
+            start_rb,
+            end_rb,
+            adj,
+            adj,
+            rev,
+        )
+
+        await self.filt.disable_all()
+        await restage()
+        await program_widen()
+        cfg_lo = await self.filt.read_cpu(cell.cfg_addr)
+        assert cfg_lo & F_ALLOW_BURST, (
+            f"CHK-CONFIG-LOCK: allow_burst not set before the lock "
+            f"(FILTER_CONFIG lo 0x{cfg_lo:08x})"
+        )
+        await self.filt.lock_entry(wcfg.entry)
+        hi = await self.filt.read_cpu(cell.cfg_addr + 4)
+        assert (hi >> FILTER_LOCKED_HI_BIT) & 1, (
+            f"CHK-CONFIG-LOCK FAIL: locked did not set (hi 0x{hi:08x})"
+        )
+        resp = await self.filt.write_tolerant(cell.cfg_addr, cfg_lo & ~F_ALLOW_BURST & 0xFFFF_FFFF)
+        assert resp == RESP_SLVERR, (
+            f"CHK-CONFIG-LOCK FAIL: write clearing allow_burst on a locked entry "
+            f"resp={resp}, expected SLVERR from the locked-entry error slave"
+        )
+        after = await self.filt.read_cpu(cell.cfg_addr)
+        assert after == cfg_lo, (
+            f"CHK-CONFIG-LOCK FAIL: FILTER_CONFIG moved under the lock "
+            f"(0x{after:08x} != 0x{cfg_lo:08x}); allow_burst is "
+            f"{bool(after & F_ALLOW_BURST)}, was {bool(cfg_lo & F_ALLOW_BURST)}"
+        )
+        resp = await self.filt.write_tolerant(cell.cfg_addr + 4, 0)
+        assert resp == RESP_SLVERR, (
+            f"CHK-CONFIG-LOCK FAIL: write clearing locked resp={resp}, "
+            f"expected SLVERR (write-once-set)"
+        )
+        hi_after = await self.filt.read_cpu(cell.cfg_addr + 4)
+        assert (hi_after >> FILTER_LOCKED_HI_BIT) & 1, (
+            f"CHK-CONFIG-LOCK FAIL: locked cleared (hi 0x{hi_after:08x})"
+        )
+        # The frozen bit still drives the hardware, not just the CSR readback.
+        probe_addr, probe_val = wcfg.staged[1]
+        resp, data = await self._ext_read(probe_addr)
+        assert resp == RESP_OKAY and data == probe_val, (
+            f"CHK-CONFIG-LOCK FAIL: frozen allow_burst stopped granting the page "
+            f"(0x{probe_addr:08x} resp={resp} rdata=0x{data:08x}, staged "
+            f"0x{probe_val:08x})"
+        )
+        self.logger.info(
+            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst returns "
+            "SLVERR and FILTER_CONFIG lo stays 0x%08x (allow_burst=%d), clearing "
+            "locked returns SLVERR and the bit stays set, and the frozen granule "
+            "still grants 0x%08x",
+            wcfg.entry,
+            after,
+            bool(after & F_ALLOW_BURST),
+            probe_addr,
+        )
+
     async def _bring_up_prod_filter_active(self) -> None:
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
         image = self.select_efuse_image(
@@ -334,7 +565,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         # security_disable read from the DUT rather than passed as a literal. This
-        # entry value-checks FEAT_CTRL against the Phase 1 lifecycle golden, so every
+        # entry value-checks FEAT_CTRL against the lifecycle golden, so every
         # input to that golden should be observed where it can be; sec_dis can be, via
         # lcc_security_disable_probe_o.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
@@ -547,3 +778,5 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self.logger.info(
             "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)"
         )
+
+        await self._check_page_widen(mcfg)
