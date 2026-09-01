@@ -31,16 +31,29 @@ in a separate fabric/mailbox peer-path testcase if we keep it permanently.
 from __future__ import annotations
 
 import pyuvm
-
+from env.sep_mbox_golden import (
+    ERR_READ,
+    ERR_WRITE,
+    ERROR_FLAGS,
+    IRQ_EIRQ,
+    IRQ_WTIRQ,
+    IRQEN,
+    IRQP,
+    IRQS,
+    READ_EMPTY_SENTINEL,
+    RESP_OKAY,
+    RESP_SLVERR,
+    ST_EMPTY,
+    ST_FULL,
+    ST_RLVL_ABOVE,
+    ST_WLVL_ABOVE,
+    STATUS,
+    WIRQT,
+    SepMboxCfg,
+    SepMboxGolden,
+)
 from sep_base_test import sep_base_test
 from seq_lib.sep_mailbox_iface_seq import SepMbox
-from env.sep_mbox_golden import (
-    SepMboxCfg, SepMboxGolden,
-    STATUS, ERROR_FLAGS, WIRQT, IRQS, IRQEN, IRQP, CTRL,
-    ST_EMPTY, ST_FULL, ST_WLVL_ABOVE, ST_RLVL_ABOVE,
-    IRQ_WTIRQ, IRQ_EIRQ, ERR_READ, ERR_WRITE,
-    READ_EMPTY_SENTINEL, RESP_OKAY, RESP_SLVERR,
-)
 
 
 @pyuvm.test()
@@ -50,8 +63,12 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
     async def _check_status(self, where: str) -> None:
         st = await self.mb.rd_csr(STATUS)
         g = self.gold.status()
-        got = {"full": bool(st & ST_FULL), "wlvl_above": bool(st & ST_WLVL_ABOVE),
-               "empty": bool(st & ST_EMPTY), "rlvl_above": bool(st & ST_RLVL_ABOVE)}
+        got = {
+            "full": bool(st & ST_FULL),
+            "wlvl_above": bool(st & ST_WLVL_ABOVE),
+            "empty": bool(st & ST_EMPTY),
+            "rlvl_above": bool(st & ST_RLVL_ABOVE),
+        }
         assert got == g, (
             f"[{where}] STATUS {got} != golden {g} "
             f"(tx={self.gold.tx} wirqt={self.gold.wirqt} STATUS=0x{st:08x})"
@@ -89,16 +106,16 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         assert (data & 0xFFFF_FFFF) == READ_EMPTY_SENTINEL, (
             f"read-from-empty data=0x{data:016x}, expected sentinel 0x{READ_EMPTY_SENTINEL:08x}"
         )
-        err = await self.mb.rd_csr(ERROR_FLAGS)              # read-clear
+        err = await self.mb.rd_csr(ERROR_FLAGS)  # read-clear
         assert err & ERR_READ, f"ERROR_FLAGS.read_error not set after read-empty (0x{err:08x})"
-        err2 = await self.mb.rd_csr(ERROR_FLAGS)             # read again -> cleared
+        err2 = await self.mb.rd_csr(ERROR_FLAGS)  # read again -> cleared
         assert (err2 & ERR_READ) == 0, f"ERROR_FLAGS.read_error not read-cleared (0x{err2:08x})"
         self.logger.info(
             "CHK-ERR-RD PASS: read-empty -> SLVERR + 0xFEEDDEAD + ERROR_FLAGS.read_error (read-clear)"
         )
         irqs = await self.mb.rd_csr(IRQS)
         assert irqs & IRQ_EIRQ, f"IRQS.eirq not set after read-empty (0x{irqs:08x})"
-        await self.mb.wr_csr(IRQS, IRQ_EIRQ)                 # W1C
+        await self.mb.wr_csr(IRQS, IRQ_EIRQ)  # W1C
         irqs2 = await self.mb.rd_csr(IRQS)
         assert (irqs2 & IRQ_EIRQ) == 0, f"IRQS.eirq not W1C-cleared (0x{irqs2:08x})"
         self.logger.info("CHK-ERR-IRQ PASS: read-empty -> IRQS.eirq set + W1C -> 0")
@@ -147,13 +164,14 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             f"IRQS.wtirq dropped when IRQEN was cleared (0x{irqs_held:08x})"
         )
         await self.mb.wr_csr(IRQEN, IRQ_WTIRQ)
-        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)                # W1C while still above
+        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)  # W1C while still above
         reassert = await self.mb.rd_csr(IRQS)
         assert reassert & IRQ_WTIRQ, "wtirq should re-assert after W1C while still above threshold"
         self.logger.info(
             "CHK-WIRQT PASS: write-threshold IRQ set (tx=%d>%d), IRQP gated by IRQEN "
             "(drops when enable is cleared, IRQS stays), level-held re-assert",
-            self.gold.tx, self.gold.wirqt,
+            self.gold.tx,
+            self.gold.wirqt,
         )
         # Phase 2 -- top up to full.
         for i in range(self.cfg_mb.first_batch, self.cfg_mb.depth):
@@ -161,10 +179,14 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             self.gold.push()
             await self._check_status("push64-fill")
         st = await self.mb.rd_csr(STATUS)
-        assert st & ST_FULL, f"TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
+        assert st & ST_FULL, (
+            f"TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
+        )
         self.logger.info(
             "CHK-64B PASS: %d native 64-bit WRITE_DATA pushes (random data, first batch=%d) "
-            "-> exactly full (1 entry/beat)", self.cfg_mb.depth, self.cfg_mb.first_batch,
+            "-> exactly full (1 entry/beat)",
+            self.cfg_mb.depth,
+            self.cfg_mb.first_batch,
         )
         # No separate CHK-STATUS line: the STATUS comparison is _check_status, called
         # after every push above, and a bare summary log with no assert behind it reads
@@ -180,7 +202,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         self.logger.info("CHK-ERR-WR PASS: write-to-full -> SLVERR + ERROR_FLAGS.write_error")
         irqs = await self.mb.rd_csr(IRQS)
         assert irqs & IRQ_EIRQ, f"IRQS.eirq not set after write-full (0x{irqs:08x})"
-        await self.mb.wr_csr(IRQS, IRQ_EIRQ)                 # W1C
+        await self.mb.wr_csr(IRQS, IRQ_EIRQ)  # W1C
         irqs2 = await self.mb.rd_csr(IRQS)
         assert (irqs2 & IRQ_EIRQ) == 0, f"write-full IRQS.eirq not W1C-cleared (0x{irqs2:08x})"
         self.logger.info("CHK-ERR-WR-IRQ PASS: write-full -> IRQS.eirq set + W1C -> 0")
@@ -191,7 +213,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self.mb.flush_write()
         self.gold.flush()
         await self._check_status("after-flush")
-        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)                # W1C, now tx=0<=wirqt
+        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)  # W1C, now tx=0<=wirqt
         irqs = await self.mb.rd_csr(IRQS)
         assert (irqs & IRQ_WTIRQ) == 0, f"wtirq not cleared by W1C after flush (0x{irqs:08x})"
         self.logger.info("CHK-FLUSH PASS: CTRL.wflush drained TX -> not-full + wtirq W1C -> 0")

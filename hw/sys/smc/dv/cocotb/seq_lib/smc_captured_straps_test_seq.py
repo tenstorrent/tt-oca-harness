@@ -57,9 +57,7 @@ class smc_captured_straps_test_seq(SmcCsrSeq):
         dut.tb_captured_straps.value = 0
         lo0, hi0 = await self._await_straps(0, 0, "IDLE")
         self.idle_ok = True
-        cocotb.log.info(
-            "CHK-STRAP-IDLE: STRAPS_LO=0x%x STRAPS_HI=0x%x pin=0", lo0, hi0
-        )
+        cocotb.log.info("CHK-STRAP-IDLE: STRAPS_LO=0x%x STRAPS_HI=0x%x pin=0", lo0, hi0)
 
         dut.tb_captured_straps.value = _pack(_LO_A, _HI_A)
         lo1, hi1 = await self._await_straps(_LO_A, _HI_A, "PAT_A")

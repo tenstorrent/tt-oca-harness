@@ -49,9 +49,7 @@ class OcahAxiMasterAgent:
         if en_monitor:
             from .ocah_axi_monitor import OcahAxiMonitor
 
-            self.monitor = OcahAxiMonitor(
-                axi4_intf, clock, name=f"{self.driver.name}.monitor"
-            )
+            self.monitor = OcahAxiMonitor(axi4_intf, clock, name=f"{self.driver.name}.monitor")
 
     @classmethod
     def from_prefix(

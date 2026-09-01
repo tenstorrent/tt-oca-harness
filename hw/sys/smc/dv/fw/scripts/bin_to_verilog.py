@@ -49,14 +49,10 @@ def write_verilog(in_file: str, out_file: str, data_width: int) -> None:
             for byte in data:
                 file.write(f"{byte:02x}\n")
         elif data_width == 1:
-            file.writelines(
-                f"{(byte >> bit) & 1:x}\n" for byte in data for bit in range(7, -1, -1)
-            )
+            file.writelines(f"{(byte >> bit) & 1:x}\n" for byte in data for bit in range(7, -1, -1))
         elif data_width == 72:
             chunks = (data[offset : offset + 8] for offset in range(0, len(data), 8))
-            words = (
-                int.from_bytes(chunk.ljust(8, b"\0"), byteorder="little") for chunk in chunks
-            )
+            words = (int.from_bytes(chunk.ljust(8, b"\0"), byteorder="little") for chunk in chunks)
             file.writelines(f"{_rocket_ecc_72(word):018x}\n" for word in words)
         else:
             raise ValueError(f"unsupported data width {data_width}")

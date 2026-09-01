@@ -32,7 +32,6 @@ not this smoke.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 

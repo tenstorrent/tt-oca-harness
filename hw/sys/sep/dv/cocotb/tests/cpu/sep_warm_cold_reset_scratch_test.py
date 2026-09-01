@@ -40,16 +40,14 @@ data is read).
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
-
 import pyuvm
-
+from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 from seq_lib.sep_scratch_reset_seq import (
-    SCRATCH_COLD_0,
-    SCRATCH_WARM_0,
-    SCRATCH_RESET_DEFAULT,
     COLD_PATTERN,
+    SCRATCH_COLD_0,
+    SCRATCH_RESET_DEFAULT,
+    SCRATCH_WARM_0,
     WARM_PATTERN,
     WARM_PATTERN2,
     SepScratchReset,
@@ -87,55 +85,65 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         warm_rb = await self.scr.read(SCRATCH_WARM_0)
         cold_rb = await self.scr.read(SCRATCH_COLD_0)
         assert warm_rb == WARM_PATTERN, (
-            f"CHK-NONVAC warm write/readback 0x{warm_rb:08x} != 0x{WARM_PATTERN:08x}")
+            f"CHK-NONVAC warm write/readback 0x{warm_rb:08x} != 0x{WARM_PATTERN:08x}"
+        )
         assert cold_rb == COLD_PATTERN, (
-            f"CHK-NONVAC cold write/readback 0x{cold_rb:08x} != 0x{COLD_PATTERN:08x}")
+            f"CHK-NONVAC cold write/readback 0x{cold_rb:08x} != 0x{COLD_PATTERN:08x}"
+        )
         probe0 = self._scratch_cold_probe(0)
         assert probe0 == COLD_PATTERN, (
-            f"CHK-NONVAC cold probe 0x{probe0:08x} != 0x{COLD_PATTERN:08x}")
+            f"CHK-NONVAC cold probe 0x{probe0:08x} != 0x{COLD_PATTERN:08x}"
+        )
         self.logger.info(
             "CHK-NONVAC PASS: SCRATCH_WARM[0]=0x%08x SCRATCH_COLD[0]=0x%08x (probe agrees)",
-            warm_rb, cold_rb)
+            warm_rb,
+            cold_rb,
+        )
 
         # --- CHK-WARM-RST: wdt_rst_ni pulse drives sep_cpu_reset_n 1->0->1 ---
         await self._check_reset_obs(
-            dut.sep_cpu_reset_n_o, "CHK-WARM-RST baseline sep_cpu_reset_n", 1)
+            dut.sep_cpu_reset_n_o, "CHK-WARM-RST baseline sep_cpu_reset_n", 1
+        )
         dut.wdt_rst_ni_i.value = 0
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset_obs(
-            dut.sep_cpu_reset_n_o, "CHK-WARM-RST asserted sep_cpu_reset_n", 0)
+            dut.sep_cpu_reset_n_o, "CHK-WARM-RST asserted sep_cpu_reset_n", 0
+        )
         dut.wdt_rst_ni_i.value = 1
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset_obs(
-            dut.sep_cpu_reset_n_o, "CHK-WARM-RST released sep_cpu_reset_n", 1)
-        self.logger.info(
-            "CHK-WARM-RST PASS: warm reset asserted and released sep_cpu_reset_n")
+            dut.sep_cpu_reset_n_o, "CHK-WARM-RST released sep_cpu_reset_n", 1
+        )
+        self.logger.info("CHK-WARM-RST PASS: warm reset asserted and released sep_cpu_reset_n")
 
         # --- CHK-WARM-CLEAR: warm bank cleared by the warm reset ---
         warm_post = await self.scr.read(SCRATCH_WARM_0)
         assert warm_post == SCRATCH_RESET_DEFAULT, (
             f"CHK-WARM-CLEAR SCRATCH_WARM[0]=0x{warm_post:08x} != reset default "
-            f"0x{SCRATCH_RESET_DEFAULT:08x}")
-        self.logger.info(
-            "CHK-WARM-CLEAR PASS: SCRATCH_WARM[0] cleared to 0x%08x", warm_post)
+            f"0x{SCRATCH_RESET_DEFAULT:08x}"
+        )
+        self.logger.info("CHK-WARM-CLEAR PASS: SCRATCH_WARM[0] cleared to 0x%08x", warm_post)
 
         # --- CHK-WARM-RETAIN: cold bank survives the warm reset ---
         cold_post = await self.scr.read(SCRATCH_COLD_0)
         assert cold_post == COLD_PATTERN, (
-            f"CHK-WARM-RETAIN SCRATCH_COLD[0]=0x{cold_post:08x} != 0x{COLD_PATTERN:08x}")
+            f"CHK-WARM-RETAIN SCRATCH_COLD[0]=0x{cold_post:08x} != 0x{COLD_PATTERN:08x}"
+        )
         probe_post = self._scratch_cold_probe(0)
         assert probe_post == COLD_PATTERN, (
-            f"CHK-WARM-RETAIN cold probe 0x{probe_post:08x} != 0x{COLD_PATTERN:08x}")
+            f"CHK-WARM-RETAIN cold probe 0x{probe_post:08x} != 0x{COLD_PATTERN:08x}"
+        )
         self.logger.info(
-            "CHK-WARM-RETAIN PASS: SCRATCH_COLD[0] retained 0x%08x (probe agrees)", cold_post)
+            "CHK-WARM-RETAIN PASS: SCRATCH_COLD[0] retained 0x%08x (probe agrees)", cold_post
+        )
 
         # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
         warm_rec = await self.scr.read(SCRATCH_WARM_0)
         assert warm_rec == WARM_PATTERN2, (
-            f"CHK-WARM-RECOVER SCRATCH_WARM[0]=0x{warm_rec:08x} != 0x{WARM_PATTERN2:08x}")
-        self.logger.info(
-            "CHK-WARM-RECOVER PASS: SCRATCH_WARM[0] re-written 0x%08x", warm_rec)
+            f"CHK-WARM-RECOVER SCRATCH_WARM[0]=0x{warm_rec:08x} != 0x{WARM_PATTERN2:08x}"
+        )
+        self.logger.info("CHK-WARM-RECOVER PASS: SCRATCH_WARM[0] re-written 0x%08x", warm_rec)
 
         # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than the reference suite) ---
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
@@ -147,15 +155,20 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         cold_cold = await self.scr.read(SCRATCH_COLD_0)
         warm_cold = await self.scr.read(SCRATCH_WARM_0)
         assert cold_cold == SCRATCH_RESET_DEFAULT, (
-            f"CHK-COLD-REINIT SCRATCH_COLD[0]=0x{cold_cold:08x} != reset default")
+            f"CHK-COLD-REINIT SCRATCH_COLD[0]=0x{cold_cold:08x} != reset default"
+        )
         assert warm_cold == SCRATCH_RESET_DEFAULT, (
-            f"CHK-COLD-REINIT SCRATCH_WARM[0]=0x{warm_cold:08x} != reset default")
+            f"CHK-COLD-REINIT SCRATCH_WARM[0]=0x{warm_cold:08x} != reset default"
+        )
         probe_cold = self._scratch_cold_probe(0)
         assert probe_cold == SCRATCH_RESET_DEFAULT, (
-            f"CHK-COLD-REINIT cold probe 0x{probe_cold:08x} != reset default")
+            f"CHK-COLD-REINIT cold probe 0x{probe_cold:08x} != reset default"
+        )
         self.logger.info(
-            "CHK-COLD-REINIT PASS: both scratch banks reset to 0x%08x", SCRATCH_RESET_DEFAULT)
+            "CHK-COLD-REINIT PASS: both scratch banks reset to 0x%08x", SCRATCH_RESET_DEFAULT
+        )
 
         self.logger.info(
             "warm/cold reset scratch PASS: warm/cold reset scratch-bank domain partition verified "
-            "(nonvac / warm-rst / warm-clear / warm-retain / warm-recover / cold-reinit)")
+            "(nonvac / warm-rst / warm-clear / warm-retain / warm-recover / cold-reinit)"
+        )

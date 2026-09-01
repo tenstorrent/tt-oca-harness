@@ -11,7 +11,6 @@ from .smc_addr_map import (
     HANG_DET_DATA_ACCEL_CTRL,
     HANG_DET_ENABLE,
     HANG_DET_FIRE,
-    HANG_DET_IRQ_EN,
     HANG_DET_IRQ_TEST,
     HANG_DET_SEP_AXI_CTRL,
     HANG_DET_SYS_AXI_CTRL,
@@ -62,9 +61,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
                         f"{label}: {name} rose (last={last[name]}) while gated/cleared"
                     )
             if want_high:
-                if all(
-                    last[n].is_resolvable and int(last[n]) == 1 for n in want_high
-                ):
+                if all(last[n].is_resolvable and int(last[n]) == 1 for n in want_high):
                     return
             elif cycle + 1 == _IRQ_BOUND:
                 return
@@ -103,9 +100,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             await self._await_irqs(dut, expect_fire, f"{label}_FIRE")
             cocotb.log.info("CHK-HANG-%s-FIRE: source=1 OR=1 others=0", label)
             await self.csr_write(f"HANG_{label}_CLR", addr, 0)
-            await self._await_irqs(
-                dut, {pin: 0, "tb_axi_hang_irq": 0}, f"{label}_CLR"
-            )
+            await self._await_irqs(dut, {pin: 0, "tb_axi_hang_irq": 0}, f"{label}_CLR")
             cocotb.log.info("CHK-HANG-%s-CLR: source=0 OR=0", label)
         self.per_source_ok = True
 
@@ -139,9 +134,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
         cocotb.log.info("CHK-HANG-OR-HOLD: DATA keeps OR=1 after SYS+SEP clear")
 
         await self.csr_write("HANG_DATA_OR_DROP", HANG_DET_DATA_ACCEL_CTRL, 0)
-        await self._await_irqs(
-            dut, {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_data": 0}, "OR_CLR"
-        )
+        await self._await_irqs(dut, {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_data": 0}, "OR_CLR")
         self.or_ok = True
         cocotb.log.info("CHK-HANG-OR-CLR: OR=0 after last detector clear")
         cocotb.log.info(

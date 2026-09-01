@@ -31,7 +31,7 @@ import random
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
+from env import cocotb_compat as _cocotb_compat
 from ocah_jtag_vip import OcahJtagMasterSequence
 from seq_lib.smu_jtag_helpers import (
     DTP_BSR_MODEL_LEN,
@@ -40,8 +40,6 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
 )
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 

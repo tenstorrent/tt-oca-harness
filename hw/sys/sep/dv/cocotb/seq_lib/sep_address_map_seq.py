@@ -45,10 +45,10 @@ SW_RESET_N is reachable on the CPU LSU; this sequence value-checks its reset.
 
 from __future__ import annotations
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
 from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, SEP_RESET_CTRL, iter_registers, sym
+
 from seq_lib.sep_abr_keygen_seq import ABR_NAME0, NAME0_EXP
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
@@ -161,8 +161,8 @@ if _INFILT0_CFG_RESET is None:
 FABRIC_BLOCKS = [
     ("SECURE_DMA", 0x1080_0000, None),
     ("WDT_TIMER", 0x1080_1000, None),
-    ("SEP_SCRATCH_COLD", 0x1080_2000, None),        # SCRATCH[0] (RW)
-    ("SEP_SCRATCH_WARM", 0x1080_2080, None),        # SCRATCH[0] (RW)
+    ("SEP_SCRATCH_COLD", 0x1080_2000, None),  # SCRATCH[0] (RW)
+    ("SEP_SCRATCH_WARM", 0x1080_2080, None),  # SCRATCH[0] (RW)
     # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC/TRNG[5:1]=1
     # released. The reference suite's ext_axi reg-walk delegates this register
     # (it cannot reach it); the CPU LSU path reads it safely, since a read has no
@@ -178,19 +178,19 @@ FABRIC_BLOCKS = [
     ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
     # CSRNG/EDN are OpenTitan blocks not exported by the SEP RDL header; their
     # INTR_STATE-resets-to-0 is an OpenTitan-wide invariant.
-    ("DRBG_CSRNG", 0x1091_5000, 0x0000_0000),       # INTR_STATE
-    ("DRBG_EDN", 0x1091_5800, 0x0000_0000),         # INTR_STATE
-    ("ENTROPY_SRC", 0x1091_6000, None),             # INTR_STATE hw-driven
-    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),         # MLDSA_NAME[0]
-    ("ENTROPY_POOL", POOL_STATUS, None),            # status only; never pop
-    ("SEP_LIFECYCLE", 0x1091_8000, None),           # FEAT_CTRL (RO, hw-driven)
-    ("KM_MAILBOX", 0x1092_000C, None),              # SEP_STATUS (offset 0 is write-only)
+    ("DRBG_CSRNG", 0x1091_5000, 0x0000_0000),  # INTR_STATE
+    ("DRBG_EDN", 0x1091_5800, 0x0000_0000),  # INTR_STATE
+    ("ENTROPY_SRC", 0x1091_6000, None),  # INTR_STATE hw-driven
+    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]
+    ("ENTROPY_POOL", POOL_STATUS, None),  # status only; never pop
+    ("SEP_LIFECYCLE", 0x1091_8000, None),  # FEAT_CTRL (RO, hw-driven)
+    ("KM_MAILBOX", 0x1092_000C, None),  # SEP_STATUS (offset 0 is write-only)
     ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),  # LC_STATE shadow
     ("AXIL_MAILBOX", 0x10A0_0000, None),
     ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),  # FILTER_CONFIG entry 0
-    ("ALIAS_REMAP", 0x10A1_0000, None),             # region_start
-    ("AP_OUTPUT_REMAP", 0x10A1_0200, None),         # output-remap region
-    ("OT_SPI_HOST", 0x10B0_0000, None),             # INTR_STATUS
+    ("ALIAS_REMAP", 0x10A1_0000, None),  # region_start
+    ("AP_OUTPUT_REMAP", 0x10A1_0200, None),  # output-remap region
+    ("OT_SPI_HOST", 0x10B0_0000, None),  # INTR_STATUS
 ]
 
 
@@ -257,8 +257,9 @@ class sep_address_map_seq(uvm_sequence):
             BASE + ref_off, expected=ref_reset & 0xFFFF_FFFF, name="REFERENCE_COUNTER_lo"
         )
         self.ref_counter_high = await self._read(
-            BASE + ref_off + 4, expected=(ref_reset >> 32) & 0xFFFF_FFFF,
-            name="REFERENCE_COUNTER_hi"
+            BASE + ref_off + 4,
+            expected=(ref_reset >> 32) & 0xFFFF_FFFF,
+            name="REFERENCE_COUNTER_hi",
         )
 
         for name, pattern in BASE_ADDR_RW:

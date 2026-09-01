@@ -136,4 +136,3 @@ def coverage_value(result: dict[str, Any], name: str) -> Any:
     if name == "total":
         return coverage.get("total_percent")
     return coverage.get(f"{name}_percent", source.get(f"coverage_{name}"))
-

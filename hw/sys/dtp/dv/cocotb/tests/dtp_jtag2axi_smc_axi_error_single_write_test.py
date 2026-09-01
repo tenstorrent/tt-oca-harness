@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_smc_axi_error_single_write_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_error_test_seq import dtp_jtag2axi_error_test_seq

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_otp_smc_series_error_test_seq import (
     smu_dtp_otp_smc_series_error_test_seq,
 )
@@ -24,6 +23,5 @@ class smu_dtp_otp_smc_series_error_test(smu_base_test):
         seq = smu_dtp_otp_smc_series_error_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (
-            f"otp_smc_series_error incomplete s1={seq.s1_ok} s2={seq.s2_ok} "
-            f"s3={seq.s3_ok}"
+            f"otp_smc_series_error incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok}"
         )

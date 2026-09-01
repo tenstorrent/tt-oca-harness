@@ -48,15 +48,14 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
+from sep_base_test import sep_base_test
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
     LCC_FEAT_CTRL,
     RESP_DECERR,
+    SepExtAxiProbeSeq,
     SepLccDemoteSeq,
     SepLccFeatCtrlCheckSeq,
-    SepExtAxiProbeSeq,
 )
 
 _MAX_SENSE_CYCLES = 20_000
@@ -87,7 +86,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         self.logger.info(
             "sensed OTP LC_STATE=%s; SIP_DIS=0x%016x SYS_DIS=0x%016x",
-            lc_state_name(image.lc_raw()), _SIP_DIS, _SYS_DIS,
+            lc_state_name(image.lc_raw()),
+            _SIP_DIS,
+            _SYS_DIS,
         )
 
         # security_disable read from the DUT, not assumed. It asserts only after a
@@ -125,7 +126,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
         self.logger.info(
             "CHK-PROD-BLOCK PASS: external AXI @0x%08x blocked with DECERR (resp=%d)",
-            LCC_FEAT_CTRL, probe_prod.resp_code,
+            LCC_FEAT_CTRL,
+            probe_prod.resp_code,
         )
 
         # ---- CHK-DEMOTE-INDEP: DEMOTE_2 alone must open DBG_2 and NOT DBG_1 ----
@@ -143,8 +145,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         await self.start_seq(demote2)
         assert demote2.demote == 1, f"DEMOTE_2.demote read back {demote2.demote}, expected 1"
 
-        feat_d2 = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS,
-                                     demote_1=0, demote_2=1, sec_dis=sec_dis)
+        feat_d2 = feat_ctrl_expected(
+            LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, demote_2=1, sec_dis=sec_dis
+        )
         ctl_d2 = SepLccFeatCtrlCheckSeq(feat_d2)
         await self.start_seq(ctl_d2)
         assert ctl_d2.sep_debug == 0, (
@@ -162,7 +165,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DEMOTE-INDEP PASS: DEMOTE_2 alone opened DBG_2 and left DBG_1 closed "
-            "(sep_debug=0), so the two demote registers act per-group")
+            "(sep_debug=0), so the two demote registers act per-group"
+        )
 
         probe_d2 = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
         await self.start_ext_seq(probe_d2)
@@ -172,7 +176,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DEMOTE-INDEP PASS: external AXI still DECERR under DEMOTE_2 alone "
-            "(filter follows DBG_1, not DBG_2)")
+            "(filter follows DBG_1, not DBG_2)"
+        )
 
         # ---- flip PROD -> PROD_DBG_1 via DEMOTE_1 ----
         demote = SepLccDemoteSeq(group=1)
@@ -182,8 +187,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # ---- PROD_DBG_1: sep_debug=1, inbound filter skipped -> external allowed ----
         # demote_2 stays 1: the field is write-once-set, so the golden must carry both.
-        feat_dbg = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS,
-                                      demote_1=1, demote_2=1, sec_dis=sec_dis)
+        feat_dbg = feat_ctrl_expected(
+            LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=1, demote_2=1, sec_dis=sec_dis
+        )
         ctl_dbg = SepLccFeatCtrlCheckSeq(feat_dbg)
         await self.start_seq(ctl_dbg)
         assert ctl_dbg.sep_debug == 1, (
@@ -220,7 +226,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         self.logger.info(
             "CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0x%08x_%08x == golden "
             "(lo word 0x%08x is distinctive -> external read reached the LCC)",
-            probe_hi.rdata, probe_lo.rdata, exp_lo,
+            probe_hi.rdata,
+            probe_lo.rdata,
+            exp_lo,
         )
 
         # ---- filter_skip_i identity + non-vacuity ----
@@ -235,7 +243,5 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             "CHK-IDENTITY PASS: external inbound access follows feat_ctrl.sep_debug "
             "(blocked@sep_debug=0 -> allowed@sep_debug=1)"
         )
-        self.logger.info(
-            "CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed"
-        )
+        self.logger.info("CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed")
         self.logger.info("SEP LCC inbound-filter-gating test PASS")

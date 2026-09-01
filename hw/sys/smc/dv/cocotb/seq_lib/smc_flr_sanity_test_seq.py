@@ -10,13 +10,12 @@ stability, and prove the SEP_IN AXI CSR path recovers afterwards.
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
@@ -69,12 +68,13 @@ class smc_flr_sanity_test_seq(smc_base_test_seq):
         dut = cocotb.top
         await self.wait_fuse_sense_done()
 
-        await self._read("CHIP_CONFIG_VERSION_LO_BASELINE", CHIP_CONFIG_VERSION_LO,
-                         expected=CHIP_CONFIG_VERSION_LO_VALUE)
-        await self._write("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0,
-                          SCRATCH_PATTERN)
-        await self._read("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0,
-                         expected=SCRATCH_PATTERN)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO_BASELINE",
+            CHIP_CONFIG_VERSION_LO,
+            expected=CHIP_CONFIG_VERSION_LO_VALUE,
+        )
+        await self._write("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0, SCRATCH_PATTERN)
+        await self._read("SCRATCH_COLD_WARM_0_PRE", SCRATCH_COLD_WARM_0, expected=SCRATCH_PATTERN)
 
         await self._reset_op("cool_rst_lo", SmcResetOp.COOL_RST_LO)
         await ClockCycles(dut.clk_ref_i, 20)
@@ -82,18 +82,17 @@ class smc_flr_sanity_test_seq(smc_base_test_seq):
         await ClockCycles(dut.clk_ref_i, 800)
         await self._sample_reset("post_cool_reset")
 
-        await self._read("CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO,
-                         expected=CHIP_CONFIG_VERSION_LO_VALUE)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO_RECOVERY",
+            CHIP_CONFIG_VERSION_LO,
+            expected=CHIP_CONFIG_VERSION_LO_VALUE,
+        )
         await self._write("SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0, 0)
-        await self._read("SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0,
-                         expected=0)
+        await self._read("SCRATCH_COLD_WARM_0_RESTORE", SCRATCH_COLD_WARM_0, expected=0)
 
         for s in self.samples:
             assert s.resolvable, f"unresolved FLR sample: {s.get_name()}"
-            assert s.powergood_stable == 1, \
-                f"powergood unstable at {s.get_name()}"
-            assert s.rst_primary_ref_clk_n == 1, \
-                f"primary ref reset asserted at {s.get_name()}"
-            assert s.rst_primary_smc_clk_n == 1, \
-                f"primary smc reset asserted at {s.get_name()}"
+            assert s.powergood_stable == 1, f"powergood unstable at {s.get_name()}"
+            assert s.rst_primary_ref_clk_n == 1, f"primary ref reset asserted at {s.get_name()}"
+            assert s.rst_primary_smc_clk_n == 1, f"primary smc reset asserted at {s.get_name()}"
         assert self.accesses == 6, "expected FLR sanity CSR access sequence"

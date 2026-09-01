@@ -52,5 +52,85 @@ interface dtp_tb_if;
     logic [31:0] smc_otp_axil_awvalid_count;
     logic [31:0] smc_otp_axil_wvalid_count;
     logic [31:0] smc_otp_axil_arvalid_count;
+    logic [31:0] sep_otp_axil_awvalid_count;
+    logic [31:0] sep_otp_axil_wvalid_count;
+    logic [31:0] sep_otp_axil_arvalid_count;
+
+    // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
+    // boot-stall outputs and the flattened IC_RESET slice outputs.
+    logic stop_clks;
+    logic cla_clock_stop_en;
+    logic jtag_boot_stall;
+    logic jtag_boot_stall_ovrd;
+    logic jtag_ic_reset_smc_ovrd;
+    logic jtag_ic_reset_smc_ctrl_n;
+    logic jtag_ic_reset_sep_ovrd;
+    logic jtag_ic_reset_sep_ctrl_n;
+    logic jtag_ic_reset_ext_ovrd;
+    logic jtag_ic_reset_ext_ctrl_n;
+
+    // CLA clock-stop request vector (driven by debug-TDR sequences; init
+    // quiescent so unrelated tests see no requests).
+    logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
+
+    // Scan-network observables (driven by tb_top): iJTAG SIB scan controls,
+    // STAP forwarding pins, and the extended STAP host scan controls for
+    // the scan-scenario temporal windows.
+    logic jtag_dft_secure_select;
+    logic jtag_dft_secure_shift_en;
+    logic jtag_dft_secure_capture_en;
+    logic jtag_dft_secure_update_en;
+    logic jtag_dft_select;
+    logic jtag_dft_shift_en;
+    logic jtag_dft_capture_en;
+    logic jtag_dft_update_en;
+    logic jtag_dfd_select;
+    logic jtag_dfd_shift_en;
+    logic jtag_dfd_capture_en;
+    logic jtag_dfd_update_en;
+    logic jtag_stap_io_tms;
+    logic jtag_stap_io_tdo_oen;
+    logic jtag_stap_smc_tms;
+    logic jtag_stap_smc_tdo_oen;
+    logic jtag_stap_sep_tms;
+    logic jtag_stap_sep_tdo_oen;
+    logic jtag_stap_extra0_tms;
+    logic jtag_stap_extra0_tdo_oen;
+    logic jtag_stap_host_select;
+    logic jtag_stap_host_shift_en;
+    logic jtag_stap_host_capture_en;
+    logic jtag_stap_host_update_en;
+
+    // Cross-trigger CTM/CTP pin surface. Request-side vectors are driven by
+    // the XTRIG sequences (init '0 = quiescent, matching the cocotb agent's
+    // idle state); the remaining vectors are DUT-driven observables. The
+    // internal-CT ports use the src/dst req-ack pairs; the external CTPs use
+    // the pad-cell din/dout/en quartets.
+    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_ack = '0;
+    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req = '0;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din = '0;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din  = '0;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din  = '0;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din = '0;
+
+    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
+    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_ack;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout_en;
+    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din_en;
+
+    // XTRIG CSR request-activity pulse-counter mirrors (driven by tb_top).
+    logic [31:0] xtrig_axil_awvalid_count;
+    logic [31:0] xtrig_axil_wvalid_count;
+    logic [31:0] xtrig_axil_arvalid_count;
 
 endinterface : dtp_tb_if
