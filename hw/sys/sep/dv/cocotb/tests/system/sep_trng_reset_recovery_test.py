@@ -27,7 +27,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, with_timeout
 from env.sep_axi_agent import SepAxiOp
 from env.sep_reg_meta import sym
-from ocah_axi_vip.cocotb.ocah_axi_results import worst_resp
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS

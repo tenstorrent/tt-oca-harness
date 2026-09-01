@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -41,7 +41,9 @@ STEE_REGION_BASE = 0x1180_0000
 # sep_pkg::NUM_*_OUTPUT_REMAP_IDX_START / NUM_*_OUTPUT_REMAP_REGIONS
 IDX_START = 19
 N_REGIONS = 16
-OUTFILT_N_ENTRIES = 16
+# `outbound_filter_ctrl[32]`; the count comes from the export so a seed can
+# select any entry the bank actually has.
+OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 
 # sep_outbound_mbx STDOUT window: always-ready OKAY responder on smn_outbound.
 REMAP_TARGET_BASE = 0x8000_0000

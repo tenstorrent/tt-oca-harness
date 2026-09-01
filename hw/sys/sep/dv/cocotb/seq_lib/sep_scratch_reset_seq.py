@@ -29,7 +29,6 @@ SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")  # cold domain: .arst
 SCRATCH_WARM_0 = sym(
     "SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"
 )  # warm domain: .arst_n(rst_ni && rst_warm_ni)
-SCRATCH_WARM_1 = sym("SEP_SCRATCH_WARM_SCRATCH_1__REG_ADDR")
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
 # Test patterns (mirror the reference sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).

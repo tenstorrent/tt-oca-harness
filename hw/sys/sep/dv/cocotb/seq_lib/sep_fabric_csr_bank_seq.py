@@ -18,8 +18,8 @@ Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
       REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)
   AP   output-remap        : base 0x10A1_0200, stride 0x08; REGION_ATTRS +0x00 (64b)
   STEE output-remap        : base 0x10A1_0300, stride 0x08; REGION_ATTRS +0x00 (64b)
-  Inbound  filter          : base 0x10A2_1000, stride 0x20, 8 entries
-  Outbound filter          : base 0x10A2_0000, stride 0x20, 16 entries
+  Inbound  filter          : base 0x10A2_1000, stride 0x20, 16 entries
+  Outbound filter          : base 0x10A2_0000, stride 0x20, 32 entries
       FILTER_CONFIG +0x00 (64b): read_allowed[0] write_allowed[1] entry_enabled[4] allow_ns[8]
       data_bus_width[14:12]=RO 3, src_id[19:16] group_id[23:20] allow_burst[24],
       locked[63]=woset.  START_ADDR +0x08, END_ADDR +0x10.
@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import SEP_CPU_CTRL, sym
+from sep_reg_meta import SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -96,8 +96,10 @@ FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, excl
 # Bank sizes (entries) for index randomization.
 ALIAS_REGIONS = 16
 REMAP_REGIONS = 16
-INFILT_ENTRIES = 8
-OUTFILT_ENTRIES = 16
+# Both banks are RDL arrays; take the counts from the export so this sweep and
+# the filter-rule sweep cannot disagree about how many entries exist.
+INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
+OUTFILT_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 
 
 class SepFabricCsrCfg:
