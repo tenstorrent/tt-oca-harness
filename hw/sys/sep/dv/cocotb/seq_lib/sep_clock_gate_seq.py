@@ -24,7 +24,7 @@ CLOCK_GATE_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 SW_DEBUG = sym("SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR")
 
-# Discrete witnesses: one CSR per IP family that must still complete OKAY
+# Discrete witnesses: one CSR per IP family that must read the same value
 # whether pka_cg_enable is 0 or 1.
 WITNESSES = (
     ("otbn_status", OTBN_ADDR_STATUS),

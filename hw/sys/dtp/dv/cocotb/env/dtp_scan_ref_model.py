@@ -45,10 +45,7 @@ class DtpIjtagSibModel:
     def gates(dbg_disable: Mapping[str, int] | None = None) -> dict[str, int]:
         """Per-SIB gate state from the direct disables (1 = SIB gated)."""
         dbg = dict(dbg_disable or {})
-        return {
-            name: int(dbg.get(IJTAG_SIB_DISABLE[name], 0)) & 1
-            for name in IJTAG_SIB_ORDER
-        }
+        return {name: int(dbg.get(IJTAG_SIB_DISABLE[name], 0)) & 1 for name in IJTAG_SIB_ORDER}
 
     @staticmethod
     def pattern_dict(pattern: int) -> dict[str, int]:
@@ -67,7 +64,9 @@ class DtpIjtagSibModel:
         chain_len = IJTAG_SIB_COUNT + sum(
             IJTAG_INSTRUMENT_WIDTHS[name] for name in IJTAG_SIB_ORDER if effective[name]
         )
-        return IjtagSibState(requested=requested, effective=effective, gated=gated, chain_len=chain_len)
+        return IjtagSibState(
+            requested=requested, effective=effective, gated=gated, chain_len=chain_len
+        )
 
     @staticmethod
     def expected_tdo(pattern: int, width: int) -> int:
@@ -91,7 +90,9 @@ class Stap3dcrState:
         )
 
     def value(self) -> int:
-        return (self.config_hold & 0x1) | ((self.stap_sel & 0x1) << 1) | ((self.tms_hold & 0x1) << 2)
+        return (
+            (self.config_hold & 0x1) | ((self.stap_sel & 0x1) << 1) | ((self.tms_hold & 0x1) << 2)
+        )
 
 
 class DtpStap3dcrModel:
@@ -167,7 +168,9 @@ class DtpStap3dcrModel:
             raise ValueError(f"scan width {width} < chain length {len(layout)}")
         args = {
             "ptap_select": self.ptap_select if ptap_select is None else ptap_select,
-            "ptap_config_hold": self.ptap_config_hold if ptap_config_hold is None else ptap_config_hold,
+            "ptap_config_hold": self.ptap_config_hold
+            if ptap_config_hold is None
+            else ptap_config_hold,
             "sib_en": dict(sib_en or {}),
             "payloads": dict(payloads or {}),
         }
@@ -212,7 +215,9 @@ class DtpStap3dcrModel:
             self.sib_en[name] = 0
             self.staps[name] = Stap3dcrState()
 
-    def expected_capture(self, dbg_disable: Mapping[str, int] | None = None) -> tuple[int, int, int]:
+    def expected_capture(
+        self, dbg_disable: Mapping[str, int] | None = None
+    ) -> tuple[int, int, int]:
         """(expected, care_mask, chain_len) for a readback with PTAP select=1.
 
         Captured bit j of the TDO stream is the flop at depth chain_len-1-j;
@@ -228,9 +233,14 @@ class DtpStap3dcrModel:
             if field == "splice":
                 continue
             care |= 1 << bit
-            value = self._field_value(owner, field, ptap_select=self.ptap_select,
-                                      ptap_config_hold=self.ptap_config_hold,
-                                      sib_en={}, payloads={})
+            value = self._field_value(
+                owner,
+                field,
+                ptap_select=self.ptap_select,
+                ptap_config_hold=self.ptap_config_hold,
+                sib_en={},
+                payloads={},
+            )
             # A STAP captures its masked stap_sel: 0 while its disable is
             # asserted, even though the stored bit survives the gate.
             if owner != "ptap" and field == "stap_sel" and gates[owner]:
@@ -243,9 +253,7 @@ class DtpStap3dcrModel:
     def gates(dbg_disable: Mapping[str, int] | None = None) -> dict[str, int]:
         """Per-STAP gate state from the direct disables (1 = STAP gated)."""
         dbg = dict(dbg_disable or {})
-        return {
-            name: int(dbg.get(field, 0)) & 1 for name, field in STAP_DISABLE.items()
-        }
+        return {name: int(dbg.get(field, 0)) & 1 for name, field in STAP_DISABLE.items()}
 
     @staticmethod
     def ptap_3dcr_value(*, config_hold: int, select: int) -> int:
@@ -283,4 +291,3 @@ class DtpStap3dcrModel:
         for name in STAP_ORDER:
             self.sib_en[name] = 0
             self.staps[name] = Stap3dcrState()
-

@@ -310,7 +310,9 @@ class OcahJtagMasterDriver:
         """Navigate to a TAP state using a shortest TMS path."""
         target = coerce_jtag_state(state)
         path = jtag_tms_path(self._state, target)
-        self.log.debug("%s: goto_state %s -> %s path=%s", self.name, self._state.name, target.name, path)
+        self.log.debug(
+            "%s: goto_state %s -> %s path=%s", self.name, self._state.name, target.name, path
+        )
         for tms in path:
             await self.step_tms(tms)
 
@@ -335,7 +337,9 @@ class OcahJtagMasterDriver:
         await self.goto_state(target)
         return target
 
-    async def shift_ir(self, value: int, width: int | None = None, *, back_to_rti: bool = False) -> int:
+    async def shift_ir(
+        self, value: int, width: int | None = None, *, back_to_rti: bool = False
+    ) -> int:
         """Shift an integer into IR and return captured TDO bits."""
         width = self._ir_width if width is None else int(width)
         if width <= 0:
@@ -442,7 +446,9 @@ class OcahJtagMasterDriver:
         try:
             return self._devices[int(index)]
         except IndexError as exc:
-            raise OcahJtagMasterDriverError(f"{self.name}: no JTAG device registered at index {index}") from exc
+            raise OcahJtagMasterDriverError(
+                f"{self.name}: no JTAG device registered at index {index}"
+            ) from exc
 
     async def _shift_bits(self, value: int, width: int, *, end_tms: int) -> int:
         captured = 0

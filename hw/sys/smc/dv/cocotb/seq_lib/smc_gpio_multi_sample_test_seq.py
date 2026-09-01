@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_gpio_item import SmcGpioItem, SmcGpioOp
 
 from .smc_base_test_seq import smc_base_test_seq

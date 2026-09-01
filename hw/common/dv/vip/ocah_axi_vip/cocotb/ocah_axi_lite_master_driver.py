@@ -51,6 +51,7 @@ class OcahAxiLiteMasterDriver:
             reset_active_level=reset_active_level,
             **kwargs,
         )
+        self.init_signals()
 
     @classmethod
     def from_prefix(
@@ -77,7 +78,9 @@ class OcahAxiLiteMasterDriver:
         if resolved_clock is None:
             resolved_clock = getattr(axi4_lite_intf, "clk", None)
         if resolved_clock is None:
-            raise ValueError("OcahAxiLiteMasterDriver requires a clock or an interface with aclk/clk")
+            raise ValueError(
+                "OcahAxiLiteMasterDriver requires a clock or an interface with aclk/clk"
+            )
 
         resolved_reset = reset
         if resolved_reset is None:
@@ -87,7 +90,24 @@ class OcahAxiLiteMasterDriver:
         return bus, resolved_clock, resolved_reset
 
     def init_signals(self) -> None:
-        """Compatibility no-op; cocotbext-axi drives idle values at construction."""
+        """Drive the AW/W/AR payload signals to a deterministic 0 idle.
+
+        Called at construction (and idempotent), so the bus idles clean from
+        the moment the driver exists — the backend otherwise initializes
+        source payloads to X (``StreamSource._init_x``), which X-propagates
+        into the DUT on 4-state simulators until the first transaction.
+        Handshake signals stay owned by the backend, which already drives
+        valid low at construction.
+        """
+        for channel in (
+            self._master.write_if.aw_channel,
+            self._master.write_if.w_channel,
+            self._master.read_if.ar_channel,
+        ):
+            handshake = {id(channel.valid), id(channel.ready)}
+            for handle in channel.bus._signals.values():
+                if id(handle) not in handshake:
+                    handle.setimmediatevalue(0)
 
     async def wait_for_reset(self) -> None:
         """Wait until reset deassertion if a reset signal was provided."""
@@ -114,7 +134,9 @@ class OcahAxiLiteMasterDriver:
     ):
         """Start a write and return the cocotb event, matching cocotbext style."""
         target = self._coalesce_addr(address, addr)
-        return self._master.init_write(target, self.data_bytes(data), prot=AxiProt(int(prot)), event=event)
+        return self._master.init_write(
+            target, self.data_bytes(data), prot=AxiProt(int(prot)), event=event
+        )
 
     def init_read(
         self,

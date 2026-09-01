@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import cocotb
-
 from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus
 
 from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
@@ -351,8 +349,12 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             good_addr = self._target_addr(target, idx + 40)
             bad_addr = good_addr + 0x100
             good_data = rng.getrandbits(self.target_cfg(target).data_width)
-            await self.write_target_single_and_check(target, good_addr, good_data, context=f"mixed.good_write.{target}")
-            expected = self.configure_target_error(target, bad_addr, AXI_DECERR, read=True, write=True)
+            await self.write_target_single_and_check(
+                target, good_addr, good_data, context=f"mixed.good_write.{target}"
+            )
+            expected = self.configure_target_error(
+                target, bad_addr, AXI_DECERR, read=True, write=True
+            )
             await self.read_target_single_expect_status(
                 target,
                 bad_addr,
@@ -376,7 +378,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             cfg = self.target_cfg(target)
             size = cfg.default_size
             base = 0x5000 + target_idx * 0x100
-            self.log_iteration(target_idx, len(ROBUST_TARGETS), "target=%s series reset/pipeline/status", target)
+            self.log_iteration(
+                target_idx, len(ROBUST_TARGETS), "target=%s series reset/pipeline/status", target
+            )
             await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
             await self.jtag2axi_series_ctrl(
                 DtpJtag2AxiOp.WRITE,
@@ -408,7 +412,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 )
             _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=target)
             self.assert_equal(f"series_corner.status.{target}", status, DtpJtag2AxiStatus.SUCCESS)
-            self.assert_equal(f"series_corner.addr_after.{target}", addr_after, base + 2 * cfg.beat_bytes)
+            self.assert_equal(
+                f"series_corner.addr_after.{target}", addr_after, base + 2 * cfg.beat_bytes
+            )
             self.operation_count += 1
 
     async def body(self) -> None:

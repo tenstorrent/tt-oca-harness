@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_axi_filter_out_instance_matrix_test_seq import (
     smu_axi_filter_out_instance_matrix_test_seq,
 )
@@ -24,6 +23,5 @@ class smu_axi_filter_out_instance_matrix_test(smu_base_test):
         seq = smu_axi_filter_out_instance_matrix_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_deferred and seq.s3_deferred, (
-            f"out-matrix incomplete s1={seq.s1_ok} "
-            f"s2d={seq.s2_deferred} s3d={seq.s3_deferred}"
+            f"out-matrix incomplete s1={seq.s1_ok} s2d={seq.s2_deferred} s3d={seq.s3_deferred}"
         )

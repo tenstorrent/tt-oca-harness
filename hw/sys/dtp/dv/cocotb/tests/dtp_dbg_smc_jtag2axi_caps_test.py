@@ -3,7 +3,6 @@
 """DTP SMC fabric JTAG2AXI_CAPS test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_smc_jtag2axi_caps_test_seq import dtp_dbg_smc_jtag2axi_caps_test_seq
 

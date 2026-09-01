@@ -87,9 +87,7 @@ class dtp_jtag_tlr_reset_test_seq(dtp_jtag_base_test_seq):
 
         checker.expect_true(
             "CHK-NONVAC",
-            len(set(states)) == len(states)
-            and min(ones_counts) >= 5
-            and idcode_ok == len(states),
+            len(set(states)) == len(states) and min(ones_counts) >= 5 and idcode_ok == len(states),
             context=(
                 f"start_states={len(set(states))} "
                 f"tms_ones={ones_counts} idcode_restored={idcode_ok}/{len(states)}"

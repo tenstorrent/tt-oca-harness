@@ -67,9 +67,7 @@ class smu_axi_crossbar_error_handling_test_seq:
             await jtag.step_tms(hold_tms)
             last = self._sample(self.dut.jtag_ptap_state, "jtag_ptap_state")
             if last == int(expect):
-                self._timeout_paths.append(
-                    f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}"
-                )
+                self._timeout_paths.append(f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}")
                 return last
         self._timeout_paths.append(
             f"{label}: bound={self.BOUND_TCK} EXPIRED last="
@@ -89,16 +87,12 @@ class smu_axi_crossbar_error_handling_test_seq:
             "ACTION/RESPONSE/EFFECT SMC-PWRGOOD-DTP-POR.S2: power-good "
             "stable + TRST released; PTAP leaves Test-Logic-Reset",
         )
-        self._log(
-            "COVERAGE SMC-PWRGOOD-DTP-POR.S2 cells: "
-            "powergood=1 trst=1 tap=exit_tlr"
-        )
+        self._log("COVERAGE SMC-PWRGOOD-DTP-POR.S2 cells: powergood=1 trst=1 tap=exit_tlr")
 
         pg = self._sample(dut.powergood_i, "powergood_i")
         if pg != 1:
             raise AssertionError(
-                f"CHK-SMC-PWRGOOD-DTP-POR-S2 powergood not stable: "
-                f"powergood_i={pg}"
+                f"CHK-SMC-PWRGOOD-DTP-POR-S2 powergood not stable: powergood_i={pg}"
             )
         # Ensure TAP in TLR with TRST released afterward (leave-TLR needs trst=1).
         await jtag.reset_tap()
@@ -108,18 +102,14 @@ class smu_axi_crossbar_error_handling_test_seq:
                 jtag, OcahJtagState.TEST_LOGIC_RESET, label="s1_enter_tlr", hold_tms=1
             )
         else:
-            self._timeout_paths.append(
-                f"s1_enter_tlr: bound={self.BOUND_TCK} ok last=0x{tlr:x}"
-            )
+            self._timeout_paths.append(f"s1_enter_tlr: bound={self.BOUND_TCK} ok last=0x{tlr:x}")
 
         # TRST released (active-low deasserted).
         dut.jtag_trst.value = 1
         await ClockCycles(dut.clk_ref_i, self._post_trst_cycles)
         trst = self._sample(dut.jtag_trst, "jtag_trst")
         if trst != 1:
-            raise AssertionError(
-                f"CHK-SMC-PWRGOOD-DTP-POR-S2 TRST not released: jtag_trst={trst}"
-            )
+            raise AssertionError(f"CHK-SMC-PWRGOOD-DTP-POR-S2 TRST not released: jtag_trst={trst}")
 
         # Leave TLR → Run-Test/Idle (TMS=0 from TLR).
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
@@ -175,27 +165,19 @@ class smu_axi_crossbar_error_handling_test_seq:
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
             if "bound=" not in line:
-                raise AssertionError(
-                    f"timeout path missing finite bound: {line}"
-                )
+                raise AssertionError(f"timeout path missing finite bound: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
-                raise AssertionError(
-                    f"timeout path missing last-state: {line}"
-                )
+                raise AssertionError(f"timeout path missing last-state: {line}")
 
         # NONVAC: clocks advanced, reset released, S1 PASS token ordered.
         rst = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
         if rst != 1:
-            raise AssertionError(
-                f"CHK-NONVAC reset not released: rst_primary_smc_clk_no={rst}"
-            )
+            raise AssertionError(f"CHK-NONVAC reset not released: rst_primary_smc_clk_no={rst}")
         await RisingEdge(dut.clk_smu_i)
         await RisingEdge(dut.clk_smu_i)
 
         if not self._chk_pass.get("CHK-SMC-PWRGOOD-DTP-POR-S2"):
-            raise AssertionError(
-                "CHK-NONVAC missing PASS term: CHK-SMC-PWRGOOD-DTP-POR-S2"
-            )
+            raise AssertionError("CHK-NONVAC missing PASS term: CHK-SMC-PWRGOOD-DTP-POR-S2")
 
         self._step_ts["PASS"] = time.monotonic()
         self._log("SMU_ALL_008 sequence complete (PASS term for NONVAC fence)")
@@ -209,8 +191,7 @@ class smu_axi_crossbar_error_handling_test_seq:
         positive_deltas = 1 if delta_ns > 0 else 0
         if positive_deltas != 1:
             raise AssertionError(
-                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
-                f"delta_ns={delta_ns}"
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} delta_ns={delta_ns}"
             )
         self._log(
             "CHK-NONVAC: PASS (Ordered fence S1<PASS; "

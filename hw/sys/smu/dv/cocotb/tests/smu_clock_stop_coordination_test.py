@@ -12,7 +12,6 @@ DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are out of scope (re-homed to 008).
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_clock_stop_coordination_test_seq import (
     smu_clock_stop_coordination_test_seq,
 )

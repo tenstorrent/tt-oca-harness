@@ -4,13 +4,12 @@
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_indexed_addr
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 DMA_CTRL_CONFIG = 0xC003_8000
@@ -31,10 +30,14 @@ DMA_CTRL_NUM_REPETITIONS_LO = 0xC003_8130
 DMA_CTRL_NUM_REPETITIONS_HI = 0xC003_8134
 DMA_CONFIG_ENABLED_ND = 1 << 10
 
-INBOUND0_FILTER_CONFIG = smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 0)
+INBOUND0_FILTER_CONFIG = smc_indexed_addr(
+    "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 0
+)
 INBOUND0_START = smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", 0)
 INBOUND0_END = smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", 0)
-OUTBOUND0_FILTER_CONFIG = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 0)
+OUTBOUND0_FILTER_CONFIG = smc_indexed_addr(
+    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 0
+)
 OUTBOUND0_START = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", 0)
 OUTBOUND0_END = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", 0)
 PASS_ALL_CONFIG = 0x0100_3013
@@ -63,19 +66,19 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END,
-                             0x00FF_FFFF_FFFF_FFFF, length=8)
-        await self.csr_write("INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG,
-                             PASS_ALL_CONFIG, length=8)
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
+        await self.csr_write(
+            "INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
         await self.csr_write("OUTBOUND0_START_PASS_ALL", OUTBOUND0_START, 0x0, length=8)
-        await self.csr_write("OUTBOUND0_END_PASS_ALL", OUTBOUND0_END,
-                             0x00FF_FFFF_FFFF_FFFF, length=8)
-        await self.csr_write("OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG,
-                             PASS_ALL_CONFIG, length=8)
+        await self.csr_write(
+            "OUTBOUND0_END_PASS_ALL", OUTBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
+        )
+        await self.csr_write(
+            "OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
 
-    async def _write_bytes(
-        self, addr: int, data: bytes, *, update_golden: bool = False
-    ) -> None:
+    async def _write_bytes(self, addr: int, data: bytes, *, update_golden: bool = False) -> None:
         assert self.env is not None, "sequence env is not initialized"
         item_name = f"jtag_dma_preload_0x{addr:x}"
         item = SmcSysAxiItem(item_name)
@@ -87,9 +90,7 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         item.memory_region = DMA_MODEL_REGION
         await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
 
-    async def _read_bytes(
-        self, addr: int, length: int, *, check_golden: bool = False
-    ) -> bytes:
+    async def _read_bytes(self, addr: int, length: int, *, check_golden: bool = False) -> bytes:
         assert self.env is not None, "sequence env is not initialized"
         item_name = f"jtag_dma_read_0x{addr:x}"
         item = SmcSysAxiItem(item_name)
@@ -103,11 +104,13 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
 
     async def _program_dma(self) -> None:
         await self.csr_write("DMA_CONFIG", DMA_CTRL_CONFIG, DMA_CONFIG_ENABLED_ND)
-        await self.csr_write("DMA_DST_ADDRESS_LO", DMA_CTRL_DST_ADDRESS_LO,
-                             DMA_DST_ADDR & 0xFFFF_FFFF)
+        await self.csr_write(
+            "DMA_DST_ADDRESS_LO", DMA_CTRL_DST_ADDRESS_LO, DMA_DST_ADDR & 0xFFFF_FFFF
+        )
         await self.csr_write("DMA_DST_ADDRESS_HI", DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32)
-        await self.csr_write("DMA_SRC_ADDRESS_LO", DMA_CTRL_SRC_ADDRESS_LO,
-                             DMA_SRC_ADDR & 0xFFFF_FFFF)
+        await self.csr_write(
+            "DMA_SRC_ADDRESS_LO", DMA_CTRL_SRC_ADDRESS_LO, DMA_SRC_ADDR & 0xFFFF_FFFF
+        )
         await self.csr_write("DMA_SRC_ADDRESS_HI", DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32)
         await self.csr_write("DMA_LENGTH_LO", DMA_CTRL_LENGTH_LO, len(DMA_PAYLOAD))
         await self.csr_write("DMA_LENGTH_HI", DMA_CTRL_LENGTH_HI, 0)
@@ -138,12 +141,13 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         # Preload DUT + golden via scoreboard update_golden (U1-3).
         await self._write_bytes(DMA_DST_ADDR, DMA_DST_POISON, update_golden=True)
         await self._write_bytes(DMA_SRC_ADDR, DMA_PAYLOAD, update_golden=True)
-        assert await self._read_bytes(
-            DMA_SRC_ADDR, len(DMA_PAYLOAD), check_golden=True
-        ) == DMA_PAYLOAD
-        assert await self._read_bytes(
-            DMA_DST_ADDR, len(DMA_DST_POISON), check_golden=True
-        ) == DMA_DST_POISON
+        assert (
+            await self._read_bytes(DMA_SRC_ADDR, len(DMA_PAYLOAD), check_golden=True) == DMA_PAYLOAD
+        )
+        assert (
+            await self._read_bytes(DMA_DST_ADDR, len(DMA_DST_POISON), check_golden=True)
+            == DMA_DST_POISON
+        )
 
         baseline_done = await self.csr_read("DMA_DONE_0_BASELINE", DMA_CTRL_DONE_0)
         await self._program_dma()
@@ -154,9 +158,7 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         # Predict DMA outcome in golden *before* the post-copy read so the
         # scoreboard check is DUT vs prediction (not golden==golden).
         self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
-        actual = await self._read_bytes(
-            DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True
-        )
+        actual = await self._read_bytes(DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True)
         assert actual == DMA_PAYLOAD, (
             f"DMA copy mismatch: got {actual.hex()}, expected {DMA_PAYLOAD.hex()}"
         )

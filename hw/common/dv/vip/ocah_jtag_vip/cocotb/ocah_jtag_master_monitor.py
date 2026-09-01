@@ -161,7 +161,6 @@ class OcahJtagMasterMonitor:
         }
 
     async def _run(self) -> None:
-        current_kind: str | None = None
         tdi_value = 0
         tdo_value = 0
         bit_count = 0
@@ -182,17 +181,14 @@ class OcahJtagMasterMonitor:
             if hasattr(self.bus, "trst") and _logic_int(self.bus.trst, 1) == 0:
                 self._state = OcahJtagState.TEST_LOGIC_RESET
                 self._resets += 1
-                current_kind = None
                 tdi_value = tdo_value = bit_count = 0
                 continue
 
             if previous == OcahJtagState.CAPTURE_IR:
-                current_kind = "IR"
                 start_time = _time_ns()
                 start_state = previous
                 tdi_value = tdo_value = bit_count = 0
             elif previous == OcahJtagState.CAPTURE_DR:
-                current_kind = "DR"
                 start_time = _time_ns()
                 start_state = previous
                 tdi_value = tdo_value = bit_count = 0
@@ -223,7 +219,6 @@ class OcahJtagMasterMonitor:
                         source=self.name,
                     )
                 )
-                current_kind = None
             elif previous == OcahJtagState.SHIFT_DR and nxt == OcahJtagState.EXIT1_DR:
                 self._publish(
                     OcahJtagScanItem(
@@ -239,7 +234,6 @@ class OcahJtagMasterMonitor:
                         source=self.name,
                     )
                 )
-                current_kind = None
 
             if previous == OcahJtagState.UPDATE_IR and pending_ir is not None:
                 self._active_instruction = pending_ir

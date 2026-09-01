@@ -3,7 +3,6 @@
 """DTP EXTEST_PULSE instruction test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_ac_extest_pulse_test_seq import dtp_jtag_ac_extest_pulse_test_seq
 

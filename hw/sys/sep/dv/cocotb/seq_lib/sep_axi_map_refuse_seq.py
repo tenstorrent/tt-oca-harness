@@ -26,10 +26,14 @@ from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_axi_decode_map import (
-    may_complete, region_of, rtl_ranges, spec_regions,
+    may_complete,
+    region_of,
+    rtl_ranges,
+    spec_regions,
 )
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import SEP_CPU_CTRL
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = 0
@@ -65,39 +69,38 @@ def _excluded(addr: int) -> str | None:
 @dataclass(frozen=True)
 class MapProbe:
     addr: int
-    op: str          # "r" | "w"
-    unit: str        # spec Unit column, for the failure message
-    anchor: bool     # True = walked every seed
+    op: str  # "r" | "w"
+    unit: str  # spec Unit column, for the failure message
+    anchor: bool  # True = walked every seed
 
 
 # The walk must stay at least this wide. Below it, a reserved row has stopped
 # yielding addresses and the run is proving less than it reports.
-_PROBE_FLOOR = 20
+PROBE_FLOOR = 20
 
 # Reserved rows the crossbar routes, which therefore yield no probe. They are
 # counted, and a new one has to be understood rather than absorbed.
-_SHORT_ROW_LIMIT = 5
+SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the routed filter. A drop here does not move
 # short_regions, so the count is held on its own.
-_ANCHOR_KEPT = 6
+ANCHOR_KEPT = 6
 
-# Reserved gaps walked every seed WHERE THE CROSSBAR DOES NOT ROUTE THEM. Four
-# of these sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
+# Reserved gaps walked on every seed the crossbar does not route: one address
+# just past the end of a live block, which is where a truncating decoder aliases
+# first. Four sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
 # 0x1093_8000, 0x10A4_0000) and are dropped when the set is built, so six
-# survive. See _ANCHOR_KEPT.
-# Reserved gaps that stay in the probe set on every seed: one address just past
-# the end of a live block, which is where a truncating decoder aliases first.
+# survive. See ANCHOR_KEPT.
 _ANCHORS: tuple[tuple[int, str], ...] = (
-    (0x1080_3008, "r"),   # first byte above the reset controller
+    (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
-    (0x1091_4000, "r"),   # KMAC/DRBG gap
-    (0x1092_1000, "r"),   # above the Key Manager window
-    (0x1093_8000, "r"),   # above the OTP window
-    (0x1096_0000, "r"),   # above the entropy pool
-    (0x10A4_0000, "r"),   # above the system-bus window
-    (0x1200_0000, "r"),   # above the STEE remap region
-    (0x10FF_0000, "r"),   # inside the span no detailed SEP-local row describes
+    (0x1091_4000, "r"),  # KMAC/DRBG gap
+    (0x1092_1000, "r"),  # above the Key Manager window
+    (0x1093_8000, "r"),  # above the OTP window
+    (0x1096_0000, "r"),  # above the entropy pool
+    (0x10A4_0000, "r"),  # above the system-bus window
+    (0x1200_0000, "r"),  # above the STEE remap region
+    (0x10FF_0000, "r"),  # inside the span no detailed SEP-local row describes
     (0x10FF_1000, "w"),
 )
 
@@ -132,11 +135,11 @@ class SepAxiMapRefuseCfg:
                     # assert the open question by the back door. Report these
                     # from the static cross-check instead; see audit_rtl_vs_spec.
                     self.skipped["routed span, open spec question"] = (
-                        self.skipped.get("routed span, open spec question", 0) + 1)
+                        self.skipped.get("routed span, open spec question", 0) + 1
+                    )
                     continue
                 reg = region_of(addr, regions)
-                probes.append(MapProbe(
-                    addr, op, reg.unit if reg else "?", True))
+                probes.append(MapProbe(addr, op, reg.unit if reg else "?", True))
                 seen.add((addr, op))
 
         # Reserved rows, coarse ones last so the fine gaps are probed first.
@@ -158,7 +161,8 @@ class SepAxiMapRefuseCfg:
                     continue
                 if _routed(addr):
                     self.skipped["routed span, open spec question"] = (
-                        self.skipped.get("routed span, open spec question", 0) + 1)
+                        self.skipped.get("routed span, open spec question", 0) + 1
+                    )
                     continue
                 seen.add((addr, op))
                 probes.append(MapProbe(addr, op, reg.unit, False))
@@ -178,9 +182,7 @@ class SepAxiMapRefuseCfg:
     def summary(self) -> str:
         n_anchor = sum(1 for p in self.probes if p.anchor)
         skips = " ".join(f"{k}={v}" for k, v in sorted(self.skipped.items()))
-        short = " ".join(
-            f"{k}={g}/{w}" for k, (g, w) in sorted(self.short_regions.items())
-        )
+        short = " ".join(f"{k}={g}/{w}" for k, (g, w) in sorted(self.short_regions.items()))
         return (
             f"seed={self.seed} probes={len(self.probes)} anchors={n_anchor} "
             f"random={len(self.probes) - n_anchor} "
@@ -200,7 +202,11 @@ class SepAxiMapRefuse:
     async def _access(self, op: SepAxiOp, addr: int, *, wdata: int = 0):
         seq = SepAxiAccessSeq(
             f"maprefuse_{op.value}_0x{addr:08x}",
-            op=op, addr=addr, wdata=wdata, length=4, size=2,
+            op=op,
+            addr=addr,
+            wdata=wdata,
+            length=4,
+            size=2,
             expect_error=True,
         )
         await self.test.start_seq(seq)
@@ -215,16 +221,16 @@ class SepAxiMapRefuse:
         """
         seq = SepAxiAccessSeq(
             f"maprefuse_ctrl_0x{MAPPED_CSR_ADDR:08x}",
-            op=SepAxiOp.READ, addr=MAPPED_CSR_ADDR, length=4, size=2,
+            op=SepAxiOp.READ,
+            addr=MAPPED_CSR_ADDR,
+            length=4,
+            size=2,
         )
         await self.test.start_seq(seq)
         if seq.timed_out:
             return f"mapped CSR 0x{MAPPED_CSR_ADDR:08x} timed out"
         if seq.resp_code != RESP_OKAY:
-            return (
-                f"mapped CSR 0x{MAPPED_CSR_ADDR:08x} resp={seq.resp_code}, "
-                f"expected OKAY"
-            )
+            return f"mapped CSR 0x{MAPPED_CSR_ADDR:08x} resp={seq.resp_code}, expected OKAY"
         got = seq.rdata & 0xFFFF_FFFF
         if got != MAPPED_CSR_EXP:
             return (
@@ -239,8 +245,7 @@ class SepAxiMapRefuse:
         # treats an unexpected DECERR as a protocol error otherwise.
         self.test.env.axi_monitor.arm_expected_decerr(1)
         if item.op == "w":
-            resp, _rd, timed_out = await self._access(
-                SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF)
+            resp, _rd, timed_out = await self._access(SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF)
         else:
             resp, _rd, timed_out = await self._access(SepAxiOp.READ, item.addr)
 
@@ -282,17 +287,17 @@ def _selftest() -> None:
         # correct, but the shortfall is otherwise only logged -- so a map or
         # crossbar change that routed more rows could shrink the walk toward
         # the anchors while the run still reported a clean pass.
-        assert len(c.probes) >= _PROBE_FLOOR, (
+        assert len(c.probes) >= PROBE_FLOOR, (
             f"seed {seed} built {len(c.probes)} probes, below the floor of "
-            f"{_PROBE_FLOOR}; a reserved row stopped yielding addresses"
+            f"{PROBE_FLOOR}; a reserved row stopped yielding addresses"
         )
-        assert len(c.short_regions) <= _SHORT_ROW_LIMIT, (
+        assert len(c.short_regions) <= SHORT_ROW_LIMIT, (
             f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
-            f"their quota, above the {_SHORT_ROW_LIMIT} the crossbar routes"
+            f"their quota, above the {SHORT_ROW_LIMIT} the crossbar routes"
         )
         n_anchor = sum(1 for p in c.probes if p.anchor)
-        assert n_anchor == _ANCHOR_KEPT, (
-            f"seed {seed} kept {n_anchor} anchors, expected {_ANCHOR_KEPT}; a "
+        assert n_anchor == ANCHOR_KEPT, (
+            f"seed {seed} kept {n_anchor} anchors, expected {ANCHOR_KEPT}; a "
             f"span the crossbar now routes dropped one without moving the "
             f"short-row count"
         )

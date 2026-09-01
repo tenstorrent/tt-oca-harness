@@ -16,11 +16,10 @@ from __future__ import annotations
 
 import pyuvm
 from pyuvm import uvm_sequence
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_combined_observability_test_seq import (
     smc_combined_observability_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 class _OneShotSeq(uvm_sequence):
@@ -37,7 +36,6 @@ class _OneShotSeq(uvm_sequence):
 
 @pyuvm.test()
 class smc_combined_observability_test(smc_base_test):
-
     async def run_scenario(self) -> None:
         seq = smc_combined_observability_test_seq("combined_obs_seq")
 

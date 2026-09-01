@@ -72,8 +72,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
                 f"want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self._log(
-            f"J2A WR {name} @0x{addr:08x} wstrb=0x{wstrb:02x} "
-            f"data=0x{data:016x} status=SUCCESS"
+            f"J2A WR {name} @0x{addr:08x} wstrb=0x{wstrb:02x} data=0x{data:016x} status=SUCCESS"
         )
 
     async def _rd64(self, jtag, addr: int, name: str) -> int:
@@ -86,8 +85,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"J2A RD {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"J2A RD {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & MASK64
 
@@ -101,22 +99,17 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-J2A-WSTRB-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
         self._log(f"CHK-J2A-WSTRB-GATE-OPEN disable={gate} caps=0x{caps:04x}")
@@ -137,8 +130,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
             )
         self.s2_ok = True
         self._log(
-            f"CHK-J2A-WSTRB-SEED A@0x{WORD_A:08x}=0x{got_a0:016x} "
-            f"B@0x{WORD_B:08x}=0x{got_b0:016x}"
+            f"CHK-J2A-WSTRB-SEED A@0x{WORD_A:08x}=0x{got_a0:016x} B@0x{WORD_B:08x}=0x{got_b0:016x}"
         )
         sb.expect_eq("CHK-J2A-WSTRB-SEED", (got_a0, got_b0), (SEED_A, SEED_B))
 
@@ -152,13 +144,10 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
             )
         if got_b != SEED_B:
             raise AssertionError(
-                f"neighbor B @0x{WORD_B:08x} changed: want 0x{SEED_B:016x} "
-                f"got 0x{got_b:016x}"
+                f"neighbor B @0x{WORD_B:08x} changed: want 0x{SEED_B:016x} got 0x{got_b:016x}"
             )
         self.s3_ok = True
-        self._log(
-            f"CHK-J2A-WSTRB-NBR A=0x{got_a:016x} B=0x{got_b:016x} wstrb=0x{WSTRB:02x}"
-        )
+        self._log(f"CHK-J2A-WSTRB-NBR A=0x{got_a:016x} B=0x{got_b:016x} wstrb=0x{WSTRB:02x}")
         sb.expect_eq("CHK-J2A-WSTRB-NBR", (got_a, got_b), (want_a, SEED_B))
 
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
@@ -171,7 +160,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
                 f"SINGLE_OP sticky status={sticky} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         self.s4_ok = True
-        self._log(f"CHK-J2A-WSTRB-STICKY status=SUCCESS")
+        self._log("CHK-J2A-WSTRB-STICKY status=SUCCESS")
         sb.expect_eq("CHK-J2A-WSTRB-STICKY", sticky, J2A_STATUS_SUCCESS)
 
         self._log(
