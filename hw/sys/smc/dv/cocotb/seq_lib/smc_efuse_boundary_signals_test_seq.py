@@ -12,12 +12,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 LOCKS_PRELOAD = 0xA5A55A5A
-PROG_IF_RD = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR"
-)
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 # 16-stage fuse_reset_n pipe + margin. Stay-low after sense must cover this
 # or a released ext_boot would already have raised tb_fuse_reset_n.
 _PIPE_STAY = 24
@@ -60,9 +56,7 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
                 f"last_sense={last_sense} last_frst={last_frst}"
             )
         self.hold_ok = True
-        cocotb.log.info(
-            "CHK-EFUSE-BND-HOLD: sense=1 fuse_reset_n=0 hold_ext_boot=1"
-        )
+        cocotb.log.info("CHK-EFUSE-BND-HOLD: sense=1 fuse_reset_n=0 hold_ext_boot=1")
 
         for cycle in range(_PIPE_STAY):
             await RisingEdge(clk)
@@ -105,14 +99,10 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
                 if last_warm == 1:
                     break
             else:
-                raise AssertionError(
-                    f"RELEASE: tb_rst_warm_smc_clk_n stayed 0 last={last_warm}"
-                )
+                raise AssertionError(f"RELEASE: tb_rst_warm_smc_clk_n stayed 0 last={last_warm}")
 
         prog = await self.csr_read("EFUSE_PROG_IF_RD", PROG_IF_RD)
-        warm = await self.csr_read(
-            "SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0
-        )
+        warm = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
         self.release_ok = True
         cocotb.log.info(
             "CHK-EFUSE-BND-REL: fuse_reset_n=1 PROG_IF=0x%x COLD_WARM=0x%x",

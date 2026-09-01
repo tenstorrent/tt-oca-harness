@@ -18,7 +18,14 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
@@ -26,42 +33,20 @@ UART_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
     0,
 )
-UART_RBR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
-)
-UART_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART_IIR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0
-)
-UART_LCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
-)
-UART_MCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0
-)
-UART_LSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
-)
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+UART_RBR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0)
+UART_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART_IIR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0)
+UART_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART_MCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0)
+UART_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
-FCR_RCVR_FIFO_RESET = _field_mask(
-    _UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bm"
-)
-FCR_XMIT_FIFO_RESET = _field_mask(
-    _UART_WO_H, "UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bm"
-)
-FCR_RCVR_TRIGGER_BP = _field_mask(
-    _UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bp"
-)
-IIR_INTERRUPT_PENDING = _field_mask(
-    _UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm"
-)
+FCR_RCVR_FIFO_RESET = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bm")
+FCR_XMIT_FIFO_RESET = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bm")
+FCR_RCVR_TRIGGER_BP = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bp")
+IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
 IER_ERBFI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ERBFI_bm")
@@ -92,9 +77,7 @@ def _iir_pending(iir: int) -> bool:
 class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
     """UART0 loopback FIFO trigger + reset proof."""
 
-    def __init__(
-        self, name: str = "smc_uart_fifo_basic_trigger_reset_test_seq"
-    ) -> None:
+    def __init__(self, name: str = "smc_uart_fifo_basic_trigger_reset_test_seq") -> None:
         super().__init__(name)
         self.trigger_1b_ok: bool = False
         self.trigger_4b_ok: bool = False
@@ -148,8 +131,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
 
         await self._wait_iir_id(f"{label}_TO", _INTR_ID_CHAR_TIMEOUT)
         cocotb.log.info(
-            "CHK-UART-FIFO-TRIG-%s: RECEPTION_TIMEOUT after %d writes "
-            "(thresh=%d)",
+            "CHK-UART-FIFO-TRIG-%s: RECEPTION_TIMEOUT after %d writes (thresh=%d)",
             label,
             depth + 1,
             depth,
@@ -226,9 +208,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             await Timer(1, units="us")
         else:
             raise AssertionError(f"TEMT not set after TX reset LSR=0x{lsr:08x}")
-        cocotb.log.info(
-            "CHK-UART-FIFO-RST-TX: THRE+TEMT after XMIT_FIFO_RESET"
-        )
+        cocotb.log.info("CHK-UART-FIFO-RST-TX: THRE+TEMT after XMIT_FIFO_RESET")
 
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)

@@ -6,7 +6,6 @@ Exercises IEEE 1149.1 primary TAP state transitions via the unified OCAH JTAG BF
 """
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_sanity_test_seq import dtp_sanity_test_seq
 

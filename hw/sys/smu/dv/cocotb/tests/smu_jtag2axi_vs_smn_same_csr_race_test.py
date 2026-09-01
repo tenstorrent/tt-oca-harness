@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_jtag2axi_vs_smn_same_csr_race_test_seq import (
     smu_jtag2axi_vs_smn_same_csr_race_test_seq,
 )
@@ -18,8 +17,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_jtag2axi_vs_smn_same_csr_race_test "
-            "TierA J2A||SMN race SEP=0"
+            "DUT_TAG=BARE smu_jtag2axi_vs_smn_same_csr_race_test TierA J2A||SMN race SEP=0"
         )
         seq = smu_jtag2axi_vs_smn_same_csr_race_test_seq(self)
         await seq.run()

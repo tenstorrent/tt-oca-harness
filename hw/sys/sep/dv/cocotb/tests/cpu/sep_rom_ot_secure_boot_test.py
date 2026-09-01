@@ -33,7 +33,6 @@ below are untouched, so a pass still means the signature genuinely verified.
 from __future__ import annotations
 
 import pyuvm
-
 from cpu.sep_rom_ot_dma_boot_test import (
     SECURE_FLASH_IMAGE,
     sep_rom_ot_dma_boot_test,
@@ -58,7 +57,9 @@ class sep_rom_ot_secure_boot_test(sep_rom_ot_dma_boot_test):
     # SIG_VALID and CRYPTO_VALIDATE_OK prove the signature check reached a verdict
     # and that verdict was "valid".
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _RSA_START, _SIG_VALID, _CRYPTO_OK,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
     )
     # SBOOT_OFF must NOT appear: it would mean the ROM silently downgraded to the
     # unsigned path and booted anyway, which passes every other check while

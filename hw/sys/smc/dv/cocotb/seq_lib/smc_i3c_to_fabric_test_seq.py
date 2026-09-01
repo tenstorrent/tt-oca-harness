@@ -13,9 +13,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import I3C_CG_EN, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 I3C0_HCI_VERSION = smc_addr("SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR")
 # OpenTitan / OCA I3C HCI_VERSION reset observed on this DUT.
 I3C_HCI_VERSION_RESET = 0x120
@@ -57,16 +55,12 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         await self.finish_item(item)
 
     async def body(self) -> None:
-        self.clock_gate_value = await self._read(
-            "CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL
-        )
+        self.clock_gate_value = await self._read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         enabled = self.clock_gate_value | I3C_CG_EN
         await self._write("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, enabled)
         await self._read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, expected=enabled)
 
-        await self._write(
-            "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value
-        )
+        await self._write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, self.clock_gate_value)
         await self._read(
             "CLOCK_GATE_CONTROL_RESTORE",
             CLOCK_GATE_CONTROL,

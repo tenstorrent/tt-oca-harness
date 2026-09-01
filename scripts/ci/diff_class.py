@@ -26,9 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOCS_SUFFIXES = frozenset(
-    {".md", ".adoc", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
-)
+DOCS_SUFFIXES = frozenset({".md", ".adoc", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"})
 
 # Returned when the diff cannot be listed. Not a docs path, so hardware CI runs.
 UNCLASSIFIED = "(unclassified)"

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-
 from seq_lib.smu_wrapper_elaboration_seq import SmuWrapperElaborationSeq
 from smu_base_test import smu_base_test
 

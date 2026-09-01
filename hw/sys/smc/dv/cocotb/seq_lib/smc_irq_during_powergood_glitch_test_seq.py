@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from pyuvm import uvm_sequence
-
 from env.smc_irq_item import SmcIrqItem, SmcIrqOp
 from env.smc_reset_item import SmcResetItem, SmcResetOp
+from pyuvm import uvm_sequence
 
 from .smc_base_test_seq import smc_base_test_seq
 
@@ -29,7 +28,6 @@ class _OneShot(uvm_sequence):
 
 
 class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
-
     GLITCH_REF_CYCLES = 8
     RECOVER_REF_CYCLES = 600
 

@@ -17,7 +17,6 @@ from ..coverage_model import (
     stable_id,
 )
 
-
 IMC_METRIC_MAP = {
     "line": "line",
     "statement": "line",
@@ -92,9 +91,7 @@ def _observation(
         line_number = int(fields["line"]) if fields.get("line") else None
     except ValueError:
         return None
-    locator = fields.get("locator") or "|".join(
-        f"{key}={fields[key]}" for key in sorted(fields)
-    )
+    locator = fields.get("locator") or "|".join(f"{key}={fields[key]}" for key in sorted(fields))
     return CoverageObservation(
         id=stable_id(
             "IMCCOV",
@@ -176,9 +173,7 @@ def parse_imc_details(
     if not report_paths:
         warnings.append("IMC report files were not found")
     elif not details_available:
-        warnings.append(
-            "IMC scalar summary found, but detailed hole files are unavailable"
-        )
+        warnings.append("IMC scalar summary found, but detailed hole files are unavailable")
     details = CoverageDetails(
         dut=dut,
         tool=tool,
@@ -191,8 +186,7 @@ def parse_imc_details(
         warnings=warnings,
     )
     scope_payload = "\n".join(
-        f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}"
-        for path in detail_paths
+        f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}" for path in detail_paths
     )
     details.scope_fingerprint = hashlib.sha256(scope_payload.encode()).hexdigest()
     details.finalize()

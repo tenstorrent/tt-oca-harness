@@ -18,7 +18,14 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
@@ -26,33 +33,15 @@ UART_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
     0,
 )
-UART_RBR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
-)
-UART_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART_IIR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0
-)
-UART_LCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
-)
-UART_MCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0
-)
-UART_LSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
-)
-UART_SCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", 0
-)
-UART_ECR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ECR_BASE_ADDR", 0
-)
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+UART_RBR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0)
+UART_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART_IIR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0)
+UART_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART_MCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0)
+UART_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
+UART_SCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", 0)
+UART_ECR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ECR_BASE_ADDR", 0)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
@@ -114,9 +103,7 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
             raise AssertionError(f"MCR changed after SCR 0x{mcr_b:08x}->0x{mcr_a:08x}")
         if ecr_a != ecr_b:
             raise AssertionError(f"ECR changed after SCR 0x{ecr_b:08x}->0x{ecr_a:08x}")
-        cocotb.log.info(
-            "CHK-UART-EXT-SCR: patterns=%d side-effect-free", len(_SCR_PATTERNS)
-        )
+        cocotb.log.info("CHK-UART-EXT-SCR: patterns=%d side-effect-free", len(_SCR_PATTERNS))
 
     async def _positive_dr_then_idle(self) -> None:
         # Positive control: loopback must set LSR.DR before the quiet claim.
@@ -144,13 +131,9 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
         for i in range(256):
             lsr = await self.csr_read(f"IDLE_LSR_{i}", UART_LSR)
             if lsr & _LSR_ERR:
-                raise AssertionError(
-                    f"idle LSR unexpected flags LSR=0x{lsr:08x} iter={i}"
-                )
+                raise AssertionError(f"idle LSR unexpected flags LSR=0x{lsr:08x} iter={i}")
             await Timer(100, units="ns")
-        cocotb.log.info(
-            "CHK-UART-EXT-IDLE: no DR/err flags over idle window after DR+ drain"
-        )
+        cocotb.log.info("CHK-UART-EXT-IDLE: no DR/err flags over idle window after DR+ drain")
 
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)
@@ -160,6 +143,4 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
         self.scr_ok = True
         await self._positive_dr_then_idle()
         self.idle_ok = True
-        cocotb.log.info(
-            "CHK-UART-EXT-BASIC: scr=%s idle=%s", self.scr_ok, self.idle_ok
-        )
+        cocotb.log.info("CHK-UART-EXT-BASIC: scr=%s idle=%s", self.scr_ok, self.idle_ok)

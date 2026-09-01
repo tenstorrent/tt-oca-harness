@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 import cocotb
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
+
 from .smc_addr_map import gpio_poc_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -28,9 +28,7 @@ _FILTER_LOCK = (
     | gpio_poc_u32("GPIO_POC_PBIAS_CTRL__ACCESS_FILTER__WRITE_FILTER_ENABLE_bm")
     | gpio_poc_u32("GPIO_POC_PBIAS_CTRL__ACCESS_FILTER__READ_FILTER_ENABLE_bm")
 )
-_PROT_PRIV = gpio_poc_u32(
-    "GPIO_POC_PBIAS_CTRL__ACCESS_FILTER__AWPROT_REQUIREMENT_reset"
-)
+_PROT_PRIV = gpio_poc_u32("GPIO_POC_PBIAS_CTRL__ACCESS_FILTER__AWPROT_REQUIREMENT_reset")
 _PROT_UNPRIV = 0
 AXI_RESP_DECERR = 3
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
@@ -64,8 +62,7 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         )
         got = item.rdata & 0xFFFF_FFFF
         assert got == (self.ERR_SLAVE_SIGNATURE & 0xFFFF_FFFF), (
-            f"{name} @ 0x{addr:08x}: expected 0x{self.ERR_SLAVE_SIGNATURE:08x}, "
-            f"got 0x{got:08x}"
+            f"{name} @ 0x{addr:08x}: expected 0x{self.ERR_SLAVE_SIGNATURE:08x}, got 0x{got:08x}"
         )
         return item.rdata
 
@@ -80,38 +77,26 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
             "GPIO0_FILTER_PRE", GPIO0_FILTER, expected=_FILTER_RESET, prot=_PROT_UNPRIV
         )
         self.pre_ok = True
-        cocotb.log.info(
-            "CHK-GPIO-FILTER-PRE: GPIO0 ACCESS_FILTER reset 0x%x with AxPROT=0", got
-        )
+        cocotb.log.info("CHK-GPIO-FILTER-PRE: GPIO0 ACCESS_FILTER reset 0x%x with AxPROT=0", got)
 
-        await self.csr_write(
-            "GPIO0_FILTER_LOCK", GPIO0_FILTER, _FILTER_LOCK, prot=_PROT_PRIV
-        )
+        await self.csr_write("GPIO0_FILTER_LOCK", GPIO0_FILTER, _FILTER_LOCK, prot=_PROT_PRIV)
         got = await self.csr_read(
             "GPIO0_FILTER_PRIV", GPIO0_FILTER, expected=_FILTER_LOCK, prot=_PROT_PRIV
         )
         self.priv_ok = True
-        cocotb.log.info(
-            "CHK-GPIO-FILTER-PRIV: GPIO0 ACCESS_FILTER 0x%x with AxPROT=1", got
-        )
+        cocotb.log.info("CHK-GPIO-FILTER-PRIV: GPIO0 ACCESS_FILTER 0x%x with AxPROT=1", got)
 
         await self._read_denied_decerr("GPIO0_FILTER_UNPRIV", GPIO0_FILTER)
         self.unpriv_ok = True
-        cocotb.log.info(
-            "CHK-GPIO-FILTER-UNPRIV: GPIO0 ACCESS_FILTER AxPROT=0 DECERR+0xBADCAB1E"
-        )
+        cocotb.log.info("CHK-GPIO-FILTER-UNPRIV: GPIO0 ACCESS_FILTER AxPROT=0 DECERR+0xBADCAB1E")
 
-        await self.csr_write(
-            "GPIO1_FILTER_LOCK", GPIO1_FILTER, _FILTER_LOCK, prot=_PROT_PRIV
-        )
+        await self.csr_write("GPIO1_FILTER_LOCK", GPIO1_FILTER, _FILTER_LOCK, prot=_PROT_PRIV)
         got = await self.csr_read(
             "GPIO1_FILTER_PRIV", GPIO1_FILTER, expected=_FILTER_LOCK, prot=_PROT_PRIV
         )
         await self._read_denied_decerr("GPIO1_FILTER_UNPRIV", GPIO1_FILTER)
         self.gpio1_ok = True
-        cocotb.log.info(
-            "CHK-GPIO-FILTER-GPIO1: GPIO1 ACCESS_FILTER priv=0x%x unpriv DECERR", got
-        )
+        cocotb.log.info("CHK-GPIO-FILTER-GPIO1: GPIO1 ACCESS_FILTER priv=0x%x unpriv DECERR", got)
         cocotb.log.info(
             "CHK-GPIO-FILTER-BASIC: pre=%s priv=%s unpriv=%s gpio1=%s",
             self.pre_ok,

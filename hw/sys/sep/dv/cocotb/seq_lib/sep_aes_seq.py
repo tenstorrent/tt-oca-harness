@@ -17,12 +17,11 @@ AES register map (base 0x1091_0000; vendor/lowRISC/opentitan/upstream/hw/ip/aes/
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from sep_reg_meta import sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -68,9 +67,14 @@ AES_TRIGGER_PRNG_RESEED = 1 << 3
 AES_TRIGGER_DATA_OUT_CLEAR = 1 << 2
 
 
-def build_aes_ctrl(*, sideload: bool, operation: int = AES_OP_ENC,
-                   mode: int = AES_MODE_ECB, key_len: int = AES_KEY_LEN_256,
-                   reseed_rate: int = AES_PRS_RATE_PER_8K) -> int:
+def build_aes_ctrl(
+    *,
+    sideload: bool,
+    operation: int = AES_OP_ENC,
+    mode: int = AES_MODE_ECB,
+    key_len: int = AES_KEY_LEN_256,
+    reseed_rate: int = AES_PRS_RATE_PER_8K,
+) -> int:
     """CTRL_SHADOWED word. OPERATION selects ENC/DEC, MODE the cipher mode
     (ECB/CBC/CTR), KEY_LEN the key width (128/192/256), SIDELOAD the KM key vs
     KEY_SHARE. Defaults are ECB-256 (the KM AES sideload KAT path)."""
@@ -89,10 +93,10 @@ class SepAesCfg:
     DUT programming (CTRL + key + IV + data) and the golden (env/sep_aes_golden
     ``aes_encrypt_words``). SW key (SIDELOAD=0); ``iv_words`` required for CBC/CTR."""
 
-    mode: str                        # "ecb"/"cbc"/"ctr"
-    key_bits: int                    # 128/192/256
-    key_words: list[int]             # KEY_SHARE0 words (len = key_bits/32)
-    pt_words: list[int]              # DATA_IN words (multiple of 4)
+    mode: str  # "ecb"/"cbc"/"ctr"
+    key_bits: int  # 128/192/256
+    key_words: list[int]  # KEY_SHARE0 words (len = key_bits/32)
+    pt_words: list[int]  # DATA_IN words (multiple of 4)
     iv_words: list[int] | None = None
     operation: int = AES_OP_ENC
 
@@ -103,8 +107,9 @@ class SepAesCfg:
         return AES_KEYLEN_CTRL[self.key_bits]
 
     def golden_kwargs(self) -> dict:
-        return dict(mode=self.mode, key_words=self.key_words,
-                    pt_words=self.pt_words, iv_words=self.iv_words)
+        return dict(
+            mode=self.mode, key_words=self.key_words, pt_words=self.pt_words, iv_words=self.iv_words
+        )
 
 
 class SepAes(SepAxiRegDriver):
@@ -112,8 +117,9 @@ class SepAes(SepAxiRegDriver):
 
     _DRIVER_TAG = "AES"
 
-    async def _poll_status_bit(self, bitpos: int, tag: str, *, timeout: int = 4_000,
-                               poll_cycles: int = 20) -> None:
+    async def _poll_status_bit(
+        self, bitpos: int, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20
+    ) -> None:
         for i in range(timeout):
             st = await self._rd(AES_STATUS)
             if st & (1 << bitpos):
@@ -145,7 +151,9 @@ class SepAes(SepAxiRegDriver):
         await self._wr(AES_CTRL_SHADOWED, ctrl)
         await self._wr(AES_CTRL_SHADOWED, ctrl)
         await self.wait_idle("post-config")
-        self.log.info("AES configured ECB-256 %s sideload=%d (CTRL=0x%08x)", op_name, sideload, ctrl)
+        self.log.info(
+            "AES configured ECB-256 %s sideload=%d (CTRL=0x%08x)", op_name, sideload, ctrl
+        )
 
     async def configure_ecb_enc_256(self, *, sideload: bool) -> None:
         await self._configure_ecb_256(sideload=sideload, operation=AES_OP_ENC, op_name="ENC")
@@ -159,6 +167,7 @@ class SepAes(SepAxiRegDriver):
         rng = getattr(self, "_key_mask_rng_inst", None)
         if rng is None:
             from env.sep_seeded_rng import SepSeededRng
+
             rng = SepSeededRng(int(self.test.random_seed()) ^ 0xA5E5)
             self._key_mask_rng_inst = rng
         return rng
@@ -194,8 +203,7 @@ class SepAes(SepAxiRegDriver):
         for i, word in enumerate(iv_words):
             await self._wr(AES_IV_0 + i * 4, word & 0xFFFF_FFFF)
 
-    async def load_key_iv(self, key_words: list[int],
-                          iv_words: list[int] | None = None) -> None:
+    async def load_key_iv(self, key_words: list[int], iv_words: list[int] | None = None) -> None:
         """Spec-ordered SW key + IV load (aes programmers_guide.md): a KEY write
         kicks off a PRNG reseed, and any KEY/IV write while the unit is NOT idle is
         IGNORED. So wait for idle after the key before writing the IV, else CBC/CTR
@@ -215,16 +223,22 @@ class SepAes(SepAxiRegDriver):
         # from it. The key and the IV are untouched.
         await self._clear_data_out()
 
-    async def configure(self, *, mode: int, key_len: int, operation: int = AES_OP_ENC,
-                        sideload: bool = False) -> None:
+    async def configure(
+        self, *, mode: int, key_len: int, operation: int = AES_OP_ENC, sideload: bool = False
+    ) -> None:
         """Configure CTRL_SHADOWED for a mode/key-length (double-write, wait idle)."""
-        ctrl = build_aes_ctrl(sideload=sideload, operation=operation,
-                              mode=mode, key_len=key_len)
+        ctrl = build_aes_ctrl(sideload=sideload, operation=operation, mode=mode, key_len=key_len)
         await self._wr(AES_CTRL_SHADOWED, ctrl)
         await self._wr(AES_CTRL_SHADOWED, ctrl)
         await self.wait_idle("post-config")
-        self.log.info("AES configured CTRL=0x%08x (mode=0x%02x key_len=0x%x op=%d "
-                      "sideload=%d)", ctrl, mode, key_len, operation, sideload)
+        self.log.info(
+            "AES configured CTRL=0x%08x (mode=0x%02x key_len=0x%x op=%d sideload=%d)",
+            ctrl,
+            mode,
+            key_len,
+            operation,
+            sideload,
+        )
 
     async def run_blocks(self, pt_words: list[int]) -> list[int]:
         """Encrypt/decrypt consecutive 128-bit blocks; the HW auto-chains the IV
@@ -232,7 +246,7 @@ class SepAes(SepAxiRegDriver):
         assert len(pt_words) % 4 == 0, "AES data must be whole 128-bit blocks"
         out: list[int] = []
         for i in range(0, len(pt_words), 4):
-            out += await self.run_ecb_block(pt_words[i:i + 4])
+            out += await self.run_ecb_block(pt_words[i : i + 4])
         return out
 
     async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:

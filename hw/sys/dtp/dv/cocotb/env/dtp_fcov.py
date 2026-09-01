@@ -92,7 +92,12 @@ class DtpDbgDisableFcov:
         self.cells[(field, value, outcome)] += 1
         self.log.info(
             "FCOV cell field=%s disable=%d outcome=%s mask=[%s] op=%s result=%s",
-            field, value, outcome, format_dbg_disable(mask), operation, result,
+            field,
+            value,
+            outcome,
+            format_dbg_disable(mask),
+            operation,
+            result,
         )
 
     def sample_mask(self, mask: Mapping[str, int]) -> None:

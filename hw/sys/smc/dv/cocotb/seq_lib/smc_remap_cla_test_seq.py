@@ -107,9 +107,7 @@ CLA_WINDOW_PROBES = (
     ("CLA_WINDOW_OFF8", SMC_CLA_REG_MAP_BASE_ADDR + 0x8),
 )
 
-_EXPECTED_ACCESSES = (
-    len(MMODE_REMAP_ATTRS_ADDRS) + len(ALIAS_REMAP_REGS) + len(CLA_WINDOW_PROBES)
-)
+_EXPECTED_ACCESSES = len(MMODE_REMAP_ATTRS_ADDRS) + len(ALIAS_REMAP_REGS) + len(CLA_WINDOW_PROBES)
 
 
 class smc_remap_cla_test_seq(SmcCsrSeq):
@@ -126,6 +124,4 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         # -- fails if it ever starts returning OKAY.
         for name, addr in CLA_WINDOW_PROBES:
             await self.csr_read_expect_error(name, addr)
-        assert self.accesses == _EXPECTED_ACCESSES, (
-            "MMODE + ALIAS + CLA sweep count mismatch"
-        )
+        assert self.accesses == _EXPECTED_ACCESSES, "MMODE + ALIAS + CLA sweep count mismatch"

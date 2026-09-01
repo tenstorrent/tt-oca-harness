@@ -30,7 +30,6 @@ from .smc_gpio_item import SmcGpioItem, SmcGpioOp
 
 
 class SmcGpioDriver(uvm_driver):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
@@ -69,7 +68,6 @@ class SmcGpioDriver(uvm_driver):
 
 
 class SmcGpioAgent(uvm_agent):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)

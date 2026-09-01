@@ -37,9 +37,7 @@ class OcahJtagMasterAgent:
             OcahJtagMasterDriver(jtag_intf, **self.config.driver_kwargs()) if active else None
         )
         self.monitor: OcahJtagMasterMonitor | None = (
-            OcahJtagMasterMonitor(jtag_intf, **self.config.monitor_kwargs())
-            if en_monitor
-            else None
+            OcahJtagMasterMonitor(jtag_intf, **self.config.monitor_kwargs()) if en_monitor else None
         )
         self.checker = checker or OcahJtagChecker(
             name=f"{self.config.name}.checker", ir_width=self.config.ir_width
