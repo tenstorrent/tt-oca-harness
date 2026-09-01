@@ -162,8 +162,17 @@ class CtnTb:
     async def config_ctp(
         self, index: int, mode: int, invert: int = 0, stretch: int | None = None
     ) -> None:
-        """Program one external CTP's CONFIG (and STRETCH_MULT for wire-OR)."""
+        """Program one external CTP's CONFIG (and STRETCH_MULT for wire-OR).
+
+        The CTP core's sender handshake FSM latches ct_src pulses in BOTH
+        modes (only the pad muxing is mode-dependent), and wire-OR traffic
+        never acks it — so a port that carried wire-OR traffic and is later
+        reconfigured to P2P would surface a stale request. CONFIG.RESET is
+        the spec's recovery knob for exactly this; pulse it on every mode
+        (re)configuration so each scenario starts from an idle FSM.
+        """
         value = (mode & 1) | ((invert & 1) << 1)
+        await self.seq.write(ctp_addr(index, CTP_CONFIG_OFFSET), value | (1 << 2))
         await self.seq.write(ctp_addr(index, CTP_CONFIG_OFFSET), value)
         if stretch is not None:
             await self.seq.write(ctp_addr(index, CTP_STRETCH_OFFSET), stretch)
