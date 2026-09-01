@@ -623,6 +623,10 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_crypto_per_ip_reset_isolation_test` (includes in-window DECERR). Drain-before-reset is proven for the shared TRNG domain in the row below; for the four accelerator domains it stays Phase 3.
 
+|Dual scratch register banks (warm vs cold reset domain)
+|PROVEN
+|`sep_warm_cold_reset_scratch_test`. `hw/sys/sep/doc/cpu.adoc` requires two 16 x 32-bit banks distinguished by their reset properties: set 0 changes only on a software write or power-on reset, set 1 takes an additional warm reset from the watchdog. A warm reset clears the warm bank while the cold bank retains, and only a cold reset clears both — the pair that makes the domain split real rather than two banks that merely exist. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; that cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops.
+
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
 |`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three AXI ports to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external CSR and source-select staying outside the domain, and the JTAG hold/release pair.
@@ -3101,6 +3105,15 @@ claimed: the pin has no netlist path to either observable in this build.
 |A real reset source drops the CPU reset observable and then restores it, so the observable is live rather than stuck at one. This is what keeps the entry worth running.
 |===
 
+*No scorecard row, deliberately.* The denominator rule is that the architecture
+documents define the feature set, and `dbg_rstb_i` appears in them only as a
+port-table line — an EL2 debugger reset input, with no behavioural contract and
+no isolation requirement. A feature the specification does not define is not a
+row, so this entry earns none and its absence is not an oversight. The two
+checkers above are worth running as a reset-tree liveness guard; they are not a
+feature credit. Closing the isolation claim needs both a run mode where
+`dbg_rstb_i` reaches `sep_cpu` and a specification statement to check it against.
+
 '''''
 
 [[sep_wdt_aon_timer_internals_test]]
@@ -4296,7 +4309,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |45
 |Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |44 in-scope: 41 PROVEN, 3 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |45 in-scope: 42 PROVEN, 3 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
 |===
 
