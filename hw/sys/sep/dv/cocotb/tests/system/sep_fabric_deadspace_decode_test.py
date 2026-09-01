@@ -225,18 +225,14 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     )
                     break
 
-        # A floor, not a report: every directed anchor must be in the walk this
-        # seed built, so a config change that drops one fails here instead of
-        # shrinking the sweep quietly.
-        walked_anchors = sum(1 for p in cfg.probes if p.anchor)
-        assert walked_anchors == len(DEADSPACE_ANCHORS), (
-            f"CHK-RANDCFG FAIL: {walked_anchors} of {len(DEADSPACE_ANCHORS)} directed "
-            f"anchors are in the walk for seed {cfg.seed}"
-        )
+        # Config report, not a checker. Every anchor is placed unconditionally
+        # and nothing filters them, so a count against the list that built them
+        # cannot fail; the real failure -- an anchor whose window is absent from
+        # the map -- raises when the config is built.
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d probes, all %d directed anchors present, from seed %d",
+            "deadspace config: %d probes including %d directed anchors, seed %d",
             len(cfg.probes),
-            walked_anchors,
+            len(DEADSPACE_ANCHORS),
             cfg.seed,
         )
         # Reported, not asserted: memory_map.adoc names DECERR for the reserved

@@ -250,8 +250,8 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CLOCK_GATE_CTRL placeholder representative. sep_cpu_ctrl implements
 # pka_cg_enable[0:0] only; RTL does not consume it. Proves storage plus
-# AES/HMAC/OTBN/SW_DEBUG CSRs still OKAY with the bit 0 and 1 (stub-const,
-# not a live per-IP gate). no_cpu / +skip_fuse_sense.
+# AES/HMAC/OTBN/SW_DEBUG CSRs reading the same value with the bit 0 and 1
+# (stub-const, not a live per-IP gate). no_cpu / +skip_fuse_sense.
 name = "sep_clock_gate_control_test"
 module = "system.sep_clock_gate_control_test"
 seed = 1
