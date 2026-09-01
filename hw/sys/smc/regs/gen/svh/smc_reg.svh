@@ -154,10 +154,6 @@ localparam int unsigned SMC_RESET_UNIT_SS_COLD_RESET_LOCK_REG_OFFSET            
 localparam int unsigned SMC_RESET_UNIT_SS_COLD_RESET_LOCK_REG_ADDR                                                = 32'hC0002070;
 localparam int unsigned SMC_RESET_UNIT_SS_FORCE_TO_REF_CLK_REG_OFFSET                                             = 32'h00000080;
 localparam int unsigned SMC_RESET_UNIT_SS_FORCE_TO_REF_CLK_REG_ADDR                                               = 32'hC0002080;
-localparam int unsigned SMC_RESET_UNIT_STRAPS_LO_REG_OFFSET                                                       = 32'h00000090;
-localparam int unsigned SMC_RESET_UNIT_STRAPS_LO_REG_ADDR                                                         = 32'hC0002090;
-localparam int unsigned SMC_RESET_UNIT_STRAPS_HI_REG_OFFSET                                                       = 32'h00000094;
-localparam int unsigned SMC_RESET_UNIT_STRAPS_HI_REG_ADDR                                                         = 32'hC0002094;
 localparam int unsigned SMC_RESET_UNIT_SYNC_REG_REG_OFFSET                                                        = 32'h000000A8;
 localparam int unsigned SMC_RESET_UNIT_SYNC_REG_REG_ADDR                                                          = 32'hC00020A8;
 localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_REG_REG_OFFSET                                                 = 32'h000000B0;
@@ -7644,8 +7640,6 @@ localparam longint unsigned RESET_UNIT_SS_DEBUG_HOLD_REG_DEFAULT                
 localparam longint unsigned RESET_UNIT_SS_RESET_COMPLETE_REG_DEFAULT                                              = 32'h00000000;
 localparam longint unsigned RESET_UNIT_SS_COLD_RESET_LOCK_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned RESET_UNIT_SS_FORCE_TO_REF_CLK_REG_DEFAULT                                            = 32'h00000000;
-localparam longint unsigned RESET_UNIT_STRAPS_LO_REG_DEFAULT                                                      = 32'h00000000;
-localparam longint unsigned RESET_UNIT_STRAPS_HI_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned RESET_UNIT_SYNC_REG_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_REG_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_PINEN_REG_REG_DEFAULT                                          = 32'h00000000;
@@ -8031,12 +8025,6 @@ localparam int unsigned RESET_UNIT_SS_COLD_RESET_LOCK_COLD_RESET_LOCK_SHIFT     
 
 localparam int unsigned RESET_UNIT_SS_FORCE_TO_REF_CLK_FORCE_SS_TO_REF_CLK_N_MASK                                 = 32'hFFFFFFFF;
 localparam int unsigned RESET_UNIT_SS_FORCE_TO_REF_CLK_FORCE_SS_TO_REF_CLK_N_SHIFT                                = 0;
-
-localparam int unsigned RESET_UNIT_STRAPS_LO_STRAPS_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned RESET_UNIT_STRAPS_LO_STRAPS_SHIFT                                                         = 0;
-
-localparam int unsigned RESET_UNIT_STRAPS_HI_STRAPS_MASK                                                          = 32'h1FFFFFFF;
-localparam int unsigned RESET_UNIT_STRAPS_HI_STRAPS_SHIFT                                                         = 0;
 
 localparam int unsigned RESET_UNIT_SYNC_REG_SYNC_MASK                                                             = 32'h1;
 localparam int unsigned RESET_UNIT_SYNC_REG_SYNC_SHIFT                                                            = 0;
@@ -12044,18 +12032,6 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   force_ss_to_ref_clk_n ;
 } reset_unit_ss_force_to_ref_clk_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   straps ;
-} reset_unit_straps_lo_reg_t;
-
-
-
-typedef struct packed {
-    logic [28:0]   straps ;
-} reset_unit_straps_hi_reg_t;
 
 
 

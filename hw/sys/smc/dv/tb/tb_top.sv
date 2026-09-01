@@ -163,9 +163,6 @@ module smc_uvm_top
     // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
     input  wire logic tb_ext_interrupt_0_i /*verilator public_flat_rw*/,
     output logic      tb_ext_interrupt_0_sync /*verilator public_flat_rw*/,
-    // Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [60:0]).
-    // Unique vs smc_gpio_strap_sanity_test (GPIO0 IRQ pads, not this pin).
-    input  wire logic [63:0] tb_captured_straps /*verilator public_flat_rw*/,
     // Subsystem reset-complete pin (prim_sync3 → SS_RESET_COMPLETE CSR). Idle 1.
     input  wire logic [31:0] tb_ss_reset_complete /*verilator public_flat_rw*/,
     // SS0 warm_reset_n from ss_reset_ctrl_o[0] (SW SS_WARM_RESET_N bit 0).
@@ -1276,7 +1273,6 @@ module smc_uvm_top
         // scan reset deasserted -- matches smc.sv port names (test_en_i / scan_rst_ni).
         .test_en_i                  (tb_test_en_i),
         .scan_rst_ni                (1'b1),
-        .captured_straps_i          (tb_captured_straps),
         // Without an external BISR/MBIST agent the boot sequencer would wait
         // forever if these stayed low (CPU never fetches ROM) -- same fix as
         // hw/sys/smu/dv/tb/tb_wrapper_top.sv's smu_wrapper instance.

@@ -71,8 +71,6 @@ module smu_uvm_top
     output logic            lc_sigint_err_o,
     output logic [1:0]      lcc_demote_state_1_o,
     output logic [1:0]      lcc_demote_state_2_o,
-    // GPIO strap capture (reset-unit STRAPS_* readback source)
-    input  wire logic [63:0] captured_straps_i,
     // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
     input  wire logic        gpio_boot_stall_drive_i,
     output logic [31:0] ext_mailbox_interrupts,
@@ -561,7 +559,6 @@ module smu_uvm_top
         .trace_mem_resp_i            (trc_resp),
         .test_en_i                   (1'b0),
         .scan_rst_ni                 (1'b1),
-        .captured_straps_i           (captured_straps_i),
         .mem_repair_done_i           (1'b1),
         .mem_repair_success_i        (1'b1),
         .mem_repair_abort_i          (1'b0),

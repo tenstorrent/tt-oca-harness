@@ -690,7 +690,6 @@ module smu_wrapper_uvm_top (
 
         .test_en_i (1'b0),
         .scan_rst_ni (1'b1),
-        .captured_straps_i ('0),
 
         // Without an external BISR/MBIST agent the boot sequencer waits forever
         // if these stay low (CPU never fetches ROM).

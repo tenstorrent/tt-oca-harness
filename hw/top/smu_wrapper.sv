@@ -248,9 +248,6 @@ module smu_wrapper
     input  logic  test_en_i,
     input  logic  scan_rst_ni,
 
-    // Captured Straps
-    input  logic [63:0]  captured_straps_i,
-
     // DFT status indicators
     input  logic mem_repair_done_i,
     input  logic mem_repair_success_i,

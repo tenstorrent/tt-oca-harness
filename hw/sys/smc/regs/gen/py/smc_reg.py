@@ -88,10 +88,6 @@ SMC_RESET_UNIT_SS_COLD_RESET_LOCK_REG_OFFSET = 0x00000070
 SMC_RESET_UNIT_SS_COLD_RESET_LOCK_REG_ADDR = 0xC0002070
 SMC_RESET_UNIT_SS_FORCE_TO_REF_CLK_REG_OFFSET = 0x00000080
 SMC_RESET_UNIT_SS_FORCE_TO_REF_CLK_REG_ADDR = 0xC0002080
-SMC_RESET_UNIT_STRAPS_LO_REG_OFFSET = 0x00000090
-SMC_RESET_UNIT_STRAPS_LO_REG_ADDR = 0xC0002090
-SMC_RESET_UNIT_STRAPS_HI_REG_OFFSET = 0x00000094
-SMC_RESET_UNIT_STRAPS_HI_REG_ADDR = 0xC0002094
 SMC_RESET_UNIT_SYNC_REG_REG_OFFSET = 0x000000A8
 SMC_RESET_UNIT_SYNC_REG_REG_ADDR = 0xC00020A8
 SMC_RESET_UNIT_ISOLATE_REQ_REG_REG_OFFSET = 0x000000B0
@@ -5556,62 +5552,6 @@ class RESET_UNIT_SS_FORCE_TO_REF_CLK_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(RESET_UNIT_SS_FORCE_TO_REF_CLK_reg_u, self).__init__(*args, **kwargs)
         self.val = RESET_UNIT_SS_FORCE_TO_REF_CLK_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-RESET_UNIT_STRAPS_LO_REG_DEFAULT = 0x00000000
-class RESET_UNIT_STRAPS_LO_reg_t(Structure):
-    _fields_ = [
-        ('straps', c_uint32, 32),
-    ]
-
-RESET_UNIT_STRAPS_LO_REG_DEFAULT = 0x00000000
-
-class RESET_UNIT_STRAPS_LO_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', RESET_UNIT_STRAPS_LO_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(RESET_UNIT_STRAPS_LO_reg_u, self).__init__(*args, **kwargs)
-        self.val = RESET_UNIT_STRAPS_LO_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-RESET_UNIT_STRAPS_HI_REG_DEFAULT = 0x00000000
-class RESET_UNIT_STRAPS_HI_reg_t(Structure):
-    _fields_ = [
-        ('straps', c_uint32, 29),
-    ]
-
-RESET_UNIT_STRAPS_HI_REG_DEFAULT = 0x00000000
-
-class RESET_UNIT_STRAPS_HI_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', RESET_UNIT_STRAPS_HI_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(RESET_UNIT_STRAPS_HI_reg_u, self).__init__(*args, **kwargs)
-        self.val = RESET_UNIT_STRAPS_HI_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

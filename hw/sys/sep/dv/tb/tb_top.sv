@@ -738,13 +738,14 @@ module sep_uvm_top
         // so the ROM's DFT/MEM_REPAIR gate passes (models mem-repair completed OK).
         u_smc_mem.mem[56'h4000_F800] = 8'h03;
         // +sep_boot_from_spi flips the ROM to its SPI manifest path by setting
-        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x2090; boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h), and boot_recovery
-        // lives in STRAPS_HI, which stays 0. Bit 25 is byte 3 of the word, bit 1.
+        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x405800; boot_from_spi() is
+        // `primary_chiplet && !boot_recovery` (boot_straps.h). boot_recovery is
+        // STRAPS_LO[19] -- byte 2 of the same word, which this seed leaves at 0.
+        // Bit 25 is byte 3 of the word, bit 1.
         // Default off: without it the ROM keeps taking the SMC-SRAM branch, so
         // sep_rom_non_secure_boot_test is unaffected.
         if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[56'h4000_2093] = 8'h02;
+            u_smc_mem.mem[56'h4040_5803] = 8'h02;
             $display("[tb] STRAPS_LO[25] primary_chiplet=1 -> ROM boots from SPI");
         end
         if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin

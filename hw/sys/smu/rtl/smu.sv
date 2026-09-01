@@ -275,9 +275,6 @@ module smu #(
     input  logic  test_en_i,
     input  logic  scan_rst_ni,
 
-    // Captured Straps
-    input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]  captured_straps_i,
-
     // DFT status indicators
     input  logic mem_repair_done_i,
     input  logic mem_repair_success_i,
@@ -799,7 +796,6 @@ module smu #(
         .ext_debug_bus_i                     (ext_debug_bus),
         .test_en_i                           (test_en_i),
         .scan_rst_ni                         (scan_rst_ni),
-        .captured_straps_i                   (captured_straps_i),
         .mem_repair_done_i                   (mem_repair_done_i),
         .mem_repair_success_i                (mem_repair_success_i),
         .mem_repair_abort_i                  (mem_repair_abort_i),
