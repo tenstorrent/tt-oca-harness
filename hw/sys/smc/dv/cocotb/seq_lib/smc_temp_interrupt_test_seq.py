@@ -59,9 +59,7 @@ class smc_temp_interrupt_test_seq(SmcCsrSeq):
         await self._await_irq(dut, 0, "FALL")
         self.fall_ok = True
         cocotb.log.info("CHK-TEMP-IRQ-FALL: irq=0 pin=0")
-        got = await self.csr_read(
-            "SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0
-        )
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
         cocotb.log.info("CHK-TEMP-IRQ-WARM: SCRATCH_COLD_WARM_0=0x%x", got)
         cocotb.log.info(
             "CHK-TEMP-IRQ-BASIC: idle=%s rise=%s fall=%s",

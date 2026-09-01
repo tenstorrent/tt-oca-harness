@@ -18,11 +18,9 @@ Offsets and reset values follow the generated map
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
+from sep_reg_meta import sym
 
 SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
@@ -33,10 +31,10 @@ LOCAL_BASE_ADDR_EXP = 0xD000_0000
 
 # (name, addr, pattern, implemented-field mask)
 WRITE_READBACK = [
-    ("SEP_SW_DEBUG",  SEP_CPU_CTRL_BASE + 0x178, 0xDEAD_BEEF, 0xFFFF_FFFF),
+    ("SEP_SW_DEBUG", SEP_CPU_CTRL_BASE + 0x178, 0xDEAD_BEEF, 0xFFFF_FFFF),
     # nmi_vec is [31:1]; bit 0 is reserved and reads back as zero.
-    ("SEP_NMI_VEC",   SEP_CPU_CTRL_BASE + 0x180, 0x0BAD_C0DE, 0xFFFF_FFFE),
-    ("PKA_CTRL",      SEP_CPU_CTRL_BASE + 0x020, 0x0000_0007, 0x0000_0007),
+    ("SEP_NMI_VEC", SEP_CPU_CTRL_BASE + 0x180, 0x0BAD_C0DE, 0xFFFF_FFFE),
+    ("PKA_CTRL", SEP_CPU_CTRL_BASE + 0x020, 0x0000_0007, 0x0000_0007),
 ]
 
 

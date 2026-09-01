@@ -15,10 +15,8 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
-
-from smu_base_test import smu_base_test
-
 from env import cocotb_compat as _cocotb_compat
+from smu_base_test import smu_base_test
 
 _cocotb_compat.apply()
 

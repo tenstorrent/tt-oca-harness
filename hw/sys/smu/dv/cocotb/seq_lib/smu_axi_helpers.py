@@ -93,9 +93,7 @@ async def axi_read32_resp_ids(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
         )
     if result.observed_id is None:
-        raise AssertionError(
-            f"RID capture miss after read addr=0x{addr:08x} arid=0x{issued:x}"
-        )
+        raise AssertionError(f"RID capture miss after read addr=0x{addr:08x} arid=0x{issued:x}")
     return result.data, result.resp, int(result.issued_id), int(result.observed_id)
 
 
@@ -108,9 +106,7 @@ async def axi_read32_resp_ids_bounded(
     timeout_ns: int = AXI_TIMEOUT_NS,
 ) -> tuple[int, int, int, int]:
     """Like axi_read32_resp_ids but fail-closed on hang with last-state diagnostics."""
-    return await axi_read32_resp_ids(
-        master, addr, arid=arid, timeout_ns=timeout_ns, label=label
-    )
+    return await axi_read32_resp_ids(master, addr, arid=arid, timeout_ns=timeout_ns, label=label)
 
 
 async def axi_read32_resp_bounded(
@@ -126,8 +122,7 @@ async def axi_read32_resp_bounded(
     )
     if result.timed_out:
         raise AssertionError(
-            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp "
-            f"addr=0x{addr:08x}"
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
         )
     return result.data, result.resp
 
@@ -173,8 +168,7 @@ async def axi_write32_resp_bounded(
     )
     if result.timed_out:
         raise AssertionError(
-            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp "
-            f"addr=0x{addr:08x}"
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp addr=0x{addr:08x}"
         )
     return result.resp
 
@@ -207,9 +201,7 @@ async def axi_write32_resp_ids(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp addr=0x{addr:08x}"
         )
     if result.observed_id is None:
-        raise AssertionError(
-            f"BID capture miss after write addr=0x{addr:08x} awid=0x{issued:x}"
-        )
+        raise AssertionError(f"BID capture miss after write addr=0x{addr:08x} awid=0x{issued:x}")
     return result.resp, int(result.issued_id), int(result.observed_id)
 
 

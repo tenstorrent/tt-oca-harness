@@ -42,21 +42,47 @@ no_cpu / +skip_fuse_sense.
 
 from __future__ import annotations
 
-import cocotb
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
-    SepSpiHostCfg, SepSpiHost, RESET_VALUES,
-    STATUS, RXDATA, TXDATA, CMD, CTRL, CSID, CFG,
-    INTR_STATUS, INTR_ENABLE, INTR_TEST, ERROR_STATUS,
-    INTR_ERROR, INTR_SPI_EVENT,
-    ERR_OVERFLOW, ERR_UNDERFLOW, ERR_CMDINVAL, ERR_CSIDINVAL, ERR_CMDBUSY,
-    ERR_ACCESSINVAL, TX_FIFO_DEPTH, CMD_FIFO_DEPTH,
-    CMD_DIR_TX, CMD_SPEED_RESERVED,
-    CTRL_SW_RST, CTRL_SPIEN, CTRL_OUTPUT_EN,
-    ST_READY, ST_ACTIVE, ST_TXEMPTY, ST_RXEMPTY, ST_TXFULL, ST_RXFULL,
-    ST_TXQD, ST_RXQD, ST_CMDQD, ST_TXWM,
+    CMD,
+    CMD_DIR_TX,
+    CMD_FIFO_DEPTH,
+    CMD_SPEED_RESERVED,
+    CSID,
+    CTRL,
+    CTRL_OUTPUT_EN,
+    CTRL_SPIEN,
+    CTRL_SW_RST,
+    ERR_ACCESSINVAL,
+    ERR_CMDBUSY,
+    ERR_CMDINVAL,
+    ERR_CSIDINVAL,
+    ERR_OVERFLOW,
+    ERR_UNDERFLOW,
+    ERROR_STATUS,
+    INTR_ENABLE,
+    INTR_ERROR,
+    INTR_SPI_EVENT,
+    INTR_STATUS,
+    INTR_TEST,
+    RESET_VALUES,
+    RXDATA,
+    ST_ACTIVE,
+    ST_CMDQD,
+    ST_READY,
+    ST_RXEMPTY,
+    ST_RXFULL,
+    ST_RXQD,
+    ST_TXEMPTY,
+    ST_TXFULL,
+    ST_TXQD,
+    ST_TXWM,
+    STATUS,
+    TX_FIFO_DEPTH,
+    TXDATA,
+    SepSpiHost,
+    SepSpiHostCfg,
 )
 
 _CTRL_RESET = 0x0000_007F
@@ -103,10 +129,14 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         assert st & ST_RXEMPTY, f"CHK-RESET STATUS.RXEMPTY not set: 0x{st:08x}"
         assert not (st & ST_TXFULL), f"CHK-RESET STATUS.TXFULL set: 0x{st:08x}"
         assert not (st & ST_RXFULL), f"CHK-RESET STATUS.RXFULL set: 0x{st:08x}"
-        assert not (st & (ST_TXQD | ST_RXQD | ST_CMDQD)), \
+        assert not (st & (ST_TXQD | ST_RXQD | ST_CMDQD)), (
             f"CHK-RESET STATUS queue depths nonzero: 0x{st:08x}"
-        self.logger.info("CHK-RESET PASS: %d control regs at documented reset + "
-                         "STATUS idle (0x%08x)", len(RESET_VALUES), st)
+        )
+        self.logger.info(
+            "CHK-RESET PASS: %d control regs at documented reset + STATUS idle (0x%08x)",
+            len(RESET_VALUES),
+            st,
+        )
 
     # ---- CHK-REG-RW (+ CHK-NONVAC) ---------------------------------------
     async def _chk_reg_rw(self) -> None:
@@ -117,8 +147,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             pre = await self.spi.rd(addr)
             await self.spi.wr(addr, val)
             rb = await self.spi.rd(addr)
-            assert rb == val, (f"CHK-REG-RW {name}@0x{addr:08x} readback 0x{rb:08x} "
-                               f"!= written 0x{val:08x} (wmask 0x{wmask:08x})")
+            assert rb == val, (
+                f"CHK-REG-RW {name}@0x{addr:08x} readback 0x{rb:08x} "
+                f"!= written 0x{val:08x} (wmask 0x{wmask:08x})"
+            )
             # Probe the RO/reserved bits by writing them. Checking `rb & ~wmask == 0`
             # after `rb == val` proved nothing: val is built as getrandbits(32) & wmask,
             # so those bits were zero before the DUT ever saw them.
@@ -127,19 +159,23 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 rb2 = await self.spi.rd(addr)
                 assert (rb2 & ~wmask & 0xFFFF_FFFF) == 0, (
                     f"CHK-REG-RW {name} reserved bits are writable: "
-                    f"0x{rb2 & ~wmask & 0xFFFF_FFFF:08x}")
+                    f"0x{rb2 & ~wmask & 0xFFFF_FFFF:08x}"
+                )
                 assert (rb2 & wmask) == val, (
                     f"CHK-REG-RW {name} writable bits disturbed by a reserved-bit "
-                    f"write: 0x{rb2 & wmask:08x} != 0x{val:08x}")
+                    f"write: 0x{rb2 & wmask:08x} != 0x{val:08x}"
+                )
             if rb != pre:
                 nonvac_seen = True
-        self.logger.info("CHK-REG-RW PASS: %d RW regs write->readback exact, "
-                         "reserved bits reject writes", len(self.scfg.rw_regs))
+        self.logger.info(
+            "CHK-REG-RW PASS: %d RW regs write->readback exact, reserved bits reject writes",
+            len(self.scfg.rw_regs),
+        )
         assert nonvac_seen, (
             "CHK-NONVAC: no register's readback differed from its observed pre-write "
-            "value -- the writes changed nothing observable")
-        self.logger.info(
-            "CHK-NONVAC PASS: a written reg differs from its observed pre-write value")
+            "value -- the writes changed nothing observable"
+        )
+        self.logger.info("CHK-NONVAC PASS: a written reg differs from its observed pre-write value")
         # Restore every walked reg to its reset value for the later facets.
         for name, addr, _, _ in self.scfg.rw_regs:
             if name in RESET_VALUES:
@@ -164,21 +200,26 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             # test asserted but disabled -> masked off.
             await self.spi.wr(INTR_TEST, bit)
             st = await self.spi.rd(INTR_STATUS)
-            assert not (st & bit), \
+            assert not (st & bit), (
                 f"CHK-INTR {label}: INTR_ENABLE=0 did not mask INTR_TEST (0x{st:08x})"
+            )
             # enable -> the test source now reaches INTR_STATUS.
             await self.spi.wr(INTR_ENABLE, bit)
             st = await self.spi.rd(INTR_STATUS)
-            assert st & bit, \
+            assert st & bit, (
                 f"CHK-INTR {label}: enabled INTR_TEST did not set INTR_STATUS (0x{st:08x})"
+            )
             # remove the source -> deasserts.
             await self.spi.wr(INTR_TEST, 0)
             st = await self.spi.rd(INTR_STATUS)
-            assert not (st & bit), \
+            assert not (st & bit), (
                 f"CHK-INTR {label}: clearing INTR_TEST did not deassert (0x{st:08x})"
+            )
             await self.spi.wr(INTR_ENABLE, 0)
-        self.logger.info("CHK-INTR PASS: INTR_TEST->INTR_STATUS gated by INTR_ENABLE "
-                         "(mask proven), source-clear deasserts; ERROR+SPI_EVENT")
+        self.logger.info(
+            "CHK-INTR PASS: INTR_TEST->INTR_STATUS gated by INTR_ENABLE "
+            "(mask proven), source-clear deasserts; ERROR+SPI_EVENT"
+        )
 
     # ---- CHK-ERR-W1C ------------------------------------------------------
     async def _trigger_err(self, label: str, bit: int, trigger) -> None:
@@ -188,22 +229,22 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await trigger()
         es = await self.spi.rd(ERROR_STATUS)
         assert es & bit, f"CHK-ERR-W1C {label}: bit 0x{bit:06x} not set (ERROR_STATUS 0x{es:08x})"
-        await self.spi.wr(ERROR_STATUS, bit)                 # W1C the exact bit
+        await self.spi.wr(ERROR_STATUS, bit)  # W1C the exact bit
         es = await self.spi.rd(ERROR_STATUS)
         assert not (es & bit), f"CHK-ERR-W1C {label}: W1C did not clear (0x{es:08x})"
 
     async def _chk_err_w1c(self) -> None:
         async def trig_underflow():
-            await self.spi.rd(RXDATA)                        # read empty RX FIFO
+            await self.spi.rd(RXDATA)  # read empty RX FIFO
 
         async def trig_cmdinval():
             await self.spi.wr(CSID, 0)
             await self.spi.wr(CMD, CMD_DIR_TX | CMD_SPEED_RESERVED)  # SPEED=reserved
 
         async def trig_csidinval():
-            await self.spi.wr(CSID, 1)                       # >= NUM_CS(1)
-            await self.spi.wr(CMD, CMD_DIR_TX)               # otherwise-legal command
-            await self.spi.wr(CSID, 0)                       # restore
+            await self.spi.wr(CSID, 1)  # >= NUM_CS(1)
+            await self.spi.wr(CMD, CMD_DIR_TX)  # otherwise-legal command
+            await self.spi.wr(CSID, 0)  # restore
 
         async def trig_overflow():
             # Core disabled (SPIEN=0) so the TX FIFO never drains; write past its
@@ -223,20 +264,23 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             # RTL access_valid accepts 1/2/4-byte contiguous strobes, not 3-byte
             # 4'b0111. A 32-bit beat of length 3 is a real DUT write, not a
             # non-contiguous strobe the AXI master cannot express.
-            await self.spi.wr(TXDATA, 0x00A5A5A5, length=3, size=2,
-                              allow_unverified_write_resp=True)
+            await self.spi.wr(
+                TXDATA, 0x00A5A5A5, length=3, size=2, allow_unverified_write_resp=True
+            )
 
         await self._trigger_err("UNDERFLOW", ERR_UNDERFLOW, trig_underflow)
         await self._trigger_err("CMDINVAL", ERR_CMDINVAL, trig_cmdinval)
         await self._trigger_err("CSIDINVAL", ERR_CSIDINVAL, trig_csidinval)
         await self._trigger_err("OVERFLOW", ERR_OVERFLOW, trig_overflow)
-        await self._sw_rst_pulse()                           # drain the full TX FIFO
+        await self._sw_rst_pulse()  # drain the full TX FIFO
         await self._trigger_err("CMDBUSY", ERR_CMDBUSY, trig_cmdbusy)
         await self._sw_rst_pulse()
         await self._trigger_err("ACCESSINVAL", ERR_ACCESSINVAL, trig_accessinval)
         await self._sw_rst_pulse()
-        self.logger.info("CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW/"
-                         "CMDBUSY/ACCESSINVAL each set by their trigger + W1C-clear")
+        self.logger.info(
+            "CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW/"
+            "CMDBUSY/ACCESSINVAL each set by their trigger + W1C-clear"
+        )
 
     # ---- CHK-WATERMARK ----------------------------------------------------
     async def _chk_watermark(self) -> None:
@@ -270,22 +314,27 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st_full = await self.spi.rd(STATUS)
         txqd = st_full & ST_TXQD
         assert txqd == self.scfg.tx_fill_words, (
-            f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {self.scfg.tx_fill_words}")
+            f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {self.scfg.tx_fill_words}"
+        )
         assert not (st_full & ST_TXWM), (
-            f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})")
+            f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
+        )
         self.logger.info(
-            "CHK-WATERMARK PASS: TXWM 1->0 at exact wm=%d (TXQD %d->%d->%d, "
-            "tx_wm = qd < wm)",
-            wm, wm - 1, wm, txqd)
+            "CHK-WATERMARK PASS: TXWM 1->0 at exact wm=%d (TXQD %d->%d->%d, tx_wm = qd < wm)",
+            wm,
+            wm - 1,
+            wm,
+            txqd,
+        )
         await self._sw_rst_pulse()
 
     # ---- CHK-ENABLE -------------------------------------------------------
     async def _chk_enable(self) -> None:
-        await self._sw_rst_pulse()                           # clean, SPIEN=0
-        await self.spi.wr(TXDATA, 0xDEAD_BEEF)               # one word into TX FIFO
+        await self._sw_rst_pulse()  # clean, SPIEN=0
+        await self.spi.wr(TXDATA, 0xDEAD_BEEF)  # one word into TX FIFO
         st = await self.spi.rd(STATUS)
         assert not (st & ST_TXEMPTY), f"CHK-ENABLE TX FIFO unexpectedly empty: 0x{st:08x}"
-        await self.spi.wr(CMD, CMD_DIR_TX)                   # queue a 1-byte TX command
+        await self.spi.wr(CMD, CMD_DIR_TX)  # queue a 1-byte TX command
         drained_disabled = False
         for _ in range(50):
             st = await self.spi.rd(STATUS)
@@ -307,7 +356,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 drained_enabled = True
                 break
         assert drained_enabled, "CHK-ENABLE: command did not execute after SPIEN=1"
-        self.logger.info("CHK-ENABLE PASS: SPIEN=0 holds the command off; SPIEN=1 "
-                         "drains the TX FIFO")
+        self.logger.info(
+            "CHK-ENABLE PASS: SPIEN=0 holds the command off; SPIEN=1 drains the TX FIFO"
+        )
         await self._sw_rst_pulse()
         await self._clear_error_status()

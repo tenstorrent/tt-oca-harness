@@ -2,32 +2,22 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 import logging
+import os
+import sys
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import FallingEdge, with_timeout, Timer, ClockCycles, RisingEdge
-from cocotb.handle import Force
-from cocotb.regression import TestFactory
-from cocotbext.axi import AxiBus, AxiMaster, AxiRam
-import os
-import random
-import sys
+from cocotb.triggers import ClockCycles, RisingEdge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../data/registers/py_headers"))
-from entropy_source_reg import *
 
-import math
-from functools import reduce
-import operator
-from enum import Enum
+from entropy_source_reg import *
 
 REG_ADDR_WIDTH = 8
 REG_DATA_WIDTH = 32
 
 
-async def apb_write(
-    dut, addr: int, data: int, mask=2 ** (REG_DATA_WIDTH // 8) - 1
-) -> None:
+async def apb_write(dut, addr: int, data: int, mask=2 ** (REG_DATA_WIDTH // 8) - 1) -> None:
     """
     Write data to an APB register at the specified address.
     """

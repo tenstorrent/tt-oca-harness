@@ -2134,6 +2134,14 @@ SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_OFFSET = 0x00000198
 SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR = 0x10A30198
 SEP_CPU_CTRL_KM_WIPE_CTRL_REG_OFFSET = 0x000001A0
 SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR = 0x10A301A0
+SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_OFFSET = 0x000001A8
+SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_ADDR = 0x10A301A8
+SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_OFFSET = 0x000001B0
+SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_ADDR = 0x10A301B0
+SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_OFFSET = 0x000001B8
+SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_ADDR = 0x10A301B8
+SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_OFFSET = 0x000001C0
+SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR = 0x10A301C0
 SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET = 0x00001000
 SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR = 0x10A31000
 SPI_CONTROLLER_REG_MAP_BASE_ADDR = 0x10B00000
@@ -11081,6 +11089,131 @@ class SEP_CPU_CTRL_KM_WIPE_CTRL_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(SEP_CPU_CTRL_KM_WIPE_CTRL_reg_u, self).__init__(*args, **kwargs)
         self.val = SEP_CPU_CTRL_KM_WIPE_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_DEFAULT = 0x0000000000000000
+class SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('reg_path_err', c_uint8, 1),
+        ('host_path_err', c_uint8, 1),
+    ]
+
+SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_DEFAULT = 0x0000000000000000
+
+class SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT = 0x0000000000000000
+class SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_reg_t(Structure):
+    _fields_ = [
+        ('clr', c_uint8, 1),
+    ]
+
+SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT = 0x0000000000000000
+
+class SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT = 0x0000000000000000
+class SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('aes', c_uint8, 1),
+        ('hmac', c_uint8, 1),
+        ('kmac', c_uint8, 1),
+        ('otbn', c_uint8, 1),
+        ('csrng', c_uint8, 1),
+        ('edn', c_uint8, 1),
+        ('wdt', c_uint8, 1),
+    ]
+
+SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT = 0x0000000000000000
+
+class SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT = 0x0000000000000000
+class SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_t(Structure):
+    _fields_ = [
+        ('aes', c_uint8, 1),
+        ('hmac', c_uint8, 1),
+        ('kmac', c_uint8, 1),
+        ('otbn', c_uint8, 1),
+        ('csrng', c_uint8, 1),
+        ('edn', c_uint8, 1),
+        ('wdt', c_uint8, 1),
+    ]
+
+SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT = 0x0000000000000000
+
+class SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

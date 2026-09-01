@@ -10,8 +10,6 @@ backdoor access for the scoreboard / sequences.
 from __future__ import annotations
 
 import cocotb
-from pyuvm import ConfigDB, uvm_agent
-
 from ocah_axi_vip import (
     OcahAxiLiteMonitor,
     OcahAxiLiteProtocolWatcher,
@@ -21,6 +19,7 @@ from ocah_axi_vip import (
     OcahAxiSlaveAgent,
     OcahAxiSlaveSequence,
 )
+from pyuvm import ConfigDB, uvm_agent
 
 
 class DtpAxiAgent(uvm_agent):

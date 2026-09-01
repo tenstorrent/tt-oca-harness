@@ -43,8 +43,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             cur = int(dut.tb_cpu_ecc_inject_fire_count.value)
             if cur > baseline:
                 cocotb.log.info(
-                    "%s fire_count %d -> %d after %d cycles "
-                    "(DUT scratch0_inject_fire path)",
+                    "%s fire_count %d -> %d after %d cycles (DUT scratch0_inject_fire path)",
                     label,
                     baseline,
                     cur,
@@ -99,9 +98,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
                     scratch,
                 )
                 return cur, scratch
-        raise AssertionError(
-            f"TIMEOUT SBE: no DUT fire within {_FIRE_BOUND_CYCLES} cycles"
-        )
+        raise AssertionError(f"TIMEOUT SBE: no DUT fire within {_FIRE_BOUND_CYCLES} cycles")
 
     async def _pulse_scratch_boot(self) -> None:
         """Re-fetch from scratch; end in RESET_CTRL DEFAULT (pulse alone can stick)."""
@@ -141,9 +138,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await RisingEdge(clk)
         clearer = cocotb.start_soon(self._clear_sbe_on_first_fire(base))
         if _hold_cpu_boot_plusarg():
-            boot_task = cocotb.start_soon(
-                _release_held_cpu_boot(self, CPU_RESET_VECTOR_SCRATCH)
-            )
+            boot_task = cocotb.start_soon(_release_held_cpu_boot(self, CPU_RESET_VECTOR_SCRATCH))
         else:
             boot_task = cocotb.start_soon(self._pulse_scratch_boot())
 
@@ -161,12 +156,10 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
         assert mid_after == mid, (
-            f"inject-clear recovery failed during I$ fill: "
-            f"fire_count {mid} -> {mid_after}"
+            f"inject-clear recovery failed during I$ fill: fire_count {mid} -> {mid_after}"
         )
         cocotb.log.info(
-            "RECOVERY ok: fire_count held at %d (first_fire=%d); "
-            "scratch_reads %d -> %d",
+            "RECOVERY ok: fire_count held at %d (first_fire=%d); scratch_reads %d -> %d",
             mid,
             sbe,
             scratch_hold,

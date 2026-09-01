@@ -449,6 +449,11 @@ module smu_uvm_top
     assign jtag_tdo     = jtag_tdo_w;
     assign jtag_tdo_oen = jtag_tdo_oen_w;
 
+    // TB-owned SEP lockstep stimulus/observation. Initialised: an undriven
+    // sep_lockstep_ctrl_i would reach the SEP core as X under RV_LOCKSTEP_ENABLE.
+    sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
+    sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
+
     smu #(
         .SEP (0)
     ) u_dut (
@@ -623,7 +628,11 @@ module smu_uvm_top
         .i3c_dct_mem_sink_o          (),
         .ext_debug_bus_i             (128'h0),
         .gpio_interrupt_o            (),
-        .uart_interrupt_o            ()
+        .uart_interrupt_o            (),
+
+        // SEP CPU lockstep control/status
+        .sep_lockstep_ctrl_i         (sep_lockstep_ctrl_i),
+        .sep_lockstep_status_o       (sep_lockstep_status_o)
     );
 
     // Peripheral-domain reset: the current smu top no longer forwards SMC's

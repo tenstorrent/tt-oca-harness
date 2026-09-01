@@ -551,6 +551,11 @@ module sep_uvm_top
     end
 `endif
 
+    // TB-owned CPU lockstep stimulus/observation. Initialised: an undriven
+    // lockstep_ctrl_i would reach the core as X under RV_LOCKSTEP_ENABLE.
+    sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i = '0;
+    sep_pkg::sep_lockstep_status_t lockstep_status_o;
+
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
     logic jtag_tck   = 1'b0;
@@ -791,7 +796,11 @@ module sep_uvm_top
         .sep_region_size_o            (),
 
         // External debug bus
-        .ext_debug_bus_o              ()
+        .ext_debug_bus_o              (),
+
+        // CPU lockstep control/status
+        .lockstep_ctrl_i              (lockstep_ctrl_i),
+        .lockstep_status_o            (lockstep_status_o)
     );
     // Scalar SPI pad bridge from the wrapper struct port.
     assign spi_sck_o  = sep_io_spi_req_w.sck;

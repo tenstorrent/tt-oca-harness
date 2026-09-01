@@ -43,11 +43,9 @@ from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-import cocotb
-from cocotb.triggers import RisingEdge
-
 from ocah_axi_vip import AxiTimingProfile
 from sep_reg_meta import RegInfo, iter_register_walk, sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_reg_bit_bash_seq import (
     TOUCH_BLOCKS,
@@ -93,9 +91,8 @@ BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
     # over the filter CSR bank, which is the software hole
     # sep_fabric_inbound_filter_rule_matrix_test asserts must stay shut. The
     # CPU-LSU sweep covers these registers; that path has no inbound filter.
-    f"INBOUND_FILTER_CTRL_{n}_":
-        "inbound-filter rule bank: the entry's own address window gates this "
-        "bus, so a sweep write reprograms the path under the walk"
+    f"INBOUND_FILTER_CTRL_{n}_": "inbound-filter rule bank: the entry's own address window gates this "
+    "bus, so a sweep write reprograms the path under the walk"
     for n in range(16)
 }
 
@@ -261,13 +258,9 @@ class SepAxiOrderSweepCfg:
                     )
                     mask = write_mask(info)
                     value = touch_write_value(info.reset, mask, rng)
-                    witness = (
-                        peers[rng.randrange(0, len(peers))] if peers else None
-                    )
+                    witness = peers[rng.randrange(0, len(peers))] if peers else None
                     w_bit = rng.randrange(0, 32)
-                    cells.append(OrderCell(
-                        order, info, value, size, profile, witness, w_bit
-                    ))
+                    cells.append(OrderCell(order, info, value, size, profile, witness, w_bit))
         self.cells = tuple(cells)
 
     def n_cells(self) -> int:
@@ -288,9 +281,7 @@ class SepAxiOrderSweepCfg:
     def cross_cells(self) -> set[tuple[str, int]]:
         """Every (ordering, size) pair the sweep must report a compare for."""
         return {
-            (order, SIZE_BYTES[s])
-            for order, _a, _w in WRITE_ORDERS
-            for s in sorted(SIZE_BYTES)
+            (order, SIZE_BYTES[s]) for order, _a, _w in WRITE_ORDERS for s in sorted(SIZE_BYTES)
         }
 
     def summary(self) -> str:
@@ -315,12 +306,10 @@ class SepAxiOrderSweep:
         # has to be caught on both.
         self.bus = bus
         env = test.env
-        self._agent_name = ("env.axi_agent" if bus == "s_axi"
-                            else "env.ext_axi_agent")
+        self._agent_name = "env.axi_agent" if bus == "s_axi" else "env.ext_axi_agent"
         self._agent = env.axi_agent if bus == "s_axi" else env.ext_axi_agent
         self._mon = env.axi_monitor if bus == "s_axi" else env.ext_axi_monitor
-        self._start = (test.start_seq if bus == "s_axi"
-                       else test.start_ext_seq)
+        self._start = test.start_seq if bus == "s_axi" else test.start_ext_seq
         self.covered: dict[str, int] = defaultdict(int)
         self.cross_covered: dict[tuple[str, int], int] = defaultdict(int)
         self.blocks_hit: set[str] = set()
@@ -349,8 +338,11 @@ class SepAxiOrderSweep:
 
     async def _rd(self, addr: int, *, size: int = SIZE_4B) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
-            f"ord_rd_0x{addr:08x}", op=SepAxiOp.READ, addr=addr,
-            length=SIZE_BYTES[size], size=size,
+            f"ord_rd_0x{addr:08x}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=SIZE_BYTES[size],
+            size=size,
         )
         await self._start(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
@@ -360,9 +352,12 @@ class SepAxiOrderSweep:
         # The item carries exactly nbytes; a wider value is a caller error the
         # driver reports as OverflowError rather than as a lane mismatch.
         seq = SepAxiAccessSeq(
-            f"ord_wr_0x{addr:08x}", op=SepAxiOp.WRITE, addr=addr,
+            f"ord_wr_0x{addr:08x}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
             wdata=data & ((1 << (8 * nbytes)) - 1),
-            length=nbytes, size=size,
+            length=nbytes,
+            size=size,
         )
         await self._start(seq)
         return seq.resp_code
@@ -409,7 +404,7 @@ class SepAxiOrderSweep:
             f"write could not be observed"
         )
 
-        drv.set_timing(AxiTimingProfile())          # prime at default timing
+        drv.set_timing(AxiTimingProfile())  # prime at default timing
         # Prime the complement across the whole word, so the written lanes
         # always change and the untouched lanes hold a value a widened strobe
         # would destroy. A prime of the reset value would leave the upper
@@ -421,8 +416,7 @@ class SepAxiOrderSweep:
         resp, staged = await self._rd(info.addr)
         if resp != RESP_OKAY or (staged & mask) != (prime & mask):
             self.dropped[cell.key] = (
-                f"prime readback 0x{staged:08x} != 0x{prime:08x} under "
-                f"mask 0x{mask:08x}"
+                f"prime readback 0x{staged:08x} != 0x{prime:08x} under mask 0x{mask:08x}"
             )
             return None
 
@@ -531,7 +525,13 @@ class SepAxiOrderSweep:
             "CHK-ORDER-STIM %s: requested=%s presented=%s handshake=%s "
             "(awv=%s wv=%s awhs=%s whs=%s) %s.%s",
             "OK " if stim == cell.order else "DIFF",
-            cell.order, stim, hs, *cyc, info.block, info.name)
+            cell.order,
+            stim,
+            hs,
+            *cyc,
+            info.block,
+            info.name,
+        )
         if stim != cell.order:
             return (
                 f"{tag} requested {cell.order} but presented {stim} "
@@ -562,8 +562,7 @@ class SepAxiOrderSweep:
             f"order x size {len(self.cross_covered)}/{len(cfg.cross_cells())}; "
             f"displacement witnesses={self.witnessed}"
             + (f"; NOT covered: {missing}" if missing else "")
-            + (f"; order x size NOT covered: {cross_missing}"
-               if cross_missing else "")
+            + (f"; order x size NOT covered: {cross_missing}" if cross_missing else "")
             + (f"; dropped: {len(self.dropped)}" if self.dropped else "")
         )
 
@@ -579,7 +578,8 @@ def _selftest() -> None:
         for cell in c.cells:
             by_reg[(cell.info.block, cell.info.name)].add(cell.order)
             assert cell.profile.write_order == cell.order, (
-                f"profile {cell.profile.summary()} is not {cell.order}")
+                f"profile {cell.profile.summary()} is not {cell.order}"
+            )
             assert cell.value < (1 << 32), cell
         for reg, orders in by_reg.items():
             assert len(orders) == len(WRITE_ORDERS), f"{reg} covers {orders}"

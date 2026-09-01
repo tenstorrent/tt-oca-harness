@@ -18,7 +18,6 @@ from .smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 
 class SmcScoreboard(uvm_subscriber):
-
     def build_phase(self) -> None:
         self.i2c_samples_seen = 0
         self.reset_samples_seen = 0
@@ -77,7 +76,8 @@ class SmcScoreboard(uvm_subscriber):
             self.logger.warning("SmcScoreboard ignoring %s", type(item).__name__)
 
     def _check_i2c(self, item):
-        if item.op is not SmcI2cOp.SAMPLE: return
+        if item.op is not SmcI2cOp.SAMPLE:
+            return
         self.i2c_samples_seen += 1
         self.logger.info("Scoreboard I2C sample #%d: %s", self.i2c_samples_seen, item)
         assert item.resolvable, f"I2C not resolvable: {item}"
@@ -89,7 +89,15 @@ class SmcScoreboard(uvm_subscriber):
         if item.op is SmcResetOp.RAW_SAMPLE:
             # Snapshot during a glitch window: record the observed state without
             # enforcing the post-reset stable invariants.
-            self._cov("reset_state", (item.powergood_stable, item.rst_cold_stable_ref_clk_n, item.rst_primary_ref_clk_n, item.rst_primary_smc_clk_n))
+            self._cov(
+                "reset_state",
+                (
+                    item.powergood_stable,
+                    item.rst_cold_stable_ref_clk_n,
+                    item.rst_primary_ref_clk_n,
+                    item.rst_primary_smc_clk_n,
+                ),
+            )
             return
         if item.op is not SmcResetOp.SAMPLE:
             self.action_items_seen += 1
@@ -101,20 +109,37 @@ class SmcScoreboard(uvm_subscriber):
         assert item.rst_cold_stable_ref_clk_n == 1
         assert item.rst_primary_ref_clk_n == 1
         assert item.rst_primary_smc_clk_n == 1
-        self._cov("reset_state", (item.powergood_stable, item.rst_cold_stable_ref_clk_n, item.rst_primary_ref_clk_n, item.rst_primary_smc_clk_n))
+        self._cov(
+            "reset_state",
+            (
+                item.powergood_stable,
+                item.rst_cold_stable_ref_clk_n,
+                item.rst_primary_ref_clk_n,
+                item.rst_primary_smc_clk_n,
+            ),
+        )
 
     def _check_clk(self, item):
-        if item.op is not SmcClkOp.COUNT_EDGES: return
+        if item.op is not SmcClkOp.COUNT_EDGES:
+            return
         self.clk_samples_seen += 1
         self.logger.info("Scoreboard clk sample #%d: %s", self.clk_samples_seen, item)
         assert item.ref_rising_edges > 0
         assert item.smc_rising_edges > 0
         assert item.periph_rising_edges > 0
         assert item.smc_rising_edges >= item.ref_rising_edges
-        self._cov("clk_bucket", (item.ref_rising_edges // 50, item.smc_rising_edges // 50, item.periph_rising_edges // 50))
+        self._cov(
+            "clk_bucket",
+            (
+                item.ref_rising_edges // 50,
+                item.smc_rising_edges // 50,
+                item.periph_rising_edges // 50,
+            ),
+        )
 
     def _check_irq(self, item):
-        if item.op is not SmcIrqOp.SAMPLE: return
+        if item.op is not SmcIrqOp.SAMPLE:
+            return
         self.irq_samples_seen += 1
         self.logger.info("Scoreboard IRQ sample #%d: %s", self.irq_samples_seen, item)
         assert item.resolvable, f"IRQ not resolvable: {item}"
@@ -124,7 +149,8 @@ class SmcScoreboard(uvm_subscriber):
         self._cov("irq_state", (int(item.sync_irq), int(item.gpio_irq_any), int(item.uart_irq_any)))
 
     def _check_gpio(self, item):
-        if item.op is not SmcGpioOp.SAMPLE: return
+        if item.op is not SmcGpioOp.SAMPLE:
+            return
         self.gpio_samples_seen += 1
         self.logger.info("Scoreboard GPIO sample #%d: %s", self.gpio_samples_seen, item)
         # The real, non-vacuous evidence here is resolvability: the three GPIO
@@ -140,10 +166,14 @@ class SmcScoreboard(uvm_subscriber):
         assert item.core2pad_any in (0, 1)
         assert item.core2pad_en_any in (0, 1)
         assert item.pad2core_en_any in (0, 1)
-        self._cov("gpio_state", (int(item.core2pad_any), int(item.core2pad_en_any), int(item.pad2core_en_any)))
+        self._cov(
+            "gpio_state",
+            (int(item.core2pad_any), int(item.core2pad_en_any), int(item.pad2core_en_any)),
+        )
 
     def _check_axil(self, item):
-        if item.op is not SmcAxilOp.SAMPLE: return
+        if item.op is not SmcAxilOp.SAMPLE:
+            return
         self.axil_samples_seen += 1
         self.logger.info("Scoreboard AXIL sample #%d: %s", self.axil_samples_seen, item)
         assert item.resolvable, f"AXIL not resolvable: {item}"
@@ -159,8 +189,7 @@ class SmcScoreboard(uvm_subscriber):
 
     def _check_sys_axi(self, item):
         self.sys_axi_checks_seen += 1
-        self.logger.info("Scoreboard SYS AXI check #%d: %s",
-                         self.sys_axi_checks_seen, item)
+        self.logger.info("Scoreboard SYS AXI check #%d: %s", self.sys_axi_checks_seen, item)
         if getattr(item, "expect_error", False):
             # Negative-path probe (mirrors the SEP expect_error guard): a real
             # error response is the expected outcome. Two vacuous passes are
@@ -177,9 +206,7 @@ class SmcScoreboard(uvm_subscriber):
             )
             self._cov("sys_axi", (item.op.value, item.addr >> 12))
             return
-        assert item.resp_ok, (
-            f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY"
-        )
+        assert item.resp_ok, f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY"
         if item.expected_resp is not None:
             assert item.resp_code == item.expected_resp, (
                 f"SYS AXI {item.op.value} @ 0x{item.addr:014x} resp "
@@ -190,9 +217,7 @@ class SmcScoreboard(uvm_subscriber):
             mask = (1 << (item.length * 8)) - 1
             got = item.rdata & mask
             exp = item.expected & mask
-            assert got == exp, (
-                f"SYS AXI read 0x{item.addr:014x} = 0x{got:x}, expected 0x{exp:x}"
-            )
+            assert got == exp, f"SYS AXI read 0x{item.addr:014x} = 0x{got:x}, expected 0x{exp:x}"
             self.sys_axi_value_checks_seen += 1
         self._check_sys_axi_memory_model(item)
 
@@ -205,12 +230,8 @@ class SmcScoreboard(uvm_subscriber):
                 f"SYS AXI golden update refused for non-OKAY "
                 f"{item.op.value} @ 0x{item.addr:x} resp={item.resp_code}"
             )
-            assert item.op is SmcSysAxiOp.WRITE, (
-                "update_golden is only valid for SYS AXI writes"
-            )
-            region = self.memory_model.find_region(
-                item.addr, item.length, item.memory_region
-            )
+            assert item.op is SmcSysAxiOp.WRITE, "update_golden is only valid for SYS AXI writes"
+            region = self.memory_model.find_region(item.addr, item.length, item.memory_region)
             assert region is not None, (
                 f"update_golden set but no memory region covers 0x{item.addr:x} "
                 f"(region={item.memory_region!r})"
@@ -235,20 +256,16 @@ class SmcScoreboard(uvm_subscriber):
                 f"SYS AXI golden check refused for non-OKAY "
                 f"{item.op.value} @ 0x{item.addr:x} resp={item.resp_code}"
             )
-            assert item.op is SmcSysAxiOp.READ, (
-                "check_golden is only valid for SYS AXI reads"
-            )
-            region = self.memory_model.find_region(
-                item.addr, item.length, item.memory_region
-            )
+            assert item.op is SmcSysAxiOp.READ, "check_golden is only valid for SYS AXI reads"
+            region = self.memory_model.find_region(item.addr, item.length, item.memory_region)
             assert region is not None, (
                 f"check_golden set but no memory region covers 0x{item.addr:x} "
                 f"(region={item.memory_region!r})"
             )
             mask = (1 << (item.length * 8)) - 1
-            exp = self.memory_model.read_int(
-                item.addr, length=item.length, region=region.name
-            ) & mask
+            exp = (
+                self.memory_model.read_int(item.addr, length=item.length, region=region.name) & mask
+            )
             got = item.rdata & mask
             assert got == exp, (
                 f"SYS AXI memory-model mismatch @ 0x{item.addr:x} "
@@ -266,8 +283,9 @@ class SmcScoreboard(uvm_subscriber):
 
     def _check_protocol_vip(self, item):
         self.protocol_vip_checks_seen += 1
-        self.logger.info("Scoreboard protocol VIP check #%d: %s",
-                         self.protocol_vip_checks_seen, item)
+        self.logger.info(
+            "Scoreboard protocol VIP check #%d: %s", self.protocol_vip_checks_seen, item
+        )
         # `passed` is a completion marker only (always True when an item is
         # recorded — sequences abort on mismatch before recording). Do not
         # assert it; the real protocol verification lives in sequence-body /
@@ -275,9 +293,7 @@ class SmcScoreboard(uvm_subscriber):
         # recording an empty/inconsistent evidence record (which would
         # otherwise let a mis-wired test log false coverage).
         assert item.scenario != "", "protocol VIP scenario name is empty"
-        assert item.details != "", (
-            f"protocol VIP {item.scenario} recorded without evidence details"
-        )
+        assert item.details != "", f"protocol VIP {item.scenario} recorded without evidence details"
         assert item.csr_accesses >= 0
         assert item.timeouts >= 0
         # Every timeout counted by csr_read_bounded() is also an access, so a
@@ -296,7 +312,14 @@ class SmcScoreboard(uvm_subscriber):
         self._cov("protocol_vip", (item.kind.value, item.scenario, int(item.proxy)))
 
     def check_phase(self):
-        total = (self.i2c_samples_seen + self.reset_samples_seen + self.clk_samples_seen
-                 + self.irq_samples_seen + self.gpio_samples_seen + self.axil_samples_seen
-                 + self.sys_axi_checks_seen + self.protocol_vip_checks_seen)
+        total = (
+            self.i2c_samples_seen
+            + self.reset_samples_seen
+            + self.clk_samples_seen
+            + self.irq_samples_seen
+            + self.gpio_samples_seen
+            + self.axil_samples_seen
+            + self.sys_axi_checks_seen
+            + self.protocol_vip_checks_seen
+        )
         assert total > 0, "SmcScoreboard saw no SAMPLE items"

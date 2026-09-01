@@ -16,8 +16,6 @@ import random
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from pyuvm import uvm_sequence
-
 from env.dtp_dbg_disable import (
     DBG_DISABLE_FIELDS,
     format_dbg_disable,
@@ -26,6 +24,7 @@ from env.dtp_dbg_disable import (
 )
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr, DtpTapState
+from pyuvm import uvm_sequence
 
 
 class dtp_base_test_seq(uvm_sequence):

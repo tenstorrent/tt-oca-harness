@@ -326,6 +326,8 @@ module smu #(
     input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
+    input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,
 
     input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_extintsrc_req_i,
 
@@ -877,6 +879,8 @@ module smu #(
             .dmi_active                    (/* unused */),
 
             .sep_cpu_trace                 (sep_cpu_trace_o),
+            .lockstep_ctrl_i               (sep_lockstep_ctrl_i),
+            .lockstep_status_o             (sep_lockstep_status_o),
 
             .jtag_id                       ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
 
@@ -1238,6 +1242,7 @@ module smu #(
         assign sep_io_spi_req                   = '0;
         assign sep_external_req_o          = '0;
         assign sep_cpu_trace_o                  = '0;
+        assign sep_lockstep_status_o            = '0;
         assign lcc_demote_state_1_o             = '0;
         assign lcc_demote_state_2_o             = '0;
         assign sep_fuse_sense_done_o            = 1'b0;

@@ -12,10 +12,8 @@ JTAG deny is a different path). RAND-REP both flavours every seed.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Event, ReadOnly, RisingEdge
 import pyuvm
-
-from sep_base_test import sep_base_test
+from cocotb.triggers import Event, ReadOnly, RisingEdge
 from env.sep_lcc_golden import LC_PROD
 from env.sep_locked_field_irq import (
     IRQ_LOCKED_FIELD,
@@ -23,6 +21,7 @@ from env.sep_locked_field_irq import (
     SENTINEL,
     SepLockedFieldIrqCfg,
 )
+from sep_base_test import sep_base_test
 from seq_lib.sep_locked_field_irq_seq import SepLockedFieldIrq
 
 _MAX_SENSE_CYCLES = 20_000
@@ -41,13 +40,12 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         await ReadOnly()
         raw = cocotb.top.sep_internal_interrupts_probe_o.value
         if not raw.is_resolvable:
-            raise AssertionError(
-                "sep_internal_interrupts X/Z while sampling bit [33]"
-            )
+            raise AssertionError("sep_internal_interrupts X/Z while sampling bit [33]")
         return (int(raw) >> IRQ_LOCKED_FIELD) & 1
 
-    async def _access_watching(self, drv: SepLockedFieldIrq, name: str,
-                               *, write: bool = False, wdata: int = 0):
+    async def _access_watching(
+        self, drv: SepLockedFieldIrq, name: str, *, write: bool = False, wdata: int = 0
+    ):
         seen_high = False
         stop = Event()
 
@@ -79,13 +77,10 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
 
         # Unlocked contrast: same driver, same aperture; [33] must stay low.
         un_wr, un_irq = await self._access_watching(
-            drv, cfg.unlocked_field, write=True, wdata=cfg.unlocked_write)
-        assert un_wr.resp_code == RESP_OKAY, (
-            f"unlocked write resp={un_wr.resp_code}, expected OKAY"
+            drv, cfg.unlocked_field, write=True, wdata=cfg.unlocked_write
         )
-        assert not un_irq, (
-            f"[33] rose during unlocked write of {cfg.unlocked_field}"
-        )
+        assert un_wr.resp_code == RESP_OKAY, f"unlocked write resp={un_wr.resp_code}, expected OKAY"
+        assert not un_irq, f"[33] rose during unlocked write of {cfg.unlocked_field}"
         un_rd, un_rd_irq = await self._access_watching(drv, cfg.unlocked_field)
         assert un_rd.resp_code == RESP_OKAY and un_rd.rdata == cfg.unlocked_write, (
             f"unlocked readback 0x{un_rd.rdata:08x} resp={un_rd.resp_code}, "
@@ -95,23 +90,23 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         assert await self._irq() == 0
         self.logger.info(
             "CHK-UNLOCKED PASS: %s write/read no [33], readback=0x%08x",
-            cfg.unlocked_field, un_rd.rdata)
+            cfg.unlocked_field,
+            un_rd.rdata,
+        )
 
         # Write-lock: BRESP OKAY, following read equals pre-write, [33] during write.
         pre, pre_irq = await self._access_watching(drv, cfg.write_field)
         assert pre.resp_code == RESP_OKAY and pre.rdata == cfg.write_pattern, (
-            f"write-locked pre-read 0x{pre.rdata:08x}, "
-            f"expected 0x{cfg.write_pattern:08x}"
+            f"write-locked pre-read 0x{pre.rdata:08x}, expected 0x{cfg.write_pattern:08x}"
         )
         assert not pre_irq, "[33] rose on a legal read of a write-locked field"
         wr, wr_irq = await self._access_watching(
-            drv, cfg.write_field, write=True, wdata=cfg.write_pattern ^ 0xFFFF_FFFF)
+            drv, cfg.write_field, write=True, wdata=cfg.write_pattern ^ 0xFFFF_FFFF
+        )
         assert wr.resp_code == RESP_OKAY, (
             f"write-lock write resp={wr.resp_code}, expected OKAY (not SLVERR)"
         )
-        assert wr_irq, (
-            f"[33] stayed low during write-locked write of {cfg.write_field}"
-        )
+        assert wr_irq, f"[33] stayed low during write-locked write of {cfg.write_field}"
         assert await self._irq() == 0, "[33] still high after write-lock write retired"
         post, post_irq = await self._access_watching(drv, cfg.write_field)
         assert post.resp_code == RESP_OKAY and post.rdata == cfg.write_pattern, (
@@ -122,20 +117,20 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         self.logger.info(
             "CHK-WRITE-LOCK PASS: [33] during write, BRESP OKAY, "
             "following read=0x%08x (unchanged); [33] low after retire",
-            post.rdata)
+            post.rdata,
+        )
 
         # Read-lock: that read is the denial (sentinel + OKAY + [33]); no legal follow-up.
         rd, rd_irq = await self._access_watching(drv, cfg.read_field)
-        assert rd.resp_code == RESP_OKAY, (
-            f"read-lock read resp={rd.resp_code}, expected OKAY"
-        )
+        assert rd.resp_code == RESP_OKAY, f"read-lock read resp={rd.resp_code}, expected OKAY"
         assert rd.rdata == SENTINEL, (
             f"read-lock RDATA=0x{rd.rdata:08x}, expected sentinel 0x{SENTINEL:08x}"
         )
         assert rd_irq, f"[33] stayed low during read-locked read of {cfg.read_field}"
         assert await self._irq() == 0, "[33] still high after read-lock read retired"
         self.logger.info(
-            "CHK-READ-LOCK PASS: [33] during read, RDATA=0x%08x OKAY; "
-            "[33] low after retire", rd.rdata)
+            "CHK-READ-LOCK PASS: [33] during read, RDATA=0x%08x OKAY; [33] low after retire",
+            rd.rdata,
+        )
 
         self.logger.info("locked-field irq path ALL CHECKS PASS")

@@ -44,6 +44,8 @@
 |`dmi_active` |`logic` |Output |1 |DMI active indicator. |Debug infrastructure |N/A
 
 |`sep_cpu_trace` |`sep_cpu_trace_t` |Output |- |CPU trace output for debug. |Trace infrastructure |N/A
+|`lockstep_ctrl_i` |`sep_pkg::sep_lockstep_ctrl_t` |Input |- |VeeR lockstep controls: disable corruption detection, and error-injection enable. Inert unless the core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS control |Tie to '0 if unused
+|`lockstep_status_o` |`sep_pkg::sep_lockstep_status_t` |Output |- |VeeR lockstep status: corruption detected. Reads 0 unless the core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS aggregation |N/A
 
 |`jtag_id` |`logic` |Input |`[31:1]` |JTAG ID value. |Configuration tie-off |N/A
 |`core_id` |`logic` |Input |`[31:4]` |CPU core ID. |Configuration tie-off |N/A

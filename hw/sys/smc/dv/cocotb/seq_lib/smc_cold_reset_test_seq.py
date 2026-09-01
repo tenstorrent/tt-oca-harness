@@ -14,7 +14,6 @@ import time
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_clk_item import SmcClkItem, SmcClkOp
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
@@ -64,16 +63,10 @@ class smc_cold_reset_test_seq(smc_base_test_seq):
             if not last.resolvable:
                 continue
             if predicate(last):
-                self._timeout_paths.append(
-                    f"{label}: bound={bound} ref_cycles ok last={last}"
-                )
+                self._timeout_paths.append(f"{label}: bound={bound} ref_cycles ok last={last}")
                 return last
-        self._timeout_paths.append(
-            f"{label}: bound={bound} ref_cycles EXPIRED last={last}"
-        )
-        raise AssertionError(
-            f"TIMEOUT {label}: bound={bound} ref_cycles last_state={last}"
-        )
+        self._timeout_paths.append(f"{label}: bound={bound} ref_cycles EXPIRED last={last}")
+        raise AssertionError(f"TIMEOUT {label}: bound={bound} ref_cycles last_state={last}")
 
     async def _recover_sample(self) -> SmcResetItem:
         await ClockCycles(cocotb.top.clk_ref_i, self.RECOVER_REF_CYCLES)
@@ -144,9 +137,7 @@ class smc_cold_reset_test_seq(smc_base_test_seq):
             f"rst_primary_smc_clk_no=={s4.rst_primary_smc_clk_n}"
         )
         await self._send(SmcResetOp.COLD_RST_HI)
-        self._log(
-            "LIFECYCLE CHK-COLD-ASSERT-PRIMARY cleared: COLD_RST_HI restores rst_cold_ni=1"
-        )
+        self._log("LIFECYCLE CHK-COLD-ASSERT-PRIMARY cleared: COLD_RST_HI restores rst_cold_ni=1")
         s4c = await self._recover_sample()
         assert s4c.rst_primary_ref_clk_n == 1 and s4c.rst_primary_smc_clk_n == 1, s4c
         self._log(
@@ -172,9 +163,7 @@ class smc_cold_reset_test_seq(smc_base_test_seq):
             f"powergood_stable_o=={s5.powergood_stable}"
         )
         await self._send(SmcResetOp.POWERGOOD_HI)
-        self._log(
-            "LIFECYCLE CHK-POWERGOOD-GATES cleared: POWERGOOD_HI restores powergood_i=1"
-        )
+        self._log("LIFECYCLE CHK-POWERGOOD-GATES cleared: POWERGOOD_HI restores powergood_i=1")
         s5c = await self._recover_sample()
         assert s5c.powergood_stable == 1, s5c
         self._log(
@@ -240,8 +229,7 @@ class smc_cold_reset_test_seq(smc_base_test_seq):
             label="INT_POR_COLD_WHILE_PG0",
         )
         assert not (
-            cold_while_pg0.rst_primary_ref_clk_n == 1
-            and cold_while_pg0.rst_primary_smc_clk_n == 1
+            cold_while_pg0.rst_primary_ref_clk_n == 1 and cold_while_pg0.rst_primary_smc_clk_n == 1
         ), f"primary released while powergood_stable==0: {cold_while_pg0}"
         await self._send(SmcResetOp.COLD_RST_HI)
         await self._send(SmcResetOp.POWERGOOD_HI)
@@ -291,9 +279,7 @@ class smc_cold_reset_test_seq(smc_base_test_seq):
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
         for a, b in zip(order, order[1:]):
             assert self._step_ts[a] <= self._step_ts[b], f"order {a} !< {b}"
-        self._log(
-            "CHK-NONVAC: SETUP < S2 < S3 < S4 < S5 < S6 < S7 < S8 < PASS"
-        )
+        self._log("CHK-NONVAC: SETUP < S2 < S3 < S4 < S5 < S6 < S7 < S8 < PASS")
         for line in self._timeout_paths:
             self._log(f"CHK-TIMEOUT-PATHS: {line}")
         self._log(

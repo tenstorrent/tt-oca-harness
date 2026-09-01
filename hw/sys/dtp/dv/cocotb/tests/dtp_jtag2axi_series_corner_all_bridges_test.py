@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_series_corner_all_bridges_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_test_seq
@@ -21,7 +20,7 @@ class dtp_jtag2axi_series_corner_all_bridges_test(dtp_base_test):
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
     )
-    axi_checker_stream_minimums = {'smc_axi': 2, 'smc_otp': 2, 'sep_otp': 2}
+    axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:
         sequences = await self.start_looped_seq(

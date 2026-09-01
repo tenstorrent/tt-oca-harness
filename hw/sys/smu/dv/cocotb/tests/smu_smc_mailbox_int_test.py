@@ -11,7 +11,6 @@ Bare ``tb_top`` / ``smu_uvm_top`` SEP=0 — passive DECODE of
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_smc_mailbox_int_test_seq import smu_smc_mailbox_int_test_seq
 from smu_base_test import smu_base_test
 
@@ -22,8 +21,7 @@ class smu_smc_mailbox_int_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_smc_mailbox_int_test SMU_ALL_004 r8 SEP=0 "
-            "EXT.S2 width DECODE"
+            "DUT_TAG=BARE smu_smc_mailbox_int_test SMU_ALL_004 r8 SEP=0 EXT.S2 width DECODE"
         )
         seq = smu_smc_mailbox_int_test_seq(self)
         await seq.run()

@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_telemetry_receiver_csr_test_seq import smc_telemetry_receiver_csr_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -21,8 +20,7 @@ class smc_telemetry_receiver_csr_test(smc_base_test):
         seq = smc_telemetry_receiver_csr_test_seq("smc_telemetry_receiver_csr_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.telemetry_irq_ok and seq.telemetry_atb_ok, (
-            f"U4-6 telemetry failed: irq={seq.telemetry_irq_ok} "
-            f"atb={seq.telemetry_atb_ok}"
+            f"U4-6 telemetry failed: irq={seq.telemetry_irq_ok} atb={seq.telemetry_atb_ok}"
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,

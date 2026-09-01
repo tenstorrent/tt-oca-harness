@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_system_timer_octs_test_seq import smu_system_timer_octs_test_seq
 from smu_base_test import smu_base_test
 
@@ -15,10 +14,7 @@ class smu_system_timer_octs_test(smu_base_test):
     """SYS-TIMER-OCTS via J2A + tb_timer_count; no Force / no sep_in."""
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=BARE smu_system_timer_octs_test "
-            "TierC SYS-TIMER-OCTS SEP=0 J2A"
-        )
+        self.logger.info("DUT_TAG=BARE smu_system_timer_octs_test TierC SYS-TIMER-OCTS SEP=0 J2A")
         seq = smu_system_timer_octs_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (

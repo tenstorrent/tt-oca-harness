@@ -23,17 +23,20 @@ import os
 # read/write tests (build-independent, unlike a backdoor force of the array).
 os.environ.setdefault("COCOTB_RESOLVE_X", "ZEROS")
 
-import cocotb
 import logging
 import sys
-from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, Timer, ClockCycles, FallingEdge
 
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+import cocotb
 from cocotb.handle import Force, Release
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
-# Import tests from other test files
-from i3c_error_sanity import i3c_error_wrong_addr, i3c_fifo_overflow
+# Import tests from other test files: cocotb discovers @cocotb.test() coroutines
+# by scanning this module's namespace, so MODULE=test_i3ccore only runs these
+# too if they are (re-)imported here.
+from i3c_error_sanity import i3c_error_wrong_addr as i3c_error_wrong_addr
+from i3c_error_sanity import i3c_fifo_overflow as i3c_fifo_overflow
+
 
 def sim_handle(path, root):
     """Resolve a dotted simulator hierarchy path from ``root``."""
@@ -45,29 +48,30 @@ def sim_handle(path, root):
             handle = handle._id(component, extended=True)
     return handle
 
+
 # Add path to register headers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../data/registers/py_headers"))
 
 from I3CCSR_reg import (
-    # Base registers
-    I3CBASE_HCI_VERSION_REG_ADDR,
-    I3CBASE_HC_CAPABILITIES_REG_ADDR,
-    I3CBASE_DAT_SECTION_OFFSET_REG_ADDR,
-    I3CBASE_DCT_SECTION_OFFSET_REG_ADDR,
-    I3CBASE_PIO_SECTION_OFFSET_REG_ADDR,
-    I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR,
-    # PIO registers
-    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
-    PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR,
-    PIOCONTROL_PIO_CONTROL_REG_ADDR,
-    # Standby controller mode registers
-    I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR,
-    I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR,
-    I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR,
     # DCT memory
     DCT_MEM_BASE_ADDR,
+    # Standby controller mode registers
+    I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR,
+    I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR,
+    I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR,
+    I3CBASE_DAT_SECTION_OFFSET_REG_ADDR,
+    I3CBASE_DCT_SECTION_OFFSET_REG_ADDR,
+    I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR,
+    I3CBASE_HC_CAPABILITIES_REG_ADDR,
+    # Base registers
+    I3CBASE_HCI_VERSION_REG_ADDR,
+    I3CBASE_PIO_SECTION_OFFSET_REG_ADDR,
+    PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR,
+    PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR,
+    PIOCONTROL_PIO_CONTROL_REG_ADDR,
+    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
+    # PIO registers
+    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
 )
 
 # =============================================================================
@@ -105,6 +109,7 @@ DCT_REGISTERS = [
     (DCT_MEM_BASE_ADDR, 0x00000000, "STATIC_ADDRESS"),
     (DCT_MEM_BASE_ADDR + 0x0C, 0x00000000, "AUTOCMD_HDR_MODE"),
 ]
+
 
 class TB:
     """
@@ -206,7 +211,9 @@ class TB:
             try:
                 dat_mem = sim_handle(path, self.dut)
                 depth = len(dat_mem)
-                self.log.info(f"DAT memory handle: {dat_mem}, type: {type(dat_mem)}, depth: {depth}")
+                self.log.info(
+                    f"DAT memory handle: {dat_mem}, type: {type(dat_mem)}, depth: {depth}"
+                )
                 # Debug: read before write
                 self.log.info(f"DAT[0] before write: {dat_mem[0].value}")
                 for i in range(depth):
@@ -239,7 +246,9 @@ class TB:
             try:
                 dct_mem = sim_handle(path, self.dut)
                 depth = len(dct_mem)
-                self.log.info(f"DCT memory handle: {dct_mem}, type: {type(dct_mem)}, depth: {depth}")
+                self.log.info(
+                    f"DCT memory handle: {dct_mem}, type: {type(dct_mem)}, depth: {depth}"
+                )
                 # Debug: read before write
                 self.log.info(f"DCT[0] before write: {dct_mem[0].value}")
                 for i in range(depth):
@@ -266,15 +275,15 @@ class TB:
             self.log.warning(f"u_dut children: {[n for n in dir(u_dut) if not n.startswith('_')]}")
 
             # Check u_i3c_wrapper
-            if hasattr(u_dut, 'u_i3c_wrapper'):
+            if hasattr(u_dut, "u_i3c_wrapper"):
                 wrapper = u_dut.u_i3c_wrapper
-                wrapper_children = [n for n in dir(wrapper) if not n.startswith('_')]
+                wrapper_children = [n for n in dir(wrapper) if not n.startswith("_")]
                 self.log.warning(f"u_i3c_wrapper children: {wrapper_children}")
 
                 # Check for gen_dat_dct_memory
-                if hasattr(wrapper, 'gen_dat_dct_memory'):
+                if hasattr(wrapper, "gen_dat_dct_memory"):
                     gen_mem = wrapper.gen_dat_dct_memory
-                    gen_mem_children = [n for n in dir(gen_mem) if not n.startswith('_')]
+                    gen_mem_children = [n for n in dir(gen_mem) if not n.startswith("_")]
                     self.log.warning(f"gen_dat_dct_memory children: {gen_mem_children}")
         except Exception as e:
             self.log.warning(f"Debug failed: {e}")
@@ -326,15 +335,14 @@ class TB:
         if value == expected:
             self.log.info(f"{name} @ 0x{addr:03X}: 0x{value:08X} (OK)")
         else:
-            self.log.warning(
-                f"{name} @ 0x{addr:03X}: got 0x{value:08X}, expected 0x{expected:08X}"
-            )
+            self.log.warning(f"{name} @ 0x{addr:03X}: got 0x{value:08X}, expected 0x{expected:08X}")
         return value
 
 
 # =============================================================================
 # Test Cases
 # =============================================================================
+
 
 @cocotb.test()
 async def test_basic_compilation(dut):
@@ -491,99 +499,71 @@ WRITABLE_REGISTERS = [
     # HOT_JOIN_CTRL[8], I2C_DEV_PRESENT[7], IBA_INCLUDE[0]
     # Note: RESUME[30] is woclr, MODE_SELECTOR[6] may be RO depending on DMA_support
     (0x004, 0xA0001181, "HC_CONTROL", "base_registers.rdl"),
-
     # CONTROLLER_DEVICE_ADDR @ 0x08 - DYNAMIC_ADDR_VALID[31], DYNAMIC_ADDR[22:16]
     (0x008, 0x807F0000, "CONTROLLER_DEVICE_ADDR", "base_registers.rdl"),
-
     # INTR_STATUS_ENABLE @ 0x24 - all enable bits are rw
     (0x024, 0x00007C00, "INTR_STATUS_ENABLE", "base_registers.rdl"),
-
     # INTR_SIGNAL_ENABLE @ 0x28 - all signal enable bits are rw
     (0x028, 0x00007C00, "INTR_SIGNAL_ENABLE", "base_registers.rdl"),
-
     # IBI_NOTIFY_CTRL @ 0x58
     (0x058, 0x0000000B, "IBI_NOTIFY_CTRL", "base_registers.rdl"),
-
     # IBI_DATA_ABORT_CTRL @ 0x5C - IBI_DATA_ABORT_MON[31], MATCH_STATUS_TYPE[20:18],
     # AFTER_N_CHUNKS[17:16], MATCH_IBI_ID[15:8]
     (0x05C, 0x801FFF00, "IBI_DATA_ABORT_CTRL", "base_registers.rdl"),
-
     # DEV_CTX_BASE_LO @ 0x60
     (0x060, 0xFFFFFFFF, "DEV_CTX_BASE_LO", "base_registers.rdl"),
-
     # DEV_CTX_BASE_HI @ 0x64
     (0x064, 0xFFFFFFFF, "DEV_CTX_BASE_HI", "base_registers.rdl"),
-
     # -------------------------------------------------------------------------
     # PIO Registers (pio_registers.rdl) @ 0x080
     # -------------------------------------------------------------------------
     # QUEUE_THLD_CTRL @ 0x90 - all threshold fields are rw
     (0x090, 0xFFFFFFFF, "PIO_QUEUE_THLD_CTRL", "pio_registers.rdl"),
-
     # DATA_BUFFER_THLD_CTRL @ 0x94 - threshold fields
     (0x094, 0x07070707, "PIO_DATA_BUFFER_THLD_CTRL", "pio_registers.rdl"),
-
     # PIO_INTR_STATUS_ENABLE @ 0xA4
     (0x0A4, 0x0000023F, "PIO_INTR_STATUS_ENABLE", "pio_registers.rdl"),
-
     # PIO_INTR_SIGNAL_ENABLE @ 0xA8
     (0x0A8, 0x0000023F, "PIO_INTR_SIGNAL_ENABLE", "pio_registers.rdl"),
-
     # PIO_CONTROL @ 0xB0 - ABORT[2], RS[1], ENABLE[0]
     (0x0B0, 0x00000007, "PIO_CONTROL", "pio_registers.rdl"),
-
     # -------------------------------------------------------------------------
     # EC Registers - Secure Firmware Recovery Interface (secure_firmware_recovery_interface.rdl)
     # @ 0x100
     # -------------------------------------------------------------------------
     # PROT_CAP_2 @ 0x108 - REC_PROT_VERSION[15:0], AGENT_CAPS[31:16]
     (0x108, 0xFFFFFFFF, "SECFW_PROT_CAP_2", "secure_firmware_recovery_interface.rdl"),
-
     # PROT_CAP_3 @ 0x10C - NUM_OF_CMS_REGIONS[7:0], MAX_RESP_TIME[15:8], HEARTBEAT_PERIOD[23:16]
     (0x10C, 0x00FFFFFF, "SECFW_PROT_CAP_3", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_ID_0 @ 0x110
     (0x110, 0xFFFFFFFF, "SECFW_DEVICE_ID_0", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_ID_1 @ 0x114
     (0x114, 0xFFFFFFFF, "SECFW_DEVICE_ID_1", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_ID_2 @ 0x118
     (0x118, 0xFFFFFFFF, "SECFW_DEVICE_ID_2", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_ID_3 @ 0x11C
     (0x11C, 0xFFFFFFFF, "SECFW_DEVICE_ID_3", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_ID_4 @ 0x120
     (0x120, 0xFFFFFFFF, "SECFW_DEVICE_ID_4", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_ID_5 @ 0x124
     (0x124, 0xFFFFFFFF, "SECFW_DEVICE_ID_5", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_STATUS_0 @ 0x12C - DEV_STATUS[7:0], REC_REASON_CODE[31:16]
     # Note: PROT_ERROR[15:8] is rclr (read-clear), so exclude from mask
     (0x12C, 0xFFFF00FF, "SECFW_DEVICE_STATUS_0", "secure_firmware_recovery_interface.rdl"),
-
     # DEVICE_STATUS_1 @ 0x130 - HEARTBEAT[15:0], VENDOR_STATUS_LENGTH[24:16], VENDOR_STATUS[31:25]
     (0x130, 0xFFFFFFFF, "SECFW_DEVICE_STATUS_1", "secure_firmware_recovery_interface.rdl"),
-
     # RECOVERY_CTRL @ 0x138 - CMS[7:0], REC_IMG_SEL[15:8]
     # Note: ACTIVATE_REC_IMG[23:16] is woclr, exclude from read-back test
     (0x138, 0x0000FFFF, "SECFW_RECOVERY_CTRL", "secure_firmware_recovery_interface.rdl"),
-
     # RECOVERY_STATUS @ 0x13C
     (0x13C, 0x0000FFFF, "SECFW_RECOVERY_STATUS", "secure_firmware_recovery_interface.rdl"),
-
     # HW_STATUS @ 0x140
     (0x140, 0xFFFFFFFF, "SECFW_HW_STATUS", "secure_firmware_recovery_interface.rdl"),
-
     # INDIRECT_FIFO_CTRL_0 @ 0x144 - CMS[7:0]
     # Note: RESET[15:8] is hwclr, exclude from read-back test
     (0x144, 0x000000FF, "SECFW_INDIRECT_FIFO_CTRL_0", "secure_firmware_recovery_interface.rdl"),
-
     # INDIRECT_FIFO_CTRL_1 @ 0x148 - IMAGE_SIZE[31:0]
     (0x148, 0xFFFFFFFF, "SECFW_INDIRECT_FIFO_CTRL_1", "secure_firmware_recovery_interface.rdl"),
-
     # -------------------------------------------------------------------------
     # EC Registers - Standby Controller Mode (standby_controller_mode.rdl)
     # Offset within EC: SecFwRecoveryIf is 32 DWORDs (0x80), so StdbyCtrlMode @ 0x180
@@ -593,138 +573,97 @@ WRITABLE_REGISTERS = [
     # TARGET_XACT_ENABLE[12], BAST_CCC_IBI_RING[10:8], HANDOFF_DEEP_SLEEP[4] is wset/hwclr,
     # PRIME_ACCEPT_GETACCCR[3], ACR_FSM_OP_SELECT[2], HANDOFF_DELAY_NACK[1], PENDING_RX_NACK[0]
     (0x184, 0xC010F70F, "STBY_CR_CONTROL", "standby_controller_mode.rdl"),
-
     # STBY_CR_DEVICE_ADDR @ 0x188 - DYNAMIC_ADDR_VALID[31], DYNAMIC_ADDR[22:16],
     # STATIC_ADDR_VALID[15], STATIC_ADDR[6:0]
     (0x188, 0x807F807F, "STBY_CR_DEVICE_ADDR", "standby_controller_mode.rdl"),
-
     # STBY_CR_VIRTUAL_DEVICE_CHAR @ 0x190 - BCR_FIXED[31:29], BCR_VAR[28:24], DCR[23:16], PID_HI[15:1]
     (0x190, 0xFFFFFFFE, "STBY_CR_VIRTUAL_DEVICE_CHAR", "standby_controller_mode.rdl"),
-
     # STBY_CR_STATUS @ 0x194 - HJ_REQ_STATUS[8], SIMPLE_CRR_STATUS[7:5], AC_CURRENT_OWN[2]
     (0x194, 0x000001E4, "STBY_CR_STATUS", "standby_controller_mode.rdl"),
-
     # STBY_CR_DEVICE_CHAR @ 0x198 - BCR_FIXED[31:29], BCR_VAR[28:24], DCR[23:16], PID_HI[15:1]
     (0x198, 0xFFFFFFFE, "STBY_CR_DEVICE_CHAR", "standby_controller_mode.rdl"),
-
     # STBY_CR_DEVICE_PID_LO @ 0x19C - PID_LO[31:0]
     (0x19C, 0xFFFFFFFF, "STBY_CR_DEVICE_PID_LO", "standby_controller_mode.rdl"),
-
     # STBY_CR_INTR_STATUS @ 0x1A0 - various status bits
     (0x1A0, 0x000F7C0F, "STBY_CR_INTR_STATUS", "standby_controller_mode.rdl"),
-
     # STBY_CR_VIRTUAL_DEVICE_PID_LO @ 0x1A4 - PID_LO[31:0]
     (0x1A4, 0xFFFFFFFF, "STBY_CR_VIRTUAL_DEVICE_PID_LO", "standby_controller_mode.rdl"),
-
     # STBY_CR_INTR_SIGNAL_ENABLE @ 0x1A8
     (0x1A8, 0x000F7C0F, "STBY_CR_INTR_SIGNAL_ENABLE", "standby_controller_mode.rdl"),
-
     # STBY_CR_INTR_FORCE @ 0x1AC
     (0x1AC, 0x000F7C00, "STBY_CR_INTR_FORCE", "standby_controller_mode.rdl"),
-
     # STBY_CR_CCC_CONFIG_GETCAPS @ 0x1B0
     (0x1B0, 0x00000F07, "STBY_CR_CCC_CONFIG_GETCAPS", "standby_controller_mode.rdl"),
-
     # STBY_CR_CCC_CONFIG_RSTACT_PARAMS @ 0x1B4 - RESET_DYNAMIC_ADDR[31], RESET_TIME_TARGET[23:16],
     # RESET_TIME_PERIPHERAL[15:8]
     # Note: RST_ACTION[7:0] is sw=r (read-only by SW)
     (0x1B4, 0x80FFFF00, "STBY_CR_CCC_CONFIG_RSTACT_PARAMS", "standby_controller_mode.rdl"),
-
     # STBY_CR_VIRT_DEVICE_ADDR @ 0x1B8
     (0x1B8, 0x807F807F, "STBY_CR_VIRT_DEVICE_ADDR", "standby_controller_mode.rdl"),
-
     # -------------------------------------------------------------------------
     # EC Registers - Target Transaction Interface (target_transaction_interface.rdl)
     # TTI follows StdbyCtrlMode (16 DWORDs = 0x40 bytes), so TTI @ 0x1C0
     # -------------------------------------------------------------------------
     # TTI_CONTROL @ 0x1C4 - IBI_RETRY_NUM[15:13], IBI_EN[12], CRR_EN[11], HJ_EN[10]
     (0x1C4, 0x0000FC00, "TTI_CONTROL", "target_transaction_interface.rdl"),
-
     # TTI_INTERRUPT_ENABLE @ 0x1D4
     (0x1D4, 0x86003F0F, "TTI_INTERRUPT_ENABLE", "target_transaction_interface.rdl"),
-
     # TTI_INTERRUPT_FORCE @ 0x1D8
     (0x1D8, 0x86003F0F, "TTI_INTERRUPT_FORCE", "target_transaction_interface.rdl"),
-
     # TTI_QUEUE_THLD_CTRL @ 0x1EC
     (0x1EC, 0xFF00FFFF, "TTI_QUEUE_THLD_CTRL", "target_transaction_interface.rdl"),
-
     # TTI_DATA_BUFFER_THLD_CTRL @ 0x1F4
     (0x1F4, 0x07070707, "TTI_DATA_BUFFER_THLD_CTRL", "target_transaction_interface.rdl"),
-
     # -------------------------------------------------------------------------
     # EC Registers - SoC Management Interface (soc_management_interface.rdl)
     # SoCMgmtIf follows TTI (16 DWORDs = 0x40 bytes), so SoCMgmtIf @ 0x200
     # -------------------------------------------------------------------------
     # SOC_MGMT_CONTROL @ 0x204
     (0x204, 0xFFFFFFFF, "SOC_MGMT_CONTROL", "soc_management_interface.rdl"),
-
     # SOC_MGMT_STATUS @ 0x208
     (0x208, 0xFFFFFFFF, "SOC_MGMT_STATUS", "soc_management_interface.rdl"),
-
     # REC_INTF_CFG @ 0x20C - REC_INTF_BYPASS[0], REC_PAYLOAD_DONE[1]
     (0x20C, 0x00000003, "REC_INTF_CFG", "soc_management_interface.rdl"),
-
     # REC_INTF_REG_W1C_ACCESS @ 0x210
     (0x210, 0x00FFFFFF, "REC_INTF_REG_W1C_ACCESS", "soc_management_interface.rdl"),
-
     # SOC_MGMT_RSVD_2 @ 0x214
     (0x214, 0xFFFFFFFF, "SOC_MGMT_RSVD_2", "soc_management_interface.rdl"),
-
     # SOC_MGMT_RSVD_3 @ 0x218
     (0x218, 0xFFFFFFFF, "SOC_MGMT_RSVD_3", "soc_management_interface.rdl"),
-
     # SOC_PAD_CONF @ 0x21C
     (0x21C, 0xFF0000FF, "SOC_PAD_CONF", "soc_management_interface.rdl"),
-
     # SOC_PAD_ATTR @ 0x220
     (0x220, 0xFF00FF00, "SOC_PAD_ATTR", "soc_management_interface.rdl"),
-
     # SOC_MGMT_FEATURE_2 @ 0x224
     (0x224, 0xFFFFFFFF, "SOC_MGMT_FEATURE_2", "soc_management_interface.rdl"),
-
     # SOC_MGMT_FEATURE_3 @ 0x228
     (0x228, 0xFFFFFFFF, "SOC_MGMT_FEATURE_3", "soc_management_interface.rdl"),
-
     # T_R_REG @ 0x22C
     (0x22C, 0x000FFFFF, "T_R_REG", "soc_management_interface.rdl"),
-
     # T_F_REG @ 0x230
     (0x230, 0x000FFFFF, "T_F_REG", "soc_management_interface.rdl"),
-
     # T_SU_DAT_REG @ 0x234
     (0x234, 0x000FFFFF, "T_SU_DAT_REG", "soc_management_interface.rdl"),
-
     # T_HD_DAT_REG @ 0x238
     (0x238, 0x000FFFFF, "T_HD_DAT_REG", "soc_management_interface.rdl"),
-
     # T_HIGH_REG @ 0x23C
     (0x23C, 0x000FFFFF, "T_HIGH_REG", "soc_management_interface.rdl"),
-
     # T_LOW_REG @ 0x240
     (0x240, 0x000FFFFF, "T_LOW_REG", "soc_management_interface.rdl"),
-
     # T_HD_STA_REG @ 0x244
     (0x244, 0x000FFFFF, "T_HD_STA_REG", "soc_management_interface.rdl"),
-
     # T_SU_STA_REG @ 0x248
     (0x248, 0x000FFFFF, "T_SU_STA_REG", "soc_management_interface.rdl"),
-
     # T_SU_STO_REG @ 0x24C
     (0x24C, 0x000FFFFF, "T_SU_STO_REG", "soc_management_interface.rdl"),
-
     # T_FREE_REG @ 0x250
     (0x250, 0xFFFFFFFF, "T_FREE_REG", "soc_management_interface.rdl"),
-
     # T_AVAL_REG @ 0x254
     (0x254, 0xFFFFFFFF, "T_AVAL_REG", "soc_management_interface.rdl"),
-
     # T_IDLE_REG @ 0x258
     (0x258, 0xFFFFFFFF, "T_IDLE_REG", "soc_management_interface.rdl"),
-
     # SYS_CLK_FREQ_REG @ 0x25C
     (0x25C, 0x00000003, "SYS_CLK_FREQ_REG", "soc_management_interface.rdl"),
-
     # -------------------------------------------------------------------------
     # DAT Memory (DAT_structure.rdl) @ 0x400 - test first and last entries
     # Each entry is 64 bits (8 bytes)
@@ -883,27 +822,20 @@ async def test_address_range_boundaries(dut):
         # Base registers - first and last
         (0x000, 0x00000120, "HCI_VERSION", "First base register (read-only)"),
         (0x068, None, "DEV_CTX_SG", "Last base register"),
-
         # PIO registers - first and last
         (0x090, 0x01010101, "PIO_QUEUE_THLD_CTRL", "First PIO register"),
         (0x0B0, 0x00000001, "PIO_CONTROL", "Last PIO register"),
-
         # EC region - Secure FW Recovery Interface
         (0x100, 0x00200020, "SECFW_EXTCAP_HEADER", "First EC register"),
-
         # EC region - Standby Controller Mode
         (0x180, 0x00101012, "STBY_CR_EXTCAP_HEADER", "StdbyCtrlMode header"),
-
         # EC region - TTI
         (0x1C0, 0x001000C4, "TTI_EXTCAP_HEADER", "TTI header"),
-
         # EC region - SoC Management Interface
         (0x200, 0x001800C1, "SOCMGMT_EXTCAP_HEADER", "SoCMgmtIf header"),
-
         # DAT region - first entry
         (0x400, None, "DAT_ENTRY_0_LO", "First DAT entry (low)"),
         (0x404, None, "DAT_ENTRY_0_HI", "First DAT entry (high)"),
-
         # DAT region - last entry
         (0x7F8, None, "DAT_ENTRY_127_LO", "Last DAT entry (low)"),
         (0x7FC, None, "DAT_ENTRY_127_HI", "Last DAT entry (high)"),

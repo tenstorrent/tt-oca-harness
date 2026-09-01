@@ -13,7 +13,6 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 from pyuvm import ConfigDB, uvm_test
 
-
 _COCOTB_ROOT = Path(__file__).resolve().parents[1]
 _OSS_HW_ROOT = Path(__file__).resolve().parents[5]
 for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
@@ -59,12 +58,8 @@ class smu_base_test(uvm_test):
 
     def start_clocks(self) -> None:
         dut = cocotb.top
-        cocotb.start_soon(
-            Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(
-            Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
         cocotb.start_soon(
             Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
         )
