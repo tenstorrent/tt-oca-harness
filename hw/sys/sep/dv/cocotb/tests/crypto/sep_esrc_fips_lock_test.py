@@ -7,9 +7,9 @@ seed (CTRL functional, health-test window/enable, decorrelator,
 ring-osc enable/tune, one generator sample-clock divider, FIFO churn,
 alert threshold). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
-CTRL.RESET does not clear the lock; rst_ni does. BIW observe enable
-stays writable. Health-test ENABLE stays 0 so this vehicle does not
-trip the alert path.
+Retired CTRL[0] is RAZ/WI and does not clear the lock; rst_ni does.
+BIW observe enable stays writable. Health-test ENABLE stays 0 so this
+vehicle does not trip the alert path.
 
 Accepted scope: class walk, not an invert of every swwel bit. Alert
 delivery is the sibling vehicle.
@@ -78,10 +78,15 @@ class sep_esrc_fips_lock_test(sep_base_test):
         self.logger.info(
             "CHK-FIFO-LIVE PASS: BIW_OBS_CTRL.RAW_ENABLE=%d under lock", got)
 
-        await esrc.pulse_ctrl_reset()
+        ctrl_before, ctrl_after = await esrc.poke_reserved_ctrl_bit()
+        assert ctrl_after == ctrl_before, (
+            f"CHK-CTRL-RSVD FAIL: CTRL[0] write changed "
+            f"0x{ctrl_before:08x} -> 0x{ctrl_after:08x}"
+        )
         got = await esrc.read_lock()
-        assert got == 1, f"CHK-RESET-HOLD FAIL: CTRL.RESET cleared lock to {got}"
-        self.logger.info("CHK-RESET-HOLD PASS: CTRL.RESET left FIPS_LOCK.LOCK=1")
+        assert got == 1, f"CHK-CTRL-RSVD FAIL: CTRL[0] write cleared lock to {got}"
+        self.logger.info(
+            "CHK-CTRL-RSVD PASS: CTRL[0] is RAZ/WI and left FIPS_LOCK.LOCK=1")
 
         await self.resense()
         got = await esrc.read_lock()

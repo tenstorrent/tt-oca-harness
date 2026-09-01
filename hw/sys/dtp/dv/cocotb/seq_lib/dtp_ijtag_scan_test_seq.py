@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""iJTAG SIB/DFT/DFD scan scenarios for GH issue #3213."""
+"""iJTAG SIB/DFT/DFD scan scenarios."""
 
 from __future__ import annotations
 
@@ -66,8 +66,17 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         await self.check_ijtag_pattern(pattern, dbg_disable=dbg_disable, context=context)
 
     async def run_sib_all_off(self) -> None:
-        self.log_banner("GH #3213 iJTAG SIB all-off")
+        self.log_banner("iJTAG SIB all-off")
         await self.check_pattern(0b000, context="all_off.nominal")
+        # Seeded per-pass disable mask: with every SIB closed, any lifecycle
+        # gating state must leave the outcome identical (closed stays closed).
+        rng = self.rng("ijtag_all_off")
+        random_disable = {
+            "dft_secure": rng.randrange(2),
+            "dft_nonsecure": rng.randrange(2),
+            "dfd": rng.randrange(2),
+        }
+        await self.check_pattern(0b000, dbg_disable=random_disable, context="all_off.random_disable")
         _, signals = await self.observe_ijtag_controls(0, context="all_off.recheck")
         for name in IJTAG_SIB_ORDER:
             prefix = {"dft_secure": "jtag_dft_secure", "dft": "jtag_dft", "dfd": "jtag_dfd"}[name]
@@ -75,19 +84,21 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG all-off", pattern="0b000", chain_len=3)
 
     async def run_sib_all_on(self) -> None:
-        self.log_banner("GH #3213 iJTAG SIB all-on")
+        self.log_banner("iJTAG SIB all-on")
         await self.check_pattern(0b111, context="all_on.nominal")
         gate_vectors = [
             ("secure", 0b111, {"dft_secure": 1}),
             ("nonsecure", 0b111, {"dft_nonsecure": 1}),
             ("dfd", 0b111, {"dfd": 1}),
         ]
+        # Seeded per-pass order: each loop exercises a different gate sequence.
+        self.rng("ijtag_all_on_order").shuffle(gate_vectors)
         for label, pattern, dbg in gate_vectors:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"all_on.gated.{label}")
         self.log_summary("iJTAG all-on", gate_vectors=len(gate_vectors), chain_len=3)
 
     async def run_sib_random(self) -> None:
-        self.log_banner("GH #3213 iJTAG SIB deterministic and random sweep")
+        self.log_banner("iJTAG SIB deterministic and random sweep")
         for pattern in range(8):
             await self.check_pattern(pattern, context=f"sweep.pattern_{pattern:03b}")
         rng = self.rng("dtp_ijtag_sib_random")
@@ -103,7 +114,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG random", exhaustive_patterns=8, random_iterations=16)
 
     async def run_dft(self) -> None:
-        self.log_banner("GH #3213 iJTAG DFT secure/non-secure access")
+        self.log_banner("iJTAG DFT secure/non-secure access")
         # Non-secure DFT only.
         await self.check_pattern(0b010, context="dft.nonsecure_only")
         # Secure DFT only.
@@ -116,13 +127,15 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             ("secure_gated_nonsecure_open", 0b110, {"dft_secure": 1}),
             ("nonsecure_gated_secure_open", 0b110, {"dft_nonsecure": 1}),
         ]
+        # Seeded per-pass order: each loop exercises a different gate sequence.
+        self.rng("ijtag_dft_order").shuffle(gate_cases)
         for label, pattern, dbg in gate_cases:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"dft.gated.{label}")
         await self.check_stored_sib_across_gate("dft", 0b010, context="dft.stored")
         self.log_summary("iJTAG DFT", gate_cases=len(gate_cases))
 
     async def run_dfd(self) -> None:
-        self.log_banner("GH #3213 iJTAG DFD access and direct-disable gate")
+        self.log_banner("iJTAG DFD access and direct-disable gate")
         await self.check_pattern(0b001, context="dfd.enabled")
         await self.check_pattern(0b001, dbg_disable={"dfd": 1}, context="dfd.gated")
         rng = self.rng("dtp_ijtag_dfd")

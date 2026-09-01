@@ -15,7 +15,13 @@ contributor controls the full stack:
   fingerprint so different configs do not clobber each other and an unchanged config reuses its
   build; `rebuild` forces a clean build; `cache_key_extra` folds extra strings into the
   fingerprint. Within one fingerprint dir, the tool's own dependency tracking handles incremental
-  source edits.
+  source edits. Verilator re-verilates from ``Vtop__ver.d``. VCS cocotb ``make compile`` has no
+  filelist deps (sources arrive via ``-f``), so the runner adds ``[build].top_file`` plus
+  ``[build].sources``, ``[build].stubs`` and every header under ``[build].incdirs`` to
+  ``CUSTOM_COMPILE_DEPS``, and ``--rebuild`` wipes that ``sim_build`` tree. The RTL the
+  bender filelist names is still NOT tracked -- it arrives as one ``-f`` line and the
+  fingerprint hashes the filelist text, not the files' content, so editing it needs
+  ``--rebuild``. See `vcs_simv_compile_deps`.
 """
 
 from __future__ import annotations
@@ -23,8 +29,9 @@ from __future__ import annotations
 import hashlib
 import shutil
 import subprocess
+import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from .config import as_int, as_str_list, config_section
 
@@ -171,6 +178,63 @@ def vcs_version(root: Path) -> str:
 
 def xcelium_version(root: Path) -> str:
     return binary_version("xrun", ["-version"], root)
+
+
+def vcs_simv_compile_deps(
+    top_file: Path | None, local_sources: Sequence[Path] = ()
+) -> list[str]:
+    """Makefile lines that make ``$(SIM_BUILD)/simv`` depend on the repo-local build inputs.
+
+    Cocotb's VCS recipe is ``$(SIM_BUILD)/simv: $(VERILOG_SOURCES) ... $(CUSTOM_COMPILE_DEPS)``.
+    ``VERILOG_SOURCES`` is empty when the DUT is passed via ``COMPILE_ARGS += -f <filelist>``,
+    so without these extra deps ``make compile`` is existence-only and an edit to a file the
+    filelist names is ignored. Verilator does not need this: ``Vtop__ver.d`` lists them already.
+
+    ``build_fingerprint`` hashes the combined filelist TEXT plus a content digest over the
+    files the bender filelist names, and the deps here cover content edits of the repo-local
+    sources for ``make``.
+
+    Covered: ``[build].top_file`` plus everything ``_vcs_local_sources`` collects --
+    ``[build].sources`` and ``[build].stubs`` (the repo-local override/additive sources:
+    ``tb_top.sv``, the mem responders, the protocol SVA), the headers globbed from
+    ``[build].incdirs`` (an ``+incdir+`` has no file list of its own, and an assertion-macro
+    header is edited far more often than the RTL that includes it), and the RTL the
+    bender-generated filelist names, which otherwise arrives as a single ``-f`` line.
+    """
+    deps = [] if top_file is None else [top_file]
+    deps.extend(local_sources)
+    return [f"CUSTOM_COMPILE_DEPS += {path}" for path in deps]
+
+
+# One VCS ``sim_build`` is shared by every leaf of a target, and leaves run on a
+# thread pool -- see vcs_force_rebuild().
+_FORCE_REBUILD_LOCK = threading.Lock()
+_FORCE_REBUILT: set[str] = set()
+
+
+def vcs_force_rebuild(sim_build: Path) -> None:
+    """Drop a VCS ``sim_build`` tree so ``make compile`` cannot treat ``simv`` as up to date.
+
+    This is what ``--rebuild`` means for the VCS cocotb flow. Verilator and Xcelium go through
+    cocotb's Python runner and get the same effect from ``runner.build(always=rebuild)``; VCS
+    shells out to ``make``, which has no such knob, so the tree is removed instead.
+
+    Serialised and once-only, because every leaf of a target SHARES one ``sim_build``.
+    Leaves run on a thread pool, so without this ``--stage sim --rebuild -j8`` lets one
+    leaf delete ``csrc/`` while another is mid-compile in it, or remove a ``simv`` a third
+    is about to exec. The intent is "this invocation compiles from scratch", not "every
+    leaf wipes the tree", so the first caller removes it and the rest no-op.
+
+    A concurrent delete is tolerated rather than fatal: raising here would abort the whole
+    run instead of failing one leaf.
+    """
+    with _FORCE_REBUILD_LOCK:
+        key = str(sim_build)
+        if key in _FORCE_REBUILT:
+            return
+        _FORCE_REBUILT.add(key)
+        if sim_build.is_dir():
+            shutil.rmtree(sim_build, ignore_errors=True)
 
 
 def build_fingerprint(*, build_args: list[str], top_module: str, tool_version: str, filelist_text: str, extra: list[str]) -> str:

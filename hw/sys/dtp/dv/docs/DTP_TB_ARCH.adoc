@@ -201,9 +201,20 @@ backdoor view used by the scoreboard.
 
 ==== `DtpScoreboard`
 
-The scoreboard subscribes to completed JTAG items. It verifies IDCODE bit 0,
-checks JTAG2AXI write data against the OCAH AXI RAM backdoor, and checks read data
-against preloaded memory contents. `check_phase` requires zero errors.
+The scoreboard subscribes to completed JTAG items. It verifies IDCODE reads
+against the full expected DTP IDCODE value, checks JTAG2AXI write data against
+the OCAH AXI RAM backdoor, and checks read data against preloaded memory
+contents. `check_phase` requires zero errors and reports per-category check
+counts alongside the observed-item total, so a run whose JTAG traffic produced
+no scoreboard-checkable operations is visible in the log.
+
+Beyond this always-on subscriber, every cocotb JTAG2AXI test enables the
+shared `ocah_axi_vip` scoreboard (`use_axi_scoreboard = True` with required
+evidence IDs and per-stream minimum compared-transaction counts), and every
+XTRIG/CTM sequence finalizes a named-evidence `OcahChecker` (CTM reference
+model route comparison, CSR readbacks, quiet windows, stretch measurements) —
+in both cases a zero-check pass or a missing required evidence ID fails the
+test at finalization.
 
 ==== Sequence Library
 
@@ -359,19 +370,19 @@ The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
 
 * `tb/tb_top.sv` (UVM block) replaces the historical never-responding OTP
   tie-off and the undriven `m_axi_*` response inputs with error-injectable
-  responders: the shared `ocah_axi_vip` UVM slave agent answers
-  `smc_otp_axil` (reactive `ocah_axi_slave_driver` over a dedicated
-  `ocah_axi_if` instance, injection programmed via
-  `ocah_axi_slave_sequence`), and the behavioral `ocah_axi_ram_responder`
-  module answers `m_axi`. It instantiates `ocah_axi_if` monitor adapters and
-  the clean-room `ocah_axi_sva` SVA on both ports, and mirrors the
-  request-activity pulse counters into `dtp_tb_if`. The `sep_otp_axil` port
-  keeps its tie-off (documented stretch).
+  responders: shared `ocah_axi_vip` UVM slave agents answer both
+  `smc_otp_axil` and `m_axi` (reactive `ocah_axi_slave_driver` over a
+  dedicated `ocah_axi_if` instance per port; injection and backdoor memory
+  programmed via each agent's `ocah_axi_slave_sequence`). It instantiates
+  `ocah_axi_if` monitor adapters and the clean-room `ocah_axi_sva` SVA on
+  both ports, and mirrors the request-activity pulse counters into
+  `dtp_tb_if`. The `sep_otp_axil` port keeps its tie-off (documented
+  stretch).
 * `tb/dtp_tb_if.sv` carries the test-drivable
   `sep_lifecycle_ctrl_pkg::dbg_disable_t` (init `'1` = fail-closed, matching
   the DUT synchronizers' reset value, so the sanity test's behavior is
-  unchanged), responder error controls, the SVA `axi_sva_en` knob, and
-  counter mirrors.
+  unchanged), the decoded-IR and `jtag_bsr_*` scan-control observable
+  mirrors, the SVA `axi_sva_en`/`jtag_sva_en` knobs, and counter mirrors.
 * `dtp_env` builds one passive `ocah_axi_env` (monitor -> reference model
   -> scoreboard with `CHK-*`/`CHECKER_SUMMARY` evidence) per observed port;
   zero-check rejection (`cfg.require_checks`) is armed only by AXI tests so
@@ -381,9 +392,9 @@ The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
   SMC via the JTAG VIP wide-scan `wbits`/`rbits` path), busy polling,
   typed `dbg_disable_t` sequencing (four toggling TCK cycles as the settle
   margin over the DUT's 2-stage TCK-domain synchronizers), and
-  `arm_target_error()` which drives the responder error ports AND
-  `ocah_axi_config.arm_expected_resp()` in one place — the injected non-OKAY
-  is therefore EXPECTED for the scoreboard.
+  `arm_target_error()` which programs the slave agent's one-shot injection
+  AND `ocah_axi_config.arm_expected_resp()` in one place — the injected
+  non-OKAY is therefore EXPECTED for the scoreboard.
 * `dtp_jtag2axi_single_op_seq` runs randomized write/readback, armed
   SLVERR/DECERR, recovery, and a security-gating no-activity case
   (`CHK-AXI-GATE-*` from the pulse-counter mirrors); the two JTAG2AXI

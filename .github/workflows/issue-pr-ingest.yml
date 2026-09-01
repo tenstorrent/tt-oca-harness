@@ -7,7 +7,7 @@ on:
   issues:
     types: [opened, edited]
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -40,3 +40,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/ingest_github.py --pr-assign "${{ github.event.pull_request.number }}"
+      - name: Request PR reviewer
+        if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/ingest_github.py --pr-review "${{ github.event.pull_request.number }}"

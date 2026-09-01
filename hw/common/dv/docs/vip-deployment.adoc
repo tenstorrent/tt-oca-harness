@@ -144,9 +144,17 @@ and is keyed by the bound signal identity.
 [[shared-vip-uvm-deployment]]
 === SystemVerilog UVM Deployment
 
-Protocols with UVM collateral provide a shared interface and VIP-level
-environment. The DUT top instantiates the interface and places it in
-`uvm_config_db`; the DUT environment instantiates the VIP environment.
+Protocols with UVM collateral provide a shared interface, module collateral
+(SVA checkers, behavioral responders), and a UVM package with VIP-level
+environments and agents. The framework-level mechanics — sim-config
+declaration, VIP consumption through the VIP-owned `uvm/sources.toml`
+manifests with their load-bearing compile order, and the bring-up
+walkthrough — live in the SystemVerilog UVM Framework section of this guide
+(`uvm-framework.adoc`); this section covers the deployment pattern inside
+the testbench.
+
+*Interface publication.* The DUT top instantiates the shared interface and
+places it in `uvm_config_db`; the DUT environment retrieves it:
 
 [source,systemverilog]
 ----
@@ -159,25 +167,60 @@ initial begin
 end
 ----
 
-The DUT environment retrieves `jtag_vif`, assigns it to an `ocah_jtag_master_config`,
-and publishes that config to the shared JTAG environment. DUT sequences consume
-OCAH items and sequencer handles. DUT scoreboards consume OCAH events or
-monitor items. They do not reach into driver internals.
+*Configuration and environment.* The DUT environment assigns the retrieved
+interface to the VIP config object (`ocah_jtag_master_config`,
+`ocah_axi_config`, ...), sets geometry, gating, and the evidence `name_tag`
+there, and publishes the config to the VIP-level environment it
+instantiates. The VIP environments and agents are the factory seam:
+commercial integrations override them by type, so DUT code creates them
+through the factory and never hard-codes backend classes.
+
+*Sequences.* DUT sequences drive a VIP only through its `*_sequence` API
+classes (for AXI: `write_result`/`read_result`/`burst_*_result` on the
+master sequence; backdoor and injection operations on the slave sequence).
+A missing operation is added to the VIP API, never inlined as raw driver or
+virtual-interface manipulation in DUT code. DUT scoreboards consume OCAH
+events or monitor items; nothing reaches into driver internals.
+
+*Reactive responders.* The shared AXI slave agent answers DUT-mastered
+traffic: the testbench wires the DUT-driven signals into the slave
+interface instance, the agent's driver drives the responder-side signals
+back, and error injection is programmed by sequences through
+`ocah_axi_slave_sequence` rather than testbench error ports. Where a plain
+memory model suffices, the behavioral RAM responders
+(`sv/ocah_axi*_ram_responder.sv`) are module collateral wired directly in
+the testbench top.
+
+*Passive checking.* The passive stack (monitor, reference model,
+scoreboard) attaches per bus behind cfg gating; every checker extends the
+shared evidence base (`ocah_checker_uvm_pkg::ocah_checker`, see
+<<shared-checker-model-contract>>), and the owning component finalizes it
+exactly once after traffic — the AXI scoreboard in its `check_phase`, DUT
+subscribers from the environment. The protocol SVA modules
+(`sva/ocah_*_sva.sv`) are instantiated in the testbench top on the raw
+signals, enabled through a testbench-interface control.
+
+*Vendor hooks.* Each VIP config carries the opaque `vendor_cfg` extension
+and the `en_monitor` knob, and each shared interface carries a guarded
+vendor-interface nest — the commercial integration points; see
+<<shared-vip-commercial-deployment>>.
 
 [[shared-vip-commercial-deployment]]
 === Commercial Backend Deployment
 
-Commercial VIP is optional and adopter-owned. A commercial integration should:
-
-. preserve OCAH item/config/result semantics;
-. implement translation inside a protocol-specific environment subclass;
-. provide an analysis adapter back to OCAH items;
-. disable duplicate OCAH monitoring when the vendor monitor is authoritative;
-. keep vendor source paths, interfaces, and license configuration behind the
-  commercial build profile.
+Commercial VIP is optional and adopter-owned. The normative integration
+contract is the *Template Contract* section of
+`hw/common/dv/vip/ocah_jtag_vip/README.md`: the open tree carries only the
+hooks — the opaque `vendor_cfg` extension, the `cfg.en_monitor` knob, the
+guarded vendor-interface nest, and the factory-overridable VIP
+environments — and every implementation built on them lives in the
+proprietary `nonfree/` companion repository, with a strictly one-way
+dependency (the open tree never references companion paths and is complete
+without it).
 
 License-free contributor tests must remain runnable without commercial
-packages.
+packages, and an integration preserves OCAH item/config/result semantics so
+tests, VPLAN evidence, and DUT scoreboards stay backend-independent.
 
 [[shared-vip-error-deployment]]
 === Error and Timeout Handling

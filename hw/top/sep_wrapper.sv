@@ -19,7 +19,7 @@ module sep_wrapper
     import km_intf_pkg::*;
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
-    parameter int unsigned EXT_TRNG_NUM_AXIS = 2,
+    parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
         input  logic clk_i,

@@ -36,6 +36,8 @@ from .buildcache import (
     option_build_args,
     resolve_build_dir,
     vcs_build_args,
+    vcs_force_rebuild,
+    vcs_simv_compile_deps,
     vcs_version,
     verilator_version,
     xcelium_build_args,
@@ -156,6 +158,110 @@ def _target_fingerprint_extra(target_name: str, target: dict[str, Any]) -> list[
 
 def _build_jobs_arg(args: argparse.Namespace) -> int:
     return int(getattr(args, "build_jobs", None) or args.sim_jobs)
+
+
+def _vcs_top_file(root: Path, build: dict[str, Any]) -> Path | None:
+    """Resolved ``[build].top_file``, or None when the DUT does not declare one."""
+    rel = str(build.get("top_file") or "").strip()
+    if not rel:
+        return None
+    return repo_path(root, rel)
+
+
+def _bender_filelist_sources(root: Path, build: dict[str, Any]) -> list[Path]:
+    """The source files named inside the generated ``[build].bender_filelist``.
+
+    The bender filelist holds one path per line, plus ``//`` comments and the
+    ``+incdir+`` / ``+define+`` options `generate_filelist` passes through. Only the plain
+    paths are source files, so option and comment lines are skipped. Order is preserved and
+    duplicates are dropped. An empty list is returned when the DUT declares no bender
+    filelist or the file is not generated yet.
+    """
+    rel = str(build.get("bender_filelist") or "").strip()
+    if not rel:
+        return []
+    filelist = repo_path(root, rel)
+    if not filelist.is_file():
+        return []
+    seen: set[Path] = set()
+    sources: list[Path] = []
+    for line in filelist.read_text(encoding="utf-8", errors="replace").splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith(("//", "#", "+", "-")):
+            continue
+        path = repo_path(root, entry)
+        if path not in seen:
+            seen.add(path)
+            sources.append(path)
+    return sources
+
+
+def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
+    """One digest over the CONTENT of every file the bender filelist names.
+
+    ``build_fingerprint`` hashes the combined filelist TEXT, which names the bender filelist
+    as a single ``-f`` line. That text is blind both to a path added or removed inside the
+    bender filelist and to a content-only edit of a file it names, so the digest here is what
+    makes vendored or DUT RTL move the build identity. Each entry contributes its
+    repo-relative path (so the digest does not move when the same tree is built
+    from a different checkout) and the SHA-256 of its bytes; a path that does
+    not resolve contributes ``<missing>`` so a deleted file still moves the
+    digest instead of failing the build.
+
+    Cost is one read of the named sources -- about 900 files and 11 MB for SEP, ~0.3 s.
+    """
+    sources = _bender_filelist_sources(root, build)
+    if not sources:
+        return []
+    digest = hashlib.sha256()
+    for path in sources:
+        digest.update((repo_rel(root, path) or str(path)).encode("utf-8"))
+        digest.update(b"\0")
+        try:
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1 << 20), b""):
+                    digest.update(chunk)
+        except OSError:
+            digest.update(b"<missing>")
+        digest.update(b"\0")
+    return [f"bender_sources={len(sources)}:{digest.hexdigest()[:16]}"]
+
+
+def _vcs_local_sources(root: Path, build: dict[str, Any]) -> list[Path]:
+    """The repo-local files the generated filelist names, for VCS ``simv`` dep tracking.
+
+    Same two keys, resolved the same way, as `generate_filelist`: ``sources`` (additive tb
+    components) and ``stubs`` (override sources), plus every header reachable through
+    ``incdirs``. Kept in step with that function -- a file the filelist compiles but this
+    omits is a file whose edit VCS silently ignores.
+
+    Headers are globbed because ``+incdir+`` is a search path with no file list. They
+    matter: an assertion-macro header is edited far more often than the RTL including it,
+    and a missed dep there is the exact shape of a stale-``simv`` pass -- the build reports
+    up to date and the previous binary runs.
+
+    The RTL the bender filelist names is covered too, through
+    `_bender_filelist_sources`: it reaches VCS as one ``-f`` line, so without the
+    per-file deps an edit to vendored or DUT RTL leaves ``simv`` up to date.
+    """
+    paths = [
+        repo_path(root, value)
+        for key in ("sources", "stubs")
+        for value in as_str_list(build.get(key), f"build.{key}")
+    ]
+    for value in as_str_list(build.get("incdirs"), "build.incdirs"):
+        incdir = repo_path(root, value)
+        if incdir.is_dir():
+            for pattern in ("*.svh", "*.vh"):
+                paths.extend(sorted(incdir.glob(pattern)))
+    paths.extend(_bender_filelist_sources(root, build))
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            unique.append(path)
+    return unique
 
 
 def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
@@ -1404,6 +1510,7 @@ def _cocotb_build_info(
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
+            *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
         ],
@@ -1551,6 +1658,9 @@ def _cocotb_vcs_makefile(
         "",
         *_make_append("COMPILE_ARGS", compile_args),
         *_make_append("SIM_ARGS", sim_args),
+        *vcs_simv_compile_deps(
+            _vcs_top_file(root, build), _vcs_local_sources(root, build)
+        ),
         "",
         f"include $(shell {_cocotb_config_exe(vcs_python)} --makefiles)/Makefile.sim",
         "",
@@ -1559,7 +1669,12 @@ def _cocotb_vcs_makefile(
         "",
     ]
     write_text_file(makefile, "\n".join(make_lines), args.dry_run)
-    return {"env": env, "sim_build": sim_build}
+    return {
+        "env": env,
+        "sim_build": sim_build,
+        "rebuild": bool(build_info["rebuild"]),
+        "target_name": build_info["target_name"],
+    }
 
 
 def cocotb_build(
@@ -1601,8 +1716,10 @@ def cocotb_build(
             waves_dir=waves_dir,
             for_build=True,
         )
-        console.artifact("build", data["sim_build"])
+        console.artifact("build", f"{data['sim_build']} (rebuild={data['rebuild']})")
         console.artifact("makefile", makefile)
+        if data["rebuild"] and not args.dry_run:
+            vcs_force_rebuild(data["sim_build"])
         rc = run_subprocess(
             ["make", "-f", str(makefile), "compile"],
             root,
@@ -1717,6 +1834,10 @@ def _cocotb_make_sim(
     console = console_from_args(args)
     console.artifact("xml", results_xml)
     console.artifact("makefile", makefile)
+    if data["rebuild"] and not _is_cocotb_prebuilt(args, data["target_name"]):
+        console.artifact("build", f"{data['sim_build']} (rebuild={data['rebuild']})")
+        if not args.dry_run:
+            vcs_force_rebuild(data["sim_build"])
     if args.cov:
         console.artifact("coverage", cov_dir)
     if not args.dry_run:
@@ -2223,6 +2344,7 @@ def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: ar
         extra=[
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, compile_target),
+            *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
         ],
     )
@@ -2415,6 +2537,7 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
         extra=[
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, compile_target),
+            *_bender_sources_fingerprint(root, build),
             f"waves={wave_format}",
         ],
     )

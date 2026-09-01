@@ -3,7 +3,7 @@
 
 schema_version = 1
 
-# XTRIG, CTP, and CTM scenarios for DTP issues #3214/#3215.
+# XTRIG, CTP, and CTM scenarios.
 
 [[tests]]
 name = "dtp_xtrig_reg_stall_test"

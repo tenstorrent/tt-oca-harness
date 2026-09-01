@@ -20,7 +20,7 @@ _HEADER = (
 
 
 def _load_u32_array(name: str) -> list[int]:
-    text = _HEADER.read_text()
+    text = _HEADER.read_text(encoding="utf-8")
     m = re.search(
         rf"static const uint32_t {name}\[(\d+)\] = \{{(.*?)\}};",
         text,

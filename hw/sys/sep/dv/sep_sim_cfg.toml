@@ -23,36 +23,6 @@ tools = ["verilator", "xcelium", "vcs"]
 path = "testlists/all.toml"
 format = "toml_list"
 
-# The vendored adams_bridge abr_reg has two immediate assertions on
-# external_wr_ack / external_rd_ack (abr_reg.sv:67,69). They fire once at t=0 fs,
-# before reset releases, because the ack strobes are still X and an X fails
-# `assert(!ack || ...)`. Benign X-init in third-party IP whose datapath OSS DV
-# does not exercise.
-#
-# They live in the POST-reset branch of an always_ff, so they are REAL runtime
-# protocol checks -- waiving them by file:line alone would also hide a genuine
-# runtime violation. Two patterns are therefore needed, and they work as a pair:
-#
-#   ignore    -- drops the "Error:" line, which VCS prints WITHOUT a timestamp.
-#   hard-fail -- the companion line DOES carry the timestamp
-#                ("...abr_reg.sv", 67: ...: started at 0fs failed at 0 fs).
-#                Matching "failed at <non-zero>" turns any post-time-0 firing of
-#                those exact assertions back into a hard failure.
-#
-# So the t=0 X-init noise is waived and nothing else is: a real runtime abr_reg
-# violation still fails the run, loudly, on the timestamped line.
-#
-# ($assertoff in the TB does not work here -- it races the always_ff's own
-# time-0 evaluation and the assertion fires first.)
-[pass_fail]
-extra_ignore_patterns = [
-  'abr_reg\.sv.*at time 0',
-  'abr_reg\.sv", (67|69):',
-]
-extra_hard_fail_patterns = [
-  'abr_reg\.sv", (67|69):.*failed at [1-9]',
-]
-
 [native.stages.clean]
 kind = "clean"
 paths = ["{run_dir}", "hw/sys/sep/dv/build"]
@@ -76,6 +46,11 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
+  # buses at the foot of tb_top. Assertion bodies are guarded by
+  # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
+  # empty module there and the rules are live only under VCS.
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
   "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
 ]
@@ -115,7 +90,8 @@ common_bender_targets = [
 # `sep_wrapper` adds hw/top/sep_{wrapper,ip_integration}.sv plus the vendored
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
-incdirs = ["hw/sys/sep/dv/tb"]
+# hw/common/assert carries ocah_assert.svh, included by the AXI protocol SVA.
+incdirs = ["hw/sys/sep/dv/tb", "hw/common/assert"]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
@@ -278,8 +254,8 @@ outputs = [
 # except {fw_target}, so use "$VAR" and $(...), never shell ${...}).
 #
 # The probe/fallback logic below is identical to [c_build.boot_rom]. The same
-# toolchain probe is duplicated in four argv blocks; a fix must be applied in
-# all four.
+# toolchain probe is duplicated in five argv blocks; a fix must be applied in
+# all five.
 #
 # pack-images runs into build_ot/ too, so non_secure_boot.bin -- the raw image the
 # cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
@@ -328,8 +304,8 @@ outputs = [
 # image, and the signed one is the DMA variant's business. The packed bytes are
 # drain-agnostic and land in the shared build/, so this does not rebuild them.
 #
-# The same toolchain probe is duplicated in four argv blocks; a fix must be
-# applied in all four. Folding it into a script under tools/dv/ would also
+# The same toolchain probe is duplicated in five argv blocks; a fix must be
+# applied in all five. Folding it into a script under tools/dv/ would also
 # retire the no-braces constraint.
 cwd = "."
 argv = [
@@ -344,6 +320,39 @@ outputs = [
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.sym",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
+]
+
+[c_build.km_rom_main]
+# Production Key Manager ROM (hw/ip/key_manager/dv/fw production/rom_main).
+# Not [c_build.default]: that template builds SEP EL2 TCM images via
+# hw/sys/sep/dv/fw. rom_main is rv32emc KM firmware, and it must be built with
+# ROM_KM_BOOT_WIPE_DEFAULT=0 / ROM_KM_UNREC_WIPE_DEFAULT=0 -- a default KM build
+# wipes SRAM at boot and halts before RESP_KM_READY. Those defines live in
+# cocotb/tests/km_fw/Makefile (stamp-guarded so a stale rom_boot.o cannot
+# silently re-enable the wipe), so argv drives that target rather than fw.mk
+# directly.
+#
+# Tests select it with `firmware = { name = "rom_main", mode = "km_rom_main" }`.
+# Both keys are required: mode selects this block, and the declared output is
+# what makes `--stage sim` fail with "firmware outputs missing" instead of
+# loading an empty KM ROM. The plusarg stays `+km_rom_hex=rom_main.rom.parhex`;
+# c_compile stages the basename into the sim CWD.
+#
+# The gitignored parhex is the built artifact. Do not commit it. The C source
+# is tracked under hw/ip/key_manager/dv/fw.
+#
+# Toolchain: $RISCV_TOOLCHAIN if set, else a local xPack install, else the
+# OCAH container via scripts/docker-run.sh. This block does not probe a
+# site toolchain path. argv goes through str.format() and rejects every
+# placeholder except {fw_target}, so use "$VAR" and $(...), never shell ${...}.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$KM_FW\" rom_main RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building KM rom_main in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$KM_FW\" rom_main; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex",
 ]
 
 [defaults]
@@ -376,9 +385,10 @@ args = ["+cpu_boot"]
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
 # [target_defaults.default] (native.toml). Do NOT redefine [target_defaults.default]
 # here -- the profile->DUT merge REPLACES that array, which would drop the profile flags.
-# Each target below therefore re-states the SEP-specific common bits (SYNTHESIS + the
-# three SEP -Wno flags); the profile's [target_defaults.default] is still inherited
-# (selected_target uses it as the fallback for every target name).
+# Each target below therefore re-states the three SEP -Wno flags; the profile's
+# [target_defaults.default] is still inherited (selected_target uses it as the fallback
+# for every target name). +define+SYNTHESIS is re-stated there too, and is Verilator-only:
+# see [targets.default.tools.verilator].
 #
 # Compile targets keep the normal regression models explicit:
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
@@ -402,16 +412,12 @@ args = ["+cpu_boot"]
 # speedup.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
-# [target_defaults.default] (native.toml). Each target re-states the SEP-specific
-# common bits (SYNTHESIS + the three SEP -Wno flags); do NOT redefine [target_defaults.default].
+# [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags
+# plus Verilator-only +define+SYNTHESIS; do NOT redefine [target_defaults.default].
 [targets.default]
 description = "cpu_all_live: full VeeR EL2 CPU; m_axi + j_axi always live (fallback for all cpu tests)"
 build_dir = "hw/sys/sep/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 defines = [
-  # SYNTHESIS no-ops every `ifndef SYNTHESIS` concurrent-assertion / cover block
-  # (prim_assert.sv ASSERT/ASSUME, prim_alert_sender sequences, kmac sha3pad
-  # `##[1:$]`), which Verilator cannot parse. Only assertion/debug code is gated.
-  "SYNTHESIS",
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
@@ -421,6 +427,13 @@ defines = [
 
 [targets.default.tools.verilator]
 flags = [
+  # SYNTHESIS no-ops every `ifndef SYNTHESIS` concurrent-assertion / cover
+  # block (prim_assert.sv ASSERT/ASSUME, prim_alert_sender sequences, kmac
+  # sha3pad `##[1:$]`). Only Verilator cannot parse those, so the define is
+  # scoped to Verilator here rather than sitting in the tool-agnostic
+  # `defines` list -- there it also silenced every assertion under VCS and
+  # Xcelium, where they compile and fire correctly.
+  "+define+SYNTHESIS",
   # PeakRDL reg blocks reset their axil_resp_buffer struct-array via an NBA in a
   # for-loop (incl. the read-target sep_cpu_ctrl_reg) -> Verilator BLKLOOPINIT,
   # suppressed here (the loop-style reset is functionally correct for the read path).
@@ -439,7 +452,6 @@ flags = [
 description = "cpu_all_live + behavioral SMC AXI responder (axi_sim_mem) for the real-ROM non-secure boot test"
 build_dir = "hw/sys/sep/dv/build/rom_boot/cocotb"
 defines = [
-  "SYNTHESIS",
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
   "SEP_SMC_MEM_MODEL",
@@ -450,6 +462,7 @@ sources = [
 
 [targets.rom_boot.tools.verilator]
 flags = [
+  "+define+SYNTHESIS",   # Verilator-only; see [targets.default.tools.verilator]
   "-Wno-BLKLOOPINIT",
   "-Wno-UNUSEDSIGNAL",
   "-Wno-UNUSEDPARAM",
@@ -462,7 +475,7 @@ flags = [
 [targets.lsu_stub_all_live]
 description = "lsu_stub_all_live: CPU stubbed (no VeeR EL2, LSU demux preserved); m_axi + j_axi live; for no_cpu tests"
 build_dir = "hw/sys/sep/dv/build/cocotb"
-defines = ["SYNTHESIS", "SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
+defines = ["SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
 # Drop the real CPU wrapper from the bender filelist and append the stub after it (so all
 # DUT packages are declared ahead of the stub); the stub is the only sep_cpu definition.
 exclude_files = [
@@ -473,4 +486,5 @@ sources = [
 ]
 
 [targets.lsu_stub_all_live.tools.verilator]
-flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+# +define+SYNTHESIS is Verilator-only; see [targets.default.tools.verilator]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "+define+SYNTHESIS"]

@@ -15,4 +15,10 @@ class dtp_dbg_smc_otp_jtag2axi_caps_test(dtp_base_test):
     """Run the DTP VPLAN SMC OTP JTAG2AXI_CAPS scenario."""
 
     async def run_scenario(self) -> None:
-        await self.start_seq(dtp_dbg_smc_otp_jtag2axi_caps_test_seq())
+        await self.start_looped_seq(
+            dtp_dbg_smc_otp_jtag2axi_caps_test_seq,
+            "dbg_smc_otp_jtag2axi_caps_test_seq",
+            specific_env="DTP_DBG_SMC_OTP_JTAG2AXI_CAPS_TEST_LOOPS",
+            default_loops=16,
+            group_env="DTP_DEBUG_TDR_TEST_LOOPS",
+        )
