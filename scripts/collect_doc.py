@@ -126,9 +126,7 @@ class Collector:
         try:
             rel = abs_path.relative_to(self.repo_root)
         except ValueError:
-            self.warnings.append(
-                f"skipped (outside repo root {self.repo_root}): {abs_path}"
-            )
+            self.warnings.append(f"skipped (outside repo root {self.repo_root}): {abs_path}")
             return
         dest = self.target_root / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -296,9 +294,7 @@ def main() -> int:
         required=True,
         help="Path to the top-level index.adoc (see --help for accepted forms)",
     )
-    ap.add_argument(
-        "--target", required=True, help="Directory to copy the collected tree into"
-    )
+    ap.add_argument("--target", required=True, help="Directory to copy the collected tree into")
     ap.add_argument(
         "--repo-root",
         default=None,
