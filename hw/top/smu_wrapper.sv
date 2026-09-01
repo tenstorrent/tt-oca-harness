@@ -254,6 +254,8 @@ module smu_wrapper
     input  logic  entropy_rosc_sample_clk_i,
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
+    input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,
 
     input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_extintsrc_req_i,
 
