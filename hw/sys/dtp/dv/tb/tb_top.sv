@@ -742,11 +742,52 @@ module dtp_uvm_top
     assign u_tb_if.jtag_bsr_update_en  = jtag_bsr_update_en;
 
     // Lifecycle debug disables and clock-stop requests: sequences drive the
-    // typed dbg_disable_t through dtp_tb_if (init '1 = fail-closed, so the
-    // sanity test's behavior is unchanged; JTAG2AXI sequences clear the
-    // disables they need).
-    assign xtrig_clk_stop_req = '0;
+    // typed dbg_disable_t and the CLA clock-stop request vector through
+    // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
+    // quiescent; the debug-TDR sequences drive the requests they need).
+    assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
     assign dbg_disable        = u_tb_if.dbg_disable;
+
+    // Debug-TDR observables: DEBUG_CONTROL clock-stop / boot-stall outputs
+    // and the flattened IC_RESET slice outputs for the debug-TDR checks.
+    assign u_tb_if.stop_clks                = stop_clks;
+    assign u_tb_if.cla_clock_stop_en        = cla_clock_stop_en;
+    assign u_tb_if.jtag_boot_stall          = jtag_boot_stall;
+    assign u_tb_if.jtag_boot_stall_ovrd     = jtag_boot_stall_ovrd;
+    assign u_tb_if.jtag_ic_reset_smc_ovrd   = jtag_ic_reset_smc_ovrd;
+    assign u_tb_if.jtag_ic_reset_smc_ctrl_n = jtag_ic_reset_smc_ctrl_n;
+    assign u_tb_if.jtag_ic_reset_sep_ovrd   = jtag_ic_reset_sep_ovrd;
+    assign u_tb_if.jtag_ic_reset_sep_ctrl_n = jtag_ic_reset_sep_ctrl_n;
+    assign u_tb_if.jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext_ovrd;
+    assign u_tb_if.jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext_ctrl_n;
+
+    // Scan-network observables: iJTAG SIB scan controls, STAP forwarding
+    // pins, and the extended STAP host scan controls for the scan-scenario
+    // temporal windows.
+    assign u_tb_if.jtag_dft_secure_select     = jtag_dft_secure_select;
+    assign u_tb_if.jtag_dft_secure_shift_en   = jtag_dft_secure_shift_en;
+    assign u_tb_if.jtag_dft_secure_capture_en = jtag_dft_secure_capture_en;
+    assign u_tb_if.jtag_dft_secure_update_en  = jtag_dft_secure_update_en;
+    assign u_tb_if.jtag_dft_select            = jtag_dft_select;
+    assign u_tb_if.jtag_dft_shift_en          = jtag_dft_shift_en;
+    assign u_tb_if.jtag_dft_capture_en        = jtag_dft_capture_en;
+    assign u_tb_if.jtag_dft_update_en         = jtag_dft_update_en;
+    assign u_tb_if.jtag_dfd_select            = jtag_dfd_select;
+    assign u_tb_if.jtag_dfd_shift_en          = jtag_dfd_shift_en;
+    assign u_tb_if.jtag_dfd_capture_en        = jtag_dfd_capture_en;
+    assign u_tb_if.jtag_dfd_update_en         = jtag_dfd_update_en;
+    assign u_tb_if.jtag_stap_io_tms           = jtag_stap_io_tms;
+    assign u_tb_if.jtag_stap_io_tdo_oen       = jtag_stap_io_tdo_oen;
+    assign u_tb_if.jtag_stap_smc_tms          = jtag_stap_smc_tms;
+    assign u_tb_if.jtag_stap_smc_tdo_oen      = jtag_stap_smc_tdo_oen;
+    assign u_tb_if.jtag_stap_sep_tms          = jtag_stap_sep_tms;
+    assign u_tb_if.jtag_stap_sep_tdo_oen      = jtag_stap_sep_tdo_oen;
+    assign u_tb_if.jtag_stap_extra0_tms       = jtag_stap_extra0_tms;
+    assign u_tb_if.jtag_stap_extra0_tdo_oen   = jtag_stap_extra0_tdo_oen;
+    assign u_tb_if.jtag_stap_host_select      = jtag_stap_host_select;
+    assign u_tb_if.jtag_stap_host_shift_en    = jtag_stap_host_shift_en;
+    assign u_tb_if.jtag_stap_host_capture_en  = jtag_stap_host_capture_en;
+    assign u_tb_if.jtag_stap_host_update_en   = jtag_stap_host_update_en;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
     // answers JTAG2AXI OTP traffic. The slave interface carries
@@ -796,6 +837,52 @@ module dtp_uvm_top
     assign smc_otp_axil_rdata   = u_smc_otp_slave_if.rdata[31:0];
     assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
     assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
+
+    // SEP OTP AXI-Lite responder: a third shared ocah_axi_vip UVM slave
+    // agent (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP
+    // traffic.
+    ocah_axi_if u_sep_otp_slave_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_sep_otp_slave_if.awaddr   = 64'(sep_otp_axil_awaddr);
+    assign u_sep_otp_slave_if.awprot   = sep_otp_axil_awprot;
+    assign u_sep_otp_slave_if.awvalid  = sep_otp_axil_awvalid;
+    assign u_sep_otp_slave_if.awid     = '0;
+    assign u_sep_otp_slave_if.awlen    = '0;
+    assign u_sep_otp_slave_if.awsize   = 3'd2;
+    assign u_sep_otp_slave_if.awburst  = 2'b01;
+    assign u_sep_otp_slave_if.awlock   = 1'b0;
+    assign u_sep_otp_slave_if.awcache  = '0;
+    assign u_sep_otp_slave_if.awqos    = '0;
+    assign u_sep_otp_slave_if.awregion = '0;
+    assign u_sep_otp_slave_if.awuser   = '0;
+    assign u_sep_otp_slave_if.wdata    = 64'(sep_otp_axil_wdata);
+    assign u_sep_otp_slave_if.wstrb    = 8'(sep_otp_axil_wstrb);
+    assign u_sep_otp_slave_if.wlast    = 1'b1;
+    assign u_sep_otp_slave_if.wuser    = '0;
+    assign u_sep_otp_slave_if.wvalid   = sep_otp_axil_wvalid;
+    assign u_sep_otp_slave_if.bready   = sep_otp_axil_bready;
+    assign u_sep_otp_slave_if.araddr   = 64'(sep_otp_axil_araddr);
+    assign u_sep_otp_slave_if.arprot   = sep_otp_axil_arprot;
+    assign u_sep_otp_slave_if.arvalid  = sep_otp_axil_arvalid;
+    assign u_sep_otp_slave_if.arid     = '0;
+    assign u_sep_otp_slave_if.arlen    = '0;
+    assign u_sep_otp_slave_if.arsize   = 3'd2;
+    assign u_sep_otp_slave_if.arburst  = 2'b01;
+    assign u_sep_otp_slave_if.arlock   = 1'b0;
+    assign u_sep_otp_slave_if.arcache  = '0;
+    assign u_sep_otp_slave_if.arqos    = '0;
+    assign u_sep_otp_slave_if.arregion = '0;
+    assign u_sep_otp_slave_if.aruser   = '0;
+    assign u_sep_otp_slave_if.rready   = sep_otp_axil_rready;
+
+    // Responder-side signals: agent driver -> DUT response inputs.
+    assign sep_otp_axil_awready = u_sep_otp_slave_if.awready;
+    assign sep_otp_axil_wready  = u_sep_otp_slave_if.wready;
+    assign sep_otp_axil_bresp   = u_sep_otp_slave_if.bresp;
+    assign sep_otp_axil_bvalid  = u_sep_otp_slave_if.bvalid;
+    assign sep_otp_axil_arready = u_sep_otp_slave_if.arready;
+    assign sep_otp_axil_rdata   = u_sep_otp_slave_if.rdata[31:0];
+    assign sep_otp_axil_rresp   = u_sep_otp_slave_if.rresp;
+    assign sep_otp_axil_rvalid  = u_sep_otp_slave_if.rvalid;
 
     // SMC fabric AXI4 responder: the shared ocah_axi_vip UVM slave agent
     // (same pattern as the SMC OTP port) answers JTAG2AXI fabric traffic.
@@ -899,6 +986,52 @@ module dtp_uvm_top
     assign u_smc_otp_axil_if.ruser    = '0;
     assign u_smc_otp_axil_if.rvalid   = smc_otp_axil_rvalid;
     assign u_smc_otp_axil_if.rready   = smc_otp_axil_rready;
+
+    ocah_axi_if u_sep_otp_axil_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_sep_otp_axil_if.awaddr   = 64'(sep_otp_axil_awaddr);
+    assign u_sep_otp_axil_if.awprot   = sep_otp_axil_awprot;
+    assign u_sep_otp_axil_if.awvalid  = sep_otp_axil_awvalid;
+    assign u_sep_otp_axil_if.awready  = sep_otp_axil_awready;
+    assign u_sep_otp_axil_if.awid     = '0;
+    assign u_sep_otp_axil_if.awlen    = '0;
+    assign u_sep_otp_axil_if.awsize   = 3'd2;
+    assign u_sep_otp_axil_if.awburst  = 2'b01;
+    assign u_sep_otp_axil_if.awlock   = 1'b0;
+    assign u_sep_otp_axil_if.awcache  = '0;
+    assign u_sep_otp_axil_if.awqos    = '0;
+    assign u_sep_otp_axil_if.awregion = '0;
+    assign u_sep_otp_axil_if.awuser   = '0;
+    assign u_sep_otp_axil_if.wdata    = 64'(sep_otp_axil_wdata);
+    assign u_sep_otp_axil_if.wstrb    = 8'(sep_otp_axil_wstrb);
+    assign u_sep_otp_axil_if.wlast    = 1'b1;
+    assign u_sep_otp_axil_if.wuser    = '0;
+    assign u_sep_otp_axil_if.wvalid   = sep_otp_axil_wvalid;
+    assign u_sep_otp_axil_if.wready   = sep_otp_axil_wready;
+    assign u_sep_otp_axil_if.bid      = '0;
+    assign u_sep_otp_axil_if.bresp    = sep_otp_axil_bresp;
+    assign u_sep_otp_axil_if.buser    = '0;
+    assign u_sep_otp_axil_if.bvalid   = sep_otp_axil_bvalid;
+    assign u_sep_otp_axil_if.bready   = sep_otp_axil_bready;
+    assign u_sep_otp_axil_if.araddr   = 64'(sep_otp_axil_araddr);
+    assign u_sep_otp_axil_if.arprot   = sep_otp_axil_arprot;
+    assign u_sep_otp_axil_if.arvalid  = sep_otp_axil_arvalid;
+    assign u_sep_otp_axil_if.arready  = sep_otp_axil_arready;
+    assign u_sep_otp_axil_if.arid     = '0;
+    assign u_sep_otp_axil_if.arlen    = '0;
+    assign u_sep_otp_axil_if.arsize   = 3'd2;
+    assign u_sep_otp_axil_if.arburst  = 2'b01;
+    assign u_sep_otp_axil_if.arlock   = 1'b0;
+    assign u_sep_otp_axil_if.arcache  = '0;
+    assign u_sep_otp_axil_if.arqos    = '0;
+    assign u_sep_otp_axil_if.arregion = '0;
+    assign u_sep_otp_axil_if.aruser   = '0;
+    assign u_sep_otp_axil_if.rid      = '0;
+    assign u_sep_otp_axil_if.rdata    = 64'(sep_otp_axil_rdata);
+    assign u_sep_otp_axil_if.rresp    = sep_otp_axil_rresp;
+    assign u_sep_otp_axil_if.rlast    = 1'b1;
+    assign u_sep_otp_axil_if.ruser    = '0;
+    assign u_sep_otp_axil_if.rvalid   = sep_otp_axil_rvalid;
+    assign u_sep_otp_axil_if.rready   = sep_otp_axil_rready;
 
     ocah_axi_if u_m_axi_if (.aclk(clk_i), .aresetn(rst_n_i));
     assign u_m_axi_if.awid     = 16'(m_axi_awid);
@@ -1009,6 +1142,50 @@ module dtp_uvm_top
     );
 
     ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_sep_otp_axil_sva (
+        .aclk    (clk_i),
+        .aresetn (rst_n_i),
+        .en_i    (u_tb_if.axi_sva_en),
+        .awid    ('0),
+        .awaddr  (sep_otp_axil_awaddr),
+        .awlen   ('0),
+        .awsize  (3'd2),
+        .awburst (2'b01),
+        .awlock  (1'b0),
+        .awprot  (sep_otp_axil_awprot),
+        .awvalid (sep_otp_axil_awvalid),
+        .awready (sep_otp_axil_awready),
+        .wdata   (sep_otp_axil_wdata),
+        .wstrb   (sep_otp_axil_wstrb),
+        .wlast   (1'b1),
+        .wvalid  (sep_otp_axil_wvalid),
+        .wready  (sep_otp_axil_wready),
+        .bid     ('0),
+        .bresp   (sep_otp_axil_bresp),
+        .bvalid  (sep_otp_axil_bvalid),
+        .bready  (sep_otp_axil_bready),
+        .arid    ('0),
+        .araddr  (sep_otp_axil_araddr),
+        .arlen   ('0),
+        .arsize  (3'd2),
+        .arburst (2'b01),
+        .arlock  (1'b0),
+        .arprot  (sep_otp_axil_arprot),
+        .arvalid (sep_otp_axil_arvalid),
+        .arready (sep_otp_axil_arready),
+        .rid     ('0),
+        .rdata   (sep_otp_axil_rdata),
+        .rresp   (sep_otp_axil_rresp),
+        .rlast   (1'b1),
+        .rvalid  (sep_otp_axil_rvalid),
+        .rready  (sep_otp_axil_rready)
+    );
+
+    ocah_axi_sva #(
         .IS_LITE    (1'b0),
         .ADDR_WIDTH (56),
         .DATA_WIDTH (64),
@@ -1060,17 +1237,9 @@ module dtp_uvm_top
     assign u_tb_if.smc_otp_axil_awvalid_count = smc_otp_axil_awvalid_count;
     assign u_tb_if.smc_otp_axil_wvalid_count  = smc_otp_axil_wvalid_count;
     assign u_tb_if.smc_otp_axil_arvalid_count = smc_otp_axil_arvalid_count;
-
-    // SEP OTP AXI-Lite responder: still idle-ready, never responding (no
-    // sep_otp traffic is generated by the UVM flow yet — documented stretch).
-    assign sep_otp_axil_awready = 1'b1;
-    assign sep_otp_axil_wready  = 1'b1;
-    assign sep_otp_axil_bresp   = 2'b00;
-    assign sep_otp_axil_bvalid  = 1'b0;
-    assign sep_otp_axil_arready = 1'b1;
-    assign sep_otp_axil_rdata   = 32'h0;
-    assign sep_otp_axil_rresp   = 2'b00;
-    assign sep_otp_axil_rvalid  = 1'b0;
+    assign u_tb_if.sep_otp_axil_awvalid_count = sep_otp_axil_awvalid_count;
+    assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
+    assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
 
     // XTRIG AXI-Lite subordinate: no CSR traffic.
     assign xtrig_axil_awaddr  = 32'h0;
@@ -1101,6 +1270,8 @@ module dtp_uvm_top
         uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_axil_vif", u_smc_otp_axil_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_slave_vif", u_smc_otp_slave_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_otp_axil_vif", u_sep_otp_axil_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_otp_slave_vif", u_sep_otp_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_axi_slave_vif", u_smc_axi_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
         run_test();

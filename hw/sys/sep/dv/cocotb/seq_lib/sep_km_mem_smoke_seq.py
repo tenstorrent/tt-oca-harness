@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
+from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 
-from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from seq_lib.sep_sw_reset_seq import (
     SEP_RESET_CTRL_SW_RESET_N,
     SW_RESET_N_BIT,

@@ -39,10 +39,7 @@ def _reserved_addrs() -> tuple[int, ...]:
     end = MAP_BASE + MAP_SIZE
     for addr in addrs:
         if not (MAP_BASE <= addr < end):
-            raise RuntimeError(
-                f"RESERVED 0x{addr:08x} not in MAP "
-                f"[0x{MAP_BASE:08x}, 0x{end:08x})"
-            )
+            raise RuntimeError(f"RESERVED 0x{addr:08x} not in MAP [0x{MAP_BASE:08x}, 0x{end:08x})")
         if addr & 7:
             raise RuntimeError(
                 f"RESERVED 0x{addr:08x} is not 8-byte aligned "
@@ -84,12 +81,9 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"OTP J2A WR {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"OTP J2A WR {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
-        self._log(
-            f"OTP J2A WR {name} @0x{addr:08x} data=0x{data:08x} status=SUCCESS"
-        )
+        self._log(f"OTP J2A WR {name} @0x{addr:08x} data=0x{data:08x} status=SUCCESS")
 
     async def _otp_rd(self, jtag, addr: int, name: str) -> int:
         st, rdata = await otp_jtag2axi_single_read(
@@ -97,8 +91,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"OTP J2A RD {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"OTP J2A RD {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & MASK32
 
@@ -113,8 +106,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         require_jtag_tdo_resolved(f"fabric MAP RD {name}")
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"fabric J2A RD {name} @0x{addr:08x} status={st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"fabric J2A RD {name} @0x{addr:08x} status={st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         return int(rdata) & MASK32
 
@@ -138,18 +130,14 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-OTP-COMPLETE-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
         sigint = self._sample_int("lc_sigint_err_o") & 1
         if gate != 0:
-            raise AssertionError(
-                f"OTP J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
         if lc != SEP0_LC_STATE:
             raise AssertionError(
                 f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x} "
@@ -158,10 +146,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         if sigint != 0:
             raise AssertionError(f"lc_sigint_err_o={sigint} want 0 (demux err_slv)")
         self.s1_ok = True
-        self._log(
-            f"CHK-OTP-COMPLETE-GATE-OPEN disable={gate} lc=0x{lc:02x} "
-            f"sigint={sigint}"
-        )
+        self._log(f"CHK-OTP-COMPLETE-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}")
         sb.expect_eq(
             "CHK-OTP-COMPLETE-GATE-OPEN",
             (gate, lc, sigint),
@@ -183,10 +168,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
                     f"otp=0x{otp:08x} fab=0x{fab:08x} shadow=0x{shadow:08x}"
                 )
             trip.append((otp, fab, shadow))
-            self._log(
-                f"CHK-OTP-MAP-RW RES{idx} @0x{addr:08x} "
-                f"otp=fab=shadow=0x{pat:08x}"
-            )
+            self._log(f"CHK-OTP-MAP-RW RES{idx} @0x{addr:08x} otp=fab=shadow=0x{pat:08x}")
         self.s3_ok = True
         sb.expect_eq(
             "CHK-OTP-MAP-RW",
@@ -197,16 +179,13 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         await self._otp_wr(jtag, RESERVED_ADDRS[0], REWRITE0, "RES0-RE")
         got0 = await self._otp_rd(jtag, RESERVED_ADDRS[0], "RES0-RE")
         if got0 != REWRITE0:
-            raise AssertionError(
-                f"RES0 rewrite want 0x{REWRITE0:08x} got 0x{got0:08x}"
-            )
+            raise AssertionError(f"RES0 rewrite want 0x{REWRITE0:08x} got 0x{got0:08x}")
         hold: list[int] = []
         for addr, pat, idx in zip(RESERVED_ADDRS[1:], PATTERNS[1:], RESERVED_IDX[1:]):
             got = await self._otp_rd(jtag, addr, f"RES{idx}-HOLD")
             if got != pat:
                 raise AssertionError(
-                    f"RES{idx} isolation fail: want 0x{pat:08x} got 0x{got:08x} "
-                    "after RES0 rewrite"
+                    f"RES{idx} isolation fail: want 0x{pat:08x} got 0x{got:08x} after RES0 rewrite"
                 )
             hold.append(got)
         self.s4_ok = True

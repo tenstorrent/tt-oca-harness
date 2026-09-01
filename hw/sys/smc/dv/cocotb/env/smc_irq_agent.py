@@ -21,7 +21,6 @@ from .smc_irq_item import SmcIrqItem, SmcIrqOp
 
 
 class SmcIrqDriver(uvm_driver):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
@@ -60,7 +59,6 @@ class SmcIrqDriver(uvm_driver):
 
 
 class SmcIrqAgent(uvm_agent):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)

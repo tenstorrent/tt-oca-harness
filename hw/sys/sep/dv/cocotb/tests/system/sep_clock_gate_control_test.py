@@ -15,10 +15,11 @@ no_cpu / +skip_fuse_sense. Distinct from sep_crypto_per_ip_reset_isolation_test
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_clock_gate_seq import (
-    CLOCK_GATE_MASK, SepClockGate, SepClockGateCfg,
+    CLOCK_GATE_MASK,
+    SepClockGate,
+    SepClockGateCfg,
 )
 
 
@@ -39,12 +40,12 @@ class sep_clock_gate_control_test(sep_base_test):
         )
         await gate.write_enable(0)
         rb = await gate.read_enable()
-        assert rb == 0, (
-            f"CHK-STORAGE FAIL: pka_cg_enable wrote 0, read 0x{rb:x}"
-        )
+        assert rb == 0, f"CHK-STORAGE FAIL: pka_cg_enable wrote 0, read 0x{rb:x}"
         self.logger.info(
             "CHK-STORAGE PASS: CLOCK_GATE_CTRL.pka_cg_enable writes and reads "
-            "back 1 then 0 (mask=0x%x)", CLOCK_GATE_MASK)
+            "back 1 then 0 (mask=0x%x)",
+            CLOCK_GATE_MASK,
+        )
 
         for enable, name, addr in cfg.cells():
             await gate.write_enable(enable)
@@ -56,8 +57,10 @@ class sep_clock_gate_control_test(sep_base_test):
             self.logger.info(
                 "CHK-STUB-CONST PASS: enable=%d witness %s @0x%08x OKAY "
                 "(rdata=0x%08x) -- pka_cg_enable does not gate this IP",
-                enable, name, addr, got & 0xFFFF_FFFF)
+                enable,
+                name,
+                addr,
+                got & 0xFFFF_FFFF,
+            )
 
-        self.logger.info(
-            "CHK-RAND-NONE PASS: walked all %d enable x witness cells",
-            cfg.n_cells())
+        self.logger.info("CHK-RAND-NONE PASS: walked all %d enable x witness cells", cfg.n_cells())

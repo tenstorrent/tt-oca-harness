@@ -16,23 +16,40 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # status HW inputs (cts_ni ...), so it locks observed HW behaviour, not a spec
 # reset.
 UART_LOG_READS = [
-    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
-        0), 0x0),
-    ("UART_IIR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0), 0x1),
-    ("UART_LSR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0),
-     0x0000_0060),
-    ("UART_MSR", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0),
-     0x0000_0011),  # regression-lock (tied modem HW, RDL=0)
-    ("LOG_ENGINE_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR",
-        0), 0x0),
-    ("LOG_ENGINE_INTR_STATUS", smc_indexed_addr(
-        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR",
-        0), 0x0),
+    (
+        "UART_LOG_ENGINE_CTRL",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
+        ),
+        0x0,
+    ),
+    (
+        "UART_IIR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0),
+        0x1,
+    ),
+    (
+        "UART_LSR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0),
+        0x0000_0060,
+    ),
+    (
+        "UART_MSR",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0),
+        0x0000_0011,
+    ),  # regression-lock (tied modem HW, RDL=0)
+    (
+        "LOG_ENGINE_CTRL",
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", 0),
+        0x0,
+    ),
+    (
+        "LOG_ENGINE_INTR_STATUS",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR", 0
+        ),
+        0x0,
+    ),
 ]
 
 

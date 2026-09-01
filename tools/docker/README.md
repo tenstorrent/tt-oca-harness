@@ -77,13 +77,14 @@ container as its image's own default user instead:
 OCAH_DOCKER_UIDGID= ./scripts/docker-run.sh shell
 ```
 
-Lint and format Make targets (`make lint-slang-all` / `make format-sv[-check]` /
-`make lint-sv-verible`) require `slang` / `verible-*` on `PATH`. If a tool is
-missing, Make prints an install hint and the matching container command, e.g.
-`./scripts/docker-run.sh eda-run make lint-slang`. Synthesis (`make synth-all`)
-still runs through Docker by default via `./scripts/docker-run.sh eda-run`
-internally. The subcommand is also available directly, e.g. for ad-hoc
-debugging:
+SystemVerilog lint and format Make targets (`make lint-slang-all`,
+`make lint-verilator-all`, `make format-sv[-check]`, and
+`make lint-sv-verible`) require the corresponding native tool on `PATH`. If a
+tool is missing, Make prints an install hint and the matching container
+command, e.g. `./scripts/docker-run.sh eda-run make lint-slang`. Synthesis
+(`make synth-all`) still runs through Docker by default via
+`./scripts/docker-run.sh eda-run` internally. The subcommand is also available
+directly, e.g. for ad-hoc debugging:
 
 ```bash
 ./scripts/docker-run.sh eda-run yosys --version

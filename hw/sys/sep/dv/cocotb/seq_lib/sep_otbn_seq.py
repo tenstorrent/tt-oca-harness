@@ -11,10 +11,9 @@ sep_km_otbn_sideload_kat_test_seq run mechanics.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym, OTBN
-
 import cocotb
 from cocotb.triggers import ClockCycles
+from sep_reg_meta import OTBN, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -144,8 +143,10 @@ class SepOtbn(SepAxiRegDriver):
         the 4 upper words of result_hi (the zero pad above the 384b key)."""
         res_lo = await self.read_dmem_words(OTBN_DMEM_RESULT_LO, 8)
         res_hi = await self.read_dmem_words(OTBN_DMEM_RESULT_HI, 8)
-        share0 = (await self.read_dmem_words(OTBN_DMEM_SHARE0_LO, 8)) + \
-                 (await self.read_dmem_words(OTBN_DMEM_SHARE0_HI, 8))[:4]
-        share1 = (await self.read_dmem_words(OTBN_DMEM_SHARE1_LO, 8)) + \
-                 (await self.read_dmem_words(OTBN_DMEM_SHARE1_HI, 8))[:4]
+        share0 = (await self.read_dmem_words(OTBN_DMEM_SHARE0_LO, 8)) + (
+            await self.read_dmem_words(OTBN_DMEM_SHARE0_HI, 8)
+        )[:4]
+        share1 = (await self.read_dmem_words(OTBN_DMEM_SHARE1_LO, 8)) + (
+            await self.read_dmem_words(OTBN_DMEM_SHARE1_HI, 8)
+        )[:4]
         return res_lo + res_hi[:4], share0, share1, res_hi[4:]

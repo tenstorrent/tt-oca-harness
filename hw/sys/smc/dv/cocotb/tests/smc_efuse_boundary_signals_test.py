@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_boundary_signals_test_seq import (
     smc_efuse_boundary_signals_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -21,6 +21,5 @@ class smc_efuse_boundary_signals_test(smc_base_test):
         seq = smc_efuse_boundary_signals_test_seq("efuse_bnd_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.hold_ok and seq.map_ok and seq.release_ok, (
-            f"efuse boundary incomplete hold={seq.hold_ok} "
-            f"map={seq.map_ok} rel={seq.release_ok}"
+            f"efuse boundary incomplete hold={seq.hold_ok} map={seq.map_ok} rel={seq.release_ok}"
         )

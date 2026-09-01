@@ -74,8 +74,13 @@ LC_RMA_CHIP_0 = 0x6
 LC_RMA_CHIP_1 = 0x7
 LC_PROD_END = 0x8
 LEGAL_LC_RAW: Tuple[int, ...] = (
-    LC_TEST_DEV, LC_PROD, LC_RMA_SIP_0, LC_RMA_SIP_1,
-    LC_RMA_CHIP_0, LC_RMA_CHIP_1, LC_PROD_END,
+    LC_TEST_DEV,
+    LC_PROD,
+    LC_RMA_SIP_0,
+    LC_RMA_SIP_1,
+    LC_RMA_CHIP_0,
+    LC_RMA_CHIP_1,
+    LC_PROD_END,
 )
 
 # Field schema: (name, byte_offset, n_words, kind). Offsets/widths from
@@ -124,11 +129,11 @@ _PROB_BITS = 32
 # sep_reg_meta._selftest() exists in this environment.
 _SPEC_ANCHORS = {
     # name:          (byte offset, width in bits)
-    "LOCKS":         (0x000, 64),
-    "LOCKS_SPARE":   (0x008, 32),
-    "LC_STATE":      (0x00C, 32),
-    "SIP_DIS":       (0x018, 64),
-    "SYS_DIS":       (0x020, 64),
+    "LOCKS": (0x000, 64),
+    "LOCKS_SPARE": (0x008, 32),
+    "LC_STATE": (0x00C, 32),
+    "SIP_DIS": (0x018, 64),
+    "SYS_DIS": (0x020, 64),
 }
 _SPEC_TOTAL_BITS = 8192
 
@@ -143,7 +148,7 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
     """
     pfx, sfx = "SEP_EFUSE_MAP_", "_REG_OFFSET"
     regs = sorted(
-        (int(getattr(sep_reg, n)), n[len(pfx):-len(sfx)])
+        (int(getattr(sep_reg, n)), n[len(pfx) : -len(sfx)])
         for n in dir(sep_reg)
         if n.startswith(pfx) and n.endswith(sfx)
     )
@@ -162,9 +167,7 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
         raise RuntimeError(f"eFuse map does not start at 0: {first[0]} @ {first[1]:#x}")
     covered = sum(f[2] for f in out)
     if covered != NUM_FUSE_WORDS:
-        raise RuntimeError(
-            f"derived eFuse map covers {covered} words, expected {NUM_FUSE_WORDS}"
-        )
+        raise RuntimeError(f"derived eFuse map covers {covered} words, expected {NUM_FUSE_WORDS}")
     if covered * WORD_BITS != _SPEC_TOTAL_BITS:
         raise RuntimeError(
             f"derived eFuse array is {covered * WORD_BITS} bits, but the specification "
@@ -176,9 +179,7 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
     by_name = {f[0]: f for f in out}
     for name, (want_off, want_bits) in _SPEC_ANCHORS.items():
         if name not in by_name:
-            raise RuntimeError(
-                f"spec-stated field {name} is absent from the generated eFuse map"
-            )
+            raise RuntimeError(f"spec-stated field {name} is absent from the generated eFuse map")
         _, got_off, got_words, _ = by_name[name]
         got_bits = got_words * WORD_BITS
         if (got_off, got_bits) != (want_off, want_bits):
@@ -209,8 +210,8 @@ class SepEfuseField:
 
     def __init__(self, name: str, offset: int, n_words: int, kind: str) -> None:
         self.name = name
-        self.offset = offset            # byte offset within the fuse map
-        self.word = offset >> 2         # word index into the 256-word array
+        self.offset = offset  # byte offset within the fuse map
+        self.word = offset >> 2  # word index into the 256-word array
         self.n_words = n_words
         self.kind = kind
 
@@ -247,9 +248,7 @@ class SepEfuseImage:
         """Set a field from a little-endian list of 32-bit words."""
         fld = self.field(name)
         if len(values) != fld.n_words:
-            raise ValueError(
-                f"{name} expects {fld.n_words} words, got {len(values)}"
-            )
+            raise ValueError(f"{name} expects {fld.n_words} words, got {len(values)}")
         for i, v in enumerate(values):
             self.words[fld.word + i] = v & WORD_MASK
         return self
@@ -374,7 +373,7 @@ class SepEfuseImage:
 
             for slot in range(LOCK_SLOTS):
                 if _draw():
-                    lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT)      # write lock
+                    lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT)  # write lock
                 if _draw():
                     lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT + 1)  # read lock
         locks_base_word = self.field("LOCKS").word
@@ -388,8 +387,7 @@ class SepEfuseImage:
                     continue
                 bit_off = (fld.word - locks_base_word) * WORD_BITS
                 for i in range(fld.n_words):
-                    self.words[fld.word + i] = (
-                        (lock_bits >> (bit_off + i * WORD_BITS)) & WORD_MASK)
+                    self.words[fld.word + i] = (lock_bits >> (bit_off + i * WORD_BITS)) & WORD_MASK
                 continue
             # generic data field: random per word
             for i in range(fld.n_words):
@@ -440,8 +438,7 @@ class SepEfuseImage:
         """(addr, expected) pairs the checker reads for ``name``."""
         fld = self.field(name)
         return [
-            (fld.shadow_addr + 4 * i,
-             self.shadow_word(fld.word + i, secure_tm=secure_tm))
+            (fld.shadow_addr + 4 * i, self.shadow_word(fld.word + i, secure_tm=secure_tm))
             for i in range(fld.n_words)
         ]
 
@@ -462,9 +459,7 @@ def _selftest_lock_pack() -> None:
     locks = ones.field_int("LOCKS")
     spare = ones.field_int("LOCKS_SPARE")
     if locks != (1 << 64) - 1:
-        raise RuntimeError(
-            f"lock_prob=1.0 packed LOCKS {locks:#018x}, expected 0xffffffffffffffff"
-        )
+        raise RuntimeError(f"lock_prob=1.0 packed LOCKS {locks:#018x}, expected 0xffffffffffffffff")
     if spare != 0x0000FFFF:
         raise RuntimeError(
             f"lock_prob=1.0 packed LOCKS_SPARE {spare:#010x}, expected 0x0000ffff "

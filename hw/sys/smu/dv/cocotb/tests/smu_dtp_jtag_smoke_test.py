@@ -11,7 +11,6 @@ JTAG2AXI / OTP / STAP are out of scope (re-homed to SMU_ALL_008).
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_jtag_smoke_test_seq import smu_dtp_jtag_smoke_test_seq
 from smu_base_test import smu_base_test
 

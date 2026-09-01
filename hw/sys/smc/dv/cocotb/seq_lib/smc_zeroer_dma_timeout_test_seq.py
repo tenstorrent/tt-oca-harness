@@ -11,7 +11,6 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
@@ -58,9 +57,7 @@ ZEROER_WAIT_CYCLES = 200
 
 def _sample_output_write_count() -> int:
     sig = cocotb.top.tb_output_axi_write_count
-    assert sig.value.is_resolvable, (
-        "tb_output_axi_write_count is not resolvable (X/Z)"
-    )
+    assert sig.value.is_resolvable, "tb_output_axi_write_count is not resolvable (X/Z)"
     return int(sig.value)
 
 
@@ -103,8 +100,7 @@ def _emit_functional_coverage_report(cells_hit: list[str]) -> Path:
             "zeroer-neighbours-untouched",
         ],
         "cells_hit": cells_hit,
-        "satisfied": set(cells_hit)
-        >= {"zeroer-region-zeroed", "zeroer-neighbours-untouched"},
+        "satisfied": set(cells_hit) >= {"zeroer-region-zeroed", "zeroer-neighbours-untouched"},
     }
     text = json.dumps(payload, indent=2) + "\n"
     written: list[Path] = []
@@ -139,15 +135,17 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END,
-                             0x00FF_FFFF_FFFF_FFFF, length=8)
-        await self.csr_write("INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG,
-                             PASS_ALL_CONFIG, length=8)
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
+        await self.csr_write(
+            "INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
         await self.csr_write("OUTBOUND0_START_PASS_ALL", OUTBOUND0_START, 0x0, length=8)
-        await self.csr_write("OUTBOUND0_END_PASS_ALL", OUTBOUND0_END,
-                             0x00FF_FFFF_FFFF_FFFF, length=8)
-        await self.csr_write("OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG,
-                             PASS_ALL_CONFIG, length=8)
+        await self.csr_write(
+            "OUTBOUND0_END_PASS_ALL", OUTBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
+        )
+        await self.csr_write(
+            "OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+        )
 
     async def _write_bytes(self, addr: int, data: bytes) -> None:
         assert self.env is not None, "sequence env is not initialized"
@@ -176,8 +174,7 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
                 return
             await ClockCycles(cocotb.top.clk_smc_i, 1)
         raise AssertionError(
-            f"zeroer write count did not reach {expected_count}, "
-            f"got {_sample_output_write_count()}"
+            f"zeroer write count did not reach {expected_count}, got {_sample_output_write_count()}"
         )
 
     async def body(self) -> None:
@@ -192,10 +189,12 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
         # Track poison in the VIP model for neighbour bookkeeping only; the
         # zeroed-region oracle is JTAG AXI readback vs ZEROER_EXPECTED, not
         # memory_model.expect after rewriting the model.
-        self.memory_model.write(OUTPUT_FABRIC_ADDR, ZEROER_POISON,
-                                region=OUTPUT_FABRIC_MODEL_REGION)
-        self.memory_model.write(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON,
-                                region=OUTPUT_FABRIC_MODEL_REGION)
+        self.memory_model.write(
+            OUTPUT_FABRIC_ADDR, ZEROER_POISON, region=OUTPUT_FABRIC_MODEL_REGION
+        )
+        self.memory_model.write(
+            OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON, region=OUTPUT_FABRIC_MODEL_REGION
+        )
         await self._write_bytes(OUTPUT_FABRIC_ADDR, ZEROER_POISON)
         await self._write_bytes(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON)
         preload_rb = await self._read_bytes(OUTPUT_FABRIC_ADDR, len(ZEROER_POISON))
@@ -226,9 +225,7 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
             "(addresses from smc_reg ZEROER_CTRL_*_REG_ADDR)"
         )
 
-        cocotb.log.info(
-            "STEP S3: trigger ZEROER_CTRL_STATUS=1; wait writes; readback zeros"
-        )
+        cocotb.log.info("STEP S3: trigger ZEROER_CTRL_STATUS=1; wait writes; readback zeros")
         # The zeroer FSM starts on the INT_EN field write side effect.
         await self.csr_write("ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8)
         # One AXI write clears the 8-byte DEST region; neighbour is untouched.
