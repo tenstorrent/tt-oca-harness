@@ -20,12 +20,18 @@ FILTER_CONFIG.src_id=0 is match-all (traffic_filter.sv). A non-zero src_id
 matches only the external master's ar/awuser[3:0]. allow_ns=1 matches the
 master's NONSECURE prot.
 
-FILTER_CONFIG.allow_burst (bit 24) is walked only by the matrix burst
-checkers, on both filter instances (AR and AW). A 2-beat INCR (AxLEN=1)
-makes traffic_filter.sv pass_burst depend on the bit. The allow window
-spans two 4 KB pages so the wrap same-page widen does not fire.
-The 4 KB over-grant has no fabric.adoc sentence and is a plan open
-item, not a claimed checker.
+FILTER_CONFIG.allow_burst (bit 24) is walked on both filter instances
+(AR and AW). A 2-beat INCR (AxLEN=1) makes traffic_filter.sv pass_burst
+depend on the bit. The burst deny/allow window spans two 4 KB pages so
+the wrap same-page widen does not fire there.
+
+SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
+START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
+whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
+grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
+is a write-once-set bit; sep_system_csr.sv routes every further write of a
+locked entry to an AXI-Lite error slave, so the frozen allow_burst keeps
+governing the granule.
 """
 
 from __future__ import annotations
@@ -47,17 +53,14 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     FILTER_STRIDE,
     INFILT_BASE,
 )
-from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0
+from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
 # Inbound FILTER_* per-entry register offsets (64-bit START/END as lo/hi 32-bit words).
 FILTER_START_ADDR = 0x08
 FILTER_END_ADDR = 0x10
-# filter_ctrl.rdl FILTER_CONFIG.data_bus_width reset = 3 (8-byte beat), so
-# axi_filter_wrap expands a same-beat [start,end] window and END's low bits
-# read back as 1 (which is why the RDL reset of END_ADDR is 0x7). Nothing in
-# this module needs the granule: the readback proof lives in
-# sep_reg_bit_bash_seq.inbound_addr_expected(), which models the widen across
-# the whole write sweep rather than one programmed entry.
+# Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
+# (hw/common/axi/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
+# readback model is sep_reg_bit_bash_seq.inbound_addr_expected().
 
 # Allowed target: a pure-RW scratch CSR (SEP_SW_DEBUG @ sep_cpu_ctrl+0x178) in the
 # system_csr region the smn_inbound xbar reaches post-filter. Staged with a distinctive
@@ -69,6 +72,7 @@ WINDOW_B_ADDR = SCRATCH_COLD_0
 WINDOW_B_VALUE = 0xA11C_BEEF
 BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
+RESP_SLVERR = 2
 RESP_DECERR = 3
 # sep_pkg.sv INBOUND_FILTER_NUM_FILTERS. disable_all() must clear every entry
 # or a leftover allow window survives a walk that assumes it cleared them.
@@ -84,10 +88,100 @@ SRC_ID_USER_MASK = 0xF
 # AxLEN=1 so traffic_filter.sv pass_burst is not vacuously true.
 AXI_BURST_INCR = 1
 BURST_BYTES = 8
-# allow_burst=1 same-page window would widen to 4 KB in axi_filter_wrap.sv.
-# The allow checker programs a window that already spans two pages so that
-# rewrite does not fire. The 4 KB over-grant is a plan open item.
+# The burst deny/allow checkers isolate pass_burst from the granule rewrite: their
+# window already spans two 4 KB pages, so the same-page widen does not fire there.
+# SepInboundFilterWidenCfg owns the widen.
 BURST_ALLOW_SPAN = 0x2000
+
+# --- same-page 4 KB widen -----------------------------------------------------
+# axi_filter_wrap.sv rewrites an allow_burst=1 window whose START and END share a
+# 4 KB page to that whole page, and traffic_filter.sv then compares only
+# addr[AddrWidth-1:12]. memory_map.adoc packs distinct blocks of the SEP System
+# aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT 0x1080_1000, the
+# dual scratch banks 0x1080_2000 -- so a grant that crossed the page edge would
+# reach a neighbouring block.
+PAGE_SHIFT = 12
+PAGE_SIZE = 1 << PAGE_SHIFT
+GRANULE_BYTES = 8  # FILTER_CONFIG.data_bus_width reset 3 => 8-byte beat
+SCRATCH_STRIDE = 0x8  # sep_scratch.rdl: 8 x 64-bit per bank
+SCRATCH_BANK_REGS = 8
+# The dual scratch banks are the widen page: both banks are plain RW storage, so
+# every probe lands on a real register and an OKAY/DECERR split can only come
+# from the filter, never from an address-decode hole.
+WIDEN_PAGE_BASE = SCRATCH_COLD_0 & ~(PAGE_SIZE - 1)
+# Read probes in the WDT page, one page below the scratch page. The boundary is
+# proven in both directions with these two pages, so every probe address is one
+# the external master demonstrably reaches when its own page is granted.
+WIDEN_ADJ_BELOW = (
+    sym("WDT_TIMER_WKUP_THOLD_LO_REG_ADDR"),
+    sym("WDT_TIMER_WDOG_BARK_THOLD_REG_ADDR"),
+    sym("WDT_TIMER_WDOG_BITE_THOLD_REG_ADDR"),
+)
+# The last table entry: the write-once lock is sticky until reset, so it must not
+# land on an entry the matrix or burst walk reprograms.
+WIDEN_ENTRY = INFILT_N_ENTRIES - 1
+FILTER_LOCKED_HI_BIT = 31  # FILTER_CONFIG.locked[63] = bit 31 of the hi word
+
+
+class SepInboundFilterWidenCfg:
+    """Same-page allow_burst=1 window plus the probes that measure the widen.
+
+    ``window_addr..window_end`` is one 8-byte granule inside the scratch page, so
+    the wrap widens it to ``page_base..page_base+0xFFF``. The probes are chosen so
+    each one proves a distinct contract:
+
+      * ``window_addr`` -- inside the programmed range: the positive control.
+      * ``in_page_addrs`` -- same 4 KB page, OUTSIDE the programmed range (cold
+        scratch 0 and a warm scratch register): the widen, observed.
+      * ``adj_addr`` -- a register in the page below (WDT): the grant must not
+        reach it, and it must answer once the WDT page is the granted one.
+
+    The seed picks which scratch register the window sits on, which warm register
+    the out-of-window probe uses, which WDT register the adjacent probe uses, and
+    the staged data words. Every probe runs on every seed.
+    """
+
+    def __init__(
+        self, *, window_idx: int, warm_idx: int, below_addr: int, values: list[int]
+    ) -> None:
+        self.entry = WIDEN_ENTRY
+        self.window_idx = window_idx
+        self.window_addr = SCRATCH_COLD_0 + window_idx * SCRATCH_STRIDE
+        self.window_end = self.window_addr + GRANULE_BYTES - 1
+        self.page_base = WIDEN_PAGE_BASE
+        self.page_end = WIDEN_PAGE_BASE + PAGE_SIZE - 1
+        self.in_page_addrs = [SCRATCH_COLD_0, SCRATCH_WARM_0 + warm_idx * SCRATCH_STRIDE]
+        self.adj_addr = below_addr
+        # window_addr first, then the two out-of-window in-page probes.
+        self.values = list(values)
+
+    @classmethod
+    def from_rng(cls, rng: SepSeededRng) -> "SepInboundFilterWidenCfg":
+        # Cold scratch 0 stays outside the programmed window on every seed so it
+        # is always a valid widen probe.
+        window_idx = rng.randrange(1, SCRATCH_BANK_REGS)
+        warm_idx = rng.randrange(SCRATCH_BANK_REGS)
+        below_addr = rng.choice(list(WIDEN_ADJ_BELOW))
+        vals: list[int] = []
+        for i in range(3):
+            v = rng.getrandbits(32) or (0x5EED_0000 | i)
+            while v in vals:
+                v = (v + 1) & 0xFFFF_FFFF
+            vals.append(v)
+        return cls(window_idx=window_idx, warm_idx=warm_idx, below_addr=below_addr, values=vals)
+
+    @property
+    def staged(self) -> list[tuple[int, int]]:
+        """(addr, value) for the in-window probe then the two in-page probes."""
+        return list(zip([self.window_addr] + self.in_page_addrs, self.values))
+
+    def summary(self) -> str:
+        return (
+            f"entry={self.entry} window=0x{self.window_addr:08x}..0x{self.window_end:08x} "
+            f"page=0x{self.page_base:08x}..0x{self.page_end:08x} "
+            f"in_page={[hex(a) for a in self.in_page_addrs]} "
+            f"adjacent=0x{self.adj_addr:08x}"
+        )
 
 
 class SepInboundFilterCfg:
@@ -138,7 +232,7 @@ class SepInboundFilterCfg:
 class SepInboundFilterMatrixCfg:
     """Single source of truth for the inbound-filter RAND-REP walk.
 
-    Discrete cells (walked every seed): first and last table entries x two
+    Discrete cells (walked every seed): entries 0 and 7 x two
     address windows x {rw, read-only, write-only} at src_id=0 (match-all),
     plus entry 0 / window 0 x {rw, r, w} at src_id=5 / user=5 (exact match)
     and one src-mismatch cell (src_id=5 / user=0xA, both allows set).
@@ -147,12 +241,15 @@ class SepInboundFilterMatrixCfg:
     first so the allow-rule proof line still appears.
     """
 
-    def __init__(self, *, seed: int, windows: list[tuple[int, int]]) -> None:
+    def __init__(
+        self, *, seed: int, windows: list[tuple[int, int]], widen: SepInboundFilterWidenCfg
+    ) -> None:
         self.seed = seed
         self.windows = list(windows)
         self.entries = WALK_ENTRIES
         self.modes = ALLOW_MODES
         self.blocked_addr = BLOCKED_ADDR
+        self.widen = widen
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepInboundFilterMatrixCfg":
@@ -164,7 +261,11 @@ class SepInboundFilterMatrixCfg:
         vb = rng.getrandbits(32) or WINDOW_B_VALUE
         if va == vb:
             vb ^= 0xFFFF_FFFF
-        return cls(seed=seed, windows=[(TARGET_ADDR, va), (WINDOW_B_ADDR, vb)])
+        return cls(
+            seed=seed,
+            windows=[(TARGET_ADDR, va), (WINDOW_B_ADDR, vb)],
+            widen=SepInboundFilterWidenCfg.from_rng(rng),
+        )
 
     def cells(self):
         """Yield (entry, window_idx, mode_name, addr, value, read_ok, write_ok,
@@ -225,7 +326,8 @@ class SepInboundFilterMatrixCfg:
         return (
             f"seed={self.seed} entries={self.entries} {wins} "
             f"blocked=0x{self.blocked_addr:08x} cells={self.n_cells()} "
-            f"src_match=0x{SRC_ID_MATCH:x} src_mismatch_user=0x{SRC_ID_MISMATCH_USER:x}"
+            f"src_match=0x{SRC_ID_MATCH:x} src_mismatch_user=0x{SRC_ID_MISMATCH_USER:x} "
+            f"widen[{self.widen.summary()}]"
         )
 
 
@@ -240,6 +342,34 @@ class SepInboundFilter(SepAxiRegDriver):
 
     async def read_cpu(self, addr: int) -> int:
         return await self._rd(addr)
+
+    async def write_tolerant(self, addr: int, data: int) -> int:
+        """Write tolerating a non-OKAY response; return the AXI resp_code.
+
+        A locked entry's further writes are demuxed to an AXI-Lite error slave
+        (sep_system_csr.sv), so the proof is the resp code plus the read-back.
+        """
+        seq = SepAxiAccessSeq(
+            "infilt_wr_tol",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code
+
+    async def lock_entry(self, entry: int) -> None:
+        """Write-once-set FILTER_CONFIG.locked (bit 63) of one entry.
+
+        Same 32-bit hi-word poke as ``sep_fabric_csr_bank_seq.woset_probe``:
+        PeakRDL decodes FILTER_CONFIG only at offset 0, and the 64-bit AXI-Lite
+        converter aligns the +4 beat into WDATA[63:32].
+        """
+        hi = INFILT_BASE + entry * FILTER_STRIDE + FILTER_CONFIG + 4
+        cur = await self._rd(hi)
+        await self._wr(hi, cur | (1 << FILTER_LOCKED_HI_BIT))
 
     async def disable_entry(self, entry: int) -> None:
         """Clear FILTER_CONFIG.lo for one entry (does not set the woset lock)."""
@@ -258,15 +388,37 @@ class SepInboundFilter(SepAxiRegDriver):
         write_allowed: bool,
         allow_burst: bool = False,
         end_addr: int | None = None,
+        expect_page_widen: bool = False,
     ) -> None:
         """Program the inbound filter entry.
 
         Default window is one 8-byte granule at ``allow_addr``. ``end_addr``
-        widens the programmed range (used by the burst-allow checker so the
-        window already spans two 4 KB pages and the wrap page-widen does not
-        fire).
+        sets the programmed range explicitly: the burst-allow checker spans two
+        4 KB pages so the wrap page-widen does not fire, and the widen checkers
+        keep START and END in one page so it does.
+
+        ``expect_page_widen`` must be set to program ``allow_burst=1`` with
+        START and END inside one 4 KB page. Hardware then widens the range to
+        the whole page: ``START_ADDR`` rounds down, ``END_ADDR`` rounds up,
+        and ``allow_burst=1`` selects the 4 KB granule
+        (``hw/common/axi/axi_filter/doc/index.adoc``). The entry grants every
+        address in that page -- in the SEP CSR region a page is a whole
+        block. A caller that wants a narrow window and sets ``allow_burst``
+        by habit gets the page, and the CSR readback shows the widened
+        bounds. Requiring the opt-in fails that configuration.
         """
         end = cfg.allow_addr if end_addr is None else end_addr
+        if allow_burst and not expect_page_widen:
+            if (cfg.allow_addr >> 12) == (end >> 12):
+                raise AssertionError(
+                    f"CHK-WIDEN-GUARD: entry {cfg.entry} programs "
+                    f"0x{cfg.allow_addr:08x}..0x{end:08x} with allow_burst=1 "
+                    f"inside page 0x{cfg.allow_addr >> 12:05x}; hardware widens "
+                    f"this to 0x{cfg.allow_addr & ~0xFFF:08x}.."
+                    f"0x{(end & ~0xFFF) | 0xFFF:08x} and the entry grants the "
+                    "whole page. Pass expect_page_widen=True if that is "
+                    "intended, or keep START and END in different pages."
+                )
         await self._wr(cfg.start_addr_reg, cfg.allow_addr)
         await self._wr(cfg.start_addr_reg + 4, 0)
         await self._wr(cfg.end_addr_reg, end)
