@@ -40,18 +40,18 @@ from pathlib import Path
 # Matches include:: directives. Captures the path before the first '['.
 # Attributes inside the brackets ([leveloffset=+1] etc.) are intentionally
 # not captured -- only the bare path is needed.
-INCLUDE_RE = re.compile(r'include::([^\[\]]+)\[')
+INCLUDE_RE = re.compile(r"include::([^\[\]]+)\[")
 
 # Matches image:: (block) and image: (inline) macros. Same bracket handling
 # as above.
-IMAGE_RE = re.compile(r'image::?([^\[\]]+)\[')
+IMAGE_RE = re.compile(r"image::?([^\[\]]+)\[")
 
-IMAGESDIR_RE = re.compile(r'^:imagesdir:\s*(.+?)\s*$')
+IMAGESDIR_RE = re.compile(r"^:imagesdir:\s*(.+?)\s*$")
 
-IFDEF_RE = re.compile(r'^(ifdef|ifndef)::([\w,-]+)\[\]\s*$')
-ENDIF_RE = re.compile(r'^endif::.*\[\]\s*$')
+IFDEF_RE = re.compile(r"^(ifdef|ifndef)::([\w,-]+)\[\]\s*$")
+ENDIF_RE = re.compile(r"^endif::.*\[\]\s*$")
 
-IMAGE_EXTS = {'.png', '.svg', '.jpg', '.jpeg', '.gif'}
+IMAGE_EXTS = {".png", ".svg", ".jpg", ".jpeg", ".gif"}
 
 
 def looks_like_resource_id(path: str) -> bool:
@@ -60,14 +60,14 @@ def looks_like_resource_id(path: str) -> bool:
     already be excluded since they only ever appear inside
     ifdef::backend-html5[] blocks, but this is a defensive second check
     in case one is ever found unconditionally or outside such a block."""
-    if path.startswith('partial$'):
+    if path.startswith("partial$"):
         return True
     # component:module-qualified resource id, e.g. "smc:index.adoc" or
     # "ip:foo/doc/index.adoc" -- a bare word then a colon then no
     # backslash/drive-letter pattern and not a URL scheme.
-    if re.match(r'^[A-Za-z_][\w-]*:(?!//)', path):
+    if re.match(r"^[A-Za-z_][\w-]*:(?!//)", path):
         return True
-    if path.startswith('http://') or path.startswith('https://'):
+    if path.startswith("http://") or path.startswith("https://"):
         return True
     return False
 
@@ -75,7 +75,7 @@ def looks_like_resource_id(path: str) -> bool:
 def find_repo_root(start_file: Path) -> Path | None:
     cur = start_file.resolve().parent
     for _ in range(50):
-        if (cur / '.git').exists():
+        if (cur / ".git").exists():
             return cur
         if cur.parent == cur:
             break
@@ -88,7 +88,7 @@ def resolve_start_path(start_arg: str, repo_root: Path | None) -> Path:
     if p.exists():
         return p.resolve()
     if repo_root is not None:
-        candidate = repo_root / start_arg.lstrip('/')
+        candidate = repo_root / start_arg.lstrip("/")
         if candidate.exists():
             return candidate.resolve()
     raise FileNotFoundError(
@@ -98,8 +98,13 @@ def resolve_start_path(start_arg: str, repo_root: Path | None) -> Path:
 
 
 class Collector:
-    def __init__(self, repo_root: Path, target_root: Path, include_images: bool = False,
-                 exclude_tables: bool = False):
+    def __init__(
+        self,
+        repo_root: Path,
+        target_root: Path,
+        include_images: bool = False,
+        exclude_tables: bool = False,
+    ):
         self.repo_root = repo_root
         self.target_root = target_root
         self.include_images = include_images
@@ -143,7 +148,7 @@ class Collector:
         self.copy_preserving_structure(abs_path)
 
         try:
-            text = abs_path.read_text(encoding='utf-8', errors='replace')
+            text = abs_path.read_text(encoding="utf-8", errors="replace")
         except OSError as e:
             self.warnings.append(f"could not read {abs_path}: {e}")
             return
@@ -174,39 +179,39 @@ class Collector:
             stripped = raw_line.strip()
 
             # AsciiDoc line comments suppress any directive on that line too.
-            if stripped.startswith('//'):
+            if stripped.startswith("//"):
                 continue
 
             m = IFDEF_RE.match(stripped)
             if m:
                 kind_word, cond = m.group(1), m.group(2)
-                is_html5 = 'backend-html5' in cond
-                is_pdf = 'backend-pdf' in cond
-                if kind_word == 'ifdef' and is_html5:
-                    skip_stack.append((True, 'html5'))
-                elif kind_word == 'ifdef' and is_pdf:
-                    skip_stack.append((False, 'pdf'))
-                elif kind_word == 'ifndef' and is_pdf:
+                is_html5 = "backend-html5" in cond
+                is_pdf = "backend-pdf" in cond
+                if kind_word == "ifdef" and is_html5:
+                    skip_stack.append((True, "html5"))
+                elif kind_word == "ifdef" and is_pdf:
+                    skip_stack.append((False, "pdf"))
+                elif kind_word == "ifndef" and is_pdf:
                     # "if PDF backend is NOT active" == html5-only branch
-                    skip_stack.append((True, 'html5'))
-                elif kind_word == 'ifndef' and is_html5:
-                    skip_stack.append((False, 'pdf'))
+                    skip_stack.append((True, "html5"))
+                elif kind_word == "ifndef" and is_html5:
+                    skip_stack.append((False, "pdf"))
                 else:
                     # Some other, non-backend condition -- process normally,
                     # just keep the stack balanced for its endif.
-                    skip_stack.append((False, 'other'))
+                    skip_stack.append((False, "other"))
                 continue
 
             if ENDIF_RE.match(stripped):
                 if skip_stack:
                     _, popped_kind = skip_stack.pop()
-                    if popped_kind == 'pdf':
+                    if popped_kind == "pdf":
                         pending_table_basenames.clear()
                 continue
 
             currently_skipping = any(skip for skip, _ in skip_stack)
-            in_pdf_frame = any(kind == 'pdf' for _, kind in skip_stack)
-            in_html5_frame = any(kind == 'html5' for _, kind in skip_stack)
+            in_pdf_frame = any(kind == "pdf" for _, kind in skip_stack)
+            in_html5_frame = any(kind == "html5" for _, kind in skip_stack)
 
             m = IMAGESDIR_RE.match(stripped)
             if not currently_skipping and m:
@@ -228,7 +233,7 @@ class Collector:
                 # Inside a skipped html5 frame: don't follow anything, but
                 # do note .html passthrough targets for table-pair matching.
                 if currently_skipping:
-                    if in_html5_frame and inc_path.lower().endswith('.html'):
+                    if in_html5_frame and inc_path.lower().endswith(".html"):
                         pending_table_basenames.add(Path(inc_path).stem)
                     continue
 
@@ -238,7 +243,7 @@ class Collector:
                 if (
                     self.exclude_tables
                     and in_pdf_frame
-                    and inc_path.lower().endswith('.adoc')
+                    and inc_path.lower().endswith(".adoc")
                     and Path(inc_path).stem in pending_table_basenames
                 ):
                     self.excluded_table_count += 1
@@ -250,7 +255,7 @@ class Collector:
                         f"include not found: '{inc_path}' referenced from {abs_path}"
                     )
                     continue
-                if resolved.suffix.lower() == '.html':
+                if resolved.suffix.lower() == ".html":
                     continue
                 self.process_file(resolved)
                 continue
@@ -263,7 +268,7 @@ class Collector:
                 if not self.include_images:
                     continue
                 img_path = m.group(1).strip()
-                if img_path.startswith('http://') or img_path.startswith('https://'):
+                if img_path.startswith("http://") or img_path.startswith("https://"):
                     continue
                 base_dir = Path(self.imagesdir) if self.imagesdir else current_dir
                 resolved = (base_dir / img_path).resolve()
@@ -283,18 +288,44 @@ class Collector:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--start', required=True, help='Path to the top-level index.adoc (see --help for accepted forms)')
-    ap.add_argument('--target', required=True, help='Directory to copy the collected tree into')
-    ap.add_argument('--repo-root', default=None, help='Repo root, for resolving repo-relative --start paths and ../-style includes. Auto-detected via .git if omitted.')
-    ap.add_argument('--images', dest='images', action='store_true', default=False,
-                     help='Also copy image files referenced via image::/image: macros (default: adoc files only)')
-    ap.add_argument('--no-images', dest='images', action='store_false',
-                     help='Explicitly skip images (this is already the default; provided for clarity in scripts)')
-    ap.add_argument('--no-tables', dest='no_tables', action='store_true', default=False,
-                     help='Exclude auto-generated register-table includes (detected as an ifdef::backend-html5[] '
-                          'block whose .html include is paired with a same-named .adoc include in the following '
-                          'ifdef::backend-pdf[] block). Default: tables included.')
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--start",
+        required=True,
+        help="Path to the top-level index.adoc (see --help for accepted forms)",
+    )
+    ap.add_argument(
+        "--target", required=True, help="Directory to copy the collected tree into"
+    )
+    ap.add_argument(
+        "--repo-root",
+        default=None,
+        help="Repo root, for resolving repo-relative --start paths and ../-style includes. Auto-detected via .git if omitted.",
+    )
+    ap.add_argument(
+        "--images",
+        dest="images",
+        action="store_true",
+        default=False,
+        help="Also copy image files referenced via image::/image: macros (default: adoc files only)",
+    )
+    ap.add_argument(
+        "--no-images",
+        dest="images",
+        action="store_false",
+        help="Explicitly skip images (this is already the default; provided for clarity in scripts)",
+    )
+    ap.add_argument(
+        "--no-tables",
+        dest="no_tables",
+        action="store_true",
+        default=False,
+        help="Exclude auto-generated register-table includes (detected as an ifdef::backend-html5[] "
+        "block whose .html include is paired with a same-named .adoc include in the following "
+        "ifdef::backend-pdf[] block). Default: tables included.",
+    )
     args = ap.parse_args()
 
     repo_root = Path(args.repo_root).resolve() if args.repo_root else None
@@ -338,11 +369,20 @@ def main() -> int:
     print(f"repo root:  {repo_root}")
     print(f"start file: {start_path}")
     print(f"target:     {target_root}")
-    print(f"images:     {'included' if args.images else 'excluded (adoc only) -- pass --images to include'}")
-    print(f"tables:     {'excluded' if args.no_tables else 'included -- pass --no-tables to exclude'}")
+    print(
+        f"images:     {'included' if args.images else 'excluded (adoc only) -- pass --images to include'}"
+    )
+    print(
+        f"tables:     {'excluded' if args.no_tables else 'included -- pass --no-tables to exclude'}"
+    )
     print()
 
-    collector = Collector(repo_root, target_root, include_images=args.images, exclude_tables=args.no_tables)
+    collector = Collector(
+        repo_root,
+        target_root,
+        include_images=args.images,
+        exclude_tables=args.no_tables,
+    )
     collector.process_file(start_path)
 
     print(f"Copied {len(collector.copied)} file(s):")
@@ -362,5 +402,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())
