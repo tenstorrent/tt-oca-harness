@@ -96,7 +96,7 @@ async def wait_for_9th_scl_and_check_nack(dut, log):
     log.info(f"Waiting for Start Condition - simulation time: {get_sim_time(units='ns')} ns")
     while dut.scl_o.value[1] == 1:
         await RisingEdge(dut.clk)
-    log.info(f"Start Condition Recieved - simulation time: {get_sim_time(units='ns')} ns")
+    log.info(f"Start Condition Received - simulation time: {get_sim_time(units='ns')} ns")
 
     # Wait for 9 SCL rising edges
     while 1:
