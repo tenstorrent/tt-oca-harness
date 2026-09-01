@@ -639,9 +639,9 @@ test needs. The canonical set is cumulative:
 [cols=",,",options="header",]
 |======================================================================================================================================================================================
 |Tier |Goal |State at last sign-off
-|`TOP-6` |minimum CI smoke with real stimulus |all six implemented, Verilator PASS
-|`TOP-10` |high-value functional breadth |all ten have active CSR/precheck coverage and Verilator PASS; protocol-complete #8/#9/#10 still need VIP/responder work
-|`TOP-20` |minimal full-breadth target |all twenty have active CSR/precheck coverage and Verilator PASS; several are bounded unavailable/blocked-window checks until deeper infra lands
+|`TOP-6` |minimum CI smoke with real stimulus |live `canonical_top6` has five real-DUT members. `smc_i3c_to_fabric_test` is HCI_VERSION decode only and is not in this group
+|`TOP-10` |high-value functional breadth |live `canonical_top10` has eight members. Protocol-complete I3C/sideband still need VIP work
+|`TOP-20` |minimal full-breadth target |live `canonical_top20` has seventeen members. Several other paths stay bounded until deeper infra lands
 |======================================================================================================================================================================================
 
 Do not add a test to a `canonical_top*` group until it has active stimulus and at
