@@ -28,4 +28,8 @@ reach.
 |0.0.5 |2026-09-02 |Alessandro Ottaviano |Consolidated immutable ROM FW
 integration guidance, including the generic weak-symbol override method and
 SMC, SEP, and Key Manager ROM FW integration sections.
+|0.0.6 |2026-09-03 |Colin McKellar |Added the initial version of the User IP
+Integration guide for
+SMC-managed peripherals and application-owned accelerators, including a worked
+NPU hardware/software example and an evidence-based integration checklist.
 |=======================================================================

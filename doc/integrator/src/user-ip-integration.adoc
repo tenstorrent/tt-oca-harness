@@ -1,0 +1,442 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= User IP Integration
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+This chapter describes how to add adopter-owned IP to the user subsystem around
+the Open Chiplet Atlas Harness (OCAH). It is for an SoC integrator connecting a
+management peripheral, accelerator, or other application block to a chiplet that
+contains the OCAH System Management Unit (SMU).
+
+OCAH does not provide a general-purpose user-subsystem interconnect. The adopter
+owns the application fabric, address decode, clock and power-domain logic, and
+the application software stack. OCAH provides management access and lifecycle
+signals that the adopter can connect to that infrastructure.
+
+[[user-ip-integration-model]]
+== Select the integration model
+
+First decide who owns the IP at run time. This determines the correct CSR,
+interrupt, and data paths.
+
+.User IP attachment classes
+[cols="24%,25%,28%,23%",options="header"]
+|===
+|Class |CSR connection |DMA or data connection |Interrupt destination
+
+|SMC-managed peripheral
+|The supplementary portion of the SMC adopter peripheral window,
+`smc_external_req_o` / `smc_external_resp_i`
+|Usually none; attach any independent manager to an adopter-owned fabric
+|An assigned bit of SMU `ext_interrupts_i`
+
+|Application-owned accelerator
+|An adopter SoC CSR fabric
+|The IP's AXI manager connects to the adopter memory fabric
+|The application interrupt controller; optionally also an assigned bit of SMU
+`ext_interrupts_i` for management or fault notification
+|===
+
+Do not connect an adopter DMA manager to `smu_axi_out_req_o`. That port is an
+OCAH *manager output*: it carries transactions initiated by the SMC or SEP to
+the adopter fabric. A user IP's DMA interface is another manager on that fabric.
+
+[source,text]
+----
+                         +------------------------------+
+SMC / SEP -- SMU AXI out |                              |--> memory / peripherals
+                         |     adopter SoC fabric       |
+User IP DMA ------------>|                              |
+Application CPU -------->|                              |
+                         +------------------------------+
+----
+
+The SMU inbound AXI port is also not a route from an external manager to an
+arbitrary user-subsystem target. Its internal crossbar routes inbound traffic
+only to the programmed SMC and SEP apertures. Unmatched inbound requests return
+a decode error.
+
+[[smc-managed-user-ip]]
+== Integrate an SMC-managed peripheral
+
+Use this model for product-specific control and status logic that SMC firmware
+must configure or monitor, such as a sensor, pad controller, or small management
+engine.
+
+=== Allocate the SMC supplementary window
+
+`smc_external_req_o` and `smc_external_resp_i` form a 32-bit AXI4-Lite
+request/response pair. The complete adopter peripheral window starts at SMC
+local `BASE + 0x040_0000` and is 4 MiB. The mandatory region contains the
+technology-specific GPIO, PLL, PVT, and eFuse SHIM blocks. Optional adopter IP
+belongs in the supplementary region beginning at local
+`BASE + 0x040_4000`.
+
+The downstream decoder must:
+
+* reserve a naturally aligned range large enough for the IP register map;
+* reject overlaps with mandatory blocks and other adopter allocations;
+* route both read and write channels to the same subordinate;
+* return `DECERR` for an unallocated address and propagate an IP error as
+  `SLVERR`; and
+* keep the allocation in the chiplet address-map source of truth used by RTL,
+  firmware, verification, and documentation.
+
+The SMC `GLOBAL_BASE` and `REGION_SIZE` CSRs describe the complete SMC aperture;
+they are not per-IP aperture registers. Adding a peripheral to the supplementary
+window does not create another OCAH aperture CSR.
+
+=== Adapt the register protocol
+
+No adapter is needed for an IP with a compatible 32-bit AXI4-Lite subordinate.
+For a standard OCAH/OpenTitan-style TL-UL subordinate, the repository provides
+`hw/common/axi/axi_lite_to_tlul.sv`. It accepts packed AXI request/response
+types and produces packed `tlul_pkg::tl_h2d_t` / `tlul_pkg::tl_d2h_t` values,
+including TL-UL command and data integrity.
+
+That converter is not a drop-in adapter for an IP exposing a flattened subset
+of TL-UL. In that case, use an IP-supplied wrapper or add an explicit shim and
+verify every field, response, byte-enable, and error mapping. The
+<<npu-worked-example,NPU worked example>> uses the NPU's own AXI4-Lite wrapper
+for this reason.
+
+=== Route the interrupt
+
+Assign each SMC-visible source a bit of SMU `ext_interrupts_i`, whose integration
+width is set by the `NUM_INT_TO_SMC` configuration parameter. The SMC
+synchronizes this vector into its clock domain. A source asynchronous to the SMC
+clock must hold the interrupt asserted until SMC firmware reads and clears the
+status register in the peripheral, using the peripheral-defined clear operation
+such as W1C. Masking the interrupt does not clear its source, and an un-stretched
+one-cycle pulse may be lost across this boundary.
+
+Record the bit assignment in the platform interrupt map and use the same value
+in RTL, SMC firmware, and the verification environment. `sep_extintsrc_req_i`
+is a separate SEP interrupt input and must not be substituted for
+`ext_interrupts_i`.
+
+[[application-owned-user-ip]]
+== Integrate an application-owned accelerator
+
+Use this model when an application processor owns the command queue, buffers,
+and normal interrupt service for an accelerator.
+
+=== Connect control and DMA independently
+
+Place the CSR subordinate on the adopter's application CSR fabric. Connect the
+DMA manager to the adopter memory fabric as a peer of the application CPU and
+the OCAH outbound manager. The fabric must supply any required address-width,
+data-width, ID-width, clock-domain, security, and coherency adapters.
+
+For a manager with an address width narrower than the fabric, zero-extend its
+addresses. Zero-extension restricts the manager to the low part of the physical
+address space; it is not address translation. Place every DMA buffer in a range
+the manager can represent, or add a documented translation unit such as an
+IOMMU.
+
+The system address map must define independently:
+
+* the CPU-visible CSR aperture;
+* the DMA-visible memory aperture;
+* whether the SMC or SEP can also reach the CSR aperture through
+  `smu_axi_out_req_o`; and
+* which initiators and security states are permitted by the adopter fabric.
+
+=== Route application and management interrupts
+
+Route completion and recoverable work errors to the application interrupt
+controller. A separate fault signal, or an intentional duplicate of a retained
+level interrupt, may also be assigned to SMU `ext_interrupts_i` when SMC policy
+must log or recover the subsystem.
+
+Do not join two independently cleared interrupt controllers to a pulse. Define
+the ownership of status acknowledgement and masking so one handler cannot hide
+an event from the other.
+
+[[user-ip-clocks-resets-power]]
+== Integrate clocks, reset, and power
+
+=== Single-clock IP
+
+An IP may use an existing adopter functional clock when its timing target and
+power state match that domain. Generate an asynchronous-assert,
+synchronous-deassert reset for that clock. Do not use an SMC-domain reset output
+as a synchronous reset in an unrelated clock domain without a reset-domain
+adapter.
+
+=== Independent-clock IP
+
+When the user IP runs at a different frequency, place CDC logic at every
+boundary:
+
+* use an asynchronous AXI bridge or correctly sized channel FIFOs for the CSR
+  or DMA interface;
+* synchronize retained status levels;
+* transfer pulses with a toggle, handshake, or pulse stretcher;
+* constrain every asynchronous clock relationship; and
+* run static CDC and reset-domain-crossing analysis on the assembled SoC.
+
+An AXI register slice is not a CDC bridge. All five AXI channels must obey the
+same clocking contract.
+
+=== Power and isolation sequence
+
+OCAH exposes the 32-bit vectors `ss_config_o`, `isolate_req_o`, and
+`ss_reset_complete_i`, plus
+`smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o[31:0]`. The latter is a
+32-element unpacked array of reset-control structures, not a plain 32-bit
+vector; use the field definitions in `smc_reset_unit_pkg` when connecting it.
+These interfaces provide adopter-defined subsystem lifecycle control. The
+adopter must assign an index, translate the SMC's control structure into
+technology-specific reset and power-switch controls, insert isolation and
+retention cells, and define the completion condition. OCAH does not instantiate
+the user IP's power controller.
+
+Use this ordering for a switchable user domain:
+
+. Hold the IP in reset and isolate its outputs.
+. Enable the domain supply and wait for the adopter power-good indication.
+. Start and qualify the functional clock. Clock qualification includes
+  confirming PLL lock or equivalent clock-gating stability before the clock is
+  considered clean.
+. Deassert the IP reset synchronously to its clock.
+. Complete any IP-local memory initialization.
+. Remove isolation.
+. Assert the assigned `ss_reset_complete_i` bit only when the IP can accept
+  transactions.
+
+Reverse the dependencies when powering down: stop new work, drain or abort DMA,
+mask interrupts, isolate outputs, assert reset, stop the functional clock, and
+then remove power. Never remove power while an AXI transaction can still return
+a response.
+
+[[user-ip-software]]
+== Integrate software and firmware
+
+=== Maintain one platform contract
+
+Software-visible allocations must be generated from, or checked against, the
+hardware address and interrupt maps. At minimum the platform contract records:
+
+* CSR base and span;
+* interrupt number, trigger type, polarity, and owner;
+* DMA address width and accessible ranges;
+* coherency and cache-maintenance policy;
+* reset and power-domain index; and
+* IP configuration or ABI version.
+
+Use the generated `*_addr.h` and register headers under a block's
+`regs/gen/c/` directory when its register map is supplied as SystemRDL. An
+external IP without SystemRDL must supply an equivalent reviewed header. Do not
+infer register offsets from generated SystemVerilog or duplicate unexplained
+numeric addresses in multiple drivers.
+
+=== Place initialization in the boot flow
+
+For an SMC-managed peripheral, initialize it after the SMC has completed fuse
+sensing and required memory repair, programmed the SMC/SEP global apertures, and
+made the peripheral's clock and power domain available. Configure and clear the
+peripheral before enabling its SMC interrupt source.
+
+For an application-owned accelerator, SMC firmware should bring the domain to
+an accessible reset state and report completion. Application firmware or the OS
+driver then validates the hardware version, allocates DMA-safe buffers, clears
+stale status, registers the application interrupt handler, and enables work.
+
+=== Handle DMA coherency
+
+If the user IP is not coherent with CPU caches, software must use uncached
+buffers or perform cache maintenance. Before starting device reads, clean CPU
+dirty lines and execute the platform's required write barrier. After device
+writes complete, execute the completion/read barrier and invalidate affected
+CPU cache lines before consuming results. The driver must also prevent buffers
+from being unmapped or reused while DMA is active.
+
+=== Bound failures and recovery
+
+Every wait must have a timeout. On failure, capture the IP error registers and
+fabric response before clearing them. Recovery should progress from least to
+most disruptive:
+
+. stop new submissions and mask the IP interrupt;
+. acknowledge retained interrupt status;
+. request an IP-local soft reset, if supported;
+. assert the adopter subsystem reset after DMA has quiesced; and
+. power-cycle the domain only after isolation is asserted.
+
+Document which state survives each reset. A soft reset that leaves a datapath
+or DMA engine in an error state is not a complete recovery mechanism.
+
+[[npu-worked-example]]
+== Worked example: application-owned NPU
+
+This example uses the external NPU as a representative DMA-capable accelerator.
+The OCAH tree does not contain or redistribute NPU source. The example adapter
+instantiates the external `npu_axi_csr_wrap`, not the raw `npu_top`.
+
+The reference NPU wrapper exposes:
+
+[cols="25%,18%,57%",options="header"]
+|===
+|Interface |Role |Integration
+
+|`s_axil_*`
+|32-bit AXI4-Lite subordinate
+|Connect to the application CSR fabric through a 4 KiB aperture. Rebase the
+fabric address to a zero-based offset, even though the current NPU register
+decoder consumes only address bits `[11:0]`.
+
+|`m_axi_*`
+|64-bit AXI4 manager
+|Connect to DMA-visible memory. Zero-extend `m_axi_awaddr_o[31:0]` and
+`m_axi_araddr_o[31:0]` on a wider fabric and constrain all buffers below 4 GiB
+unless an address-translation unit is present.
+
+|`intr_done_o`, `intr_error_o`
+|Retained level interrupts
+|Route to separate application interrupt sources. Optionally route the error
+level to an assigned SMU `ext_interrupts_i` bit for SMC fault handling.
+
+|`clk_i`, `rst_ni`
+|Single NPU clock and active-low reset
+|Use an adopter clock/reset domain. The NPU contains no internal CDC.
+|===
+
+The complete adapter is in
+`doc/integrator/examples/npu/ocah_npu_fabric_adapter.sv`. The significant
+address connection is:
+
+[source,systemverilog]
+----
+logic [31:0] npu_dma_awaddr;
+logic [31:0] npu_dma_araddr;
+
+// Sized casts zero-extend these unsigned 32-bit addresses.
+assign m_axi_awaddr_o = FabricAddrWidth'(npu_dma_awaddr);
+assign m_axi_araddr_o = FabricAddrWidth'(npu_dma_araddr);
+----
+
+The example allocation in `npu_platform.h` is illustrative, not an OCAH fixed
+map:
+
+[cols="30%,25%,45%",options="header"]
+|===
+|Resource |Example assignment |Requirement
+
+|NPU CSRs |`0x3000_0000`--`0x3000_0fff` |4 KiB aligned application CSR aperture
+|DMA buffer memory |`0x4000_0000`--`0x4007_ffff` |Uncached 512 KiB range below 4 GiB
+|Done interrupt |Application IRQ 42 |Retained level; W1C at NPU `INTR_STATE[0]`
+|Error interrupt |Application IRQ 43 |Retained level; W1C at NPU `INTR_STATE[1]`
+|===
+
+The platform integration must replace these assignments and prove that the CPU
+and NPU observe the same physical buffer addresses.
+
+=== Polling smoke path
+
+The example `npu_smoke.c` accepts a valid NPU descriptor supplied by the test
+application. It clears stale state, programs the 32-bit DMA base, queues the
+descriptor, starts the NPU, and polls `STATUS.done` / `STATUS.error` with a
+bounded timeout. Passing the test requires:
+
+* successful CSR read and write transactions;
+* DMA reads and writes only inside the assigned buffer range;
+* a completed descriptor before timeout;
+* no AXI `SLVERR` or `DECERR`; and
+* the expected output data after the required cache maintenance.
+
+=== Interrupt smoke path
+
+Before enabling the CPU interrupt, clear NPU `INTR_STATE` with a write-one-to-
+clear value and install the handler. The handler records the state and clears
+the asserted bits. The test must still retain a timeout source independent of
+the NPU interrupt so a missing interrupt cannot sleep forever.
+
+Exercise both the real completion path and `INTR_TEST`: the former verifies
+work-to-interrupt integration, while the latter isolates interrupt routing from
+the compute and DMA paths. Do not count an `INTR_TEST` result as proof of DMA or
+descriptor execution.
+
+[[user-ip-integration-checklist]]
+== User IP integration checklist
+
+Record evidence beside every item. A schematic review or prose assertion is not
+substitute for the named RTL, static-analysis, simulation, or firmware result.
+
+[cols="5%,31%,34%,30%",options="header"]
+|===
+|Done |Gate |Required evidence |NPU example evidence
+
+|[ ]
+|Ownership and attachment class selected
+|Approved block diagram naming CSR, data/DMA, interrupt, clock, reset, and
+power owners
+|Application-owned accelerator; CSR and DMA are independent fabric ports
+
+|[ ]
+|CSR aperture allocated without overlap
+|Machine-readable address-map check and positive/unmapped access test
+|4 KiB aperture; `npu_reg_top` decodes offsets `[11:0]`
+
+|[ ]
+|Protocol and width adapters reviewed
+|Interface assertions and tests for byte strobes, independent AXI channels,
+backpressure, and error responses
+|`npu_axi_csr_wrap`; OCAH packed `axi_lite_to_tlul` is not used
+
+|[ ]
+|DMA topology and accessible ranges proven
+|Fabric connectivity report plus tests at the lowest/highest permitted address
+and at a rejected address
+|64-bit data, 4-bit ID, 32-bit address; AW and AR addresses zero-extended
+
+|[ ]
+|Clock and reset crossings closed
+|Clock/reset specification, CDC/RDC reports, and reset assertions
+|One NPU clock; external CDC required if either fabric uses another clock
+
+|[ ]
+|Power and isolation sequence closed
+|UPF or equivalent intent, power-state simulation, and completion handshake
+test
+|Adopter-assigned subsystem index; quiesce DMA before reset or power-off
+
+|[ ]
+|Interrupt routing and ownership proven
+|Assigned interrupt map; mask, trigger, acknowledgement, and lost-interrupt tests
+|Done/error retained levels to application IRQs; optional error to
+`ext_interrupts_i`
+
+|[ ]
+|Software platform contract generated or reviewed
+|Base/span, IRQ, DMA width/range, cache policy, and ABI version agree with RTL
+|`npu_platform.h` replaced with adopter assignments
+
+|[ ]
+|Polling and interrupt smoke tests pass
+|Bounded positive tests plus timeout, IP error, and fabric-error negative tests
+|Valid descriptor completes in both modes; `INTR_TEST` separately verifies route
+
+|[ ]
+|DMA coherency policy verified
+|Uncached mapping or cache clean/invalidate test on real platform
+|Reference range is uncached; production mapping must be confirmed
+
+|[ ]
+|Recovery is repeatable
+|Error capture followed by soft-reset and subsystem-reset tests, then successful
+resubmission
+|Escalate to `rst_ni` if NPU soft reset cannot recover the PE state
+
+|[ ]
+|Integration sign-off complete
+|Lint, CDC/RDC, synthesis, constraints, simulation, firmware, security, and
+documentation reviews archived against one RTL revision
+|External NPU revision and configuration profile recorded; no NPU source copied
+into OCAH
+|===

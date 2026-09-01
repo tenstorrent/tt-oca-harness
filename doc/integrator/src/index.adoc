@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.5
-:revdate: 2026-09-02
+:revnumber: 0.0.6
+:revdate: 2026-09-03
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -24,6 +24,7 @@ ifdef::backend-html5[]
 
 * xref:revision.adoc[Revision History] - Track major revisions and updates to the OCAH Integrator Guide
 * xref:index.adoc#smu-top-level-integration[SMU Top-Level Integration] - Guidelines for integrating OCAH subsystems
+* xref:user-ip-integration.adoc[User IP Integration] - Add an SMC-managed peripheral or application-owned accelerator
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
@@ -1971,6 +1972,10 @@ endif::backend-pdf[]
 This section is currently under development. Content will be added to describe
 SMN integration procedures, network topology, and management interfaces.
 ====
+
+ifdef::backend-pdf[]
+include::user-ip-integration.adoc[leveloffset=+1]
+endif::backend-pdf[]
 
 [[project-defines]]
 == Project Defines
