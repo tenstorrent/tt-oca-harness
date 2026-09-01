@@ -643,12 +643,42 @@ infrastructure.</p>
 <p><strong>Debug reset overrides.</strong> The DTP provides JTAG IC_RESET controls that can
 override the fuse, cold, cool, warm, and per-subsystem reset domains
 independently for debug scenarios. These are wired through the SMU into the
-SMC reset unit&#8217;s <code>jtag_reset_ctrl_i</code> and the SEP reset controller&#8217;s
-<code>jtag_sep_reset_ctrl_i</code>, each carrying an override-enable bit and a reset
-value per port. The DTP JTAG chapter states the programming order these
-overrides require.</p>
+SMC reset unit and the SEP reset controller. The DTP JTAG chapter states the
+programming order these overrides require.</p>
 </li>
 </ol>
+</div>
+<div class="sect3">
+<h4 id="ocah-ic-reset"><a class="anchor" href="#ocah-ic-reset"></a><a class="link" href="#ocah-ic-reset">1.6.1. IC_RESET TDR</a></h4>
+<div class="paragraph">
+<p>The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+slices on the scan chain from TDI to TDO, followed by a single <code>reset_hold</code>
+bit nearest TDO:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SMC slice</strong> (nearest TDI). Fuse, cold, cool, and warm resets, plus cold and
+warm resets for each of the 32 managed subsystems. The SMU consumes this
+slice internally.</p>
+</li>
+<li>
+<p><strong>SEP slice.</strong> SEP main reset and the TRNG, KMAC, HMAC, AES, OTBN, and Key
+Manager resets. Present when SEP is instantiated; omitted otherwise. The
+SMU consumes this slice internally.</p>
+</li>
+<li>
+<p><strong>External slice.</strong> Reset overrides for logic outside the SMU. The ports in
+this slice are adopter-defined: the integrator supplies the slice type and
+routes the SMU output to that logic. OCAH does not name the external bits.
+The default type is a single-override stub.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each port carries an override-enable bit and an active-low reset value. The
+Integrator Guide records the SMU port map, including how to size the external
+slice.</p>
 </div>
 <div class="paragraph">
 <p>For the detailed reset controller design, sequencing FSM, reset register
@@ -660,6 +690,7 @@ chapter:</p>
 </div>
 <div class="paragraph">
 <p>For integration-level reset procedures, refer to the Integrator Guide.</p>
+</div>
 </div>
 </div>
 </div>
@@ -22265,7 +22296,8 @@ gated by <code>IC_RESET_SMC_ENABLE</code>. Sized from <code>$bits(ic_reset_smc_t
 </li>
 <li>
 <p><strong>External slice</strong> (nearest TDO): driven by the <code>ic_reset_ext_t</code> struct type and
-gated by <code>IC_RESET_EXT_ENABLE</code>. Sized from <code>$bits(ic_reset_ext_t)</code>.</p>
+gated by <code>IC_RESET_EXT_ENABLE</code>. Sized from <code>$bits(ic_reset_ext_t)</code>. The
+instantiator supplies this type; the PTAP does not name the external ports.</p>
 </li>
 </ul>
 </div>
@@ -25615,6 +25647,13 @@ holds its output while the select alone moves. Write <code>reset_control</code> 
 clear <code>reset_enable</code> in a second Update-DR: moving both in one update changes
 the select and a data input together, which can pulse a reset on a port that
 neither source is resetting.</p>
+</div>
+<div class="paragraph">
+<p>At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
+the external slice, followed by <code>reset_hold</code>. The SMC and SEP port lists are
+OCAH-defined. The external slice is adopter-defined: its width and fields come
+from the SMU type parameter <code>ic_reset_ext_t</code>. The Integrator Guide records the
+SMU-composed port map.</p>
 </div>
 </div>
 <div class="sect3">

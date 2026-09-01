@@ -4656,28 +4656,190 @@ parameter with its default value.</p>
 The SMU derives SEP debug/STAP enablement from the module parameter <code>SEP</code> and
 wires the corresponding DTP interfaces internally to the SEP block when <code>SEP=1</code>.</p>
 </div>
+</div>
+<div class="sect3">
+<h4 id="ic-reset-tdr-structure"><a class="anchor" href="#ic-reset-tdr-structure"></a><a class="link" href="#ic-reset-tdr-structure">2.5.5. IC_RESET TDR Structure</a></h4>
 <div class="paragraph">
-<p>The DTP IC_RESET TDR is composed of three independent struct-typed slices. The
-SMU passes <code>smc_pkg::jtag_smc_reset_ctrl_t</code> into the DTP&#8217;s <code>ic_reset_smc_t</code>
-parameter (with <code>JTAG_IC_RESET_SMC_ENABLE=1</code>), <code>sep_pkg::jtag_sep_reset_ctrl_t</code>
-into <code>ic_reset_sep_t</code> (with <code>JTAG_IC_RESET_SEP_ENABLE=SEP</code>), and exposes the
-external slice via the SMU&#8217;s own <code>ic_reset_ext_t</code> type parameter and
-<code>jtag_ic_reset_ext_o</code> port (gated by <code>JTAG_IC_RESET_ENABLE</code>). Each slice&#8217;s
-<code>.ovrd</code>/<code>.val</code> sub-structs must be the same width; <code>jtag_ptap</code> interleaves them
-into the <code>{enable, control}</code> bit order required by the JTAG specification.</p>
+<p>The DTP primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+independently enabled slices plus a single <code>reset_hold</code> bit nearest TDO. At the
+SMU the scan order from TDI to TDO is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">TDI → SMC slice → SEP slice → external slice → reset_hold → TDO</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>The SMC and SEP slices are consumed inside the SMU and have no port. The
-external slice is reserved for the adopter: set <code>ic_reset_ext_t</code> to a struct
-carrying the reset overrides needed by logic instantiated outside the SMU and
-route <code>jtag_ic_reset_ext_o</code> to that logic. The struct is defined by the adopter,
-not by the OCAH packages; the parameter default
+<p>The SMU enables the SMC slice unconditionally, the SEP slice when <code>SEP=1</code>
+(otherwise that slice has width 0 and is omitted), and the external slice when
+<code>JTAG_IC_RESET_ENABLE</code> is set. Each slice is a packed struct with <code>.ovrd</code> and
+<code>.val</code> halves of equal width; <code>jtag_ptap</code> sizes the slice from <code>$bits(type)/2</code>
+and interleaves the halves into the <code>{reset_enable, reset_control}</code> pair IEEE
+§17 requires per port. Declaration order within each half is the TDI-to-TDO
+scan order: the first field is nearest TDI.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 42%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Slice</th>
+<th class="tableblock halign-left valign-top">Ports</th>
+<th class="tableblock halign-left valign-top">Defined by</th>
+<th class="tableblock halign-left valign-top">Consumed by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH (<code>smc_pkg::jtag_smc_reset_ctrl_t</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC reset unit; SMU-internal, no SMU port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7 when <code>SEP=1</code>, else 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH (<code>sep_pkg::jtag_sep_reset_ctrl_t</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP reset controller; SMU-internal, no SMU port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>$bits(ic_reset_ext_t)/2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter (<code>ic_reset_ext_t</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU output <code>jtag_ic_reset_ext_o</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>reset_hold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1149.1 §17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nearest TDO; not a reset port</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The TDR length is <code>2 * (SMC ports + SEP ports + external ports) + 1</code>. Programming
+order and <code>reset_enable</code> polarity are in the DTP JTAG chapter of the Technical
+Reference Manual.</p>
+</div>
+<div class="sect4">
+<h5 id="smc-slice-tdi-to-tdo"><a class="anchor" href="#smc-slice-tdi-to-tdo"></a><a class="link" href="#smc-slice-tdi-to-tdo">SMC slice (TDI to TDO)</a></h5>
+<div class="paragraph">
+<p>The SMC slice covers the SMC reset domains and the 32 managed-subsystem (SS)
+cold and warm resets. Vector index <code>[31]</code> of each SS field is nearer TDI than
+<code>[0]</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 35%;">
+<col style="width: 65%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Port</th>
+<th class="tableblock halign-left valign-top">Reset domain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ss_warm_reset_n[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-subsystem warm reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ss_cold_reset_n[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-subsystem cold reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_reset_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC cold reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cool_reset_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC cool reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>warm_reset_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC warm reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_reset_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse reset (nearest the SEP slice)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="sep-slice-tdi-to-tdo"><a class="anchor" href="#sep-slice-tdi-to-tdo"></a><a class="link" href="#sep-slice-tdi-to-tdo">SEP slice (TDI to TDO)</a></h5>
+<div class="paragraph">
+<p>When <code>SEP=1</code> the SEP slice covers the SEP main reset and the crypto, Key
+Manager, and TRNG resets consumed by <code>sep_reset_ctrl</code>. <code>trng_jtag_rst_n</code> is
+nearest TDI.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 35%;">
+<col style="width: 65%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Port</th>
+<th class="tableblock halign-left valign-top">Reset domain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>trng_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TRNG</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_reset_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP main reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kmac_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hmac_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>aes_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>otbn_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager (nearest the external slice)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="external-slice-adopter-defined"><a class="anchor" href="#external-slice-adopter-defined"></a><a class="link" href="#external-slice-adopter-defined">External slice (adopter-defined)</a></h5>
+<div class="paragraph">
+<p>The external slice is reserved for reset overrides on logic instantiated
+outside the SMU. OCAH does not name its ports. Set the SMU type parameter
+<code>ic_reset_ext_t</code> to a packed struct with <code>.ovrd</code> and <code>.val</code> halves of equal
+width, and route <code>jtag_ic_reset_ext_o</code> to that logic. The parameter default
 (<code>jtag_tap_pkg::jtag_ic_reset_default_t</code>) is a single-override stub. Clear
 <code>JTAG_IC_RESET_ENABLE</code> when no external overrides are required.</p>
 </div>
+<div class="paragraph">
+<p>Declare a new external override at each half&#8217;s MSB so already-assigned TDR
+positions do not shift. Extra subsystem reset controls beyond the SMC slice
+use this typed port.</p>
+</div>
+</div>
 </div>
 <div class="sect3">
-<h4 id="dtp-parameter-pass-through"><a class="anchor" href="#dtp-parameter-pass-through"></a><a class="link" href="#dtp-parameter-pass-through">2.5.5. DTP Parameter Pass-Through</a></h4>
+<h4 id="dtp-parameter-pass-through"><a class="anchor" href="#dtp-parameter-pass-through"></a><a class="link" href="#dtp-parameter-pass-through">2.5.6. DTP Parameter Pass-Through</a></h4>
 <div class="paragraph">
 <p>The SMU passes through most DTP parameters to allow integrator customization.
 Type parameters are set internally based on SMC package types.</p>
@@ -4994,7 +5156,7 @@ for integrator configuration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-port-mapping"><a class="anchor" href="#dtp-port-mapping"></a><a class="link" href="#dtp-port-mapping">2.5.6. DTP Port Mapping</a></h4>
+<h4 id="dtp-port-mapping"><a class="anchor" href="#dtp-port-mapping"></a><a class="link" href="#dtp-port-mapping">2.5.7. DTP Port Mapping</a></h4>
 <div class="paragraph">
 <p>The following tables define the complete DTP port list as connected within the
 SMU. Ports marked "SMU external port" are exposed on the SMU boundary for
@@ -5903,7 +6065,7 @@ signals are dangling pending proper CTP-to-GPIO connection implementation.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-port-mapping"><a class="anchor" href="#smc-port-mapping"></a><a class="link" href="#smc-port-mapping">2.5.7. SMC Port Mapping</a></h4>
+<h4 id="smc-port-mapping"><a class="anchor" href="#smc-port-mapping"></a><a class="link" href="#smc-port-mapping">2.5.8. SMC Port Mapping</a></h4>
 <div class="paragraph">
 <p>The following tables define the complete SMC port list as connected within the
 SMU. Ports marked "SMU external port" are exposed on the SMU boundary. Ports
@@ -7165,7 +7327,7 @@ value of the straps.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-dtp-interconnection"><a class="anchor" href="#smc-dtp-interconnection"></a><a class="link" href="#smc-dtp-interconnection">2.5.8. SMC-DTP Internal Interconnection</a></h4>
+<h4 id="smc-dtp-interconnection"><a class="anchor" href="#smc-dtp-interconnection"></a><a class="link" href="#smc-dtp-interconnection">2.5.9. SMC-DTP Internal Interconnection</a></h4>
 <div class="paragraph">
 <p>The following table summarizes the key internal connections between the DTP and
 SMC within the SMU. These connections are not visible on the SMU boundary.</p>
@@ -7276,7 +7438,7 @@ SMC within the SMU. These connections are not visible on the SMU boundary.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="sep-conditional-wiring"><a class="anchor" href="#sep-conditional-wiring"></a><a class="link" href="#sep-conditional-wiring">2.5.9. SEP-Conditional Wiring</a></h4>
+<h4 id="sep-conditional-wiring"><a class="anchor" href="#sep-conditional-wiring"></a><a class="link" href="#sep-conditional-wiring">2.5.10. SEP-Conditional Wiring</a></h4>
 <div class="paragraph">
 <p>SEP-related interfaces are handled internally within the SMU. Their behavior
 depends on the module parameter <code>SEP</code>.</p>
@@ -7357,7 +7519,7 @@ when using req/ack mode (bit = 1).</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smu-port-interface"><a class="anchor" href="#smu-port-interface"></a><a class="link" href="#smu-port-interface">2.5.10. SMU Port Interface</a></h4>
+<h4 id="smu-port-interface"><a class="anchor" href="#smu-port-interface"></a><a class="link" href="#smu-port-interface">2.5.11. SMU Port Interface</a></h4>
 <div class="paragraph">
 <p>The SMU exposes a single consolidated boundary that an adopter connects to
 at the chip or chiplet level. The following table defines all SMU top-level

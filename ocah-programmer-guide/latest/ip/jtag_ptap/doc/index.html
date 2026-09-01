@@ -1264,7 +1264,8 @@ gated by <code>IC_RESET_SMC_ENABLE</code>. Sized from <code>$bits(ic_reset_smc_t
 </li>
 <li>
 <p><strong>External slice</strong> (nearest TDO): driven by the <code>ic_reset_ext_t</code> struct type and
-gated by <code>IC_RESET_EXT_ENABLE</code>. Sized from <code>$bits(ic_reset_ext_t)</code>.</p>
+gated by <code>IC_RESET_EXT_ENABLE</code>. Sized from <code>$bits(ic_reset_ext_t)</code>. The
+instantiator supplies this type; the PTAP does not name the external ports.</p>
 </li>
 </ul>
 </div>

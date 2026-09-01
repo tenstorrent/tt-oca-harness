@@ -342,6 +342,13 @@ clear <code>reset_enable</code> in a second Update-DR: moving both in one update
 the select and a data input together, which can pulse a reset on a port that
 neither source is resetting.</p>
 </div>
+<div class="paragraph">
+<p>At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
+the external slice, followed by <code>reset_hold</code>. The SMC and SEP port lists are
+OCAH-defined. The external slice is adopter-defined: its width and fields come
+from the SMU type parameter <code>ic_reset_ext_t</code>. The Integrator Guide records the
+SMU-composed port map.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="lifecycle-feature-control"><a class="anchor" href="#lifecycle-feature-control"></a><a class="link" href="#lifecycle-feature-control">Lifecycle Feature Control</a></h4>
