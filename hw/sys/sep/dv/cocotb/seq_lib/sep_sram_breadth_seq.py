@@ -35,7 +35,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 # OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
 # is importable from here.
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
-SEP_SRAM_SIZE = 0x0004_0000
+SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
 # Required data patterns (always present; the RANDCFG adds seed-random extras).
@@ -47,6 +47,11 @@ _REQUIRED_PATTERNS = [
     0xFFFF_FFFF_FFFF_FFFE,  # walking-0 lsb
     0xDEAD_BEEF_CAFE_BABE,
 ]
+
+
+# Floors the test asserts, so a generator or list that shrank fails the run
+# rather than reporting a clean pass over fewer cells.
+CONTIGUOUS_WSTRB_SPECS = 36  # 8 one-hot + 28 multi-byte runs on an 8-byte lane
 
 
 def _contiguous_wstrb_specs() -> list[tuple[int, int]]:
@@ -71,6 +76,14 @@ class SepSramBreadthCfg:
         # WSTRB: all 36 contiguous masks REQUIRED (deterministic), order shuffled;
         # the init word and per-mask new-data are seed-random (masked to 64b).
         self.wstrb_specs = _contiguous_wstrb_specs()
+        # Construction invariant, in the same spirit as the inbound START/END
+        # count: the 8-byte lane has exactly 36 contiguous runs, so a generator
+        # change is a config bug and must not reach the bench as a smaller sweep.
+        if len(self.wstrb_specs) != CONTIGUOUS_WSTRB_SPECS:
+            raise RuntimeError(
+                f"contiguous WSTRB set is {len(self.wstrb_specs)}, "
+                f"expected {CONTIGUOUS_WSTRB_SPECS} on an 8-byte lane"
+            )
         rng.shuffle(self.wstrb_specs)
         self.wstrb_offset = self._aligned(rng, 0x1000, 0x2000)
         self.wstrb_init = rng.getrandbits(64)
@@ -91,10 +104,10 @@ class SepSramBreadthCfg:
         self.seq_offset = self._aligned(rng, 0x3000, 0x3F00)
         self.seq_seed = rng.getrandbits(64)
 
-        # Non-vacuity: a distinct unwritten word adjacent to a written one.
+        # Non-vacuity: two adjacent words written with complementary patterns.
         self.nonvac_wr_offset = self._aligned(rng, 0x4000, 0x5000)
         self.nonvac_rd_offset = self.nonvac_wr_offset + 8
-        self.nonvac_pattern = rng.getrandbits(64) | 1  # ensure nonzero
+        self.nonvac_pattern = rng.getrandbits(64)
 
     @staticmethod
     def _aligned(rng: SepSeededRng, lo: int, hi: int) -> int:
