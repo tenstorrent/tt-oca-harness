@@ -81,11 +81,11 @@ Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
-`lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`, and
-`regen-regs` on pull requests and pushes to `main` (`lint-sv-verible` is
-temporarily disabled). Setup jobs share `bender`, Verilator, and reviewdog
-artifacts; jobs report through `.github/actions/reviewdog-report`.
+`lint-sv-verible`, `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`,
+`lint-spelling`, `lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`,
+`lint-shell`, and `regen-regs` on pull requests and pushes to `main`. Setup
+jobs share `bender`, Verilator, and reviewdog artifacts; jobs report through
+`.github/actions/reviewdog-report`.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -97,7 +97,7 @@ Scheduled and manually dispatched pipelines always run in full.
 |---|---|---|
 | `lint-sv-slang` | `lint-sv-slang/smu`, `lint-sv-slang/aou` | `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl` |
 | `lint-sv-verilator` | `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu` | `make lint-verilator-all [BLOCK=<block>]` |
-| `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
+| `lint-sv-verible` | `lint-sv-verible` (report-only) | `make lint-sv-verible` and `make format-sv-check` |
 | `lint-python` | `lint-python` | `make lint-python` and `make format-python-check` |
 | `lint-python-mypy` | `lint-python-mypy` (report-only) | `make ocah-lint-python-mypy` |
 | `format-c` | `format-c` | `make format-c-check` |
@@ -125,7 +125,33 @@ git status --porcelain   # expect no output
 Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the tools on
 `PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
 `./scripts/docker-run.sh eda-run make …` command. CI installs slang `v11.0` and verible
-`v0.0-4080-ga0a8d8eb` natively via `setup-tools`.
+`v0.0-4080-ga0a8d8eb` natively in their jobs.
+
+Verible lint and format share the first-party, hand-maintained SystemVerilog
+inventory defined in `flows/lint/verible.mk`. That inventory includes `hw/**`
+and hand-authored `vendor/**/overlay/**` files, but excludes generated output,
+materialized `vendor/<org>/<repo>/upstream/**` sources, and files that the
+pinned single-file parser demonstrably cannot process. Do not patch upstream
+vendor code for style findings. A proven integrated correctness defect still
+follows the Bender patch or upstream-revision workflow described above.
+
+Run `make format-sv` to apply the committed two-space, 100-column formatter
+profile and `make format-sv-check` for a non-modifying check. Formatter-safe
+whitespace and wrapping findings may be fixed mechanically after reviewing the
+diff. Treat storage types, range direction, procedural assignments, task
+lifetime, case completeness, and hierarchy-affecting labels as manual lint
+findings because changing them can change behavior. Parameter-name style is
+deferred to [issue #1051](https://github.com/tenstorrent/tt-oca-harness/issues/1051)
+and is omitted from this lint pass.
+
+Prefer fixing an actionable finding. A demonstrated Verible limitation may be
+handled by the narrowest rule/path waiver, keyed to the exact rule and stable
+location pattern with a constraint-focused rationale and an upstream Verible
+bug link. Reserve `OCAH_VERIBLE_SINGLE_FILE_EXCLUDES` for parser,
+preprocessor, or convergence failures that prevent any reliable single-file
+result; document each excluded file there. `lint-sv-verible` remains
+report-only (`level: warning`, `fail-level: none`) while this classified legacy
+backlog remains.
 
 Ruff checks first-party Python under `tools/`, `scripts/`, `hw/`, and
 `.github/`. Generated register models, vendored sources, submodules,

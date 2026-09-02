@@ -42,11 +42,11 @@ package i3c_pkg;
   } dat_mem_src_t;
 
   typedef struct packed {
-    logic          req;
-    logic          write;
+    logic             req;
+    logic             write;
     logic [DatAw-1:0] addr;
-    logic [63:0]   wdata;
-    logic [63:0]   wmask;
+    logic [63:0]      wdata;
+    logic [63:0]      wmask;
   } dat_mem_sink_t;
 
   typedef struct packed {
@@ -56,11 +56,11 @@ package i3c_pkg;
   } dct_mem_src_t;
 
   typedef struct packed {
-    logic          req;
-    logic          write;
+    logic             req;
+    logic             write;
     logic [DctAw-1:0] addr;
-    logic [127:0]  wdata;
-    logic [127:0]  wmask;
+    logic [127:0]     wdata;
+    logic [127:0]     wmask;
   } dct_mem_sink_t;
 
 endpackage

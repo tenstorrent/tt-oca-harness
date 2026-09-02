@@ -7,7 +7,9 @@
  * Tile-Link UL command integrity generator
  */
 
-module tlul_cmd_intg_gen import tlul_pkg::*; #(
+module tlul_cmd_intg_gen
+  import tlul_pkg::*;
+#(
   parameter bit EnableDataIntgGen = 1'b1
 ) (
   // TL-UL interface
@@ -17,9 +19,9 @@ module tlul_cmd_intg_gen import tlul_pkg::*; #(
 
   `include "prim_assert.sv"
 
-  tl_h2d_cmd_intg_t cmd;
+tl_h2d_cmd_intg_t cmd;
   assign cmd = extract_h2d_cmd_intg(tl_i);
-  logic [H2DCmdMaxWidth-1:0] unused_cmd_payload;
+  logic [ H2DCmdMaxWidth-1:0] unused_cmd_payload;
 
   logic [H2DCmdIntgWidth-1:0] cmd_intg;
   prim_secded_inv_64_57_enc u_cmd_gen (
@@ -28,7 +30,7 @@ module tlul_cmd_intg_gen import tlul_pkg::*; #(
   );
 
   logic [top_pkg::TL_DW-1:0] data_final;
-  logic [DataIntgWidth-1:0] data_intg;
+  logic [ DataIntgWidth-1:0] data_intg;
 
   if (EnableDataIntgGen) begin : gen_data_intg
     assign data_final = tl_i.a_data;
@@ -40,7 +42,7 @@ module tlul_cmd_intg_gen import tlul_pkg::*; #(
     );
   end else begin : gen_passthrough_data_intg
     assign data_final = tl_i.a_data;
-    assign data_intg = tl_i.a_user.data_intg;
+    assign data_intg  = tl_i.a_user.data_intg;
   end
 
   always_comb begin

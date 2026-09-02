@@ -26,61 +26,65 @@ module peakrdl_adapter_sram
   import prim_ram_1p_pkg::*;
   import prim_util_pkg::*;
 #(
-  parameter int SramAw            = 12,  // SRAM address width
-  parameter int SramDw            = 32,  // SRAM data width (must be multiple of 8)
-  parameter int PeakRdlAw         = 12,  // PeakRDL interface address width
-  parameter int PeakRdlDw         = 32,  // PeakRDL interface data width
+  parameter int SramAw    = 12,  // SRAM address width
+  parameter int SramDw    = 32,  // SRAM data width (must be multiple of 8)
+  parameter int PeakRdlAw = 12,  // PeakRDL interface address width
+  parameter int PeakRdlDw = 32,  // PeakRDL interface data width
 
-  parameter bit EnableECC         = 0,   // Enable ECC protection (16→22, 32→39 bit conversion)
-  parameter bit HammingECC        = 0,   // 0: Use Hsiao ECC (default), 1: Use Hamming ECC
+  parameter bit EnableECC = 0,  // Enable ECC protection (16→22, 32→39 bit conversion)
+  parameter bit HammingECC = 0,  // 0: Use Hsiao ECC (default), 1: Use Hamming ECC
   parameter bit EnableEccPipeline = 0,   // 1: Pipeline ECC encoding (write) and decoding (read) for timing
   parameter bit RejectPartialWrites = 0,  // 1: Reject partial writes (wr_biten != all ones), 0: Allow all writes
-  parameter bit SecFifoPtr        = 0,  // 1: Duplicated fifo pointers
+  parameter bit SecFifoPtr = 0,  // 1: Duplicated fifo pointers
 
-      // Width adaptation calculations
+  // Width adaptation calculations
   // ECC adds bits: 16→22 (adds 6), 32→39 (adds 7)
   localparam int PeakRdlEccDw     = EnableECC ? (PeakRdlDw == 16 ? 22 :
                                                  PeakRdlDw == 32 ? 39 : PeakRdlDw) : PeakRdlDw,
   // Width multiplier: number of PeakRDL words that fit in SRAM word
-  localparam int WidthMult        = SramDw / PeakRdlDw,
+  localparam int WidthMult = SramDw / PeakRdlDw,
   // Calculate total SRAM ECC width
-  localparam int SramEccDw        = EnableECC ? (WidthMult * PeakRdlEccDw) : SramDw,
+  localparam int SramEccDw = EnableECC ? (WidthMult * PeakRdlEccDw) : SramDw,
 
   // Address offset calculation (broken down for clarity)
-  localparam int BytesPerSramWord = SramDw / 8,                    // Bytes in one SRAM word
-  localparam int ByteOffsetWidth  = $clog2(BytesPerSramWord),      // Bits for byte offset within SRAM word
-  localparam int WordOffsetWidth  = (WidthMult > 1) ? $clog2(WidthMult) : 0,  // Bits for PeakRDL word offset
-  localparam int AddrOffsetWidth  = ByteOffsetWidth + WordOffsetWidth          // Total offset bits to strip
+  localparam int BytesPerSramWord = SramDw / 8,  // Bytes in one SRAM word
+  localparam int ByteOffsetWidth = $clog2(
+      BytesPerSramWord
+  ),  // Bits for byte offset within SRAM word
+  localparam int WordOffsetWidth = (WidthMult > 1) ? $clog2(
+      WidthMult
+  ) : 0,  // Bits for PeakRDL word offset
+  localparam int AddrOffsetWidth = ByteOffsetWidth + WordOffsetWidth  // Total offset bits to strip
 ) (
-  input   clk_i,
-  input   rst_ni,
+  input clk_i,
+  input rst_ni,
 
   // prim_ram_1p interface (drives memory)
-  output logic                    ram_req_o,
-  output logic                    ram_write_o,
-  output logic [SramAw-1:0]       ram_addr_o,
-  output logic [SramEccDw-1:0]    ram_wdata_o,
-  output logic [SramEccDw-1:0]    ram_wmask_o,
-  input  logic [SramEccDw-1:0]    ram_rdata_i,
-  input  logic                    ram_rvalid_i,
-  input  logic                    ram_gnt_i,
+  output logic                 ram_req_o,
+  output logic                 ram_write_o,
+  output logic [   SramAw-1:0] ram_addr_o,
+  output logic [SramEccDw-1:0] ram_wdata_o,
+  output logic [SramEccDw-1:0] ram_wmask_o,
+  input  logic [SramEccDw-1:0] ram_rdata_i,
+  input  logic                 ram_rvalid_i,
+  input  logic                 ram_gnt_i,
 
   // PeakRDL external RAM interface (master side - receives requests)
-  input  logic                        peakrdl_req_i,
-  input  logic [PeakRdlAw-1:0]        peakrdl_addr_i,
-  input  logic                        peakrdl_req_is_wr_i,
-  input  logic [PeakRdlDw-1:0]        peakrdl_wr_data_i,
-  input  logic [PeakRdlDw-1:0]        peakrdl_wr_biten_i,
-  output logic                        peakrdl_rd_ack_o,
-  output logic [PeakRdlDw-1:0]        peakrdl_rd_data_o,
-  output logic                        peakrdl_rd_err_o,
-  output logic                        peakrdl_wr_ack_o,
-  output logic                        peakrdl_wr_err_o,
+  input  logic                 peakrdl_req_i,
+  input  logic [PeakRdlAw-1:0] peakrdl_addr_i,
+  input  logic                 peakrdl_req_is_wr_i,
+  input  logic [PeakRdlDw-1:0] peakrdl_wr_data_i,
+  input  logic [PeakRdlDw-1:0] peakrdl_wr_biten_i,
+  output logic                 peakrdl_rd_ack_o,
+  output logic [PeakRdlDw-1:0] peakrdl_rd_data_o,
+  output logic                 peakrdl_rd_err_o,
+  output logic                 peakrdl_wr_ack_o,
+  output logic                 peakrdl_wr_err_o,
 
   // Control and status
-  output logic                     intg_error_o,
-  input  logic                     wr_collision_i,
-  input  logic                     write_pending_i
+  output logic intg_error_o,
+  input  logic wr_collision_i,
+  input  logic write_pending_i
 );
 
   // Parameter validation
@@ -121,7 +125,7 @@ module peakrdl_adapter_sram
 
   // Simple FIFO to track woffset for read operations
   typedef struct packed {
-    logic [WoffsetDeclWidth-1:0] woffset; // Offset of the PeakRDL word within the SRAM word
+    logic [WoffsetDeclWidth-1:0] woffset;  // Offset of the PeakRDL word within the SRAM word
   } read_req_t;
 
   localparam int ReadReqFifoWidth = $bits(read_req_t);
@@ -137,9 +141,9 @@ module peakrdl_adapter_sram
   if (WidthMult > 1) begin : gen_wordwidthadapt
     // Extract word offset: which PeakRDL word within the SRAM word
     // PeakRDL provides byte addresses, so convert to word address first, then extract word offset
-    localparam int PeakRdlByteOffsetWidth = $clog2(PeakRdlDw/8);
+    localparam int PeakRdlByteOffsetWidth = $clog2(PeakRdlDw / 8);
     // Convert byte address to PeakRDL word address, then take lower WordOffsetWidth bits
-    assign woffset = peakrdl_addr_i[PeakRdlByteOffsetWidth +: WordOffsetWidth];
+    assign woffset = peakrdl_addr_i[PeakRdlByteOffsetWidth+:WordOffsetWidth];
   end else begin : gen_no_wordwidthadapt
     // When WidthMult=1, no width adaptation needed - always select element 0
     assign woffset = 1'b0;
@@ -156,9 +160,7 @@ module peakrdl_adapter_sram
 
   // Read request FIFO: Store woffset for read operations only
   assign read_req_fifo_wvalid = peakrdl_req_i & ram_gnt_i & ~peakrdl_req_is_wr_i & read_req_fifo_wready;  // Push only for valid reads that can be accepted
-  assign read_req_fifo_wdata = '{
-    woffset: woffset
-  };
+  assign read_req_fifo_wdata = '{woffset: woffset};
   assign read_req_fifo_rready = ram_rvalid_i;  // Pop when SRAM read data returns
 
   // =========================================================================
@@ -183,14 +185,14 @@ module peakrdl_adapter_sram
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
-        ram_req_q <= 1'b0;
+        ram_req_q   <= 1'b0;
         ram_write_q <= 1'b0;
-        ram_addr_q <= '0;
+        ram_addr_q  <= '0;
       end else begin
         // Pipeline write requests to align with ECC-encoded data
-        ram_req_q <= ram_req_comb & ram_write_comb;  // Only pipeline write requests
+        ram_req_q   <= ram_req_comb & ram_write_comb;  // Only pipeline write requests
         ram_write_q <= ram_write_comb;
-        ram_addr_q <= ram_addr_comb;
+        ram_addr_q  <= ram_addr_comb;
       end
     end
 
@@ -346,33 +348,33 @@ module peakrdl_adapter_sram
     if (PeakRdlDw == 16) begin : gen_secded_22_16
       if (HammingECC) begin : gen_hamming
         prim_secded_inv_hamming_22_16_dec u_dec (
-          .data_i     (rdata_peakrdlword_ecc_q),
-          .data_o     (rdata_peakrdlword_comb),
-          .syndrome_o ( ),  // Not used
-          .err_o      (ecc_read_error_comb)
+          .data_i    (rdata_peakrdlword_ecc_q),
+          .data_o    (rdata_peakrdlword_comb),
+          .syndrome_o(),                         // Not used
+          .err_o     (ecc_read_error_comb)
         );
       end else begin : gen_hsiao
         prim_secded_inv_22_16_dec u_dec (
-          .data_i     (rdata_peakrdlword_ecc_q),
-          .data_o     (rdata_peakrdlword_comb),
-          .syndrome_o ( ),  // Not used
-          .err_o      (ecc_read_error_comb)
+          .data_i    (rdata_peakrdlword_ecc_q),
+          .data_o    (rdata_peakrdlword_comb),
+          .syndrome_o(),                         // Not used
+          .err_o     (ecc_read_error_comb)
         );
       end
     end else if (PeakRdlDw == 32) begin : gen_secded_39_32
       if (HammingECC) begin : gen_hamming
         prim_secded_inv_hamming_39_32_dec u_dec (
-          .data_i     (rdata_peakrdlword_ecc_q),
-          .data_o     (rdata_peakrdlword_comb),
-          .syndrome_o ( ),  // Not used
-          .err_o      (ecc_read_error_comb)
+          .data_i    (rdata_peakrdlword_ecc_q),
+          .data_o    (rdata_peakrdlword_comb),
+          .syndrome_o(),                         // Not used
+          .err_o     (ecc_read_error_comb)
         );
       end else begin : gen_hsiao
         prim_secded_inv_39_32_dec u_dec (
-          .data_i     (rdata_peakrdlword_ecc_q),
-          .data_o     (rdata_peakrdlword_comb),
-          .syndrome_o ( ),  // Not used
-          .err_o      (ecc_read_error_comb)
+          .data_i    (rdata_peakrdlword_ecc_q),
+          .data_o    (rdata_peakrdlword_comb),
+          .syndrome_o(),                         // Not used
+          .err_o     (ecc_read_error_comb)
         );
       end
     end
@@ -434,8 +436,8 @@ module peakrdl_adapter_sram
   end
 
   // Read acknowledgment and data: immediate when SRAM returns read data
-  assign peakrdl_rd_ack_o = ram_rvalid_i;
-  assign peakrdl_rd_err_o = 1'b0;  // ECC errors handled via intg_error_o, not bus errors
+  assign peakrdl_rd_ack_o  = ram_rvalid_i;
+  assign peakrdl_rd_err_o  = 1'b0;  // ECC errors handled via intg_error_o, not bus errors
   assign peakrdl_rd_data_o = ram_rvalid_i ? rdata_peakrdlword : '0;
 
   // Unused signals
@@ -464,11 +466,13 @@ module peakrdl_adapter_sram
   `OCAH_OT_ASSERT_INIT(EccPipelineRequiresEcc_A, !EnableEccPipeline || EnableECC)
 
   // Partial write rejection parameter validation
-  `OCAH_OT_ASSERT_INIT(PartialWriteRejectWithEccIsConsistent_A, !(EnableECC && !RejectPartialWrites))
+  `OCAH_OT_ASSERT_INIT(PartialWriteRejectWithEccIsConsistent_A,
+                       !(EnableECC && !RejectPartialWrites))
 
   // ECC requires full word writes only for actual SRAM access (partial writes may be filtered out)
-  `OCAH_OT_ASSERT(OnlyWordWritePossibleWithEcc_A, !(EnableECC && ram_req_o && ram_write_o) ||
-          peakrdl_wr_biten_i == {PeakRdlDw{1'b1}})
+  `OCAH_OT_ASSERT(
+      OnlyWordWritePossibleWithEcc_A,
+      !(EnableECC && ram_req_o && ram_write_o) || peakrdl_wr_biten_i == {PeakRdlDw{1'b1}})
 
   // Simple response assertions
   // Write acknowledgment should be asserted for all write requests (not tied to SRAM grant)

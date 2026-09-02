@@ -7,9 +7,11 @@
  * Tile-Link UL command integrity check
  */
 
-module tlul_cmd_intg_chk import tlul_pkg::*; (
+module tlul_cmd_intg_chk
+  import tlul_pkg::*;
+(
   // TL-UL interface
-  input  tl_h2d_t tl_i,
+  input tl_h2d_t tl_i,
 
   // error output
   output logic err_o
@@ -31,7 +33,7 @@ module tlul_cmd_intg_chk import tlul_pkg::*; (
 
   tlul_data_integ_dec u_tlul_data_integ_dec (
     .data_intg_i({tl_i.a_user.data_intg, DataMaxWidth'(tl_i.a_data)}),
-    .data_err_o(data_err)
+    .data_err_o (data_err)
   );
 
   // error output is transactional, it is up to the instantiating module
@@ -51,4 +53,4 @@ module tlul_cmd_intg_chk import tlul_pkg::*; (
 
   `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_h2d_cmd_intg_t) <= H2DCmdMaxWidth)
 
-endmodule // tlul_payload_chk
+endmodule  // tlul_payload_chk

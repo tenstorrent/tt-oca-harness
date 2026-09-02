@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 //==============================================================================
 // DECORRELATOR REFERENCE MODEL (TESTBENCH ONLY - NOT FOR SYNTHESIS)
@@ -50,36 +50,36 @@
 //==============================================================================
 
 module Serial_Decorrelator_RefModel #(
-  parameter int N              = 16,
-  parameter int DEPTH          = 29    // default decorrelator depth
+  parameter int N     = 16,
+  parameter int DEPTH = 29   // default decorrelator depth
 ) (
-  input  logic                 clk_i,
-  input  logic                 rstn_i,
+  input logic clk_i,
+  input logic rstn_i,
   // Input stream
-  input  logic [N-1:0]         bit_i,     // per-lane input bit each cycle
-  input  logic [N-1:0]         vld_i,     // per-lane valid; tie to '1 if not used
+  input logic [N-1:0] bit_i,  // per-lane input bit each cycle
+  input logic [N-1:0] vld_i,  // per-lane valid; tie to '1 if not used
   // Configuration
-  input  logic [2:0]           mode_i,            // 0: DECOR_29 (default), 1: DECOR_7, 2: BYPASS, 3: LFSR_29, 4: LFSR_7
+  input logic [2:0] mode_i,  // 0: DECOR_29 (default), 1: DECOR_7, 2: BYPASS, 3: LFSR_29, 4: LFSR_7
   input  logic                 shift_dir_i,       // 0: shift right (in[28]→out[7:0]), 1: shift left (in[0]→out[28:21])
-  input  logic [N-1:0]         bypass_mask_i,     // Per-lane bypass control: 1=bypass, 0=use mode_i
+  input logic [N-1:0] bypass_mask_i,  // Per-lane bypass control: 1=bypass, 0=use mode_i
   // RTL clock divider probe (for synchronization with actual RTL timing)
   input  logic [7:0]           rtl_clk_divider_i, // Connect to DUT's clk_divider (samples when == SAMPLE_PERIOD-1)
   // Outputs
-  output logic                 sample_vld_o,
-  output logic [N-1:0][7:0]    bytes_o            // per-lane 8-bit sample, captured per effective sample period
+  output logic sample_vld_o,
+  output logic [N-1:0][7:0] bytes_o  // per-lane 8-bit sample, captured per effective sample period
 );
   // Shift registers: sr[i][DEPTH-1] is the newest bit; sr[i][0] is the oldest bit
-  logic [DEPTH-1:0] sr [N];
+  logic [DEPTH-1:0] sr                                         [N];
 
   // Effective configuration
-  logic [5:0]        depth_eff;         // valid when in DECOR modes
-  logic [2:0]        mode_q;
-  logic              shift_dir_q;        // registered shift direction
+  logic [      5:0] depth_eff;  // valid when in DECOR modes
+  logic [      2:0] mode_q;
+  logic             shift_dir_q;  // registered shift direction
 
   // Sample pulse generation (synchronized with RTL clk_divider for ALL modes)
   // RTL outputs when clk_divider == SAMPLE_PERIOD-1 (e.g., 63 for ÷64, 7 for ÷8)
-  logic              sample_pulse_d, sample_pulse_q;
-  logic [7:0]        rtl_clk_divider_q;
+  logic sample_pulse_d, sample_pulse_q;
+  logic [7:0] rtl_clk_divider_q;
 
   // Mode register and effective config
   // NOTE: Defaults come from test_config.py via decor_cfg interface
@@ -94,7 +94,7 @@ module Serial_Decorrelator_RefModel #(
   end
   always_comb begin
     unique case (mode_q)
-      3'd1: depth_eff = 6'd7;      // DECOR_7
+      3'd1:    depth_eff = 6'd7;  // DECOR_7
       default: depth_eff = DEPTH[5:0];
     endcase
   end
@@ -105,7 +105,7 @@ module Serial_Decorrelator_RefModel #(
     for (i = 0; i < N; i++) begin : g_lane
       always_ff @(posedge clk_i or negedge rstn_i) begin
         if (!rstn_i) begin
-          sr[i]     <= '0;
+          sr[i] <= '0;
         end else begin
           if (vld_i[i]) begin
             // Determine effective mode for this lane: bypass_mask overrides mode_i
@@ -118,21 +118,21 @@ module Serial_Decorrelator_RefModel #(
             if (shift_dir_q == 1'b0) begin
               // SHIFT_RIGHT: sr[i][DEPTH-1] is newest, sr[i][0] is oldest
               unique case (lane_mode)
-                3'd0,            // DECOR_29: XOR feedback from oldest bit
-                3'd1: begin      // DECOR_7: XOR feedback from tap DEPTH-depth_eff
+                3'd0,  // DECOR_29: XOR feedback from oldest bit
+                3'd1: begin  // DECOR_7: XOR feedback from tap DEPTH-depth_eff
                   logic fb;
-                  fb   = sr[i][DEPTH-depth_eff];
+                  fb = sr[i][DEPTH-depth_eff];
                   sr[i] <= {(bit_i[i] ^ fb), sr[i][DEPTH-1:1]};
                 end
-                3'd2: begin      // BYPASS: no feedback, raw shift
+                3'd2: begin  // BYPASS: no feedback, raw shift
                   sr[i] <= {bit_i[i], sr[i][DEPTH-1:1]};
                 end
-                3'd3: begin      // LFSR_29: x^29 + x^2 + 1, feedback from [28] and [1]
+                3'd3: begin  // LFSR_29: x^29 + x^2 + 1, feedback from [28] and [1]
                   logic fb29;
                   fb29 = sr[i][DEPTH-1] ^ sr[i][1] ^ bit_i[i];
                   sr[i] <= {fb29, sr[i][DEPTH-1:1]};
                 end
-                3'd4: begin      // LFSR_7: x^7 + x^6 + 1, feedback uses bits [6] and [5]
+                3'd4: begin  // LFSR_7: x^7 + x^6 + 1, feedback uses bits [6] and [5]
                   logic fb7;
                   fb7 = sr[i][6] ^ sr[i][5] ^ bit_i[i];
                   sr[i] <= {fb7, sr[i][DEPTH-1:1]};
@@ -145,21 +145,21 @@ module Serial_Decorrelator_RefModel #(
             end else begin
               // SHIFT_LEFT: sr[i][0] is newest, sr[i][DEPTH-1] is oldest
               unique case (lane_mode)
-                3'd0,            // DECOR_29: XOR feedback from oldest bit
-                3'd1: begin      // DECOR_7: XOR feedback from tap depth_eff-1
+                3'd0,  // DECOR_29: XOR feedback from oldest bit
+                3'd1: begin  // DECOR_7: XOR feedback from tap depth_eff-1
                   logic fb;
-                  fb   = sr[i][depth_eff-1];
+                  fb = sr[i][depth_eff-1];
                   sr[i] <= {sr[i][DEPTH-2:0], (bit_i[i] ^ fb)};
                 end
-                3'd2: begin      // BYPASS: no feedback, raw shift
+                3'd2: begin  // BYPASS: no feedback, raw shift
                   sr[i] <= {sr[i][DEPTH-2:0], bit_i[i]};
                 end
-                3'd3: begin      // LFSR_29: x^29 + x^2 + 1, feedback from [0] and [27]
+                3'd3: begin  // LFSR_29: x^29 + x^2 + 1, feedback from [0] and [27]
                   logic fb29;
                   fb29 = sr[i][0] ^ sr[i][DEPTH-2] ^ bit_i[i];
                   sr[i] <= {sr[i][DEPTH-2:0], fb29};
                 end
-                3'd4: begin      // LFSR_7: x^7 + x^6 + 1, feedback uses bits [0] and [1]
+                3'd4: begin  // LFSR_7: x^7 + x^6 + 1, feedback uses bits [0] and [1]
                   logic fb7;
                   fb7 = sr[i][0] ^ sr[i][1] ^ bit_i[i];
                   sr[i] <= {sr[i][DEPTH-2:0], fb7};

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+--column_limit=100
+--indentation_spaces=2
+--wrap_spaces=4
+--line_terminator=auto
+
+--assignment_statement_alignment=infer
+--case_items_alignment=infer
+--class_member_variable_alignment=infer
+--compact_indexing_and_selections=true
+--distribution_items_alignment=infer
+--enum_assignment_statement_alignment=infer
+--formal_parameters_alignment=infer
+--formal_parameters_indentation=indent
+--module_net_variable_alignment=infer
+--named_parameter_alignment=infer
+--named_parameter_indentation=indent
+--named_port_alignment=infer
+--named_port_indentation=indent
+--port_declarations_alignment=infer
+--port_declarations_indentation=indent
+--struct_union_members_alignment=infer
+
+--try_wrap_long_lines=false
+--wrap_end_else_clauses=false
+--failsafe_success=false
+--verify_convergence=true

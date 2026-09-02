@@ -5,11 +5,11 @@
 // Inverter
 //
 //--------------------------------------------------
-module prim_inv  #(
-    parameter bit DONT_TOUCH = 1
+module prim_inv #(
+  parameter bit DONT_TOUCH = 1
 ) (
-    input  in_i,
-    output out_o
+  input  in_i,
+  output out_o
 );
   assign out_o = ~in_i;
 endmodule

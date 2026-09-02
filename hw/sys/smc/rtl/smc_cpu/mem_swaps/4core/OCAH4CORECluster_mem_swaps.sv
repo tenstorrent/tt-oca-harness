@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext
-#(
+module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
-  input  [7:0]   RW0_addr,
+) (
+  input  [  7:0] RW0_addr,
   input          RW0_clk,
   input  [143:0] RW0_wdata,
   output [143:0] RW0_rdata,
   input          RW0_en,
   input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+  input  [  1:0] RW0_wmask,
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -24,9 +23,9 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i(RW0_en),
+    .req_i  (RW0_en),
     .write_i(RW0_wmode),
-    .addr_i(RW0_addr),
+    .addr_i (RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{72{RW0_wmask[1]}}, {72{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -37,19 +36,18 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext
 
 endmodule
 
-module OCAH4CORECluster_rockettile_dcache_tag_array_ext
-#(
+module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
-  input  [4:0]   RW0_addr,
+) (
+  input  [  4:0] RW0_addr,
   input          RW0_clk,
   input  [107:0] RW0_wdata,
   output [107:0] RW0_rdata,
   input          RW0_en,
   input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+  input  [  1:0] RW0_wmask,
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -60,9 +58,9 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i(RW0_en),
+    .req_i  (RW0_en),
     .write_i(RW0_wmode),
-    .addr_i(RW0_addr),
+    .addr_i (RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{54{RW0_wmask[1]}}, {54{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -73,19 +71,18 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext
 
 endmodule
 
-module OCAH4CORECluster_rockettile_icache_tag_array_ext
-#(
+module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
-  input  [4:0]   RW0_addr,
-  input          RW0_clk,
-  input  [93:0]  RW0_wdata,
-  output [93:0]  RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+) (
+  input  [ 4:0] RW0_addr,
+  input         RW0_clk,
+  input  [93:0] RW0_wdata,
+  output [93:0] RW0_rdata,
+  input         RW0_en,
+  input         RW0_wmode,
+  input  [ 1:0] RW0_wmask,
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -96,9 +93,9 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i(RW0_en),
+    .req_i  (RW0_en),
     .write_i(RW0_wmode),
-    .addr_i(RW0_addr),
+    .addr_i (RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{47{RW0_wmask[1]}}, {47{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -109,19 +106,18 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext
 
 endmodule
 
-module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext
-#(
+module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
-  input  [7:0]  RW0_addr,
+) (
+  input  [ 7:0] RW0_addr,
   input         RW0_clk,
   input  [65:0] RW0_wdata,
   output [65:0] RW0_rdata,
   input         RW0_en,
   input         RW0_wmode,
-  input  [1:0]  RW0_wmask,
+  input  [ 1:0] RW0_wmask,
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -132,9 +128,9 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i(RW0_en),
+    .req_i  (RW0_en),
     .write_i(RW0_wmode),
-    .addr_i(RW0_addr),
+    .addr_i (RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{33{RW0_wmask[1]}}, {33{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -145,10 +141,9 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext
 
 endmodule
 
-module OCAH4CORECluster_mem_0_ext
-#(
+module OCAH4CORECluster_mem_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [11:0] RW0_addr,
   input         RW0_clk,
   input  [71:0] RW0_wdata,
@@ -156,7 +151,7 @@ module OCAH4CORECluster_mem_0_ext
   input         RW0_en,
   input         RW0_wmode,
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -167,9 +162,9 @@ module OCAH4CORECluster_mem_0_ext
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i(RW0_en),
+    .req_i  (RW0_en),
     .write_i(RW0_wmode),
-    .addr_i(RW0_addr),
+    .addr_i (RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({72{1'b1}}),  // No wmask input, enable all bits
     .rdata_o(RW0_rdata),
@@ -180,16 +175,15 @@ module OCAH4CORECluster_mem_0_ext
 
 endmodule
 
-module OCAH4CORECluster_rom_ext
-#(
+module OCAH4CORECluster_rom_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [13:0] R0_addr,
   input         R0_clk,
   input         R0_en,
   output [63:0] R0_rdata,
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_rom #(
@@ -230,7 +224,8 @@ module OCAH4CORECluster_rom_ext
 
     // Check for rom_bin64 first (binary format, 64-bit-per-line)
     if ($value$plusargs("rom_bin64=%s", rom_mem_path)) begin
-      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_bin64 plusarg: %s", rom_mem_path);
+      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_bin64 plusarg: %s",
+               rom_mem_path);
 
       // Check if file exists before trying to load
       file_handle = $fopen(rom_mem_path, "r");
@@ -238,13 +233,15 @@ module OCAH4CORECluster_rom_ext
         $fclose(file_handle);
         $readmemb(rom_mem_path, mem.mem);
         file_loaded = 1;
-        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from bin64 file: %s", rom_mem_path);
+        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from bin64 file: %s",
+                 rom_mem_path);
       end else begin
         $error("ERROR: [OCAH4CORECluster_rom_ext] ROM file not found: %s", rom_mem_path);
       end
-    // Fall back to rom_hex (hexadecimal format)
+      // Fall back to rom_hex (hexadecimal format)
     end else if ($value$plusargs("rom_hex=%s", rom_mem_path)) begin
-      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_hex plusarg: %s", rom_mem_path);
+      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_hex plusarg: %s",
+               rom_mem_path);
 
       // Check if file exists before trying to load
       file_handle = $fopen(rom_mem_path, "r");
@@ -252,12 +249,14 @@ module OCAH4CORECluster_rom_ext
         $fclose(file_handle);
         $readmemh(rom_mem_path, mem.mem);
         file_loaded = 1;
-        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from hex file: %s", rom_mem_path);
+        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from hex file: %s",
+                 rom_mem_path);
       end else begin
         $error("ERROR: [OCAH4CORECluster_rom_ext] ROM file not found: %s", rom_mem_path);
       end
     end else begin
-      $error("ERROR: [OCAH4CORECluster_rom_ext] No +rom_bin64 or +rom_hex plusarg provided - ROM will contain X's");
+      $error(
+          "ERROR: [OCAH4CORECluster_rom_ext] No +rom_bin64 or +rom_hex plusarg provided - ROM will contain X's");
     end
 
     if (!file_loaded) begin

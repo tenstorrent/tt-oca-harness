@@ -16,24 +16,24 @@
 // rather than a stand-in. Same module name, deliberately different strategy --
 // collapsing them would silently lower SEP's CDC fidelity.
 
-`timescale 1ps/1fs
+`timescale 1ps / 1fs
 
 module prim_sync2 #(
-    parameter int unsigned WIDTH                  = 1,
-    parameter bit          RANDOM_DELAY_GRAY_CODE = 1'b0
+  parameter int unsigned WIDTH                  = 1,
+  parameter bit          RANDOM_DELAY_GRAY_CODE = 1'b0
 ) (
-    input  logic             i_clk,
-    input  logic [WIDTH-1:0] i_d,
-    output logic [WIDTH-1:0] o_q
+  input  logic             i_clk,
+  input  logic [WIDTH-1:0] i_d,
+  output logic [WIDTH-1:0] o_q
 );
 
-    prim_flop_2sync #(
-        .Width(WIDTH)
-    ) u_sync2 (
-        .clk_i  (i_clk),
-        .rst_ni (1'b1),
-        .d_i    (i_d),
-        .q_o    (o_q)
-    );
+  prim_flop_2sync #(
+    .Width(WIDTH)
+  ) u_sync2 (
+    .clk_i (i_clk),
+    .rst_ni(1'b1),
+    .d_i   (i_d),
+    .q_o   (o_q)
+  );
 
 endmodule

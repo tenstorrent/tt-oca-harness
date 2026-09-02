@@ -24,7 +24,7 @@ module sync #(
     parameter ResetValue = 0,
     parameter RANDOM_DELAY_GRAY_CODE = 0,
     parameter USE_ASYNC_RST_FF = 1,    // 0: Synchronous reset FF, 1: Asynchronous reset FF
-    parameter USE_NON_RST_FF = 0       // 0: Non Reset FF, 1:Set/Clr FF based on ResetValue 
+    parameter USE_NON_RST_FF = 0       // 0: Non Reset FF, 1:Set/Clr FF based on ResetValue
 ) (
     input  logic clk_i,
     input  logic rst_ni,
