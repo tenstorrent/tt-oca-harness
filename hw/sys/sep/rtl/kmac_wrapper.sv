@@ -2,23 +2,18 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2025 TT
 
-// KMAC Wrapper - AXI to TL-UL Bridge using axi_to_tlul
-// Fixes mask handling by using proven axi_to_tlul bridge (same as WDT/Secure DMA/AES/HMAC)
+// KMAC Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
-module kmac_wrapper
-#(
-    parameter int unsigned ADDR_WIDTH = 32,
-    parameter int unsigned DATA_WIDTH = 32
-) (
+module kmac_wrapper (
     input logic clk_i,
     input logic rst_ni,
 
-    // AXI struct interface (64-bit from demux) — data/control path
-    input  sep_pkg::sep_32_64_6_12_axi_req_t  kmac_axi_req_i,
-    output sep_pkg::sep_32_64_6_12_axi_resp_t kmac_axi_resp_o,
+    // 32-bit AXI-Lite CSR interface
+    input  sep_pkg::sep_32_32_axil_req_t  kmac_axil_req_i,
+    output sep_pkg::sep_32_32_axil_resp_t kmac_axil_resp_o,
 
     // AXI4-Lite key interface (32-bit from Key Manager private bus)
     input  sep_pkg::sep_32_32_axil_req_t  kmac_key_axil_req_i,
@@ -45,64 +40,11 @@ module kmac_wrapper
     output logic idle_o
 );
 
-    // ============================================================================
-    // 32-bit AXI type definitions for axi_to_tlul bridge
-    // (Following WDT/AES pattern - axi_to_tlul requires 32-bit data width)
-    // ============================================================================
-
-    localparam int unsigned KMAC_AXI32_DATA_WIDTH = 32;
-    localparam int unsigned KMAC_AXI32_STRB_WIDTH = KMAC_AXI32_DATA_WIDTH / 8;
-
-    typedef logic [KMAC_AXI32_DATA_WIDTH-1:0] kmac_axi32_data_t;
-    typedef logic [KMAC_AXI32_STRB_WIDTH-1:0] kmac_axi32_strb_t;
-
-    // Generate all 32-bit AXI channel types using the macro
-    `AXI_TYPEDEF_ALL(kmac_axi32,
-                     sep_pkg::sep_32_64_6_12_axi_addr_t,
-                     sep_pkg::sep_32_64_6_12_axi_id_t,
-                     kmac_axi32_data_t,
-                     kmac_axi32_strb_t,
-                     sep_pkg::sep_32_64_6_12_axi_user_t)
-
-    // 32-bit AXI signals (after width conversion)
-    kmac_axi32_req_t  kmac_axi32_req;
-    kmac_axi32_resp_t kmac_axi32_resp;
-
-    // 32-bit AXI signals with address masking applied
+    // 32-bit AXI-Lite signals with address masking applied
     // KMAC has BlockAw=12 (4KB address space, addr[11:0])
     // System base 0x10923000 has 0x000 in lower 12 bits (clean!)
     // Just mask to 12 bits so KMAC decoder sees correct offsets
-    kmac_axi32_req_t  kmac_axi32_req_masked;
-
-    // ============================================================================
-    // AXI Data Width Converter: 64-bit -> 32-bit (struct-based)
-    // ============================================================================
-
-    axi_dw_converter #(
-        .AxiMaxReads         (8),
-        .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),  // 64-bit input
-        .AxiMstPortDataWidth (KMAC_AXI32_DATA_WIDTH),              // 32-bit output
-        .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (kmac_axi32_w_chan_t),
-        .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-        .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-        .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (kmac_axi32_r_chan_t),
-        .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (kmac_axi32_req_t),
-        .axi_mst_resp_t      (kmac_axi32_resp_t),
-        .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
-    ) u_kmac_axi_dw_converter (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .slv_req_i (kmac_axi_req_i),
-        .slv_resp_o(kmac_axi_resp_o),
-        .mst_req_o (kmac_axi32_req),
-        .mst_resp_i(kmac_axi32_resp)
-    );
+    sep_pkg::sep_32_32_axil_req_t kmac_axil_req_masked;
 
     // ============================================================================
     // Address Masking: Adjust addresses for KMAC internal decoder
@@ -117,49 +59,19 @@ module kmac_wrapper
     localparam logic [31:0] KMAC_BASE_LOWER = och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR & KMAC_ADDR_MASK;
 
     always_comb begin
-        kmac_axi32_req_masked = kmac_axi32_req;
+        kmac_axil_req_masked = kmac_axil_req_i;
         // Subtract offset (0x000 for KMAC) then mask to 12 bits
-        kmac_axi32_req_masked.aw.addr = (kmac_axi32_req.aw.addr - KMAC_BASE_LOWER) & KMAC_ADDR_MASK;
-        kmac_axi32_req_masked.ar.addr = (kmac_axi32_req.ar.addr - KMAC_BASE_LOWER) & KMAC_ADDR_MASK;
+        kmac_axil_req_masked.aw.addr = (kmac_axil_req_i.aw.addr - KMAC_BASE_LOWER) & KMAC_ADDR_MASK;
+        kmac_axil_req_masked.ar.addr = (kmac_axil_req_i.ar.addr - KMAC_BASE_LOWER) & KMAC_ADDR_MASK;
     end
 
     // ============================================================================
-    // AXI to TileLink Converter (two-stage: AXI -> AXI-Lite -> TL-UL)
-    // Stage 1: axi_to_axi_lite - Converts full AXI4 to AXI4-Lite
-    // Stage 2: axi_lite_to_tlul - Converts AXI4-Lite to TileLink UL
-    // Address masking is applied BEFORE conversion
+    // AXI-Lite to TL-UL conversion
     // ============================================================================
 
     tlul_pkg::tl_h2d_t tl_req;
     tlul_pkg::tl_d2h_t tl_resp;
 
-    // AXI-Lite intermediate signals
-    sep_pkg::sep_32_32_axil_req_t  axi_lite_req;
-    sep_pkg::sep_32_32_axil_resp_t axi_lite_resp;
-
-    // Stage 1: AXI to AXI-Lite conversion
-    axi_to_axi_lite #(
-        .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-        .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-        .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-        .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (kmac_axi32_req_t),
-        .full_resp_t     (kmac_axi32_resp_t),
-        .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
-        .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
-    ) u_kmac_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (1'b0),
-        .slv_req_i   (kmac_axi32_req_masked),
-        .slv_resp_o  (kmac_axi32_resp),
-        .mst_req_o   (axi_lite_req),
-        .mst_resp_i  (axi_lite_resp)
-    );
-
-    // Stage 2: AXI-Lite to TL-UL conversion
     axi_lite_to_tlul #(
         .AXI_ADDR_WIDTH   (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
         .AXI_DATA_WIDTH   (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -170,8 +82,8 @@ module kmac_wrapper
     ) u_kmac_axi_lite_to_tlul (
         .clk_i           (clk_i),
         .rst_ni          (rst_ni),
-        .axi_lite_req_i  (axi_lite_req),
-        .axi_lite_rsp_o  (axi_lite_resp),
+        .axi_lite_req_i  (kmac_axil_req_masked),
+        .axi_lite_rsp_o  (kmac_axil_resp_o),
         .tl_o            (tl_req),
         .tl_i            (tl_resp),
         .err_o           (bus_err_o),
