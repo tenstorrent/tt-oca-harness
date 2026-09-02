@@ -164,10 +164,10 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:27 | `Reserved` | - | - a| Reserved
-| 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)
+| 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compression), 2'b0 (No Compression)
 | 23:20 | `Trdstsyncmax` | RW | 0x0 a| When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
 | 19:18 | `Reserved` | - | - a| Reserved
-| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
+| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other values not NA.
 | 15 | `Trdstinhibitsrc` | R | 0x0 a| -
 | 14 | `Reserved` | - | - a| Reserved
 | 13 | `Trdstinststallena` | R | 0x0 a| -
@@ -217,7 +217,7 @@
 | Bits | Field | Access | Reset | Description
 | 31:22 | `Reserved` | - | - a| Reserved
 | 21 | `FrameClosureMode` | RW | 0x1 a| Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.
-| 20 | `FrameModeEnable` | RW | 0x1 a| Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
+| 20 | `FrameModeEnable` | RW | 0x1 a| Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
 | 19:16 | `Reserved` | - | - a| Reserved
 | 15:12 | `FrameLenghtInBytes` | RW | 0x2 a| Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.
 | 11:4 | `TraceFrameFillByte` | RW | 0x81 a| Use "Filler Packet" to align a stream of trace packets within a frame boundary.
@@ -281,8 +281,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -300,8 +300,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -319,8 +319,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -338,8 +338,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -357,8 +357,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -376,8 +376,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -395,8 +395,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -414,8 +414,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -457,9 +457,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 63:14 | `Reserved` | - | - a| Reserved
-| 13 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
+| 13 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge
 | 12:7 | `Signal1Select` | RW | 0x0 a| Define which signal to select for edge detection.
-| 6 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
+| 6 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge
 | 5:0 | `Signal0Select` | RW | 0x0 a| Define which signal to select for edge detection.
 |===
 
@@ -665,8 +665,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -685,8 +685,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -705,8 +705,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -725,8 +725,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -745,8 +745,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -765,8 +765,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -785,8 +785,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -805,8 +805,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions

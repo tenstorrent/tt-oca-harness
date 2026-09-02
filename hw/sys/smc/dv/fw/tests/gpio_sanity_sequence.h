@@ -98,7 +98,7 @@ void test_rw_chip2pad(int hartid, uint32_t gpio_num) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
         }
     } else if (expected_val != read_data_control_updated) {
-        raise_error_s(hartid, "test_rw_chip2pad: read data control mis-match");
+        raise_error_s(hartid, "test_rw_chip2pad: read data control mismatch");
         info_msg_hex32_s(hartid, "Expected: ", expected_val);
         info_msg_hex32_s(hartid, "Actual: ", read_data_control_updated);
     }

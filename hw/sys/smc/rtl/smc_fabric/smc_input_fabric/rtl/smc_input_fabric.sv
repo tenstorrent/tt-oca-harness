@@ -334,7 +334,7 @@ module smc_input_fabric
 		.snoop_r_ready_i (sys_axi_in_req_i.r_ready),
 		.snoop_r_last_i	 (sys_axi_in_resp_o.r.last),
 
-		.kick_i			 (~filter_axi_cg_en_i), // continously kick to keep clock awake when not gating
+		.kick_i			 (~filter_axi_cg_en_i), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_hysteresis_i),

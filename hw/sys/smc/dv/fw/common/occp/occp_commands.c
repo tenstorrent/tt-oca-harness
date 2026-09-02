@@ -2236,7 +2236,7 @@ bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_f
     if (actual_fw_id != (uint8_t)expected_fw_id) return false;
 
     /* For SMC BL0 error messages, apply spec-defined matching granularity:
-     * - Some errors use upper nibblesk wih 0x1FF per spe)
+     * - Some errors use upper nibblesk with 0x1FF per spe)
      * - Some use lower nibble (mask wit 0xFF0)
      * - Others have no nibble data (match full 12-bit class within 16-bit)
      */

@@ -309,7 +309,7 @@ addrmap spi_controller {
 
             For read or write segments, this field controls the
             number of 1-byte bursts to transmit and or receive in
-            this command segment.  The number of cyles required
+            this command segment.  The number of cycles required
             to send or received a byte will depend on !!COMMAND.SPEED.
             For dummy segments, (!!COMMAND.DIRECTION == 0), this register
             controls the number of dummy cycles to issue.

@@ -74,6 +74,7 @@ Scan recent GitHub Discussions to identify and extract specific, actionable task
 Focus on extracting tasks that meet **ALL** these criteria:
 
 ### Quality Criteria
+
 - ✅ **Specific**: Task has clear scope and acceptance criteria
 - ✅ **Actionable**: Can be completed by a developer or AI agent
 - ✅ **Valuable**: Improves the repository in a meaningful way
@@ -81,6 +82,7 @@ Focus on extracting tasks that meet **ALL** these criteria:
 - ✅ **Independent**: Doesn't require completing other tasks first
 
 ### Focus Areas
+
 - **Code Quality**: Simplify complex code, reduce duplication, improve structure
 - **Testing**: Add missing tests, improve test coverage, fix flaky tests
 - **Documentation**: Add or improve documentation, examples, guides
@@ -91,6 +93,7 @@ Focus on extracting tasks that meet **ALL** these criteria:
 - **Tooling**: Improve linters, formatters, build scripts, CI/CD
 
 ### Exclude These
+
 - ❌ Vague suggestions without clear scope ("improve code")
 - ❌ Already tracked in existing issues
 - ❌ Feature requests or new functionality
@@ -127,6 +130,7 @@ This helps avoid re-processing the same discussions and creating duplicate issue
 ### Step 2: Query Recent Discussions
 
 Use GitHub tools to fetch recent discussions from the last 7 days. Look for discussions with titles or content that contain actionable insights, such as:
+
 - Analysis reports and audit findings
 - Code review observations
 - Performance or quality assessments
@@ -138,6 +142,7 @@ Limit to the 20-30 most recent discussions for efficiency.
 ### Step 3: Analyze Discussion Content
 
 For each discussion, extract the full content including:
+
 - Title and body
 - All comments
 - Look for sections like:
@@ -150,6 +155,7 @@ For each discussion, extract the full content including:
   - "TODOs" or "Next Steps"
 
 **Analysis approach:**
+
 1. Read the discussion content carefully
 2. Identify mentions of concrete improvement opportunities
 3. Extract specific tasks with clear descriptions
@@ -159,12 +165,14 @@ For each discussion, extract the full content including:
 ### Step 4: Filter and Prioritize Tasks
 
 From all identified tasks, select the **top 3-5 highest-value tasks** based on:
+
 1. **Impact**: How much does this improve the repository?
 2. **Effort**: Is it achievable in 1-3 days?
 3. **Clarity**: Is the task well-defined?
 4. **Uniqueness**: Haven't we already created an issue for this?
 
 **Deduplication:**
+
 - Check processed-discussions.json to avoid re-extracting from same discussion
 - Check extracted-tasks.json to avoid creating duplicate issues
 - Search existing GitHub issues to ensure task isn't already tracked
@@ -181,6 +189,7 @@ For each selected task, use the `create-issue` safe output with a clear title an
 - **Priority**: High/Medium/Low
 
 **Issue formatting guidelines:**
+
 - Use clear, descriptive titles (50-80 characters)
 - Include acceptance criteria
 - Link back to source discussion
@@ -213,16 +222,19 @@ Merge with the existing cache-memory data to preserve historical tracking of pro
 ## Output Requirements
 
 ### Issue Creation
+
 - Create **3-5 issues maximum** per run
 - Each issue expires after 1 day if not addressed
 - All issues tagged with `automated-analysis`
 - Issues include clear acceptance criteria
 
 ### Memory Tracking
+
 - Always update cache-memory after each run to avoid duplicates
 - Maintain extracted tasks in cache-memory for historical tracking
 
 ### Quality Standards
+
 - Only create issues for high-value, actionable tasks
 - Ensure each issue is specific and well-scoped
 - Link back to source discussions for context

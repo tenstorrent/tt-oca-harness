@@ -39,7 +39,9 @@ int main(void) {
     printf("Configuring UART...\n");
     uint32_t baud_rate = 921600;
     uint32_t uart_clk_hz = 100000000; // 100 MHz
-    uint32_t divisor = uart_clk_hz / (16 * baud_rate);
+    // The baud generator divides by (divisor + 1); round to nearest before
+    // subtracting so truncation does not cost a whole count.
+    uint32_t divisor = (uart_clk_hz + 8 * baud_rate) / (16 * baud_rate) - 1;
     printf("Setting baud rate to %d, divisor = %d...\n", baud_rate, divisor);
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) =
         0x83; // Mux to DL address map. 8 data bits, no parity, 1 stop bit.
