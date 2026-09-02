@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[workflows]]
-== Workflows
+= Workflows
 
 [WARNING]
 ====
@@ -13,7 +13,7 @@ This section is currently under development.
 
 This document specifies the development methodology for this project.
 
-=== Build with Bender and Make
+== Build with Bender and Make
 
 Bender is used for managing IP dependencies and managing builds.
 
@@ -28,13 +28,13 @@ command:
 make generate_filelist
 ```
 
-=== Simulation and Testing
+== Simulation and Testing
 
 We will use open source tools as much as possible and hence will focus
 on using Verilator for unit tests. Verilator has comprehensive
 SystemVerilog (SV) support and is widely used in industry.
 
-==== Testbench and Test Sequence
+=== Testbench and Test Sequence
 
 Most components use Cocotb Python tests. The DTP also has a nonfree UVM
 test workflow using VCS. The testbench is run and configured using a Python
@@ -50,8 +50,9 @@ options:
 ...
 ```
 
-If you want to manage python dependencies yourself, rather than through `uv`, the environment variable `OCAH_DV_SKIP_UV=1`
-may be set, in which case the system Python installation will be used.
+If you want to manage python dependencies yourself, rather than through `uv`, the
+environment variable `OCAH_DV_SKIP_UV=1` may be set, in which case the system Python
+installation will be used.
 
 To check that all testsuites are configured properly, run the following:
 
@@ -131,7 +132,7 @@ This may similarly be used to run preconfigured test groups.
 Further options, including seeds and regressions are available, consult the `--help`
 flag to see usage.
 
-==== Visual Debugging and Waveform Viewer
+=== Visual Debugging and Waveform Viewer
 
 When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
 travelling between components. For this, a wave trace may be generated and inspected. To
@@ -149,16 +150,15 @@ To automatically open your chosen viewer on test completion, use the `--open-wav
 
 The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wave traces for failing tests.
 
-==== References
+=== References
 
 * https://www.veripool.org/verilator[Verilator documents]
 * https://www.cocotb.org[cocotb]
 * https://github.com/antmicro/coverview[Coverview]
 * https://surfer-project.org[Surfer project website]
-* https://ics.jku.at/files/2024RISCVSummit_Surfer.pdf[RISC-V Summit
-paper on Surfer]
+* https://ics.jku.at/files/2024RISCVSummit_Surfer.pdf[RISC-V Summit paper on Surfer]
 
-=== Synthesis
+== Synthesis
 
 OCAH is designed around open-source workflows. For this reason, we have chosen to
 provide a synthesis flow using Yosys.
@@ -172,13 +172,15 @@ make ocah-synth-all
 This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
 used for synthesis may be selected with `TECH`.
 
-=== Linting
+== Linting
 
 We use linters within the development of OCAH to perform static analysis
 on the codebase. The below rules will check code for errors and poor
 formatting. They also enforce a consistent code style.
 
-==== Verilog Style and Lint checking with Verible
+=== Verilog
+
+==== Style and Lint checking with Verible
 
 To run the verible linter on all SystemVerilog files, use the following command:
 
@@ -198,7 +200,7 @@ To run the linter only on a single block, use the `BLOCK` variable. The paths to
 search for files may be further constrained with `LINT_PATH` and `FORMAT_PATH`
 respectively, for each rule.
 
-==== Verilog Linting with Verilator
+==== Linting with Verilator
 
 Verilator structurally lints each discovered hardware block as its own top:
 
@@ -209,7 +211,7 @@ make lint-verilator-all
 To run the linter only on a single block, use the `BLOCK` environment variable. To
 further constrain the printed warnings, also use `VERILATOR_LINT_PATH`.
 
-==== Verilog Style and Lint checking with Slang
+==== Style and Lint checking with Slang
 
 To run the slang linter on all SystemVerilog files, use the following command:
 
@@ -220,7 +222,9 @@ make lint-slang-all
 To run the linter only on a single block, use the `BLOCK` environment variable. To
 further constrain the printed warnings, also use `SLANG_LINT_PATH`.
 
-==== C/C++ Style and Format with Clang-Format
+=== C/C++
+
+==== Style and Format with Clang-Format
 
 The C/C++ Firmware files included in each component are checked and formatted with
 `clang-format`. This may be managed by `uv`, or `OCAH_CLANG_FORMAT_SKIP_UV=1`
@@ -234,6 +238,127 @@ To check for errors without modifying files, use `make format-c-check`.
 
 To run the linter only on a single block, use the `BLOCK` environment variable. The
 path for files to check and format may be alternatively constrained with `FORMAT_C_PATH`.
+
+=== Python
+
+==== Lint and Format with `ruff`
+
+Ruff lints and formats first-party Python while excluding generated register
+models, vendored sources, submodules, `nonfree/`, and build output.
+
+```bash
+make lint-python
+make format-python-check
+```
+
+To apply safe lint fixes and formatting locally, run:
+
+```bash
+make lint-python-fix
+make format-python
+```
+
+Pass `PYTHON_PATH=<path>` to restrict any command to part of the tree.
+
+==== Lint with `mypy`
+
+MyPy also lints first-party Python while excluding generated register
+models, vendored sources, submodules, `nonfree/`, and build output.
+
+```bash
+make lint-python-mypy
+```
+
+Pass `MYPY_PATH=<path>` to restrict to part of the tree.
+
+=== Build System and Helper Scripts
+
+==== Makefile Lint with `checkmake`
+
+To lint all `Makefile` and `.mk` files used within OCAH, run
+
+```bash
+make lint-make
+```
+
+To constrain the output to a single file/subdirectory, use `MAKEFILE_PATH`.
+
+==== Shell Script Lint and Format with `shellcheck`
+
+To lint all shell scripts used within OCAH, run
+
+```bash
+make lint-shell
+```
+
+To format files, run the below
+
+```bash
+make format-shell
+
+# Or to check formatting without modification
+make format-shell-check
+```
+
+In all cases, `SHELL_PATH` may be used to constrain the above.
+
+=== Configuration Files
+
+==== TOML file Lint with `tomllint`
+
+TOML File syntax may be checked by running
+
+```bash
+make lint-toml
+```
+
+The variable `TOML_PATH` may be used to limit the files checked.
+
+==== YAML file Lint with `yamllint`
+
+YAML File syntax may be checked by running
+
+```bash
+make lint-yaml
+```
+
+The variable `YAML_PATH` may similarly be used to limit the files checked.
+
+=== Documentation Files
+
+==== Markdown Lint with `markdownlint`
+
+To check the markdown files within the OCAH Directories, run
+
+```bash
+make lint-markdown
+```
+
+Fixes may automatically be applied by running
+
+```bash
+make lint-markdown-fix
+```
+
+In both cases, the directory linted may be constrained with `MARKDOWN_PATH`.
+
+==== Spell-Checking with Codespell
+
+To check the spelling of all documentation files, run the following
+
+```bash
+make lint-spelling
+```
+
+To apply fixes automatically, run
+
+```bash
+make lint-spelling-fix
+```
+
+In both cases, the path of files to be checked may be constrained with `CODESPELL_PATH`.
+
+=== Synthesis Scripts
 
 ==== TCL Script Style, Lint and Format with Tclint
 
@@ -257,36 +382,6 @@ make format-tcl
 
 The search path for script files may be overridden with `TCL_PATH`.
 
-==== C/C++ Style and Format with Clang-Format
-
-The C/C++ Firmware files included in each component are checked and formatted with `clang-format`.
-The repository's uv environment supplies the pinned clang-format version.
-
-```bash
-make format-c
-```
-
-To check for errors without modifying files, use `make format-c-check`. The path for files to check and format may be constrained with `FORMAT_C_PATH`.
-
-==== Python Lint and Format with Ruff
-
-Ruff lints and formats first-party Python while excluding generated register
-models, vendored sources, submodules, `nonfree/`, and build output.
-
-```bash
-make lint-python
-make format-python-check
-```
-
-To apply safe lint fixes and formatting locally, run:
-
-```bash
-make lint-python-fix
-make format-python
-```
-
-Pass `PYTHON_PATH=<path>` to restrict any command to part of the tree.
-
 ==== Optional Pre-Commit Checks
 
 The optional pre-commit hook runs check-only Ruff, clang-format, tclfmt, and
@@ -295,6 +390,8 @@ tclint operations on staged files. Enable it explicitly with
 writes the standard local Git hook, does not change `core.hooksPath`, and is
 never performed by repository setup or checkout flows. See
 `CONTRIBUTING.md` for all hook commands.
+
+To manually run a set of pre-commit checks, use `make hooks-run` or `make hooks-run-all`.
 
 ==== References
 
