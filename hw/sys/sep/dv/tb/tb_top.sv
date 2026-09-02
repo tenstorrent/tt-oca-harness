@@ -457,8 +457,8 @@ module sep_uvm_top
         sep_straps_drive.test_straps.test_en = test_en_strap_i;
     end
 
-    // Outbound mailbox responder buses and CPU trace (the only DUT struct nets the
-    // wrapper flow still needs; the retired mem/efuse/spi responder buses are gone).
+    // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
+    // wrapper flow needs.
     sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_req_w;
     sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_resp_w;
     sep_cpu_trace_t    cpu_trace_w;
@@ -554,6 +554,13 @@ module sep_uvm_top
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
+        // otbn_rnd.sv:233 UrndNoReseedOnReset_A is unsatisfiable here, not a DUT
+        // contract: it arms only in reset on CURRENT rst_ni while its body reads
+        // SAMPLED rst_ni, and SEP asserts OTBN reset ON a clk_i edge (flop output of
+        // hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv), so that edge demands
+        // seed_en_q=1 -- it fires every SW reset whatever the DUT does.
+        $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
+            .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
 `endif
 
@@ -733,7 +740,7 @@ module sep_uvm_top
         .dmi_active                   (),
 
         .sep_cpu_trace                (cpu_trace_w),
-        // Direct reset-vector input (replaces the retired JTAG reset-vector TDR).
+        // Direct reset-vector input.
         .rst_vec                      (rst_vec_i),
         .jtag_id                      ('0),
 
@@ -905,10 +912,9 @@ module sep_uvm_top
     //
     // The wrapper's macros have no runtime init (MemInitFile("")) and power up X
     // on VCS / 0 on Verilator -- both wrong for KM (parity) and OTBN (SECDED),
-    // whose valid power-up word is non-zero. Fill patterns + ECC/parity are ported
-    // from the retired responders (shims/mem/tb_{tcm,km,otbn}_responder.sv). Array
-    // paths verified against hw/top/sep_ip_integration.sv and the current
-    // sep_tcm_wrapper (TCM per-depth generate arms are now labeled gen_ram).
+    // whose valid power-up word is non-zero. Fill patterns include ECC/parity.
+    // Array paths are hw/top/sep_ip_integration.sv and sep_tcm_wrapper
+    // (TCM per-depth generate arms: gen_ram).
     // Backdoor writes into these DUT arrays need them public under Verilator
     // (sep_public_scope.vlt: prim_ram_1p.mem, prim_rom.mem, ram_16384x39.ram_core).
     // ------------------------------------------------------------------
@@ -965,10 +971,10 @@ module sep_uvm_top
 `endif
 
     // Image loads into the ROM/SRAM macros at t=0. Honor the plusarg first, else
-    // fall back to the CWD default filename (mirrors the retired tb_*_responder
-    // load order: tests that stage a committed hex into the sim CWD without a
-    // plusarg still get it -- e.g. sep_boot_rom_smoke_test relies on the default
-    // sep_boot_rom.hex). A missing default file leaves the default fill intact.
+    // the CWD default filename (tests that stage a committed hex into the sim
+    // CWD without a plusarg still get it -- e.g. sep_boot_rom_smoke_test relies
+    // on the default sep_boot_rom.hex). A missing default file leaves the
+    // default fill intact.
     // A named `+km_rom_hex` file must exist: $readmemh of an absent path leaves
     // the KM ROM empty and the firmware never posts ready.
     initial begin : backdoor_image_loads
@@ -1501,7 +1507,7 @@ module sep_uvm_top
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
     assign esrc_decor_bytes_o   = `SEP_ESRC.u_generator_complex.entropy_stream_uncompressed_o;
     // Raw 29-bit decorrelator shift register per lane. ff_stage and the sampled
-    // byte now share the full entropy-source rst_ni. decor_bytes_o still lags the
+    // byte share the full entropy-source rst_ni. decor_bytes_o lags the
     // true SR reset by a full divider period, so the golden cannot derive
     // the SR phase from decor_bytes_o alone. The scoreboard seeds its golden SR from
     // this exact state once shifting is live, then free-runs the CHK1..CHK5 chain.
@@ -1566,10 +1572,9 @@ module sep_uvm_top
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
 
-    // The KM/OTBN memory activity counters (were tb responder
-    // outputs) are re-derived from the wrapper-internal req nets. KM SRAM gnt=1
-    // and OTBN req=enable, so counting the request strobe matches the retired
-    // responders' semantics (km uses .req/.we; otbn uses .enable/.write).
+    // KM/OTBN memory activity counters from the wrapper-internal req nets.
+    // KM SRAM gnt=1 and OTBN req=enable, so a count of the request strobe is
+    // a count of accepted accesses (km uses .req/.we; otbn uses .enable/.write).
     logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q;
     logic [31:0] otbn_imem_req_cnt_q, otbn_imem_wr_cnt_q;
     logic [31:0] otbn_dmem_req_cnt_q, otbn_dmem_wr_cnt_q;
