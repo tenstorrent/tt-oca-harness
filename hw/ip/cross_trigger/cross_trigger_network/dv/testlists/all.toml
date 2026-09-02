@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Cross Trigger Network IP-level scenarios.
+
+[[tests]]
+name = "ctn_sanity_test"
+module = { cocotb = "ctn_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "ctn"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ctn_routing_test"
+module = { cocotb = "ctn_routing_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["ctn", "routing"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "ctn_loopback_test"
+module = { cocotb = "ctn_loopback_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["ctn", "loopback"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "ctn_clock_stop_test"
+module = { cocotb = "ctn_clock_stop_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ctn", "clock_stop"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["ctn_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = ["ctn_sanity_test", "ctn_routing_test", "ctn_loopback_test", "ctn_clock_stop_test"]

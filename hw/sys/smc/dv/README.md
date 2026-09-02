@@ -8,7 +8,9 @@ driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
 recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
 `docs/SMC_FCOV.adoc` for the coverage pipeline, and
 `docs/SMC_DEFERRED_DISPOSITION.adoc` for the v0.5.0 deferred/OUT
-classification and idle-boundary table.
+classification and idle-boundary table, and
+`docs/SMC_SCOPE_TRACEABILITY.adoc` for the candidate v0.5.0
+requirement-to-test matrix (unsigned; #496).
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
