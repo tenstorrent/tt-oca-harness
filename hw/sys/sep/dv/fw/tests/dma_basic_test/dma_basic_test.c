@@ -524,10 +524,7 @@ static int chk_done_rw1c(void) {
 }
 
 // ---- CHK-ERR-ADDR: the engine's address validation ----
-// The RDL defines nine ERROR_CODE bits; before this only opcode_error and
-// range_valid_error were ever provoked. These four cells are the
-// address-validation legs, which is what stops a mis-programmed descriptor from
-// moving bytes: a transfer whose source or destination address does not meet the
+// Four cells: a transfer whose source or destination address does not meet the
 // alignment its width requires, at both the 4-byte and the 2-byte width. Each
 // cell asserts its error EXCLUSIVELY, so a fault that raises a different bit is
 // a failure rather than a pass, and a clean transfer after the four proves the
