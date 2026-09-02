@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-02",
+  "sim_run_id": "33664573032",
+  "status": "FAIL",
+  "leaves": {
+    "total": 62,
+    "pass": 53
+  },
+  "failures": {
+    "infra": 5,
+    "design": 4,
+    "unknown": 0
+  },
+  "flaky_tests": [
+    "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test",
+    "dtp_jtag2axi_smc_axi_read_security_gating_test",
+    "dtp_jtag_clamp_hold_test",
+    "dtp_jtag_clamp_release_test",
+    "dtp_jtag_undef_instr_test"
+  ]
+}
