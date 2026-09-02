@@ -28,6 +28,7 @@ python3.12 -m venv ./venv
 # Now run.sh will use this existing venv
 ./run.sh -t test_entropy_sanity
 ```
+
 ## Quick Start
 
 ```bash
@@ -98,6 +99,7 @@ Total: 48 tests across 5 test suites
 ## Simulation Scripts
 
 ### run.sh
+
 Main simulation script. Automatically detects source changes and only recompiles when needed.
 
 ```bash
@@ -107,6 +109,7 @@ Main simulation script. Automatically detects source changes and only recompiles
 ```
 
 ### clean.sh
+
 Remove all build artifacts, logs, and waveforms.
 
 ```bash
@@ -114,6 +117,7 @@ Remove all build artifacts, logs, and waveforms.
 ```
 
 ### kill_simv.sh
+
 Kill hung simulation processes.
 
 ```bash
@@ -169,6 +173,7 @@ tb_vcs/
 **Cause:** Your system's default `python3` is version 3.13 or newer (cocotb requires 3.7-3.12)
 
 **Solution:**
+
 ```bash
 # Check Python version
 python3 --version
@@ -182,17 +187,20 @@ python3.12 -m venv ./venv
 See [Prerequisites](#prerequisites) section for details.
 
 ### Simulation hangs
+
 ```bash
 ./kill_simv.sh
 ```
 
 ### Compilation errors
+
 ```bash
 ./clean.sh
 ./run.sh -t <test> --force
 ```
 
 ### View logs
+
 ```bash
 cat sim/logs/<test>/cocotb_<test>.log     # Test log
 cat sim/logs/<test>/vcs.log               # Compilation log
