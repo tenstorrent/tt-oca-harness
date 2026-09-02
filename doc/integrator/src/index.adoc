@@ -104,11 +104,12 @@ xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
 === Immutable ROM FW Integration
 
 OCAH contains three immutable ROM FW images: the SMC production ROM FW, the
-SEP BL0 ROM FW, and the Key Manager ROM FW. Each image has two integration
-contracts. The adopter connects and configures the corresponding ROM macro,
-and the final ROM FW image must be present before its processor leaves reset.
-Where ROM FW must initialize or access an adopter-owned peripheral outside
-OCAH, the image may also expose build-time integration hooks.
+SEP production ROM FW, and the Key Manager production ROM FW. Each image has
+two integration contracts. The adopter connects and configures the
+corresponding ROM macro, and the final ROM FW image must be present before its
+processor leaves reset. Where ROM FW must initialize or access an
+adopter-owned peripheral outside OCAH, the image may also expose build-time
+integration hooks.
 
 [[rom-fw-override-method]]
 ==== Weak-symbol override method
@@ -122,9 +123,8 @@ declaration.
 
 This mechanism applies only when the ROM FW needs to interact with a peripheral
 outside OCAH. It is a build-time image-composition mechanism, not a runtime
-extension mechanism. The per-ROM sections below identify the build input used
-to add sources; do not assume that one ROM FW image's build variable applies to
-the others.
+extension mechanism. Include the adopter implementation in the final ROM FW
+build so that it replaces the weak definition at link time.
 
 Inspect the final ELF or linker map after linking. For example,
 `riscv64-unknown-elf-nm` must report each selected implementation as a strong
@@ -150,31 +150,36 @@ image and ROM macro. Deasserted passes each 64-bit read word unchanged;
 asserted reverses its eight bytes.
 
 .SMC ROM FW override inventory
-[width="100%",cols="22%,28%,50%",options="header"]
+[width="100%",cols="18%,20%,27%,35%",options="header"]
 |=======================================================================
-|Hook |Weak default |Override and integration action
+|Hook |Weak default |Rationale |Override and integration action
 |`smc_pll_init()`
 |Returns `SMC_PLL_SUCCESS` without programming PLL hardware.
+|PLL implementation is technology- and vendor-specific, so OCAH does not
+include a vendor-specific PLL driver.
 |Override when `BL0_PLLCLK` is asserted and the adopter's PLL requires
 ROM-time configuration. Provide the same
-`smc_pll_result_t smc_pll_init(void)` signature through
-`NONFREE_DRIVER_SOURCES`. Any result other than `SMC_PLL_SUCCESS` is fatal:
-the ROM FW records an interface error and remains in `wfi`.
+`smc_pll_result_t smc_pll_init(void)` signature in the final ROM FW build.
+Any result other than `SMC_PLL_SUCCESS` is fatal: the ROM FW records an
+interface error and remains in `wfi`.
 |`i3c_release_reset()`, `cfg_ps()`, `init_i3c_ctrl()`, and
 `I3C_GetDriverInstance()`
 |Permit the ROM FW to boot without an active I3C implementation; I3C data
 operations report a hardware error.
+|OCAH includes an I3C implementation, but the adopter may select a different
+I3C target and driver for the final system.
 |When the ROM FW must use an active I3C target, select the open HCI
-implementation with `I3C_CORE=swap`, or provide strong implementations through
-`NONFREE_DRIVER_SOURCES` that conform to
+implementation with `I3C_CORE=swap`, or connect the adopter's I3C target
+through the SMC external AXI-Lite master (`smc_external_req_o` and
+`smc_external_resp_i`) and link strong implementations that conform to
 `drivers/include/i3c_target_driver.h`.
 |=======================================================================
 
 [[sep-rom-fw-integration]]
 ==== SEP ROM FW integration
 
-The SEP exposes the `sep_boot_rom` memory interface for its immutable BL0 ROM
-FW image. The detailed ROM-macro configuration, image-loading contract, and
+The SEP exposes the `sep_boot_rom` memory interface for its production ROM FW
+image. The detailed ROM-macro configuration, image-loading contract, and
 adopter override inventory are not yet documented here.
 
 .SEP ROM FW override inventory
@@ -188,7 +193,7 @@ adopter override inventory are not yet documented here.
 ==== Key Manager ROM FW integration
 
 The Key Manager exposes the `km_rom_mem` interface through SEP for its
-immutable ROM FW image. The detailed ROM-macro configuration, image-loading
+production ROM FW image. The detailed ROM-macro configuration, image-loading
 contract, and adopter override inventory are not yet documented here.
 
 .Key Manager ROM FW override inventory
