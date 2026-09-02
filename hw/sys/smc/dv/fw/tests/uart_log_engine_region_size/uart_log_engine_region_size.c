@@ -128,8 +128,8 @@ int main(void) {
     //
     // Bit positions come from the generated map, not literals.
     {
-        const uint32_t both = LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm
-                            | LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm;
+        const uint32_t both =
+            LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm;
         uint32_t s;
         write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, both);
         write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, both);
@@ -182,7 +182,7 @@ int main(void) {
 
         // Wait for LOG_CTRL[i] to clear
         {
-            uint32_t t = 200u;  /* see note above: keep expiry reachable */
+            uint32_t t = 200u; /* see note above: keep expiry reachable */
             while (t > 0u &&
                    (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF + (i * 4u)) & 0xFFFFu) != 0u) {
                 t--;

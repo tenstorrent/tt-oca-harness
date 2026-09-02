@@ -50,8 +50,7 @@
  * smc_io.h, so the golden is the generated map rather than a hand-copied
  * literal.
  */
-static void expect_field(const char *name, uint32_t got, uint32_t bm,
-                         uint32_t bp, uint32_t want) {
+static void expect_field(const char *name, uint32_t got, uint32_t bm, uint32_t bp, uint32_t want) {
     uint32_t val = (got & bm) >> bp;
     simputs("  ");
     simputs(name);
@@ -65,7 +64,6 @@ static void expect_field(const char *name, uint32_t got, uint32_t bm,
     simputshex32("  == generated reset ", want);
     simputs("\n");
 }
-
 
 int main(void) {
     uint32_t test_step = 0;
@@ -88,8 +86,7 @@ int main(void) {
     simputs("Step 2: Read CTRL register\n");
     uint32_t ctrl_val =
         read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(0));
-    expect_field("CTRL.BUFFER_THRESHOLD", ctrl_val,
-                 TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bm,
+    expect_field("CTRL.BUFFER_THRESHOLD", ctrl_val, TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bm,
                  TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp,
                  TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_reset);
 
@@ -99,8 +96,7 @@ int main(void) {
     simputs("Step 3: Read STATUS register\n");
     uint32_t status_val =
         read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR(0));
-    expect_field("STATUS.BUFFER_EMPTY", status_val,
-                 TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm,
+    expect_field("STATUS.BUFFER_EMPTY", status_val, TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm,
                  TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bp,
                  TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_reset);
 

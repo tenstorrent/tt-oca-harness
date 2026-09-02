@@ -88,8 +88,8 @@ static void fail_at(const char *msg) {
  * reports nothing. Mask first (which gates `next` to 0), then W1C, then read
  * back and fail. Returns the mask that was restored to INTR_ENABLE.
  */
-static void clear_intr_or_fail(uint64_t le_base, uint32_t bits,
-                               uint32_t restore_enable, const char *where) {
+static void clear_intr_or_fail(uint64_t le_base, uint32_t bits, uint32_t restore_enable,
+                               const char *where) {
     write_reg(le_base + LE_INTR_ENABLE_OFF, 0u);   /* gate next to 0 */
     write_reg(le_base + LE_INTR_STATUS_OFF, bits); /* W1C */
     uint32_t left = read_reg(le_base + LE_INTR_STATUS_OFF) & bits;
@@ -194,10 +194,9 @@ int main(void) {
     //--------------------------------------------------------------------------
     clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
                        "FAIL: could not clear before ENABLE-gating check");
-    {   /* positive arm: ENABLE=1, source stuck -> must re-latch */
+    { /* positive arm: ENABLE=1, source stuck -> must re-latch */
         uint32_t t = RELATCH_POLLS;
-        while (t > 0u &&
-               (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
+        while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
             t--;
         }
         if (t == 0u) {
@@ -315,8 +314,7 @@ int main(void) {
     // WRITE datapath and the log_write FSM IDLE/REQ arms. Assert that much.
     {
         uint32_t t = RELATCH_POLLS;
-        while (t > 0u &&
-               (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
+        while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
             t--;
         }
         if (t == 0u) {
