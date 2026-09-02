@@ -22,10 +22,12 @@ from seq_lib.sep_otbn_seq import OTBN_ADDR_STATUS
 
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
-# Every bit the register may store: the IMPLEMENTED bits only. CLOCK_GATE_CTRL is
-# a 64-bit register whose only field is pka_cg_enable[0:0], so the remaining bits
-# of both 32-bit halves are reserved and must NOT store. That is the contract the
-# all-ones write proves -- writing every bit must read back this mask alone.
+# Every bit the register may store, reserved STORAGE fields included -- see
+# mask_all() in env/sep_reg_meta.py, which exists because a field named `reserved`
+# can still be real read/write storage. CLOCK_GATE_CTRL declares only
+# pka_cg_enable[0:0] and no reserved storage, so here this equals the implemented
+# mask. That is the contract the all-ones write proves: every other bit of both
+# 32-bit halves is unimplemented and must not store.
 CLOCK_GATE_STORAGE_MASK = SEP_CPU_CTRL.mask32_all("CLOCK_GATE_CTRL")
 CLOCK_GATE_CTRL_HI = CLOCK_GATE_CTRL + 4
 

@@ -70,11 +70,24 @@ class sep_base_test(uvm_test):
 
     @staticmethod
     def rd(sig) -> int:
-        """Read a DUT signal as int, resolving X/Z to zero via the env policy."""
+        """Read a DUT signal as int, resolving unknown bits to zero.
+
+        Per BIT, not per vector. Collapsing the whole read to 0 on any
+        unresolvable bit reports a wrong value for every other lane of a wide
+        probe -- a 256-bit scratch probe with one x elsewhere read as a zeroed
+        counter, which looks exactly like a counter that stopped. Only the
+        unknown bits become 0; the known bits keep their value.
+        """
         try:
             return int(sig.value)
         except Exception:
+            pass
+        try:
+            binstr = sig.value.binstr
+        except AttributeError:
             return 0
+        resolved = "".join(c if c in "01" else "0" for c in binstr)
+        return int(resolved, 2) if resolved else 0
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:

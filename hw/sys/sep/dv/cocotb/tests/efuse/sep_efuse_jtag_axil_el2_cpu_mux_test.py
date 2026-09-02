@@ -71,6 +71,8 @@ _TOKEN1_SEED = 0x5A5A_1001
 _EFUSE_MMR_SEC_DIS_I0 = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
 _EFUSE_MMR_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
 _EFUSE_MMR_SEC_DIS_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
+# Seeded into SEC_DISABLE_TOKEN_I[0] before the token-block sample reads it.
+_SEC_DIS_I0_SEED = 0x5A5A_4001
 # Interface control sits outside the token block and must DECERR in PROD.
 _EFUSE_IFACE_PROGRAM = sym("EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")
 _BADCAB1E = 0xBADC_AB1E
@@ -237,9 +239,18 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         assert cpu_err == 0, f"CPU eFuse MMR read error count nonzero after JTAG burst: {cpu_err}"
         self.logger.info("CHK-CPU-MMR PASS: CPU eFuse MMR read error count stayed zero")
 
-        # Sample of the PROD/RMA_SIP MMR token-block allow class. Reads only —
-        # a TOKEN_EOP write would start a compare. CHK-JTAG-MMR already walks
-        # RMA TOKEN_I.
+        # Seed the token-input word first, for the same reason token1 is seeded:
+        # SEC_DISABLE_TOKEN_I is `external` sw=rw with no reset, so an unwritten
+        # read returns X. Writing a TOKEN_I word starts no compare -- only a
+        # TOKEN_EOP write does, which this checker deliberately never issues.
+        code, _ = await self.jtag_axil_op(
+            write=True, addr=_EFUSE_MMR_SEC_DIS_I0, wdata=_SEC_DIS_I0_SEED
+        )
+        assert code == 0, f"JTAG SEC_DISABLE_TOKEN_I[0] seed write not OKAY (resp={code})"
+
+        # Sample of the PROD/RMA_SIP MMR token-block allow class. Reads only
+        # beyond that seed -- a TOKEN_EOP write would start a compare.
+        # CHK-JTAG-MMR already walks RMA TOKEN_I.
         for label, addr in (
             ("SEC_DISABLE_TOKEN_I[0]", _EFUSE_MMR_SEC_DIS_I0),
             ("TOKEN_EOP", _EFUSE_MMR_TOKEN_EOP),

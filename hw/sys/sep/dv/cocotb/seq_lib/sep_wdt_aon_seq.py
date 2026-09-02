@@ -80,9 +80,11 @@ class SepWdtCfg:
         self.wkup_high_thold = rng.randrange(
             0x4_0000, 0x10_0001
         )  # large: no expiry in the count window
-        # Floored at 2, not 1, so that bark_prelock // 2 below is both non-zero
-        # and STRICTLY less than the threshold. At a drawn value of 1 the probe
-        # would equal the bark threshold and trip it.
+        # The REGWEN-scope check probes WDOG_COUNT while the watchdog runs, but it
+        # proves the write by LOWERING the counter, so it needs no relationship to
+        # this threshold. WDOG_BARK_THOLD is parked far above any count reached in
+        # that window (_chk_wdog_pet), so this value only has to be a distinct,
+        # non-zero pre-lock write.
         self.bark_prelock = rng.randrange(2, 0x1_0000)  # nonzero pre-lock BARK_THOLD
         self.bark_postlock = self.bark_prelock ^ 0xFFFF  # distinct locked-write attempt
         # WKUP_CTRL.prescaler: the wakeup counter advances once every
@@ -93,14 +95,6 @@ class SepWdtCfg:
         # Post-lock WKUP_THOLD_LO probe value: a register the WDOG lock must NOT
         # reach. Distinct from every threshold above so the readback is attributable.
         self.postlock_wkup_thold = 0x1000_0000 | rng.randrange(1, 0x1_0000)
-        # Post-lock WDOG_COUNT probe value. It must sit STRICTLY below
-        # bark_prelock: the watchdog is still enabled and REGWEN-locked when this
-        # value is written, so a probe at or above the bark threshold fires an
-        # unintended bark. With bark_prelock floored at 2, half of it is always
-        # non-zero and always strictly below, so the "the write landed" compare
-        # stays meaningful without disturbing the watchdog.
-        self.postlock_wdog_count = self.bark_prelock // 2
-        assert 0 < self.postlock_wdog_count < self.bark_prelock
 
     def summary(self) -> str:
         return (
