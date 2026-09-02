@@ -41,6 +41,12 @@ OCAH_REG_STANDALONE_RDL_FILES ?= \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/*.rdl) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/*.rdl) \
   $(OCAH_REG_SIBLING_RDL_FILES)
+# efuse_bank is a hand-maintained DV model; its RDL lives under dv/models/regs/
+# for reference only. Exclude it from regen so PeakRDL never overwrites the
+# hand-edited storage process.
+OCAH_REG_STANDALONE_RDL_FILES := $(filter-out \
+  $(OCAH_ROOT)/hw/ip/efuse/dv/models/regs/efuse_bank.rdl, \
+  $(OCAH_REG_STANDALONE_RDL_FILES))
 OCAH_EXTRA_REG_RDL_FILES ?=
 
 ocah_reg_file_block_id = $(patsubst $(OCAH_ROOT)/%,%,$(basename $(1)))
