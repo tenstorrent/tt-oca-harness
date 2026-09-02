@@ -59,7 +59,8 @@ ${PDK_ROOT}/sky130 ${PDK_ROOT}/ihp-sg13g2 ${PDK_ROOT}/gf180mcuD: ${PDK_ROOT}
 ${PDK_SENTINEL}: ${PDK_ROOT}/${TECH}
 	ciel enable --pdk=$(TECH) --pdk-root=$(PDK_ROOT) $($(TECH)_HASH)
 
-ocah-clean-pdks:
+## Remove all Installed PDKs
+ocah-synth-pdks-clean:
 	rm -rf $(PDK_ROOT)
 
 ifdef FLOW_DESIGN
