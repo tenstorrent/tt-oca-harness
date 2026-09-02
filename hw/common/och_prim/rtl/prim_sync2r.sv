@@ -25,7 +25,7 @@
   ) rand_del (
       .i_clk(i_clk),  // input                   Clock
       .i_d(i_d),  // input    [WIDTH-1:0  ]  Input Data
-      .i_reset_n           (i_reset_n  ), // input                   Active Low Reset, if synchronizer is not resetable tie to 1
+      .i_reset_n           (i_reset_n  ), // input                   Active Low Reset, if synchronizer is not resettable tie to 1
       .i_mux_sel_ovr       ({WIDTH*2{1'b0}}), // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
 
       .o_mux_sel(),      // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW

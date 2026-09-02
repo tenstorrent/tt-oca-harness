@@ -3,7 +3,7 @@
 """Generic AXI access sequence on a SEP master bus.
 
 A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue
-one register read/write through the SEP AXI agent without re-declaring a sequence
+one register read/write through the SEP AXI agent without redeclaring a sequence
 each time. The result (``rdata`` / ``resp_ok``) is published on the sequence
 object after ``start_seq``.
 """

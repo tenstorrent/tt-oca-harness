@@ -131,8 +131,8 @@ efuse_bank_reg u_efuse_bank_reg (
 // Sim-only OTP image preload, deposited into the register storage at time 0
 // so fuse data is valid before the first clock edge. It survives reset, and so
 // do words programmed at run time: the EFUSE_BANK_REG.dout field carries no
-// reset value in hw/ip/efuse/regs/efuse_bank.rdl, so the generated storage
-// process in hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv has no reset branch --
+// reset value in hw/ip/efuse/dv/models/regs/efuse_bank.rdl, so the storage
+// process in hw/ip/efuse/dv/models/efuse_bank_reg.sv has no reset branch --
 // a fuse holds its state across every reset. $readmemh cannot target the
 // unpacked struct array directly, hence the scratch array. Image selected by
 // +smc_efuse_hex / +sep_efuse_hex (default out/sep_efuse.hex).

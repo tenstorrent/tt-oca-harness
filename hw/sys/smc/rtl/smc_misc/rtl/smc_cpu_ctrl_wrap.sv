@@ -139,7 +139,7 @@ module smc_cpu_ctrl_wrap
 
 	// smc_cpu's watchdog timer is a single stage timer
 	// -> Create a pseudo dual-staged WDT by adding another timeout stage
-	//    Timing out the second stage will drive a seperate output wire
+	//    Timing out the second stage will drive a separate output wire
 	logic [31:0] max_count;
 	logic [MaxCPUCores-1:0] count_reset;
 	logic [MaxCPUCores-1:0][31:0] cycle_count;
