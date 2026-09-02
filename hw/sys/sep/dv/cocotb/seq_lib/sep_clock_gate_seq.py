@@ -3,7 +3,8 @@
 """CLOCK_GATE_CTRL placeholder representative.
 
 sep_cpu_ctrl.rdl implements one bit, pka_cg_enable[0:0], and RTL sinks it into
-an unused net. This driver is the single source of truth for that storage walk
+an unused net. This driver is the single source of truth for that storage walk,
+for the unimplemented-bit readback of both 32-bit halves of the 64-bit register,
 and for the witness CSRs that stay reachable with the bit 0 and 1 -- a
 decode-only / stub-const contract, not a live per-IP gate.
 """
@@ -21,6 +22,14 @@ from seq_lib.sep_otbn_seq import OTBN_ADDR_STATUS
 
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
+# Every bit the register may store, reserved STORAGE fields included -- see
+# mask_all() in env/sep_reg_meta.py, which exists because a field named `reserved`
+# can still be real read/write storage. CLOCK_GATE_CTRL declares only
+# pka_cg_enable[0:0] and no reserved storage, so here this equals the implemented
+# mask. That is the contract the all-ones write proves: every other bit of both
+# 32-bit halves is unimplemented and must not store.
+CLOCK_GATE_STORAGE_MASK = SEP_CPU_CTRL.mask32_all("CLOCK_GATE_CTRL")
+CLOCK_GATE_CTRL_HI = CLOCK_GATE_CTRL + 4
 
 SW_DEBUG = sym("SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR")
 
@@ -66,4 +75,12 @@ class SepClockGate(SepAxiRegDriver):
         return (await self._rd(CLOCK_GATE_CTRL)) & CLOCK_GATE_MASK
 
     async def read_witness(self, addr: int) -> int:
+        return await self._rd(addr)
+
+    async def write_raw(self, addr: int, data: int) -> None:
+        """Unmasked write, for driving the unimplemented CLOCK_GATE_CTRL bits."""
+        await self._wr(addr, data)
+
+    async def read_raw(self, addr: int) -> int:
+        """Unmasked read, so an unimplemented bit that stores is visible."""
         return await self._rd(addr)

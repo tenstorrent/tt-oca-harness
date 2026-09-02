@@ -61,9 +61,6 @@ module sep_efuse_wrapper
 	// Efuse intermediate reset
 	output logic 							   sep_intermediate_reset_no,
 
-	// PROD_DBG isolation: block LC_STATE transitions when DEMOTE is active
-	input  logic                               prod_dbg_active_i,
-
 	// Debug signals
 	output logic [9:0]                         sep_efuse_debug_o,
 	output logic [5:0]                         sep_efuse_token_match_sip_debug_o,
@@ -385,8 +382,6 @@ module sep_efuse_wrapper
 		.shadow_regs_o              (shadow_regs_o),
 
 		.ext_boot_seq_done_i		(ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
-
-		.prod_dbg_active_i          (prod_dbg_active_i),
 
 		// Debug signals
 		.is_write_locked_shadow_regs_o(sep_efuse_debug_o[0]),
