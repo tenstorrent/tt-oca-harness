@@ -4,8 +4,7 @@
 ifndef ocah_lint_markdownlint_mk
 ocah_lint_markdownlint_mk := 1
 
-OCAH_LINT_MARKDOWNLINT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_MARKDOWNLINT_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # Pinned via npx, the same Node-tooling pattern OCAH_ANTORA uses in doc/doc.mk.
 # Requires a modern Node (npx's argument parsing breaks on ancient ones; see
