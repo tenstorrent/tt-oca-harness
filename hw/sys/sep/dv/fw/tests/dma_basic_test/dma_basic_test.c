@@ -46,8 +46,8 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define SRAM_BASE 0x10000000u
-#define SRAM_SIZE 0x00040000u
+#define SRAM_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+#define SRAM_SIZE OCH_SEP_TOP_SEP_SRAM_SIZE
 #define DMA_PARAM_MAGIC 0xDA0A11C0u
 #define ASID_OT_BOTH \
     (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset | (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4))

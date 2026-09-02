@@ -35,15 +35,12 @@ from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-# CSRNG/EDN stay literal: the generated top-level export has no symbol for either
-# aperture (see the note in sep_esrc_bringup_seq.py). Convert once the register flow
-# exports them.
-CSRNG_BASE = 0x1091_5000
-EDN_BASE = 0x1091_5800
+CSRNG_BASE = sym("CSRNG_REG_MAP_BASE_ADDR")
+EDN_BASE = sym("EDN_REG_MAP_BASE_ADDR")
 
-INTR_STATE = 0x00
-INTR_ENABLE = 0x04
-INTR_TEST = 0x08
+INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR") - CSRNG_BASE
+INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
+INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
 

@@ -31,7 +31,13 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import SEP_CPU_CTRL, indexed_block_count, sym
+from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_0,
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_0,
+    SEP_CPU_CTRL,
+    indexed_block_count,
+    sym,
+)
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -47,10 +53,12 @@ CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
 ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-ALIAS_STRIDE = 0x20
-ALIAS_START = 0x00  # 64-bit, lo/hi at +0/+4
-ALIAS_END = 0x08  # 64-bit, 4KB-aligned ([11:0] masked)
-ALIAS_ATTRS = 0x10  # 64-bit; valid = bit 63 (hi word bit 31)
+ALIAS_STRIDE = (
+    sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
+)
+ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
+ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
+ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 
 # --- AP / STEE output-remap ---------------------------------------------------
 AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
@@ -61,24 +69,32 @@ REMAP_ATTRS = 0x00  # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
-FILTER_STRIDE = 0x20
-FILTER_CONFIG = 0x00  # lo = fields, hi (+4) bit 31 = locked (woset)
+FILTER_STRIDE = (
+    sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
+)
+FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
 
-WOSET_HI_BIT = 31  # remap valid[63] (R/W) and filter locked[63] (woset) both at hi[31]
+# remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
+WOSET_HI_BIT = (
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
+)
 
 # axi_pkg response codes (a locked filter entry rejects a further write with SLVERR).
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-# FILTER_CONFIG field positions (lo word).
-F_READ_ALLOWED = 1 << 0
-F_WRITE_ALLOWED = 1 << 1
-F_ENTRY_ENABLED = 1 << 4
-F_ALLOW_NS = 1 << 8
-DBW_LSB, DBW_MASK, DBW_RO_VAL = 12, 0x7, 3  # data_bus_width [14:12] RO == 3
-F_SRC_ID_LSB = 16
-F_GROUP_ID_LSB = 20
-F_ALLOW_BURST = 1 << 24
+# FILTER_CONFIG field positions (lo word), from the generated bitfield.
+F_READ_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed")
+F_WRITE_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "write_allowed")
+F_ENTRY_ENABLED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "entry_enabled")
+F_ALLOW_NS = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_ns")
+_DBW_MASK = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "data_bus_width")
+DBW_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "data_bus_width")
+DBW_MASK = _DBW_MASK >> DBW_LSB
+DBW_RO_VAL = (INBOUND_FILTER_CTRL_0.reset32("FILTER_CONFIG") >> DBW_LSB) & DBW_MASK
+F_SRC_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "src_id")
+F_GROUP_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "group_id")
+F_ALLOW_BURST = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_burst")
 
 # A representative RW pattern across the writable FILTER_CONFIG fields (NOT touching
 # the RO data_bus_width [14:12]). src_id=0x5, group_id=0xA.

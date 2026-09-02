@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import indexed_block_count, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_0, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -122,7 +122,9 @@ WIDEN_ADJ_BELOW = (
 # The last table entry: the write-once lock is sticky until reset, so it must not
 # land on an entry the matrix or burst walk reprograms.
 WIDEN_ENTRY = INFILT_N_ENTRIES - 1
-FILTER_LOCKED_HI_BIT = 31  # FILTER_CONFIG.locked[63] = bit 31 of the hi word
+FILTER_LOCKED_HI_BIT = (
+    INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32
+)
 
 
 class SepInboundFilterWidenCfg:

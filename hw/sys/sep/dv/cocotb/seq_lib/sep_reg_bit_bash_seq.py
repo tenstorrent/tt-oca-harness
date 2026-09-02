@@ -99,6 +99,7 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     # INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Reading one to check
     # a reset value therefore destroys the state it is checking.
     "RDATA": "FIFO",
+    "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
     "CMD_REQ": "trigger",
@@ -238,6 +239,7 @@ _TOUCH_DENY_NAME: dict[str, str] = {
     "IRQP": "W1C status",
     "ERR_CODE": "W1C status",
     "ERROR_CODE": "W1C status",
+    "ERROR_FLAGS": "read-clear status",
     "WKUP_CAUSE": "W1C status",
     "RANGE_VALID": "arms the range",
     # Thresholds clamp to FIFO depth; export mask is wider than storage.

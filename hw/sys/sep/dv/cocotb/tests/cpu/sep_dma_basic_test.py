@@ -46,14 +46,15 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_basic_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "dma_basic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_basic_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
-_SRAM_BASE = 0x1000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
