@@ -279,7 +279,12 @@ CCI_TARBALL     := $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION).tar.gz
 # Fingerprint by target+version (not the $(CXX) spelling) so `CXX=/path/to/g++`
 # and an activated-PATH `g++` of the same compiler don't ping-pong reconfigures.
 CXX_ID        := $(shell $(CXX) -dumpmachine 2>/dev/null)-$(shell $(CXX) -dumpversion 2>/dev/null)
-VP_CONFIG_SIG := $(SYSTEMC_HOME)|$(CCI_HOME)|$(BOOST_ROOT)|$(OPENSSL_ROOT)|c++$(CXX_STD)|$(CXX_ID)|$(STATUS_VALUES_PATH)
+# Fingerprint the status table's CONTENTS, not just its path. The path alone
+# never changes, so adding a SEP_MSG_* code left the configure-baked decoder
+# stale and the new code decoded as SEP_MSG_UNKNOWN -- which is precisely the
+# "configure-baked status table change" this signature says it covers.
+STATUS_VALUES_SIG := $(shell cksum '$(STATUS_VALUES_PATH)' 2>/dev/null | cut -d' ' -f1)
+VP_CONFIG_SIG := $(SYSTEMC_HOME)|$(CCI_HOME)|$(BOOST_ROOT)|$(OPENSSL_ROOT)|c++$(CXX_STD)|$(CXX_ID)|$(STATUS_VALUES_PATH)@$(STATUS_VALUES_SIG)
 DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 
 .PHONY: help scratch-build download deps deps-info vp vp-clean clean env enable_vp \
