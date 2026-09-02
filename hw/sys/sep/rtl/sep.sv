@@ -353,6 +353,7 @@ module sep
     edn_pkg::edn_rsp_t entropy_pool_edn_rsp;
     logic entropy_pool_low;
     logic entropy_pool_fill_stall;
+    logic entropy_pool_err;
     logic trng_entropy_clear;
 
     logic [31:1] nmi_vec;
@@ -553,19 +554,21 @@ module sep
         sep_internal_interrupts[35]     = intr_abr_notif;
         // Entropy-pool FIFO: separate PIC lines so firmware can distinguish a
         // transient low-water condition (informational, pool draining faster than
-        // it fills) from a sustained EDN stall (fault, fill path not making progress).
+        // it fills) from a sustained EDN stall (fault, fill path not making progress)
+        // and a pool pointer-integrity fault
         sep_internal_interrupts[36]     = entropy_pool_low;
         sep_internal_interrupts[37]     = entropy_pool_fill_stall;
-        sep_internal_interrupts[38]     = token_match_fault;
+        sep_internal_interrupts[38]     = entropy_pool_err;
+        sep_internal_interrupts[39]     = token_match_fault;
         // Secure DMA bridge faults. Level-sensitive: both sources are latched in the DMA
         // wrapper and held until firmware writes DMA_BUS_ERR_CLEAR. An edge-triggered
         // gateway would miss them after a WDT CPU reset, which resets the CPU but not the
         // DMA, leaving the source already high before the gateway is armed.
-        sep_internal_interrupts[39]     = dma_reg_bus_err;
-        sep_internal_interrupts[40]     = dma_host_intg_err;
+        sep_internal_interrupts[40]     = dma_reg_bus_err;
+        sep_internal_interrupts[41]     = dma_host_intg_err;
         // Peripheral register-bridge faults share one source; firmware reads
         // PERIPH_BUS_ERR_STATUS to find which block faulted.
-        sep_internal_interrupts[41]     = |periph_bus_err;
+        sep_internal_interrupts[42]     = |periph_bus_err;
     end
 
     assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
@@ -956,6 +959,7 @@ module sep
         // Status / interrupts to the SEP PIC
         .pool_low_o               (entropy_pool_low),
         .fill_stall_o             (entropy_pool_fill_stall),
+        .pool_err_o               (entropy_pool_err),
         .fifo_level_o             ()
     );
 

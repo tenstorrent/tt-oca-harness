@@ -351,11 +351,14 @@ one per sink domain:
   32-bit AXI-Stream feed into a small round-robin native-protocol EDN
   fan-out;
 * endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
-  `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates two
-  dedicated interrupts: SEP IRQ 37 (`entropy_pool_low`, pool level below
-  watermark) and IRQ 38 (`entropy_pool_fill_stall`, fill path not making
-  progress). PIC source ids are assigned in <<sep-cpu-interrupt-vector-map>>,
-  which is authoritative; quote it rather than restating the numbers here.
+  `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates three
+  dedicated interrupts on adjacent PIC slots: SEP IRQ 37
+  (`entropy_pool_low`, pool level below watermark), IRQ 38
+  (`entropy_pool_fill_stall`, fill path not making progress) and IRQ 39
+  (`entropy_pool_err`, pool pointer integrity fault, inert in the current
+  configuration). PIC source ids are assigned in
+  <<sep-cpu-interrupt-vector-map>>, which is authoritative; quote it rather
+  than restating the numbers here.
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so

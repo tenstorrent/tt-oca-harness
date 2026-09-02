@@ -13,7 +13,7 @@ fault path: common-mode invert of a match (legal mismatch, no sticky),
 common-mode invert of a mismatch (legal match, no sticky — the fail-open
 hole), collapsed pair, two-instance disagreement, 6'b111111 on the match
 status, sticky bit / IRQ survive a valid-token retry, and
-``sep_internal_interrupts[38]`` (PIC source 39). Collapse and disagreement
+``sep_internal_interrupts[39]`` (PIC source 40). Collapse and disagreement
 have no frontdoor; the tb injects them on the RMA_SIP comparator rails.
 
 Does not stretch the Phase 1 stitch e2e. Real fuse sense. Starts in PROD
@@ -197,12 +197,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         irq = self._irq38()
         assert code == TOKEN_ERROR, f"collapsed pair must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"collapse did not set SIP fault: 0x{fault:x}"
-        assert irq == 1, "collapse did not raise sep_internal_interrupts[38]"
+        assert irq == 1, "collapse did not raise sep_internal_interrupts[39]"
         self.logger.info(
             "CHK-COLLAPSE PASS: pair collapse -> code=0x%02x FAULT=0x%08x irq38=1", code, fault
         )
         self.logger.info("CHK-ERROR-CODE PASS: every match-status bit is 1 (0x%02x)", code)
-        self.logger.info("CHK-IRQ-38 PASS: sep_internal_interrupts[38] (PIC source 39) asserted")
+        self.logger.info("CHK-IRQ-39 PASS: sep_internal_interrupts[39] (PIC source 40) asserted")
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         code = await self._present_sip(sip_token)

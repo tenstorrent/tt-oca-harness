@@ -21,10 +21,10 @@ tied to zero inside the core. Firmware programs source `N` by writing the
 [[sep-cpu-interrupt-vector-map]]
 ==== SEP CPU Interrupt Vector Map
 
-The PIC supports 255 external sources. Slots 1–42 are individually assigned to
+The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 43–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 44–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.
 
 [width="100%",cols="10%,35%,55%",options="header",]
@@ -185,36 +185,46 @@ not here; see <<sep-non-pic-paths>>.
 |Entropy pool FIFO fill-path stall (fault: EDN not making progress)
 
 |`39`
+|Entropy pool pointer fault
+|Entropy pool FIFO read/write pointer integrity fault (fault). The pool's
+pointer-integrity check is not built in the current configuration, so this
+source is tied to zero and never asserts; the slot is assigned anyway so that
+enabling the check later does not renumber the map. When live it is
+level-sensitive and holds until a `TRNG_ENTROPY_CLEAR` pool scrub resets the
+pointers; there is no write-one-to-clear, so firmware must mask the source or
+scrub the pool rather than acknowledge it.
+
+|`40`
 |Token match fault
 |eFuse token comparator redundancy fault (fault). The OR of the three sticky
 `TOKEN_MATCH_FAULT` bits. Those bits are software-read-only and clear only on
-reset, so this source stays asserted. Firmware must mask PIC source 39 after
+reset, so this source stays asserted. Firmware must mask PIC source 40 after
 it has observed the fault; there is no write-one-to-clear, and an unmasked
 handler re-enters.
 
-|`40`
+|`41`
 |DMA register-path bus error
 |A CPU access to a Secure DMA register returned a TL-UL error response
 (unmapped or misaligned offset, or a RACL denial). The faulting access also
 received SLVERR synchronously. Latched and held until firmware writes
-`DMA_BUS_ERR_CLEAR.clr`; unlike PIC source 39 this source is clearable, so
+`DMA_BUS_ERR_CLEAR.clr`; unlike PIC source 40 this source is clearable, so
 firmware acknowledges it rather than masking it.
 
-|`41`
+|`42`
 |DMA host-path integrity/bus fault
 |Either the fabric returned a non-OKAY AXI response to a DMA transfer, or a
 TL-UL command-integrity check failed on a command issued by the DMA. The
 integrity case is a fault-detection event with no other reporting path.
 Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
 
-|`42`
+|`43`
 |Peripheral register-bridge fault
 |The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
 CSRNG, EDN and the watchdog timer. Read `PERIPH_BUS_ERR_STATUS` to identify
 which block faulted, and clear that block's bit in `PERIPH_BUS_ERR_CLEAR`;
 clears are per-block so acknowledging one cannot discard another block's fault.
 
-|`[43–255]`
+|`[44–255]`
 |Reserved (external band)
 |Chip-level external interrupt inputs
 |=======================================================================
