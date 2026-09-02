@@ -146,7 +146,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "66ce4f176e812900e34f874caa0ea0b0d3928f65" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "7a452ce59e355ea6dbaec5241217ba3fca057664" }
     include_from_upstream:
       - "src"
       - "include"
@@ -952,6 +952,8 @@ sources:
       - hw/sys/sep/rtl/kmac_wrapper.sv
       - hw/sys/sep/rtl/sep.sv
       - hw/sys/sep/rtl/sep_cpu.sv
+      - hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv
+      - hw/sys/sep/rtl/sep_trng.sv
       - hw/sys/sep/rtl/sep_crypto.sv
       - hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv
       - hw/sys/sep/rtl/sep_dma_wrap.sv
@@ -960,6 +962,7 @@ sources:
       - hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
       - hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_ot_spi_wrap.sv
+      - hw/sys/sep/rtl/sep_isolate_rst_seq.sv
       - hw/sys/sep/rtl/sep_reset_ctrl.sv
       - hw/sys/sep/rtl/sep_rom_interface_shim.sv
       - hw/sys/sep/rtl/sep_sram.sv
@@ -969,10 +972,6 @@ sources:
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_tcm_wrapper.sv
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
-      - hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv
-      - hw/sys/sep/rtl/sep_crypto_axi_isolate.sv
-      - hw/sys/sep/rtl/sep_crypto_trng_axi_isolate.sv
-      - hw/sys/sep/rtl/sep_trng.sv
       # =====================================================================
       # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
       #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
@@ -983,7 +982,7 @@ sources:
       #                Key-Vault ports and the kv_* client helpers. Do not use it
       #                as a feature switch in OCAH code.
       #   SEP_ABR_EN - OCAH's own switch for "is the Adams Bridge block present in
-      #                this SEP build". Used by hw/sys/sep/rtl/sep_crypto.sv and
+      #                this SEP build". Used by SEP crypto RTL and
       #                hw/top/sep_ip_integration.sv (engine + SRAMs). Enabling ABR
       #                therefore always brings CALIPTRA along; sep_crypto.sv also
       #                carries an elaboration check that rejects the mismatch.
