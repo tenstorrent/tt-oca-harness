@@ -4,8 +4,7 @@
 ifndef ocah_format_clang_format_mk
 ocah_format_clang_format_mk := 1
 
-OCAH_FORMAT_C_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_FORMAT_C_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # Path to format, scoped by filesystem rather than by block. Not named PATH=,
 # which would override the shell's own command-search PATH.
