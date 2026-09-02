@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEC_DIS token-match override of LCC ``FEAT_CTRL``.
+"""SEC_DIS token-match override of LCC ``FEAT_CTRL``, plus boot release.
 
 RAND-NONE. Real fuse sense (no ``+skip_fuse_sense``). The comparator hashes
 the written ``SEC_DISABLE_TOKEN_I`` and compares it to the metal expected
@@ -10,8 +10,14 @@ match. A nonzero token still mismatches. On match, ``sec_dis`` asserts and
 ``FEAT_CTRL`` follows ``feat_ctrl_expected(..., sec_dis=1)`` (all features
 on, test group still gated by ``SECURE_TM=0``). A later mismatch drops
 ``sec_dis`` and restores the fail-closed PROD golden. The test does not
-force ``sec_dis``. The token is written over the CPU-LSU AXI MMR after
-sense; JTAG ``TOKEN_EOP`` activate is not claimed.
+force ``sec_dis``.
+
+``security_disable.adoc``: once SEC_DIS is active, SEP boots even if fuse
+sense never completes. The first match is presented after
+``release_no_cpu_reset`` and before ``sep_fuse_sense_done_o``. With
+``ext_boot_seq_done_i`` already 1, ``sep_cpu_reset_n_o`` must be 1. The
+token is written over the CPU-LSU AXI MMR (xbar and eFuse sit on
+``rst_ni``). JTAG ``TOKEN_EOP`` activate is not claimed.
 """
 
 from __future__ import annotations
@@ -40,7 +46,7 @@ _TB_SEC_DIS_DIGEST = 0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0
 
 @pyuvm.test()
 class sep_sec_dis_override_test(sep_base_test):
-    """Match opens FEAT_CTRL; mismatch restores fail-closed PROD."""
+    """Match opens FEAT_CTRL and must release CPU reset before sense-done."""
 
     async def _present(self, token: int) -> SepRmaTokenMatchSeq:
         seq = SepRmaTokenMatchSeq(TOKEN_SEC_DISABLE, token)
@@ -69,12 +75,42 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         return ctl.feat_ctrl
 
+    def _check_boot_release_while_sense_open(self) -> None:
+        """SEC_DIS match must release CPU reset before sense-done.
+
+        ``hw/sys/sep/doc/security_disable.adoc``: once SEC_DIS is active,
+        SEP boots even if fuse sense never completes. ``ext_boot_seq_done_i``
+        is already 1, so the remaining term is sense. A finished sense is
+        not this window.
+        """
+        dut = cocotb.top
+        assert not self.rd(dut.sep_fuse_sense_done_o), (
+            "CHK-BOOT-RELEASE FAIL: sep_fuse_sense_done_o already 1; no pre-sense window"
+        )
+        assert self.rd(dut.ext_boot_seq_done_i), (
+            "CHK-BOOT-RELEASE FAIL: ext_boot_seq_done_i is 0; sense is not the held term"
+        )
+        sec_dis = int(dut.lcc_security_disable_probe_o.value) & 0x1
+        assert sec_dis == 1, (
+            f"CHK-BOOT-RELEASE FAIL: sec_dis={sec_dis} want 1 before the reset check"
+        )
+        cpu_rst = self.rd(dut.sep_cpu_reset_n_o)
+        fabric_rst = self.rd(dut.dbg_sep_reset_n_o)
+        assert cpu_rst == 1 and fabric_rst == 1, (
+            f"CHK-BOOT-RELEASE FAIL: sec_dis=1 sense_done=0 ext_boot_seq_done=1 "
+            f"but sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst} "
+            f"(spec: SEP boots if sense never completes)"
+        )
+        self.logger.info(
+            "CHK-BOOT-RELEASE PASS: sec_dis=1 sense_done=0 "
+            "sep_cpu_reset_n_o=1 dbg_sep_reset_n_o=1"
+        )
+
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
         )
         self.write_efuse_image(image)
-        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
         zero_digest = token_digest(_MATCH_TOKEN)
         assert zero_digest == _TB_SEC_DIS_DIGEST, (
@@ -89,6 +125,15 @@ class sep_sec_dis_override_test(sep_base_test):
         closed = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
         opened = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=1)
         assert closed != opened, "CHK-OVERRIDE FAIL: fail-closed and override goldens are identical"
+
+        await self.release_no_cpu_reset()
+        pre = await self._present(_MATCH_TOKEN)
+        assert pre.match_code == TOKEN_MATCH, (
+            f"CHK-BOOT-RELEASE FAIL: zero token code=0x{(pre.match_code or 0):02x} "
+            f"want MATCH 0x{TOKEN_MATCH:02x} before sense-done"
+        )
+        self._check_boot_release_while_sense_open()
+        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
         mm = await self._present(_MISMATCH_TOKEN)
         assert mm.match_code == TOKEN_MISMATCH, (
