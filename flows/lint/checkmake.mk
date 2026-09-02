@@ -4,8 +4,7 @@
 ifndef ocah_lint_checkmake_mk
 ocah_lint_checkmake_mk := 1
 
-OCAH_LINT_CHECKMAKE_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_CHECKMAKE_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 
 # checkmake is a Go binary with no PyPI wheel; CI fetches a pinned release
 # (see .github/workflows/lint.yml's setup-tools) the same way lint-sv-slang

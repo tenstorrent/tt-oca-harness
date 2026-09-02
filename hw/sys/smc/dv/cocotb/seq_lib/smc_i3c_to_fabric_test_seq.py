@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import I3C_CG_EN, smc_addr
+from .smc_addr_map import I3C_CG_EN, smc_addr, smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-I3C0_HCI_VERSION = smc_addr("SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR")
+I3C0_HCI_VERSION = smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR", 0)
 # OpenTitan / OCA I3C HCI_VERSION reset observed on this DUT.
 I3C_HCI_VERSION_RESET = 0x120
 
