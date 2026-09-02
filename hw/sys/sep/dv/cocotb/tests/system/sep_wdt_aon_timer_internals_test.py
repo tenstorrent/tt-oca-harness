@@ -63,6 +63,11 @@ WKUP_CAUSE_BIT = 1 << 0
 # resolve within the AXI timeout, while still exercising the count/expiry/lock paths.
 WDT_CLK_RATIO = 8
 
+# clk_wdt ticks the free-running WDOG_COUNT must climb before the REGWEN-scope
+# probe lowers it. A literal: it is the non-vacuity anchor for that check and
+# must not move with any seeded value.
+_COUNT_RUN_FLOOR = 40
+
 
 @pyuvm.test()
 class sep_wdt_aon_timer_internals_test(sep_base_test):
@@ -107,6 +112,21 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         while waited < timeout_cycles:
             val = await self.wdt.read(addr)
             if val >= floor:
+                return True, val
+            await ClockCycles(cocotb.top.clk_i, step)
+            waited += step
+        return False, val
+
+    async def _poll_at_most(
+        self, addr: int, ceiling: int, *, timeout_cycles: int, step: int
+    ) -> tuple[bool, int]:
+        """Poll addr until the read value is <= ceiling or timeout. The mirror of
+        _poll_at_least, for proving a write that LOWERS a free-running counter."""
+        waited = 0
+        val = 0
+        while waited < timeout_cycles:
+            val = await self.wdt.read(addr)
+            if val <= ceiling:
                 return True, val
             await ClockCycles(cocotb.top.clk_i, step)
             waited += step
@@ -190,8 +210,11 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         spec bound; a prescaler that is decoded but not applied advances at the
         undivided rate and fails the bound.
         """
-        window = 60  # clk_wdt ticks per measurement window
         presc = self.cfg_wdt.wkup_prescaler
+        # Window sized from the programmed divisor so the divided run must tick.
+        # A frozen counter then fails the lower bound; a prescaler that is
+        # ignored fails the upper bound. Both bounds come from the divisor.
+        window = 4 * (presc + 1)
         adv_fast = await self._count_advance(0, window)
         adv_slow = await self._count_advance(presc, window)
         # Nonvacuity against an independent literal: the undivided run must make real
@@ -200,21 +223,30 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-PRESCALE: prescaler=0 advanced only {adv_fast} over {window} "
             f"clk_wdt ticks; the divided-rate bound below would be vacuous"
         )
-        # Spec bound from the programmed divisor (plus one tick of CSR-read skew at
-        # each end of the window), NOT from the measured fast run.
-        bound = window // (presc + 1) + 2
-        assert adv_slow <= bound, (
+        expected = window // (presc + 1)
+        bound_lo = 1
+        bound_hi = expected + 2
+        assert adv_slow >= bound_lo, (
             f"CHK-WKUP-PRESCALE: prescaler={presc} advanced {adv_slow} over {window} "
-            f"clk_wdt ticks, above the divided bound {bound} (prescaler not applied?)"
+            f"clk_wdt ticks; a frozen wakeup counter still satisfies an upper bound"
+        )
+        assert adv_slow <= bound_hi, (
+            f"CHK-WKUP-PRESCALE: prescaler={presc} advanced {adv_slow} over {window} "
+            f"clk_wdt ticks, above the divided bound {bound_hi} (prescaler not applied?)"
+        )
+        assert adv_slow < adv_fast, (
+            f"CHK-WKUP-PRESCALE: divided advance {adv_slow} is not below the "
+            f"undivided advance {adv_fast}"
         )
         self.logger.info(
             "CHK-WKUP-PRESCALE PASS: WKUP_COUNT advanced %d ticks with prescaler=0 and "
-            "%d with prescaler=%d over the same %d-tick window (bound %d)",
+            "%d with prescaler=%d over the same %d-tick window (bounds %d..%d)",
             adv_fast,
             adv_slow,
             presc,
             window,
-            bound,
+            bound_lo,
+            bound_hi,
         )
 
     async def _chk_wkup_expire(self) -> None:
@@ -391,30 +423,44 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-REGWEN-SCOPE: WKUP_THOLD_LO write blocked by the WDOG lock "
             f"(0x{thold_rb:08x} != 0x{thold_val:08x})"
         )
-        # Stop the watchdog before poking its counter. WDOG_CTRL is still enabled
-        # from the pet check and BARK_THOLD holds a seeded value, so a probe above
-        # that threshold fires an unintended bark on roughly half the seeds and
-        # leaves the block in a seed-dependent interrupt state. WDOG_CTRL is
-        # itself REGWEN-locked, so disabling it here would be rejected -- park the
-        # counter at zero first and restore it after the probe instead.
-        count_val = self.cfg_wdt.postlock_wdog_count
+        # WDOG_COUNT is a FREE-RUNNING counter and WDOG_CTRL is enabled from the
+        # pet check -- WDOG_CTRL is itself REGWEN-locked, so it cannot be turned
+        # off here. That rules out proving the write by RAISING the counter: it
+        # reaches any small target on its own, so a write the lock wrongly blocked
+        # would still be seen to "land", and a target near the seeded bark
+        # threshold trips a bark instead.
+        #
+        # Prove the write by LOWERING the counter, which free running can never
+        # do. Let it climb past a literal floor first -- the non-vacuity anchor,
+        # which does not move with any seeded value -- then write zero and require
+        # the readback to fall below the value held just before the write. A
+        # blocked write leaves the counter at or above that value, still climbing.
+        ran, pre_val = await self._poll_at_least(
+            WDOG_COUNT,
+            _COUNT_RUN_FLOOR,
+            timeout_cycles=400 * self._tick,
+            step=4 * self._tick,
+        )
+        assert ran, (
+            f"CHK-REGWEN-SCOPE: WDOG_COUNT never reached {_COUNT_RUN_FLOOR} with the "
+            f"watchdog enabled (read 0x{pre_val:08x}) -- the counter is not running, so "
+            f"the write test below would be vacuous"
+        )
         await self.wdt.write(WDOG_COUNT, 0)
-        await self.wdt.write(WDOG_COUNT, count_val)
-        landed, count_rb = await self._poll_at_least(
-            WDOG_COUNT, count_val, timeout_cycles=40 * self._tick, step=4 * self._tick
+        landed, count_rb = await self._poll_at_most(
+            WDOG_COUNT, pre_val - 1, timeout_cycles=40 * self._tick, step=4 * self._tick
         )
         assert landed, (
-            f"CHK-REGWEN-SCOPE: WDOG_COUNT write blocked by the WDOG lock "
-            f"(0x{count_rb:08x} < 0x{count_val:08x})"
-        )
-        assert count_rb <= count_val + 0x100, (
-            f"CHK-REGWEN-SCOPE: WDOG_COUNT read 0x{count_rb:08x}, more than the CDC "
-            f"tolerance above the written 0x{count_val:08x}"
+            f"CHK-REGWEN-SCOPE: WDOG_COUNT write blocked by the WDOG lock -- the counter "
+            f"never fell below the 0x{pre_val:08x} it held before the write "
+            f"(read 0x{count_rb:08x})"
         )
         await self.wdt.write(WDOG_COUNT, 0)  # pet again: leave the watchdog far from bark
         self.logger.info(
             "CHK-REGWEN-SCOPE PASS: with WDOG_REGWEN=0, WKUP_THOLD_LO took 0x%08x and "
-            "WDOG_COUNT took 0x%08x -- the lock covers the watchdog config only",
+            "WDOG_COUNT fell from 0x%08x to 0x%08x on a write the lock did not block "
+            "-- the lock covers the watchdog config only",
             thold_rb,
+            pre_val,
             count_rb,
         )

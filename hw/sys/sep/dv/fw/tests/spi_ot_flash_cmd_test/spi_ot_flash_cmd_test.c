@@ -518,7 +518,7 @@ int main(void) {
     } else if (sr2 != FLASH_SR2_SEEDED) {
         sep_mbx_puts("FAIL: CHK-RDSR2 got ");
         sep_mbx_puthex(sr2);
-        sep_mbx_puts(" exp 0x5a (SR1 reads 0x02 here; 0x00 means a dead RX path)\n");
+        sep_mbx_puts(" exp 0x5a (0x02 is a 0x35-as-0x05 fold; 0x00 is a dead RX)\n");
         errors++;
     } else {
         sep_mbx_puts("CHK-RDSR2 PASS: opcode 0x35 returned the seeded SR2 0x5a, not "
