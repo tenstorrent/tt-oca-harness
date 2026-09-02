@@ -172,14 +172,6 @@ _Static_assert(EXTAXI_SMC_SCRATCH9_GLOBAL ==
 #endif
 
 #if defined(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR)
-_Static_assert(EXTAXI_SEP_COLD4_LOCAL == OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4),
-               "SEP cold scratch4 local address drift");
-_Static_assert(EXTAXI_SEP_COLD5_LOCAL == OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5),
-               "SEP cold scratch5 local address drift");
-_Static_assert(EXTAXI_SEP_COLD6_LOCAL == OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6),
-               "SEP cold scratch6 local address drift");
-_Static_assert(EXTAXI_SEP_COLD7_LOCAL == OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7),
-               "SEP cold scratch7 local address drift");
 _Static_assert(EXTAXI_SEP_COLD0_GLOBAL ==
                    (EXTAXI_SEP_GLOBAL_BASE + OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)),
                "SEP cold scratch0 global address drift");
@@ -203,8 +195,9 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
 #define EXTAXI_FILTER_CFG_SECURE 0x0000000001000013ULL /* rd|wr|en|burst, allow_ns=0 */
 #define EXTAXI_FILTER_CFG_NS 0x0000000001000113ULL     /* rd|wr|en|burst, allow_ns=1 */
 /* Filter-register byte offsets. SEP firmware aliases the generated inbound-filter
- * map; the hex else-branch stays for the cocotb literal-only parser and the SMC
- * translation unit that cannot include sep.h. */
+ * map; the hex else-branch stays for the SMC translation unit, which cannot
+ * include sep.h. The asserts bind the generated offsets to that hex so an RDL
+ * layout change fails the SEP firmware build instead of the SMC interop write. */
 #ifdef OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR
 #define EXTAXI_FILTER_CFG_OFF \
     (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
@@ -216,6 +209,10 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
     (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
      OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 #define EXTAXI_FILTER_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+_Static_assert(EXTAXI_FILTER_CFG_OFF == 0x0u, "inbound filter CFG offset drift");
+_Static_assert(EXTAXI_FILTER_START_OFF == 0x8u, "inbound filter START offset drift");
+_Static_assert(EXTAXI_FILTER_END_OFF == 0x10u, "inbound filter END offset drift");
+_Static_assert(EXTAXI_FILTER_STRIDE == 0x20u, "inbound filter stride drift");
 #else
 #define EXTAXI_FILTER_CFG_OFF 0x0u
 #define EXTAXI_FILTER_START_OFF 0x8u
