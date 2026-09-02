@@ -21,7 +21,9 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-// MIPI I3C HCI register offsets inside the I3C CSR window.
+// HCI lives at the I3C CSR base in both the open stub window and the vendor
+// I3CCSR map the nonfree overlay substitutes.
+#define I3C0_CSR_BASE SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_BASE_ADDR
 #define I3C_HCI_VERSION_OFFSET 0x00
 #define I3C_HC_CONTROL_OFFSET 0x04
 #define I3C_HC_CAPABILITIES_OFFSET 0x0C
@@ -32,15 +34,15 @@
 // read-only and read/write registers so we exercise both AXI read and write
 // channels of the stub.
 static const uint64_t I3C_READ_REGS[] = {
-    SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_HCI_VERSION_OFFSET,
-    SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_HC_CONTROL_OFFSET,
-    SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_HC_CAPABILITIES_OFFSET,
-    SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_PRESENT_STATE_OFFSET,
+    I3C0_CSR_BASE + I3C_HCI_VERSION_OFFSET,
+    I3C0_CSR_BASE + I3C_HC_CONTROL_OFFSET,
+    I3C0_CSR_BASE + I3C_HC_CAPABILITIES_OFFSET,
+    I3C0_CSR_BASE + I3C_PRESENT_STATE_OFFSET,
 };
 
 static const uint64_t I3C_WRITE_REGS[] = {
-    SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_HC_CONTROL_OFFSET,
-    SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_INTR_STATUS_ENABLE_OFFSET,
+    I3C0_CSR_BASE + I3C_HC_CONTROL_OFFSET,
+    I3C0_CSR_BASE + I3C_INTR_STATUS_ENABLE_OFFSET,
 };
 
 int main(void) {
@@ -66,7 +68,7 @@ int main(void) {
 
     // Read-after-write to confirm the bus is still alive after the writes.
     uint32_t readback =
-        read_reg(SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR + I3C_HC_CONTROL_OFFSET);
+        read_reg(I3C0_CSR_BASE + I3C_HC_CONTROL_OFFSET);
     simputshex32("[i3c_stub_sanity] post-write readback = ", readback);
 
     // If we got here, none of the I3C accesses hung the CPU.
