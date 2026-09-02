@@ -208,8 +208,10 @@ master = OcahAxiLiteMasterAgent(
 | `await master.wait_for_reset()` | `None` | |
 | `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Compatibility helper |
 | `await master.read(addr, *, prot)` | `int` (data) | Compatibility helper |
-| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection |
+| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection; contiguous partial `strb` supported |
 | `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Use for read response inspection |
+| `await master.write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew and deferred BREADY (SV-UVM parity op) |
+| `await master.read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low after RVALID; `hold_stable` reports RDATA/RRESP stability (SV-UVM parity op) |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `master.configure(**kwargs)` | `None` | Same keys as AXI4, minus ID/burst/size |
 | `master.get_statistics()` | `dict` | |
