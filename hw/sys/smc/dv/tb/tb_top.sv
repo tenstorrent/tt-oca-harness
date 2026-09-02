@@ -2252,9 +2252,27 @@ module smc_uvm_top
                        / SCRATCH_BYTES_PER_ENTRY;
     end
 
+    // The CPU memory macros live inside smc_ip_integration, so the DV
+    // collateral binds into it. One bind statement covers both instances. Dual
+    // tests never inject ECC, so those inputs are tied off; the counters and
+    // the image backdoors are what this build needs. Port expressions are
+    // elaborated in smc_ip_integration's scope.
+    bind smc_ip_integration smc_cpu_mem_dv u_smc_cpu_mem_dv (
+        .clk_i                (clk_smc_i),
+        .rst_ni               (rst_primary_smc_clk_ni),
+        .rom_req_i            (rom_intf_req),
+        .scratch_ram_req_i    (scratch_ram_intf_req),
+        .l1_dcache_data_req_i (l1_dcache_data_intf_req),
+        .ecc_inject_sbe_i     (1'b0),
+        .ecc_inject_dbe_i     (1'b0),
+        .ecc_poke_en_i        (1'b0),
+        .ecc_poke_entry_i     (32'd0),
+        .ecc_poke_mask_i      (2'd0)
+    );
+
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_peek_bank
         assign peek_bank_data[b] =
-            u_dut.u_smc_wrapper.u_smc_cpu_mem_integration.u_mems
+            u_dut.u_smc_wrapper.u_smc_ip_integration.u_mems
                 .gen_scratch_rams[b].mem.mem.mem[peek_entry];
     end
 
@@ -2270,7 +2288,7 @@ module smc_uvm_top
 
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_bfm_peek_bank
         assign bfm_peek_bank_data[b] =
-            u_bfm.u_smc_wrapper.u_smc_cpu_mem_integration.u_mems
+            u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems
                 .gen_scratch_rams[b].mem.mem.mem[bfm_peek_entry];
     end
 
@@ -2304,7 +2322,7 @@ module smc_uvm_top
             if (bfm_rom_fd != 0) begin
                 $fclose(bfm_rom_fd);
                 $readmemh(bfm_rom_path,
-                          u_bfm.u_smc_wrapper.u_smc_cpu_mem_integration.u_mems.rom_mem.mem.mem);
+                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.rom_mem.mem.mem);
                 $display("[tb_top:dual] u_bfm ROM override (hex) %s", bfm_rom_path);
             end else begin
                 $error("[tb_top:dual] missing +bfm_rom_hex image %s", bfm_rom_path);
@@ -2314,7 +2332,7 @@ module smc_uvm_top
             if (bfm_rom_fd != 0) begin
                 $fclose(bfm_rom_fd);
                 $readmemb(bfm_rom_path,
-                          u_bfm.u_smc_wrapper.u_smc_cpu_mem_integration.u_mems.rom_mem.mem.mem);
+                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.rom_mem.mem.mem);
                 $display("[tb_top:dual] u_bfm ROM override (bin64) %s", bfm_rom_path);
             end else begin
                 $error("[tb_top:dual] missing +bfm_rom_bin64 image %s", bfm_rom_path);
@@ -2478,13 +2496,6 @@ module smc_dual_inst
         .ss_config_o                (),
         .ss_reset_ctrl_o            (),
         .sync_irq_o                 (),
-        .cpu_rom_read_count_o       (rom_read_count_o),
-        .cpu_scratch_read_count_o   (scratch_read_count_o),
-        .cpu_scratch_write_count_o  (scratch_write_count_o),
-        .cpu_dcache_write_count_o   (),
-        .cpu_ecc_inject_sbe_i       (1'b0),
-        .cpu_ecc_inject_dbe_i       (1'b0),
-        .cpu_scratch0_inject_fire_o (),
         .disable_sram_auto_init_i   (1'b1),
         .init_mem_done_o            (init_mem_done_o),
         .chiplet_is_primary_i       (chiplet_is_primary_i),
@@ -2526,6 +2537,15 @@ module smc_dual_inst
         .uart_interrupt_o           (),
         .efuse_debug_bus_o          ()
     );
+
+    // The CPU memory macros sit inside smc_ip_integration, so the counters come
+    // from the DV collateral bound into it rather than from wrapper ports.
+    assign rom_read_count_o =
+        u_smc_wrapper.u_smc_ip_integration.u_smc_cpu_mem_dv.rom_read_count_q;
+    assign scratch_read_count_o =
+        u_smc_wrapper.u_smc_ip_integration.u_smc_cpu_mem_dv.scratch_ram_read_count_q;
+    assign scratch_write_count_o =
+        u_smc_wrapper.u_smc_ip_integration.u_smc_cpu_mem_dv.scratch_ram_write_count_q;
 
 endmodule : smc_dual_inst
 `endif  // SMC_DUAL
