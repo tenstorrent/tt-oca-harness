@@ -4,8 +4,10 @@ OCAH open-source DV testbench for the **SMU (System Management Unit)**.
 Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 [`docs/SMU_TB_ARCH.adoc`](docs/SMU_TB_ARCH.adoc) for the testbench
-architecture and [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
-verification plan.
+architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
+verification plan, and
+[`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
+candidate v0.5.0 SEP=0 feature subset (unsigned; #487).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).
