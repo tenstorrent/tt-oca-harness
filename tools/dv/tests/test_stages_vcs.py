@@ -81,9 +81,7 @@ class UvmTestnameOverride(unittest.TestCase):
 
     def test_first_supplied_value_wins(self):
         # Mirrors UVM's first-occurrence-wins semantics for the plusarg.
-        self.assertEqual(
-            _uvm_testname_override(["+UVM_TESTNAME=a", "+UVM_TESTNAME=b"]), "a"
-        )
+        self.assertEqual(_uvm_testname_override(["+UVM_TESTNAME=a", "+UVM_TESTNAME=b"]), "a")
 
     def test_prefix_must_match_exactly(self):
         self.assertEqual(_uvm_testname_override(["+UVM_TESTNAME_X=a"]), "")

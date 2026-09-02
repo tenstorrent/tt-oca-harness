@@ -2659,9 +2659,7 @@ def vcs_sim(
         *(args.plusarg or []),
     ]
     argv = [str(simv)]
-    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _uvm_testname_override(
-        extra_args
-    ):
+    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _uvm_testname_override(extra_args):
         argv.append(f"+UVM_TESTNAME={uvm_test}")
     argv.append(f"+ntb_random_seed={seed}")
     argv += extra_args
