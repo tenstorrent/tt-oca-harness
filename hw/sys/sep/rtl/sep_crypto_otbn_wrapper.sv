@@ -49,7 +49,11 @@ module sep_crypto_otbn_wrapper
     output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t imem_sram_req_o,
     input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,
     output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,
-    input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i
+    input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i,
+
+    // Register bridge fault (sticky, held until bus_err_clr_i)
+    output logic bus_err_o,
+    input  logic bus_err_clr_i
 );
 
     // ========================================================================
@@ -169,7 +173,8 @@ module sep_crypto_otbn_wrapper
         .axi_lite_rsp_o (otbn_axil_resp),
         .tl_o           (tl_req),
         .tl_i           (tl_resp),
-        .err_o          (/* UNUSED */)
+        .err_o          (bus_err_o),
+        .err_clr_i      (bus_err_clr_i)
     );
 
     // ========================================================================
@@ -262,8 +267,9 @@ module sep_crypto_otbn_wrapper
     // ========================================================================
 
     otbn #(
-        .Stub    (1'b0),
-        .RegFile (otbn_pkg::RegFileFF)
+        .Stub        (1'b0),
+        .FeatStubMai (1'b1),
+        .RegFile     (otbn_pkg::RegFileFF)
     ) u_otbn (
         .clk_i,
         .rst_ni,

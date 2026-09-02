@@ -3721,6 +3721,14 @@ localparam int unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_OFFSET           
 localparam int unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR                                               = 32'h10A30198;
 localparam int unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_REG_OFFSET                                                      = 32'h000001A0;
 localparam int unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR                                                        = 32'h10A301A0;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_OFFSET                                                = 32'h000001A8;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_ADDR                                                  = 32'h10A301A8;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_OFFSET                                                 = 32'h000001B0;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_ADDR                                                   = 32'h10A301B0;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_OFFSET                                             = 32'h000001B8;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_ADDR                                               = 32'h10A301B8;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_OFFSET                                              = 32'h000001C0;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR                                                = 32'h10A301C0;
 localparam int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET                                                    = 32'h00001000;
 localparam int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR                                                      = 32'h10A31000;
 
@@ -4400,6 +4408,10 @@ localparam longint unsigned SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT           
 localparam longint unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_DEFAULT                                             = 64'h0000000000000007;
 localparam longint unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_DEFAULT                                        = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_DEFAULT                                           = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT                                            = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT                                         = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT                                               = 64'h00000000DEADBEEF;
 localparam longint unsigned SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT                                                = 32'h00000000;
@@ -6623,6 +6635,57 @@ localparam     int unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_SHIFT       
 
 localparam longint unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_WIPE_STATE_MASK                                             = 64'h1;
 localparam     int unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_WIPE_STATE_SHIFT                                            = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_PATH_ERR_MASK                                     = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_PATH_ERR_SHIFT                                    = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_HOST_PATH_ERR_MASK                                    = 64'h2;
+localparam     int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_HOST_PATH_ERR_SHIFT                                   = 1;
+
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_CLR_MASK                                               = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_CLR_SHIFT                                              = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_AES_MASK                                           = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_AES_SHIFT                                          = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_HMAC_MASK                                          = 64'h2;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_HMAC_SHIFT                                         = 1;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_KMAC_MASK                                          = 64'h4;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_KMAC_SHIFT                                         = 2;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_OTBN_MASK                                          = 64'h8;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_OTBN_SHIFT                                         = 3;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_CSRNG_MASK                                         = 64'h10;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_CSRNG_SHIFT                                        = 4;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_EDN_MASK                                           = 64'h20;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_EDN_SHIFT                                          = 5;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_MASK                                           = 64'h40;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_SHIFT                                          = 6;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_MASK                                            = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_SHIFT                                           = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_HMAC_MASK                                           = 64'h2;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_HMAC_SHIFT                                          = 1;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_KMAC_MASK                                           = 64'h4;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_KMAC_SHIFT                                          = 2;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_OTBN_MASK                                           = 64'h8;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_OTBN_SHIFT                                          = 3;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_CSRNG_MASK                                          = 64'h10;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_CSRNG_SHIFT                                         = 4;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_EDN_MASK                                            = 64'h20;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_EDN_SHIFT                                           = 5;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_MASK                                            = 64'h40;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_SHIFT                                           = 6;
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT                                          = 0;
@@ -9583,6 +9646,43 @@ typedef struct packed {
 typedef struct packed {
     logic [0:0]   wipe_state ;
 } sep_cpu_ctrl_km_wipe_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   host_path_err ;
+    logic [0:0]   reg_path_err ;
+} sep_cpu_ctrl_dma_bus_err_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   clr ;
+} sep_cpu_ctrl_dma_bus_err_clear_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   wdt ;
+    logic [0:0]   edn ;
+    logic [0:0]   csrng ;
+    logic [0:0]   otbn ;
+    logic [0:0]   kmac ;
+    logic [0:0]   hmac ;
+    logic [0:0]   aes ;
+} sep_cpu_ctrl_periph_bus_err_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   wdt ;
+    logic [0:0]   edn ;
+    logic [0:0]   csrng ;
+    logic [0:0]   otbn ;
+    logic [0:0]   kmac ;
+    logic [0:0]   hmac ;
+    logic [0:0]   aes ;
+} sep_cpu_ctrl_periph_bus_err_clear_reg_t;
 
 
 

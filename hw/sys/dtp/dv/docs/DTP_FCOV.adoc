@@ -142,7 +142,9 @@ exact operation including BUSY_OR_FULL polls.
 ==== `jtag2axi_robustness_cg`
 
 *Description*: Covers series operations, backpressure, and CDC clear/abort
-paths.
+paths. Size-aligned narrow series transfers (`AxSIZE` smaller than the data
+bus, starting at a non-zero beat offset) are in contract for the SMC fabric
+series path.
 
 [cols=",",options="header",]
 |===
