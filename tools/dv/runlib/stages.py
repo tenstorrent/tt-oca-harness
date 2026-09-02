@@ -1261,16 +1261,26 @@ def _last_plusarg_wins(rendered: list[str]) -> list[str]:
 
     Only `+key=value` forms are collapsed; bare flags and non-plusarg arguments
     keep every occurrence and their relative order.
+
+    Each drop is printed. Silently discarding an argument the config author
+    wrote is the same class of problem as the one this function exists to fix:
+    the command line stops matching the config and nothing says so.
     """
     final_at: dict[str, int] = {}
     for index, arg in enumerate(rendered):
         if arg.startswith("+") and "=" in arg:
             final_at[arg.split("=", 1)[0]] = index
-    return [
-        arg
-        for index, arg in enumerate(rendered)
-        if not (arg.startswith("+") and "=" in arg) or final_at[arg.split("=", 1)[0]] == index
-    ]
+    kept: list[str] = []
+    for index, arg in enumerate(rendered):
+        if arg.startswith("+") and "=" in arg and final_at[arg.split("=", 1)[0]] != index:
+            key = arg.split("=", 1)[0]
+            print(
+                f"PLUSARG: dropping {arg} -- overridden by {rendered[final_at[key]]}",
+                flush=True,
+            )
+            continue
+        kept.append(arg)
+    return kept
 
 
 def _firmware_target(test: TestEntry | None, item: str | None) -> str:
