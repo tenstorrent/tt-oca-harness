@@ -13,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, TextIO
 
-
 _CI_TRUE = {"1", "true", "yes", "on"}
 _STATUS_COLOR = {
     "PASS": "32",

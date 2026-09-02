@@ -11,7 +11,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 FW_ROOT = Path(__file__).resolve().parent
 DV_ROOT = FW_ROOT.parent
 COMMON = FW_ROOT / "common"
@@ -31,7 +30,7 @@ def _tool(name: str) -> str:
             return str(candidate)
     candidate = shutil.which(f"riscv64-unknown-elf-{name}")
     if candidate:
-        return candidate
+        return str(candidate)
     tools_soc = Path("/tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin")
     candidate = tools_soc / f"riscv64-unknown-elf-{name}"
     if candidate.is_file():

@@ -7,9 +7,9 @@
  *
  * @details Wraps OpenTitan's division-free health test implementations
  *          (Repetition Count Test, Adaptive Proportion Test, Markov Test) to
- *          validate entropy quality. Provides comprehensive diagnostic outputs
- *          (pattern counts, thresholds, transition counts) and unified status
- *          byte. Status bit allocation: [0]=Repetition failure, [3]=APT
+ *          validate entropy quality. Provides current test counts, separate APT
+ *          failure pulses, and a unified status byte. Status bit allocation:
+ *          [0]=Repetition failure, [3]=APT
  *          (high/low), [4]=Markov (>threshold), [5]=Markov (<threshold),
  *          [1,2,6,7]=reserved.
  *
@@ -23,13 +23,10 @@ module entropy_health_test #(
     input       logic                  rst_ni,
     input       logic [DATA_WIDTH-1:0] entropy_i,
     input       logic                  entropy_valid_i,
-    input       logic [7:0]            enable_i,
+    input       logic [2:0]            enable_i,
     input       logic [7:0]            repetition_limit_i,
     input       logic [15:0]           proportion_limit_1bit_i,
     input       logic [15:0]           proportion_limit_lo_i,
-    input       logic [9:0]            proportion_limit_2bit_i,
-    input       logic [9:0]            proportion_limit_3bit_i,
-    input       logic [9:0]            proportion_limit_4bit_i,
     input       logic [15:0]           markov_prob_01_threshold_i,
     input       logic [15:0]           markov_prob_10_threshold_i,
     input       logic                  window_wrap_pulse_i,
@@ -37,25 +34,16 @@ module entropy_health_test #(
     output      logic [15:0]           ctr_repetition_o,
     output      logic [15:0]           apt_pattern_count_1bit_o,
     output      logic [15:0]           apt_pattern_count_2bit_o,
-    output      logic [9:0]            apt_pattern_count_3bit_o,
-    output      logic [9:0]            apt_pattern_count_4bit_o,
-    output      logic [3:0]            apt_target_pattern_1bit_o,
-    output      logic [3:0]            apt_target_pattern_2bit_o,
-    output      logic [3:0]            apt_target_pattern_3bit_o,
-    output      logic [3:0]            apt_target_pattern_4bit_o,
-    output      logic [9:0]            apt_samples_processed_1bit_o,
-    output      logic [9:0]            apt_samples_processed_2bit_o,
-    output      logic [9:0]            apt_samples_processed_3bit_o,
-    output      logic [9:0]            apt_samples_processed_4bit_o,
     output      logic [15:0]           count_01_o,
     output      logic [15:0]           count_10_o,
-    output      logic [15:0]           count_00_o,
-    output      logic [15:0]           count_11_o,
-    output      logic [7:0]            prob_01_o,
-    output      logic [7:0]            prob_10_o,
-    output      logic [7:0]            prob_00_o,
-    output      logic [7:0]            prob_11_o,
-    output      logic [7:0]            status_o
+    output      logic                  apt_fail_hi_o,
+    output      logic                  apt_fail_lo_o,
+    output      logic [7:0]            status_o,
+    // Set when a health-test counter's duplicate copies disagree
+    // (prim_count's own fault detection), independent of a test threshold
+    // trip. Every caller must route this to the alert path: a glitched
+    // counter can silently stop reporting real threshold failures.
+    output      logic                  count_err_o
 );
 
     /////////////////////
@@ -118,26 +106,13 @@ module entropy_health_test #(
     assign ctr_repetition_o             = repcnt_test_cnt;
     assign apt_pattern_count_1bit_o     = apt_test_cnt_hi;
     assign apt_pattern_count_2bit_o     = apt_test_cnt_lo;
-    assign apt_pattern_count_3bit_o     = 10'd0;
-    assign apt_pattern_count_4bit_o     = 10'd0;
-    assign apt_target_pattern_1bit_o    = 4'd0;
-    assign apt_target_pattern_2bit_o    = 4'd0;
-    assign apt_target_pattern_3bit_o    = 4'd0;
-    assign apt_target_pattern_4bit_o    = 4'd0;
-    assign apt_samples_processed_1bit_o = 10'd0;
-    assign apt_samples_processed_2bit_o = 10'd0;
-    assign apt_samples_processed_3bit_o = 10'd0;
-    assign apt_samples_processed_4bit_o = 10'd0;
 
     assign count_01_o = markov_test_cnt_hi;
     assign count_10_o = markov_test_cnt_lo;
-    assign count_00_o = 16'd0;
-    assign count_11_o = 16'd0;
 
-    assign prob_01_o = 8'd0;
-    assign prob_10_o = 8'd0;
-    assign prob_00_o = 8'd0;
-    assign prob_11_o = 8'd0;
+  assign apt_fail_hi_o = apt_test_fail_hi;
+  assign apt_fail_lo_o = apt_test_fail_lo;
+    assign count_err_o = repcnt_count_err | apt_count_err | markov_count_err;
 
     /////////////////
     // Sub-instances

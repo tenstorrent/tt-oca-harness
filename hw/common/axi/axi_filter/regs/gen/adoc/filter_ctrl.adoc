@@ -17,6 +17,9 @@
 | 63 | `locked` | RW | 0x0 a| Lock filter configurations. Write once register
 | 62:25 | `Reserved` | - | - a| Reserved
 | 24 | `allow_burst` | RW | 0x0 a| Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
+This field also selects the granule of the address range: 4KB when it is 1,
+2^data_bus_width bytes when it is 0. See start_addr and end_addr for how the range is widened
+to that granule.
 | 23:20 | `group_id` | RW | 0x0 a| Group ID field to match. Filter entry will match if the transactions group_id matches the value in this field.
 Note the corner case is the opposite of src_id: the bypass keys off the transaction, not this field.
 A transaction whose group_id is 0 matches regardless of this field, and a value of 0 here is not a wildcard.
@@ -41,9 +44,15 @@ Filter entry will match if AxPROT[1] matches the value in this field
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:0 | `start_addr` | RW | 0x0 a| Start of allowable address range. Hardware will adjust this field depending on the value of the allow_burst field.
-When allow_burst is 0, the start_addr will be adjusted to align with data width (2^data_bus_width == 8).
-When allow_burst is 1, the start_addr will be adjusted to align with 4KB boundary.
+| 55:0 | `start_addr` | RW | 0x0 a| Start of the allowable address range, rounded down to the base of its granule.
+The granule is 4KB when allow_burst is 1, and 2^data_bus_width bytes when allow_burst is 0.
+Address matching ignores the address bits below the granule, so the accepted range always
+spans whole granules and is never narrower than one: a range shorter than the granule,
+start_addr == end_addr included, still admits the whole granule, and two granules if it
+straddles a granule boundary.
+Hardware writes the rounded start_addr and end_addr back into these fields only when both
+land in the same granule; otherwise readback returns the programmed values even though
+matching is still granule-aligned.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -51,8 +60,7 @@ When allow_burst is 1, the start_addr will be adjusted to align with 4KB boundar
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:0 | `end_addr` | RW | 0x7 a| End of allowable address range. Defaults to 7 on reset to match the minimum granularity when burst is disabled.
-Hardware will adjust this field depending on the value of the allow_burst field.
-When allow_burst is 0, the end_addr will be adjusted to align with data width (2^data_bus_width == 8).
-When allow_burst is 1, the end_addr will be adjusted to align with 4KB boundary.
+| 55:0 | `end_addr` | RW | 0x7 a| End of the allowable address range, rounded up to the top of its granule.
+The granule and the write-back behaviour are described under start_addr.
+Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.
 |===

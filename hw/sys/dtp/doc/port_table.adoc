@@ -87,7 +87,7 @@
 |`xtrig_ctm_dst_req_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. |Cross trigger network |Tie to '0 if unused
 |`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |N/A
 
-|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices in the chiplet. |Clock stop requestors |Tie to '0 if unused
+|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices in the chiplet. |Clock stop requesters |Tie to '0 if unused
 
 |`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output (to GPIO pad ring). |GPIO pad ring |N/A
 |`xtrig_ctp_req_out_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output enable. |GPIO pad ring |N/A

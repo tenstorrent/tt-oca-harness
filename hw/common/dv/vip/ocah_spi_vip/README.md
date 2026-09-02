@@ -88,9 +88,11 @@ keeping this public API unchanged.  Pin the version as shown below.
 ### Migration plan
 
 1. Add to `requirements.txt` or `pyproject.toml`:
+
    ```
    cocotbext-spi==0.1.7    # or later pinned stable release
    ```
+
 2. Replace the `_recv_byte_single` / `_send_byte_single` internals in
    `ocah_spi_flash.py` with calls to `cocotbext_spi.SpiDeviceBus` /
    `SpiDevice` from that package.
@@ -234,6 +236,7 @@ unless `set_jedec_id()` or `preload()` is called individually after
 construction.
 
 Example (VCS):
+
 ```
 +spi_flash_jedec_id=EF4018 +spi_flash_preload=/path/to/firmware.bin
 ```
@@ -243,6 +246,7 @@ Example (VCS):
 ## Determinism
 
 By default this model is fully deterministic:
+
 - Flash memory initialises to 0xFF (erased state).
 - JEDEC ID is the constructor-supplied constant.
 - No random delays or random data.

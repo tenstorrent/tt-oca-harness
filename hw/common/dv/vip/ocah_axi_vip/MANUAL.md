@@ -37,15 +37,23 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi[_lite]_slave_config.py` | Responder memory/reset/backend knobs |
 | `cocotb/ocah_axi[_lite]_slave_driver.py` | Fault-capable RAM responder engine |
 | `cocotb/ocah_axi[_lite]_slave_sequence.py` | Test-facing responder API (backdoor/inject/backpressure) |
-| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items (side-neutral) |
+| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items and result dataclasses (side-neutral) |
 | `cocotb/ocah_axi_monitor.py` | Passive item-producing bus monitors (side-neutral) |
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
-| `cocotb/ocah_axi_results.py` | Result dataclasses and response-code helpers |
+| `cocotb/ocah_axi_types.py` | Response/protection code constants and value-conversion helpers (side-neutral) |
 | `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
 Tests always drive a side through its `*Sequence` class — usually
 `agent.sequence` — never through the raw driver; missing operations get
 added to the sequence layer first.
+
+The cocotb package contains only canonical component files, matching the
+SV-UVM flow's basenames (`uvm/ocah_axi_*.svh`) one-to-one; flow-only
+components follow the same naming pattern. Shared dataclasses live in
+`_item`, shared constants and value conversions in `_types`, and behavior
+lives in the component that owns it (e.g. `AxiTimingProfile` is a
+`_master_config` knob applied by the `_master_driver`) — support modules
+outside the taxonomy are not added.
 
 ## Import Pattern
 
@@ -105,6 +113,24 @@ Result helpers:
 |---|---|---|
 | `await write_result(addr, data, ...)` | `OcahAxiWriteResult` | Negative writes, exact response checks |
 | `await read_result(addr, ...)` | `OcahAxiReadResult` | Negative reads, data plus RRESP checks |
+
+`write_result`/`write` accept a contiguous partial `strb`: the selected
+bytes of `data` are written as a sub-word access (the backend derives WSTRB
+from address and length), so `strb=0x2` writes byte lane 1 only.
+Non-contiguous patterns (`0x5`, `0x9`, ...) are rejected with `ValueError`.
+
+Protocol-control operations (SV-UVM parity; see
+`ocah_axi_master_sequence.svh` for the same knobs on the SV side):
+
+| Method | Return | Use |
+|---|---|---|
+| `await write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew — AXI permits either arrival order — plus a deferred BREADY assert after the request phase |
+| `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
+
+Both operations require an idle engine on their direction (the skew is
+applied by pausing the backend's channel sources/sinks) and bound every
+phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
+`timed_out` result.
 
 Event helpers:
 

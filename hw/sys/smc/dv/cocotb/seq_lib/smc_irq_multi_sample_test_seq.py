@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_irq_item import SmcIrqItem, SmcIrqOp
 
 from .smc_base_test_seq import smc_base_test_seq
@@ -17,7 +16,7 @@ class smc_irq_multi_sample_test_seq(smc_base_test_seq):
 
     def __init__(self, name: str = "smc_irq_multi_sample_test_seq") -> None:
         super().__init__(name)
-        self.samples = []
+        self.samples: list[SmcIrqItem] = []
 
     async def body(self) -> None:
         dut = cocotb.top

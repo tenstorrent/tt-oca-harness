@@ -36,20 +36,28 @@ LC_RMA_CHIP_0 = 0x6
 LC_RMA_CHIP_1 = 0x7
 LC_PROD_END = 0x8
 LEGAL_LC_RAW = (
-    LC_TEST_DEV, LC_PROD, LC_RMA_SIP_0, LC_RMA_SIP_1,
-    LC_RMA_CHIP_0, LC_RMA_CHIP_1, LC_PROD_END,
+    LC_TEST_DEV,
+    LC_PROD,
+    LC_RMA_SIP_0,
+    LC_RMA_SIP_1,
+    LC_RMA_CHIP_0,
+    LC_RMA_CHIP_1,
+    LC_PROD_END,
 )
 _LC_NAME = {
-    LC_TEST_DEV: "TEST_DEV", LC_PROD: "PROD",
-    LC_RMA_SIP_0: "RMA_SIP_0", LC_RMA_SIP_1: "RMA_SIP_1",
-    LC_RMA_CHIP_0: "RMA_CHIP_0", LC_RMA_CHIP_1: "RMA_CHIP_1",
+    LC_TEST_DEV: "TEST_DEV",
+    LC_PROD: "PROD",
+    LC_RMA_SIP_0: "RMA_SIP_0",
+    LC_RMA_SIP_1: "RMA_SIP_1",
+    LC_RMA_CHIP_0: "RMA_CHIP_0",
+    LC_RMA_CHIP_1: "RMA_CHIP_1",
     LC_PROD_END: "PROD_END",
 }
 
 # -- LCC register map (single source of truth; imported by the LCC sequences) -
 SEP_LCC_BASE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
-LCC_FEAT_CTRL = SEP_LCC_BASE + 0x0    # 64-bit RO, hw-driven from lc_state; [0]=sep_debug
-LCC_DEMOTE_1 = SEP_LCC_BASE + 0x8     # demote [0:0], lock [1:1]
+LCC_FEAT_CTRL = SEP_LCC_BASE + 0x0  # 64-bit RO, hw-driven from lc_state; [0]=sep_debug
+LCC_DEMOTE_1 = SEP_LCC_BASE + 0x8  # demote [0:0], lock [1:1]
 LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10
 
 # -- feat_ctrl bit layout (sep_efuse_pkg, and Table 50's four groups) ---------
@@ -61,11 +69,11 @@ LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10
 #                    38 fuse_vendor_test, [47:39] reserved
 #   [63:48] Function func_reserved[15:0]
 M64 = (1 << 64) - 1
-DBG1_MASK = (1 << 16) - 1             # bits [15:0]
-DBG2_MASK = ((1 << 16) - 1) << 16     # bits [31:16]
-DEBUG_MASK = DBG1_MASK | DBG2_MASK    # bits [31:0], both debug groups
-TEST_MASK = ((1 << 16) - 1) << 32     # bits [47:32] -- the DFT group
-FUNC_MASK = ((1 << 16) - 1) << 48     # bits [63:48]
+DBG1_MASK = (1 << 16) - 1  # bits [15:0]
+DBG2_MASK = ((1 << 16) - 1) << 16  # bits [31:16]
+DEBUG_MASK = DBG1_MASK | DBG2_MASK  # bits [31:0], both debug groups
+TEST_MASK = ((1 << 16) - 1) << 32  # bits [47:32] -- the DFT group
+FUNC_MASK = ((1 << 16) - 1) << 48  # bits [63:48]
 
 
 def lc_state_name(raw: int) -> str:
@@ -144,27 +152,27 @@ def feat_ctrl_expected(
     if sigint_err:
         feat = 0
     else:
-        both = (~(sip_dis | sys_dis)) & M64           # both vectors bind
-        sip_only = (~sip_dis) & M64                   # SIP_DIS alone binds the SiP owner
-        if lc_raw == LC_TEST_DEV:                     # 4'b0000
+        both = (~(sip_dis | sys_dis)) & M64  # both vectors bind
+        sip_only = (~sip_dis) & M64  # SIP_DIS alone binds the SiP owner
+        if lc_raw == LC_TEST_DEV:  # 4'b0000
             feat = both
-            if demote_1:                              # DBG_1 forced open
+            if demote_1:  # DBG_1 forced open
                 feat = (feat & ~DBG1_MASK) | DBG1_MASK
-            if demote_2:                              # DBG_2 forced open
+            if demote_2:  # DBG_2 forced open
                 feat = (feat & ~DBG2_MASK) | DBG2_MASK
-        elif lc_raw == LC_PROD:                       # 4'b0001
-            feat = both & FUNC_MASK                   # debug + DFT off unless demoted
-            if demote_1:                              # DBG_1 relaxed to the DIS vectors
+        elif lc_raw == LC_PROD:  # 4'b0001
+            feat = both & FUNC_MASK  # debug + DFT off unless demoted
+            if demote_1:  # DBG_1 relaxed to the DIS vectors
                 feat |= both & DBG1_MASK
-            if demote_2:                              # DBG_2 relaxed to the DIS vectors
+            if demote_2:  # DBG_2 relaxed to the DIS vectors
                 feat |= both & DBG2_MASK
-        elif lc_raw == LC_PROD_END:                   # 4'b1000, demotion has no effect
+        elif lc_raw == LC_PROD_END:  # 4'b1000, demotion has no effect
             feat = both & FUNC_MASK
         elif lc_raw in (LC_RMA_SIP_0, LC_RMA_SIP_1):  # 4'b001?, demotion has no effect
             feat = sip_only
         elif lc_raw in (LC_RMA_CHIP_0, LC_RMA_CHIP_1):  # 4'b011?, all features enabled
             feat = M64
-        else:                                         # INVALID/others -- chip not live
+        else:  # INVALID/others -- chip not live
             feat = 0
 
     if sec_dis:
@@ -182,16 +190,16 @@ def feat_ctrl_expected(
 # hand from Table 50 of the lifecycle-controller chapter. Note secure_tm=0 (the no-CPU
 # image default) clears TEST_MASK ([47:32]), so a full-ones result reads
 # 0xFFFF_0000_FFFF_FFFF.
-_FULL_NO_TEST = 0xFFFF_0000_FFFF_FFFF       # M64 with TEST_MASK cleared
-_FUNC_ALL = 0xFFFF_0000_0000_0000           # FUNC_MASK only
+_FULL_NO_TEST = 0xFFFF_0000_FFFF_FFFF  # M64 with TEST_MASK cleared
+_FUNC_ALL = 0xFFFF_0000_0000_0000  # FUNC_MASK only
 
-_LCC_GOLDEN_VECTORS = (
+_LCC_GOLDEN_VECTORS: tuple[tuple[int, int, int, dict[str, int], int], ...] = (
     # (lc_raw, sip_dis, sys_dis, kwargs, expected)
-    (LC_TEST_DEV, 0, 0, {}, _FULL_NO_TEST),                       # all-enable, test bits cleared
-    (LC_TEST_DEV, 0, 0, {"secure_tm": 1}, M64),                   # secure_tm keeps test bits
-    (LC_PROD, 0, 0, {}, _FUNC_ALL),                               # PROD: func only, debug off
-    (LC_PROD, 0, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFF),      # PROD+DEMOTE_1: DBG_1 only
-    (LC_PROD, 0, 0, {"demote_2": 1}, 0xFFFF_0000_FFFF_0000),      # PROD+DEMOTE_2: DBG_2 only
+    (LC_TEST_DEV, 0, 0, {}, _FULL_NO_TEST),  # all-enable, test bits cleared
+    (LC_TEST_DEV, 0, 0, {"secure_tm": 1}, M64),  # secure_tm keeps test bits
+    (LC_PROD, 0, 0, {}, _FUNC_ALL),  # PROD: func only, debug off
+    (LC_PROD, 0, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFF),  # PROD+DEMOTE_1: DBG_1 only
+    (LC_PROD, 0, 0, {"demote_2": 1}, 0xFFFF_0000_FFFF_0000),  # PROD+DEMOTE_2: DBG_2 only
     # DEMOTE in PROD only RELAXES its group to the DIS vectors -- it does not force
     # them open. sep_debug (bit 0) is disabled here, so DEMOTE_1 must leave it off.
     (LC_PROD, 0x1, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFE),
@@ -201,17 +209,21 @@ _LCC_GOLDEN_VECTORS = (
     (LC_TEST_DEV, M64, 0, {"demote_2": 1}, 0x0000_0000_FFFF_0000),
     (LC_TEST_DEV, M64, 0, {"demote_1": 1, "demote_2": 1}, 0x0000_0000_FFFF_FFFF),
     (LC_PROD, 0x000A_0000_0000_0000, 0, {}, 0xFFF5_0000_0000_0000),  # func-bit masking by SIP
-    (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),                     # RMA_CHIPLET: all ones
-    (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),        # SEC_DIS override = all ones
-    (LC_TEST_DEV, 0xFFFF_FFFF_FFFF_FFFF, 0, {"sigint_err": 1}, 0),   # sigint -> all disabled
+    (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),  # RMA_CHIPLET: all ones
+    (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),  # SEC_DIS override = all ones
+    (LC_TEST_DEV, 0xFFFF_FFFF_FFFF_FFFF, 0, {"sigint_err": 1}, 0),  # sigint -> all disabled
     # SEC_DIS overrides sigint to all-ones; the SECURE_TM gate still applies last.
     (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1}, _FULL_NO_TEST),
     (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1, "secure_tm": 1}, M64),
     # Stitch-test DIS vectors: DFT group is 0xF000 with secure_tm=1, forced 0 without.
-    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {},
-     0xF000_0000_F000_F000),
-    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {"secure_tm": 1},
-     0xF000_F000_F000_F000),
+    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {}, 0xF000_0000_F000_F000),
+    (
+        LC_TEST_DEV,
+        0x0F0F_0F0F_0F0F_0F0F,
+        0x00FF_00FF_00FF_00FF,
+        {"secure_tm": 1},
+        0xF000_F000_F000_F000,
+    ),
 )
 
 
@@ -226,9 +238,9 @@ def selftest() -> None:
             f"!= expected 0x{expected:016x}"
         )
     # Transition-validator spot checks (mirror the SVA truth table).
-    assert is_valid_lc_transition(LC_TEST_DEV, LC_PROD)           # forward W1S
-    assert not is_valid_lc_transition(LC_PROD, LC_RMA_CHIP_1)     # PROD cannot skip
-    assert not is_valid_lc_transition(LC_RMA_CHIP_1, LC_PROD_END) # terminal
+    assert is_valid_lc_transition(LC_TEST_DEV, LC_PROD)  # forward W1S
+    assert not is_valid_lc_transition(LC_PROD, LC_RMA_CHIP_1)  # PROD cannot skip
+    assert not is_valid_lc_transition(LC_RMA_CHIP_1, LC_PROD_END)  # terminal
 
 
 selftest()

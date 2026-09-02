@@ -12,5 +12,5 @@
 .EFUSE_BANK_INIT_TIME Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `init_time` | RW | 0x20 a| Most OTP have a initalization time before sensing can be done
+| 31:0 | `init_time` | RW | 0x20 a| Most OTP have a initialization time before sensing can be done
 |===

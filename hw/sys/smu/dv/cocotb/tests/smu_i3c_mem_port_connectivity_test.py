@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_i3c_mem_port_connectivity_test_seq import (
     smu_i3c_mem_port_connectivity_test_seq,
 )
@@ -18,8 +17,7 @@ class smu_i3c_mem_port_connectivity_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_i3c_mem_port_connectivity_test "
-            "TierC FAB_SMC_031 SEP=0 J2A"
+            "DUT_TAG=BARE smu_i3c_mem_port_connectivity_test TierC FAB_SMC_031 SEP=0 J2A"
         )
         seq = smu_i3c_mem_port_connectivity_test_seq(self)
         await seq.run()

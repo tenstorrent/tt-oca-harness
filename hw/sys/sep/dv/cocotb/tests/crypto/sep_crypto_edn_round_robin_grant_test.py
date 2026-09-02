@@ -23,18 +23,17 @@ observation ports).
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge, ClockCycles
 import pyuvm
-
+from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_drbg_scoreboard import SepDrbgScoreboard
 from sep_base_test import sep_base_test
-from seq_lib.sep_aes_seq import SepAes, AES_TRIGGER, AES_TRIGGER_PRNG_RESEED
+from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_esrc_bringup_seq import (
     SepEntropyCfg,
     SepEsrcConfigSeq,
-    SepEsrcEnableGeneratorsSeq,
     SepEsrcEnableEdnSeq,
+    SepEsrcEnableGeneratorsSeq,
 )
-from env.sep_drbg_scoreboard import SepDrbgScoreboard
 
 _AES_BIT = 0
 _URND_BIT = 3
@@ -65,7 +64,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         dut = cocotb.top
         await self.bring_up_no_cpu()
 
-        # OTBN is released at cold reset (SW_RESET_N reset 0x1E). Without EDN it
+        # OTBN is released at cold reset (SW_RESET_N reset 0x3E). Without EDN it
         # parks in UrndRefresh with crypto_edn_req[3] held.
         for _ in range(_DUAL_REQ_CYCLES):
             if _req() & (1 << _URND_BIT):
@@ -92,7 +91,9 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DUAL-REQ PASS: crypto_edn_req bits 0x%x (AES bit %d + URND bit %d)",
-            dual_seen, _AES_BIT, _URND_BIT,
+            dual_seen,
+            _AES_BIT,
+            _URND_BIT,
         )
 
         # Same entropy bring-up as the other no_cpu consumers, split so the
@@ -100,8 +101,11 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cfg = SepEntropyCfg()
         self.entropy_cfg = cfg
         self.drbg_sb = SepDrbgScoreboard(
-            dut, self.logger, strict=True,
-            golden_kwargs=cfg.golden_kwargs(), chk2_backdoor=cfg.chk2_backdoor,
+            dut,
+            self.logger,
+            strict=True,
+            golden_kwargs=cfg.golden_kwargs(),
+            chk2_backdoor=cfg.chk2_backdoor,
             score_km=False,
             score_sinks={"aes": "golden", "otbn_urnd": "golden"},
         )
@@ -153,12 +157,12 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             )
 
         assert _AES_BIT in grants and _URND_BIT in grants, (
-            "CHK-NO-STARVE FAIL: a requesting client got no edn_ack "
-            f"(grants={grants})"
+            f"CHK-NO-STARVE FAIL: a requesting client got no edn_ack (grants={grants})"
         )
         self.logger.info(
             "CHK-NO-STARVE PASS: both clients acked (AES grants=%d URND grants=%d)",
-            grants.count(_AES_BIT), grants.count(_URND_BIT),
+            grants.count(_AES_BIT),
+            grants.count(_URND_BIT),
         )
 
         # AES masking reseeds pulse edn_req per beat, so a same-cycle dual-req
@@ -170,7 +174,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         )
         self.logger.info(
             "CHK-GRANT-ALT PASS: consecutive grants alternate (grants=%s dual_grants=%s)",
-            grants[:12], dual_grants[:12],
+            grants[:12],
+            dual_grants[:12],
         )
 
         await self.stop_fifo_drain()
@@ -182,6 +187,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         self.logger.info(
             "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
             "equal the AXIS1 grant-order stream (mismatch=0)",
-            ra.matches, ru.matches)
-        self.logger.info(
-            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")
+            ra.matches,
+            ru.matches,
+        )
+        self.logger.info("CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")

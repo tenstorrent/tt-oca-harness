@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_fabric_reg_bar_wr_test_seq import smu_fabric_reg_bar_wr_test_seq
 from smu_base_test import smu_base_test
 
@@ -15,13 +14,9 @@ class smu_fabric_reg_bar_wr_test(smu_base_test):
     """FAB_SMC_032 delivery-only via J2A; no Force / no sep_in."""
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=BARE smu_fabric_reg_bar_wr_test "
-            "TierA FAB_SMC_032 SEP=0 J2A"
-        )
+        self.logger.info("DUT_TAG=BARE smu_fabric_reg_bar_wr_test TierA FAB_SMC_032 SEP=0 J2A")
         seq = smu_fabric_reg_bar_wr_test_seq(self)
         await seq.run()
         assert seq.s1_ok and len(seq.observed) == 6, (
-            f"local_fabric incomplete s1={seq.s1_ok} "
-            f"observed={seq.observed}"
+            f"local_fabric incomplete s1={seq.s1_ok} observed={seq.observed}"
         )

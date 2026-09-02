@@ -824,8 +824,6 @@ localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_REG_OFFSET                  
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR                                                      = 32'h10916000;
 localparam int unsigned ENTROPY_SOURCE_CTRL_REG_OFFSET                                                            = 32'h00000004;
 localparam int unsigned ENTROPY_SOURCE_CTRL_REG_ADDR                                                              = 32'h10916004;
-localparam int unsigned ENTROPY_SOURCE_STATUS_REG_OFFSET                                                          = 32'h00000008;
-localparam int unsigned ENTROPY_SOURCE_STATUS_REG_ADDR                                                            = 32'h10916008;
 localparam int unsigned ENTROPY_SOURCE_DEBUG_CTRL_REG_OFFSET                                                      = 32'h0000000C;
 localparam int unsigned ENTROPY_SOURCE_DEBUG_CTRL_REG_ADDR                                                        = 32'h1091600C;
 localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_REG_OFFSET                                                     = 32'h00000010;
@@ -856,26 +854,12 @@ localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_OFFSET        
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_ADDR                                            = 32'h10916050;
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_OFFSET                                          = 32'h00000054;
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_ADDR                                            = 32'h10916054;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_REG_OFFSET                                          = 32'h00000058;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_REG_ADDR                                            = 32'h10916058;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_REG_OFFSET                                          = 32'h0000005C;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_REG_ADDR                                            = 32'h1091605C;
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_OFFSET                                             = 32'h00000060;
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_ADDR                                               = 32'h10916060;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_2BIT_REG_OFFSET                                             = 32'h00000064;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_2BIT_REG_ADDR                                               = 32'h10916064;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_OFFSET                                             = 32'h00000068;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_ADDR                                               = 32'h10916068;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_OFFSET                                             = 32'h0000006C;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_ADDR                                               = 32'h1091606C;
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_REG_OFFSET                                               = 32'h00000070;
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_REG_ADDR                                                 = 32'h10916070;
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_OFFSET                                            = 32'h00000080;
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_ADDR                                              = 32'h10916080;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_OFFSET                                            = 32'h00000084;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_ADDR                                              = 32'h10916084;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_OFFSET                                       = 32'h00000088;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_ADDR                                         = 32'h10916088;
 localparam int unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_REG_OFFSET                                                 = 32'h00000090;
 localparam int unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_REG_ADDR                                                   = 32'h10916090;
 localparam int unsigned ENTROPY_SOURCE_RING_OSC_TUNE_REG_OFFSET                                                   = 32'h00000094;
@@ -3737,6 +3721,14 @@ localparam int unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_OFFSET           
 localparam int unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR                                               = 32'h10A30198;
 localparam int unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_REG_OFFSET                                                      = 32'h000001A0;
 localparam int unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR                                                        = 32'h10A301A0;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_OFFSET                                                = 32'h000001A8;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_ADDR                                                  = 32'h10A301A8;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_OFFSET                                                 = 32'h000001B0;
+localparam int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_ADDR                                                   = 32'h10A301B0;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_OFFSET                                             = 32'h000001B8;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_ADDR                                               = 32'h10A301B8;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_OFFSET                                              = 32'h000001C0;
+localparam int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR                                                = 32'h10A301C0;
 localparam int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET                                                    = 32'h00001000;
 localparam int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR                                                      = 32'h10A31000;
 
@@ -4169,7 +4161,7 @@ localparam longint unsigned AON_TIMER_INTR_STATE_REG_DEFAULT                    
 localparam longint unsigned AON_TIMER_INTR_TEST_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned AON_TIMER_WKUP_CAUSE_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned SEP_SCRATCH_SCRATCH_REG_DEFAULT                                                       = 64'h0000000000000000;
-localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT                                                 = 64'h000000000000001E;
+localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT                                                 = 64'h000000000000003E;
 localparam longint unsigned OTBN_INTR_STATE_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned OTBN_INTR_ENABLE_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned OTBN_INTR_TEST_REG_DEFAULT                                                            = 32'h00000000;
@@ -4267,7 +4259,6 @@ localparam longint unsigned EDN_ERR_CODE_TEST_REG_DEFAULT                       
 localparam longint unsigned EDN_MAIN_SM_STATE_REG_DEFAULT                                                         = 32'h000000C1;
 localparam longint unsigned ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT                                               = 32'h01000001;
 localparam longint unsigned ENTROPY_SOURCE_CTRL_REG_DEFAULT                                                       = 32'h10000002;
-localparam longint unsigned ENTROPY_SOURCE_STATUS_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT                                                = 32'h00000000;
@@ -4283,16 +4274,9 @@ localparam longint unsigned ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT       
 localparam longint unsigned ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT                                      = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_REG_DEFAULT                                     = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_REG_DEFAULT                                     = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT                                        = 32'h000004B0;
-localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_2BIT_REG_DEFAULT                                        = 32'h00000080;
-localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT                                        = 32'h00000040;
-localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT                                        = 32'h00000020;
 localparam longint unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT                                          = 32'h00000350;
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT                                            = 32'h00FFFFFF;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT                                              = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT                                              = 32'h00000FFF;
@@ -4424,6 +4408,10 @@ localparam longint unsigned SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT           
 localparam longint unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_DEFAULT                                             = 64'h0000000000000007;
 localparam longint unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_DEFAULT                                        = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_DEFAULT                                           = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT                                            = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT                                         = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT                                               = 64'h00000000DEADBEEF;
 localparam longint unsigned SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT                                                = 32'h00000000;
@@ -4694,6 +4682,9 @@ localparam     int unsigned SEP_RESET_CTRL_SW_RESET_N_HMAC_SW_RST_N_SHIFT       
 
 localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_KMAC_SW_RST_N_MASK                                          = 64'h10;
 localparam     int unsigned SEP_RESET_CTRL_SW_RESET_N_KMAC_SW_RST_N_SHIFT                                         = 4;
+
+localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_TRNG_SW_RST_N_MASK                                          = 64'h20;
+localparam     int unsigned SEP_RESET_CTRL_SW_RESET_N_TRNG_SW_RST_N_SHIFT                                         = 5;
 
 localparam int unsigned OTBN_INTR_STATE_DONE_MASK                                                                 = 32'h1;
 localparam int unsigned OTBN_INTR_STATE_DONE_SHIFT                                                                = 0;
@@ -5433,8 +5424,8 @@ localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MINOR_VERSION_SHIFT         
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_MASK                                            = 32'hF0000000;
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_SHIFT                                           = 28;
 
-localparam int unsigned ENTROPY_SOURCE_CTRL_RESET_MASK                                                            = 32'h1;
-localparam int unsigned ENTROPY_SOURCE_CTRL_RESET_SHIFT                                                           = 0;
+localparam int unsigned ENTROPY_SOURCE_CTRL_RSVD0_MASK                                                            = 32'h1;
+localparam int unsigned ENTROPY_SOURCE_CTRL_RSVD0_SHIFT                                                           = 0;
 
 localparam int unsigned ENTROPY_SOURCE_CTRL_MODULE_ENABLE_MASK                                                    = 32'h2;
 localparam int unsigned ENTROPY_SOURCE_CTRL_MODULE_ENABLE_SHIFT                                                   = 1;
@@ -5450,9 +5441,6 @@ localparam int unsigned ENTROPY_SOURCE_CTRL_DOWNSAMPLE_RATE_SHIFT               
 
 localparam int unsigned ENTROPY_SOURCE_CTRL_SHA256_WHITENING_ENABLE_MASK                                          = 32'h10000000;
 localparam int unsigned ENTROPY_SOURCE_CTRL_SHA256_WHITENING_ENABLE_SHIFT                                         = 28;
-
-localparam int unsigned ENTROPY_SOURCE_STATUS_RSVD_MASK                                                           = 32'h1;
-localparam int unsigned ENTROPY_SOURCE_STATUS_RSVD_SHIFT                                                          = 0;
 
 localparam int unsigned ENTROPY_SOURCE_DEBUG_CTRL_SELECT_SIGNAL_MASK                                              = 32'hFF;
 localparam int unsigned ENTROPY_SOURCE_DEBUG_CTRL_SELECT_SIGNAL_SHIFT                                             = 0;
@@ -5559,7 +5547,7 @@ localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_RPTR_SHIFT                   
 localparam int unsigned ENTROPY_SOURCE_FIFO_RDATA_RDATA_MASK                                                      = 32'hFFFFFFFF;
 localparam int unsigned ENTROPY_SOURCE_FIFO_RDATA_RDATA_SHIFT                                                     = 0;
 
-localparam int unsigned ENTROPY_SOURCE_HEALTH_TEST_CTRL_ENABLE_MASK                                               = 32'hFF;
+localparam int unsigned ENTROPY_SOURCE_HEALTH_TEST_CTRL_ENABLE_MASK                                               = 32'h7;
 localparam int unsigned ENTROPY_SOURCE_HEALTH_TEST_CTRL_ENABLE_SHIFT                                              = 0;
 
 localparam int unsigned ENTROPY_SOURCE_HEALTH_TEST_CTRL_REPETITION_LIMIT_MASK                                     = 32'hFF00;
@@ -5583,50 +5571,11 @@ localparam int unsigned ENTROPY_SOURCE_REPETITION_TEST_COUNT_REPETITION_COUNT_SH
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_PATTERN_COUNT_MASK                                  = 32'hFFFF;
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_PATTERN_COUNT_SHIFT                                 = 0;
 
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_TARGET_PATTERN_MASK                                 = 32'hF0000;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_TARGET_PATTERN_SHIFT                                = 16;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_SAMPLES_PROCESSED_MASK                              = 32'h3FF00000;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_1BIT_SAMPLES_PROCESSED_SHIFT                             = 20;
-
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_PATTERN_COUNT_MASK                                  = 32'hFFFF;
 localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_PATTERN_COUNT_SHIFT                                 = 0;
 
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_TARGET_PATTERN_MASK                                 = 32'hF0000;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_TARGET_PATTERN_SHIFT                                = 16;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_SAMPLES_PROCESSED_MASK                              = 32'h3FF00000;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_2BIT_SAMPLES_PROCESSED_SHIFT                             = 20;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_PATTERN_COUNT_MASK                                  = 32'h3FF;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_PATTERN_COUNT_SHIFT                                 = 0;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_TARGET_PATTERN_MASK                                 = 32'h3C00;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_TARGET_PATTERN_SHIFT                                = 10;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_SAMPLES_PROCESSED_MASK                              = 32'h3FF00000;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_3BIT_SAMPLES_PROCESSED_SHIFT                             = 20;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_PATTERN_COUNT_MASK                                  = 32'h3FF;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_PATTERN_COUNT_SHIFT                                 = 0;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_TARGET_PATTERN_MASK                                 = 32'h3C00;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_TARGET_PATTERN_SHIFT                                = 10;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_SAMPLES_PROCESSED_MASK                              = 32'h3FF00000;
-localparam int unsigned ENTROPY_SOURCE_APT_PATTERN_COUNT_4BIT_SAMPLES_PROCESSED_SHIFT                             = 20;
-
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_1BIT_LIMIT_MASK                                             = 32'hFFFF;
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_1BIT_LIMIT_SHIFT                                            = 0;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_2BIT_LIMIT_MASK                                             = 32'h3FF;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_2BIT_LIMIT_SHIFT                                            = 0;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_LIMIT_MASK                                             = 32'h3FF;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_3BIT_LIMIT_SHIFT                                            = 0;
-
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_LIMIT_MASK                                             = 32'h3FF;
-localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_4BIT_LIMIT_SHIFT                                            = 0;
 
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_LIMIT_MASK                                               = 32'hFFFF;
 localparam int unsigned ENTROPY_SOURCE_APT_PROPORTION_LO_LIMIT_SHIFT                                              = 0;
@@ -5636,24 +5585,6 @@ localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_COUNT_01_SHIFT      
 
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_COUNT_10_MASK                                         = 32'hFFFF0000;
 localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_0_COUNT_10_SHIFT                                        = 16;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_00_MASK                                         = 32'hFFFF;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_00_SHIFT                                        = 0;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_11_MASK                                         = 32'hFFFF0000;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_COUNTS_1_COUNT_11_SHIFT                                        = 16;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_01_MASK                                     = 32'hFF;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_01_SHIFT                                    = 0;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_10_MASK                                     = 32'hFF00;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_10_SHIFT                                    = 8;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_00_MASK                                     = 32'hFF0000;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_00_SHIFT                                    = 16;
-
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_11_MASK                                     = 32'hFF000000;
-localparam int unsigned ENTROPY_SOURCE_MARKOV_TEST_PROBABILITIES_PROB_11_SHIFT                                    = 24;
 
 localparam int unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_ENABLE_MASK                                                = 32'hFFF;
 localparam int unsigned ENTROPY_SOURCE_RING_OSC_ENABLE_ENABLE_SHIFT                                               = 0;
@@ -6705,6 +6636,57 @@ localparam     int unsigned SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_SHIFT       
 localparam longint unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_WIPE_STATE_MASK                                             = 64'h1;
 localparam     int unsigned SEP_CPU_CTRL_KM_WIPE_CTRL_WIPE_STATE_SHIFT                                            = 0;
 
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_PATH_ERR_MASK                                     = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_PATH_ERR_SHIFT                                    = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_HOST_PATH_ERR_MASK                                    = 64'h2;
+localparam     int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_HOST_PATH_ERR_SHIFT                                   = 1;
+
+localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_CLR_MASK                                               = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_CLR_SHIFT                                              = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_AES_MASK                                           = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_AES_SHIFT                                          = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_HMAC_MASK                                          = 64'h2;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_HMAC_SHIFT                                         = 1;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_KMAC_MASK                                          = 64'h4;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_KMAC_SHIFT                                         = 2;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_OTBN_MASK                                          = 64'h8;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_OTBN_SHIFT                                         = 3;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_CSRNG_MASK                                         = 64'h10;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_CSRNG_SHIFT                                        = 4;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_EDN_MASK                                           = 64'h20;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_EDN_SHIFT                                          = 5;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_MASK                                           = 64'h40;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_SHIFT                                          = 6;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_MASK                                            = 64'h1;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_SHIFT                                           = 0;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_HMAC_MASK                                           = 64'h2;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_HMAC_SHIFT                                          = 1;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_KMAC_MASK                                           = 64'h4;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_KMAC_SHIFT                                          = 2;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_OTBN_MASK                                           = 64'h8;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_OTBN_SHIFT                                          = 3;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_CSRNG_MASK                                          = 64'h10;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_CSRNG_SHIFT                                         = 4;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_EDN_MASK                                            = 64'h20;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_EDN_SHIFT                                           = 5;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_MASK                                            = 64'h40;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_SHIFT                                           = 6;
+
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT                                          = 0;
 
@@ -7622,6 +7604,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   trng_sw_rst_n ;
     logic [0:0]   kmac_sw_rst_n ;
     logic [0:0]   hmac_sw_rst_n ;
     logic [0:0]   aes_sw_rst_n ;
@@ -8388,14 +8371,8 @@ typedef struct packed {
     logic [0:0]   autotune_enable ;
     logic [1:0]   rsvd_0 ;
     logic [0:0]   module_enable ;
-    logic [0:0]   reset ;
+    logic [0:0]   rsvd0 ;
 } entropy_source_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   rsvd ;
-} entropy_source_status_reg_t;
 
 
 
@@ -8501,7 +8478,8 @@ typedef struct packed {
 
 typedef struct packed {
     logic [7:0]   repetition_limit ;
-    logic [7:0]   enable ;
+    logic [4:0]   rsvd_0 ;
+    logic [2:0]   enable ;
 } entropy_source_health_test_ctrl_reg_t;
 
 
@@ -8532,60 +8510,20 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [9:0]   samples_processed ;
-    logic [3:0]   target_pattern ;
     logic [15:0]   pattern_count ;
 } entropy_source_apt_pattern_count_1bit_reg_t;
 
 
 
 typedef struct packed {
-    logic [9:0]   samples_processed ;
-    logic [3:0]   target_pattern ;
     logic [15:0]   pattern_count ;
 } entropy_source_apt_pattern_count_2bit_reg_t;
 
 
 
 typedef struct packed {
-    logic [9:0]   samples_processed ;
-    logic [5:0]   rsvd_0 ;
-    logic [3:0]   target_pattern ;
-    logic [9:0]   pattern_count ;
-} entropy_source_apt_pattern_count_3bit_reg_t;
-
-
-
-typedef struct packed {
-    logic [9:0]   samples_processed ;
-    logic [5:0]   rsvd_0 ;
-    logic [3:0]   target_pattern ;
-    logic [9:0]   pattern_count ;
-} entropy_source_apt_pattern_count_4bit_reg_t;
-
-
-
-typedef struct packed {
     logic [15:0]   limit ;
 } entropy_source_apt_proportion_1bit_reg_t;
-
-
-
-typedef struct packed {
-    logic [9:0]   limit ;
-} entropy_source_apt_proportion_2bit_reg_t;
-
-
-
-typedef struct packed {
-    logic [9:0]   limit ;
-} entropy_source_apt_proportion_3bit_reg_t;
-
-
-
-typedef struct packed {
-    logic [9:0]   limit ;
-} entropy_source_apt_proportion_4bit_reg_t;
 
 
 
@@ -8599,22 +8537,6 @@ typedef struct packed {
     logic [15:0]   count_10 ;
     logic [15:0]   count_01 ;
 } entropy_source_markov_test_counts_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [15:0]   count_11 ;
-    logic [15:0]   count_00 ;
-} entropy_source_markov_test_counts_1_reg_t;
-
-
-
-typedef struct packed {
-    logic [7:0]   prob_11 ;
-    logic [7:0]   prob_00 ;
-    logic [7:0]   prob_10 ;
-    logic [7:0]   prob_01 ;
-} entropy_source_markov_test_probabilities_reg_t;
 
 
 
@@ -9724,6 +9646,43 @@ typedef struct packed {
 typedef struct packed {
     logic [0:0]   wipe_state ;
 } sep_cpu_ctrl_km_wipe_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   host_path_err ;
+    logic [0:0]   reg_path_err ;
+} sep_cpu_ctrl_dma_bus_err_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   clr ;
+} sep_cpu_ctrl_dma_bus_err_clear_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   wdt ;
+    logic [0:0]   edn ;
+    logic [0:0]   csrng ;
+    logic [0:0]   otbn ;
+    logic [0:0]   kmac ;
+    logic [0:0]   hmac ;
+    logic [0:0]   aes ;
+} sep_cpu_ctrl_periph_bus_err_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   wdt ;
+    logic [0:0]   edn ;
+    logic [0:0]   csrng ;
+    logic [0:0]   otbn ;
+    logic [0:0]   kmac ;
+    logic [0:0]   hmac ;
+    logic [0:0]   aes ;
+} sep_cpu_ctrl_periph_bus_err_clear_reg_t;
 
 
 

@@ -7,7 +7,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
 from smu_base_test import smu_base_test
 
 HOLD_CYCLES = 100
@@ -71,9 +70,7 @@ class smu_smc_reset_ctrl_test(smu_base_test):
             }
             for name, val in samples.items():
                 if val != 1:
-                    raise AssertionError(
-                        f"{name} deasserted mid-hold cycle={cycle} last={val}"
-                    )
+                    raise AssertionError(f"{name} deasserted mid-hold cycle={cycle} last={val}")
 
         sb.expect_eq(
             "rst_cold_stable holds high",

@@ -7,7 +7,7 @@
 
 # C header omits bitfield structs (peakrdl can't represent >64-bit registers);
 # address/mask defines only.
-OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
+OCAH_REG_NO_BITFIELDS ?= key_manager oca_i3c_wrap smc smc_efuse_map sep_efuse_map
 
 # The Python header has its own list because the reason above is a peakrdl
 # c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
@@ -16,6 +16,10 @@ OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
 # those classes (they build register values through <REG>_reg_u), so the default
 # is on and this list stays empty until some block proves otherwise.
 OCAH_REG_NO_BITFIELDS_PY ?=
+
+# Python field-access metadata is opt-in because generic register walkers are
+# its only consumers. It carries sw/onwrite/onread/singlepulse from the RDL.
+OCAH_REG_PY_FIELD_ACCESS_BLOCKS ?= hw/ip/entropy_source
 
 # A top is composite when its resolved RDL sits next to a regs/blocks/ dir: each
 # sub-block is generated on its own, the top keeps only its address view. Reading
@@ -27,8 +31,6 @@ OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # Register RTL authored outside regblock: excluded from SV only, still docs + C header.
 # The vendored OpenTitan blocks (aes/hmac/kmac/otbn/csrng/edn/secure_dma/
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
-# efuse_bank is simulation-only and its committed RTL carries a hand edit the
-# generator cannot express; the file itself documents it.
 # pll_wrap/pvt_wrap are free-tree DV register models (hw/sys/smc/dv/models/regs)
 # whose real RTL is the vendor PLL/PVT IP, not regblock: only their addrmap_pkg is
 # committed. The nonfree overlay also lists them (EXTRA below), but they must be in
@@ -40,7 +42,6 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl \
-  efuse_bank \
   pll_wrap pvt_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
@@ -111,6 +112,7 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
+ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
 ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
 

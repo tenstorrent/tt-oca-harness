@@ -23,7 +23,7 @@ module sep_ip_integration
     import sep_efuse_pkg::*;
     import km_intf_pkg::*;
 #(
-    parameter int unsigned EXT_TRNG_NUM_AXIS = 2
+    parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT
 ) (
     input logic clk_i,
     input logic rst_ni,

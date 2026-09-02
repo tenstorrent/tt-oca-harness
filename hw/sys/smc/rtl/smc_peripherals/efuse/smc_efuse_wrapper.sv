@@ -248,8 +248,6 @@ module smc_efuse_wrapper
 
         .ext_boot_seq_done_i              (ext_boot_seq_done_i),
 
-        .prod_dbg_active_i                (1'b0),
-
         .is_write_locked_shadow_regs_o    (efuse_debug_o[0]),
         .is_read_locked_shadow_regs_o     (efuse_debug_o[1]),
         .is_program_locked_o              (efuse_debug_o[2]),

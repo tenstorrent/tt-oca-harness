@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_gpio_item import SmcGpioItem, SmcGpioOp
 
 from .smc_base_test_seq import smc_base_test_seq
@@ -17,7 +16,7 @@ class smc_gpio_multi_sample_test_seq(smc_base_test_seq):
 
     def __init__(self, name: str = "smc_gpio_multi_sample_test_seq") -> None:
         super().__init__(name)
-        self.samples = []
+        self.samples: list[SmcGpioItem] = []
 
     async def body(self) -> None:
         dut = cocotb.top

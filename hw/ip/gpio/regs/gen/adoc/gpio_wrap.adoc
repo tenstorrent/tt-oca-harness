@@ -21,7 +21,7 @@ the filter may not update before your next transaction, causing unexpected behav
 | 25 | `lsio_enable` | R | 0x0 a| When set, this bit indicates that the pad being driving by the LSIO
 | 24:22 | `Reserved` | - | - a| Reserved
 | 21:20 | `interrupt_type` | RW | 0x0 a| Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge
-| 19 | `lsio_disable` | RW | 0x0 a| When set, LSIO acceses will be blocked from the GPIO interface
+| 19 | `lsio_disable` | RW | 0x0 a| When set, LSIO accesses will be blocked from the GPIO interface
 | 18 | `interrupt_enable` | RW | 0x0 a| Interrupt Enable.
 | 17 | `lsio_select` | RW | 0x0 a| Force LSIO interface to be used. interface_enable has higher priority over this
 | 16 | `interface_enable` | RW | 0x0 a| Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core

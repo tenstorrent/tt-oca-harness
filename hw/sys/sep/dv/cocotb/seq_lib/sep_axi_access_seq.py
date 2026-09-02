@@ -3,16 +3,15 @@
 """Generic AXI access sequence on a SEP master bus.
 
 A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue
-one register read/write through the SEP AXI agent without re-declaring a sequence
+one register read/write through the SEP AXI agent without redeclaring a sequence
 each time. The result (``rdata`` / ``resp_ok``) is published on the sequence
 object after ``start_seq``.
 """
 
 from __future__ import annotations
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
 
 
 class SepAxiAccessSeq(uvm_sequence):
@@ -54,6 +53,7 @@ class SepAxiAccessSeq(uvm_sequence):
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
+        self.resp_list: tuple[int, ...] = ()
         self.timed_out: bool = False
 
     async def body(self) -> None:
@@ -72,4 +72,5 @@ class SepAxiAccessSeq(uvm_sequence):
         self.rdata = item.rdata
         self.resp_ok = item.resp_ok
         self.resp_code = item.resp_code
+        self.resp_list = item.resp_list
         self.timed_out = item.timed_out

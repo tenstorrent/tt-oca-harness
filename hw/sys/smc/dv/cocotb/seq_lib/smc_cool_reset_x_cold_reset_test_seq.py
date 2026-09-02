@@ -12,15 +12,9 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
 SMCEN = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
-FLR_DELAY = smc_addr(
-    "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR"
-)
-FLR_HOLD = smc_addr(
-    "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR"
-)
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
+FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
 # Hold of 0/1 never starts the FSM. Keep hold long enough to overlap cold.
 _DELAY = 0x20
@@ -104,9 +98,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "POS_COOL_ASSERT")
         assert self._int(dut.rst_cool_ni) & 1 == 1
         self.pos_ok = True
-        cocotb.log.info(
-            "CHK-FLR-COLD-POS-COOL: FLR-only rst_cool_from_flr=0 rst_cool_ni=1"
-        )
+        cocotb.log.info("CHK-FLR-COLD-POS-COOL: FLR-only rst_cool_from_flr=0 rst_cool_ni=1")
         dut.tb_cfg_flr_pf_active.value = 0
         await self._await_cool(dut, 1, _COOL_RELEASE_BOUND, "POS_COOL_RELEASE")
         await self._await_warm(dut, "POS_WARM")
@@ -118,9 +110,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
             await RisingEdge(dut.clk_ref_i)
 
         dut.tb_cfg_flr_pf_active.value = 1
-        iso_live = await self._await_iso(
-            dut, lambda v: v == _SMCEN, _ISO_BOUND, "ISO_LIVE"
-        )
+        iso_live = await self._await_iso(dut, lambda v: v == _SMCEN, _ISO_BOUND, "ISO_LIVE")
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "OVERLAP_COOL_HELD")
         cocotb.log.info(
             "CHK-FLR-COLD-ISO-LIVE: isolate_req_o=0x%x cool=0 before cold",
@@ -165,6 +155,4 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
         warm = await self.csr_read("SCRATCH_POST", SCRATCH_COLD_WARM_0, expected=0)
         cocotb.log.info("CHK-FLR-COLD-WARM: SCRATCH_COLD_WARM_0=0x%x after cold", warm)
-        cocotb.log.info(
-            "CHK-FLR-COLD-BASIC: pos=%s wins=%s", self.pos_ok, self.wins_ok
-        )
+        cocotb.log.info("CHK-FLR-COLD-BASIC: pos=%s wins=%s", self.pos_ok, self.wins_ok)

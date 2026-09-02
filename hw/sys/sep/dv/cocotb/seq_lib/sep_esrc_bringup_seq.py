@@ -3,8 +3,8 @@
 """ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
 
 Replicates the reference suite real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
-PHASE-A configures ESRC with the generators off, resets/pulses ESRC, enables
-CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
+PHASE-A applies the shared TRNG reset, configures ESRC with the generators off,
+enables CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
 enables the generators and waits for a seed; PHASE-B enables EDN last. CSRNG/EDN
 registers sit behind a 64-bit lane adapter -- a 4-byte write at the register's
 byte address lands on the correct lane automatically.
@@ -25,10 +25,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL
+from pyuvm import uvm_sequence
+from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL, SEP_RESET_CTRL
 
 # --- register map -----------------------------------------------------------
 # sep_cpu_ctrl addresses come from the generated SystemRDL export, never literals.
@@ -45,6 +44,8 @@ from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_CTRL_RESET = SEP_CPU_CTRL.reset("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
+SW_RESET_N = SEP_RESET_CTRL.addr("SW_RESET_N")
+TRNG_SW_RST_N_MASK = SEP_RESET_CTRL.field_mask("SW_RESET_N", "trng_sw_rst_n")
 # The ESRC / CSRNG / EDN addresses below stay LITERAL, unlike every other block in
 # this env, because the generated top-level export does not cover them: there is no
 # ENTROPY_SRC / CSRNG / EDN symbol at all in hw/sys/sep/regs/gen/py/sep_reg.py (the
@@ -59,11 +60,11 @@ ESRC_CTRL = 0x1091_6004
 ESRC_INTR_STATUS = 0x1091_6010
 ESRC_INTR_ENABLE = 0x1091_6014
 ESRC_FIFO_CTRL = 0x1091_6020
-ESRC_FIFO_STATUS = 0x1091_6024   # [6:0] LEVEL = valid 32-bit words in the FIFO
-ESRC_FIFO_RDATA = 0x1091_6028    # read pops one word, decrements LEVEL (frontdoor drain)
+ESRC_FIFO_STATUS = 0x1091_6024  # [6:0] LEVEL = valid 32-bit words in the FIFO
+ESRC_FIFO_RDATA = 0x1091_6028  # read pops one word, decrements LEVEL (frontdoor drain)
 ESRC_HEALTH_TEST_CTRL = 0x1091_6030
 ESRC_HEALTH_TEST_WINDOW_SIZE = 0x1091_6034
-ESRC_HEALTH_TEST_STATUS = 0x1091_6040   # per-test pass/fail, read on a stall
+ESRC_HEALTH_TEST_STATUS = 0x1091_6040  # per-test pass/fail, read on a stall
 # Shared (not per-mode) health-test watermark. Offsets from
 # hw/ip/entropy_source/regs/gen/c/entropy_source_addr.h.
 ESRC_HT_WATERMARK_NUM = 0x1091_6130
@@ -94,12 +95,12 @@ EDN_RECOV_ALERT = 0x1091_5838
 
 # --- values -----------------------------------------------------------------
 CSRNG_CTRL_ENABLE = 0x0000_9666  # {FIPS_FORCE=F, READ_INT_STATE=T, SW_APP_ENABLE=T, ENABLE=T}
-EDN_CTRL_AUTO = 0x0000_9666      # {CMD_FIFO_RST=F, AUTO_REQ=T, BOOT_REQ=T, EDN_ENABLE=T}
-EDN_CTRL_BOOT = 0x0000_9966      # {CMD_FIFO_RST=F, AUTO_REQ=F, BOOT_REQ=T, EDN_ENABLE=T}
-CMD_INSTANTIATE = 0x0000_0901    # acmd=1, flag0=9 (use real entropy)
-CMD_RESEED = 0x0000_0902         # acmd=2
+EDN_CTRL_AUTO = 0x0000_9666  # {CMD_FIFO_RST=F, AUTO_REQ=T, BOOT_REQ=T, EDN_ENABLE=T}
+EDN_CTRL_BOOT = 0x0000_9966  # {CMD_FIFO_RST=F, AUTO_REQ=F, BOOT_REQ=T, EDN_ENABLE=T}
+CMD_INSTANTIATE = 0x0000_0901  # acmd=1, flag0=9 (use real entropy)
+CMD_RESEED = 0x0000_0902  # acmd=2
 RING_OSC_SAMPLECLK_ONLY = 0x00FF_F000  # SAMPLE_CLK_ENABLE on, generators off
-RING_OSC_ALL_ON = 0x00FF_FFFF          # generators + sample-clk on
+RING_OSC_ALL_ON = 0x00FF_FFFF  # generators + sample-clk on
 
 # DECORRELATOR_CTRL: SAMPLE_CLK_DIV is bits [31:12], division = field+1 (RTL
 # entropy_decorrelator.sv). 63<<12 -> divide-by-64 (the OTP-faithful default);
@@ -148,17 +149,17 @@ class SepEntropyCfg:
     FIPS defaults; /8 + small window only trades sample count for wall-clock.
     """
 
-    sample_clk_div: int = 7            # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)
-    byte_mask: int = 0xFF              # decorrelator byte mask (DUT reset default; not programmed)
-    bypass: bool = False               # decorrelator feedback bypass
-    sha_whitening: bool = True         # ESRC_CTRL.SHA256_WHITENING_ENABLE
-    glen: int = 32                     # EDN/CSRNG Generate length (128b genbits blocks)
+    sample_clk_div: int = 7  # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)
+    byte_mask: int = 0xFF  # decorrelator byte mask (DUT reset default; not programmed)
+    bypass: bool = False  # decorrelator feedback bypass
+    sha_whitening: bool = True  # ESRC_CTRL.SHA256_WHITENING_ENABLE
+    glen: int = 32  # EDN/CSRNG Generate length (128b genbits blocks)
     # EDN_CTRL_AUTO also sets BOOT_REQ. The boot Generate uses BOOT_GEN_CMD, which
     # resets to glen=4095 (0xfff003), not GENERATE_CMD. Leave False so existing
     # tests keep one open command for the whole run; set True when the test needs
     # completed Generates (the segmentation contract).
     program_boot_generate: bool = False
-    reseed_interval: int = 8           # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
+    reseed_interval: int = 8  # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
     # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
     # packer straight to the stream (`.csrng_word_valid_i (entropy_stream_vld_i)`,
@@ -168,7 +169,7 @@ class SepEntropyCfg:
     # by 12 words and mismatched CHK3_seed (and hence CHK4/CHK5) while CHK1/CHK2
     # still matched exactly.
     ingress_skip: int = 0
-    internal_drbg: bool = True         # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x3 (ext_trng)
+    internal_drbg: bool = True  # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
     health_ctrl: int = HEALTH_CTRL_DEFAULT
     # None leaves HEALTH_TEST_WINDOW_SIZE at its 2048-sample reset -- see the note
     # above; a shrunk window trips ALERT_THRESHOLD and hangs main_sm in AlertHang.
@@ -192,7 +193,7 @@ class SepEntropyCfg:
 
     @property
     def esrc_ctrl_whiten(self) -> int:
-        """ESRC_CTRL with RESET deasserted, built from the generated field metadata.
+        """ESRC_CTRL built from the generated field metadata.
 
         Assembling this from named fields (rather than a literal) is what keeps
         ``MODULE_ENABLE`` — which RESETS TO 1 — set. A hand-built
@@ -200,20 +201,11 @@ class SepEntropyCfg:
         disables the whole entropy source: the decorrelator keeps sampling but the
         SHA whitener never accepts a word, so no seed ever reaches CSRNG.
         """
-        return ENTROPY_SOURCE.value(
-            "CTRL", RESET=0, SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0
-        )
-
-    @property
-    def esrc_ctrl_reset_pulse(self) -> int:
-        """Same as :attr:`esrc_ctrl_whiten` but with CTRL.RESET asserted."""
-        return ENTROPY_SOURCE.value(
-            "CTRL", RESET=1, SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0
-        )
+        return ENTROPY_SOURCE.value("CTRL", SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0)
 
     @property
     def ext_trng_src_sel(self) -> int:
-        return 0x0 if self.internal_drbg else 0x3
+        return 0x0 if self.internal_drbg else 0x7
 
     @property
     def edn_generate_cmd(self) -> int:
@@ -266,13 +258,22 @@ class SepEsrcConfigSeq(uvm_sequence):
         name: str = "esrc_config",
         *,
         cfg: SepEntropyCfg | None = None,
+        reset_trng: bool = True,
     ) -> None:
         super().__init__(name)
         self.cfg = cfg if cfg is not None else SepEntropyCfg()
+        self.reset_trng = reset_trng
 
     async def body(self) -> None:
         cfg = self.cfg
         await _wr(self, CLOCK_GATE_CTRL, CLOCK_GATE_CTRL_RESET)  # CSR write path only
+        if self.reset_trng:
+            # Initial bring-up has no enabled entropy consumers. Alarm recovery
+            # uses SepSwReset.begin_trng_recovery(), then invokes this sequence
+            # with reset_trng=False while the consumers remain held.
+            saved_sw_reset_n = await _rd(self, SW_RESET_N)
+            await _wr(self, SW_RESET_N, saved_sw_reset_n & ~TRNG_SW_RST_N_MASK)
+            await _wr(self, SW_RESET_N, saved_sw_reset_n)
         await _wr(self, EXT_TRNG_SRC_SEL, cfg.ext_trng_src_sel)
         await _wr(self, ESRC_RING_OSC_ENABLE, RING_OSC_SAMPLECLK_ONLY)  # generators off
         await _wr(self, ESRC_DECORRELATOR_CTRL, cfg.decor_ctrl)
@@ -280,8 +281,7 @@ class SepEsrcConfigSeq(uvm_sequence):
         await _wr(self, ESRC_HEALTH_TEST_CTRL, cfg.health_ctrl)
         if cfg.window_size is not None:
             await _wr(self, ESRC_HEALTH_TEST_WINDOW_SIZE, cfg.window_size)
-        await _wr(self, ESRC_CTRL, cfg.esrc_ctrl_reset_pulse)   # RESET=1 (soft-reset ESRC)
-        await _wr(self, ESRC_CTRL, cfg.esrc_ctrl_whiten)        # RESET=0
+        await _wr(self, ESRC_CTRL, cfg.esrc_ctrl_whiten)
         await _wr(self, CSRNG_CTRL, CSRNG_CTRL_ENABLE)
         await _wr(self, EDN_BOOT_INS_CMD, CMD_INSTANTIATE)
         if cfg.program_boot_generate:
@@ -301,14 +301,14 @@ class SepEsrcEnableGeneratorsSeq(uvm_sequence):
 
 
 class SepEsrcEnableEdnSeq(uvm_sequence):
-    """PHASE-B: enable EDN last (after entropy is flowing). EDN then auto-issues
-    Instantiate+Generate and streams genbits to the selected sink (KM by default)."""
+    """PHASE-B: lock ESRC and enable EDN last, after startup health testing."""
 
     def __init__(self, name: str = "esrc_enable_edn", *, auto_mode: bool = True) -> None:
         super().__init__(name)
         self.auto_mode = auto_mode
 
     async def body(self) -> None:
+        await _wr(self, ESRC_FIPS_LOCK, 0x1)
         await _wr(self, EDN_CTRL, EDN_CTRL_AUTO if self.auto_mode else EDN_CTRL_BOOT)
 
 

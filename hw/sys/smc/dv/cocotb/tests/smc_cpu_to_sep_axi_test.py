@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cpu_to_sep_axi_test_seq import smc_cpu_to_sep_axi_test_seq
 from seq_lib.smc_cpu_vip_utils import check_cpu_bfm_observability
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
