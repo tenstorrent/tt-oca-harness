@@ -54,7 +54,6 @@ project_i3ccore: &project_i3ccore
     verilog_defines:
       VCS
       COMMON_CELLS_ASSERTS_OFF
-      I3C_USE_AXI_LITE
     include_dirs:
       $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb
     comp_flags:
