@@ -23,7 +23,7 @@ package oca_i3c_wrap_reg_pkg;
 
     typedef struct {
         logic req;
-        logic [10:0] addr;
+        logic [11:0] addr;
         logic req_is_wr;
         logic [31:0] wr_data;
         logic [31:0] wr_biten;

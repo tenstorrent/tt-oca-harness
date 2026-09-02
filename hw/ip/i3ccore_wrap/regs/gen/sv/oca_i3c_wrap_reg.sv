@@ -250,9 +250,9 @@ module oca_i3c_wrap_reg (
         is_valid_addr = '1; // No valid address check
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<6; i0++) begin
-            decoded_reg_strb.i3c_csr[i0] = cpuif_req_masked & (cpuif_addr >= 15'h0 + (15)'(i0) * 15'h1000) & (cpuif_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'h4ff);
-            is_external |= cpuif_req_masked & (cpuif_addr >= 15'h0 + (15)'(i0) * 15'h1000) & (cpuif_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'h4ff);
-            is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 15'h0 + (15)'(i0) * 15'h1000) & (cpuif_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'h4ff);
+            decoded_reg_strb.i3c_csr[i0] = cpuif_req_masked & (cpuif_addr >= 15'h0 + (15)'(i0) * 15'h1000) & (cpuif_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'hfff);
+            is_external |= cpuif_req_masked & (cpuif_addr >= 15'h0 + (15)'(i0) * 15'h1000) & (cpuif_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'hfff);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 15'h0 + (15)'(i0) * 15'h1000) & (cpuif_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'hfff);
         end
         decoded_err = '0;
         decoded_req_is_external = is_external;
@@ -291,7 +291,7 @@ module oca_i3c_wrap_reg (
     for(genvar i0=0; i0<6; i0++) begin
         // External region: oca_i3c_wrap.i3c_csr[]
         assign hwif_out.i3c_csr[i0].req = decoded_reg_strb.i3c_csr[i0];
-        assign hwif_out.i3c_csr[i0].addr = decoded_addr[10:0];
+        assign hwif_out.i3c_csr[i0].addr = decoded_addr[11:0];
         assign hwif_out.i3c_csr[i0].req_is_wr = decoded_req_is_wr;
         assign hwif_out.i3c_csr[i0].wr_data = decoded_wr_data;
         assign hwif_out.i3c_csr[i0].wr_biten = decoded_wr_biten;
@@ -348,7 +348,7 @@ module oca_i3c_wrap_reg (
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
         for(int i0=0; i0<6; i0++) begin
-            if((rd_mux_addr >= 15'h0 + (15)'(i0) * 15'h1000) && (rd_mux_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'h4ff)) begin
+            if((rd_mux_addr >= 15'h0 + (15)'(i0) * 15'h1000) && (rd_mux_addr <= 15'h0 + (15)'(i0) * 15'h1000 + 15'hfff)) begin
                 readback_data_var = hwif_in.i3c_csr[i0].rd_data;
             end
         end
