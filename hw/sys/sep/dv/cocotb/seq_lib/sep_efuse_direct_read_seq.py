@@ -19,7 +19,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
 _EFUSE_READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
 _EFUSE_READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_INTERFACE_READ_DATA")
