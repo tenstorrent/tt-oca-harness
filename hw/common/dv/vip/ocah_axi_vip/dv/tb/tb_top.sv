@@ -11,6 +11,11 @@
 //             corruption is observable without a backend master in the
 //             loop (the cocotbext master fails by design on a response
 //             ID it never issued).
+//   l_axi_* — AXI4-Lite bundle: OcahAxiLiteMasterAgent against
+//             OcahAxiLiteSlaveAgent, for the lite protocol-control
+//             selftests (AW/W launch skew, deferred BREADY/RREADY,
+//             partial strobes) with the handshakes observable at the
+//             nets.
 //
 // All nets are driven from cocotb (--public-flat-rw); nothing here has
 // drivers, so the lint waivers below cover the whole module on purpose.
@@ -126,6 +131,33 @@ module ocah_axi_vip_tb_top;
     logic        t_axi_rlast;
     logic        t_axi_rvalid;
     logic        t_axi_rready;
+
+    // ------------------------------------------------------------------
+    // l_axi: AXI4-Lite bundle (VIP lite master <-> VIP lite RAM slave)
+    // ------------------------------------------------------------------
+    logic [31:0] l_axi_awaddr;
+    logic [2:0]  l_axi_awprot;
+    logic        l_axi_awvalid;
+    logic        l_axi_awready;
+
+    logic [31:0] l_axi_wdata;
+    logic [3:0]  l_axi_wstrb;
+    logic        l_axi_wvalid;
+    logic        l_axi_wready;
+
+    logic [1:0]  l_axi_bresp;
+    logic        l_axi_bvalid;
+    logic        l_axi_bready;
+
+    logic [31:0] l_axi_araddr;
+    logic [2:0]  l_axi_arprot;
+    logic        l_axi_arvalid;
+    logic        l_axi_arready;
+
+    logic [31:0] l_axi_rdata;
+    logic [1:0]  l_axi_rresp;
+    logic        l_axi_rvalid;
+    logic        l_axi_rready;
 
     /* verilator lint_on UNUSEDSIGNAL */
     /* verilator lint_on UNDRIVEN */
