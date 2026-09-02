@@ -398,7 +398,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
     if (flash_read(addr, rd, nwords)) {
         sep_mbx_puts("FAIL: flash READ timeout\n");
-        return 1;
+        return errors + 1;
     }
     int data_ok = 1, any_nonerased = 0;
     for (uint32_t i = 0; i < nwords; i++) {

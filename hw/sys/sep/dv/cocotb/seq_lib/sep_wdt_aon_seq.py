@@ -51,7 +51,6 @@ WKUP_CAUSE = WDT_BASE + 0x34
 
 WKUP_ENABLE = 1 << 0
 WKUP_PRESCALER_SHIFT = 1  # WKUP_CTRL.prescaler[12:1]
-WKUP_PRESCALER_MAX = 0xFFF
 WDOG_ENABLE = 1 << 0
 INTR_TEST_WKUP_EXPIRED = 1 << 0
 INTR_WKUP_EXPIRED = 1 << 0
@@ -80,12 +79,13 @@ class SepWdtCfg:
         self.wkup_high_thold = rng.randrange(
             0x4_0000, 0x10_0001
         )  # large: no expiry in the count window
-        # The REGWEN-scope check probes WDOG_COUNT while the watchdog runs, but it
-        # proves the write by LOWERING the counter, so it needs no relationship to
-        # this threshold. WDOG_BARK_THOLD is parked far above any count reached in
-        # that window (_chk_wdog_pet), so this value only has to be a distinct,
-        # non-zero pre-lock write.
-        self.bark_prelock = rng.randrange(2, 0x1_0000)  # nonzero pre-lock BARK_THOLD
+        # Floored well above the REGWEN-scope check's counter run floor. That check
+        # lets the enabled watchdog climb past a literal floor of a few tens of
+        # ticks before it probes WDOG_COUNT, and by then THIS value is the live
+        # bark threshold: the pre-lock leg overwrites the high park value from the
+        # pet check and REGWEN locks it there. A draw below the run floor would
+        # bark inside the probe.
+        self.bark_prelock = rng.randrange(0x1000, 0x1_0000)  # pre-lock BARK_THOLD
         self.bark_postlock = self.bark_prelock ^ 0xFFFF  # distinct locked-write attempt
         # WKUP_CTRL.prescaler: the wakeup counter advances once every
         # (prescaler + 1) clk_wdt ticks (aon_timer_core.sv wkup_incr), so a value

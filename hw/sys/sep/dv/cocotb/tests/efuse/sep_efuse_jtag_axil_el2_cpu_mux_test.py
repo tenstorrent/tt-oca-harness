@@ -20,16 +20,20 @@ allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force
 Checkers (each logged):
   * CHK-SENSE / firmware self-checks: real fuse-sense completed, the CPU eFuse-MMR
     read loop ran, and the CPU-published MMR read error count stayed zero.
-  * CHK-JTAG-MMR: all JTAG MMR ops (token1 reads, token3 writes + readbacks,
-    token-last reads) return OKAY -- the JTAG path reaches the eFuse through the mux.
+  * CHK-JTAG-MMR: all JTAG MMR ops (a token1 seed write then per-round reads that
+    must return the seeded word, token3 writes + readbacks, token-last reads)
+    return OKAY -- the JTAG path reaches the eFuse through the mux. token1 is
+    seeded because TOKEN_I is an ``external`` sw=rw word with no reset, so an
+    unwritten read returns X.
   * CHK-JTAG-DENY: a JTAG shadow-map read at PROD is DENIED -- error response AND
     data == 0xbadcab1e (the LC-gated filter).
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY (MMR is
     allowed even in the restricted state).
   * CHK-JTAG-TOKEN-BLOCK: in PROD/RMA_SIP, JTAG may reach the MMR token
-    block. This checker samples ``SEC_DISABLE_TOKEN_I[0]``, ``TOKEN_EOP``,
-    and ``SEC_DISABLE_TOKEN_MATCH`` (reads only — a ``TOKEN_EOP`` write
-    would start a compare). ``CHK-JTAG-MMR`` already walks RMA ``TOKEN_I``.
+    block. This checker seeds ``SEC_DISABLE_TOKEN_I[0]`` (unreset, as above) and
+    then samples it, ``TOKEN_EOP`` and ``SEC_DISABLE_TOKEN_MATCH`` by read. No
+    ``TOKEN_EOP`` write is issued: that, and only that, would start a compare.
+    ``CHK-JTAG-MMR`` already walks RMA ``TOKEN_I``.
     It is a sample of the allow class, not every TOKEN_I word and MATCH.
   * CHK-JTAG-IFACE-DENY: a JTAG read of the program/read interface
     (`EFUSE_PROGRAM_CTRL`) DECERRs with ``0xbadcab1e`` — same class as shadow.
@@ -261,6 +265,11 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
                 f"CHK-JTAG-TOKEN-BLOCK FAIL: JTAG {label} @0x{addr:08x} in PROD "
                 f"must be OKAY; RTL returned resp={code} rdata=0x{rdata:08x}"
             )
+            if addr == _EFUSE_MMR_SEC_DIS_I0:
+                assert rdata == _SEC_DIS_I0_SEED, (
+                    f"CHK-JTAG-TOKEN-BLOCK FAIL: JTAG {label} read back "
+                    f"0x{rdata:08x}, expected the seeded 0x{_SEC_DIS_I0_SEED:08x}"
+                )
         self.logger.info(
             "CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / "
             "SEC_DISABLE_TOKEN_MATCH all OKAY in PROD"

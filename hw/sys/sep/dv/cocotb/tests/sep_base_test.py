@@ -58,6 +58,11 @@ _DEFAULT_EFUSE_PRELOAD = (
 _STALL_CSR_TIMEOUT_NS = 50_000
 
 
+# Bit resolution for rd(): weak drives keep their strong value, everything else
+# unknown becomes 0.
+_LOGIC_RESOLVE = {"0": "0", "1": "1", "L": "0", "H": "1"}
+
+
 class sep_base_test(uvm_test):
     """Shared SEP test: env build, clock/reset bring-up, scenario hook."""
 
@@ -83,10 +88,13 @@ class sep_base_test(uvm_test):
         except Exception:
             pass
         try:
-            binstr = sig.value.binstr
-        except AttributeError:
+            binstr = str(sig.value)
+        except Exception:
             return 0
-        resolved = "".join(c if c in "01" else "0" for c in binstr)
+        # Weak drives resolve to their strong value; only genuinely unknown bits
+        # become 0. str() is the supported spelling in cocotb 2.x -- the binstr
+        # getter is deprecated.
+        resolved = "".join(_LOGIC_RESOLVE.get(c, "0") for c in binstr)
         return int(resolved, 2) if resolved else 0
 
     @staticmethod
@@ -155,6 +163,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.

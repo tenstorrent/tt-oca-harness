@@ -24,7 +24,9 @@ line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock
 CHK-RANGE-REGWEN (range gating + rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
 expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
-raising its ERROR_CODE bit exclusively, then a recovery copy). The scoreboard also checks the banner + ICCM execution.
+raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
+(DMA-issued command under dma_host_intg_inject_i -> exclusive host_path_err
++ aggregator [40], CLEAR, recovery copy). The scoreboard also checks the banner + ICCM execution.
 
 cpu / +skip_fuse_sense (no fuse data is read).
 """
@@ -35,7 +37,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+import cocotb
 import pyuvm
+from cocotb.triggers import RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
@@ -54,8 +58,10 @@ _PROGRESS_EVERY = 5_000
 _BANNER = "SEP DMA basic test"
 
 _PARAM_MAGIC = 0xDA0A11C0
-_SRAM_SIZE = 0x40000
 _BUSY_LEN = 0x100
+_IRQ_DMA_REG_PATH = 39
+_IRQ_DMA_HOST_PATH = 40
+_PIC_POLL = 200_000
 
 
 @dataclass(frozen=True)
@@ -126,11 +132,76 @@ class sep_dma_basic_test(sep_base_test):
         self._dma_cfg = cfg
         return patched
 
+    async def _drive_host_intg_inject(self) -> None:
+        """Drive ``dma_host_intg_inject_i`` for the integrity copy.
+
+        Pin high from CHK-HOSTINTG-ARM until CHK-HOSTINTG-RELEASE.
+        Aggregator bit 40 must be 1 and exclusive of bit 39 while the pin
+        is high, and 0 after CLEAR.
+        """
+        dut = cocotb.top
+        for _ in range(_MAX_RUN_CYCLES):
+            text = self.sb.console_text()
+            if "CHK-HOSTINTG-ARM" in text:
+                break
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished without printing CHK-HOSTINTG-ARM")
+            await RisingEdge(dut.clk_i)
+        else:
+            raise AssertionError("firmware never printed CHK-HOSTINTG-ARM")
+
+        dut.dma_host_intg_inject_i.value = 1
+        self.logger.info("STEP host-intg: dma_host_intg_inject_i=1")
+
+        # Bit 40 asserts only on a DMA-issued a_valid. RELEASE with the bit
+        # still low means the injected command did not set host_path_err.
+        for _ in range(_MAX_RUN_CYCLES):
+            await RisingEdge(dut.clk_i)
+            vec = self.rd(dut.sep_internal_interrupts_probe_o)
+            if (vec >> _IRQ_DMA_HOST_PATH) & 1:
+                assert ((vec >> _IRQ_DMA_REG_PATH) & 1) == 0, (
+                    f"register-path [39] set on host-path inject (vec=0x{vec:x})"
+                )
+                self.logger.info(
+                    "CHK-HOSTINTG-PIC PASS: sep_internal_interrupts[40]=1 exclusive (vec=0x%x)",
+                    vec,
+                )
+                break
+            if self.sb.fw_done or "CHK-HOSTINTG-RELEASE" in self.sb.console_text():
+                raise AssertionError(
+                    "sep_internal_interrupts[40] stayed 0 through the injected DMA command"
+                )
+        else:
+            raise AssertionError("sep_internal_interrupts[40] stayed 0 after host-path inject")
+
+        for _ in range(_MAX_RUN_CYCLES):
+            if "CHK-HOSTINTG-RELEASE" in self.sb.console_text():
+                break
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished without printing CHK-HOSTINTG-RELEASE")
+            await RisingEdge(dut.clk_i)
+        else:
+            raise AssertionError("firmware never printed CHK-HOSTINTG-RELEASE")
+
+        dut.dma_host_intg_inject_i.value = 0
+        self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
+
+        for _ in range(_PIC_POLL):
+            await RisingEdge(dut.clk_i)
+            vec = self.rd(dut.sep_internal_interrupts_probe_o)
+            if ((vec >> _IRQ_DMA_HOST_PATH) & 1) == 0:
+                self.logger.info(
+                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[40]=0 after DMA_BUS_ERR_CLEAR"
+                )
+                return
+        raise AssertionError("sep_internal_interrupts[40] stuck after DMA_BUS_ERR_CLEAR")
+
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
+        inj = cocotb.start_soon(self._drive_host_intg_inject())
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -140,6 +211,7 @@ class sep_dma_basic_test(sep_base_test):
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
         )
+        await inj
         cfg = self._dma_cfg
         needle = (
             f"SCENARIO src=0x{_SRAM_BASE + cfg.src_off:08x} "
@@ -152,6 +224,11 @@ class sep_dma_basic_test(sep_base_test):
             raise AssertionError(
                 "firmware did not consume the patched DMA cfg "
                 f"(missing {needle!r} in console; patch was inert or the image is stale)"
+            )
+        if "CHK-HOSTINTG PASS:" not in console:
+            raise AssertionError(
+                "firmware console missing CHK-HOSTINTG PASS "
+                "(host-path integrity contract was not proven)"
             )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
