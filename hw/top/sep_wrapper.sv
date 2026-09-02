@@ -66,6 +66,10 @@ module sep_wrapper
 
         output sep_cpu_trace_t sep_cpu_trace,
 
+        // CPU lockstep control/status; names match sep's ports for the .* binding
+        input  sep_lockstep_ctrl_t   lockstep_ctrl_i,
+        output sep_lockstep_status_t lockstep_status_o,
+
         input logic [31:1] rst_vec,
         input logic [31:1] jtag_id,
 
@@ -221,8 +225,8 @@ module sep_wrapper
         .efuse_shim_command_req_o  (efuse_shim_command_req),
         .efuse_shim_command_resp_i (efuse_shim_command_resp),
 
-        .sep_external_axi_req_o  (axi_extension_axi_req),
-        .sep_external_axi_resp_i (axi_extension_axi_resp)
+        .sep_external_axi_req_o   (axi_extension_axi_req),
+        .sep_external_axi_resp_i  (axi_extension_axi_resp)
     );
 
     /////////////////////////

@@ -88,9 +88,9 @@ strip_drawio_switch_fallback() {
   find "$dir" -name '*.svg' -type f -print0 | while IFS= read -r -d '' svg; do
     local tmp
     tmp="$(mktemp)"
-    tr '\n' ' ' < "$svg" \
-      | sed 's#<switch><g requiredFeatures="[^"]*\#Extensibility"[^/]*/> *<a[^>]*xlink:href="https://www\.drawio\.com/doc/faq/svg-export-text-problems"[^>]*> *<text[^>]*>.*</text></a></switch>##' \
-      > "$tmp" 2>/dev/null && mv -f "$tmp" "$svg" || rm -f "$tmp"
+    tr '\n' ' ' <"$svg" |
+      sed 's#<switch><g requiredFeatures="[^"]*\#Extensibility"[^/]*/> *<a[^>]*xlink:href="https://www\.drawio\.com/doc/faq/svg-export-text-problems"[^>]*> *<text[^>]*>.*</text></a></switch>##' \
+        >"$tmp" 2>/dev/null && mv -f "$tmp" "$svg" || rm -f "$tmp"
   done
 }
 
@@ -189,7 +189,7 @@ stage_module_assets "$COMMON_ASSETS"
 stage_module_assets "$ASSETS"
 
 # Postprocess every location that ends up holding a copy of these images --
-# after all copying above is done. 
+# after all copying above is done.
 strip_drawio_switch_fallback "$ASSETS"
 strip_drawio_switch_fallback "$COMMON_ASSETS"
 for m in $MODULES; do

@@ -30,8 +30,8 @@ on:
         required: true
 
 permissions:
-  contents: write # push the dv-dashboard-data branch
-  actions: read # download artifacts from the triggering sim run
+  contents: write  # push the dv-dashboard-data branch
+  actions: read  # download artifacts from the triggering sim run
 
 # Serialize publications; never cancel one in flight.
 concurrency:

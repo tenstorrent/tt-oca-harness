@@ -57,7 +57,7 @@ The I3C controller consists of the following major functional blocks:
                       |  (Main Controller)  |
                       +---------------------+
                       |                     |
-                      |   I3CCSR (Regist)   |
+                      |  I3CCSR (Register)  |
                       |                     |
                       +----------+----------+
                                  |

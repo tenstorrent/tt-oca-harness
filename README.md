@@ -32,7 +32,7 @@ toolchain setup is in [`tools/docker/README.md`](tools/docker/README.md).
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (e.g. `jtag/`, `uart/`, `cross_trigger/`). |
 | `hw/sys/` | Subsystems (`smc`, `sep`, `smu`, `dtp`) that integrate the IP blocks. |
 | `hw/top/` | Top-level integration. |
-| `doc/` | Documentation products (TRM, Integrator Guide, …); see [Documentation](#documentation). |
+| `doc/` | Documentation products (TRM, Integrator Guide, …); see [`doc/README.md`](doc/README.md). |
 | `vendor/` | Third-party IP vendored via Bender; see [Third-party imports](#third-party-vendor-package-imports). |
 | `tools/`, `scripts/` | Register-flow, documentation, and container helpers. |
 

@@ -18,13 +18,13 @@
 // shared eFuse bank/shim model (one SEP instance, one SMC instance), PLL/PVT
 // AXI-Lite stubs, one prim_pad_shim.sv per GPIO pin, the I3C DAT/DCT/RLT table
 // memories, the SEP SRAM/boot-ROM/OTBN/Key-Manager memory macros (OpenTitan
-// generic RAM/ROM primitives) and TCM (OpenTitan-derived ICCM/DCCM wrapper).
-// The GPIO-shim CSR and
+// generic RAM/ROM primitives) and TCM (OpenTitan-derived ICCM/DCCM wrapper),
+// and the trace sink RAM banks. The GPIO-shim CSR and
 // adopter-extension AXI-Lite/AXI4 buses are terminated with DECERR slaves.
 // sep_ip_integration's TRNG DECERR termination is instantiated for
 // interface parity, tied off since smu.sv keeps its TRNG ports internal.
 // Every other technology-specific interface (SMC CPU cache/SRAM/ROM macros,
-// ATB telemetry, DFD/trace, JTAG, ...) is passed straight through; see
+// ATB telemetry, JTAG, ...) is passed straight through; see
 // hw/top/README.md.
 //
 // This is a reference integration example, provided for adopters to
@@ -228,10 +228,6 @@ module smu_wrapper
     input  logic  chiplet_is_primary_i,
     output logic [63:0]  timer_count_o,
 
-    // Trace Memory
-    output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
-    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_resp_i,
-
     // Test Mode
     input  logic  test_en_i,
     input  logic  scan_rst_ni,
@@ -259,6 +255,8 @@ module smu_wrapper
     input  logic  entropy_rosc_sample_clk_i,
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
+    input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,
 
     input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_extintsrc_req_i,
 
@@ -299,6 +297,10 @@ module smu_wrapper
     smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select;
+    // Trace sink memories (smu <-> smc_ip_integration)
+    trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req;
+    trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp;
+
     // CPU mem macros (smu <-> smc_ip_integration)
     chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
     chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
@@ -464,7 +466,10 @@ module smu_wrapper
         .sep_km_sram_mem_rsp_i (km_sram_mem_rsp),
 
         .sep_external_req_o  (sep_external_req),
-        .sep_external_resp_i (sep_external_resp)
+        .sep_external_resp_i (sep_external_resp),
+
+        .trace_mem_req_o  (trace_mem_req),
+        .trace_mem_resp_i (trace_mem_resp)
     );
 
     /////////////////////////
@@ -514,6 +519,9 @@ module smu_wrapper
         .i3c_dct_mem_src_o  (i3c_dct_mem_src),
         .i3c_rlt_mem_sink_i (i3c_rlt_mem_sink),
         .i3c_rlt_mem_src_o  (i3c_rlt_mem_src),
+
+        .trace_mem_req  (trace_mem_req),
+        .trace_mem_resp (trace_mem_resp),
 
         .efuse_debug_bus_o (smc_efuse_debug_bus_o)
     );

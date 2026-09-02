@@ -20,11 +20,12 @@
 //
 // The I3C table memories live here because smc.sv and smu.sv export the same
 // macro interfaces, so both wrappers need the same reference integration.
-// The Chipyard CPU ROM/scratch/L1$ macros live here too, so both wrappers pick
-// them up from the one module they already instantiate.
+// The Chipyard CPU ROM/scratch/L1$ macros and the trace sink RAM banks live
+// here too, so both wrappers pick them up from the one module they already
+// instantiate.
 //
 // Every other technology-specific interface smc.sv exposes (ATB telemetry,
-// DFD/trace, SPI-over-GPIO muxing, etc.) is passed straight through by
+// SPI-over-GPIO muxing, etc.) is passed straight through by
 // smc_wrapper.sv, left for a full-chip integration to wire up.
 //
 // This is a reference integration example, provided for adopters to
@@ -77,6 +78,10 @@ module smc_ip_integration (
         [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
     output chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp
         [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+
+    // Trace sink memory macros (from smc.sv's trace network)
+    input  trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req,
+    output trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp,
 
     // GPIO pad-facing signals (from smc.sv's padring)
     output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_o,
@@ -321,6 +326,44 @@ module smc_ip_integration (
         .scratch_ram_cfg_i (scratch_ram_cfg),
         .rom_cfg_i         (rom_cfg)
     );
+
+    /////////////////////////
+    // Trace Sink Memories //
+    /////////////////////////
+
+    // One single-port macro per trace sink bank. Depth/width come from the
+    // packet structs so they cannot drift from what smc.sv's trace network
+    // drives.
+    localparam int unsigned TraceMemBankDepth = trace_mem_pkg::TRC_RAM_INDEX;
+    localparam int unsigned TraceMemBankWidth = tn_pkg::TRC_RAM_DATA_WIDTH;
+
+    for (genvar i = 0; i < tn_pkg::TRC_RAM_INSTANCES; i++) begin : gen_trace_mem_bank
+        logic [TraceMemBankWidth-1:0] macro_rdata;
+
+        assign trace_mem_resp[i].mem_rd_data = macro_rdata;
+
+        // The sink writes whole words; mem_wr_mask_en is unused, so the macro
+        // mask is held all-ones.
+        prim_ram_1p_adv #(
+            .Depth       (TraceMemBankDepth),
+            .Width       (TraceMemBankWidth),
+            .MemInitFile ("")
+        ) u_trace_mem_bank (
+            .clk_i     (clk_smc_i),
+            .rst_ni    (rst_primary_smc_clk_ni),
+            .req_i     (trace_mem_req[i].mem_chip_en),
+            .write_i   (trace_mem_req[i].mem_wr_en),
+            .addr_i    (trace_mem_req[i].mem_wr_addr),
+            .wdata_i   (trace_mem_req[i].mem_wr_data),
+            .wmask_i   ({TraceMemBankWidth{1'b1}}),
+            .rdata_o   (macro_rdata),
+            .rvalid_o  (),
+            .rerror_o  (),
+            .alert_o   (),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
+        );
+    end
 
     //////////////////////////////
     // GPIO pad primitives     //

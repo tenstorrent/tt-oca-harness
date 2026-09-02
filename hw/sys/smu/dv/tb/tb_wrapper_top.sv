@@ -161,12 +161,6 @@ module smu_wrapper_uvm_top (
     sep_pkg::sep_cpu_trace_t sep_cpu_trace;
     sep_pkg::sep_straps_t    sep_straps;
 
-    trace_mem_pkg::SinkMemPktIn_s
-        [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    trace_mem_pkg::SinkMemPktOut_s
-        [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
-    assign trc_resp = '0;
-
     assign sep_straps = '0;
     assign smu_axi_in_req = '0;
 
@@ -494,6 +488,11 @@ module smu_wrapper_uvm_top (
     // ------------------------------------------------------------------
     // DUT: hw/top/smu_wrapper (logical ports)
     // ------------------------------------------------------------------
+    // TB-owned SEP lockstep stimulus/observation. Initialised: an undriven
+    // sep_lockstep_ctrl_i would reach the SEP core as X under RV_LOCKSTEP_ENABLE.
+    sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
+    sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
+
     smu_wrapper #(
         .Cfg (SMU_CFG),
         .SEP (SEP_ENABLED[0])
@@ -624,8 +623,6 @@ module smu_wrapper_uvm_top (
         .init_mem_done_o,
         .chiplet_is_primary_i (1'b1),
         .timer_count_o (),
-        .trace_mem_req_o (trc_req),
-        .trace_mem_resp_i (trc_resp),
 
         .test_en_i (1'b0),
         .scan_rst_ni (1'b1),
@@ -653,7 +650,11 @@ module smu_wrapper_uvm_top (
         .gpio_interrupt_o (),
         .uart_interrupt_o (),
         .sep_efuse_debug_bus_o (),
-        .smc_efuse_debug_bus_o ()
+        .smc_efuse_debug_bus_o (),
+
+        // SEP CPU lockstep control/status
+        .sep_lockstep_ctrl_i (sep_lockstep_ctrl_i),
+        .sep_lockstep_status_o (sep_lockstep_status_o)
     );
 
 endmodule : smu_wrapper_uvm_top

@@ -35,7 +35,7 @@ vendor_package:
   # OpenTitan: prim, per-IP rtl/hjson, and the reggen/mubi file set.
   - name: opentitan
     target_dir: vendor/lowRISC/opentitan/upstream
-    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "037f261895f7651a7cbcfabaa8b5e336c3f9576c" }
+    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
     include_from_upstream:
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
@@ -43,6 +43,20 @@ vendor_package:
       # Per-IP rtl + the <ip>.hjson feeding the SystemRDL register flow.
       - "hw/ip/otbn/rtl"
       - "hw/ip/otbn/data/otbn.hjson"
+      # OTBN assembler toolchain (otbn_as/otbn_ld + the insn/csr yamls they
+      # read), tracer RTL for the UVM testbenches, and the AES C reference
+      # model + DPI (sep.f / nonfree_smu.f).
+      - "hw/ip/otbn/data/base-insns.yml"
+      - "hw/ip/otbn/data/bignum-insns.yml"
+      - "hw/ip/otbn/data/csr.yml"
+      - "hw/ip/otbn/data/enc-schemes.yml"
+      - "hw/ip/otbn/data/insns.yml"
+      - "hw/ip/otbn/data/otbn.ld.tpl"
+      - "hw/ip/otbn/data/wsr.yml"
+      - "hw/ip/otbn/dv/tracer/rtl"
+      - "hw/ip/otbn/util"
+      - "hw/ip/aes/model"
+      - "hw/ip/aes/dv/aes_model_dpi"
       - "hw/ip/aon_timer/rtl"
       - "hw/ip/aon_timer/data/aon_timer.hjson"
       - "hw/ip/csrng/rtl"
@@ -92,6 +106,11 @@ vendor_package:
       # Unused FPGA RegFile variants.
       - "hw/ip/otbn/rtl/otbn_rf_base_fpga.sv"
       - "hw/ip/otbn/rtl/otbn_rf_bignum_fpga.sv"
+      # Bazel and SCA-campaign collateral unused by the vendored OTBN toolchain.
+      - "hw/ip/otbn/util/BUILD"
+      - "hw/ip/otbn/util/shared/BUILD"
+      - "hw/ip/otbn/util/otbn_fi_campaign.py"
+      - "hw/ip/otbn/util/otbn_tvla_campaign.py"
     patch_dir: "vendor/lowRISC/opentitan/patches"
 
   # pulp-platform packages, each pinned to a vendored rev.
@@ -105,7 +124,7 @@ vendor_package:
 
   - name: common_cells
     target_dir: "vendor/pulp-platform/common_cells/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "f7fe931fe630ee0560ca793c482d26099e3a7645" }
+    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "c0961324117d186b1c4d87e2815dd31389ca7838" }
     include_from_upstream:
       - "src"
       - "include"
@@ -127,7 +146,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "890cc274200b5502ab601925659d618fa167f369" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "66ce4f176e812900e34f874caa0ea0b0d3928f65" }
     include_from_upstream:
       - "src"
       - "include"
@@ -136,7 +155,7 @@ vendor_package:
   # idma: vendored src with in-place edits; generated bundle lives in overlay/.
   - name: idma
     target_dir: "vendor/pulp-platform/idma/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "1f9c6687a512cb17ad0eb82a5bafa3e247c6f56b" }
+    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "4664f8bd7eb2f10c732215bb5f9d43e0a8e08238" }
     include_from_upstream:
       - "src"
     patch_dir: "vendor/pulp-platform/idma/patches"
@@ -419,7 +438,9 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
-  - target: dtp
+  # The cross_trigger family compiles inside the DTP DUT and standalone in the
+  # per-IP benches under hw/ip/cross_trigger/*/dv (target `cross_trigger`).
+  - target: any(dtp, cross_trigger)
     files:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
@@ -681,7 +702,9 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
-  - target: dtp
+  # See the cross_trigger package group above: shared by the DTP DUT and the
+  # per-IP benches (target `cross_trigger`).
+  - target: any(dtp, cross_trigger)
     files:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv

@@ -157,8 +157,7 @@ module smc_wrapper (
     input  wire logic                                                                      tdr_dbg_ctrl_clock_stop_en_i,
     output      logic                                                                      tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-    output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
-    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
+    // Trace sink memories are absorbed by smc_ip_integration (not ports).
 
     input  logic [511:0]                                     ext_debug_bus_i,
 
@@ -218,6 +217,10 @@ module smc_wrapper (
     i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
     i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
     i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
+
+    // Trace sink memories (smc <-> smc_ip_integration)
+    trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req;
+    trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp;
 
     // CPU mem macros (smc <-> smc_ip_integration)
     chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
@@ -281,7 +284,10 @@ module smc_wrapper (
         .l1_dcache_tag_intf_req_o  (l1_dcache_tag_intf_req),
         .l1_dcache_tag_intf_rsp_i  (l1_dcache_tag_intf_rsp),
         .l1_dcache_data_intf_req_o (l1_dcache_data_intf_req),
-        .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp)
+        .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp),
+
+        .trace_mem_req_o  (trace_mem_req),
+        .trace_mem_resp_i (trace_mem_resp)
     );
 
     /////////////////////////
@@ -331,6 +337,9 @@ module smc_wrapper (
         .i3c_dct_mem_src_o  (i3c_dct_mem_src),
         .i3c_rlt_mem_sink_i (i3c_rlt_mem_sink),
         .i3c_rlt_mem_src_o  (i3c_rlt_mem_src),
+
+        .trace_mem_req  (trace_mem_req),
+        .trace_mem_resp (trace_mem_resp),
 
         .efuse_debug_bus_o (efuse_debug_bus_o)
     );

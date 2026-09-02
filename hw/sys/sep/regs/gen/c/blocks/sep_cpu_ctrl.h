@@ -374,6 +374,123 @@ typedef union {
     uint64_t w;
 } sep_cpu_ctrl__KM_WIPE_CTRL_t;
 
+// reg - sep_cpu_ctrl::DMA_BUS_ERR_STATUS
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bm 0x1
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bp 0
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bw 1
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_reset 0x0
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm 0x2
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bp 1
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bw 1
+#define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t reg_path_err :1;
+        uint64_t host_path_err :1;
+        uint64_t :62;
+    } f;
+    uint64_t w;
+} sep_cpu_ctrl__DMA_BUS_ERR_STATUS_t;
+
+// reg - sep_cpu_ctrl::DMA_BUS_ERR_CLEAR
+#define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm 0x1
+#define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bp 0
+#define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bw 1
+#define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t clr :1;
+        uint64_t :63;
+    } f;
+    uint64_t w;
+} sep_cpu_ctrl__DMA_BUS_ERR_CLEAR_t;
+
+// reg - sep_cpu_ctrl::PERIPH_BUS_ERR_STATUS
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_bm 0x1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_bp 0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_bm 0x2
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_bp 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_bm 0x4
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_bp 2
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_bm 0x8
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_bp 3
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_bm 0x10
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_bp 4
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_bm 0x20
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_bp 5
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bm 0x40
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bp 6
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t aes :1;
+        uint64_t hmac :1;
+        uint64_t kmac :1;
+        uint64_t otbn :1;
+        uint64_t csrng :1;
+        uint64_t edn :1;
+        uint64_t wdt :1;
+        uint64_t :57;
+    } f;
+    uint64_t w;
+} sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS_t;
+
+// reg - sep_cpu_ctrl::PERIPH_BUS_ERR_CLEAR
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_bm 0x1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_bp 0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_bm 0x2
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_bp 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_bm 0x4
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_bp 2
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_bm 0x8
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_bp 3
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_bm 0x10
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_bp 4
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_bm 0x20
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_bp 5
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_reset 0x0
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bm 0x40
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bp 6
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t aes :1;
+        uint64_t hmac :1;
+        uint64_t kmac :1;
+        uint64_t otbn :1;
+        uint64_t csrng :1;
+        uint64_t edn :1;
+        uint64_t wdt :1;
+        uint64_t :57;
+    } f;
+    uint64_t w;
+} sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR_t;
+
 // reg - sep_cpu_ctrl::SEP_VERSION_ID
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bm 0xffffffff
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bp 0
@@ -430,7 +547,11 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d_t EXT_TRNG_SRC_SEL;
     sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK_t EXT_TRNG_SRC_SEL_LOCK;
     sep_cpu_ctrl__KM_WIPE_CTRL_t KM_WIPE_CTRL;
-    uint8_t RESERVED_1a8_fff[0xe58];
+    sep_cpu_ctrl__DMA_BUS_ERR_STATUS_t DMA_BUS_ERR_STATUS;
+    sep_cpu_ctrl__DMA_BUS_ERR_CLEAR_t DMA_BUS_ERR_CLEAR;
+    sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS_t PERIPH_BUS_ERR_STATUS;
+    sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR_t PERIPH_BUS_ERR_CLEAR;
+    uint8_t RESERVED_1c8_fff[0xe38];
     sep_cpu_ctrl__SEP_VERSION_ID_t SEP_VERSION_ID;
 } sep_cpu_ctrl_t;
 

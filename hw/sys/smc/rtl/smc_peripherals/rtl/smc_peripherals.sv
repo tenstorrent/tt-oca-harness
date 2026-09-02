@@ -850,10 +850,12 @@ module smc_peripherals #(
 		.telemetry_receiver_irq_o   (telemetry_irq),
 		// telemetry_receiver_debug_o is launched on SMCCLK (clk_i =
 		// gated_clk_smc_tel). It drives telemetry_debug_o directly — no CDC
-		// required. Routing it through u_smc_peripherals_cdc instead would
-		// re-flop it onto clk_telemetry_i and sync it back to clk_smc_i,
-		// manufacturing a spurious SMCCLK -> TELEMETRYCLK -> SMCCLK crossing
-		// that VC SpyGlass reports as CDC_UNSYNC_CTRL.
+		// required. The signal was previously routed through
+		// u_smc_peripherals_cdc.telemetry_debug_telemetry_clk_i, which re-flopped
+		// it onto clk_telemetry_i and then synced it back to clk_smc_i — that
+		// manufactured a spurious SMCCLK -> TELEMETRYCLK -> SMCCLK crossing
+		// reported by VC SpyGlass as CDC_UNSYNC_CTRL on
+		// u_smc_peripherals_cdc/telemetry_debug_telemetry_clk_flopped/Q[*][*].
 		.telemetry_receiver_debug_o (telemetry_debug_o)
 	);
 

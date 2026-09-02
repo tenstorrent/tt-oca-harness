@@ -1,5 +1,3 @@
-diff --git a/src/axi_burst_splitter.sv b/src/axi_burst_splitter.sv
-index 1fbe537..d92c10d 100644
 --- a/src/axi_burst_splitter.sv
 +++ b/src/axi_burst_splitter.sv
 @@ -31,6 +31,12 @@ module axi_burst_splitter #(
@@ -15,8 +13,6 @@ index 1fbe537..d92c10d 100644
    // AXI Bus Types
    parameter int unsigned AddrWidth    = 32'd0,
    parameter int unsigned DataWidth    = 32'd0,
-diff --git a/src/axi_burst_splitter_gran.sv b/src/axi_burst_splitter_gran.sv
-index 4a634ef..8fd6651 100644
 --- a/src/axi_burst_splitter_gran.sv
 +++ b/src/axi_burst_splitter_gran.sv
 @@ -93,6 +93,7 @@ module axi_burst_splitter_gran #(
@@ -35,34 +31,6 @@ index 4a634ef..8fd6651 100644
    // Define supported transactions.
    function bit txn_supported(axi_pkg::atop_t atop, axi_pkg::burst_t burst, axi_pkg::cache_t cache,
        axi_pkg::len_t len, axi_pkg::len_t len_limit);
-@@ -698,7 +700,9 @@ module axi_burst_splitter_gran_counters #(
-     .oup_req_i        ( cnt_req_i     ),
-     .oup_data_o       ( cnt_r_idx     ),
-     .oup_data_valid_o ( idq_oup_valid ),
--    .oup_gnt_o        ( idq_oup_gnt   )
-+    .oup_gnt_o        ( idq_oup_gnt   ),
-+    .full_o           (/* keep open */),
-+    .empty_o          (/* keep open */)
-   );
-   assign idq_inp_req = alloc_req   & alloc_gnt;
-   assign alloc_gnt   = idq_inp_gnt & |(cnt_free);
-diff --git a/src/axi_burst_unwrap.sv b/src/axi_burst_unwrap.sv
-index 59850e2..70f8cc9 100644
---- a/src/axi_burst_unwrap.sv
-+++ b/src/axi_burst_unwrap.sv
-@@ -616,7 +616,9 @@ module axi_burst_counters #(
-     .oup_req_i        ( cnt_req_i     ),
-     .oup_data_o       ( cnt_r_idx     ),
-     .oup_data_valid_o ( idq_oup_valid ),
--    .oup_gnt_o        ( idq_oup_gnt   )
-+    .oup_gnt_o        ( idq_oup_gnt   ),
-+    .full_o           (/* keep open */),
-+    .empty_o          (/* keep open */)
-   );
-   assign idq_inp_req = alloc_req_i & alloc_gnt_o;
-   assign alloc_gnt_o = idq_inp_gnt & |(cnt_free);
-diff --git a/src/axi_cdc.sv b/src/axi_cdc.sv
-index 81ad588..ebb52ba 100644
 --- a/src/axi_cdc.sv
 +++ b/src/axi_cdc.sv
 @@ -32,7 +32,7 @@ module axi_cdc #(
@@ -74,8 +42,6 @@ index 81ad588..ebb52ba 100644
  ) (
    // slave side - clocked by `src_clk_i`
    input  logic      src_clk_i,
-diff --git a/src/axi_cdc_dst.sv b/src/axi_cdc_dst.sv
-index c3e76bf..88353fa 100644
 --- a/src/axi_cdc_dst.sv
 +++ b/src/axi_cdc_dst.sv
 @@ -25,7 +25,7 @@ module axi_cdc_dst #(
@@ -87,8 +53,6 @@ index c3e76bf..88353fa 100644
    parameter type aw_chan_t = logic,
    parameter type w_chan_t = logic,
    parameter type b_chan_t = logic,
-diff --git a/src/axi_cdc_src.sv b/src/axi_cdc_src.sv
-index 36e4e61..44b4c80 100644
 --- a/src/axi_cdc_src.sv
 +++ b/src/axi_cdc_src.sv
 @@ -25,7 +25,7 @@ module axi_cdc_src #(
@@ -100,8 +64,6 @@ index 36e4e61..44b4c80 100644
    parameter type aw_chan_t = logic,
    parameter type w_chan_t = logic,
    parameter type b_chan_t = logic,
-diff --git a/src/axi_demux.sv b/src/axi_demux.sv
-index 899d835..3247ef7 100644
 --- a/src/axi_demux.sv
 +++ b/src/axi_demux.sv
 @@ -53,6 +53,7 @@ module axi_demux #(
@@ -167,8 +129,6 @@ index 899d835..3247ef7 100644
      // slave port
      .slv_req_i       ( slv_req         ),
      .slv_aw_select_i ( slv_aw_select_i ),
-diff --git a/src/axi_demux_simple.sv b/src/axi_demux_simple.sv
-index 3f854c1..730710e 100644
 --- a/src/axi_demux_simple.sv
 +++ b/src/axi_demux_simple.sv
 @@ -1,3 +1,6 @@
@@ -367,8 +327,6 @@ index 3f854c1..730710e 100644
  
      // Arbitration of the different r responses
      rr_arb_tree #(
-diff --git a/src/axi_dw_downsizer.sv b/src/axi_dw_downsizer.sv
-index 8ec51b8..4388267 100644
 --- a/src/axi_dw_downsizer.sv
 +++ b/src/axi_dw_downsizer.sv
 @@ -225,6 +225,7 @@ module axi_dw_downsizer #(
@@ -379,19 +337,6 @@ index 8ec51b8..4388267 100644
      .mst_reqs_o     ({axi_err_req, mst_req_o}   ),
      .mst_resps_i    ({axi_err_resp, mst_resp_i} ),
      .slv_ar_select_i(mst_req_ar_err[mst_req_idx]),
-@@ -330,7 +331,9 @@ module axi_dw_downsizer #(
-     .exists_mask_i   ('0              ),
-     .exists_req_i    ('0              ),
-     .exists_o        (/* Unused  */   ),
--    .exists_gnt_o    (/* Unused  */   )
-+    .exists_gnt_o    (/* Unused  */   ),
-+    .full_o          (/* Unused  */   ),
-+    .empty_o         (/* Unused  */   )
-   );
- 
-   for (genvar t = 0; unsigned'(t) < AxiMaxReads; t++) begin: gen_read_downsizer
-diff --git a/src/axi_dw_upsizer.sv b/src/axi_dw_upsizer.sv
-index 623df82..8b5a9c7 100644
 --- a/src/axi_dw_upsizer.sv
 +++ b/src/axi_dw_upsizer.sv
 @@ -222,6 +222,7 @@ module axi_dw_upsizer #(
@@ -402,8 +347,6 @@ index 623df82..8b5a9c7 100644
      .mst_reqs_o     ({axi_err_req, mst_req_o}   ),
      .mst_resps_i    ({axi_err_resp, mst_resp_i} ),
      .slv_ar_select_i(mst_req_ar_err[mst_req_idx]),
-diff --git a/src/axi_from_mem.sv b/src/axi_from_mem.sv
-index 466a384..300cc7f 100644
 --- a/src/axi_from_mem.sv
 +++ b/src/axi_from_mem.sv
 @@ -122,3 +122,6 @@ module axi_from_mem #(
@@ -413,8 +356,6 @@ index 466a384..300cc7f 100644
 +// Local Variables:
 +// verilog-typedef-regexp:"_t$"
 +// End:
-diff --git a/src/axi_id_prepend.sv b/src/axi_id_prepend.sv
-index f830ef6..64f77e5 100644
 --- a/src/axi_id_prepend.sv
 +++ b/src/axi_id_prepend.sv
 @@ -77,6 +77,9 @@ module axi_id_prepend #(
@@ -427,8 +368,6 @@ index f830ef6..64f77e5 100644
    // prepend the ID
    for (genvar i = 0; i < NoBus; i++) begin : gen_id_prepend
      if (PreIdWidth == 0) begin : gen_no_prepend
-diff --git a/src/axi_id_serialize.sv b/src/axi_id_serialize.sv
-index 671b38a..79ecdfa 100644
 --- a/src/axi_id_serialize.sv
 +++ b/src/axi_id_serialize.sv
 @@ -201,6 +201,7 @@ module axi_id_serialize #(
@@ -439,8 +378,6 @@ index 671b38a..79ecdfa 100644
      .slv_req_i       ( slv_req_i           ),
      .slv_aw_select_i ( slv_aw_select       ),
      .slv_ar_select_i ( slv_ar_select       ),
-diff --git a/src/axi_interleaved_xbar.sv b/src/axi_interleaved_xbar.sv
-index 83d215d..e1ae9e0 100644
 --- a/src/axi_interleaved_xbar.sv
 +++ b/src/axi_interleaved_xbar.sv
 @@ -211,6 +211,7 @@ import cf_math_pkg::idx_width;
@@ -451,8 +388,6 @@ index 83d215d..e1ae9e0 100644
        .slv_req_i       ( slv_reqs_mod[i]     ),
        .slv_aw_select_i ( slv_aw_select       ),
        .slv_ar_select_i ( slv_ar_select       ),
-diff --git a/src/axi_intf.sv b/src/axi_intf.sv
-index 273e9ba..c0cc55d 100644
 --- a/src/axi_intf.sv
 +++ b/src/axi_intf.sv
 @@ -536,6 +536,154 @@ interface AXI_LITE_DV #(
@@ -610,20 +545,16 @@ index 273e9ba..c0cc55d 100644
  /// An asynchronous AXI4-Lite interface for Gray CDCs.
  interface AXI_LITE_ASYNC_GRAY #(
    parameter int unsigned AXI_ADDR_WIDTH = 0,
-diff --git a/src/axi_isolate.sv b/src/axi_isolate.sv
-index cb9a148..78a1a42 100644
 --- a/src/axi_isolate.sv
 +++ b/src/axi_isolate.sv
-@@ -116,6 +116,7 @@ module axi_isolate #(
+@@ -145,6 +145,7 @@ module axi_isolate #(
        .clk_i,
        .rst_ni,
-       .test_i          ( 1'b0       ),
-+      .sel_hash_i      ( 2'd0       ),   // unused
+       .test_i          ( 1'b0      ),
++      .sel_hash_i      ( 2'd0      ),   // unused
        .slv_req_i,
-       .slv_aw_select_i ( isolated_o ),
-       .slv_ar_select_i ( isolated_o ),
-diff --git a/src/axi_lite_demux.sv b/src/axi_lite_demux.sv
-index 2c025e2..6870481 100644
+       .slv_aw_select_i ( sel_aw_q  ),
+       .slv_ar_select_i ( sel_ar_q  ),
 --- a/src/axi_lite_demux.sv
 +++ b/src/axi_lite_demux.sv
 @@ -566,4 +566,4 @@ module axi_lite_demux_intf #(
@@ -633,8 +564,6 @@ index 2c025e2..6870481 100644
 -endmodule
 +endmodule
 \ No newline at end of file
-diff --git a/src/axi_lite_from_mem.sv b/src/axi_lite_from_mem.sv
-index 2b7e9e3..93375e7 100644
 --- a/src/axi_lite_from_mem.sv
 +++ b/src/axi_lite_from_mem.sv
 @@ -252,3 +252,6 @@ module axi_lite_from_mem #(
@@ -644,30 +573,6 @@ index 2b7e9e3..93375e7 100644
 +// Local Variables:
 +// verilog-typedef-regexp:"_[t]$"
 +// End:
-diff --git a/src/axi_lite_mailbox.sv b/src/axi_lite_mailbox.sv
-index 99304fa..13d0785 100644
---- a/src/axi_lite_mailbox.sv
-+++ b/src/axi_lite_mailbox.sv
-@@ -429,7 +429,7 @@ module axi_lite_mailbox_slave #(
-             // ERROR:  read only
-             WIRQT:  begin
-               for (int unsigned i = 0; i < AxiDataWidth/8; i++) begin
--                wirqt_d[i*8+:8] = slv_req_i.w.strb[i] ? slv_req_i.w.data[i*8+:8] : 8'b0000_0000;
-+                wirqt_d[i*8+:8] = slv_req_i.w.strb[i] ? slv_req_i.w.data[i*8+:8] : wirqt_d[i*8+:8];
-               end
-               if (wirqt_d >= data_t'(MailboxDepth)) begin
-                 // the `-1` is to have the interrupt fireing when the FIFO is comletely full
-@@ -440,7 +440,7 @@ module axi_lite_mailbox_slave #(
-             end
-             RIRQT:  begin
-               for (int unsigned i = 0; i < AxiDataWidth/8; i++) begin
--                rirqt_d[i*8+:8] = slv_req_i.w.strb[i] ? slv_req_i.w.data[i*8+:8] : 8'b0000_0000;
-+                rirqt_d[i*8+:8] = slv_req_i.w.strb[i] ? slv_req_i.w.data[i*8+:8] : rirqt_d[i*8+:8];
-               end
-               if (rirqt_d >= data_t'(MailboxDepth)) begin
-               // Threshold to maximal value, minus two to prevent overflow in usage
-diff --git a/src/axi_lite_xbar.sv b/src/axi_lite_xbar.sv
-index 72d1e03..38f6121 100644
 --- a/src/axi_lite_xbar.sv
 +++ b/src/axi_lite_xbar.sv
 @@ -1,3 +1,6 @@
@@ -687,8 +592,6 @@ index 72d1e03..38f6121 100644
    output axi_req_t  [Cfg.NoMstPorts-1:0]              mst_ports_req_o,
    input  axi_resp_t [Cfg.NoMstPorts-1:0]              mst_ports_resp_i,
    input  rule_t [Cfg.NoAddrRules-1:0]                 addr_map_i,
-diff --git a/src/axi_multicut.sv b/src/axi_multicut.sv
-index 64a354a..b07d3f7 100644
 --- a/src/axi_multicut.sv
 +++ b/src/axi_multicut.sv
 @@ -235,3 +235,6 @@ module axi_lite_multicut_intf #(
@@ -698,8 +601,6 @@ index 64a354a..b07d3f7 100644
 +// Local Variables:
 +// verilog-typedef-regexp:"_t$"
 +// End:
-diff --git a/src/axi_mux.sv b/src/axi_mux.sv
-index da17e2b..9a2d88d 100644
 --- a/src/axi_mux.sv
 +++ b/src/axi_mux.sv
 @@ -387,7 +387,8 @@ module axi_mux #(
@@ -722,8 +623,6 @@ index da17e2b..9a2d88d 100644
  
      spill_register #(
        .T       ( mst_r_chan_t ),
-diff --git a/src/axi_pkg.sv b/src/axi_pkg.sv
-index f14d6c3..86f376a 100644
 --- a/src/axi_pkg.sv
 +++ b/src/axi_pkg.sv
 @@ -136,9 +136,11 @@ package axi_pkg;
@@ -1084,8 +983,6 @@ index f14d6c3..86f376a 100644
 +
 +
  endpackage
-diff --git a/src/axi_to_axi_lite.sv b/src/axi_to_axi_lite.sv
-index ad2e414..8338e07 100644
 --- a/src/axi_to_axi_lite.sv
 +++ b/src/axi_to_axi_lite.sv
 @@ -24,6 +24,11 @@ module axi_to_axi_lite #(
@@ -1139,8 +1036,6 @@ index ad2e414..8338e07 100644
      .full_req_t      ( full_req_t         ),
      .full_resp_t     ( full_resp_t        ),
      .lite_req_t      ( lite_req_t         ),
-diff --git a/src/axi_to_mem_banked.sv b/src/axi_to_mem_banked.sv
-index 548339f..b3d5885 100644
 --- a/src/axi_to_mem_banked.sv
 +++ b/src/axi_to_mem_banked.sv
 @@ -160,6 +160,7 @@ module axi_to_mem_banked #(
@@ -1151,8 +1046,6 @@ index 548339f..b3d5885 100644
      .slv_req_i       ( axi_req_i     ),
      .slv_aw_select_i ( WriteAccess   ),
      .slv_ar_select_i ( ReadAccess    ),
-diff --git a/src/axi_to_mem_interleaved.sv b/src/axi_to_mem_interleaved.sv
-index 94d2bbe..a65d0b5 100644
 --- a/src/axi_to_mem_interleaved.sv
 +++ b/src/axi_to_mem_interleaved.sv
 @@ -114,6 +114,7 @@ module axi_to_mem_interleaved #(
@@ -1163,8 +1056,6 @@ index 94d2bbe..a65d0b5 100644
      .slv_req_i       ( axi_req_i                ),
      .slv_ar_select_i ( 1'b0                     ),
      .slv_aw_select_i ( 1'b1                     ),
-diff --git a/src/axi_to_mem_split.sv b/src/axi_to_mem_split.sv
-index 3e98bda..50c9151 100644
 --- a/src/axi_to_mem_split.sv
 +++ b/src/axi_to_mem_split.sv
 @@ -98,6 +98,7 @@ module axi_to_mem_split #(
@@ -1175,8 +1066,6 @@ index 3e98bda..50c9151 100644
      .slv_req_i       ( axi_req_i                       ),
      .slv_ar_select_i ( 1'b0                            ),
      .slv_aw_select_i ( 1'b1                            ),
-diff --git a/src/axi_xbar.sv b/src/axi_xbar.sv
-index 5baa854..584fbe4 100644
 --- a/src/axi_xbar.sv
 +++ b/src/axi_xbar.sv
 @@ -70,6 +70,8 @@ import cf_math_pkg::idx_width;
@@ -1212,8 +1101,6 @@ index 5baa854..584fbe4 100644
      .slv_ports_req_i  (slv_reqs ),
      .slv_ports_resp_o (slv_resps),
      .mst_ports_req_o  (mst_reqs ),
-diff --git a/src/axi_xbar_unmuxed.sv b/src/axi_xbar_unmuxed.sv
-index 73e5097..09c3764 100644
 --- a/src/axi_xbar_unmuxed.sv
 +++ b/src/axi_xbar_unmuxed.sv
 @@ -58,6 +58,8 @@ import cf_math_pkg::idx_width;

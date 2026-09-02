@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Cross Trigger Matrix IP-level scenarios.
+
+[[tests]]
+name = "ctm_sanity_test"
+module = { cocotb = "ctm_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "ctm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ctm_routing_test"
+module = { cocotb = "ctm_routing_test" }
+seed = 1
+timeout_sec = 900
+tags = ["ctm", "routing"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["ctm_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = ["ctm_sanity_test", "ctm_routing_test"]
