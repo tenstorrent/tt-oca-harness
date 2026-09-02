@@ -173,11 +173,11 @@ def write_adoc(root, out: str):
                 lines.append(f"  ** Address Increment: {stride} per register")
             lines.append("")
         lines.append("======\n")
-    lines += ['[cols="1,1,1,3", options="header"]', ".Register Map", "|===", "| Address | Name | Access | Description"]
+    lines += ['[cols="1,4,1,6", options="header"]', ".Register Map", "|===", "| Address | Name | Access | Description"]
     lines += [f"| {r.addr} | {r.name} | {r.access} a| {desc_adoc(r.desc)}" for r in data.regs]
     lines.append("|===\n")
     for r in data.regs:
-        lines += ['[cols="1,1,1,1,3", options="header"]', f".{r.name} Register", "|===", "| Bits | Field | Access | Reset | Description"]
+        lines += ['[cols="1,3,1,1,6", options="header"]', f".{r.name} Register", "|===", "| Bits | Field | Access | Reset | Description"]
         lines += [f"| {f.bits} | `{f.name}` | {f.access} | {f.reset} a| {desc_adoc(f.desc)}" for f in r.fields]
         lines.append("|===\n")
     Path(out).write_text("\n".join(lines))

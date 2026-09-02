@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -84,7 +84,7 @@
 | 0x178 | NOISE_OBS_RDATA | R a| Raw per-lane noise observe FIFO read data (auto-advancing read port). Reading this register pops one 32-bit packed raw word from the raw-noise observe FIFO and decrements NOISE_OBS_STATUS.LEVEL. Returns 0/undefined when empty.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .COMPONENT_ID Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -94,7 +94,7 @@
 | 15:0 | `NAME` | R | 0x1 a| Entropy Source
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -111,7 +111,7 @@
 | 0 | `RESET` | RW | 0x0 a| Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, decorrelator shift registers, and the downsample phase counter. Ring oscillators continue running. Level-sensitive: the reset holds while this bit is 1, so software must write 0 to release it.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -119,7 +119,7 @@
 | 0 | `RSVD` | R | 0x0 a| Reserved for future use. Always reads 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DEBUG_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -128,7 +128,7 @@
 | 7:0 | `SELECT_SIGNAL` | RW | 0x0 a| Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved. Reserved selections drive the signal mux output to 0. With SELECT_FREQ_DIV=0 the external monitor pin is also 0. With SELECT_FREQ_DIV nonzero, the selected ripple-divider stage retains its previous value while the mux output is 0, so the monitor pin can hold 0 or 1 until the divider is reset. Set SELECT_FREQ_DIV=0 before selecting a reserved value when a constant-zero pin output is required.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -150,7 +150,7 @@
 | 0 | `HEALTH_TEST_FAILED` | RW | 0x0 a| Health Test Failed Interrupt. Set when any enabled health test (Repetition, APT, or Markov) fails on the 32-bit entropy stream or any per-generator test fails. Check HEALTH_TEST_STATUS and GENERATOR_*_HEALTH_STATUS for details. Write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -172,7 +172,7 @@
 | 0 | `HEALTH_TEST_FAILED` | RW | 0x0 a| Health Test Failed Interrupt Enable. Set to 1 to enable interrupt generation on health test failures. Default=0 (disabled).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -194,7 +194,7 @@
 | 0 | `HEALTH_TEST_FAILED` | W | 0x0 a| Health Test Failed Interrupt Test. Write 1 to manually set INTR_STATUS.HEALTH_TEST_FAILED for interrupt handler testing. Self-clearing.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SHA256_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -205,7 +205,7 @@
 | 0 | `BUSY` | R | 0x0 a| SHA-256 is actively hashing. Set when accumulating input buffer is complete and hash computation is in progress. Cleared when digest output phase completes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FIFO_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -215,7 +215,7 @@
 | 0 | `ENABLE` | RW | 0x1 a| FIFO write enable control. When enabled (1=default), entropy data flows into FIFO and write pointer updates normally. When disabled (set to 0), write operations are blocked: no entropy pushed, write pointer frozen, data collection paused. IMPORTANT: Read operations remain functional when disabled - software can still drain the FIFO by reading FIFO_RDATA. This allows capturing a snapshot of entropy and reading it out without new data being added. Use case: Stop entropy collection, drain FIFO for analysis, re-enable collection. Default=1 (enabled).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FIFO_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -227,14 +227,14 @@
 | 6:0 | `LEVEL` | R | 0x0 a| Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-64). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=64 means FIFO full.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FIFO_RDATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RDATA` | R | 0x0 a| Data read from the FIFO. Reading this register automatically advances the read pointer and decrements FIFO_STATUS.LEVEL by 1. Returns 32-bit entropy word (compressed BIW output or raw generator bytes depending on CTRL.BYPASS_ENTROPY_COMPRESSOR setting). Reading from empty FIFO triggers INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Always check FIFO_STATUS.LEVEL before reading.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HEALTH_TEST_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -243,7 +243,7 @@
 | 7:0 | `ENABLE` | RW | 0x7 a| Enable bits for health tests [7:0]. Bit allocation: [0]=Repetition Count Test, [1:2]=Reserved, [3]=Adaptive Proportion Test (APT), [4:7]=Markov Test. Set bit to 1 to enable corresponding test. When a test is disabled (bit=0), its internal state (counters, windows) is reset. Tests run on 32-bit entropy stream. Default=0x7 (Repetition, APT, Markov enabled).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HEALTH_TEST_WINDOW_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -251,7 +251,7 @@
 | 15:0 | `SIZE` | RW | 0x800 a| Number of samples per health test window. Health tests (APT, Markov) reset their counters every WINDOW_SIZE samples to provide continuous monitoring. Default=2048 samples. Valid range: 256-8192. Smaller windows (256-1024) provide faster failure detection but may increase false positives. Larger windows (4096-8192) reduce noise but delay failure detection. NIST SP 800-90B recommends 512-2048 for typical entropy sources.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MARKOV_TEST_PROB_THRESHOLDS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -259,7 +259,7 @@
 | 15:0 | `PROB_01_THRESHOLD` | RW | 0x4B0 a| High transition count threshold (0->1 transitions). Test fails if transition count exceeds this value. For window_size=2048 with good entropy, expect ~1024 transitions. Default=1200 (59% of window, provides 5σ margin above good noise). 16-bit width supports window sizes up to 8192.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HEALTH_TEST_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -267,7 +267,7 @@
 | 7:0 | `HEALTH_STATUS` | RW | 0x0 a| Health test status bits. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REPETITION_TEST_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -275,7 +275,7 @@
 | 15:0 | `REPETITION_COUNT` | R | 0x0 a| Current count of consecutive identical values observed in the 32-bit entropy stream. Increments on each match, resets to 0 on mismatch. Read this register to monitor real-time repetition behavior. Compare to HEALTH_TEST_CTRL.REPETITION_LIMIT (default 15). If count reaches limit, test fails and INTR_STATUS.HEALTH_TEST_FAILED is set. Widened to 16-bit to support full counter range without wrapping.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PATTERN_COUNT_1BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -285,7 +285,7 @@
 | 15:0 | `PATTERN_COUNT` | R | 0x0 a| Maximum per-lane ones count in the current APT window (apt_test_cnt_hi). The count updates on each valid sample and clears at the window boundary. For good entropy expect approximately half of HEALTH_TEST_WINDOW_SIZE.SIZE.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PATTERN_COUNT_2BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -295,7 +295,7 @@
 | 15:0 | `PATTERN_COUNT` | R | 0x0 a| Minimum per-lane ones count in the current APT window (apt_test_cnt_lo). The count updates on each valid sample and clears at the window boundary.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PATTERN_COUNT_3BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -306,7 +306,7 @@
 | 9:0 | `PATTERN_COUNT` | R | 0x0 a| Not implemented. Reads zero.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PATTERN_COUNT_4BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -317,7 +317,7 @@
 | 9:0 | `PATTERN_COUNT` | R | 0x0 a| Not implemented. Reads zero.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PROPORTION_1BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -325,7 +325,7 @@
 | 15:0 | `LIMIT` | RW | 0x4B0 a| APT high count threshold. Test fails if count of ones exceeds this value. For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=1200 (59% of window, provides 5σ margin above good noise). 16-bit width supports window sizes up to 8192. Both 8-bit and 32-bit health test instances use the same threshold value.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PROPORTION_2BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -333,7 +333,7 @@
 | 9:0 | `LIMIT` | RW | 0x80 a| Legacy unused field retained for register compatibility. RTL does not read this value.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PROPORTION_3BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -341,7 +341,7 @@
 | 9:0 | `LIMIT` | RW | 0x40 a| Legacy unused field retained for register compatibility. RTL does not read this value.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PROPORTION_4BIT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -349,7 +349,7 @@
 | 9:0 | `LIMIT` | RW | 0x20 a| Legacy unused field retained for register compatibility. RTL does not read this value.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_PROPORTION_LO Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -357,7 +357,7 @@
 | 15:0 | `LIMIT` | RW | 0x350 a| APT low count threshold. Test fails if the minimum per-bit-lane ones count falls below this value at window wrap. Set to 0 to disable the low-side test. 16-bit width supports window sizes up to 8192.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MARKOV_TEST_COUNTS_0 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -365,7 +365,7 @@
 | 15:0 | `COUNT_01` | R | 0x0 a| Count of 0->1 transitions.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MARKOV_TEST_COUNTS_1 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -373,7 +373,7 @@
 | 15:0 | `COUNT_00` | R | 0x0 a| Count of 0->0 transitions.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MARKOV_TEST_PROBABILITIES Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -383,7 +383,7 @@
 | 7:0 | `PROB_01` | R | 0x0 a| Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_01 for raw transition count.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RING_OSC_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -392,7 +392,7 @@
 | 11:0 | `ENABLE` | RW | 0xFFF a| Enable for each of 12 noise generating ring oscillators (one bit per generator [11:0]). Set bit to 1 to enable oscillator, 0 to disable. Disabling stops entropy generation from that generator. RO lengths: Gen0=5, Gen1=7, Gen2=11, Gen3=13, Gen4=17, Gen5=19, Gen6=6, Gen7=8, Gen8=12, Gen9=14, Gen10=18, Gen11=20 stages. All enabled by default (0xFFF).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RING_OSC_TUNE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -401,7 +401,7 @@
 | 11:0 | `DETUNE` | RW | 0x0 a| Detune control for each of 12 noise generating ring oscillators (one bit per generator [11:0]). Set bit to 1 to detune (increase frequency by selecting shorter tap point in RO chain). Frequency increase: ~40-67% depending on RO length. Example: Gen0 (5->3 stages) increases from 2.88 GHz to 4.80 GHz. Used for manual tuning when CTRL.AUTOTUNE_ENABLE=0, or automatically set by hardware when AUTOTUNE_ENABLE=1 and health test fails. Default=0x0 (all ROs at normal frequency).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RING_OSC_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -409,7 +409,7 @@
 | 11:0 | `SAMPLE_CLK_SELECT` | RW | 0xFFF a| Select sample clock source for each of 12 generators (one bit per generator [11:0]). Set bit to 1 to use shared internal sampling ring oscillator (109 stages, 264 MHz), set to 0 to use external sampling clock input (rosc_sample_clk_i port, typically 400 MHz). Shared RO provides area/power savings and consistent sampling across generators. External clock useful for characterization and debug. Each generator's clock is further divided by GENERATOR_*_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE (div1 to div32). Default=0xFFF (all generators use internal shared RO).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DECORRELATOR_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -417,7 +417,7 @@
 | 11:0 | `BYPASS` | RW | 0x0 a| Decorrelator bypass for each of 12 generators (one bit per generator [11:0]). Set bit to 1 to bypass LFSR decorrelator and capture raw noise bits directly. When bypassed, feedback loop is broken and shift register captures raw entropy stream. Useful for raw entropy analysis and NIST test suite validation. Bypass mode recommendation: set SAMPLE_CLK_DIV=7 (div8) to capture one byte every 8 cycles (all raw bits). Normal mode: keep default SAMPLE_CLK_DIV=63 (div64) for LFSR decorrelation. Default=0x0 (all decorrelators enabled).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DECORRELATOR_MASK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -425,7 +425,7 @@
 | 7:0 | `ENTROPY_BYTE_MASK` | RW | 0xFF a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MAIN_SM_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -438,7 +438,7 @@
 | 8:0 | `STATE` | R | 0x0 a| Current entropy_src_main_sm state (sparse FSM encoding from entropy_src_main_sm_pkg::state_e). Useful values while bypass_mode_i=1: Idle, BootHTRunning, BootPostHTChk, BootPhaseDone, AlertState, AlertHang, Error.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_0_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -446,7 +446,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 0 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_1_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -454,7 +454,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 1 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_2_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -462,7 +462,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 2 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_3_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -470,7 +470,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 3 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_4_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -478,7 +478,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 4 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_5_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -486,7 +486,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 5 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_6_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -494,7 +494,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 6 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_7_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -502,7 +502,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 7 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_8_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -510,7 +510,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 8 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_9_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -518,7 +518,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 9 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_10_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -526,7 +526,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 10 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_11_HEALTH_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -534,7 +534,7 @@
 | 7:0 | `STATUS` | RW | 0x0 a| Generator 11 health test status. Latches on failure, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_0_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -542,7 +542,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Sample clock division factor for generator 0. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 21.8x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_1_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -550,7 +550,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Sample clock division factor for generator 1. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 15.6x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_2_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -558,7 +558,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Sample clock division factor for generator 2. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 19.8x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_3_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -566,7 +566,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Sample clock division factor for generator 3. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 16.8x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_4_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -574,7 +574,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Sample clock division factor for generator 4. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 25.6x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_5_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -582,7 +582,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Sample clock division factor for generator 5. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 22.8x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_6_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -590,7 +590,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Sample clock division factor for generator 6. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 18.2x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_7_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -598,7 +598,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Sample clock division factor for generator 7. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 13.6x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_8_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -606,7 +606,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Sample clock division factor for generator 8. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 18.2x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_9_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -614,7 +614,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Sample clock division factor for generator 9. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 15.6x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_10_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -622,7 +622,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Sample clock division factor for generator 10. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 24.4x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATOR_11_SAMPLE_CLK_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -630,7 +630,7 @@
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Sample clock division factor for generator 11. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 21.8x).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HT_WATERMARK_NUM Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -638,7 +638,7 @@
 | 3:0 | `WATERMARK_NUM` | RW | 0x0 a| Shared watermark source selector. Unsupported values are sanitized to REPCNT_HI. A write changes the source but preserves the current shared value until an arming event or qualifying health-test event.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HT_WATERMARK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -646,42 +646,42 @@
 | 15:0 | `WATERMARK_VALUE` | R | 0x0 a| Current value in the shared selector-dependent watermark storage.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REPCNT_TOTAL_FAILS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total repetition test failures
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_HI_TOTAL_FAILS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total APT high test failures
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .APT_LO_TOTAL_FAILS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total APT low test failures
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MARKOV_HI_TOTAL_FAILS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total Markov high test failures
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MARKOV_LO_TOTAL_FAILS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total Markov low test failures
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_SUMMARY_FAIL_COUNTS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -689,7 +689,7 @@
 | 15:0 | `ANY_FAIL_COUNT` | R | 0x0 a| Number of windows with any failure
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_FAIL_COUNTS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -701,7 +701,7 @@
 | 3:0 | `APT_LO_FAIL_COUNT` | R | 0x0 a| APT low test alert failures (4-bit, saturates at 15)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FIPS_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -709,7 +709,7 @@
 | 0 | `LOCK` | RW | 0x0 a| FIPS configuration lock. Write 1 to lock the certified configuration. Cleared only by reset. Read returns current lock state (1=locked). Drives the swwel enable on every certified-config field and gates the SIZE>=1024 assertion.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -717,7 +717,7 @@
 | 15:0 | `THRESHOLD` | RW | 0x4 a| Consecutive/aggregate failing-window count that trips the persistent-failure alert. 0 disables the threshold trip (alert path never fires from this source). Default=4.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MIN_ENTROPY_H Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -725,7 +725,7 @@
 | 7:0 | `H` | RW | 0xC a| Per-sample min-entropy H in Q4.4 unsigned fixed-point. Default=0x0C (0.75 bits/sample).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RECOMMENDED_THRESHOLDS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -733,7 +733,7 @@
 | 15:0 | `RCT_LIMIT` | R | 0x0 a| Recommended Repetition Count Test cutoff C = 1 + ceil(20 / H) (SP 800-90B 4.4.1, alpha=2^-20).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BIW_OBS_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -741,7 +741,7 @@
 | 0 | `RAW_ENABLE` | RW | 0x0 a| Enable post-BIW capture into the BIW observe FIFO. When 1 (and MAIN_SM_STATUS.BOOT_PHASE_DONE=1), each post-BIW entropy word is copied into the observe FIFO. Default=0. Stays writable under FIPS_LOCK so observation can be toggled during certified operation: this copy-only diagnostic tap leaves the certified output path unchanged.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BIW_OBS_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -753,14 +753,14 @@
 | 6:0 | `LEVEL` | R | 0x0 a| Fill level. Number of 32-bit words currently held in the BIW observe FIFO (0-64).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BIW_OBS_RDATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RDATA` | R | 0x0 a| Popped post-BIW word (extracted, pre-SHA entropy stream). Reading advances the BIW observe FIFO read pointer.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .NOISE_OBS_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -771,7 +771,7 @@
 | 0 | `RAW_ENABLE` | RW | 0x0 a| Enable raw per-lane noise capture into the raw-noise observe FIFO. When 1, the selected lane's pre-decorrelator sample bit is captured once per lane sample-clock edge and packed (LSB-first) into 32-bit words. Default=0. Stays writable under FIPS_LOCK: this copy-only diagnostic tap leaves the certified output path unchanged.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .NOISE_OBS_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -783,7 +783,7 @@
 | 6:0 | `LEVEL` | R | 0x0 a| Fill level. Number of 32-bit words currently held in the raw-noise observe FIFO (0-64).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .NOISE_OBS_RDATA Register
 |===
 | Bits | Field | Access | Reset | Description
