@@ -64,6 +64,9 @@ _ICCM_BASE = 0xC000_0000
 _EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")  # shadow map -> DENIED to JTAG at PROD
 _EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")  # MMR token region -> ALLOWED
 _EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
+# Seeded into token1 before the read loop; distinct from the 0xE905_5xxx the
+# loop writes to token3, so a read that aliased onto token3 would fail.
+_TOKEN1_SEED = 0x5A5A_1001
 # Token-block members beyond the two RMA TOKEN_I words already walked above.
 _EFUSE_MMR_SEC_DIS_I0 = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
 _EFUSE_MMR_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
@@ -160,12 +163,26 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             f"from {ready_count} before the JTAG burst"
         )
 
+        # Seed token1 before the read loop reads it. RMA_SIP_TOKEN_I is an
+        # `external` sw=rw token-input word (hw/ip/efuse/regs/efuse_mmr.rdl): the
+        # regblock defines no reset for it, so it holds X until software writes
+        # it. The loop below reads it every round, and an unwritten read returns
+        # X, which the AXI-Lite master cannot convert to an int.
+        code, _ = await self.jtag_axil_op(write=True, addr=_EFUSE_MMR_TOKEN1, wdata=_TOKEN1_SEED)
+        assert code == 0, f"JTAG MMR token1 seed write not OKAY (resp={code})"
+
         # --- JTAG MMR ops, concurrent with the CPU loop: all allowed (OKAY) ---
         cnt_after = cnt_before
         rounds = 0
         for i in range(_JTAG_MAX_ROUNDS):
-            code, _ = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_TOKEN1)
+            code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_TOKEN1)
             assert code == 0, f"JTAG MMR token1 read {i} not OKAY (resp={code})"
+            # The seed is untouched by the token3 traffic in between, so this also
+            # shows the JTAG reads are not aliasing onto the word being written.
+            assert rdata == _TOKEN1_SEED, (
+                f"JTAG MMR token1 read {i} got 0x{rdata:08x}, expected the seeded "
+                f"0x{_TOKEN1_SEED:08x}"
+            )
             token3_value = 0xE905_5000 | i
             code, _ = await self.jtag_axil_op(
                 write=True, addr=_EFUSE_MMR_TOKEN3, wdata=token3_value
