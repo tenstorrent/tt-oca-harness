@@ -30,7 +30,7 @@ def _tool(name: str) -> str:
             return str(candidate)
     candidate = shutil.which(f"riscv64-unknown-elf-{name}")
     if candidate:
-        return candidate
+        return str(candidate)
     tools_soc = Path("/tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin")
     candidate = tools_soc / f"riscv64-unknown-elf-{name}"
     if candidate.is_file():

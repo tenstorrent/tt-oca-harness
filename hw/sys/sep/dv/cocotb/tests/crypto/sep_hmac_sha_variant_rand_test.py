@@ -191,7 +191,7 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
 
     async def _run_cell(
         self, sha_bits: int, hmac_en: bool, key_bits: int | None, conv: dict
-    ) -> None:
+    ) -> tuple[int, ...]:
         msg = self._rand_words(self.rng.randrange(1, 17))
         key = self._rand_words(key_bits // 32) if hmac_en else []
         cfg = SepHmacCfg(

@@ -63,7 +63,7 @@ static inline void log_simputshex32(const char *msg, uint32_t val) {
 #endif
 }
 
-// This version I2C target must use stop bit for leaveing clock stretch state so controller should
+// This version I2C target must use stop bit for leaving clock stretch state so controller should
 // send stop bit after the i2c read/write transaction
 
 static const uintptr_t kCtrlGateAddrs[I2C_CONTROLLER_COUNT] = {

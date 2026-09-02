@@ -24,7 +24,7 @@ module prim_carry_select_adder #(
 
 	always_comb begin
 
-		// Sum 1st chunk seperately, as it doesn't need carry-select logic
+		// Sum 1st chunk separately, as it doesn't need carry-select logic
 		{carry_prev, sum_chunk[0]} = a[0 +: CHUNK_WIDTH] + b[0 +: CHUNK_WIDTH];
 		carry[0]                   = carry_prev;
 
