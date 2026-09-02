@@ -57,20 +57,17 @@ class SmcCsrSeq(smc_base_test_seq):
             await self.csr_read(name, addr, expected)
 
     async def csr_read_many_allow_error(self, regs: list[tuple[str, int, int | None]]) -> None:
-        """Read a list of windows that are intentionally stubbed as AXI error
-        slaves (e.g. the I3C CSR windows: smc_peripherals instantiates
-        ``i3ccore_stub`` -- "TODO: stub i3c out until the updated open-source
-        controller is integrated" -- which completes every access with SLVERR
-        and 0xBADCAB1E). ``allow_error`` lets the DECERR/SLVERR response count as
-        a completed access, so the sequence still proves the fabric decodes/
+        """Read a list of windows that are intentionally terminated as AXI error
+        slaves. ``allow_error`` lets the DECERR/SLVERR response count as a
+        completed access, so the sequence still proves the fabric decodes/
         routes to the window and the bus never hangs, without asserting a real
-        register value the stub cannot provide. The per-entry ``expected`` field
-        is ignored here on purpose (kept so the reg tables stay uniform)."""
+        register value the terminator cannot provide. The per-entry ``expected``
+        field is ignored here on purpose (kept so the reg tables stay uniform)."""
         for name, addr, _expected in regs:
             await self.csr_read_allow_error(name, addr)
 
     # AXI error-slave data signature returned by the boundary/stub responders
-    # (i3ccore_stub, prim_axi_lite_err_slv macro terminators, efuse stub, etc.).
+    # (prim_axi_lite_err_slv macro terminators, efuse stub, etc.).
     ERR_SLAVE_SIGNATURE = 0xBADCAB1E
 
     async def csr_read_err_signature(
@@ -81,7 +78,7 @@ class SmcCsrSeq(smc_base_test_seq):
         complete with an error response (SLVERR/DECERR) AND return the
         0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
         Used for TB-side terminators (e.g. DTP CSR) and in-RTL stubs that keep
-        that signature (e.g. ``i3ccore_stub``)."""
+        that signature."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
