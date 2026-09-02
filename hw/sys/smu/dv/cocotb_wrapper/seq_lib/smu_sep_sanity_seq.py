@@ -34,6 +34,9 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from seq_lib.sep_fw_common import format_pc_profile, load_syms
 
+SEP_ICCM_BASE = 0xC000_0000
+SEP_ICCM_END = 0xC004_0000
+
 # Every stage the firmware emits. All are required: the image opens its outbound
 # window before the first beacon, so any missing one is a real stall.
 REQUIRED_BEACONS = (0, 1, 2, 3, 4)
@@ -83,7 +86,9 @@ class SmuSepSanitySeq:
 
         done = False
         passed = False
-        iccm_seen = False
+        first_iccm = None
+        first_beacon = {b: None for b in REQUIRED_BEACONS}
+        first_pass = None
         traces = 0
         pc_hist: Counter[int] = Counter()
 
@@ -94,17 +99,24 @@ class SmuSepSanitySeq:
                 self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True
             ):
                 traces += 1
-                pc_hist[
+                pc = (
                     self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True)
                     & 0xFFFF_FFFF
-                ] += 1
-            iccm_seen |= bool(
-                self.test.read_int(
-                    self.dut.sep_iccm_fetch_seen_o,
-                    "sep_iccm_fetch_seen_o",
-                    allow_xz=True,
                 )
-            )
+                pc_hist[pc] += 1
+                if first_iccm is None and SEP_ICCM_BASE <= pc < SEP_ICCM_END:
+                    first_iccm = cycle
+            if first_iccm is None and self.test.read_int(
+                self.dut.sep_iccm_fetch_seen_o,
+                "sep_iccm_fetch_seen_o",
+                allow_xz=True,
+            ):
+                first_iccm = cycle
+
+            beacons_now = self._beacons()
+            for bit in REQUIRED_BEACONS:
+                if first_beacon[bit] is None and bit in beacons_now:
+                    first_beacon[bit] = cycle
 
             done = bool(
                 self.test.read_int(self.dut.fw_done_o, "fw_done_o", allow_xz=True)
@@ -113,6 +125,8 @@ class SmuSepSanitySeq:
                 passed = bool(
                     self.test.read_int(self.dut.fw_pass_o, "fw_pass_o", allow_xz=True)
                 )
+                if passed and first_pass is None:
+                    first_pass = cycle
                 self.log.info(
                     "SEP sanity firmware reported completion cycle=%d pass=%s "
                     "beacons=%s traces=%d",
@@ -135,7 +149,7 @@ class SmuSepSanitySeq:
                     "sep_aperture=[0x%x +0x%x]",
                     cycle,
                     sorted(self._beacons()),
-                    iccm_seen,
+                    first_iccm is not None,
                     traces,
                     self.test.read_int(
                         self.dut.sep_smn_out_aw_count_o,
@@ -266,7 +280,7 @@ class SmuSepSanitySeq:
         missing = [b for b in REQUIRED_BEACONS if b not in beacons]
 
         errors: list[str] = []
-        if not iccm_seen:
+        if first_iccm is None:
             errors.append("SEP never executed in the ICCM range")
         if not done:
             errors.append(
@@ -283,6 +297,30 @@ class SmuSepSanitySeq:
                 "stage beacons never observed: "
                 + ", ".join(f"{b} ({BEACON_MEANING[b]})" for b in missing)
             )
+
+        # iccm exec < beacon 1..4 < PASS magic. Beacon 0 is required above
+        # but is not part of this order chain.
+        if done and passed:
+            order_times = (
+                [first_iccm]
+                + [first_beacon[b] for b in (1, 2, 3, 4)]
+                + [first_pass]
+            )
+            if any(t is None for t in order_times):
+                errors.append(
+                    "iccm < beacon 1..4 < PASS first-seen incomplete "
+                    f"(first_iccm={first_iccm} first_beacon={first_beacon} "
+                    f"first_pass={first_pass})"
+                )
+            elif not all(
+                earlier < later
+                for earlier, later in zip(order_times, order_times[1:])
+            ):
+                errors.append(
+                    "iccm exec < beacon 1..4 < PASS magic order does not hold "
+                    f"(first_iccm={first_iccm} first_beacon={first_beacon} "
+                    f"first_pass={first_pass})"
+                )
 
         assert not errors, "SEP sanity: " + "; ".join(errors)
 

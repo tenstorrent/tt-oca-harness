@@ -115,8 +115,9 @@ class SepTerminalLoopSeq:
                 ", ".join(sorted(missing_fail)),
             )
 
-        boot_rom_seen = False
-        iccm_seen = False
+        first_boot_rom = None
+        first_iccm = None
+        first_pass = None
         first_pc = None
         traces = 0
         pc_hist: Counter[int] = Counter()
@@ -131,22 +132,26 @@ class SepTerminalLoopSeq:
                 pc_hist[pc] += 1
                 if first_pc is None:
                     first_pc = pc
-                boot_rom_seen |= SEP_BOOT_ROM_BASE <= pc < SEP_BOOT_ROM_END
-                iccm_seen |= SEP_ICCM_BASE <= pc < SEP_ICCM_END
+                if first_boot_rom is None and SEP_BOOT_ROM_BASE <= pc < SEP_BOOT_ROM_END:
+                    first_boot_rom = cycle
+                if first_iccm is None and SEP_ICCM_BASE <= pc < SEP_ICCM_END:
+                    first_iccm = cycle
+                if first_pass is None and pc == pass_pc:
+                    first_pass = cycle
                 if verdict is None:
                     if pc == pass_pc:
                         verdict = ("pass", None)
                     elif pc in fail_pcs:
                         verdict = ("fail", fail_pcs[pc])
 
-            boot_rom_seen |= bool(
-                self._rd(
-                    self.dut.sep_boot_rom_fetch_seen_o, "sep_boot_rom_fetch_seen_o"
-                )
-            )
-            iccm_seen |= bool(
-                self._rd(self.dut.sep_iccm_fetch_seen_o, "sep_iccm_fetch_seen_o")
-            )
+            if first_boot_rom is None and self._rd(
+                self.dut.sep_boot_rom_fetch_seen_o, "sep_boot_rom_fetch_seen_o"
+            ):
+                first_boot_rom = cycle
+            if first_iccm is None and self._rd(
+                self.dut.sep_iccm_fetch_seen_o, "sep_iccm_fetch_seen_o"
+            ):
+                first_iccm = cycle
 
             # Terminal loops never exit; stop at the first one entered.
             if verdict is not None:
@@ -169,8 +174,8 @@ class SepTerminalLoopSeq:
                     cycle,
                     traces,
                     len(pc_hist),
-                    boot_rom_seen,
-                    iccm_seen,
+                    first_boot_rom is not None,
+                    first_iccm is not None,
                 )
 
         for line in format_pc_profile(syms, pc_hist, traces):
@@ -188,15 +193,32 @@ class SepTerminalLoopSeq:
                 f"firmware parked in the {verdict[1]} fail loop -- that on-chip "
                 "check did not pass"
             )
-        if not boot_rom_seen:
+        if first_boot_rom is None:
             errors.append("SEP never fetched from the boot-ROM window")
-        if not iccm_seen:
+        if first_iccm is None:
             errors.append("SEP never executed in the ICCM range")
         if first_pc is not None and not (
             SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END
         ):
             errors.append(
                 f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector"
+            )
+        if first_pass is not None:
+            if first_boot_rom is None or first_iccm is None:
+                errors.append(
+                    f"boot_rom < iccm < pass_loop first-seen incomplete "
+                    f"(first_boot_rom={first_boot_rom} first_iccm={first_iccm} "
+                    f"first_pass={first_pass})"
+                )
+            elif not (first_boot_rom < first_iccm < first_pass):
+                errors.append(
+                    f"boot_rom < iccm < pass_loop order does not hold "
+                    f"(first_boot_rom={first_boot_rom} first_iccm={first_iccm} "
+                    f"first_pass={first_pass})"
+                )
+        elif verdict is not None and verdict[0] == "pass":
+            errors.append(
+                "pass loop reached without a first-seen cycle"
             )
 
         assert not errors, f"{self.NAME}: " + "; ".join(errors)

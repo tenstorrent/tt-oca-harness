@@ -70,8 +70,9 @@ class SmuSepBootHealthSeq:
             f"pass loop 0x{pass_pc:08x} outside the ICCM window"
         )
 
-        boot_rom_seen = False
-        iccm_seen = False
+        first_boot_rom = None
+        first_iccm = None
+        first_pass = None
         pass_seen = False
         fail_seen = False
         first_pc = None
@@ -90,31 +91,33 @@ class SmuSepBootHealthSeq:
                 pcs.add(pc)
                 if first_pc is None:
                     first_pc = pc
-                boot_rom_seen |= SEP_BOOT_ROM_BASE <= pc < SEP_BOOT_ROM_END
-                iccm_seen |= SEP_ICCM_BASE <= pc < SEP_ICCM_END
+                if first_boot_rom is None and SEP_BOOT_ROM_BASE <= pc < SEP_BOOT_ROM_END:
+                    first_boot_rom = cycle
+                if first_iccm is None and SEP_ICCM_BASE <= pc < SEP_ICCM_END:
+                    first_iccm = cycle
+                if first_pass is None and pc == pass_pc:
+                    first_pass = cycle
                 pass_seen |= pc == pass_pc
                 fail_seen |= pc == fail_pc
 
-            boot_rom_seen |= bool(
-                self.test.read_int(
-                    self.dut.sep_boot_rom_fetch_seen_o,
-                    "sep_boot_rom_fetch_seen_o",
-                    allow_xz=True,
-                )
-            )
-            iccm_seen |= bool(
-                self.test.read_int(
-                    self.dut.sep_iccm_fetch_seen_o,
-                    "sep_iccm_fetch_seen_o",
-                    allow_xz=True,
-                )
-            )
+            if first_boot_rom is None and self.test.read_int(
+                self.dut.sep_boot_rom_fetch_seen_o,
+                "sep_boot_rom_fetch_seen_o",
+                allow_xz=True,
+            ):
+                first_boot_rom = cycle
+            if first_iccm is None and self.test.read_int(
+                self.dut.sep_iccm_fetch_seen_o,
+                "sep_iccm_fetch_seen_o",
+                allow_xz=True,
+            ):
+                first_iccm = cycle
 
             # The fail loop is terminal: stop as soon as it is entered so the
             # failure reports the firmware's own verdict, not a timeout.
             if fail_seen:
                 break
-            if pass_seen and boot_rom_seen and iccm_seen:
+            if pass_seen and first_boot_rom is not None and first_iccm is not None:
                 self.log.info(
                     "SEP boot-health reached the pass loop cycle=%d first_pc=0x%08x "
                     "traces=%d distinct_pcs=%d",
@@ -132,8 +135,8 @@ class SmuSepBootHealthSeq:
                     cycle,
                     traces,
                     len(pcs),
-                    boot_rom_seen,
-                    iccm_seen,
+                    first_boot_rom is not None,
+                    first_iccm is not None,
                     pass_seen,
                     fail_seen,
                 )
@@ -144,9 +147,9 @@ class SmuSepBootHealthSeq:
                 f"firmware parked in its FAIL loop (0x{fail_pc:08x}) -- cold "
                 "scratch7 read-back mismatched inside the SEP"
             )
-        if not boot_rom_seen:
+        if first_boot_rom is None:
             errors.append("SEP never fetched from the boot-ROM window")
-        if not iccm_seen:
+        if first_iccm is None:
             errors.append("SEP never executed in the ICCM range")
         if first_pc is not None and not (
             SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END
@@ -154,6 +157,21 @@ class SmuSepBootHealthSeq:
             errors.append(
                 f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector"
             )
+        if first_pass is not None:
+            if first_boot_rom is None or first_iccm is None:
+                errors.append(
+                    f"boot_rom < iccm < pass_loop first-seen incomplete "
+                    f"(first_boot_rom={first_boot_rom} first_iccm={first_iccm} "
+                    f"first_pass={first_pass})"
+                )
+            elif not (first_boot_rom < first_iccm < first_pass):
+                errors.append(
+                    f"boot_rom < iccm < pass_loop order does not hold "
+                    f"(first_boot_rom={first_boot_rom} first_iccm={first_iccm} "
+                    f"first_pass={first_pass})"
+                )
+        elif pass_seen:
+            errors.append("pass loop reached without a first-seen cycle")
         if not pass_seen:
             observed = ", ".join(f"0x{p:08x}" for p in sorted(pcs))
             errors.append(

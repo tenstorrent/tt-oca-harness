@@ -12,17 +12,21 @@ what that state is expected to do. The eFuse image is the one LCC input firmware
 cannot drive -- it is sampled before the CPU runs -- so it has to come from the
 testbench side; everything downstream of it is still driven by the firmware.
 
-The discriminating case is PROD_END. Per Table 50 the demotes gate
-feat_ctrl[15:0] and feat_ctrl[31:16] in TEST_DEV and PROD but have no entry in
-PROD_END, so a demote there must NOT open those bits. A design that merely
-forwarded the eFuse value, or applied the demote unconditionally, passes every
-other state and fails here. Debug follows from the same bits, so PROD_END is
-also where dbg_disable is expected to assert.
+Per Table 50 the demotes gate feat_ctrl[15:0] and feat_ctrl[31:16] in TEST_DEV
+and PROD but have no entry in PROD_END. The check that can fail is a delta
+against the reset baseline: PROD starts closed and must open; PROD_END must
+stay closed. TEST_DEV's baseline is already ~(sip_dis | sys_dis), and
+RMA_CHIPLET's feat_ctrl is all-ones by state, so those two cannot show a
+closed-to-open demote -- a post-run open low-32 does not prove the write did
+anything. Debug follows from the same bits, so PROD_END is also where
+dbg_disable is expected to assert.
 
 Expectations arrive as plusargs rather than being derived here, so the testlist
 entry states the contract for its own eFuse image:
   +lcc_expect_lc_state=<hex>       lc_state as the SMC receives it
-  +lcc_expect_demote_effective=0|1 whether feat_ctrl[31:0] opens on demote
+  +lcc_expect_demote_effective=0|1 post-run feat_ctrl[31:0] closed or open.
+                                   When the reset baseline is already open
+                                   this is not a demote delta.
   +lcc_expect_dbg_disabled=0|1     whether the DTP-facing dbg_disable asserts
 """
 
@@ -92,6 +96,16 @@ class SmuSepLccStateMatrixSeq:
             want_dbg_dis,
         )
 
+        # Baseline before the firmware DEMOTE writes. A post-run open bit is
+        # not a demote proof when this is already open (TEST_DEV / RMA).
+        feat_ctrl_before = self._rd(self.dut.lcc_feat_ctrl_o, "lcc_feat_ctrl_o")
+        baseline_open = (feat_ctrl_before & 0xFFFF_FFFF) != 0
+        self.log.info(
+            "feat_ctrl at reset: 0x%016x (low32 %s)",
+            feat_ctrl_before,
+            "open" if baseline_open else "closed",
+        )
+
         verdict = None
         boot_rom_seen = False
         iccm_seen = False
@@ -123,19 +137,22 @@ class SmuSepLccStateMatrixSeq:
         demote1 = self._rd(self.dut.lcc_demote_state_1_o, "lcc_demote_state_1_o")
         demote2 = self._rd(self.dut.lcc_demote_state_2_o, "lcc_demote_state_2_o")
 
-        # feat_ctrl[31:0] is the window the demotes gate; whether it opened is
-        # the observable that separates the states.
-        demote_effective = (feat_ctrl & 0xFFFF_FFFF) != 0
+        low32_before = feat_ctrl_before & 0xFFFF_FFFF
+        low32_after = feat_ctrl & 0xFFFF_FFFF
+        post_open = low32_after != 0
+        demote_opened = low32_before == 0 and low32_after != 0
         dbg_disabled = dbg_disable != 0
 
         for line in format_pc_profile(syms, pc_hist, traces):
             self.log.info("%s", line)
         self.log.info(
-            "observed: lc_state=0x%02x feat_ctrl=0x%016x (low32 %s) "
+            "observed: lc_state=0x%02x feat_ctrl 0x%016x->0x%016x (low32 %s->%s) "
             "dbg_disable=0x%04x demote1=%s demote2=%s",
             lc_state,
+            feat_ctrl_before,
             feat_ctrl,
-            "open" if demote_effective else "closed",
+            "open" if baseline_open else "closed",
+            "open" if post_open else "closed",
             dbg_disable,
             format(demote1, "#04b"),
             format(demote2, "#04b"),
@@ -166,12 +183,36 @@ class SmuSepLccStateMatrixSeq:
                 f"demote not asserted at the SMU boundary "
                 f"(demote1={demote1:#04b} demote2={demote2:#04b})"
             )
-        if demote_effective != want_demote_eff:
+        if want_demote_eff and baseline_open:
+            # TEST_DEV / RMA_CHIPLET: baseline is already open, so a post-run
+            # open bit is not a demote delta. Stay-open and demote asserted
+            # are still required; PROD and PROD_END are the discriminating
+            # feat_ctrl cases.
+            if not post_open:
+                errors.append(
+                    f"feat_ctrl[31:0] closed after the run "
+                    f"(0x{feat_ctrl_before:016x}->0x{feat_ctrl:016x}) -- "
+                    "this state's baseline is already open, so the post "
+                    "value must stay open"
+                )
+            self.log.info(
+                "feat_ctrl[31:0] baseline already open at reset "
+                "(0x%016x); demote effect is not a delta on this state. "
+                "PROD must open from closed; PROD_END must stay closed.",
+                feat_ctrl_before,
+            )
+        elif want_demote_eff:
+            if not demote_opened:
+                errors.append(
+                    f"demote did not open feat_ctrl[31:0] "
+                    f"(0x{feat_ctrl_before:016x}->0x{feat_ctrl:016x}) -- "
+                    "expected a closed-to-open delta for this state"
+                )
+        elif post_open:
             errors.append(
-                f"demote effect on feat_ctrl[31:0] is "
-                f"{'open' if demote_effective else 'closed'}, expected "
-                f"{'open' if want_demote_eff else 'closed'} for this state "
-                f"(feat_ctrl=0x{feat_ctrl:016x})"
+                f"demote effect on feat_ctrl[31:0] is open, expected closed "
+                f"for this state "
+                f"(0x{feat_ctrl_before:016x}->0x{feat_ctrl:016x})"
             )
         if dbg_disabled != want_dbg_dis:
             errors.append(
@@ -186,13 +227,25 @@ class SmuSepLccStateMatrixSeq:
             "contracted; the LCC is decoding the image, not a fixed value)",
             lc_state,
         )
-        self.log.info(
-            "CHK-SEP-LCC-STATE-PROFILE: PASS (demote effect %s and dbg_disable "
-            "0x%04x both match Table 50 for this state, with the demote asserted "
-            "at the boundary either way)",
-            "open" if demote_effective else "closed",
-            dbg_disable,
-        )
+        if want_demote_eff and baseline_open:
+            self.log.info(
+                "CHK-SEP-LCC-STATE-PROFILE: PASS (baseline feat_ctrl[31:0] "
+                "already open; demote asserted at the boundary; dbg_disable "
+                "0x%04x matches the contract. Demote-open is not a delta here "
+                "-- PROD and PROD_END are the discriminating cases)",
+                dbg_disable,
+            )
+        else:
+            self.log.info(
+                "CHK-SEP-LCC-STATE-PROFILE: PASS (feat_ctrl[31:0] "
+                "0x%016x->0x%016x %s and dbg_disable 0x%04x match Table 50 "
+                "for this state, with the demote asserted at the boundary "
+                "either way)",
+                feat_ctrl_before,
+                feat_ctrl,
+                "opened" if demote_opened else "stayed closed",
+                dbg_disable,
+            )
         for token in ("SEP_LCC_STATE_DECODE_OK", "SEP_LCC_STATE_PROFILE_OK"):
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)

@@ -558,7 +558,9 @@ args = [
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
 ]
 
-# TEST_DEV (raw 0x0): demotes open feat_ctrl[31:0]; debug open
+# TEST_DEV (raw 0x0): baseline feat_ctrl[31:0] already open (~(sip_dis|sys_dis));
+# demote effect is not a delta. +lcc_expect_demote_effective=1 means the post
+# value stays open, not that the demote opened it. Debug open.
 [[tests]]
 name = "smu_sep_lcc_state_test_dev_test"
 module = "smu_sep_lcc_state_matrix_test"
@@ -582,7 +584,8 @@ args = [
   "+lcc_expect_dbg_disabled=0",
 ]
 
-# PROD (raw 0x1): demotes open feat_ctrl[31:0] from ~(sip_dis|sys_dis); debug open
+# PROD (raw 0x1): baseline feat_ctrl[31:0] is closed; demote must open it
+# (closed-to-open delta). Debug open.
 [[tests]]
 name = "smu_sep_lcc_state_prod_test"
 module = "smu_sep_lcc_state_matrix_test"
@@ -630,7 +633,9 @@ args = [
   "+lcc_expect_dbg_disabled=1",
 ]
 
-# RMA_CHIPLET (raw 0x6): feat_ctrl is all-ones by state, independent of the demotes
+# RMA_CHIPLET (raw 0x6): feat_ctrl is all-ones by state, independent of the
+# demotes; demote effect is not a delta. +lcc_expect_demote_effective=1 means
+# the post value stays open, not that the demote opened it.
 [[tests]]
 name = "smu_sep_lcc_state_rma_chiplet_test"
 module = "smu_sep_lcc_state_matrix_test"
