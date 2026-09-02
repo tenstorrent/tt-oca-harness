@@ -4285,8 +4285,8 @@ SMC fabric filtering.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 Master (56-bit address, 64-bit data, 4-bit ID)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Channel Support</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Multiple independent concurrent transfer channels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stream Support</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register map exposes 16 stream banks; SMC instantiates 1</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security</p></td>
@@ -4351,7 +4351,7 @@ interfaces (must be ≥ 1)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CTRL_STREAMS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Number of control streams per interface (must be ≥
-1)</p></td>
+1, maximum 16). SMC fixes this at 1; see <a href="#dma-stream-support">Stream Support</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NUM_MST_INTERFACES</p></td>
@@ -4453,6 +4453,48 @@ transfers</p></td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="sect4">
+<h5 id="dma-stream-support"><a class="anchor" href="#dma-stream-support"></a><a class="link" href="#dma-stream-support">Stream Support</a></h5>
+<div class="paragraph">
+<p>A stream is an independent transfer-ID and status-tracking context in the
+frontend. The <code>dma_ctrl</code> register map reserves banks for 16 streams:
+<code>NEXT_ID_0</code> through <code>NEXT_ID_15</code>, <code>STATUS_0</code> through <code>STATUS_15</code>, and
+<code>DONE_0</code> through <code>DONE_15</code>. Streams do not have private transfer
+descriptors. There is a single set of <code>SRC_ADDRESS</code>, <code>DST_ADDRESS</code>,
+<code>LENGTH</code>, stride, and repetition registers shared by every stream;
+reading <code>NEXT_ID_n</code> launches a transfer built from those shared registers
+and tags it with stream index n.</p>
+</div>
+<div class="paragraph">
+<p>SMC instantiates the DMA with <code>NUM_CTRL_STREAMS = 1</code>, so only stream 0 is
+functional. Streams 1 through 15 cannot be used.</p>
+</div>
+<div class="paragraph">
+<p><code>NUM_CTRL_STREAMS</code> does not size the register file. The register file is
+always generated with all 16 stream banks, and every bank decodes
+normally regardless of the parameter. The parameter gates only the logic
+behind the banks, so with <code>NUM_CTRL_STREAMS = 1</code> the effect is:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Reading <code>NEXT_ID_1</code> through <code>NEXT_ID_15</code> does <strong>not</strong> start a transfer.
+The access completes with no bus error and returns 0, which is the same
+value <code>NEXT_ID</code> returns for a command that was not set up correctly.
+Software cannot distinguish a dropped request from a rejected one by the
+returned value.</p>
+</li>
+<li>
+<p><code>STATUS_1</code> through <code>STATUS_15</code> and <code>DONE_1</code> through <code>DONE_15</code> are tied
+to 0 and never update.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Software must use <code>NEXT_ID_0</code>, <code>STATUS_0</code>, and <code>DONE_0</code> exclusively and
+treat the remaining banks as reserved.</p>
+</div>
 </div>
 <div class="sect4">
 <h5 id="transfer-descriptor-support"><a class="anchor" href="#transfer-descriptor-support"></a><a class="link" href="#transfer-descriptor-support">Transfer Descriptor Support</a></h5>
@@ -4852,6 +4894,21 @@ data movement patterns.</p>
 </div>
 <div class="sect3">
 <h4 id="detailed-register-map-2"><a class="anchor" href="#detailed-register-map-2"></a><a class="link" href="#detailed-register-map-2">1.8.7. Detailed Register Map</a></h4>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The register map below covers all 16 stream banks because the
+register file is generated at the maximum stream count. With
+<code>NUM_CTRL_STREAMS = 1</code>, only the <code>_0</code> bank of <code>NEXT_ID</code>, <code>STATUS</code>, and
+<code>DONE</code> has any effect; see <a href="#dma-stream-support">Stream Support</a>.
+</td>
+</tr>
+</table>
+</div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
