@@ -217,11 +217,11 @@ module sep_efuse_wrapper
         .sigint_o(lc_sigint_err)
     );
 
+	// Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only access the MMR registers.
 	assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
     assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
 
-	// Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only read/write RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.
-	// A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP. 
+	// A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP.
     assign lc_restricted_state = lc_sigint_err ||
                                  (lc_state_local_raw == 4'b0001) ||                               // PROD STATE
                                  (lc_state_local_raw[sep_pkg::LC_STATE_BIT_WIDTH-1:1] == 3'b001); // RMA_SIP STATE

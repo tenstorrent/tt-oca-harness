@@ -1,11 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP XTRIG cocotb helpers for flattened AXI-Lite and GPIO pins."""
+"""DTP XTRIG cocotb helpers: shared AXI-Lite master attach and GPIO pins.
+
+The `xtrig_axil_*` CSR port is driven through the shared ``ocah_axi_vip``
+AXI-Lite master; its sequence API carries the protocol-control operations the
+XTRIG scenarios need (``write_skewed_result``, ``read_hold_result``,
+contiguous partial strobes).
+"""
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
+from ocah_axi_vip import OcahAxiLiteMasterAgent
 from pyuvm import ConfigDB, uvm_agent
 
 from .dtp_xtrig_types import (
@@ -21,201 +28,6 @@ from .dtp_xtrig_types import (
 
 def _int(signal) -> int:
     return int(signal.value)
-
-
-class DtpFlatAxiLiteMaster:
-    """Minimal AXI-Lite master for the flattened `xtrig_axil_*` top ports."""
-
-    def __init__(self, dut, prefix: str, clk) -> None:
-        self.dut = dut
-        self.prefix = prefix
-        self.clk = clk
-
-    def _sig(self, suffix: str):
-        return getattr(self.dut, f"{self.prefix}_{suffix}")
-
-    def init_signals(self) -> None:
-        for name in (
-            "awaddr",
-            "awprot",
-            "awvalid",
-            "wdata",
-            "wstrb",
-            "wvalid",
-            "bready",
-            "araddr",
-            "arprot",
-            "arvalid",
-            "rready",
-        ):
-            self._sig(name).value = 0
-
-    async def write(self, addr: int, data: int, *, wstrb: int = 0xF, prot: int = 0) -> int:
-        """Issue one AXI-Lite write and return BRESP."""
-        self._sig("awaddr").value = addr & 0xFFFFFFFF
-        self._sig("awprot").value = prot & 0x7
-        self._sig("awvalid").value = 1
-        self._sig("wdata").value = data & 0xFFFFFFFF
-        self._sig("wstrb").value = wstrb & 0xF
-        self._sig("wvalid").value = 1
-        self._sig("bready").value = 1
-
-        aw_done = False
-        w_done = False
-        while not (aw_done and w_done):
-            await RisingEdge(self.clk)
-            if not aw_done and _int(self._sig("awready")):
-                self._sig("awvalid").value = 0
-                aw_done = True
-            if not w_done and _int(self._sig("wready")):
-                self._sig("wvalid").value = 0
-                w_done = True
-
-        while True:
-            await RisingEdge(self.clk)
-            if _int(self._sig("bvalid")):
-                resp = _int(self._sig("bresp"))
-                self._sig("bready").value = 0
-                return resp
-
-    async def read(self, addr: int, *, prot: int = 0) -> tuple[int, int]:
-        """Issue one AXI-Lite read and return (RDATA, RRESP)."""
-        self._sig("araddr").value = addr & 0xFFFFFFFF
-        self._sig("arprot").value = prot & 0x7
-        self._sig("arvalid").value = 1
-        self._sig("rready").value = 1
-
-        while True:
-            await RisingEdge(self.clk)
-            if _int(self._sig("arready")):
-                self._sig("arvalid").value = 0
-                break
-
-        while True:
-            await RisingEdge(self.clk)
-            if _int(self._sig("rvalid")):
-                data = _int(self._sig("rdata"))
-                resp = _int(self._sig("rresp"))
-                self._sig("rready").value = 0
-                return data, resp
-
-    async def write_skewed(
-        self,
-        addr: int,
-        data: int,
-        *,
-        wstrb: int = 0xF,
-        aw_before_w: bool = True,
-        gap_cycles: int = 3,
-        bready_delay: int = 0,
-        timeout_cycles: int = 80,
-    ) -> int:
-        """Issue one write with explicit AW/W arrival skew.
-
-        AXI-Lite permits AW and W to arrive independently. These manual accesses
-        keep the non-arriving channel valid-low for a few cycles so demux and
-        regblock channel-ordering paths are observable from the test log.
-        """
-        self._sig("bready").value = 0
-        first = "aw" if aw_before_w else "w"
-        second = "w" if aw_before_w else "aw"
-        aw_done = False
-        w_done = False
-        self._drive_write_channel(first, addr, data, wstrb)
-        for _ in range(gap_cycles):
-            await RisingEdge(self.clk)
-            if not aw_done and _int(self._sig("awvalid")) and _int(self._sig("awready")):
-                self._sig("awvalid").value = 0
-                aw_done = True
-            if not w_done and _int(self._sig("wvalid")) and _int(self._sig("wready")):
-                self._sig("wvalid").value = 0
-                w_done = True
-        self._drive_write_channel(second, addr, data, wstrb)
-
-        for _ in range(timeout_cycles):
-            await RisingEdge(self.clk)
-            if not aw_done and _int(self._sig("awvalid")) and _int(self._sig("awready")):
-                self._sig("awvalid").value = 0
-                aw_done = True
-            if not w_done and _int(self._sig("wvalid")) and _int(self._sig("wready")):
-                self._sig("wvalid").value = 0
-                w_done = True
-            if aw_done and w_done:
-                break
-        else:
-            self._sig("awvalid").value = 0
-            self._sig("wvalid").value = 0
-            raise TimeoutError(
-                f"AXI-Lite skewed write timed out: addr=0x{addr:x} aw_done={aw_done} w_done={w_done}"
-            )
-
-        await ClockCycles(self.clk, bready_delay)
-        self._sig("bready").value = 1
-        for _ in range(timeout_cycles):
-            await RisingEdge(self.clk)
-            if _int(self._sig("bvalid")):
-                resp = _int(self._sig("bresp"))
-                self._sig("bready").value = 0
-                return resp
-        self._sig("bready").value = 0
-        raise TimeoutError(f"AXI-Lite skewed write response timed out: addr=0x{addr:x}")
-
-    def _drive_write_channel(self, channel: str, addr: int, data: int, wstrb: int) -> None:
-        if channel == "aw":
-            self._sig("awaddr").value = addr & 0xFFFFFFFF
-            self._sig("awprot").value = 0
-            self._sig("awvalid").value = 1
-        elif channel == "w":
-            self._sig("wdata").value = data & 0xFFFFFFFF
-            self._sig("wstrb").value = wstrb & 0xF
-            self._sig("wvalid").value = 1
-        else:
-            raise ValueError(f"unknown AXI-Lite write channel {channel}")
-
-    async def _wait_write_channel_accept(self, channel: str) -> None:
-        valid = "awvalid" if channel == "aw" else "wvalid"
-        ready = "awready" if channel == "aw" else "wready"
-        while True:
-            await RisingEdge(self.clk)
-            if _int(self._sig(ready)):
-                self._sig(valid).value = 0
-                return
-
-    async def read_with_rready_hold(
-        self,
-        addr: int,
-        *,
-        hold_cycles: int = 4,
-        prot: int = 0,
-    ) -> tuple[int, int, int]:
-        """Issue one read, hold RREADY low, then return (RDATA, RRESP, stable_data)."""
-        self._sig("araddr").value = addr & 0xFFFFFFFF
-        self._sig("arprot").value = prot & 0x7
-        self._sig("arvalid").value = 1
-        self._sig("rready").value = 0
-        while True:
-            await RisingEdge(self.clk)
-            if _int(self._sig("arready")):
-                self._sig("arvalid").value = 0
-                break
-
-        while True:
-            await RisingEdge(self.clk)
-            if _int(self._sig("rvalid")):
-                first_data = _int(self._sig("rdata"))
-                first_resp = _int(self._sig("rresp"))
-                break
-
-        stable = 1
-        for _ in range(hold_cycles):
-            await RisingEdge(self.clk)
-            stable &= int(_int(self._sig("rdata")) == first_data)
-            stable &= int(_int(self._sig("rresp")) == first_resp)
-
-        self._sig("rready").value = 1
-        await RisingEdge(self.clk)
-        self._sig("rready").value = 0
-        return first_data, first_resp, stable
 
 
 class DtpXtrigBfm:
@@ -348,22 +160,34 @@ class DtpXtrigBfm:
 
 
 class DtpXtrigAgent(uvm_agent):
-    """Publishes XTRIG AXI-Lite and GPIO BFMs through the shared cfg."""
+    """Publishes the shared XTRIG AXI-Lite master and the GPIO BFM through cfg."""
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
+        self.axil_agent = None
         self.axil = None
         self.bfm = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        self.axil = DtpFlatAxiLiteMaster(dut, "xtrig_axil", dut.clk_i)
+        # Tests judge response codes themselves (the decode-backpressure
+        # scenario expects DECERR), so the sequence must return non-OKAY
+        # responses instead of raising.
+        self.axil_agent = OcahAxiLiteMasterAgent.from_prefix(
+            dut,
+            "xtrig_axil",
+            dut.clk_i,
+            dut.rst_n_i,
+            name="dtp_xtrig_axil",
+            raise_on_error=False,
+        )
+        await self.axil_agent.start()
+        self.axil = self.axil_agent.sequence
         self.bfm = DtpXtrigBfm(dut, dut.clk_i)
-        self.axil.init_signals()
         self.bfm.init_signals()
         self.cfg.xtrig_axil = self.axil
         self.cfg.xtrig_bfm = self.bfm
         self.cfg.xtrig_num_ctp = XTRIG_NUM_CTP
         self.cfg.xtrig_num_int_ct = XTRIG_NUM_INT_CT
         await self.cfg.reset_done.wait()
-        self.logger.info("DTP XTRIG AXI-Lite and GPIO BFMs ready")
+        self.logger.info("DTP XTRIG shared AXI-Lite master and GPIO BFM ready")

@@ -206,7 +206,7 @@ class sep_address_map_seq(uvm_sequence):
         # still fully checked above (real sw=rw storage), but what they prove is
         # storage rather than an implemented-field readback -- noted so the
         # evidence line can say so.
-        self.write_readback_storage_only = []
+        self.write_readback_storage_only: list[str] = []
 
     async def _read(self, addr: int, expected: int | None, name: str) -> int:
         item = SepAxiItem(f"rd_{name}")

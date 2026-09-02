@@ -317,10 +317,30 @@ The reset hierarchy within the SMU proceeds as follows:
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
   override the fuse, cold, cool, warm, and per-subsystem reset domains
   independently for debug scenarios. These are wired through the SMU into the
-  SMC reset unit's `jtag_reset_ctrl_i` and the SEP reset controller's
-  `jtag_sep_reset_ctrl_i`, each carrying an override-enable bit and a reset
-  value per port. The DTP JTAG chapter states the programming order these
-  overrides require.
+  SMC reset unit and the SEP reset controller. The DTP JTAG chapter states the
+  programming order these overrides require.
+
+[[ocah-ic-reset]]
+==== IC_RESET TDR
+
+The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+slices on the scan chain from TDI to TDO, followed by a single `reset_hold`
+bit nearest TDO:
+
+* *SMC slice* (nearest TDI). Fuse, cold, cool, and warm resets, plus cold and
+  warm resets for each of the 32 managed subsystems. The SMU consumes this
+  slice internally.
+* *SEP slice.* SEP main reset and the TRNG, KMAC, HMAC, AES, OTBN, and Key
+  Manager resets. Present when SEP is instantiated; omitted otherwise. The
+  SMU consumes this slice internally.
+* *External slice.* Reset overrides for logic outside the SMU. The ports in
+  this slice are adopter-defined: the integrator supplies the slice type and
+  routes the SMU output to that logic. OCAH does not name the external bits.
+  The default type is a single-override stub.
+
+Each port carries an override-enable bit and an active-low reset value. The
+Integrator Guide records the SMU port map, including how to size the external
+slice.
 
 For the detailed reset controller design, sequencing FSM, reset register
 interface, and clock-reset interaction, refer to the Clock and Reset Management

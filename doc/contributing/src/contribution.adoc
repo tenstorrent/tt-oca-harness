@@ -211,7 +211,7 @@ label to cover the topic on which you are working.
 === Working with Milestones
 
 Milestones may be used to indicate a release point where a number of changes
-will be avaialble.  Assigning issues to milestones allows tracking of progress
+will be available.  Assigning issues to milestones allows tracking of progress
 towards the overall goal.  Completion of milestones may trigger design reviews
 or progress updates.
 
