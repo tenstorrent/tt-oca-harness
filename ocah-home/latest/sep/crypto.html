@@ -263,6 +263,15 @@ is covered without per-register marking. The marked roots in <code>sep_crypto</c
 infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 </div>
 <div class="sect3">
+<h4 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">Single-Beat Access Only</a></h4>
+<div class="paragraph">
+<p>The <code>sep_crypto</code> demux accepts single-beat transactions only. Any access whose
+<code>AxLEN</code> is non-zero is routed to the internal error slave and answered with
+DECERR on every beat, whatever its address; no beat reaches an accelerator.
+Software must access the whole crypto region with single-beat transactions.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">HMAC-SHA2</a></h4>
 <div class="paragraph">
 <p>The HMAC component is based on the

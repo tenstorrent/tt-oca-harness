@@ -248,7 +248,16 @@ is covered without per-register marking. The marked roots in <code>sep_crypto</c
 infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 </div>
 <div class="sect3">
-<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.1. HMAC-SHA2</a></h4>
+<h4 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">1.1. Single-Beat Access Only</a></h4>
+<div class="paragraph">
+<p>The <code>sep_crypto</code> demux accepts single-beat transactions only. Any access whose
+<code>AxLEN</code> is non-zero is routed to the internal error slave and answered with
+DECERR on every beat, whatever its address; no beat reaches an accelerator.
+Software must access the whole crypto region with single-beat transactions.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.2. HMAC-SHA2</a></h4>
 <div class="paragraph">
 <p>The HMAC component is based on the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
@@ -286,7 +295,7 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 </div>
 </div>
 <div class="sect3">
-<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.2. OTBN PKA Public Key Accelerator</a></h4>
+<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.3. OTBN PKA Public Key Accelerator</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
@@ -408,7 +417,7 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 </div>
 </div>
 <div class="sect3">
-<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.3. AES Cipher</a></h4>
+<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.4. AES Cipher</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
@@ -470,7 +479,7 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 </div>
 </div>
 <div class="sect3">
-<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.4. KMAC-SHA3</a></h4>
+<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.5. KMAC-SHA3</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
@@ -509,7 +518,7 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 </div>
 </div>
 <div class="sect3">
-<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.5. Adams Bridge Post-Quantum Accelerator (ABR)</a></h4>
+<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.6. Adams Bridge Post-Quantum Accelerator (ABR)</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
@@ -605,7 +614,7 @@ source, so unlike the other accelerators they do not appear in
 </div>
 </div>
 <div class="sect3">
-<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.6. True Random Number Generator (TRNG)</a></h4>
+<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.7. True Random Number Generator (TRNG)</a></h4>
 <div class="paragraph">
 <p>Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high

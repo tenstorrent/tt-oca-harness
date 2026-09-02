@@ -348,6 +348,10 @@ decodes. Within an aperture, only the unit&#8217;s register extent responds; the
 remainder is reserved and returns DECERR. Reads and writes there never reach the
 unit, so an address that owns no register cannot alias onto one.</p>
 </div>
+<div class="paragraph">
+<p>The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
+single-beat transactions only; see <a href="#crypto-single-beat-only">[crypto-single-beat-only]</a>.</p>
+</div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 20%;">
