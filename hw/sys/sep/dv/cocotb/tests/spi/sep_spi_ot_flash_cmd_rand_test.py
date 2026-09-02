@@ -32,9 +32,9 @@ Checks:
     CHK-WEL-AUTOCLR      : the erase CONSUMED the write-enable latch (WEL clear).
     CHK-WP-PP            : a PAGE PROGRAM issued with WEL clear does not land --
                            the sector still reads 0xFF.
-    CHK-RDSR2            : opcode 0x35 returns the seeded SR2 (0x5A) while SR1
-                           reads 0x02, so a 0x35 folded onto 0x05 fails, and so
-                           does a receive path that returns an all-zero byte.
+    CHK-RDSR2            : opcode 0x35 returns the seeded SR2 while SR1 reads
+                           0x02, so a 0x35 folded onto 0x05 fails, and so does a
+                           receive path that returns an all-zero byte.
     CHK-NO-ERROR         : OT SPI ERROR_STATUS == 0 across all of the above.
     CHK-ERR-UNDERFLOW    : reading RXDATA with RXQD==0 latches exactly
                            ERROR_STATUS.UNDERFLOW; SW_RST + W1C releases it.
@@ -89,6 +89,11 @@ _BANNER = "SEP SPI OT flash cmd test"
 
 # Mirror of the firmware g_spi1_params block (spi_ot_flash_cmd_test.c).
 _PARAM_MAGIC = 0x5A11C0DE
+# Status register 2 the device model is built with. Deliberately non-zero and
+# distinct from the 0x02 SR1 reads with the write-enable latch set, so a decode
+# that folds 0x35 onto 0x05 and an all-zero receive path both fail CHK-RDSR2.
+# Must equal FLASH_SR2_SEEDED in fw/tests/spi_ot_flash_cmd_test.
+_SR2_SEED = 0x5A
 _MAX_WORDS = 16
 _PAGE_SIZE = 256
 _SECTOR_SIZE = 4096
@@ -223,7 +228,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             # with WEL set. CHK-RDSR2 in the firmware compares against this exact
             # value (FLASH_SR2_SEEDED), so a stuck-low MISO returning 0x00 fails
             # the check instead of passing it.
-            status_reg2=0x5A,
+            status_reg2=_SR2_SEED,
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.

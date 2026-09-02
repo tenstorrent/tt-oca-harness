@@ -89,15 +89,29 @@ class sep_base_test(uvm_test):
         256-bit scratch probe resolved as a whole would read as a zeroed
         counter, which is indistinguishable from a counter that stopped.
 
+        Two cocotb versions are in use here -- the Verilator flow runs 2.x,
+        which offers LogicArray.resolve(), and the VCS flow runs 1.x, which
+        does not and exposes the bit string instead. Both paths are kept so a
+        wide read does not silently collapse on either.
+
         Callers that must distinguish "unknown" from "zero" cannot use this.
         """
+        value = sig.value
         try:
-            return int(sig.value)
+            return int(value)
         except Exception:
             pass
+        resolve = getattr(value, "resolve", None)
+        if resolve is not None:
+            try:
+                return int(resolve("zeros"))
+            except Exception:
+                pass
+        bits = getattr(value, "binstr", None) or str(value)
+        resolved = "".join(c if c in "01" else "1" if c in "hH" else "0" for c in bits)
         try:
-            return int(sig.value.resolve("zeros"))
-        except Exception:
+            return int(resolved, 2)
+        except ValueError:
             return 0
 
     @staticmethod
@@ -208,12 +222,9 @@ class sep_base_test(uvm_test):
         sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
         if smc != 0 or sep != 0:
             raise AssertionError(
-                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, "
-                "expected both 0"
+                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
             )
-        self.logger.info(
-            "CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0"
-        )
+        self.logger.info("CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0")
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.

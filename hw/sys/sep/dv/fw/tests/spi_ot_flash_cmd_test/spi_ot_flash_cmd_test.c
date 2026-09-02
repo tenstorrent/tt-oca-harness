@@ -518,11 +518,14 @@ int main(void) {
     } else if (sr2 != FLASH_SR2_SEEDED) {
         sep_mbx_puts("FAIL: CHK-RDSR2 got ");
         sep_mbx_puthex(sr2);
-        sep_mbx_puts(" exp 0x5a (0x02 is a 0x35-as-0x05 fold; 0x00 is a dead RX)\n");
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(FLASH_SR2_SEEDED);
+        sep_mbx_puts(" (0x02 is a 0x35-as-0x05 fold; 0x00 is a dead RX)\n");
         errors++;
     } else {
-        sep_mbx_puts("CHK-RDSR2 PASS: opcode 0x35 returned the seeded SR2 0x5a, not "
-                     "SR1 0x02 and not an all-zero RX\n");
+        sep_mbx_puts("CHK-RDSR2 PASS: opcode 0x35 returned the seeded SR2 ");
+        sep_mbx_puthex(sr2);
+        sep_mbx_puts(", not SR1 0x02 and not an all-zero RX\n");
     }
     if (flash_wrdi()) {
         sep_mbx_puts("FAIL: WRDI(rdsr2) timeout\n");
