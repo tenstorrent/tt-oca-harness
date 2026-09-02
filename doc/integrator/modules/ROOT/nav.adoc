@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Integrator Guide]
+** xref:index.adoc#soc-integration-checklist[SoC Integration Checklist]
 ** xref:smu.adoc[SMU Top-Level Integration]
 ** xref:smn.adoc[SMN Integration]
 ** xref:defines.adoc[Project Defines]
