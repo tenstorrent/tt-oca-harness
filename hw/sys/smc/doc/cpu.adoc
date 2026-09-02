@@ -70,11 +70,14 @@ for cores N=0 to 3. The design provides separate reset controls for the
 uncore logic and debug subsystems, enabling flexible platform management
 and debug flows.
 
-CAUTION: Individual core resets are reserved for debug use. Resetting an
-individual core while other cores remain active risks unexpected behavior
-because the coherence manager may be unable to receive a required response
-from the core in reset. The current Rocket CPU architecture does not protect
-against this condition.
+CAUTION: Individual core reset is supported only for controlled debug use
+and must not be asserted while other cores continue normal coherent
+operation. Core reset includes the tile's private L1 caches and TileLink
+client state, but does not reset the shared coherence manager. Consequently,
+the reset tile may fail to complete an outstanding transaction or answer a
+TileLink Probe, and dirty data held in its data cache may be lost. The current
+SMC Rocket integration provides no reset-aware coherence mechanism to prevent
+these conditions.
 
 SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
