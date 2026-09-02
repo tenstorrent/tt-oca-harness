@@ -246,7 +246,7 @@ endif
 # Filters out original i3c.sv and i3c_wrapper.sv from i3c-core (replaced by i3ccore_wrap versions)
 filelist:
 	@echo "Generating i3ccore_filelist.f from project root..."
-	@cd $(PROJECT_ROOT) && source bin/setup_env.sh >/dev/null 2>&1 && \
+	@cd $(PROJECT_ROOT) && \
 		bender script flist-plus \
 			-t smc \
 			-t axi_rtl \
