@@ -38,6 +38,18 @@
 #include "rsa_verify.h"
 #include "sep_addr.h"
 
+// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP while it is being brought
+// up; with the flag off the crypto blocks still rely on the DV
+// +sep_crypto_edn_force shortcut, which is what this replaces. Wrapped in a
+// macro so the two crypto gates below read the same either way and the
+// conditional lives in exactly one place.
+#if SEP_ENTROPY_BRINGUP
+#include "sep_entropy.h"
+#define ENTROPY_PREREQ() sep_entropy_init()
+#else
+#define ENTROPY_PREREQ() ((void)0)
+#endif
+
 // RAW RSA-3072 public key: 384-byte big-endian modulus followed by a 4-byte
 // big-endian exponent (openssl_crypto.c rsa_key_from_raw is the reference).
 #define OCA_RSA3072_MODULUS_BYTES  384u
@@ -82,6 +94,12 @@ static oca_result_t plat_sha256(const uint8_t *msg, size_t msg_len, uint8_t out_
     if (msg == NULL || out_digest == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
+    
+    // plat_sha256() deliberately does NOT confirm entropy: the HMAC core needs
+    // no EDN reseed (the KDF runs on it with the chain absent), and this
+    // callback runs on every boot including unsigned ones, so requiring entropy
+    // there would make a boot that needs no crypto depend on the entropy source.
+
     // The HMAC core takes a uint32_t length. A manifest body is 4 KiB and a
     // payload is bounded by SEP SRAM (256 KiB), so this cannot legitimately
     // overflow -- but the cast is where it would, so check rather than assume.
@@ -108,6 +126,13 @@ static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
     if (signature == NULL || public_key == NULL || signed_region == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
+
+    // Entropy is confirmed on entry to each callback that drives an
+    // entropy-dependent engine. It is a prerequisite of the OTBN engine, 
+    // not a intialization step inside it, so it is established early in the
+    // signature verification call rather than rediscovered by the driver
+    // Does not return on failure,but does fail the secure boot process
+    ENTROPY_PREREQ();
 
     // RSA-3072 PKCS#1 v1.5 / SHA-256 only. ECDSA P-256 (0x05) is a valid OCA
     // primitive the ROM has no verifier for, and the PQC variants carry no
@@ -178,6 +203,11 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
         return OCA_FAIL_INVALID_ARG;
     }
 
+    // Confirmed entropy source is functional on entry, as in every crypto callback. 
+    // The cipher on AES, whose masking PRNG reseeds off EDN before the core will 
+    // report STATUS.IDLE otherwise
+    ENTROPY_PREREQ();
+
     uint32_t key_bits;
     switch (in->cipher) {
     case OCA_ENCRYPTION_TYPE_AES_128_CBC: key_bits = 128u; break;
@@ -218,12 +248,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_DECRYPTION_START);
 
-    // Release AES from software reset before driving it, exactly as
-    // rsa_verify.c calls otbn_init() before driving OTBN. Both blocks come out
-    // of hard reset held by SEP_RESET_CTRL.SW_RESET_N and stay there until the
-    // ROM clears their bit; an AES left in reset never asserts STATUS.IDLE, so
-    // the driver's first wait_idle() burns its full timeout and reports
-    // AES_DEC_FAIL with nothing to say about why.
+    // Release AES from software reset before driving it.
     if (aes_init() != 0) {
         return OCA_FAIL_DECRYPT;
     }

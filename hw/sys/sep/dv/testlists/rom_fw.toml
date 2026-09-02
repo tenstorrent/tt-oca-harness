@@ -136,7 +136,8 @@ args = [
 # flag when the lifecycle is TEST_DEV, and a zero OTP already gives TEST_DEV with
 # sboot_dis=0. (The internal flow ships a PROD preload instead; either works.)
 #
-# Entropy is NOT exercised here -- see +sep_crypto_edn_force in args below for
+# Entropy IS exercised here: the ROM brings the real ESRC -> CSRNG -> EDN chain
+# up itself. See +esrc_noise_force in args below for
 # what is forced and why. Timeout is generous because a 3072-bit modexp on OTBN is
 # millions of cycles on top of the serial flash fetch.
 name = "sep_rom_ot_secure_boot_test"
@@ -157,7 +158,7 @@ args = [
   # grants only -- the entropy_source/CSRNG/EDN path is NOT exercised here, and
   # the RSA assertions are untouched, so a pass still means the signature really
   # verified.
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -171,8 +172,9 @@ args = [
 # left unset and the key packed little-endian; AES KEY_LEN needing a one-hot
 # encoding) which until now were only ever validated against the VP model.
 #
-# Needs +sep_crypto_edn_force for the same reason the signed sibling does: the
-# RSA verify still runs, and OTBN parks in UrndRefresh without EDN entropy.
+# Needs +esrc_noise_force for the same reason the signed sibling does: the RSA
+# verify still runs, OTBN parks in UrndRefresh without EDN entropy, and the ROM's
+# own bring-up supplies that entropy from the real chain.
 name = "sep_rom_oca_encrypted_boot_test"
 module = "cpu.sep_rom_oca_encrypted_boot_test"
 target = "rom_boot"
@@ -184,7 +186,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -205,7 +207,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -214,7 +216,7 @@ args = [
 # ROM test asserts an acceptance; this one asserts a rejection, and a ROM that
 # validated nothing would pass all the others while failing this.
 #
-# No +sep_crypto_edn_force, deliberately. The manifest hash is checked before the
+# No entropy plusarg, deliberately. The manifest hash is checked before the
 # signature, so the tampered image is rejected before OTBN is ever driven -- the
 # shortcut would be dead weight, and its absence is a standing check that the
 # rejection really does happen before the RSA stage.

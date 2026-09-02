@@ -104,6 +104,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/lifecycle.o \
 	$(BUILD_DIR)/rsa_verify.o $(BUILD_DIR)/otbn_driver.o \
 	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o \
+	$(BUILD_DIR)/sep_entropy.o \
 	$(BUILD_DIR)/oca_platform.o \
 	$(BUILD_DIR)/rsa_3072_app_otbn.o
 
@@ -126,6 +127,26 @@ OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS)
 # implements no PQC signature verification either way, so a native PQC signature
 # reports OCA_FAIL_UNSUPPORTED_VARIANT rather than a false pass. Turning PQC off
 # is the largest ROM-size lever available if the 64 KiB budget gets tight.
+
+# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. Off by default
+# while it is being brought up: with it off the crypto blocks depend on the DV
+# +sep_crypto_edn_force shortcut, which is what this replaces.
+SEP_ENTROPY_BRINGUP ?= 1
+
+# One-way entropy lock bypasses, independent of each other. Both locks are 
+# APPLIED BY DEFAULT; set a flag to 1 to leave that lock for SEP BL1 instead. 
+# They are separate knobs because they freeze unrelated things and an adopter 
+# may well want one and not the other:
+#   DEFER_FIPS_LOCK     leaves ESRC.FIPS_LOCK clear, so BL1 can still change the
+#                       entropy-source configuration (conditioning, health-test
+#                       thresholds, compressor bypass).
+#   DEFER_SRC_SEL_LOCK  leaves EXT_TRNG_SRC_SEL_LOCK clear, so BL1 can still
+#                       repoint an entropy stream at a different source.
+# Deferring does NOT mean "never lock" -- it means BL1 owns applying it. A build
+# that defers and whose BL1 never locks ships with the field mutable.
+SEP_ENTROPY_DEFER_FIPS_LOCK    ?= 0
+SEP_ENTROPY_DEFER_SRC_SEL_LOCK ?= 0
+
 OCA_SUPPORT_CLASSIC ?= 1
 OCA_SUPPORT_PQC     ?= 1
 OCA_TOC_MAX_IMAGES  ?= 32
@@ -158,6 +179,9 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-MMD -MP \
 	--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) -I$(OCA_LIB_DIR) $(REG_INCLUDE_DIRS) \
+	-DSEP_ENTROPY_BRINGUP=$(SEP_ENTROPY_BRINGUP) \
+	-DSEP_ENTROPY_DEFER_FIPS_LOCK=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
+	-DSEP_ENTROPY_DEFER_SRC_SEL_LOCK=$(SEP_ENTROPY_DEFER_SRC_SEL_LOCK) \
 	-DOCA_SUPPORT_CLASSIC=$(OCA_SUPPORT_CLASSIC) -DOCA_SUPPORT_PQC=$(OCA_SUPPORT_PQC) \
 	-DOCA_TOC_MAX_IMAGES=$(OCA_TOC_MAX_IMAGES) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
@@ -228,7 +252,9 @@ BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) 
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
 	NONFREE=$(if $(NONFREE_ROOT),1,0) \
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \
-	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES)
+	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES) ENTROPY=$(SEP_ENTROPY_BRINGUP) \
+	DEFER_FIPS=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
+	DEFER_SRCSEL=$(SEP_ENTROPY_DEFER_SRC_SEL_LOCK)
 FLAGS_STAMP := $(BUILD_DIR)/.build_flags
 
 .PHONY: FORCE

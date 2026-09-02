@@ -49,6 +49,7 @@ import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -120,8 +121,12 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # Console lines that must appear / must not appear. The subclass appends the
     # RSA markers; keeping them as class data is what lets the two variants share
     # one scenario without a copy.
-    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER,
-                        _PAYLOAD_OK_MARKER)
+    required_markers = (
+        _SPI_PATH_MARKER,
+        _MANIFEST_SRC_MARKER,
+        _MANIFEST_OK_MARKER,
+        _PAYLOAD_OK_MARKER,
+    )
     # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
     # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
     # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
@@ -160,6 +165,17 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
 
         console: list[str] = []
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
+
+        # Raw noise for the entropy source. The ROM brings the ESRC -> CSRNG ->
+        # EDN chain up itself before driving OTBN or AES, and +esrc_noise_force
+        # only FORCES the decorrelator inputs from this port -- it generates
+        # nothing. Without a driver the port sits at 0, the repetition health test
+        # trips, and the ROM correctly refuses to boot on a dead entropy source.
+        #
+        # Started for every SPI ROM test, not just the crypto ones: it is cheap,
+        # and a test that later grows a crypto dependency should not have to
+        # rediscover this.
+        cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
 
         flash = OcahSpiFlash(
             dut.spi_cs_n_o,

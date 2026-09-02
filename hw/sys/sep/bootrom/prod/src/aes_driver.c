@@ -154,6 +154,9 @@ static void aes_cleanup(void) {
 // ---------------------------------------------------------------------------
 
 int aes_init(void) {
+    // Entropy is a PREREQUISITE of this block, not something it brings up: the
+    // masking PRNG reseeds off EDN before the core reports STATUS.IDLE. The
+    // caller establishes it (see oca_platform.c).
     // Release AES from SW reset.
     uint32_t rst = mmio_read32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     rst |= SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm;
