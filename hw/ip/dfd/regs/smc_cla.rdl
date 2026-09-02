@@ -173,7 +173,7 @@ addrmap smc_cla {
             hw = r;
         } Trdstinhibitsrc[15:15] = 0x0;
         field {
-            desc = "When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.";
+            desc = "When the field is set tp 2'b10, sent timestamp. All other values not NA.";
             sw = rw;
             hw = r;
         } Trdstsyncmode[17:16] = 0x0;
@@ -183,7 +183,7 @@ addrmap smc_cla {
             hw = r;
         } Trdstsyncmax[23:20] = 0x0;
         field {
-            desc = "bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)";
+            desc = "bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compression), 2'b0 (No Compression)";
             sw = rw;
             hw = r;
         } Trdstformat[26:24] = 0x3;
@@ -268,7 +268,7 @@ addrmap smc_cla {
             hw = r;
         } FrameLenghtInBytes[15:12] = 0x2;
         field {
-            desc = "Enable Frame Mode (Frame Mode: Always pack \"frame length\" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.";
+            desc = "Enable Frame Mode (Frame Mode: Always pack \"frame length\" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.";
             sw = rw;
             hw = r;
         } FrameModeEnable[20:20] = 0x1;
@@ -468,13 +468,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -550,13 +550,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -632,13 +632,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -714,13 +714,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -796,13 +796,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -878,13 +878,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -960,13 +960,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -1042,13 +1042,13 @@ addrmap smc_cla {
 
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 
@@ -1138,7 +1138,7 @@ addrmap smc_cla {
 
         } Signal0Select[5:0] = 0x0;
         field {
-            desc = "Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge";
+            desc = "Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge";
             sw = rw;
             hw = r;
 
@@ -1150,7 +1150,7 @@ addrmap smc_cla {
 
         } Signal1Select[12:7] = 0x0;
         field {
-            desc = "Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge";
+            desc = "Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge";
             sw = rw;
             hw = r;
 
@@ -1555,13 +1555,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -1644,13 +1644,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -1733,13 +1733,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -1822,13 +1822,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -1911,13 +1911,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -2000,13 +2000,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -2089,13 +2089,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
@@ -2178,13 +2178,13 @@ addrmap smc_cla {
 //             reset_port_p = "reset_n_warm_ovrride";
         } EventType1[27:22] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";
         } CustomAction0[31:28] = 0x0;
         field {
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
             sw = rw;
             hw = r;
 //             reset_port_p = "reset_n_warm_ovrride";

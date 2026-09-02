@@ -6,6 +6,7 @@ parallelism, seed/regression management and coverage-merge integration — while
 keeping the existing cocotb test files unchanged.
 
 **Status: validated.** Both pilot entries pass end-to-end through TTEM:
+
 - `i3c_setnewda_test`  → `TESTS=1 PASS=1 FAIL=0`  (single-test module)
 - `i3c_error_sanity_test` → `TESTS=4 PASS=4 FAIL=0` (multi-test module, all 4 `@cocotb.test` run)
 

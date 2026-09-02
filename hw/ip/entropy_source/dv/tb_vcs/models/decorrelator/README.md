@@ -9,6 +9,7 @@
 - **NOT**: The actual synthesizable RTL design
 
 The actual entropy decorrelator implementation will be in:
+
 ```
 hw/ip/entropy/rtl/    (when integrated with real design)
 ```
@@ -18,6 +19,7 @@ hw/ip/entropy/rtl/    (when integrated with real design)
 ## Files in This Directory
 
 ### `Serial_Decorrelator_RefModel.sv`
+
 - **Type**: SystemVerilog reference model
 - **Purpose**: Generate golden decorrelated entropy data
 - **Modes**:
@@ -28,11 +30,13 @@ hw/ip/entropy/rtl/    (when integrated with real design)
   - Mode 4: LFSR_7 - 7-bit Fibonacci LFSR
 
 ### `decor_cfg_if.sv`
+
 - **Type**: SystemVerilog interface
 - **Purpose**: Configuration interface for decorrelator mode selection
 - **Usage**: Controlled from Python test scripts via cocotb
 
 ### `DECORRELATOR_ANALYSIS.md`
+
 - **Type**: Documentation
 - **Purpose**: Detailed analysis comparing implementation against specification
 - **Contents**: Verification that reference model matches spec requirements
@@ -42,16 +46,19 @@ hw/ip/entropy/rtl/    (when integrated with real design)
 ## Why SystemVerilog for Reference Model?
 
 **Sequential Logic**: The decorrelator is inherently sequential with:
+
 - 29-deep shift registers
 - Cycle-by-cycle bit shifting
 - Counter-based sampling
 
 **Waveform Debugging**: SystemVerilog allows:
+
 - Viewing shift register contents in Verdi
 - Verifying timing (sample at cycle 64?)
 - Correlating with RO inputs cycle-by-cycle
 
 **Timing Accuracy**:
+
 - Runs at same clock speed as DUT
 - Can validate CDC between RO clock and APB clock
 - Enables side-by-side comparison with real RTL (when available)
@@ -73,6 +80,7 @@ decor_configure(dut, DECOR_MODE_29, log=True)
 ```
 
 **Available helpers**:
+
 - `decor_set_mode(dut, mode)` - Set mode 0-4
 - `decor_configure(dut, mode)` - Set mode with logging
 - `decor_get_recommended_sample_period(mode)` - Get recommended period
@@ -84,15 +92,18 @@ See: `test/test_base.py` for full API
 
 ## Configuration
 
-### Current Hardcoded Parameters:
+### Current Hardcoded Parameters
+
 - **SAMPLE_PERIOD**: 64 cycles (in `tb_entropy_top.sv`)
 - **DEPTH**: 29 (for DECOR_29 mode)
 - **N**: 16 lanes
 
-### Runtime Configurable:
+### Runtime Configurable
+
 - **mode**: 0-4 via `decor_cfg.mode` from Python
 
-### Recommended Sample Periods:
+### Recommended Sample Periods
+
 - Mode 0 (DECOR_29): 64 cycles ← **default**
 - Mode 1 (DECOR_7): 16 cycles
 - Mode 2 (BYPASS): 8 cycles
@@ -108,6 +119,7 @@ See: `test/test_base.py` for full API
 When the actual entropy decorrelator RTL is implemented:
 
 1. **Side-by-Side Comparison**:
+
    ```systemverilog
    // In testbench
    Serial_Decorrelator_RefModel u_golden_model (...);
@@ -144,6 +156,7 @@ When the actual entropy decorrelator RTL is implemented:
 ## Questions?
 
 If you have questions about:
+
 - **Reference model implementation**: See `DECORRELATOR_ANALYSIS.md`
 - **Configuration options**: See `decor_cfg_if.sv` comments
 - **Python API**: See `test/test_base.py`

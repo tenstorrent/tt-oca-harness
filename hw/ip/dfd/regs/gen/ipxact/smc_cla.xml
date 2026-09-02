@@ -382,7 +382,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>Trdstsyncmode</ipxact:name>
-            <ipxact:description>When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.</ipxact:description>
+            <ipxact:description>When the field is set tp 2'b10, sent timestamp. All other values not NA.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -406,7 +406,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>Trdstformat</ipxact:name>
-            <ipxact:description>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)</ipxact:description>
+            <ipxact:description>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compression), 2'b0 (No Compression)</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -606,7 +606,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FrameModeEnable</ipxact:name>
-            <ipxact:description>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</ipxact:description>
+            <ipxact:description>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1008,7 +1008,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1020,7 +1020,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1169,7 +1169,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1181,7 +1181,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1330,7 +1330,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1342,7 +1342,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1491,7 +1491,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1503,7 +1503,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1652,7 +1652,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1664,7 +1664,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1813,7 +1813,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1825,7 +1825,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1974,7 +1974,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1986,7 +1986,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2135,7 +2135,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2147,7 +2147,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2308,7 +2308,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>PosEdgeSignal0</ipxact:name>
-            <ipxact:description>Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
+            <ipxact:description>Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2332,7 +2332,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>PosEdgeSignal1</ipxact:name>
-            <ipxact:description>Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
+            <ipxact:description>Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge</ipxact:description>
             <ipxact:bitOffset>13</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3100,7 +3100,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3112,7 +3112,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3274,7 +3274,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3286,7 +3286,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3448,7 +3448,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3460,7 +3460,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3622,7 +3622,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3634,7 +3634,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3796,7 +3796,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3808,7 +3808,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3970,7 +3970,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3982,7 +3982,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4144,7 +4144,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4156,7 +4156,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4318,7 +4318,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction0</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4330,7 +4330,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CustomAction1</ipxact:name>
-            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+            <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
