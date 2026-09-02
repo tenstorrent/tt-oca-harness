@@ -32,8 +32,9 @@ Checks:
     CHK-WEL-AUTOCLR      : the erase CONSUMED the write-enable latch (WEL clear).
     CHK-WP-PP            : a PAGE PROGRAM issued with WEL clear does not land --
                            the sector still reads 0xFF.
-    CHK-RDSR2            : opcode 0x35 returns SR2 (0x00) while SR1 reads 0x02,
-                           so a 0x35 folded onto 0x05 fails.
+    CHK-RDSR2            : opcode 0x35 returns the seeded SR2 (0x5A) while SR1
+                           reads 0x02, so a 0x35 folded onto 0x05 fails, and so
+                           does a receive path that returns an all-zero byte.
     CHK-NO-ERROR         : OT SPI ERROR_STATUS == 0 across all of the above.
     CHK-ERR-UNDERFLOW    : reading RXDATA with RXQD==0 latches exactly
                            ERROR_STATUS.UNDERFLOW; SW_RST + W1C releases it.
