@@ -82,6 +82,12 @@ clear `reset_enable` in a second Update-DR: moving both in one update changes
 the select and a data input together, which can pulse a reset on a port that
 neither source is resetting.
 
+At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
+the external slice, followed by `reset_hold`. The SMC and SEP port lists are
+OCAH-defined. The external slice is adopter-defined: its width and fields come
+from the SMU type parameter `ic_reset_ext_t`. The Integrator Guide records the
+SMU-composed port map.
+
 ==== Lifecycle Feature Control
 
 The DTP top level consumes `feat_ctrl_i` using the SEP lifecycle feature control

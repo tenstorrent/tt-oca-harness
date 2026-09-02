@@ -71,7 +71,14 @@ module drbg import drbg_pkg::*; #(
     output logic intr_cs_hw_inst_exc_o,
     output logic intr_cs_fatal_err_o,
     output logic intr_edn_cmd_req_done_o,
-    output logic intr_edn_fatal_err_o
+    output logic intr_edn_fatal_err_o,
+
+    // Register bridge faults, reported per path (sticky, each held until its
+    // own clear)
+    output logic csrng_bus_err_o,
+    input  logic csrng_bus_err_clr_i,
+    output logic edn_bus_err_o,
+    input  logic edn_bus_err_clr_i
 );
 
     `include "prim_assert.sv"
@@ -221,7 +228,8 @@ module drbg import drbg_pkg::*; #(
         .axi_lite_rsp_o (csrng_axil32_rsp),
         .tl_o           (csrng_tl_h2d),
         .tl_i           (csrng_tl_d2h),
-        .err_o          (/* unused */)
+        .err_o          (csrng_bus_err_o),
+        .err_clr_i      (csrng_bus_err_clr_i)
     );
 
     drbg_axil64_lane_adapter #(
@@ -253,7 +261,8 @@ module drbg import drbg_pkg::*; #(
         .axi_lite_rsp_o (edn_axil32_rsp),
         .tl_o           (edn_tl_h2d),
         .tl_i           (edn_tl_d2h),
-        .err_o          (/* unused */)
+        .err_o          (edn_bus_err_o),
+        .err_clr_i      (edn_bus_err_clr_i)
     );
 
     // =========================================================================

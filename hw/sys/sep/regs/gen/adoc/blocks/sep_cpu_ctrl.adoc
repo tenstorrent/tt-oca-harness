@@ -46,6 +46,34 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0x190 | EXT_TRNG_SRC_SEL | RW a| Per-stream external TRNG source selection for crypto subsystem entropy muxes.
 | 0x198 | EXT_TRNG_SRC_SEL_LOCK | RW a| Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.
 | 0x1A0 | KM_WIPE_CTRL | RW a| Key Manager emergency wipe control.
+| 0x1A8 | DMA_BUS_ERR_STATUS | R a| Secure DMA bridge fault status. Each bit is latched in hardware and held
+until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+dedicated PIC sources.
+
+Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the DMA), so a bit read as set immediately after boot may describe
+a fault from before that reset rather than a new one.
+| 0x1B0 | DMA_BUS_ERR_CLEAR | W a| Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+to both latches. A fault arriving in the same cycle as the clear still
+latches, so acknowledging cannot drop a concurrent fault.
+| 0x1B8 | PERIPH_BUS_ERR_STATUS | R a| Peripheral register-bridge fault status, one bit per block. Each bit latches
+when a CPU access to that block's registers returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial), and is held until the
+matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also
+received SLVERR synchronously.
+
+All bits OR together into a single PIC source, so read this register to
+identify which block faulted.
+
+No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the peripherals), so a bit read as set immediately after boot may
+describe a fault from before that reset rather than a new one.
+| 0x1C0 | PERIPH_BUS_ERR_CLEAR | W a| Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+clear pulse to that block's latch; bit order matches
+PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+cannot discard a fault another block raised between the status read and
+this write. A fault arriving in the same cycle as its own clear still
+latches.
 | 0x1000 | SEP_VERSION_ID | R a| -
 |===
 
@@ -311,6 +339,56 @@ The NMI interrupt is used for the WDT Bark interrupt.
 | Bits | Field | Access | Reset | Description
 | 63:1 | `Reserved` | - | - a| Reserved
 | 0 | `wipe_state` | RW | 0x0 a| Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DMA_BUS_ERR_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `host_path_err` | R | 0x0 a| DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+to a DMA transfer, or a TL-UL command-integrity check failed on a command
+issued by the DMA. The latter is a fault-detection event with no other
+reporting path.
+| 0 | `reg_path_err` | R | 0x0 a| Register-path bus error: a CPU access to a Secure DMA register returned
+a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
+The faulting access also received SLVERR synchronously.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DMA_BUS_ERR_CLEAR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `clr` | W | 0x0 a| Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PERIPH_BUS_ERR_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:7 | `Reserved` | - | - a| Reserved
+| 6 | `wdt` | R | 0x0 a| Watchdog timer register bridge error.
+| 5 | `edn` | R | 0x0 a| EDN register bridge error (DRBG EDN path).
+| 4 | `csrng` | R | 0x0 a| CSRNG register bridge error (DRBG CSRNG path).
+| 3 | `otbn` | R | 0x0 a| OTBN register bridge error.
+| 2 | `kmac` | R | 0x0 a| KMAC register bridge error.
+| 1 | `hmac` | R | 0x0 a| HMAC register bridge error.
+| 0 | `aes` | R | 0x0 a| AES register bridge error.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PERIPH_BUS_ERR_CLEAR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:7 | `Reserved` | - | - a| Reserved
+| 6 | `wdt` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
+| 5 | `edn` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
+| 4 | `csrng` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
+| 3 | `otbn` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.
+| 2 | `kmac` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.
+| 1 | `hmac` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.
+| 0 | `aes` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
 |===
 
 [cols="1,1,1,1,3", options="header"]

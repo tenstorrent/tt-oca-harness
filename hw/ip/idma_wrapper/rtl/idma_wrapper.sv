@@ -136,7 +136,7 @@ module idma_wrapper #(
 		.snoop_r_ready_i (dma_ctrl_axi_req_i[0].r_ready),
 		.snoop_r_last_i	 (dma_ctrl_axi_resp_o[0].r.last), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_enable_i | dma_busy), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_enable_i | dma_busy), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_hysteresis_i),

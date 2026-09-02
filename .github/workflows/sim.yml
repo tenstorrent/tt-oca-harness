@@ -144,6 +144,29 @@ jobs:
             nightly_items: smoke
             nightly_coverage: false
             nightly_timeout: 90
+          # Cross-trigger IP-level benches: small single-IP DUTs, minutes per
+          # full group. nightly_coverage stays false for all three: freshly
+          # built Verilator v5.050 coverage models complete without writing
+          # the native coverage database, so a coverage run cannot produce
+          # the native evidence the result gate requires (same class as SMC).
+          - dut: cross_trigger_port
+            tool: verilator
+            runner: ubuntu-latest
+            nightly_items: all
+            nightly_coverage: false
+            nightly_timeout: 30
+          - dut: cross_trigger_matrix
+            tool: verilator
+            runner: ubuntu-latest
+            nightly_items: all
+            nightly_coverage: false
+            nightly_timeout: 30
+          - dut: cross_trigger_network
+            tool: verilator
+            runner: ubuntu-latest
+            nightly_items: all
+            nightly_coverage: false
+            nightly_timeout: 30
     env:
       # smoke: pull_request, push, and default manual dispatch.
       # nightly: daily schedule, or manual dispatch with tier=nightly.

@@ -15,11 +15,11 @@ automatically, so new subsystems need no dispatcher edits.
 
 There are two kinds of `fw.mk` in the tree:
 
-* `hw/common/dv/fw/fw.mk` is the top-level DV firmware entrypoint. It owns the
+- `hw/common/dv/fw/fw.mk` is the top-level DV firmware entrypoint. It owns the
   user-visible targets (`ocah-dv-fw-libs`, `ocah-dv-fw-tests`, list and clean
   targets), discovers subsystem `dv/fw/fw.mk` files under `OCAH_ROOT`, and binds
   that discovery to the harness root.
-* `hw/{ip,sys}/<name>/dv/fw/fw.mk` is a subsystem build manifest. It declares
+- `hw/{ip,sys}/<name>/dv/fw/fw.mk` is a subsystem build manifest. It declares
   `FW_*` inputs for one firmware target: source files, include paths, linker
   scripts, test deltas, and the subsystem `toolchain.mk`.
 
