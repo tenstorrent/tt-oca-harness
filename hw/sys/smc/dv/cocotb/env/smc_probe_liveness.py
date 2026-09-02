@@ -43,8 +43,7 @@ checked evidence; its value is logged as a diagnostic and declared as such.
 * ``tb_axil_dtp_csr_active`` -- unbackable *at 1*. ``tb_top.sv:1151`` ties
   ``axil_dtp_csr_resp = '0'``: there is no responder, so an AXI-Lite access to
   the DTP CSR window would wedge rather than complete, and the DTP CSR boundary
-  is a recorded TB-policy deferral (``hw/sys/smc/dv/README.md`` and
-  ``hw/sys/smc/dv/testlists/deferred.toml``).
+  is a recorded TB-policy deferral (``hw/sys/smc/dv/README.md``).
 * ``gpio_core2pad_any`` / ``gpio_core2pad_en_any`` / ``gpio_pad2core_en_any`` --
   unbackable *at 0*.  ``tb_top.sv:1375-1377`` defines all three as OR-reductions
   over the **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends), which
@@ -116,8 +115,8 @@ UNBACKABLE_PROBES: dict[str, str] = {
     "axil_dtp_csr_active": (
         "tb_top.sv:1151 ties axil_dtp_csr_resp = '0' (no responder, an access "
         "would wedge instead of completing) and the DTP CSR boundary is a "
-        "recorded TB-policy deferral (hw/sys/smc/dv/README.md, "
-        "hw/sys/smc/dv/testlists/deferred.toml); no frontdoor stimulus can "
+        "recorded TB-policy deferral (hw/sys/smc/dv/README.md); no "
+        "frontdoor stimulus can "
         "make tb_axil_dtp_csr_active read 1, so its idle value is "
         "OBSERVED-ONLY and NOT closure evidence"
     ),

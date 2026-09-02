@@ -182,16 +182,25 @@ class SmcScoreboard(uvm_subscriber):
                 count,
                 UNBACKABLE_PROBES[probe],
             )
-        for probe, count in sorted(unbacked.items()):
-            self.logger.info(
-                "Scoreboard idle leg OBSERVED-ONLY -- NOT checked evidence: "
-                "%s sampled %d time(s) with no positive control in this run "
-                "(%s). Its value is a diagnostic; a stuck-at-0 / undriven / "
-                "mis-bound probe would read the same. Add the control via "
-                "smc_base_test.probe_positive_controls to make it a check.",
-                probe,
-                count,
-                probe_evidence(probe),
+        # A probe that is neither credited nor declared unbackable leaves this
+        # testcase's idle legs uncompared. There are two legitimate outcomes for
+        # an idle leg -- it is checked against a same-run control, or the probe
+        # is declared unbackable -- and silently dropping the compare is not a
+        # third one. A `tb_top.sv` assign orphaned by an RTL rename reaches this
+        # branch, and reporting it at `info` would remove checks from the
+        # regression while it stays green.
+        if unbacked:
+            detail = "; ".join(
+                f"{probe}: {count} leg(s) sampled, {probe_evidence(probe)}"
+                for probe, count in sorted(unbacked.items())
+            )
+            raise AssertionError(
+                f"idle legs were booked on {len(unbacked)} probe(s) that no "
+                f"positive control credited in this run, so their compares did "
+                f"not happen: {detail}. Run the control via "
+                f"smc_base_test.probe_positive_controls, or declare the probe "
+                f"in smc_probe_liveness.UNBACKABLE_PROBES with the reason no "
+                f"control can exist."
             )
 
     def write(self, item) -> None:
@@ -212,7 +221,12 @@ class SmcScoreboard(uvm_subscriber):
         elif isinstance(item, SmcProtocolVipItem):
             self._check_protocol_vip(item)
         else:
-            self.logger.warning("SmcScoreboard ignoring %s", type(item).__name__)
+            # An item the scoreboard has no branch for is a checker that did not
+            # run, not a diagnostic.
+            raise AssertionError(
+                f"SmcScoreboard received {type(item).__name__}, which it has no "
+                f"check for: whatever that item was evidence of went unchecked"
+            )
 
     def _check_i2c(self, item):
         if item.op is not SmcI2cOp.SAMPLE:
@@ -621,8 +635,7 @@ class SmcScoreboard(uvm_subscriber):
         # dtp_csr_active is DIFFERENT and is never asserted: tb_top.sv:1151 ties
         # axil_dtp_csr_resp = '0', so there is no responder and an access there
         # would wedge rather than complete, and the DTP CSR boundary is a
-        # recorded TB-policy deferral (hw/sys/smc/dv/README.md,
-        # hw/sys/smc/dv/testlists/deferred.toml). It is listed in
+        # recorded TB-policy deferral (hw/sys/smc/dv/README.md). It is listed in
         # env.smc_probe_liveness.UNBACKABLE_PROBES: sampled and logged as
         # OBSERVED-ONLY, never checked evidence. Sequence-side idle helpers must
         # restrict themselves to AXIL_CHECKABLE_FIELDS for the same reason.
