@@ -73,9 +73,7 @@ def format_pc_profile(
     """
     if not pc_hist:
         return ["SEP PC profile: no retirements observed"]
-    lines = [
-        f"SEP PC profile (hottest {top} of {len(pc_hist)} distinct, {traces} retires):"
-    ]
+    lines = [f"SEP PC profile (hottest {top} of {len(pc_hist)} distinct, {traces} retires):"]
     for pc, count in pc_hist.most_common(top):
         pct = 100.0 * count / max(traces, 1)
         lines.append(f"  0x{pc:08x}  {count:7d}  {pct:5.1f}%  {sym_for(syms, pc)}")

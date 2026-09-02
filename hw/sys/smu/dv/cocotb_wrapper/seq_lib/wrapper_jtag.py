@@ -24,9 +24,7 @@ import cocotb
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
 _REPO_ROOT = Path(__file__).resolve().parents[6]
-_JTAG_INST_PKG = (
-    _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"
-)
+_JTAG_INST_PKG = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"
 _IR_ENUM_RE = re.compile(r"^\s+(\w+_INSTR)\s+=\s+6'h([0-9A-Fa-f]+)")
 
 PTAP_IR_WIDTH = 6

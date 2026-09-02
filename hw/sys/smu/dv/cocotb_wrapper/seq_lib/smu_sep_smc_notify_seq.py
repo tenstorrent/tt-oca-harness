@@ -126,9 +126,7 @@ class SmuSepSmcNotifySeq:
             # beat never arrived" from "the beat arrived and the boundary slave
             # never answered it". The boundary handshake flags below separate
             # them; read those before concluding anything about routing.
-            aw_seen = bool(
-                self._rd(cocotb.top.smu_axi_out_aw_valid_seen_o, "aw_valid_seen")
-            )
+            aw_seen = bool(self._rd(cocotb.top.smu_axi_out_aw_valid_seen_o, "aw_valid_seen"))
             w_last = bool(self._rd(cocotb.top.smu_axi_out_w_last_seen_o, "w_last_seen"))
             errors.append(
                 f"SEP issued {smn_aw} outbound AW but no write completed at the "
@@ -137,9 +135,7 @@ class SmuSepSmcNotifySeq:
                 "with no B => the boundary slave did not answer)"
             )
         if not done:
-            errors.append(
-                f"no mailbox verdict within {max_cycles} cycles (traces={traces})"
-            )
+            errors.append(f"no mailbox verdict within {max_cycles} cycles (traces={traces})")
         elif not passed:
             errors.append("firmware reported TEST_MAGIC_FAIL")
 
@@ -152,9 +148,7 @@ class SmuSepSmcNotifySeq:
             smn_aw,
             axi_out,
         )
-        self.log.info(
-            "CHK-SEP-EGRESS-FRONTDOOR: PASS (boot_rom=1 iccm=1 traces=%d)", traces
-        )
+        self.log.info("CHK-SEP-EGRESS-FRONTDOOR: PASS (boot_rom=1 iccm=1 traces=%d)", traces)
         for token in ("SEP_REAL_FW_NOTIFY_OK", "SEP_OUTBOUND_EGRESS_CHAIN_OK"):
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)

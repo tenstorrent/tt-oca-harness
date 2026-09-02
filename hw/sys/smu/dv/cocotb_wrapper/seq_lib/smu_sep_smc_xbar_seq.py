@@ -52,14 +52,10 @@ class SmuSepSmcXbarSeq(SepTerminalLoopSeq):
         sym_path = str(cocotb.plusargs.get("smc_sym", "smc_sep_xbar.sram.sym"))
         syms = load_syms(sym_path)
         if not syms:
-            self.log.warning(
-                "no SMC symbol table at %s -- entry reconciliation skipped", sym_path
-            )
+            self.log.warning("no SMC symbol table at %s -- entry reconciliation skipped", sym_path)
             return
         entry = next((a for a, n in syms if n == SMC_ENTRY_SYM), None)
-        assert entry is not None, (
-            f"{SMC_ENTRY_SYM} not in the SMC image symbol table {sym_path}"
-        )
+        assert entry is not None, f"{SMC_ENTRY_SYM} not in the SMC image symbol table {sym_path}"
         assert entry == XBAR_SMC_ENTRY, (
             f"SMC image entry 0x{entry:08x} != the protocol's XBAR_SMC_ENTRY "
             f"0x{XBAR_SMC_ENTRY:08x}; SEP bring-up would re-vector the cores to "
@@ -70,11 +66,7 @@ class SmuSepSmcXbarSeq(SepTerminalLoopSeq):
         if preload and os.path.exists(preload):
             with open(preload, "r", encoding="ascii", errors="replace") as stream:
                 first = next(
-                    (
-                        ln.strip()
-                        for ln in stream
-                        if ln.strip() and not ln.strip().startswith("@")
-                    ),
+                    (ln.strip() for ln in stream if ln.strip() and not ln.strip().startswith("@")),
                     "",
                 )
             m = re.fullmatch(r"[0-9a-fA-F]+", first)
@@ -85,9 +77,7 @@ class SmuSepSmcXbarSeq(SepTerminalLoopSeq):
                 f"SMC SRAM preload first word 0x{got:08x} != cookie "
                 f"0x{XBAR_SMC_IMAGE_FIRST_WORD:08x}; SEP bring-up would poll forever"
             )
-            self.log.info(
-                "SMC image contract OK: entry=0x%08x cookie=0x%08x", entry, got
-            )
+            self.log.info("SMC image contract OK: entry=0x%08x cookie=0x%08x", entry, got)
 
     async def run(self) -> None:
         self._check_smc_image_contract()

@@ -59,9 +59,7 @@ class SmuSepRomTcmLoadSeq:
         max_cycles = int(os.environ.get("SMU_SEP_FW_MAX_CYCLES", "300000"), 0)
         heartbeat = max(1, max_cycles // 20)
 
-        sym_path = str(
-            cocotb.plusargs.get("sep_sym", "rom_no_tcm_preload_mem_init.rom_only.sym")
-        )
+        sym_path = str(cocotb.plusargs.get("sep_sym", "rom_no_tcm_preload_mem_init.rom_only.sym"))
         syms = load_syms(sym_path)
         assert syms, f"no usable symbol table at {sym_path}"
         start_pc = addr_of(syms, "_start")
@@ -77,8 +75,7 @@ class SmuSepRomTcmLoadSeq:
         self.log.info("TEST: SEP loads its own TCM from boot ROM (no TB preload)")
         self.log.info("=" * 70)
         self.log.info(
-            "symbols: _start=0x%08x dma_done=0x%08x fail_hang=0x%08x; "
-            "DMA target ICCM 0x%08x",
+            "symbols: _start=0x%08x dma_done=0x%08x fail_hang=0x%08x; DMA target ICCM 0x%08x",
             start_pc,
             dma_done_pc,
             fail_hang_pc,

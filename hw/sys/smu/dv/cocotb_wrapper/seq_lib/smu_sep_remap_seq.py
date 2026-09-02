@@ -58,8 +58,7 @@ class SmuSepRemapSeq:
         itcm = str(cocotb.plusargs.get("sep_itcm_hex", ""))
         if itcm:
             assert (
-                os.path.basename(itcm).split(".")[0]
-                == os.path.basename(sym_path).split(".")[0]
+                os.path.basename(itcm).split(".")[0] == os.path.basename(sym_path).split(".")[0]
             ), "ITCM image and symbol table are from different firmwares"
 
         self.log.info("=" * 70)
@@ -146,8 +145,7 @@ class SmuSepRemapSeq:
             )
         if stee != STEE_REGION0_OFFSET:
             errors.append(
-                f"STEE remap region0 offset 0x{stee:010x} != golden "
-                f"0x{STEE_REGION0_OFFSET:010x}"
+                f"STEE remap region0 offset 0x{stee:010x} != golden 0x{STEE_REGION0_OFFSET:010x}"
             )
 
         assert not errors, "SEP remap: " + "; ".join(errors)
@@ -159,8 +157,7 @@ class SmuSepRemapSeq:
             stee,
         )
         self.log.info(
-            "CHK-SEP-REMAP-FRONTDOOR: PASS (boot_rom=1 iccm=1 pass_loop reached, "
-            "traces=%d)",
+            "CHK-SEP-REMAP-FRONTDOOR: PASS (boot_rom=1 iccm=1 pass_loop reached, traces=%d)",
             traces,
         )
         for token in ("SEP_REAL_FW_REMAP_OK", "SEP_OUTPUT_REMAP_GOLDEN_OK"):

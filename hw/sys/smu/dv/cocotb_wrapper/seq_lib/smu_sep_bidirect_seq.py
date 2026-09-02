@@ -42,9 +42,7 @@ class SmuSepBidirectSeq(SepTerminalLoopSeq):
     EVIDENCE = ("SEP_REAL_FW_BIDIRECT_OK", "SEP_SMC_HANDSHAKE_OK")
 
     def _smc_phase(self) -> str:
-        raw = self.test.read_int(
-            cocotb.top.smc_scratch_0_o, "smc_scratch_0_o", allow_xz=True
-        )
+        raw = self.test.read_int(cocotb.top.smc_scratch_0_o, "smc_scratch_0_o", allow_xz=True)
         return f"0x{raw:08x} ({SMC_PHASES.get(raw, 'unknown')})"
 
     def _route_state(self) -> str:

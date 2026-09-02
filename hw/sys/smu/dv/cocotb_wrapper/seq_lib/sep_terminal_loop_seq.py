@@ -57,9 +57,7 @@ class SepTerminalLoopSeq:
         return self.test.read_int(handle, name, allow_xz=True)
 
     async def run(self) -> None:
-        max_cycles = int(
-            os.environ.get(self.MAX_CYCLES_ENV, str(self.MAX_CYCLES_DEFAULT)), 0
-        )
+        max_cycles = int(os.environ.get(self.MAX_CYCLES_ENV, str(self.MAX_CYCLES_DEFAULT)), 0)
         heartbeat = max(1, max_cycles // 20)
 
         sym_path = str(cocotb.plusargs.get("sep_sym", self.SYM_DEFAULT))
@@ -156,8 +154,7 @@ class SepTerminalLoopSeq:
             # Terminal loops never exit; stop at the first one entered.
             if verdict is not None:
                 self.log.info(
-                    "%s parked in a terminal loop cycle=%d verdict=%s traces=%d "
-                    "distinct_pcs=%d",
+                    "%s parked in a terminal loop cycle=%d verdict=%s traces=%d distinct_pcs=%d",
                     self.NAME,
                     cycle,
                     verdict[1] or verdict[0],
@@ -168,8 +165,7 @@ class SepTerminalLoopSeq:
 
             if cycle and cycle % heartbeat == 0:
                 self.log.info(
-                    "%s heartbeat cycle=%d traces=%d distinct_pcs=%d boot_rom=%s "
-                    "iccm=%s",
+                    "%s heartbeat cycle=%d traces=%d distinct_pcs=%d boot_rom=%s iccm=%s",
                     self.NAME,
                     cycle,
                     traces,
@@ -190,19 +186,14 @@ class SepTerminalLoopSeq:
             )
         elif verdict[0] == "fail":
             errors.append(
-                f"firmware parked in the {verdict[1]} fail loop -- that on-chip "
-                "check did not pass"
+                f"firmware parked in the {verdict[1]} fail loop -- that on-chip check did not pass"
             )
         if first_boot_rom is None:
             errors.append("SEP never fetched from the boot-ROM window")
         if first_iccm is None:
             errors.append("SEP never executed in the ICCM range")
-        if first_pc is not None and not (
-            SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END
-        ):
-            errors.append(
-                f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector"
-            )
+        if first_pc is not None and not (SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END):
+            errors.append(f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector")
         if first_pass is not None:
             if first_boot_rom is None or first_iccm is None:
                 errors.append(
@@ -217,9 +208,7 @@ class SepTerminalLoopSeq:
                     f"first_pass={first_pass})"
                 )
         elif verdict is not None and verdict[0] == "pass":
-            errors.append(
-                "pass loop reached without a first-seen cycle"
-            )
+            errors.append("pass loop reached without a first-seen cycle")
 
         assert not errors, f"{self.NAME}: " + "; ".join(errors)
 

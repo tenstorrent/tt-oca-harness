@@ -94,14 +94,11 @@ class SmuSepLccFlowSeq:
         itcm = str(cocotb.plusargs.get("sep_itcm_hex", ""))
         if itcm:
             assert (
-                os.path.basename(itcm).split(".")[0]
-                == os.path.basename(sym_path).split(".")[0]
+                os.path.basename(itcm).split(".")[0] == os.path.basename(sym_path).split(".")[0]
             ), "ITCM image and symbol table are from different firmwares"
 
         self.log.info("=" * 70)
-        self.log.info(
-            "TEST: SEP lifecycle posture, firmware-driven, traced to consumers"
-        )
+        self.log.info("TEST: SEP lifecycle posture, firmware-driven, traced to consumers")
         self.log.info("=" * 70)
 
         # Posture before the firmware touches anything. Every later claim is a
@@ -145,8 +142,7 @@ class SmuSepLccFlowSeq:
         errors: list[str] = []
         if verdict is None:
             errors.append(
-                f"firmware reached no terminal loop within {max_cycles} cycles "
-                f"(traces={traces})"
+                f"firmware reached no terminal loop within {max_cycles} cycles (traces={traces})"
             )
         elif verdict[0] == "fail":
             errors.append(
@@ -171,9 +167,7 @@ class SmuSepLccFlowSeq:
                 "the firmware's DEMOTE_2 write did not reach the SMU boundary"
             )
         if after["smc_lc_state"] == 0:
-            errors.append(
-                "SMC received lc_state 0x00 -- the posture is not reaching the SMC"
-            )
+            errors.append("SMC received lc_state 0x00 -- the posture is not reaching the SMC")
 
         assert not errors, "SEP LCC flow: " + "; ".join(errors)
 

@@ -68,9 +68,7 @@ class SmuSepEntropySeq:
         max_cycles = int(os.environ.get("SMU_SEP_ENTROPY_MAX_CYCLES", "3000000"), 0)
         heartbeat = max(1, max_cycles // 20)
 
-        sym_path = str(
-            cocotb.plusargs.get("sep_sym", "sep_smu_entropy_bringup.tcm.sym")
-        )
+        sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_entropy_bringup.tcm.sym"))
         syms = load_syms(sym_path)
         assert syms, f"no usable symbol table at {sym_path}"
         pass_pc = addr_of(syms, PASS_SYM)
@@ -82,9 +80,7 @@ class SmuSepEntropySeq:
         )
 
         self.log.info("=" * 70)
-        self.log.info(
-            "TEST: SEP firmware entropy bring-up, with entropy proven to flow"
-        )
+        self.log.info("TEST: SEP firmware entropy bring-up, with entropy proven to flow")
         self.log.info("=" * 70)
 
         noise = SmuEsrcNoiseDriver(self.dut)
@@ -100,9 +96,7 @@ class SmuSepEntropySeq:
         def chain() -> tuple[bool, bool, bool, bool]:
             return (
                 bool(self._rd(self.dut.esrc_noise_took_o, "esrc_noise_took_o")),
-                bool(
-                    self._rd(self.dut.drbg_seed_valid_seen_o, "drbg_seed_valid_seen_o")
-                ),
+                bool(self._rd(self.dut.drbg_seed_valid_seen_o, "drbg_seed_valid_seen_o")),
                 bool(self._rd(self.dut.drbg_es_ack_seen_o, "drbg_es_ack_seen_o")),
                 bool(self._rd(self.dut.drbg_genbits_seen_o, "drbg_genbits_seen_o")),
             )
@@ -110,9 +104,7 @@ class SmuSepEntropySeq:
         for cycle in range(0, max_cycles, POLL):
             for _ in range(POLL):
                 await RisingEdge(self.dut.clk_smu_i)
-                if verdict is None and self._rd(
-                    self.dut.sep_trace_valid_o, "sep_trace_valid_o"
-                ):
+                if verdict is None and self._rd(self.dut.sep_trace_valid_o, "sep_trace_valid_o"):
                     traces += 1
                     pc = self._rd(self.dut.sep_pc_o, "sep_pc_o") & 0xFFFF_FFFF
                     if pc == pass_pc:
@@ -150,9 +142,7 @@ class SmuSepEntropySeq:
 
         errors: list[str] = []
         if verdict is None:
-            errors.append(
-                f"firmware reached no terminal loop within {max_cycles} cycles"
-            )
+            errors.append(f"firmware reached no terminal loop within {max_cycles} cycles")
         elif verdict[0] == "fail":
             errors.append(
                 f"firmware parked in the {verdict[1]} fail loop -- the ESRC CSR "

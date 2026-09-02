@@ -125,9 +125,7 @@ class SmuSepDbgGatingSeq:
         # absent AXI transaction.
         idcode = await jtag.read_idcode()
         require_tdo_resolved("IDCODE")
-        assert idcode == PTAP_DEFAULT_IDCODE, (
-            f"TAP not answering: IDCODE 0x{idcode:08x}"
-        )
+        assert idcode == PTAP_DEFAULT_IDCODE, f"TAP not answering: IDCODE 0x{idcode:08x}"
         caps = await jtag.read("SMC_JTAG2AXI_CAPS")
         self.log.info("TAP answering: IDCODE=0x%08x JTAG2AXI CAPS=0x%04x", idcode, caps)
 
@@ -140,8 +138,7 @@ class SmuSepDbgGatingSeq:
         after_aw, after_ar = self._counts()
         launched = (after_ar > before_ar) or (after_aw > before_aw)
         self.log.info(
-            "debug AXI after a SINGLE_OP read of 0x%08x: AW %d->%d AR %d->%d "
-            "(launched=%s)",
+            "debug AXI after a SINGLE_OP read of 0x%08x: AW %d->%d AR %d->%d (launched=%s)",
             J2A_READ_ADDR,
             before_aw,
             after_aw,

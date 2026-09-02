@@ -151,12 +151,8 @@ class SmuSepBootHealthSeq:
             errors.append("SEP never fetched from the boot-ROM window")
         if first_iccm is None:
             errors.append("SEP never executed in the ICCM range")
-        if first_pc is not None and not (
-            SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END
-        ):
-            errors.append(
-                f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector"
-            )
+        if first_pc is not None and not (SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END):
+            errors.append(f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector")
         if first_pass is not None:
             if first_boot_rom is None or first_iccm is None:
                 errors.append(
@@ -182,8 +178,7 @@ class SmuSepBootHealthSeq:
         assert not errors, "SEP boot-health: " + "; ".join(errors)
 
         self.log.info(
-            "CHK-SEP-BOOT-HEALTH-FRONTDOOR: PASS (first_pc=0x%08x boot_rom=1 "
-            "iccm=1 entry=0x%08x)",
+            "CHK-SEP-BOOT-HEALTH-FRONTDOOR: PASS (first_pc=0x%08x boot_rom=1 iccm=1 entry=0x%08x)",
             first_pc or 0,
             start_pc,
         )

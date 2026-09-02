@@ -89,8 +89,7 @@ class SmuSepLccStateMatrixSeq:
         self.log.info("TEST: SEP lifecycle state matrix -- eFuse image vs LCC profile")
         self.log.info("=" * 70)
         self.log.info(
-            "contract for this eFuse image: lc_state=0x%02x demote_effective=%s "
-            "dbg_disabled=%s",
+            "contract for this eFuse image: lc_state=0x%02x demote_effective=%s dbg_disabled=%s",
             want_lc,
             want_demote_eff,
             want_dbg_dis,
@@ -161,8 +160,7 @@ class SmuSepLccStateMatrixSeq:
         errors: list[str] = []
         if verdict is None:
             errors.append(
-                f"firmware reached no terminal loop within {max_cycles} cycles "
-                f"(traces={traces})"
+                f"firmware reached no terminal loop within {max_cycles} cycles (traces={traces})"
             )
         elif verdict[0] == "fail":
             errors.append(f"firmware parked in the {verdict[1]} fail loop")

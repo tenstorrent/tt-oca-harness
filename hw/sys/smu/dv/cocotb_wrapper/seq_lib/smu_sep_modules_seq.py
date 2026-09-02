@@ -122,13 +122,8 @@ class SmuSepModulesSeq:
         for cycle in range(max_cycles):
             await RisingEdge(self.dut.clk_smu_i)
 
-            if self.test.read_int(
-                self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True
-            ):
-                pc = (
-                    self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True)
-                    & 0xFFFF_FFFF
-                )
+            if self.test.read_int(self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True):
+                pc = self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True) & 0xFFFF_FFFF
                 traces += 1
                 pc_hist[pc] += 1
                 if first_pc is None:
@@ -161,8 +156,7 @@ class SmuSepModulesSeq:
             # Terminal loops never exit, so stop at the first one reached.
             if verdict is not None:
                 self.log.info(
-                    "SEP parked in a terminal loop cycle=%d verdict=%s traces=%d "
-                    "distinct_pcs=%d",
+                    "SEP parked in a terminal loop cycle=%d verdict=%s traces=%d distinct_pcs=%d",
                     cycle,
                     verdict,
                     traces,
@@ -172,8 +166,7 @@ class SmuSepModulesSeq:
 
             if cycle and cycle % heartbeat == 0:
                 self.log.info(
-                    "modules heartbeat cycle=%d traces=%d distinct_pcs=%d "
-                    "boot_rom=%s iccm=%s",
+                    "modules heartbeat cycle=%d traces=%d distinct_pcs=%d boot_rom=%s iccm=%s",
                     cycle,
                     traces,
                     len(pc_hist),
@@ -200,12 +193,8 @@ class SmuSepModulesSeq:
             errors.append("SEP never fetched from the boot-ROM window")
         if first_iccm is None:
             errors.append("SEP never executed in the ICCM range")
-        if first_pc is not None and not (
-            SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END
-        ):
-            errors.append(
-                f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector"
-            )
+        if first_pc is not None and not (SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END):
+            errors.append(f"first retired PC 0x{first_pc:08x} is not the boot-ROM reset vector")
         if first_pass is not None:
             if first_boot_rom is None or first_iccm is None:
                 errors.append(

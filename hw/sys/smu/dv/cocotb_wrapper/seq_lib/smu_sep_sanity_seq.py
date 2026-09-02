@@ -59,9 +59,7 @@ class SmuSepSanitySeq:
         self.log = test.logger
 
     def _beacons(self) -> set[int]:
-        mask = self.test.read_int(
-            self.dut.fw_beacon_mask_o, "fw_beacon_mask_o", allow_xz=True
-        )
+        mask = self.test.read_int(self.dut.fw_beacon_mask_o, "fw_beacon_mask_o", allow_xz=True)
         return {bit for bit in range(16) if mask & (1 << bit)}
 
     async def run(self) -> None:
@@ -69,9 +67,7 @@ class SmuSepSanitySeq:
         heartbeat = max(1, max_cycles // 20)
 
         self.log.info("=" * 70)
-        self.log.info(
-            "TEST: real SEP DV sanity firmware (HMAC + KMAC KAT) in the OSS wrapper"
-        )
+        self.log.info("TEST: real SEP DV sanity firmware (HMAC + KMAC KAT) in the OSS wrapper")
         self.log.info("=" * 70)
 
         sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_sanity.tcm.sym"))
@@ -95,14 +91,9 @@ class SmuSepSanitySeq:
         for cycle in range(max_cycles):
             await RisingEdge(self.dut.clk_smu_i)
 
-            if self.test.read_int(
-                self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True
-            ):
+            if self.test.read_int(self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True):
                 traces += 1
-                pc = (
-                    self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True)
-                    & 0xFFFF_FFFF
-                )
+                pc = self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True) & 0xFFFF_FFFF
                 pc_hist[pc] += 1
                 if first_iccm is None and SEP_ICCM_BASE <= pc < SEP_ICCM_END:
                     first_iccm = cycle
@@ -118,18 +109,13 @@ class SmuSepSanitySeq:
                 if first_beacon[bit] is None and bit in beacons_now:
                     first_beacon[bit] = cycle
 
-            done = bool(
-                self.test.read_int(self.dut.fw_done_o, "fw_done_o", allow_xz=True)
-            )
+            done = bool(self.test.read_int(self.dut.fw_done_o, "fw_done_o", allow_xz=True))
             if done:
-                passed = bool(
-                    self.test.read_int(self.dut.fw_pass_o, "fw_pass_o", allow_xz=True)
-                )
+                passed = bool(self.test.read_int(self.dut.fw_pass_o, "fw_pass_o", allow_xz=True))
                 if passed and first_pass is None:
                     first_pass = cycle
                 self.log.info(
-                    "SEP sanity firmware reported completion cycle=%d pass=%s "
-                    "beacons=%s traces=%d",
+                    "SEP sanity firmware reported completion cycle=%d pass=%s beacons=%s traces=%d",
                     cycle,
                     passed,
                     sorted(self._beacons()),
@@ -255,9 +241,7 @@ class SmuSepSanitySeq:
                         "smu_axi_out_first_aw_addr_o",
                         allow_xz=True,
                     ),
-                    self.test.read_int(
-                        self.dut.fw_last_word_o, "fw_last_word_o", allow_xz=True
-                    ),
+                    self.test.read_int(self.dut.fw_last_word_o, "fw_last_word_o", allow_xz=True),
                     self.test.read_int(
                         self.dut.sep_xbar_global_base_o,
                         "sep_xbar_global_base_o",
@@ -301,21 +285,14 @@ class SmuSepSanitySeq:
         # iccm exec < beacon 1..4 < PASS magic. Beacon 0 is required above
         # but is not part of this order chain.
         if done and passed:
-            order_times = (
-                [first_iccm]
-                + [first_beacon[b] for b in (1, 2, 3, 4)]
-                + [first_pass]
-            )
+            order_times = [first_iccm] + [first_beacon[b] for b in (1, 2, 3, 4)] + [first_pass]
             if any(t is None for t in order_times):
                 errors.append(
                     "iccm < beacon 1..4 < PASS first-seen incomplete "
                     f"(first_iccm={first_iccm} first_beacon={first_beacon} "
                     f"first_pass={first_pass})"
                 )
-            elif not all(
-                earlier < later
-                for earlier, later in zip(order_times, order_times[1:])
-            ):
+            elif not all(earlier < later for earlier, later in zip(order_times, order_times[1:])):
                 errors.append(
                     "iccm exec < beacon 1..4 < PASS magic order does not hold "
                     f"(first_iccm={first_iccm} first_beacon={first_beacon} "

@@ -58,12 +58,8 @@ class SmuWrapperJtagPtapSeq:
         return got
 
     async def _bypass(self, jtag) -> None:
-        await jtag.shift_ir(
-            ptap_ir_opcode("BYPASS_INSTR"), width=PTAP_IR_WIDTH, back_to_rti=False
-        )
-        captured = int(
-            await jtag.shift_dr(BYPASS_PATTERN, BYPASS_WIDTH, back_to_rti=True)
-        )
+        await jtag.shift_ir(ptap_ir_opcode("BYPASS_INSTR"), width=PTAP_IR_WIDTH, back_to_rti=False)
+        captured = int(await jtag.shift_dr(BYPASS_PATTERN, BYPASS_WIDTH, back_to_rti=True))
         require_tdo_resolved("BYPASS")
         mask = (1 << BYPASS_WIDTH) - 1
         # The shift register captures 0 and then returns TDI one bit later, so
@@ -117,13 +113,11 @@ class SmuWrapperJtagPtapSeq:
             )
         if sep_ovrd != 0:
             errors.append(
-                "SEP IC_RESET override asserted -- the TAP reset walk did not "
-                "clear the TDR"
+                "SEP IC_RESET override asserted -- the TAP reset walk did not clear the TDR"
             )
         if inst_after <= inst_before:
             errors.append(
-                f"SEP stopped retiring across the TAP accesses "
-                f"({inst_before} -> {inst_after})"
+                f"SEP stopped retiring across the TAP accesses ({inst_before} -> {inst_after})"
             )
         assert not errors, "wrapper PTAP: " + "; ".join(errors)
 
@@ -137,8 +131,7 @@ class SmuWrapperJtagPtapSeq:
             "stuck chain cannot produce the TDI delay)"
         )
         self.log.info(
-            "CHK-WRAPPER-PTAP-SEP-LIVE: PASS (SEP retired %d -> %d across the TAP "
-            "accesses)",
+            "CHK-WRAPPER-PTAP-SEP-LIVE: PASS (SEP retired %d -> %d across the TAP accesses)",
             inst_before,
             inst_after,
         )
