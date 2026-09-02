@@ -1517,6 +1517,7 @@ sources:
   - target: any(smc_wrapper, smu_wrapper)
     files:
       - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
+      - hw/sys/smc/dv/models/smc_axil_okay_responder.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv
   - target: any(sep_wrapper, smu_wrapper)
