@@ -1,5 +1,9 @@
 # SMC Production ROM
 
+> [!WARNING]
+> The production ROM FW and its documentation are works in progress and are
+> not ready for production use.
+
 The production ROM FW has a self-contained build. For its architecture, boot
 behavior, OCCP protocol, and implementation details, see
 [SMC Production ROM documentation](doc/index.adoc).
