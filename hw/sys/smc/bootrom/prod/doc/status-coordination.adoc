@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[status-reporting]]
+== Status and coordination
+
+=== Scratch registers
+
+The CPU-control block begins at `0xC0039000`.
+Scratch register 0 is at `0xC0039080`; consecutive scratch registers are eight bytes apart.
+
+.Scratch registers used by the ROM
+[cols="1,2,4",options="header"]
+|===
+|Index |Address |Use
+
+|0
+|`0xC0039080`
+|Simulation pass/fail and generic early-trap indication.
+
+|1
+|`0xC0039088`
+|Structured POST word.
+
+|2
+|`0xC0039090`
+|Virtual console output in debug-enabled builds.
+
+|8
+|`0xC00390C0`
+|Manifest offset from SRAM base, or `0xFFFFFFFF` when invalid.
+
+|9
+|`0xC00390C8`
+|SMC-to-SEP coordination bits.
+
+|10
+|`0xC00390D0`
+|Available through the MBIST-failure helper; the assembly checks use register 15.
+
+|11
+|`0xC00390D8`
+|SEP status-buffer offset from SRAM base.
+
+|13
+|`0xC00390E8`
+|SEP-safe SRAM start offset from SRAM base.
+
+|14
+|`0xC00390F0`
+|SEP-safe SRAM size in bytes.
+
+|15
+|`0xC00390F8`
+|MBIST, memory-repair, or ROM-padding-trap status.
+|===
+
+Assembly clears registers 8, 9, 11, 13, and 14 after installing the early trap vector.
+It deliberately preserves register 15.
+
+.Scratch register 9
+[cols="1,2,4",options="header"]
+|===
+|Bit |Name |Set when
+|0 |SRAM initialized |Status buffers and the safe-region description have been initialized.
+|1 |Manifest ready |`AuthenticateImage` has published scratch register 8.
+|2 |Status buffer ready |Scratch register 11 contains the SEP ring-buffer offset.
+|3 |SRAM protected |Defined by the interface but not set by the current ROM.
+|===
+
+The published SRAM addresses are offsets from `0xC0060000`.
+The normal values in registers 13 and 14 describe `0xC0066400` through `0xC015AFFF`.
+
+=== Ring buffers
+
+The ROM initializes separate SMC and SEP ring buffers at the end of SRAM.
+Each holds 512 32-bit entries plus `head`, `tail`, and `num_entries` fields.
+A write to a full buffer advances the tail and overwrites the oldest entry.
+A read returns the oldest unread entry and advances the tail.
+
+Status messages use this format:
+
+.Status message
+[cols="1,2,4",options="header"]
+|===
+|Bits |Field |Encoding
+|31:24 |Message type |`0x01` status, `0x08` warning, `0x0F` error
+|23:16 |Firmware ID |`0x01` SEP BL0, `0x02` SEP BL1, `0x03` SMC BL0, `0x04` SMC BL1
+|15:0 |Value |Boot or command-specific status value
+|===
+
+The `STATUS_RPT_DISABLE` strap does not disable ring-buffer initialization or writes.
+It only rejects OCCP `GetStatus`.
+
+=== Software OCCP status word
+
+The ROM maintains an in-memory 32-bit status word:
+
+.OCCP status word
+[cols="1,2,4",options="header"]
+|===
+|Bits |Field |Current update behavior
+|3:0 |Boot status |Initialized to zero. The current main flow does not advance this field.
+|7:4 |Interface status |Set to ready after successful transport initialization or error after failure.
+|15:8 |Command count |Incremented after each command iteration that reaches dispatch completion; wraps at 255.
+|23:16 |Last internal error |Updated after command failures.
+|31:24 |Reserved |Zero.
+|===
+
+`GetStatus` IDs `0x0000` through `0x0003` expose individual fields in the status-message envelope described in <<occp-protocol>>.
+
+=== POST word
+
+Scratch register 1 carries a structured development-observability word.
+
+.POST fields
+[cols="1,2,4",options="header"]
+|===
+|Bits |Field |Values used by the ROM
+
+|31:28
+|Boot phase
+|0 initialization, 1 straps/eFuses, 2 SRAM setup, 3 interface setup, 4 OCCP ready, 5 OCCP processing, 6 boot complete, 7 error
+
+|27:24
+|OCCP state
+|0 idle, 1 command received, 2 processing, 3 response ready, 4 complete, 5 error
+
+|23:20
+|Latched interface
+|0 none, 1 I3C0, 2 I3C1, 4 I3C3, 5 I2C0, 6 I2C1
+
+|19:16
+|Error
+|0 none, 1 SRAM, 2 interface, 3 command, 4 access, 5 invalid security mode
+
+|15:12
+|Security decisions
+|Bits indicate secure, production, and RMA SoP classifications.
+
+|11:8
+|Boot observations
+|Bits indicate primary strap, recovery strap, I2C boot strap, and SRAM-auto-zero-disable strap.
+
+|7:4
+|Strap observations
+|Bits indicate boot stall, status-report disable, and memory-repair bypass.
+
+|3:0
+|Coordination
+|Bits indicate SRAM ready, manifest ready, status buffer ready, and coordination active.
+|===
+
+POST state reports decisions made by the current ROM; it is not a separate boot-control interface.
+During startup, the implementation writes boot-phase values in the sequence
+0, 2, 1, 2, 3, 4, and 5. The first phase-2 write follows publication of the
+SRAM coordination state; phase 1 then records strap and eFuse processing, and
+the second phase-2 write records the explicit C-flow SRAM phase.

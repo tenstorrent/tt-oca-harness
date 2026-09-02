@@ -330,9 +330,28 @@ indicates completion of this sensing operation.
 ==== Memory Subsystem Integration
 
 The SMC includes an embedded RISC-V CPU cluster with associated memory
-interfaces. The `rom_intf_req_o` and `rom_intf_rsp_i` signals connect to boot
-ROM containing the SMC firmware. The ROM must be populated with valid firmware
-images before initiating the boot sequence.
+interfaces.
+
+[[smc-rom-macro-integration]]
+===== ROM Macro Integration
+
+Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
+implementation. In the current four-core configuration, the request provides
+the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
+one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
+ROM image must be present before the first boot; the production image build is
+under `hw/sys/smc/bootrom/prod/`.
+
+Connect the ROM macro configuration input reached as `rom_cfg_i` and
+`mem_cfg_i` according to the selected macro's contract. OCAH forwards these 11
+bits without assigning technology-specific semantics; the reference
+`smc_ip_integration.sv` ties them to zero. Set the eFuse shadow value that
+drives the CPU's `rom_flip_endianness_i` path to match the byte order of the
+image and ROM macro. Deasserted passes each 64-bit read word unchanged;
+asserted reverses its eight bytes.
+
+[[smc-sram-cache-integration]]
+===== SRAM and Cache Array Integration
 
 Scratch RAM interfaces (`scratch_ram_intf_req_o` and `scratch_ram_intf_rsp_i`)
 connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
@@ -812,6 +831,39 @@ scratchpad RAM, cache tag and data arrays), and trace memory instances.
 `sep_ip_integration.sv` demonstrates integration of SEP-side technology
 components: SEP memory macros (TCM, scratch SRAM, boot ROM, OTBN IMEM/DMEM,
 Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
+
+[[vendor-ip-firmware-overrides]]
+===== Vendor-IP Firmware Overrides
+
+Firmware that will be fixed in ROM provides selected vendor-neutral integration
+hooks as weak symbols. Supply the adopter implementation as a strong definition
+of the same symbol, and compile and link it into the production ROM with
+`NONFREE_DRIVER_SOURCES`. The strong implementation must program the same
+technology-specific IP instantiated by the adopter's RTL integration, and its
+signature, ABI, return values, and documented semantics must match the weak
+declaration.
+
+Inspect the final ELF or linker map after linking. For example,
+`riscv64-unknown-elf-nm` must report the selected implementation as a strong
+symbol rather than `W`; successful linking alone does not prove that the weak
+default was replaced.
+
+[[smc-production-rom-firmware-overrides]]
+====== SMC Production ROM Example
+
+`smc_pll_init()` is the SMC production ROM hook corresponding to the adopter's
+PLL integration. Its weak default performs no PLL hardware programming and
+returns success. An adopter that substitutes its own PLL for the model shown in
+the reference `smc_ip_integration.sv` supplies a strong implementation with the
+same `smc_pll_result_t smc_pll_init(void)` signature and result semantics.
+Any result other than `SMC_PLL_SUCCESS` is fatal: the ROM records an interface
+error and remains in `wfi`.
+
+The public I3C target-driver symbols in
+`hw/sys/smc/bootrom/prod/drivers/src/i3c_target_driver.c` provide another set of
+weak hooks. A strong target driver must implement the declarations and
+semantics in `drivers/include/i3c_target_driver.h` for the I3C IP used by the
+adopter's RTL integration.
 
 ===== Wrapper Clock and PLL Architecture
 
