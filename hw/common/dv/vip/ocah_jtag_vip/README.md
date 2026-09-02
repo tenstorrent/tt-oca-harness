@@ -189,8 +189,11 @@ through the `_slave_sequence` API. The protocol engine
 (`OcahJtagSlaveEngine`) holds no simulator handles and is validated
 standalone against the master-side reference model by
 `cocotb/examples/example_slave_selftest.py` (runnable with plain Python).
-No DUT integration consumes the slave side yet; DUT host-port testbenches
-(STAP/BSR loopback replacements) are the intended first consumers.
+The DTP testbench is the first consumer: its STAP-selection scenarios splice
+one slave device behind each `jtag_stap_*_host` port (cocotb
+`hw/sys/dtp/dv/cocotb/env/dtp_stap_ds_agent.py`, SV-UVM `dtp_env`) and judge
+selection, gating, and recovery through `check_last_update`,
+`check_update_count`, `check_register`, and `check_state`.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 

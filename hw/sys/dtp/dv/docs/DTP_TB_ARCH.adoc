@@ -39,7 +39,8 @@ changes do not affect sequences or scoreboards.
 |SMC fabric AXI4 manager |`ocah_axi_vip` `OcahAxiSlaveAgent` |Unified OCAH BFM |AXI memory responder with scoreboard backdoor access
 |SMC/SEP OTP AXI-Lite managers |`ocah_axi_vip` AXI-Lite wrapper |Unified OCAH BFM |AXI-Lite responder model for OTP bridge scenarios
 |XTRIG AXI-Lite CSR subordinate |`ocah_axi_vip` AXI-Lite master |Unified OCAH BFM |Shared AXI-Lite master over the flattened `+xtrig_axil_*+` port; channel-skew, RREADY-hold, and partial-strobe operations come from its sequence API
-|BSR/STAP scan loopbacks |Minimal OCAH-local scan model |OCAH-local simple model |Compact scan loopback and observable model
+|BSR scan loopback |Minimal OCAH-local scan model |OCAH-local simple model |Compact scan loopback and observable model
+|STAP host ports / 3DCR |`ocah_jtag_vip` slave devices (`OcahJtagSlaveAgent`, cocotb / `ocah_jtag_slave_agent`, SV-UVM) behind an OCAH-local chain model |Unified OCAH BFM + OCAH-local model |Wire loopback by default; the STAP-selection scenarios splice one reactive downstream TAP per port and judge it through `ocah_jtag_slave_sequence`
 |iJTAG SIB networks |OCAH-local IEEE 1687 model |OCAH-local model |IEEE 1687 scan-network transaction model
 |CTP/CTM cross-trigger protocols |OCAH-local BFMs |OCAH-local BFM |CTP/CTM protocol BFMs; debug TDR clock-stop requests may be driven directly in the TB
 |===
@@ -55,7 +56,7 @@ topology, lifecycle rules, signal binding, or testbench fixtures:
 |Model / Helper |Current Scope |Why It Stays DUT-Local |Promotion Trigger
 |`DtpScanModel` |8-bit BSR identity-loopback stimulus and checking |Models the compact DTP TB fixture, not generic IEEE 1149.1 boundary cells |A parameterized boundary-cell model with an independent DUT consumer
 |`DtpIjtagSibModel` |Three DTP SIBs, per-SIB debug-disable gates, looped instruments |Hard-coded DTP scan topology and security policy |Topology/instrument-neutral IEEE 1687 transactions plus a second consumer
-|`DtpStap3dcrModel` |Composed TAP_3DCR chain state (PTAP 3DCR, per-STAP SIB and 3DCR), scan composition, capture prediction, per-STAP debug-disable update blocking |Downstream STAPs are wire loopbacks and the hierarchy is DTP-specific |A parameterized IEEE 1838/STAP model validated against a real downstream topology
+|`DtpStap3dcrModel` |Composed TAP_3DCR chain state (PTAP 3DCR, per-STAP SIB and 3DCR), network-wide IR-scan composition, capture prediction, per-STAP debug-disable update blocking, and the downstream TAP segments (IR, IDCODE, BYPASS, or a latched register) of the `ocah_jtag_vip` devices attached behind the STAP host ports |The chain hierarchy, the splice flops, and the downstream parking rules are DTP-specific |A parameterized IEEE 1838/STAP model with an independent DUT consumer
 |`DtpXtrigBfm` / `DtpCtmRefModel` |DTP CTP wire-OR/P2P pins, CTM masks, CSR layout |Assumes DTP port counts, flattened signal names, and OCH routing policy |Parameterize binding/counts and demonstrate independent reuse; domain-local ownership may precede shared VIP promotion
 |`DtpBypassSuiteCfg` / `DtpBypassRefModel` |BYPASS opcode, pattern, capture, and one-bit-delay prediction |Encodes the DTP BYPASS scenario and evidence context |Consider protocol-level promotion only after an independent JTAG consumer needs the same model
 |DTP TDR maps/packers |DTP instruction/register semantics layered over `ocah_jtag_vip` |Register layout and polling policy are DUT semantics, not JTAG protocol |Share only with a domain consumer that uses the same DTP register contract
@@ -168,7 +169,8 @@ between packed RTL structs and cocotb-friendly scalar/vector ports.
 |JTAG TAP |Exposes `jtag_tck`, `jtag_tms`, `jtag_trst`, `jtag_tdi`, `jtag_tdo`, `jtag_tdo_oen` for `OcahJtagMasterDriver`
 |SMC fabric AXI4 |Flattens `+axi_smc_dbg_*+` structs into `+m_axi_*+` for `OcahAxiSlaveAgent.from_prefix(dut, "m_axi")`
 |Debug disables |Exposes one `+dbg_disable_<field>+` scalar input per `sep_lifecycle_ctrl_pkg::dbg_disable_t` field, packed unchanged into `dbg_disable_i`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly
-|BSR/STAP/iJTAG |Looped back or tied idle for scenarios that do not actively use these paths
+|BSR/iJTAG |Looped back or tied idle for scenarios that do not actively use these paths
+|STAP host ports |Loopback (`tdi <- tdo`) by default; per-port `+jtag_stap_<x>_ds_en+` splices the downstream `ocah_jtag_vip` TAP (`+jtag_stap_<x>_tdo+` out, `+jtag_stap_<x>_tdi+` in) behind the port for the STAP-selection scenarios
 |SMC/SEP OTP AXI-Lite |Flattens both AXI-Lite manager ports; `OcahAxiLiteSlaveAgent.from_prefix` RAM responders (`"smc_otp_axil"`, `"sep_otp_axil"`) answer them
 |DEBUG_CONTROL and IC_RESET |Flattens boot-stall, clock-stop, and IC_RESET struct outputs into cocotb-visible scalar signals
 |XTRIG CSR/CTP/CTM |Exposes the flattened `+xtrig_axil_*+` CSR port for the env's AXI-Lite master BFM (the generated CSR blocks elaborate under Verilator); `xtrig_clk_stop_req` is directly driven for DEBUG_CONTROL clock-stop tests

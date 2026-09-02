@@ -44,12 +44,32 @@ protocol BFMs behind a stable API:
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM / `OcahAxiLiteMasterAgent`, cocotb) | Both flows drive the CSR port through the shared VIP master; the channel-skew, RREADY-hold, and partial-strobe operations live on its sequence APIs. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
-| STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
+| STAP / 3DCR | DUT-local `DtpStap3dcrModel` over **`ocah_jtag_vip`** slave devices | Composed TAP_3DCR chain model (PTAP 3DCR, per-STAP SIB/3DCR, network-wide IR scans); the STAP host ports loop back by default, and the STAP-selection scenarios splice a shared `ocah_jtag_vip` reactive TAP behind every port (see "Downstream STAP TAPs"). |
 | CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCH routing policy; promote only after parameterization and independent reuse. |
 
 The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
+
+### Downstream STAP TAPs
+
+Each STAP host port (`jtag_stap_{io,smc,sep,extra0}_host_*`) exposes three TB
+signals: `jtag_stap_<x>_tdo` (the host TDO, i.e. the downstream TAP's TDI),
+`jtag_stap_<x>_tdi` (the downstream TAP's TDO back into the host TDI), and
+`jtag_stap_<x>_ds_en`. With `ds_en=0` (the default for every scenario) the
+port's TDI is its own TDO: the wire loopback. With `ds_en=1` the bench splices
+a reactive `ocah_jtag_vip` slave device behind the port (cocotb:
+`env/dtp_stap_ds_agent.py`; SV-UVM: four `ocah_jtag_slave_agent`s in
+`dtp_env`), one IEEE 1149.1 TAP per port with a 5-bit IR, a distinct IDCODE,
+and one writable `DS_TDR` of a distinct width. The four
+`dtp_3dcr_stap_sel_*_test` scenarios attach all four ports (test attribute
+`stap_ds_attach` / `stap_ds_attach_mask()`) and prove selection, gating,
+isolation, and recovery end to end: the downstream IDCODE and a written
+`DS_TDR` read back through the selected STAP, the register stays frozen while
+the port is gated (the downstream TAP parks in Test-Logic-Reset), and recovery
+is checked against real downstream state. Once a STAP is selected every scan
+is composed over the full network, IR scans included, because the PTAP routes
+its instruction shift-out into the STAP chain.
 
 ## Simulation defines
 
