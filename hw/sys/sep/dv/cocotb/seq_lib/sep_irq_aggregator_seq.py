@@ -78,9 +78,7 @@ def dma_reg_unmapped_addr() -> int:
     after_src = sym("SECURE_DMA_INTR_SRC_ADDR_0_10__REG_ADDR") + 4
     wr_val = sym("SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR")
     if after_src >= wr_val:
-        raise RuntimeError(
-            f"DMA INTR_SRC gap closed: 0x{after_src:08x} >= 0x{wr_val:08x}"
-        )
+        raise RuntimeError(f"DMA INTR_SRC gap closed: 0x{after_src:08x} >= 0x{wr_val:08x}")
     return after_src
 
 
@@ -94,9 +92,7 @@ def hmac_reg_unmapped_addr() -> int:
     after_csr = HMAC.addr("MSG_LENGTH_UPPER") + 4
     fifo = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
     if after_csr >= fifo:
-        raise RuntimeError(
-            f"HMAC CSR/FIFO gap closed: 0x{after_csr:08x} >= 0x{fifo:08x}"
-        )
+        raise RuntimeError(f"HMAC CSR/FIFO gap closed: 0x{after_csr:08x} >= 0x{fifo:08x}")
     return after_csr
 
 
@@ -110,9 +106,7 @@ def kmac_reg_unmapped_addr() -> int:
     after_csr = KMAC.addr("ERR_CODE") + 4
     state = sym("KMAC_STATE_MEM_BASE_ADDR")
     if after_csr >= state:
-        raise RuntimeError(
-            f"KMAC CSR/STATE gap closed: 0x{after_csr:08x} >= 0x{state:08x}"
-        )
+        raise RuntimeError(f"KMAC CSR/STATE gap closed: 0x{after_csr:08x} >= 0x{state:08x}")
     return after_csr
 
 
@@ -145,9 +139,7 @@ def otbn_reg_unmapped_addr() -> int:
     after_csr = OTBN.addr("LOAD_CHECKSUM") + 4
     imem = sym("OTBN_IMEM_MEM_BASE_ADDR")
     if after_csr >= imem:
-        raise RuntimeError(
-            f"OTBN CSR/IMEM gap closed: 0x{after_csr:08x} >= 0x{imem:08x}"
-        )
+        raise RuntimeError(f"OTBN CSR/IMEM gap closed: 0x{after_csr:08x} >= 0x{imem:08x}")
     return after_csr
 
 

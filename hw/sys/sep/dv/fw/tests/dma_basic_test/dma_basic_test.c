@@ -714,9 +714,18 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
-    (void)dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                  SEP_DMA_OPCODE_COPY);
+    // The engine must actually terminate. err_o is a_valid-gated, so a DMA that
+    // issues one command and then wedges still latches host_path_err: without
+    // this the liveness half of the leg goes unchecked.
+    uint32_t st_intg = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    if (!(st_intg & DONE_OR_ERR)) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA neither completed nor errored, STATUS=0x");
+        sep_mbx_puthex(st_intg);
+        sep_mbx_putc('\n');
+        e++;
+    }
     bus = rd(status_addr);
     if (bus != host_bit) {
         sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=0x");
@@ -729,15 +738,15 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
+    // DMA_BUS_ERR_CLEAR is sw=w singlepulse and always reads 0, so reading it
+    // back proves nothing the DUT could fail. STATUS returning to 0 is the
+    // contract.
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
-    uint32_t clr_rd = rd(clear_addr);
     bus = rd(status_addr);
-    if (clr_rd != 0 || bus != 0) {
+    if (bus != 0) {
         sep_mbx_puts("FAIL: CHK-HOSTINTG after CLEAR STATUS=0x");
         sep_mbx_puthex(bus);
-        sep_mbx_puts(" CLEAR=0x");
-        sep_mbx_puthex(clr_rd);
-        sep_mbx_puts(", both expected 0\n");
+        sep_mbx_puts(", expected 0\n");
         e++;
     }
     wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
@@ -799,9 +808,17 @@ static int chk_host_fabric(void) {
     }
 
     fill_src_words(nwords, snap);
-    (void)dma_run(src_base, dead, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    // As above: the transfer must terminate, or a wedged engine passes on a
+    // latch the fabric raised from its first beat.
+    uint32_t st_fab = dma_run(src_base, dead, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                              SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                              SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    if (!(st_fab & DONE_OR_ERR)) {
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA neither completed nor errored, STATUS=0x");
+        sep_mbx_puthex(st_fab);
+        sep_mbx_putc('\n');
+        e++;
+    }
     bus = rd(status_addr);
     if (bus != host_bit) {
         sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=0x");
@@ -812,15 +829,15 @@ static int chk_host_fabric(void) {
         e++;
     }
 
+    // DMA_BUS_ERR_CLEAR is sw=w singlepulse and always reads 0, so reading it
+    // back proves nothing the DUT could fail. STATUS returning to 0 is the
+    // contract.
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
-    uint32_t clr_rd = rd(clear_addr);
     bus = rd(status_addr);
-    if (clr_rd != 0 || bus != 0) {
+    if (bus != 0) {
         sep_mbx_puts("FAIL: CHK-HOSTFABRIC after CLEAR STATUS=0x");
         sep_mbx_puthex(bus);
-        sep_mbx_puts(" CLEAR=0x");
-        sep_mbx_puthex(clr_rd);
-        sep_mbx_puts(", both expected 0\n");
+        sep_mbx_puts(", expected 0\n");
         e++;
     }
     wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);

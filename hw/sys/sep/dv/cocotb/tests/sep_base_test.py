@@ -17,6 +17,19 @@ import sys
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# A log record carrying a non-ASCII character raises UnicodeEncodeError inside the
+# logging handler when the interpreter's stdio encoding follows an ASCII locale,
+# and the traceback is reported as a simulation error rather than the failed print
+# it is. Shared VIP log strings outside this tree carry such characters, so escape
+# unencodable output instead of aborting on it. Nothing is suppressed: the record
+# still prints, with the offending character shown escaped.
+for _log_stream in (sys.stdout, sys.stderr):
+    try:
+        _log_stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
@@ -58,11 +71,6 @@ _DEFAULT_EFUSE_PRELOAD = (
 _STALL_CSR_TIMEOUT_NS = 50_000
 
 
-# Bit resolution for rd(): weak drives keep their strong value, everything else
-# unknown becomes 0.
-_LOGIC_RESOLVE = {"0": "0", "1": "1", "L": "0", "H": "1"}
-
-
 class sep_base_test(uvm_test):
     """Shared SEP test: env build, clock/reset bring-up, scenario hook."""
 
@@ -75,27 +83,22 @@ class sep_base_test(uvm_test):
 
     @staticmethod
     def rd(sig) -> int:
-        """Read a DUT signal as int, resolving unknown bits to zero.
+        """Read a DUT signal as int, resolving unknown bits to zero per BIT.
 
-        Per BIT, not per vector. Collapsing the whole read to 0 on any
-        unresolvable bit reports a wrong value for every other lane of a wide
-        probe -- a 256-bit scratch probe with one x elsewhere read as a zeroed
-        counter, which looks exactly like a counter that stopped. Only the
-        unknown bits become 0; the known bits keep their value.
+        A wide probe with one unknown bit still yields every other lane: a
+        256-bit scratch probe resolved as a whole would read as a zeroed
+        counter, which is indistinguishable from a counter that stopped.
+
+        Callers that must distinguish "unknown" from "zero" cannot use this.
         """
         try:
             return int(sig.value)
         except Exception:
             pass
         try:
-            binstr = str(sig.value)
+            return int(sig.value.resolve("zeros"))
         except Exception:
             return 0
-        # Weak drives resolve to their strong value; only genuinely unknown bits
-        # become 0. str() is the supported spelling in cocotb 2.x -- the binstr
-        # getter is deprecated.
-        resolved = "".join(_LOGIC_RESOLVE.get(c, "0") for c in binstr)
-        return int(resolved, 2) if resolved else 0
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
@@ -194,6 +197,24 @@ class sep_base_test(uvm_test):
             secure_tm = int(probe.value) & 0x1
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
+    def check_otp_jtag2axi_ungated(self) -> None:
+        """Require both OTP JTAG2AXIL disable bits to read 0.
+
+        LCC ties ``dbg_disable_o.smc_otp_jtag2axi`` and
+        ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
+        """
+        dut = cocotb.top
+        smc = self.rd(dut.dbg_disable_smc_otp_jtag2axi_o)
+        sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
+        if smc != 0 or sep != 0:
+            raise AssertionError(
+                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, "
+                "expected both 0"
+            )
+        self.logger.info(
+            "CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0"
+        )
+
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
@@ -211,6 +232,7 @@ class sep_base_test(uvm_test):
                 self.logger.info("SEP fuse sense done at cycle %d", cycle)
                 await ClockCycles(dut.clk_i, 20)
                 self._check_efuse_shadow_after_sense()
+                self.check_otp_jtag2axi_ungated()
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 

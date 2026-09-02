@@ -213,7 +213,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_irq_ip_to_aggregator_test`
 |no_cpu
 |ocah_axi_vip
-|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path and HMAC peripheral-bridge bus-error bits with a through-adapter SLVERR, watches aggregator bits 39 and 41, and clears both.
+|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 39 and 41, and clears both.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -225,7 +225,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`
 |cpu, real fuse sense
 |ocah_axi_vip, ocah_jtag_vip, CPU FW
-|The debug-port counterpart to the two-processor coexistence test.
+|The debug-port counterpart to the two-processor coexistence test. After sense-done both OTP JTAG2AXIL `dbg_disable` bits read 0.
 |`sep_nmi_sanity_test`
 |cpu
 |ocah_axi_vip, CPU FW
@@ -545,7 +545,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |DMA host-path command integrity
 |PROVEN
-|`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 40; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both to 0; a legal copy then matches the source.
+|`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 40; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source.
 
 |SRAM datapath
 |PROVEN
@@ -1679,9 +1679,9 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 . Clear the test bit and the pending state; wait for deassertion.
 . Confirm both bus-error STATUS registers and aggregator bits 39 and 41 read 0.
 . Read the unused word between the last DMA `INTR_SRC_ADDR` and the first `INTR_SRC_WR_VAL`; require SLVERR, exclusive `reg_path_err`, and bit 39.
-. Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 39 read 0. The CLEAR register itself reads 0.
+. Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 39 read 0.
 . Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 41. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 41 read 0.
-. Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`). Each CLEAR register itself reads 0.
+. Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`).
 
 *Checkers*:
 
@@ -1699,10 +1699,10 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 |CHK-BUSERR-PERIPH
 |Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 41 is 1; bit 39 stays 0.
 |CHK-BUSERR-CLR
-|Each matching CLEAR write returns its STATUS word and its aggregator bit to 0. The CLEAR register itself reads 0.
+|Each matching CLEAR write returns its STATUS word and its aggregator bit to 0. The CLEAR registers are write-only single-pulse fields that always read 0, so their read value is not graded.
 |===
 
-*Not claimed*: DMA host-path integrity (`host_path_err` / bit 40) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — those adapter windows are packed to the last register. Lockstep punch-through.
+*Not claimed*: DMA host-path integrity (`host_path_err` / bit 40) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — those adapter windows are packed to the last register. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of `reg_path_err` are unproven.
 
 '''''
 
@@ -3032,7 +3032,7 @@ deferred rather than covered.
 . While the range registers are still writable: `RANGE_VALID=0` raises `range_valid_error`, and an enabled range whose limit sits below its base raises exclusive `base_limit_error` with `STATUS.done` clear. Then lock `RANGE_REGWEN`.
 . Walk INCR / FIXED / WRAP × 1B/2B/4B; consume the seed-patched SCENARIO line.
 . Provoke one invalid opcode, then four exclusive address-alignment refusals; a clean copy after each error class proves the engine recovers.
-. With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 40. `DMA_BUS_ERR_CLEAR` returns STATUS, the CLEAR register, and bit 40 to 0. A legal copy with the pin low then matches the source snapshot.
+. With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 40. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 40 to 0. A legal copy with the pin low then matches the source snapshot.
 . With the pin low, one copy whose destination is the first word past the DMA CSR window raises exclusive `host_path_err` from the fabric DECERR. CLEAR and a legal recovery copy follow.
 
 *Checkers*:
@@ -3057,14 +3057,18 @@ deferred rather than covered.
 |CHK-ERR-ADDR
 |The address validation the engine applies before it moves a byte. Four refused descriptors, each asserting its `ERROR_CODE` bit *exclusively*: a 4-byte transfer whose source is not 4-byte aligned raises `src_addr_error`, the same on the destination raises `dst_addr_error`, a 2-byte transfer on an odd source raises `src_addr_error`, and a 2-byte transfer on an odd destination raises `dst_addr_error`. None may set `STATUS.done`, and a clean copy after the four proves the engine recovers. The inverted-range leg sits in `CHK-RANGE-REGWEN`, which must run before the one-way range lock closes.
 |CHK-HOSTINTG
-|A DMA-issued host command under `dma_host_intg_inject_i` raises exactly `DMA_BUS_ERR_STATUS.host_path_err`. Aggregator bit 40 is 1 and bit 39 stays 0. `DMA_BUS_ERR_CLEAR` returns STATUS, the CLEAR register, and bit 40 to 0. A legal copy with the pin low then matches the independent source snapshot and leaves `host_path_err` clear.
+|A DMA-issued host command under `dma_host_intg_inject_i` raises exactly `DMA_BUS_ERR_STATUS.host_path_err`. Aggregator bit 40 is 1 and bit 39 stays 0. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 40 to 0. A legal copy with the pin low then matches the independent source snapshot. Each leg also requires the transfer to terminate, so a wedged engine cannot pass on a latch raised from its first command.
 |CHK-HOSTFABRIC
 |A DMA transfer whose destination is the first word past the DMA CSR window, with the inject pin low, raises exactly `host_path_err`. `DMA_BUS_ERR_CLEAR` returns STATUS and the CLEAR register to 0. A legal copy then matches the independent source snapshot.
 |CHK-RAND-REP
 |Mode and width cells walk every seed; src/dst/length/fill come from the run seed.
 |===
 
-*Not claimed*: lockstep punch-through. Register-path command-integrity inject (the DMA hole proves the unmapped SLVERR term of `reg_path_err`).
+*Not claimed*: lockstep punch-through. The register path (`reg_path_err`) is not
+exercised by this leaf at all; the unmapped-window term is proven on the
+`sep_irq_ip_to_aggregator_test` card. Persistence across a CPU-only reset, and
+the rule that a fault arriving in the clear cycle still latches — both stated in
+the register description — are unproven here.
 
 '''''
 

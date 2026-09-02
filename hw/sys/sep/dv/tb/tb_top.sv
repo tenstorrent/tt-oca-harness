@@ -388,6 +388,11 @@ module sep_uvm_top
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
     output logic              secure_tm_o,
+    // OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
+    // both to 0; the fuse controller enforces access. Sliced here so cocotb
+    // can read them without a packed-struct field walk.
+    output logic              dbg_disable_smc_otp_jtag2axi_o,
+    output logic              dbg_disable_sep_otp_jtag2axi_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
     // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
@@ -568,6 +573,9 @@ module sep_uvm_top
     // lockstep_ctrl_i would reach the core as X under RV_LOCKSTEP_ENABLE.
     sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i = '0;
     sep_pkg::sep_lockstep_status_t lockstep_status_o;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
+    assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
+    assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
@@ -776,7 +784,7 @@ module sep_uvm_top
 
         // New wrapper status/debug outputs: observability only, left open.
         .lc_state_o                   (),
-        .dbg_disable_o                (),
+        .dbg_disable_o                (dbg_disable_w),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
