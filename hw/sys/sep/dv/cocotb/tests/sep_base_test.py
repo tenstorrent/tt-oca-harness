@@ -17,6 +17,19 @@ import sys
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# A log record carrying a non-ASCII character raises UnicodeEncodeError inside the
+# logging handler when the interpreter's stdio encoding follows an ASCII locale,
+# and the traceback is reported as a simulation error rather than the failed print
+# it is. Shared VIP log strings outside this tree carry such characters, so escape
+# unencodable output instead of aborting on it. Nothing is suppressed: the record
+# still prints, with the offending character shown escaped.
+for _log_stream in (sys.stdout, sys.stderr):
+    try:
+        _log_stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
@@ -70,10 +83,35 @@ class sep_base_test(uvm_test):
 
     @staticmethod
     def rd(sig) -> int:
-        """Read a DUT signal as int, resolving X/Z to zero via the env policy."""
+        """Read a DUT signal as int, resolving unknown bits to zero per BIT.
+
+        A wide probe with one unknown bit still yields every other lane: a
+        256-bit scratch probe resolved as a whole would read as a zeroed
+        counter, which is indistinguishable from a counter that stopped.
+
+        Two cocotb versions are in use here -- the Verilator flow runs 2.x,
+        which offers LogicArray.resolve(), and the VCS flow runs 1.x, which
+        does not and exposes the bit string instead. Both paths are kept so a
+        wide read does not silently collapse on either.
+
+        Callers that must distinguish "unknown" from "zero" cannot use this.
+        """
+        value = sig.value
         try:
-            return int(sig.value)
+            return int(value)
         except Exception:
+            pass
+        resolve = getattr(value, "resolve", None)
+        if resolve is not None:
+            try:
+                return int(resolve("zeros"))
+            except Exception:
+                pass
+        bits = getattr(value, "binstr", None) or str(value)
+        resolved = "".join(c if c in "01" else "1" if c in "hH" else "0" for c in bits)
+        try:
+            return int(resolved, 2)
+        except ValueError:
             return 0
 
     @staticmethod
@@ -142,6 +180,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -172,6 +211,21 @@ class sep_base_test(uvm_test):
             secure_tm = int(probe.value) & 0x1
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
+    def check_otp_jtag2axi_ungated(self) -> None:
+        """Require both OTP JTAG2AXIL disable bits to read 0.
+
+        LCC ties ``dbg_disable_o.smc_otp_jtag2axi`` and
+        ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
+        """
+        dut = cocotb.top
+        smc = self.rd(dut.dbg_disable_smc_otp_jtag2axi_o)
+        sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
+        if smc != 0 or sep != 0:
+            raise AssertionError(
+                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
+            )
+        self.logger.info("CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0")
+
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
@@ -189,6 +243,7 @@ class sep_base_test(uvm_test):
                 self.logger.info("SEP fuse sense done at cycle %d", cycle)
                 await ClockCycles(dut.clk_i, 20)
                 self._check_efuse_shadow_after_sense()
+                self.check_otp_jtag2axi_ungated()
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 
