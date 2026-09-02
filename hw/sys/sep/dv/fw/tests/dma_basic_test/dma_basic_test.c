@@ -294,10 +294,13 @@ static int chk_range_regwen(void) {
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
     err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    // EXCLUSIVE compare: an ERROR_CODE that raises base_limit_error together with
+    // an address or width bit means the block mis-classified the fault, and a
+    // subset test would call that a pass.
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) ||
-        !(err & SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm)) {
+        err != SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN limit below base did not raise "
-                     "base_limit_error (status ");
+                     "base_limit_error alone (status ");
         sep_mbx_puthex(st);
         sep_mbx_puts(" err ");
         sep_mbx_puthex(err);
@@ -543,6 +546,8 @@ static int chk_err_addr(void) {
         // 2-byte width demands bit 0 clear on both.
         {"src misaligned for 2B", src_base + 1u, dst_base, SEP_DMA_WIDTH_2B,
          SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
+        {"dst misaligned for 2B", src_base, dst_base + 1u, SEP_DMA_WIDTH_2B,
+         SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm},
     };
     const uint32_t ncells = (uint32_t)(sizeof(cells) / sizeof(cells[0]));
     const uint32_t nwords = copy_bytes / 4u;
@@ -599,9 +604,11 @@ static int chk_err_addr(void) {
         }
     }
     if (!e) {
-        sep_mbx_puts("CHK-ERR-ADDR PASS: 3 misaligned descriptors each raised their "
-                     "own ERROR_CODE bit exclusively, none set STATUS.done, and the "
-                     "engine copied correctly afterwards\n");
+        sep_mbx_puts("CHK-ERR-ADDR PASS: 4 misaligned descriptors, covering the "
+                     "source and destination alignment checks at both 4-byte and "
+                     "2-byte width, each raised exactly the expected ERROR_CODE bit "
+                     "and no other, none set STATUS.done, and the engine copied "
+                     "correctly afterwards\n");
     }
     return e;
 }

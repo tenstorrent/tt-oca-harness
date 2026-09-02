@@ -29,9 +29,6 @@ Checks:
   firmware self-check (each logs a positive PASS line):
     CHK-PROGRAM/CHK-READ : WREN+PP writes the words; READ returns them.
     CHK-ERASE            : sector ERASE -> READ returns all 0xFF.
-    CHK-WIP              : RDSR after the erase returns a defined status with WIP
-                           clear (the device model is instant-ready, so this fails
-                           on a wedged status path, not on erase latency).
     CHK-WEL-AUTOCLR      : the erase CONSUMED the write-enable latch (WEL clear).
     CHK-WP-PP            : a PAGE PROGRAM issued with WEL clear does not land --
                            the sector still reads 0xFF.
@@ -221,6 +218,11 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             mosi=dut.spi_mosi_o,
             miso=dut.spi_miso_i,
             name="sep_spi1_flash",
+            # Deliberately non-zero, and distinct from the 0x02 that SR1 reads
+            # with WEL set. CHK-RDSR2 in the firmware compares against this exact
+            # value (FLASH_SR2_SEEDED), so a stuck-low MISO returning 0x00 fails
+            # the check instead of passing it.
+            status_reg2=0x5A,
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.
@@ -297,12 +299,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 "SPI flash command breadth golden: neighbour PAGE PROGRAM mismatch"
             )
 
-        # The write-protect PAGE PROGRAM: the device must have taken NO payload
-        # from it. A device that accepted the program records the data bytes here
-        # (and the memory check below would then see the pattern, not 0xFF).
-        # Locate it by position among the PAGE PROGRAMs rather than by a fixed
-        # index into every transaction: an added or reordered command elsewhere
-        # in the walk would silently move a raw index onto a different opcode.
+        # The write-protect PAGE PROGRAM. Locate it by position among the PAGE
+        # PROGRAMs rather than by a fixed index into every transaction: an added
+        # or reordered command elsewhere in the walk would silently move a raw
+        # index onto a different opcode.
         pp_txns = [t for t in txns if t.get("opcode") == 0x02]
         if len(pp_txns) < cfg.WP_PP_NTH:
             raise AssertionError(
@@ -311,6 +311,11 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 f"saw {len(pp_txns)}"
             )
         wp_pp = pp_txns[cfg.WP_PP_NTH - 1]
+        # The device must have taken NO payload from it. Note what this can and
+        # cannot show: on WEL=0 the model drains to CS-high without decoding the
+        # address phase, so a refused program records addr=0 and "the controller
+        # truncated the command" is NOT distinguishable here. The memory compare
+        # below carries the real weight.
         wp_taken = bytes(wp_pp.get("data_in") or b"")
         if wp_taken:
             self.logger.error(
@@ -324,8 +329,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             )
 
         # Read back after BOTH the sector erase and the WEL-clear PAGE PROGRAM
-        # that followed it: 0xFF here means the erase wiped the page and the
-        # unprotected program did not put it back.
+        # that followed it. This reads the device model's stored array DIRECTLY,
+        # not over SPI, so it is independent of the read datapath the firmware
+        # CHK-WP-PP used: a program that landed while the read path returned a
+        # stuck 0xFF passes the firmware check and fails here.
         erased = flash.read_memory(cfg.addr, cfg.nwords * 4)
         if erased != b"\xff" * (cfg.nwords * 4):
             self.logger.error(
@@ -349,7 +356,8 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 "SPI flash command breadth golden: sector erase wiped the neighbour"
             )
         self.logger.info(
-            "CHK-WP-PP/BFM PASS: the WEL-clear PAGE PROGRAM took no payload and left 0x%06x erased",
+            "CHK-WP-PP/BFM PASS: the WEL-clear PAGE PROGRAM took no payload and the "
+            "device array at 0x%06x is still erased (checked off the SPI read path)",
             cfg.addr,
         )
         self.logger.info(

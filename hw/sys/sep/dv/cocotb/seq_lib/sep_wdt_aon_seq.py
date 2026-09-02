@@ -93,7 +93,12 @@ class SepWdtCfg:
         # Post-lock WDOG_COUNT probe value: far above any count the enabled
         # watchdog reaches organically in this window, so the readback cannot be
         # confused with free running.
-        self.postlock_wdog_count = 0x0000_8000
+        # Must stay below bark_prelock: the watchdog is still enabled and
+        # REGWEN-locked when this value is written, so a probe at or above the
+        # bark threshold fires an unintended bark on the seeds where the seeded
+        # threshold is low. Half the threshold is always below it and always
+        # non-zero, so the "the write landed" compare stays meaningful.
+        self.postlock_wdog_count = max(1, self.bark_prelock // 2)
 
     def summary(self) -> str:
         return (

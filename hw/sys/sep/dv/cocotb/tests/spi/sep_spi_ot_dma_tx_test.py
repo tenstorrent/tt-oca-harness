@@ -95,8 +95,6 @@ _BREADTH_FLOOR = 3
 # than once. Literal, and independent of _LEGAL_NWORDS: shrinking the stimulus to
 # a single-chunk transfer fails this instead of quietly shrinking the claim.
 _DMA_CHUNK_BYTES = 16
-# Bus bytes the BFM does not report in ``data_in``: the opcode plus 3 address bytes.
-_PP_HEADER_BYTES = 4
 
 
 @dataclass(frozen=True)
@@ -239,17 +237,23 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         # The length is counted off the bus (what the host actually clocked out),
         # not off the scenario table, and it is compared against the literal chunk
         # size. A DMA that delivered only its first chunk lands here.
-        on_bus = [_PP_HEADER_BYTES + len(bytes(t.get("data_in") or b"")) for t in pp_txns]
+        # Count PAYLOAD bytes only. Adding the 4 opcode/address header bytes and
+        # comparing against the payload chunk size lets the very defect this
+        # names through: a DMA that delivered exactly one 16-byte chunk and
+        # stopped reaches the device as 20 bus bytes, which clears a 16-byte bar.
+        on_bus = [len(bytes(t.get("data_in") or b"")) for t in pp_txns]
         short = [n for n in on_bus if n <= _DMA_CHUNK_BYTES]
         if short:
             raise AssertionError(
                 f"SPI DMA-TX breadth CHK-MULTICHUNK: {len(short)} PAGE PROGRAM(s) fit "
-                f"in one {_DMA_CHUNK_BYTES}-byte DMA chunk (bus byte counts {on_bus}), "
+                f"in one {_DMA_CHUNK_BYTES}-byte DMA chunk (payload byte counts "
+                f"{on_bus}), "
                 "so the TX-watermark refill loop did not have to iterate"
             )
         self.logger.info(
-            "CHK-MULTICHUNK PASS: %d DMA-fed PAGE PROGRAM(s) reached the device with "
-            "bus byte counts %s, every one above the %d-byte DMA chunk (>= %d chunks each)",
+            "CHK-MULTICHUNK PASS: %d DMA-fed PAGE PROGRAM(s) reached the device "
+            "carrying %s payload bytes, every one past the %d-byte DMA chunk, so "
+            "the refill loop iterated at least %d time(s)",
             len(on_bus),
             on_bus,
             _DMA_CHUNK_BYTES,

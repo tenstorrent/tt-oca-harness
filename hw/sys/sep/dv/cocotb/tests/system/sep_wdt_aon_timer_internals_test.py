@@ -391,7 +391,14 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-REGWEN-SCOPE: WKUP_THOLD_LO write blocked by the WDOG lock "
             f"(0x{thold_rb:08x} != 0x{thold_val:08x})"
         )
+        # Stop the watchdog before poking its counter. WDOG_CTRL is still enabled
+        # from the pet check and BARK_THOLD holds a seeded value, so a probe above
+        # that threshold fires an unintended bark on roughly half the seeds and
+        # leaves the block in a seed-dependent interrupt state. WDOG_CTRL is
+        # itself REGWEN-locked, so disabling it here would be rejected -- park the
+        # counter at zero first and restore it after the probe instead.
         count_val = self.cfg_wdt.postlock_wdog_count
+        await self.wdt.write(WDOG_COUNT, 0)
         await self.wdt.write(WDOG_COUNT, count_val)
         landed, count_rb = await self._poll_at_least(
             WDOG_COUNT, count_val, timeout_cycles=40 * self._tick, step=4 * self._tick

@@ -48,6 +48,9 @@
 #define FLASH_CMD_WRDI 0x04u
 #define FLASH_CMD_RDSR 0x05u
 #define FLASH_CMD_RDSR2 0x35u
+// Non-zero SR2 the device model is built with. Must match status_reg2 in
+// cocotb/tests/spi/sep_spi_ot_flash_cmd_rand_test.py.
+#define FLASH_SR2_SEEDED 0x5Au
 #define FLASH_CMD_JEDEC 0x9Fu
 #define FLASH_CMD_PP 0x02u
 #define FLASH_CMD_READ 0x03u
@@ -258,7 +261,7 @@ int main(void) {
     // --- Load the scenario (directed defaults, or cocotb-patched per seed) ---
     if (g_spi1_params[0] != SPI1_PARAM_MAGIC) {
         sep_mbx_puts("FAIL: bad param magic\n");
-        return 1;
+        return errors + 1;
     }
     uint32_t addr = g_spi1_params[1];
     uint32_t nwords = g_spi1_params[2];
@@ -266,7 +269,7 @@ int main(void) {
         sep_mbx_puts("FAIL: bad nwords ");
         sep_mbx_puthex(nwords);
         sep_mbx_putc('\n');
-        return 1;
+        return errors + 1;
     }
     for (uint32_t i = 0; i < nwords; i++) {
         exp[i] = g_spi1_params[3 + i]; // stable copy of the (volatile) data words
@@ -282,7 +285,7 @@ int main(void) {
     uint32_t jedec = 0;
     if (flash_jedec(&jedec)) {
         sep_mbx_puts("FAIL: JEDEC timeout\n");
-        return 1;
+        return errors + 1;
     }
     if ((jedec & 0x00FFFFFFu) != FLASH_JEDEC_RX) {
         sep_mbx_puts("FAIL: CHK-JEDEC got ");
@@ -298,7 +301,7 @@ int main(void) {
     uint8_t sr;
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(rdsr) timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_rdsr_checked(&sr)) {
         sep_mbx_puts("FAIL: CHK-RDSR status read timed out after WREN\n");
@@ -312,7 +315,7 @@ int main(void) {
 
     if (flash_wrdi()) {
         sep_mbx_puts("FAIL: WRDI timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_rdsr_checked(&sr)) {
         sep_mbx_puts("FAIL: CHK-WRDI status read timed out after WRDI\n");
@@ -327,15 +330,15 @@ int main(void) {
     // --- PROGRAM path: WREN -> PP -> READ == pattern ---
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_page_program(addr, exp, nwords)) {
         sep_mbx_puts("FAIL: PAGE PROGRAM timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_read(addr, rd, nwords)) {
         sep_mbx_puts("FAIL: READ timeout\n");
-        return 1;
+        return errors + 1;
     }
     int prog_ok = 1;
     for (uint32_t i = 0; i < nwords; i++) {
@@ -355,7 +358,7 @@ int main(void) {
         sep_mbx_puts("CHK-PROGRAM/CHK-READ PASS: PP + READ match the pattern\n");
         if (flash_fast_read(addr, rd, nwords)) {
             sep_mbx_puts("FAIL: FAST READ timeout\n");
-            return 1;
+            return errors + 1;
         }
         int fast_ok = 1;
         for (uint32_t i = 0; i < nwords; i++) {
@@ -382,15 +385,15 @@ int main(void) {
     }
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(neighbour) timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_page_program(neigh, neigh_pat, nwords)) {
         sep_mbx_puts("FAIL: PAGE PROGRAM(neighbour) timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_read(neigh, neigh_rd, nwords)) {
         sep_mbx_puts("FAIL: READ(neighbour) timeout\n");
-        return 1;
+        return errors + 1;
     }
     for (uint32_t i = 0; i < nwords; i++) {
         if (neigh_rd[i] != neigh_pat[i]) {
@@ -404,15 +407,15 @@ int main(void) {
     // --- ERASE path: WREN -> ERASE -> READ == 0xFF, neighbour intact ---
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(erase) timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_sector_erase(addr)) {
         sep_mbx_puts("FAIL: ERASE timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_read(addr, rd, nwords)) {
         sep_mbx_puts("FAIL: READ(after erase) timeout\n");
-        return 1;
+        return errors + 1;
     }
     int erase_ok = 1;
     for (uint32_t i = 0; i < nwords; i++) {
@@ -430,7 +433,7 @@ int main(void) {
         int neigh_ok = 1;
         if (flash_read(neigh, neigh_rd, nwords)) {
             sep_mbx_puts("FAIL: READ(neighbour after erase) timeout\n");
-            return 1;
+            return errors + 1;
         }
         for (uint32_t i = 0; i < nwords; i++) {
             if (neigh_rd[i] != neigh_pat[i]) {
@@ -449,36 +452,23 @@ int main(void) {
         }
     }
 
-    // --- CHK-WIP / CHK-WEL-AUTOCLR: device status after the erase completed ---
-    // One RDSR carries two contracts. WIP: the device reports the erase complete.
-    // The model is instant-ready and never raises WIP, so this is "a defined
-    // status with WIP clear" -- it fails on a wedged status path, not on erase
-    // latency, and it is NOT a gate the readback above waited on. WEL: the erase
-    // must CONSUME the write-enable latch; a WEL left set leaves the device armed
-    // for a program nobody asked for, which CHK-WP-PP below then depends on.
+    // --- CHK-WEL-AUTOCLR: SECTOR ERASE must consume the write-enable latch ---
+    // A WEL left set leaves the device armed for a program nobody asked for,
+    // which is exactly the state CHK-WP-PP below relies on being absent. WIP is
+    // deliberately NOT a checker here: the device model is instant-ready and
+    // never raises it, so a "WIP clear" assertion could not fail.
     uint8_t sr_post;
     if (flash_rdsr_checked(&sr_post)) {
-        sep_mbx_puts("FAIL: CHK-WIP status read timed out after ERASE\n");
+        sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR status read timed out after ERASE\n");
+        errors++;
+    } else if (sr_post & FLASH_SR_WEL) {
+        sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR WEL still set after ERASE, sr=");
+        sep_mbx_puthex(sr_post);
+        sep_mbx_putc('\n');
         errors++;
     } else {
-        if (sr_post & FLASH_SR_WIP) {
-            sep_mbx_puts("FAIL: CHK-WIP WIP still set after ERASE, sr=");
-            sep_mbx_puthex(sr_post);
-            sep_mbx_putc('\n');
-            errors++;
-        } else {
-            sep_mbx_puts("CHK-WIP PASS: RDSR returned a defined status with WIP clear "
-                         "after ERASE\n");
-        }
-        if (sr_post & FLASH_SR_WEL) {
-            sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR WEL still set after ERASE, sr=");
-            sep_mbx_puthex(sr_post);
-            sep_mbx_putc('\n');
-            errors++;
-        } else {
-            sep_mbx_puts("CHK-WEL-AUTOCLR PASS: SECTOR ERASE consumed the write-enable "
-                         "latch (RDSR WEL clear)\n");
-        }
+        sep_mbx_puts("CHK-WEL-AUTOCLR PASS: SECTOR ERASE consumed the write-enable "
+                     "latch (RDSR WEL clear)\n");
     }
 
     // --- CHK-WP-PP: a PAGE PROGRAM issued with WEL clear must not land ---
@@ -488,11 +478,11 @@ int main(void) {
     // datapath as every other check, not an internal peek.
     if (flash_page_program(addr, exp, nwords)) {
         sep_mbx_puts("FAIL: CHK-WP-PP unprotected PAGE PROGRAM timeout\n");
-        return 1;
+        return errors + 1;
     }
     if (flash_read(addr, rd, nwords)) {
         sep_mbx_puts("FAIL: CHK-WP-PP readback timeout\n");
-        return 1;
+        return errors + 1;
     }
     int wp_ok = 1;
     for (uint32_t i = 0; i < nwords; i++) {
@@ -512,28 +502,32 @@ int main(void) {
     }
 
     // --- CHK-RDSR2: opcode 0x35 reads status register 2, not status register 1 ---
-    // Run it with WEL KNOWN set, so SR1 reads 0x02: a 0x35 that is decoded as (or
-    // aliased onto) 0x05 returns 0x02 and fails. SR2 has no WEL bit and reads 0x00.
+    // Run it with WEL KNOWN set, so SR1 reads 0x02: a 0x35 decoded as (or aliased
+    // onto) 0x05 returns 0x02 and fails. The device model is built with a
+    // deliberately non-zero SR2 (FLASH_SR2_SEEDED, matching status_reg2 in
+    // sep_spi_ot_flash_cmd_rand_test.py) so that an RX path that returns all-zero
+    // -- a stuck MISO, a byte count that never shifts -- fails here too. An SR2
+    // of 0x00 would let that dead path pass.
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(rdsr2) timeout\n");
-        return 1;
+        return errors + 1;
     }
     uint8_t sr2 = 0;
     if (flash_rdsr2(&sr2)) {
         sep_mbx_puts("FAIL: CHK-RDSR2 status-2 read timed out\n");
         errors++;
-    } else if (sr2 != 0x00u) {
+    } else if (sr2 != FLASH_SR2_SEEDED) {
         sep_mbx_puts("FAIL: CHK-RDSR2 got ");
         sep_mbx_puthex(sr2);
-        sep_mbx_puts(" exp 0 (0x35 must not return SR1, which reads 0x02 here)\n");
+        sep_mbx_puts(" exp 0x5a (SR1 reads 0x02 here; 0x00 means a dead RX path)\n");
         errors++;
     } else {
-        sep_mbx_puts("CHK-RDSR2 PASS: opcode 0x35 returned SR2 0x00 while WEL was set "
-                     "in SR1\n");
+        sep_mbx_puts("CHK-RDSR2 PASS: opcode 0x35 returned the seeded SR2 0x5a, not "
+                     "SR1 0x02 and not an all-zero RX\n");
     }
     if (flash_wrdi()) {
         sep_mbx_puts("FAIL: WRDI(rdsr2) timeout\n");
-        return 1;
+        return errors + 1;
     }
 
     // --- CHK-NO-ERROR: the OT SPI host saw no error across the whole sequence ---

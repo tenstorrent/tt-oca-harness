@@ -214,6 +214,21 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         # running and the cocotb-driven idle defaults persist across the pulse. Both
         # banks' arst_n deasserts on rst_ni (cold: rst_ni; warm: rst_ni && rst_warm_ni),
         # so both must return to the reset default.
+        # Re-arm BOTH banks first. The warm reset above cleared warm[1..7] and only
+        # warm[0] was rewritten, so without this the cold-reset assertion on those
+        # seven is satisfied by state the warm reset already produced and cannot
+        # detect a cold reset that misses the warm bank.
+        await self.scr.write_bank(SCRATCH_WARM_ADDRS, WARM_PATTERNS)
+        await self.scr.write_bank(SCRATCH_COLD_ADDRS, COLD_PATTERNS)
+        rearm_warm = await self.scr.read_bank(SCRATCH_WARM_ADDRS)
+        rearm_cold = await self.scr.read_bank(SCRATCH_COLD_ADDRS)
+        assert rearm_warm == list(WARM_PATTERNS) and rearm_cold == list(COLD_PATTERNS), (
+            "CHK-COLD-BANK: both banks must hold their patterns before the cold "
+            f"reset, got warm={[hex(v) for v in rearm_warm]} "
+            f"cold={[hex(v) for v in rearm_cold]}"
+        )
+        await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
+
         await self.resense()
         cold_cold = await self.scr.read(SCRATCH_COLD_0)
         warm_cold = await self.scr.read(SCRATCH_WARM_0)

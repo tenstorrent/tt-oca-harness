@@ -386,15 +386,14 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puts("CHK-SPI-IDLE PASS: OT SPI idle + ERROR_STATUS==0\n");
     }
 
-    // --- Flash device completion: poll RDSR until WIP=0 before readback ---
-    // The flash BFM is instant-ready, so the first defined RDSR already has
-    // WIP=0. This poll is fail-closed on 0xFF/timeout, not a busy-then-idle
-    // waveform. CHK-DMA-TX below is the data proof.
+    // --- Precondition, not a checker: settle the device before the readback ---
+    // The flash BFM is instant-ready, so the first defined RDSR already reads
+    // WIP=0 and a "WIP clear" assertion could not fail. The poll stays because
+    // it is fail-closed on 0xFF/timeout. CHK-DMA-TX below is the data proof.
     if (flash_wait_wip_clear()) {
         errors++;
         return errors;
     }
-    sep_mbx_puts("CHK-WIP PASS: RDSR returned a defined status with WIP=0\n");
 
     // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
     if (flash_read(addr, rd, nwords)) {
