@@ -114,6 +114,24 @@ Result helpers:
 | `await write_result(addr, data, ...)` | `OcahAxiWriteResult` | Negative writes, exact response checks |
 | `await read_result(addr, ...)` | `OcahAxiReadResult` | Negative reads, data plus RRESP checks |
 
+`write_result`/`write` accept a contiguous partial `strb`: the selected
+bytes of `data` are written as a sub-word access (the backend derives WSTRB
+from address and length), so `strb=0x2` writes byte lane 1 only.
+Non-contiguous patterns (`0x5`, `0x9`, ...) are rejected with `ValueError`.
+
+Protocol-control operations (SV-UVM parity; see
+`ocah_axi_master_sequence.svh` for the same knobs on the SV side):
+
+| Method | Return | Use |
+|---|---|---|
+| `await write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew — AXI permits either arrival order — plus a deferred BREADY assert after the request phase |
+| `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
+
+Both operations require an idle engine on their direction (the skew is
+applied by pausing the backend's channel sources/sinks) and bound every
+phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
+`timed_out` result.
+
 Event helpers:
 
 | Method | Return | Use |
