@@ -8,8 +8,7 @@
 ====
 This section is currently under development.
 
-- Consistency in block selection for Linting Flows - `BLOCK` or `PATH`
-- More details on Yosys once finalised
+- More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
 ====
 
 This document specifies the development methodology for this project.
@@ -161,7 +160,8 @@ paper on Surfer]
 
 === Synthesis
 
-OCAH is designed around open-source workflows. For this reason, we have chosen to provide a synthesis flow using Yosys.
+OCAH is designed around open-source workflows. For this reason, we have chosen to
+provide a synthesis flow using Yosys.
 
 To synthesise OCAH, use the following command:
 
@@ -169,7 +169,8 @@ To synthesise OCAH, use the following command:
 make ocah-synth-all
 ```
 
-This may be constrained with `BLOCK` to synthesise a single block only, and the PDK used for synthesis may be selected with `TECH`.
+This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
+used for synthesis may be selected with `TECH`.
 
 === Linting
 
@@ -193,7 +194,9 @@ make format-sv
 
 The need for the above may be checked with `make format-sv-check`.
 
-The paths to search for files may be constrained with `LINT_PATH` and `FORMAT_PATH` respectively, for each rule.
+To run the linter only on a single block, use the `BLOCK` variable. The paths to
+search for files may be further constrained with `LINT_PATH` and `FORMAT_PATH`
+respectively, for each rule.
 
 ==== Verilog Linting with Verilator
 
@@ -203,7 +206,8 @@ Verilator structurally lints each discovered hardware block as its own top:
 make lint-verilator-all
 ```
 
-To run the linter only on a single block, use the `BLOCK` environment variable.
+To run the linter only on a single block, use the `BLOCK` environment variable. To
+further constrain the printed warnings, also use `VERILATOR_LINT_PATH`.
 
 ==== Verilog Style and Lint checking with Slang
 
@@ -213,13 +217,30 @@ To run the slang linter on all SystemVerilog files, use the following command:
 make lint-slang-all
 ```
 
-To run the linter only on a single block, use the `BLOCK` environment variable.
+To run the linter only on a single block, use the `BLOCK` environment variable. To
+further constrain the printed warnings, also use `SLANG_LINT_PATH`.
+
+==== C/C++ Style and Format with Clang-Format
+
+The C/C++ Firmware files included in each component are checked and formatted with
+`clang-format`. This may be managed by `uv`, or `OCAH_CLANG_FORMAT_SKIP_UV=1`
+may be set to use a system installation - detected in the usual way from `PATH`.
+
+```bash
+make format-c
+```
+
+To check for errors without modifying files, use `make format-c-check`.
+
+To run the linter only on a single block, use the `BLOCK` environment variable. The
+path for files to check and format may be alternatively constrained with `FORMAT_C_PATH`.
 
 ==== TCL Script Style, Lint and Format with Tclint
 
 To lint the TCL scripts (used to automate the synthesis workflow) in the repository,
 we use the package `tclint`. This may be managed by `uv` - run `uv sync` to install,
-or to use a system installed version, set `OCAH_TCLINT_SKIP_UV=1`.
+or to use a system installed version, detected in the usual way from `PATH`, set
+`OCAH_TCLINT_SKIP_UV=1`.
 
 To lint, use the following command:
 
