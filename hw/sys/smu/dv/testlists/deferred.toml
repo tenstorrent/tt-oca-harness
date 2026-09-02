@@ -734,6 +734,14 @@ tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 # Strap capture and its STRAPS_LO/HI registers moved out of the core reset_unit into
 # the smc_external supplementary window (adopter-owned). The open harness routes that
 # range to a DECERR slave and has no strap bus, so there is nothing to drive or read.
+#
+# COVERED IN NONFREE: nonfree/hw/sys/smc/dv/tb/tb_uvm/cocotb_tests/
+# smc_captured_straps_test.py exercises the full chain there (BP_GPIO pads ->
+# gpio_shim prim_latch_n -> captured_straps -> straps_reg -> AXI-Lite read at
+# 0xC0405800), including the pad latch this test disclaimed. Kept deferred rather
+# than deleted: it still documents the intent, and it becomes runnable here if the
+# open reference integration ever instantiates straps_reg (hw/top/smc_ip_integration.sv
+# -- the generated RTL is already committed at regs/gen/sv/blocks/straps_reg.sv).
 [[tests]]
 name = "smu_smc_gpio_strap_sanity_test"
 module = "smu_smc_gpio_strap_sanity_test"
