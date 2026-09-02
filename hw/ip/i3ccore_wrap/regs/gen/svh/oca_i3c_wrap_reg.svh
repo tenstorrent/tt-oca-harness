@@ -26,18 +26,18 @@
 
 
 localparam int unsigned OCA_I3C_WRAP_REG_MAP_BASE_ADDR                                                            = 32'h00000000;
-localparam int unsigned OCA_I3C_WRAP_REG_MAP_SIZE                                                                 = 32'h00000500;
+localparam int unsigned OCA_I3C_WRAP_REG_MAP_SIZE                                                                 = 32'h00006000;
 
 
 
 
 //==============================================================================
-// Addresses for Address Map: i3c_csr
+// Addresses for Address Map: i3c_csr[0]
 //==============================================================================
 
 
-localparam int unsigned I3C_CSR_REG_MAP_BASE_ADDR                                                                 = 32'h00000000;
-localparam int unsigned I3C_CSR_REG_MAP_SIZE                                                                      = 32'h00000500;
+localparam int unsigned I3C_CSR_0__REG_MAP_BASE_ADDR                                                              = 32'h00000000;
+localparam int unsigned I3C_CSR_0__REG_MAP_SIZE                                                                   = 32'h00000500;
 
 
 
@@ -46,8 +46,108 @@ localparam int unsigned I3C_CSR_REG_MAP_SIZE                                    
 // Memory: i3ccsr_window
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3CCSR_WINDOW_MEM_BASE_ADDR                                                       = 32'h00000000;
-localparam int unsigned I3C_CSR_I3CCSR_WINDOW_MEM_SIZE                                                            = 32'h00000500;
+localparam int unsigned I3C_CSR_0__I3CCSR_WINDOW_MEM_BASE_ADDR                                                    = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3CCSR_WINDOW_MEM_SIZE                                                         = 32'h00000500;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[1]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_1__REG_MAP_BASE_ADDR                                                              = 32'h00001000;
+localparam int unsigned I3C_CSR_1__REG_MAP_SIZE                                                                   = 32'h00000500;
+
+
+
+
+//==============================================================================
+// Memory: i3ccsr_window
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3CCSR_WINDOW_MEM_BASE_ADDR                                                    = 32'h00001000;
+localparam int unsigned I3C_CSR_1__I3CCSR_WINDOW_MEM_SIZE                                                         = 32'h00000500;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[2]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_2__REG_MAP_BASE_ADDR                                                              = 32'h00002000;
+localparam int unsigned I3C_CSR_2__REG_MAP_SIZE                                                                   = 32'h00000500;
+
+
+
+
+//==============================================================================
+// Memory: i3ccsr_window
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3CCSR_WINDOW_MEM_BASE_ADDR                                                    = 32'h00002000;
+localparam int unsigned I3C_CSR_2__I3CCSR_WINDOW_MEM_SIZE                                                         = 32'h00000500;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[3]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_3__REG_MAP_BASE_ADDR                                                              = 32'h00003000;
+localparam int unsigned I3C_CSR_3__REG_MAP_SIZE                                                                   = 32'h00000500;
+
+
+
+
+//==============================================================================
+// Memory: i3ccsr_window
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3CCSR_WINDOW_MEM_BASE_ADDR                                                    = 32'h00003000;
+localparam int unsigned I3C_CSR_3__I3CCSR_WINDOW_MEM_SIZE                                                         = 32'h00000500;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[4]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_4__REG_MAP_BASE_ADDR                                                              = 32'h00004000;
+localparam int unsigned I3C_CSR_4__REG_MAP_SIZE                                                                   = 32'h00000500;
+
+
+
+
+//==============================================================================
+// Memory: i3ccsr_window
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3CCSR_WINDOW_MEM_BASE_ADDR                                                    = 32'h00004000;
+localparam int unsigned I3C_CSR_4__I3CCSR_WINDOW_MEM_SIZE                                                         = 32'h00000500;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[5]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_5__REG_MAP_BASE_ADDR                                                              = 32'h00005000;
+localparam int unsigned I3C_CSR_5__REG_MAP_SIZE                                                                   = 32'h00000500;
+
+
+
+
+//==============================================================================
+// Memory: i3ccsr_window
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3CCSR_WINDOW_MEM_BASE_ADDR                                                    = 32'h00005000;
+localparam int unsigned I3C_CSR_5__I3CCSR_WINDOW_MEM_SIZE                                                         = 32'h00000500;
 
 
 
@@ -61,6 +161,21 @@ localparam int unsigned I3C_CSR_I3CCSR_WINDOW_MEM_SIZE                          
 //==============================================================================
 // Bit Fields for Address Map: oca_i3c_wrap
 //==============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -21,15 +21,16 @@ typedef struct __attribute__ ((__packed__)) {
 // addrmap - I3CCSR
 typedef struct __attribute__ ((__packed__)) {
     I3CCSR__i3ccsr_window_t i3ccsr_window;
-} I3CCSR_t;
+    uint8_t RESERVED_500_fff[0xb00];
+} I3CCSR__stride1000_t;
 
 // addrmap - oca_i3c_wrap
 typedef struct __attribute__ ((__packed__)) {
-    I3CCSR_t i3c_csr;
+    I3CCSR__stride1000_t i3c_csr[6];
 } oca_i3c_wrap_t;
 
 
-static_assert(sizeof(oca_i3c_wrap_t) == 0x500, "Packing error");
+static_assert(sizeof(oca_i3c_wrap_t) == 0x6000, "Packing error");
 
 #ifdef __cplusplus
 }

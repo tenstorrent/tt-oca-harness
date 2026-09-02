@@ -6,12 +6,20 @@
 package oca_i3c_wrap_addrmap_pkg;
 
 localparam longint unsigned OCA_I3C_WRAP_BASE_ADDR = 64'h0;
-localparam longint unsigned OCA_I3C_WRAP_SIZE = 64'h500;
+localparam longint unsigned OCA_I3C_WRAP_SIZE = 64'h6000;
 
-localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_BASE_ADDR = 64'h0;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_NUM = 64'h6;
 localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_SIZE = 64'h500;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_STRIDE = 64'h1000;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_TOTAL_SIZE = 64'h6000;
 
-localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'h0;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_NUM = 64'h6;
 localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
 
 

@@ -31851,81 +31851,17 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
-          <ipxact:name>oca_i3c_wrap_0</ipxact:name>
+          <ipxact:name>oca_i3c_wrap</ipxact:name>
           <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
           <ipxact:addressOffset>'hc003a000</ipxact:addressOffset>
-          <ipxact:range>'h500</ipxact:range>
+          <ipxact:range>'h6000</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>i3c_csr</ipxact:name>
             <ipxact:description>I3C controller CSR (stub: external address window only; real map is
 vendored from i3c-core and stubbed out of the open build)</ipxact:description>
+            <ipxact:dim>6</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h500</ipxact:range>
-          </ipxact:registerFile>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>oca_i3c_wrap_1</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
-          <ipxact:addressOffset>'hc003b000</ipxact:addressOffset>
-          <ipxact:range>'h500</ipxact:range>
-          <ipxact:registerFile>
-            <ipxact:name>i3c_csr</ipxact:name>
-            <ipxact:description>I3C controller CSR (stub: external address window only; real map is
-vendored from i3c-core and stubbed out of the open build)</ipxact:description>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h500</ipxact:range>
-          </ipxact:registerFile>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>oca_i3c_wrap_2</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
-          <ipxact:addressOffset>'hc003c000</ipxact:addressOffset>
-          <ipxact:range>'h500</ipxact:range>
-          <ipxact:registerFile>
-            <ipxact:name>i3c_csr</ipxact:name>
-            <ipxact:description>I3C controller CSR (stub: external address window only; real map is
-vendored from i3c-core and stubbed out of the open build)</ipxact:description>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h500</ipxact:range>
-          </ipxact:registerFile>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>oca_i3c_wrap_3</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
-          <ipxact:addressOffset>'hc003d000</ipxact:addressOffset>
-          <ipxact:range>'h500</ipxact:range>
-          <ipxact:registerFile>
-            <ipxact:name>i3c_csr</ipxact:name>
-            <ipxact:description>I3C controller CSR (stub: external address window only; real map is
-vendored from i3c-core and stubbed out of the open build)</ipxact:description>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h500</ipxact:range>
-          </ipxact:registerFile>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>oca_i3c_wrap_4</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
-          <ipxact:addressOffset>'hc003e000</ipxact:addressOffset>
-          <ipxact:range>'h500</ipxact:range>
-          <ipxact:registerFile>
-            <ipxact:name>i3c_csr</ipxact:name>
-            <ipxact:description>I3C controller CSR (stub: external address window only; real map is
-vendored from i3c-core and stubbed out of the open build)</ipxact:description>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h500</ipxact:range>
-          </ipxact:registerFile>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>oca_i3c_wrap_5</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
-          <ipxact:addressOffset>'hc003f000</ipxact:addressOffset>
-          <ipxact:range>'h500</ipxact:range>
-          <ipxact:registerFile>
-            <ipxact:name>i3c_csr</ipxact:name>
-            <ipxact:description>I3C controller CSR (stub: external address window only; real map is
-vendored from i3c-core and stubbed out of the open build)</ipxact:description>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h500</ipxact:range>
+            <ipxact:range>'h1000</ipxact:range>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>

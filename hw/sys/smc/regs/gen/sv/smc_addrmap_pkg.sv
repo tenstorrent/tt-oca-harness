@@ -383,59 +383,22 @@ localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_BASE_ADDR = 64'hC0039000;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_SIZE = 64'h2C0;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR = 64'hC003A000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_SIZE = 64'h500;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_BASE_ADDR = 64'hC003A000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_SIZE = 64'h6000;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_BASE_ADDR = 64'hC003A000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A000 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_SIZE = 64'h500;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_STRIDE = 64'h1000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_TOTAL_SIZE = 64'h6000;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003A000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_BASE_ADDR = 64'hC003B000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_BASE_ADDR = 64'hC003B000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003B000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_BASE_ADDR = 64'hC003C000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_BASE_ADDR = 64'hC003C000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003C000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_BASE_ADDR = 64'hC003D000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_BASE_ADDR = 64'hC003D000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003D000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_BASE_ADDR = 64'hC003E000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_BASE_ADDR = 64'hC003E000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003E000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_BASE_ADDR = 64'hC003F000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_BASE_ADDR = 64'hC003F000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003F000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A000 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
 
 localparam longint unsigned SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR = 64'hC0040000;
 localparam longint unsigned SMC_TOP_SPM_ROM_MEMORY_SIZE = 64'h20000;

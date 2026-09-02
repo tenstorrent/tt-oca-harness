@@ -9,15 +9,21 @@
   <ipxact:version>1.0</ipxact:version>
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
-      <ipxact:name>oca_i3c_wrap</ipxact:name>
-      <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
+      <ipxact:name>oca_i3c_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
-        <ipxact:name>i3c_csr</ipxact:name>
-        <ipxact:description>I3C controller CSR (stub: external address window only; real map is
-vendored from i3c-core and stubbed out of the open build)</ipxact:description>
+        <ipxact:name>oca_i3c_wrap</ipxact:name>
+        <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'h500</ipxact:range>
+        <ipxact:range>'h6000</ipxact:range>
         <ipxact:width>32</ipxact:width>
+        <ipxact:registerFile>
+          <ipxact:name>i3c_csr</ipxact:name>
+          <ipxact:description>I3C controller CSR (stub: external address window only; real map is
+vendored from i3c-core and stubbed out of the open build)</ipxact:description>
+          <ipxact:dim>6</ipxact:dim>
+          <ipxact:addressOffset>'h0</ipxact:addressOffset>
+          <ipxact:range>'h1000</ipxact:range>
+        </ipxact:registerFile>
       </ipxact:addressBlock>
     </ipxact:memoryMap>
   </ipxact:memoryMaps>
