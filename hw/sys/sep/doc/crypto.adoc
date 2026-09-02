@@ -62,6 +62,14 @@ is covered without per-register marking. The marked roots in `sep_crypto` are
 `u_key_manager_s3c_scan`. The integration module itself, public bus
 infrastructure, and combinational entropy muxes are not Class 2 roots.
 
+[[crypto-single-beat-only]]
+==== Single-Beat Access Only
+
+The `sep_crypto` demux accepts single-beat transactions only. Any access whose
+`AxLEN` is non-zero is routed to the internal error slave and answered with
+DECERR on every beat, whatever its address; no beat reaches an accelerator.
+Software must access the whole crypto region with single-beat transactions.
+
 [[hmac-sha2]]
 ==== HMAC-SHA2
 

@@ -235,7 +235,7 @@ module sep_reset_ctrl
     // jtag_sep_reset_ctrl_i val and ovrd are on the TCK clock domain.
     // This creates a known CDC for the reset bits under normal operation.
 
-    // If syncronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
+    // If synchronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
     // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
     sep_pkg::sep_sw_rst_t pre_jtag_rst_n;

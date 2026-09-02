@@ -6,7 +6,7 @@
  *
  *
  * TEST SELECTION:
- * To run specific tests, modify the RUN_TEST_* flags inthe occp_test_common.h file:
+ * To run specific tests, modify the RUN_TEST_* flags in the occp_test_common.h file:
  * - Set to 1 to enable a test category
  * - Set to 0 to disable a test category
  *

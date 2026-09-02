@@ -44,7 +44,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
         seed = self.random_seed()
         rng = random.Random(seed ^ 0xFAB_1D00)
         # Distinct non-zero 8-bit IDs per probe (seeded traffic).
-        arids = []
+        arids: list[int] = []
         while len(arids) < len(PROBE_ADDRS):
             arid = rng.randint(1, 0xFF)
             if arid not in arids:

@@ -603,8 +603,6 @@ module sep_crypto #(
     // Fuse Wrapper   //
     ////////////////////
 
-    logic prod_dbg_active;
-
     ///////////////////////////////
     // eFuse leg / SHIM merge    //
     ///////////////////////////////
@@ -692,7 +690,6 @@ module sep_crypto #(
         .fuse_sense_done_o                     (fuse_sense_done_o),
 
         .secure_tm_o                           (secure_tm_o),
-        .prod_dbg_active_i                     (prod_dbg_active),
 
         // DTP JTAG to AXI-Lite bus
         .axil_sep_otp_jtag_req_i               (axil_sep_otp_jtag_req_i),
@@ -735,7 +732,6 @@ module sep_crypto #(
         .lcc_demote_state_1_o (lcc_demote_state_1_o),
         .lcc_demote_state_2_o (lcc_demote_state_2_o),
         .lc_sigint_err_o      (lc_sigint_err_o),
-        .prod_dbg_active_o    (prod_dbg_active),
 
         .lifecycle_axi_req_i  (lifecycle_axi_req),
         .lifecycle_axi_resp_o (lifecycle_axi_resp)

@@ -23,7 +23,7 @@ OCAH_PHONY += uv-sync
 
 OCAH_NONFREE_REMOTE ?= git@github.com:tenstorrent/tt-oca-harness-nonfree.git
 # Pin the optional nonfree clone to a known-good commit (override to float).
-OCAH_NONFREE_COMMIT ?= 8aa7807138563ca99b257c13ec5300bed2048081
+OCAH_NONFREE_COMMIT ?= bbb758bce5ad39bf9b5b908a28aa661c3e2906fb
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
@@ -56,6 +56,13 @@ include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
 include $(OCAH_ROOT)/flows/lint/ruff.mk
+include $(OCAH_ROOT)/flows/lint/mypy.mk
+include $(OCAH_ROOT)/flows/lint/codespell.mk
+include $(OCAH_ROOT)/flows/lint/markdownlint.mk
+include $(OCAH_ROOT)/flows/lint/yamllint.mk
+include $(OCAH_ROOT)/flows/lint/tomllint.mk
+include $(OCAH_ROOT)/flows/lint/checkmake.mk
+include $(OCAH_ROOT)/flows/lint/shell.mk
 include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
