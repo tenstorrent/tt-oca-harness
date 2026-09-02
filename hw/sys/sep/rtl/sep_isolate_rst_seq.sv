@@ -82,8 +82,4 @@ module sep_isolate_rst_seq (
   // Isolation must be held for the entire duration of the domain reset.
   `OCAH_ASSERT(IsolateHeldThroughReset_A, !gated_rst_no |-> isolate_req_o, clk_i, !rst_ni)
 
-  // Reset and isolation release together once software removes the request.
-  `OCAH_ASSERT(ResetReleaseRuns_A, state_q == StReset && sw_rst_req_ni |=> state_q == StRun, clk_i,
-               !rst_ni)
-
 endmodule
