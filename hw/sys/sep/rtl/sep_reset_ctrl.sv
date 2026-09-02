@@ -5,10 +5,11 @@
 // SEP Reset Controller
 //
 // Provides software-controllable reset for KM and crypto accelerators.
-// Each bit in the SW_RESET register gates the SEP reset for one IP, and the
-// JTAG IC_RESET slice can override the result. AXI-aware reset sequencing
-// lives next to the target ports: sep_crypto for the accelerators, sep_trng
-// for the entropy complex.
+// Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM which
+// requests isolation of that domain's AXI paths, waits for them to drain,
+// and then asserts the domain's sequenced reset. Reset primitives combine the
+// sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides
+// for KM, OTBN, AES, HMAC, KMAC, and the internal TRNG complex.
 //
 // Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
@@ -23,6 +24,8 @@
 module sep_reset_ctrl
     (
         input  logic   clk_i,
+        // Cold reset for the isolation sequencing FSMs
+        input logic    rst_ni,
 
         // Aggregated WDT Resets from SMC and SEP
         input  logic   wdt_rst_ni,
@@ -45,17 +48,25 @@ module sep_reset_ctrl
         input  logic   scan_rst_ni,
 
         // sep_reset_n AND wdt_rst_ni
-        output logic        sep_cpu_reset_no,
+        output logic   sep_cpu_reset_no,
 
-        // Reset outputs (active-low, one per IP)
+        // Isolation handshake with sep_crypto's AXI interconnect (one per IP)
+        output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,
+        input  sep_pkg::sep_crypto_isolate_t sep_crypto_isolated_i,
+
+        // Isolation-sequenced resets to sep_crypto (active-low, one per IP)
         // Potentially overridden by JTAG overrides
-        output sep_pkg::sep_sw_rst_t sep_sw_rst_no
+        output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no
 
     );
     // Internal reset signal (after JTAG override) for efuse sensing being done
-    logic                   sep_reset_n;
+    logic                     sep_reset_n;
     // CPU reset = sep_reset_n gated with the Aggregated WDT Resets from SMC and SEP
-    assign sep_cpu_reset_no = sep_reset_n & wdt_rst_ni;
+    prim_and2 #(.Width(1)) u_sep_cpu_rst_and (
+        .in0_i (sep_reset_n),
+        .in1_i (wdt_rst_ni),
+        .out_o (sep_cpu_reset_no)
+    );
 
     // =========================================================================
     // AXI4 -> AXI-Lite conversion for the generated reg block
@@ -128,8 +139,98 @@ module sep_reset_ctrl
     assign sw_reset_bits.km     = hwif_out.SW_RESET_N.km_sw_rst_n.value;
 
     // =========================================================================
-    // Apply JTAG overrides to the reset bits
+    // Isolate/reset sequencing, one FSM per SW_RESET_N domain
     // =========================================================================
+    // Each engine domain owns its host-path isolate and shares its KM-path
+    // isolate with the KM domain: the KM path must be drained before either
+    // side's reset may assert.
+
+    logic otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req;
+    logic km_isolate_req, trng_isolate_req;
+    sep_pkg::sep_sw_rst_t isolated_rst_n;
+
+    sep_isolate_rst_seq u_otbn_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.otbn),
+        .isolated_i   (sep_crypto_isolated_i.host_otbn & sep_crypto_isolated_i.km_otbn),
+        .isolate_req_o(otbn_isolate_req),
+        .gated_rst_no (isolated_rst_n.otbn)
+    );
+
+    sep_isolate_rst_seq u_aes_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.aes),
+        .isolated_i   (sep_crypto_isolated_i.host_aes & sep_crypto_isolated_i.km_aes),
+        .isolate_req_o(aes_isolate_req),
+        .gated_rst_no (isolated_rst_n.aes)
+    );
+
+    sep_isolate_rst_seq u_hmac_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.hmac),
+        .isolated_i   (sep_crypto_isolated_i.host_hmac & sep_crypto_isolated_i.km_hmac),
+        .isolate_req_o(hmac_isolate_req),
+        .gated_rst_no (isolated_rst_n.hmac)
+    );
+
+    sep_isolate_rst_seq u_kmac_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.kmac),
+        .isolated_i   (sep_crypto_isolated_i.host_kmac & sep_crypto_isolated_i.km_kmac),
+        .isolate_req_o(kmac_isolate_req),
+        .gated_rst_no (isolated_rst_n.kmac)
+    );
+
+    // KM reset waits for all of the KM's master paths to drain.
+    sep_isolate_rst_seq u_km_isolate_seq (
+        .clk_i          (clk_i),
+        .rst_ni         (rst_ni),
+        .sw_rst_req_ni  (sw_reset_bits.km),
+        .isolated_i     (sep_crypto_isolated_i.km_otbn & sep_crypto_isolated_i.km_aes &
+                         sep_crypto_isolated_i.km_hmac & sep_crypto_isolated_i.km_kmac &
+                         sep_crypto_isolated_i.km_abr  & sep_crypto_isolated_i.km_efuse),
+        .isolate_req_o  (km_isolate_req),
+        .gated_rst_no   (isolated_rst_n.km)
+    );
+
+    // The TRNG reset is shared by the entropy source, CSRNG, and EDN.
+    sep_isolate_rst_seq u_trng_isolate_seq (
+        .clk_i          (clk_i),
+        .rst_ni         (rst_ni),
+        .sw_rst_req_ni  (sw_reset_bits.trng),
+        .isolated_i     (sep_crypto_isolated_i.trng_entropy_source &
+                         sep_crypto_isolated_i.trng_csrng &
+                         sep_crypto_isolated_i.trng_edn),
+        .isolate_req_o  (trng_isolate_req),
+        .gated_rst_no   (isolated_rst_n.trng)
+    );
+
+    // Host-path isolates belong to their engine; KM-path isolates isolate when
+    // either the engine or the KM is being reset.
+    assign sep_crypto_isolate_req_o.trng_entropy_source = trng_isolate_req;
+    assign sep_crypto_isolate_req_o.trng_csrng          = trng_isolate_req;
+    assign sep_crypto_isolate_req_o.trng_edn            = trng_isolate_req;
+    assign sep_crypto_isolate_req_o.host_otbn = otbn_isolate_req;
+    assign sep_crypto_isolate_req_o.host_aes  = aes_isolate_req;
+    assign sep_crypto_isolate_req_o.host_hmac = hmac_isolate_req;
+    assign sep_crypto_isolate_req_o.host_kmac = kmac_isolate_req;
+    assign sep_crypto_isolate_req_o.km_otbn   = otbn_isolate_req | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_aes    = aes_isolate_req  | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_hmac   = hmac_isolate_req | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_kmac   = kmac_isolate_req | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_abr    = km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_efuse  = km_isolate_req;
+
+    // =========================================================================
+    // Apply JTAG overrides to the sequenced resets
+    // =========================================================================
+    // sep_reset_n is a boot-level subsystem reset, so it forces the sequenced
+    // resets unconditionally, bypassing the isolation sequencing. JTAG
+    // overrides act last so debug can force a reset regardless of isolation.
 
     // jtag_sep_reset_ctrl_i val and ovrd are on the TCK clock domain.
     // This creates a known CDC for the reset bits under normal operation.
@@ -137,95 +238,85 @@ module sep_reset_ctrl
     // If synchronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
     // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
-    logic kmac_gated_rst_n, hmac_gated_rst_n, aes_gated_rst_n, otbn_gated_rst_n, km_gated_rst_n;
-    logic trng_gated_rst_n;
-    logic kmac_rst_n, hmac_rst_n, aes_rst_n, otbn_rst_n, km_rst_n;
-    logic trng_rst_n;
+    sep_pkg::sep_sw_rst_t pre_jtag_rst_n;
 
     prim_and2 #(.Width(1)) u_kmac_rst_and (
-        .in0_i (sw_reset_bits.kmac),
+        .in0_i (isolated_rst_n.kmac),
         .in1_i (sep_reset_n),
-        .out_o (kmac_gated_rst_n)
+        .out_o (pre_jtag_rst_n.kmac)
     );
 
     prim_and2 #(.Width(1)) u_hmac_rst_and (
-        .in0_i (sw_reset_bits.hmac),
+        .in0_i (isolated_rst_n.hmac),
         .in1_i (sep_reset_n),
-        .out_o (hmac_gated_rst_n)
+        .out_o (pre_jtag_rst_n.hmac)
     );
 
     prim_and2 #(.Width(1)) u_aes_rst_and (
-        .in0_i (sw_reset_bits.aes),
+        .in0_i (isolated_rst_n.aes),
         .in1_i (sep_reset_n),
-        .out_o (aes_gated_rst_n)
+        .out_o (pre_jtag_rst_n.aes)
     );
 
     prim_and2 #(.Width(1)) u_otbn_rst_and (
-        .in0_i (sw_reset_bits.otbn),
+        .in0_i (isolated_rst_n.otbn),
         .in1_i (sep_reset_n),
-        .out_o (otbn_gated_rst_n)
+        .out_o (pre_jtag_rst_n.otbn)
     );
 
     prim_and2 #(.Width(1)) u_km_rst_and (
-        .in0_i (sw_reset_bits.km),
+        .in0_i (isolated_rst_n.km),
         .in1_i (sep_reset_n),
-        .out_o (km_gated_rst_n)
+        .out_o (pre_jtag_rst_n.km)
     );
 
     prim_and2 #(.Width(1)) u_trng_rst_and (
-        .in0_i (sw_reset_bits.trng),
+        .in0_i (isolated_rst_n.trng),
         .in1_i (sep_reset_n),
-        .out_o (trng_gated_rst_n)
+        .out_o (pre_jtag_rst_n.trng)
     );
 
     prim_rst_mux2_hf_n u_kmac_rst_ovrd_mux (
-        .rst0_ni (kmac_gated_rst_n),
+        .rst0_ni (pre_jtag_rst_n.kmac),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd),
-        .rst_no  (kmac_rst_n)
+        .rst_no  (sep_crypto_gated_rst_no.kmac)
     );
 
     prim_rst_mux2_hf_n u_hmac_rst_ovrd_mux (
-        .rst0_ni (hmac_gated_rst_n),
+        .rst0_ni (pre_jtag_rst_n.hmac),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd),
-        .rst_no  (hmac_rst_n)
+        .rst_no  (sep_crypto_gated_rst_no.hmac)
     );
 
     prim_rst_mux2_hf_n u_aes_rst_ovrd_mux (
-        .rst0_ni (aes_gated_rst_n),
+        .rst0_ni (pre_jtag_rst_n.aes),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd),
-        .rst_no  (aes_rst_n)
+        .rst_no  (sep_crypto_gated_rst_no.aes)
     );
 
     prim_rst_mux2_hf_n u_otbn_rst_ovrd_mux (
-        .rst0_ni (otbn_gated_rst_n),
+        .rst0_ni (pre_jtag_rst_n.otbn),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd),
-        .rst_no  (otbn_rst_n)
+        .rst_no  (sep_crypto_gated_rst_no.otbn)
     );
 
     prim_rst_mux2_hf_n u_km_rst_ovrd_mux (
-        .rst0_ni (km_gated_rst_n),
+        .rst0_ni (pre_jtag_rst_n.km),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd),
-        .rst_no  (km_rst_n)
+        .rst_no  (sep_crypto_gated_rst_no.km)
     );
 
     prim_rst_mux2_hf_n u_trng_rst_ovrd_mux (
-        .rst0_ni (trng_gated_rst_n),
+        .rst0_ni (pre_jtag_rst_n.trng),
         .rst1_ni (jtag_sep_reset_ctrl_i.val.trng_jtag_rst_n_val),
         .sel_i   (jtag_sep_reset_ctrl_i.ovrd.trng_jtag_rst_n_ovrd),
-        .rst_no  (trng_rst_n)
+        .rst_no  (sep_crypto_gated_rst_no.trng)
     );
-
-    assign sep_sw_rst_no.kmac = kmac_rst_n;
-    assign sep_sw_rst_no.hmac = hmac_rst_n;
-    assign sep_sw_rst_no.aes  = aes_rst_n;
-    assign sep_sw_rst_no.otbn = otbn_rst_n;
-    assign sep_sw_rst_no.km   = km_rst_n;
-    assign sep_sw_rst_no.trng = trng_rst_n;
 
     // JTAG override to efuse reset
     prim_rst_mux2_hf_n u_sep_reset_ovrd_mux (
@@ -235,7 +326,6 @@ module sep_reset_ctrl
         .rst_no  (sep_reset_n)
     );
 
-    assign sep_reset_no       = sep_reset_n;
+    assign sep_reset_no = sep_reset_n;
 
 endmodule : sep_reset_ctrl
-
