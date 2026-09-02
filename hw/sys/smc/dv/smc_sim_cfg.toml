@@ -108,9 +108,6 @@ args = [
 [targets.default]
 description = "OSS SMC cocotb target"
 build_dir = "hw/sys/smc/dv/build/cocotb"
-defines = [
-  "SYNTHESIS",
-]
 
 [targets.default.tools.verilator]
 flags = [
