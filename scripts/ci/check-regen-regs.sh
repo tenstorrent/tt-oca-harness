@@ -9,6 +9,17 @@ cd "$ROOT"
 
 (($# == 0)) && set -- .
 
+readonly BATCH_SIZE=128
+readonly -a GENERATED_PATHS=(
+  ':(glob)**/regs/**/gen/**'
+  ':(glob)**/registers/**/gen/**'
+  # Vendored overlay RDL files exported as standalone blocks (see discover.mk):
+  # unlike every other block, their gen/ sits beside the .rdl under overlay/rdl/
+  # rather than under a regs/ or registers/ dir (e.g. pulp-platform idma's
+  # dma_ctrl).
+  ':(glob)**/rdl/**/gen/**'
+)
+
 check_clean() {
   local tree=$1 status
   status=$(git -C "$tree" status --porcelain=v1 --untracked-files=all)
@@ -20,11 +31,36 @@ check_clean() {
   return 1
 }
 
-is_preserved_output() {
-  local tree=$1 path=$2
-  [[ $(git -C "$tree" rev-parse --show-toplevel) == "$ROOT" ]] &&
-    [[ "$path" == "hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv" ||
-      "$path" == "hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv" ]]
+remove_tracked_outputs() {
+  local tree=$1 path
+  local -a batch=()
+
+  while IFS= read -r -d '' path; do
+    batch+=("$tree/$path")
+    if ((${#batch[@]} == BATCH_SIZE)); then
+      rm -f -- "${batch[@]}"
+      batch=()
+    fi
+  done < <(git -C "$tree" ls-files -z -- "${GENERATED_PATHS[@]}")
+  ((${#batch[@]} == 0)) || rm -f -- "${batch[@]}"
+}
+
+stamp_generated_outputs() {
+  local tree=$1 path
+  local -a batch=()
+
+  while IFS= read -r -d '' path; do
+    batch+=("$tree/$path")
+    if ((${#batch[@]} == BATCH_SIZE)); then
+      python3 "$ROOT/tools/regs/stamp_spdx.py" "${batch[@]}"
+      batch=()
+    fi
+  done < <(
+    git -C "$tree" ls-files -z -- "${GENERATED_PATHS[@]}"
+    git -C "$tree" ls-files -z --others --exclude-standard -- "${GENERATED_PATHS[@]}"
+  )
+  ((${#batch[@]} == 0)) ||
+    python3 "$ROOT/tools/regs/stamp_spdx.py" "${batch[@]}"
 }
 
 for tree in "$@"; do
@@ -34,22 +70,24 @@ done
 
 # ocah-regen-regs-clean removes every declared Make output; deleting any
 # tracked register file that survives that proves it is an obsolete,
-# no-longer-generated artifact. The eFuse-bank SV is hand-edited and
-# classified as external RTL, so it is the one file this check preserves.
+# no-longer-generated artifact.
 make ocah-regen-regs-clean
 for tree in "$@"; do
-  while IFS= read -r -d '' path; do
-    is_preserved_output "$tree" "$path" && continue
-    rm -f -- "$tree/$path"
-  done < <(
-    git -C "$tree" ls-files -z -- \
-      ':(glob)**/regs/**/gen/**' \
-      ':(glob)**/registers/**/gen/**'
-  )
+  remove_tracked_outputs "$tree"
 done
 
-# -B prevents checkout or filesystem timestamps from suppressing any recipe.
-make -B ocah-regen-regs ocah-regen-regs-adoc ocah-regen-regs-html
+# Sync once before the forced build. Without the skip, Make runs this phony
+# prerequisite while remaking depfiles and then again after it restarts.
+make uv-sync
+
+# -B prevents checkout or filesystem timestamps from suppressing any generator.
+# Batch SPDX stamping after generation: starting one Python interpreter for
+# every output dominates this metadata-heavy check when runners are busy.
+OCAH_REG_SKIP_UV_SYNC=1 OCAH_REG_DEFER_STAMP=1 \
+  make -B ocah-regen-regs ocah-regen-regs-adoc ocah-regen-regs-html
+for tree in "$@"; do
+  stamp_generated_outputs "$tree"
+done
 
 python3 scripts/ci/validate-regen-regs.py "$@"
 python3 hw/sys/sep/dv/cocotb/env/sep_reg_meta.py
