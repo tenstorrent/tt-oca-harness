@@ -85,6 +85,11 @@ sources = [
   # smc/smc_wrapper targets get prim_ram_1p_adv_ext but not the macro it wraps,
   # so every CPU icache/dcache tag+data array elaborated as a black box.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
+  # prim_ram_1p_adv backs the trace-mem banks in smc_ip_integration
+  # (gen_trace_mem_bank). Bender.yml:80-83 carries it only for
+  # any(sep_wrapper, smu_wrapper); VCS refuses the missing cell (Verilator
+  # -Wno-fatal black-boxes it). Same hole class as prim_ram_1p above.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
   # prim_subreg/prim_subreg_ext back idma_reg64_2d_reg_top (the iDMA register
   # file); prim_arbiter_tree backs log_engine. All three sit in Bender.yml under
   # any(opentitan_smu, sep, smu) only, so under smc/smc_wrapper the DMA CSR
@@ -142,9 +147,13 @@ args = [
 [targets.default]
 description = "OSS SMC cocotb target"
 build_dir = "hw/sys/smc/dv/build/cocotb"
-defines = [
-  "SYNTHESIS",
-]
+# SYNTHESIS is not set on any tool (same as SEP). It no-ops every
+# `ifndef SYNTHESIS` block (OpenTitan ASSERT macros, PeakRDL register
+# checks, Chipyard sim-only `$error` / plusargs). Verilator still compiles
+# those macros out because prim_assert.sv / ocah_assert.svh gate on
+# VERILATOR; VCS and Xcelium run them. The shared native profile keeps
+# COMMON_CELLS_ASSERTS_OFF, so PULP common_cells inline asserts stay off
+# on every backend. Verilator also keeps +define+ASSERTS_OFF below.
 
 [targets.default.tools.verilator]
 flags = [
