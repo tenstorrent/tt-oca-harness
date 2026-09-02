@@ -31,6 +31,9 @@
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : invalid opcode 0xF -> ERROR_CODE.opcode_error + STATUS.error;
 //                    W1C clear; a subsequent good copy recovers.
+//   CHK-HOSTINTG   : a DMA-issued host command under dma_host_intg_inject_i
+//                    raises exclusive host_path_err; CLEAR returns STATUS 0;
+//                    a subsequent good copy recovers.
 
 #include <stdint.h>
 
@@ -51,6 +54,9 @@
 // real 256 B copy completes in well under this many CSR-read iterations.
 #define POLL_ITERS 4000
 #define MAX_COPY_WORDS 8u
+// Bound between ARM and GO: inject must be high on the host a_valid
+// (tlul_cmd_intg_chk.err_o is gated on a_valid).
+#define HOSTINTG_ARM_SPIN 4000u
 
 // Scenario block. Layout: [0]=magic, [1]=src_off, [2]=dst_off, [3]=copy_bytes
 // (16 or 32, 4-byte aligned), [4]=fill seed. The cocotb test patches this from
@@ -677,6 +683,95 @@ static int chk_err_opcode(void) {
     return e;
 }
 
+// ---- CHK-HOSTINTG: DMA-issued command + inject -> exclusive host_path_err ----
+static int chk_host_intg(void) {
+    int e = 0;
+    const uint32_t SENT = 0x5A5A5A5Au;
+    const uint32_t nwords = copy_bytes / 4u;
+    uint32_t snap[MAX_COPY_WORDS];
+    const uint32_t host_bit = SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm;
+    const uint32_t status_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
+    const uint32_t clear_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
+
+    uint32_t bus = rd(status_addr);
+    if (bus != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" at baseline, expected 0\n");
+        return 1;
+    }
+
+    fill_src_words(nwords, snap);
+    clear_dst_words(nwords + 1, SENT);
+
+    // Inject must be high before GO. err_o is a_valid-gated.
+    sep_mbx_puts("CHK-HOSTINTG-ARM\n");
+    for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
+    }
+
+    (void)dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                  SEP_DMA_OPCODE_COPY);
+    bus = rd(status_addr);
+    if (bus != host_bit) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" after the injected command, expected exclusive host_path_err\n");
+        e++;
+    }
+
+    sep_mbx_puts("CHK-HOSTINTG-RELEASE\n");
+    for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
+    }
+
+    wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    uint32_t clr_rd = rd(clear_addr);
+    bus = rd(status_addr);
+    if (clr_rd != 0 || bus != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG after CLEAR STATUS=0x");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" CLEAR=0x");
+        sep_mbx_puthex(clr_rd);
+        sep_mbx_puts(", both expected 0\n");
+        e++;
+    }
+    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+
+    clear_dst_words(nwords + 1, SENT);
+    uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG recovery copy did not succeed (status ");
+        sep_mbx_puthex(st);
+        sep_mbx_puts(" err ");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(")\n");
+        e++;
+    } else {
+        volatile uint32_t *d = (volatile uint32_t *)dst_base;
+        for (uint32_t i = 0; i < nwords; i++) {
+            if (d[i] != snap[i]) {
+                sep_mbx_puts("FAIL: CHK-HOSTINTG recovery copy word ");
+                sep_mbx_puthex(i);
+                sep_mbx_puts(" got ");
+                sep_mbx_puthex(d[i]);
+                sep_mbx_puts(" exp ");
+                sep_mbx_puthex(snap[i]);
+                sep_mbx_putc('\n');
+                e++;
+            }
+        }
+    }
+    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    if (!e) {
+        sep_mbx_puts("CHK-HOSTINTG PASS: exclusive host_path_err after injected "
+                     "command integrity; CLEAR; recovery copy matches source\n");
+    }
+    return e;
+}
+
 int main(void) {
     int errors = 0;
 
@@ -716,10 +811,11 @@ int main(void) {
     errors += chk_done_rw1c();
     errors += chk_err_opcode();
     errors += chk_err_addr();
+    errors += chk_host_intg();
 
     if (errors == 0) {
         sep_mbx_puts("PASS: DMA basic -- reset/cfg-regwen/range-regwen/copy-mode/"
-                     "width/done-rw1c/err-opcode all OK\n");
+                     "width/done-rw1c/err-opcode/host-intg all OK\n");
     }
     return errors;
 }

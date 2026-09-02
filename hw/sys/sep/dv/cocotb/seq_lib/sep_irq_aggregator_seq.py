@@ -1,12 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CSRNG/EDN interrupt-injection driver for the IP->aggregator test.
+"""CSRNG/EDN interrupt-injection and TL-UL bus-error driver for the aggregator test.
 
 Drives each IP's INTR_ENABLE/INTR_TEST/INTR_STATE over the SEP AXI agent to
 inject a real interrupt via the standard OpenTitan INTR_TEST register and W1C-clear
 it, mirroring reference sep_irq_ip_to_aggregator_test_seq. The aggregated
 sep_internal_interrupts bit is observed by the test through the tb_top
 sep_internal_interrupts_probe_o mirror (the OSS analog of the reference suite's sep_irq_probe_if).
+
+Also issues one in-window unmapped 32-bit read through the Secure DMA adapter
+and one through the HMAC adapter. Those complete SLVERR and latch
+DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive aggregator bits [39]
+and [41]. A dead-space beat past the xbar window is DECERR and never sets
+err_o, so the probes stay inside each adapter's routed extent.
 
 OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
@@ -21,6 +27,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from env.sep_axi_agent import SepAxiOp
+from sep_reg_meta import HMAC, SEP_CPU_CTRL, sym
+
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # CSRNG/EDN stay literal: the generated top-level export has no symbol for either
@@ -32,6 +42,56 @@ EDN_BASE = 0x1091_5800
 INTR_STATE = 0x00
 INTR_ENABLE = 0x04
 INTR_TEST = 0x08
+
+RESP_SLVERR = 2
+
+# sep.sv sep_internal_interrupts: [39] DMA register-path, [41] periph OR.
+IRQ_DMA_REG_PATH = 39
+IRQ_DMA_HOST_PATH = 40
+IRQ_PERIPH_OR = 41
+
+DMA_STATUS_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_STATUS")
+DMA_CLEAR_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_CLEAR")
+PERIPH_STATUS_ADDR = SEP_CPU_CTRL.addr("PERIPH_BUS_ERR_STATUS")
+PERIPH_CLEAR_ADDR = SEP_CPU_CTRL.addr("PERIPH_BUS_ERR_CLEAR")
+DMA_REG_PATH_BIT = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_STATUS", "reg_path_err")
+DMA_HOST_PATH_BIT = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_STATUS", "host_path_err")
+DMA_CLR_BIT = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_CLEAR", "clr")
+PERIPH_HMAC_BIT = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", "hmac")
+PERIPH_HMAC_CLR = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", "hmac")
+
+
+def dma_reg_unmapped_addr() -> int:
+    """First unused word inside the Secure DMA xbar window.
+
+    The window is the register extent (not the 4 kB spec aperture). An access
+    past that extent DECERRs in the xbar and never reaches ``err_o``. The gap
+    between the last ``INTR_SRC_ADDR`` word and the first ``INTR_SRC_WR_VAL``
+    word is still routed to the DMA TL-UL adapter, which returns SLVERR.
+    """
+    after_src = sym("SECURE_DMA_INTR_SRC_ADDR_0_10__REG_ADDR") + 4
+    wr_val = sym("SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR")
+    if after_src >= wr_val:
+        raise RuntimeError(
+            f"DMA INTR_SRC gap closed: 0x{after_src:08x} >= 0x{wr_val:08x}"
+        )
+    return after_src
+
+
+def hmac_reg_unmapped_addr() -> int:
+    """First unused word between the HMAC CSRs and the message FIFO.
+
+    HMAC's crypto-demux window is the 8 kB export size. The CSR block ends at
+    ``MSG_LENGTH_UPPER``; the FIFO starts at ``HMAC_MSG_FIFO_MEM``. A word in
+    between is still routed to the HMAC TL-UL adapter.
+    """
+    after_csr = HMAC.addr("MSG_LENGTH_UPPER") + 4
+    fifo = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
+    if after_csr >= fifo:
+        raise RuntimeError(
+            f"HMAC CSR/FIFO gap closed: 0x{after_csr:08x} >= 0x{fifo:08x}"
+        )
+    return after_csr
 
 
 @dataclass(frozen=True)
@@ -79,3 +139,26 @@ class SepIrqIp(SepAxiRegDriver):
 
     async def read_state_bit(self, src: IrqSrc) -> int:
         return (await self._rd(src.base + INTR_STATE) >> src.test_bit) & 1
+
+    async def read32(self, addr: int) -> int:
+        return await self._rd(addr)
+
+    async def write32(self, addr: int, data: int) -> None:
+        await self._wr(addr, data)
+
+    async def read_expect_slverr(self, addr: int) -> int:
+        """One 32-bit read that must complete SLVERR (through-adapter, not DECERR)."""
+        seq = SepAxiAccessSeq(
+            f"{self._DRIVER_TAG.lower()}_rd_slverr",
+            op=SepAxiOp.READ,
+            addr=addr,
+            size=self._AXI_SIZE,
+            expect_error=True,
+        )
+        await self.test.start_seq(seq)
+        if seq.resp_code != RESP_SLVERR:
+            raise AssertionError(
+                f"{self._DRIVER_TAG} read @0x{addr:08x} resp={seq.resp_code}, "
+                f"expected SLVERR (2); DECERR means the xbar refused before the adapter"
+            )
+        return seq.rdata

@@ -28,6 +28,17 @@ EDN cmd_req_done/fatal_err -> bits 27..28), the full reference suite 3-phase che
   CHK-CLR   W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0
             (RW1C deassert path).
 
+Then one through-adapter SLVERR on the Secure DMA register hole and one on the
+HMAC CSR/FIFO gap:
+  CHK-BUSERR-BASE   both STATUS words and aggregator [39]/[41] read 0
+  CHK-BUSERR-DMA    DMA hole read is SLVERR; exclusive reg_path_err; [39]=1
+  CHK-BUSERR-PERIPH HMAC hole read is SLVERR; exclusive hmac bit; [41]=1
+  CHK-BUSERR-CLR    each matching CLEAR write returns STATUS and the PIC bit to 0
+
+A beat past the xbar window is DECERR and never sets err_o. This leaf
+does not start a DMA transfer, so it does not prove host_path_err /
+bit 40. Lockstep punch-through has no frontdoor on this build.
+
 INTR_TEST sets INTR_STATE regardless of IP functional state, so no entropy bring-
 up is needed: +skip_fuse_sense, no_cpu.
 """
@@ -38,7 +49,23 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
-from seq_lib.sep_irq_aggregator_seq import IRQ_TABLE, SepIrqIp
+from seq_lib.sep_irq_aggregator_seq import (
+    DMA_CLEAR_ADDR,
+    DMA_CLR_BIT,
+    DMA_REG_PATH_BIT,
+    DMA_STATUS_ADDR,
+    IRQ_DMA_HOST_PATH,
+    IRQ_DMA_REG_PATH,
+    IRQ_PERIPH_OR,
+    IRQ_TABLE,
+    PERIPH_CLEAR_ADDR,
+    PERIPH_HMAC_BIT,
+    PERIPH_HMAC_CLR,
+    PERIPH_STATUS_ADDR,
+    SepIrqIp,
+    dma_reg_unmapped_addr,
+    hmac_reg_unmapped_addr,
+)
 
 
 @pyuvm.test()
@@ -48,7 +75,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
     async def _sample_agg(self) -> int:
         """Sample the whole aggregate vector once (one clock edge + ReadOnly).
 
-        Returns the 32-bit probe value so callers can test any number of bits from
+        Returns the probe value so callers can test any number of bits from
         a single settled sample -- never await ReadOnly more than once per timestep.
         """
         await RisingEdge(cocotb.top.clk_i)
@@ -138,4 +165,104 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             "CHK-AGG PASS: all %d CSRNG/EDN IRQs propagate to the aggregator, "
             "one-hot, with RW1C clear",
             len(IRQ_TABLE),
+        )
+        await self._check_bus_err_paths()
+
+    async def _agg_bit(self, idx: int) -> int:
+        return (await self._sample_agg() >> idx) & 1
+
+    async def _check_bus_err_paths(self) -> None:
+        dma_hole = dma_reg_unmapped_addr()
+        hmac_hole = hmac_reg_unmapped_addr()
+
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        assert dma_st == 0, f"DMA_BUS_ERR_STATUS=0x{dma_st:x} at baseline, expected 0"
+        assert periph_st == 0, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} at baseline, expected 0"
+        )
+        assert await self._agg_bit(IRQ_DMA_REG_PATH) == 0, (
+            "sep_internal_interrupts[39] high before a DMA register-path fault"
+        )
+        assert await self._agg_bit(IRQ_PERIPH_OR) == 0, (
+            "sep_internal_interrupts[41] high before a peripheral bridge fault"
+        )
+        self.logger.info(
+            "CHK-BUSERR-BASE PASS: DMA/PERIPH STATUS=0; aggregator [39]/[41]=0"
+        )
+
+        await self.irq.read_expect_slverr(dma_hole)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        assert dma_st == DMA_REG_PATH_BIT, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after 0x{dma_hole:08x}, "
+            f"expected exclusive reg_path_err=0x{DMA_REG_PATH_BIT:x}"
+        )
+        assert periph_st == 0, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} after the DMA hole, expected 0"
+        )
+        dma_ok, dma_vec = await self._poll_agg(IRQ_DMA_REG_PATH, 1)
+        assert dma_ok, (
+            f"sep_internal_interrupts[{IRQ_DMA_REG_PATH}] stayed 0 after "
+            f"DMA register-path SLVERR (vec=0x{dma_vec:x})"
+        )
+        assert ((dma_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
+            "host-path bit [40] set on a register-path fault"
+        )
+        assert ((dma_vec >> IRQ_PERIPH_OR) & 1) == 0, (
+            "periph OR [41] set on a DMA register-path fault"
+        )
+        self.logger.info(
+            "CHK-BUSERR-DMA PASS: 0x%08x SLVERR; STATUS=0x%x exclusive; [39]=1",
+            dma_hole,
+            dma_st,
+        )
+
+        await self.irq.write32(DMA_CLEAR_ADDR, DMA_CLR_BIT)
+        clr_rd = await self.irq.read32(DMA_CLEAR_ADDR)
+        assert clr_rd == 0, f"DMA_BUS_ERR_CLEAR read 0x{clr_rd:x}, expected 0"
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        assert dma_st == 0, f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after CLEAR, expected 0"
+        clr_ok, _ = await self._poll_agg(IRQ_DMA_REG_PATH, 0)
+        assert clr_ok, "sep_internal_interrupts[39] stuck after DMA_BUS_ERR_CLEAR"
+        self.logger.info(
+            "CHK-BUSERR-CLR PASS: DMA_BUS_ERR_CLEAR; STATUS=0; [39]=0 (CLEAR reads 0)"
+        )
+
+        await self.irq.read_expect_slverr(hmac_hole)
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        assert periph_st == PERIPH_HMAC_BIT, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} after 0x{hmac_hole:08x}, "
+            f"expected exclusive hmac=0x{PERIPH_HMAC_BIT:x}"
+        )
+        assert dma_st == 0, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after the HMAC hole, expected 0"
+        )
+        per_ok, per_vec = await self._poll_agg(IRQ_PERIPH_OR, 1)
+        assert per_ok, (
+            f"sep_internal_interrupts[{IRQ_PERIPH_OR}] stayed 0 after "
+            f"HMAC adapter SLVERR (vec=0x{per_vec:x})"
+        )
+        assert ((per_vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
+            "DMA register-path [39] set on a peripheral bridge fault"
+        )
+        self.logger.info(
+            "CHK-BUSERR-PERIPH PASS: 0x%08x SLVERR; STATUS=0x%x exclusive; [41]=1",
+            hmac_hole,
+            periph_st,
+        )
+
+        await self.irq.write32(PERIPH_CLEAR_ADDR, PERIPH_HMAC_CLR)
+        clr_rd = await self.irq.read32(PERIPH_CLEAR_ADDR)
+        assert clr_rd == 0, f"PERIPH_BUS_ERR_CLEAR read 0x{clr_rd:x}, expected 0"
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        assert periph_st == 0, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} after hmac CLEAR, expected 0"
+        )
+        clr_ok, _ = await self._poll_agg(IRQ_PERIPH_OR, 0)
+        assert clr_ok, "sep_internal_interrupts[41] stuck after PERIPH_BUS_ERR_CLEAR"
+        self.logger.info(
+            "CHK-BUSERR-CLR PASS: PERIPH_BUS_ERR_CLEAR.hmac; STATUS=0; [41]=0 "
+            "(CLEAR reads 0)"
         )

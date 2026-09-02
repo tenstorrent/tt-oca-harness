@@ -93,6 +93,12 @@ module sep_uvm_top
     // Which token comparator the inject hits. Default 0.
     //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
     input  wire logic [1:0] token_cmp_fault_sel_i,
+    // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
+    // broken codeword onto the host-adapter command-integrity decoder input
+    // (signed off -- software cannot emit a bad TL-UL user code). The checker
+    // still gates on a_valid, so a DMA-issued command is required. See the
+    // force block below.
+    input  wire logic dma_host_intg_inject_i,
 
     // ------------------------------------------------------------------
     // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -1376,6 +1382,32 @@ module sep_uvm_top
 `undef CMP_CHIP
 `undef CMP_SEC
 `undef TOKEN_PROC
+
+    // ------------------------------------------------------------------
+    // DMA host-path command-integrity inject.
+    // SIGNED OFF 2026-09-01 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // host_path_err is the OR of a fabric non-OKAY on a DMA transfer and a
+    // TL-UL command-integrity fail on a DMA-issued command. A legal
+    // descriptor can produce the fabric term; it cannot produce a broken
+    // command user code -- the engine always emits a matching pair. When
+    // dma_host_intg_inject_i=1, force the host-adapter checker input
+    // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
+    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
+    // frontdoor or the signed-off aggregate probe. Re-issue every clock
+    // (Verilator snapshots a force RHS). Release when the port drops.
+    // Default 0; outside the AXI ready/valid cones.
+`define DMA_HOST_CMD_INTG_DI \
+    `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma \
+        .gen_cmd_intg_check.u_cmd_intg_chk.u_chk.data_i
+    always @(posedge clk_i) begin
+        if (dma_host_intg_inject_i === 1'b1) begin
+            force `DMA_HOST_CMD_INTG_DI = '0;
+        end else begin
+            release `DMA_HOST_CMD_INTG_DI;
+        end
+    end
+`undef DMA_HOST_CMD_INTG_DI
 
     // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
