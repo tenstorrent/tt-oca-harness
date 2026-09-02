@@ -13,6 +13,11 @@ readonly BATCH_SIZE=128
 readonly -a GENERATED_PATHS=(
   ':(glob)**/regs/**/gen/**'
   ':(glob)**/registers/**/gen/**'
+  # Vendored overlay RDL files exported as standalone blocks (see discover.mk):
+  # unlike every other block, their gen/ sits beside the .rdl under overlay/rdl/
+  # rather than under a regs/ or registers/ dir (e.g. pulp-platform idma's
+  # dma_ctrl).
+  ':(glob)**/rdl/**/gen/**'
 )
 
 check_clean() {
