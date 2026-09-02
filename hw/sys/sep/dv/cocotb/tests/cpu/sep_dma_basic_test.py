@@ -26,7 +26,9 @@ expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
 raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
 (DMA-issued command under dma_host_intg_inject_i -> exclusive host_path_err
-+ aggregator [40], CLEAR, recovery copy). The scoreboard also checks the banner + ICCM execution.
++ aggregator [40], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
+-> exclusive host_path_err with the pin low, CLEAR, recovery). The
+scoreboard also checks the banner + ICCM execution.
 
 cpu / +skip_fuse_sense (no fuse data is read).
 """
@@ -229,6 +231,11 @@ class sep_dma_basic_test(sep_base_test):
             raise AssertionError(
                 "firmware console missing CHK-HOSTINTG PASS "
                 "(host-path integrity contract was not proven)"
+            )
+        if "CHK-HOSTFABRIC PASS:" not in console:
+            raise AssertionError(
+                "firmware console missing CHK-HOSTFABRIC PASS "
+                "(host-path fabric non-OKAY contract was not proven)"
             )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",

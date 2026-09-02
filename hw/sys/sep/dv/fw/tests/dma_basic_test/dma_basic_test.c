@@ -31,9 +31,14 @@
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : invalid opcode 0xF -> ERROR_CODE.opcode_error + STATUS.error;
 //                    W1C clear; a subsequent good copy recovers.
+//   CHK-ERR-ADDR   : four misaligned descriptors raise the matching ERROR_CODE
+//                    bit exclusively; a subsequent good copy recovers.
 //   CHK-HOSTINTG   : a DMA-issued host command under dma_host_intg_inject_i
 //                    raises exclusive host_path_err; CLEAR returns STATUS 0;
 //                    a subsequent good copy recovers.
+//   CHK-HOSTFABRIC : a DMA transfer whose destination is past the DMA CSR
+//                    window completes a fabric non-OKAY and raises exclusive
+//                    host_path_err with the inject pin low; CLEAR; recovery.
 
 #include <stdint.h>
 
@@ -772,6 +777,90 @@ static int chk_host_intg(void) {
     return e;
 }
 
+// ---- CHK-HOSTFABRIC: DMA dest past the CSR window -> exclusive host_path_err ----
+static int chk_host_fabric(void) {
+    int e = 0;
+    const uint32_t SENT = 0x3C3C3C3Cu;
+    const uint32_t nwords = copy_bytes / 4u;
+    uint32_t snap[MAX_COPY_WORDS];
+    const uint32_t host_bit = SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm;
+    const uint32_t status_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
+    const uint32_t clear_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
+    // First word past the DMA CSR xbar window. RANGE is locked 0..0xFFFFFFFF,
+    // so the engine issues the command; the xbar returns DECERR.
+    const uint32_t dead = OCH_SEP_TOP_SECURE_DMA_BASE_ADDR + OCH_SEP_TOP_SECURE_DMA_SIZE;
+
+    uint32_t bus = rd(status_addr);
+    if (bus != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" at baseline, expected 0\n");
+        return 1;
+    }
+
+    fill_src_words(nwords, snap);
+    (void)dma_run(src_base, dead, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    bus = rd(status_addr);
+    if (bus != host_bit) {
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" after dest 0x");
+        sep_mbx_puthex(dead);
+        sep_mbx_puts(", expected exclusive host_path_err\n");
+        e++;
+    }
+
+    wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    uint32_t clr_rd = rd(clear_addr);
+    bus = rd(status_addr);
+    if (clr_rd != 0 || bus != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC after CLEAR STATUS=0x");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" CLEAR=0x");
+        sep_mbx_puthex(clr_rd);
+        sep_mbx_puts(", both expected 0\n");
+        e++;
+    }
+    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+
+    clear_dst_words(nwords + 1, SENT);
+    uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) ||
+        err != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC recovery copy did not succeed (status ");
+        sep_mbx_puthex(st);
+        sep_mbx_puts(" err ");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(")\n");
+        e++;
+    } else {
+        volatile uint32_t *d = (volatile uint32_t *)dst_base;
+        for (uint32_t i = 0; i < nwords; i++) {
+            if (d[i] != snap[i]) {
+                sep_mbx_puts("FAIL: CHK-HOSTFABRIC recovery copy word ");
+                sep_mbx_puthex(i);
+                sep_mbx_puts(" got ");
+                sep_mbx_puthex(d[i]);
+                sep_mbx_puts(" exp ");
+                sep_mbx_puthex(snap[i]);
+                sep_mbx_putc('\n');
+                e++;
+            }
+        }
+    }
+    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    if (!e) {
+        sep_mbx_puts("CHK-HOSTFABRIC PASS: exclusive host_path_err after fabric "
+                     "DECERR dest; CLEAR; recovery copy matches source\n");
+    }
+    return e;
+}
+
 int main(void) {
     int errors = 0;
 
@@ -812,10 +901,11 @@ int main(void) {
     errors += chk_err_opcode();
     errors += chk_err_addr();
     errors += chk_host_intg();
+    errors += chk_host_fabric();
 
     if (errors == 0) {
         sep_mbx_puts("PASS: DMA basic -- reset/cfg-regwen/range-regwen/copy-mode/"
-                     "width/done-rw1c/err-opcode/host-intg all OK\n");
+                     "width/done-rw1c/err-opcode/host-intg/host-fabric all OK\n");
     }
     return errors;
 }

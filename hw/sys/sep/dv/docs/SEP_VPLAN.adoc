@@ -408,7 +408,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address and inverted-range refusals, and a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 40) with CLEAR and a recovery copy. The mode and width walk is directed.
+|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address and inverted-range refusals, a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 40), and a fabric DECERR dest that raises the same bit with the pin low. The mode and width walk is directed.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
@@ -545,7 +545,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |DMA host-path command integrity
 |PROVEN
-|`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 40; `DMA_BUS_ERR_CLEAR` returns both to 0; a legal copy with the pin low then matches the source. The fabric non-OKAY OR-term of `host_path_err` is not this row.
+|`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 40; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both to 0; a legal copy then matches the source.
 
 |SRAM datapath
 |PROVEN
@@ -1667,7 +1667,7 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through the HMAC adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 39 and 41, and clear on the matching CLEAR write.
+*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 39 and 41, and clear on the matching CLEAR write.
 
 *Test Procedure*:
 
@@ -1680,8 +1680,8 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 . Confirm both bus-error STATUS registers and aggregator bits 39 and 41 read 0.
 . Read the unused word between the last DMA `INTR_SRC_ADDR` and the first `INTR_SRC_WR_VAL`; require SLVERR, exclusive `reg_path_err`, and bit 39.
 . Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 39 read 0. The CLEAR register itself reads 0.
-. Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 41.
-. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 41 read 0. The CLEAR register itself reads 0.
+. Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 41. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 41 read 0.
+. Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`). Each CLEAR register itself reads 0.
 
 *Checkers*:
 
@@ -1697,12 +1697,12 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 |CHK-BUSERR-DMA
 |The DMA hole read completes SLVERR, not DECERR. `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`. Aggregator bit 39 is 1; bits 40 and 41 stay 0.
 |CHK-BUSERR-PERIPH
-|The HMAC hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly `hmac`. Aggregator bit 41 is 1; bit 39 stays 0.
+|Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 41 is 1; bit 39 stays 0.
 |CHK-BUSERR-CLR
 |Each matching CLEAR write returns its STATUS word and its aggregator bit to 0. The CLEAR register itself reads 0.
 |===
 
-*Not claimed*: DMA host-path integrity (`host_path_err` / bit 40) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. The other six peripheral-bridge bits and lockstep punch-through.
+*Not claimed*: DMA host-path integrity (`host_path_err` / bit 40) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — those adapter windows are packed to the last register. Lockstep punch-through.
 
 '''''
 
@@ -3023,7 +3023,7 @@ deferred rather than covered.
 
 *VIP / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address and inverted-range refusals, and a DMA-issued host-path command-integrity inject. The mode and width walk is directed.
+*Objective*: Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address and inverted-range refusals, a DMA-issued host-path command-integrity inject, and a fabric DECERR dest that raises `host_path_err` with the pin low. The mode and width walk is directed.
 
 *Test Procedure*:
 
@@ -3033,6 +3033,7 @@ deferred rather than covered.
 . Walk INCR / FIXED / WRAP × 1B/2B/4B; consume the seed-patched SCENARIO line.
 . Provoke one invalid opcode, then four exclusive address-alignment refusals; a clean copy after each error class proves the engine recovers.
 . With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 40. `DMA_BUS_ERR_CLEAR` returns STATUS, the CLEAR register, and bit 40 to 0. A legal copy with the pin low then matches the source snapshot.
+. With the pin low, one copy whose destination is the first word past the DMA CSR window raises exclusive `host_path_err` from the fabric DECERR. CLEAR and a legal recovery copy follow.
 
 *Checkers*:
 
@@ -3057,11 +3058,13 @@ deferred rather than covered.
 |The address validation the engine applies before it moves a byte. Four refused descriptors, each asserting its `ERROR_CODE` bit *exclusively*: a 4-byte transfer whose source is not 4-byte aligned raises `src_addr_error`, the same on the destination raises `dst_addr_error`, a 2-byte transfer on an odd source raises `src_addr_error`, and a 2-byte transfer on an odd destination raises `dst_addr_error`. None may set `STATUS.done`, and a clean copy after the four proves the engine recovers. The inverted-range leg sits in `CHK-RANGE-REGWEN`, which must run before the one-way range lock closes.
 |CHK-HOSTINTG
 |A DMA-issued host command under `dma_host_intg_inject_i` raises exactly `DMA_BUS_ERR_STATUS.host_path_err`. Aggregator bit 40 is 1 and bit 39 stays 0. `DMA_BUS_ERR_CLEAR` returns STATUS, the CLEAR register, and bit 40 to 0. A legal copy with the pin low then matches the independent source snapshot and leaves `host_path_err` clear.
+|CHK-HOSTFABRIC
+|A DMA transfer whose destination is the first word past the DMA CSR window, with the inject pin low, raises exactly `host_path_err`. `DMA_BUS_ERR_CLEAR` returns STATUS and the CLEAR register to 0. A legal copy then matches the independent source snapshot.
 |CHK-RAND-REP
 |Mode and width cells walk every seed; src/dst/length/fill come from the run seed.
 |===
 
-*Not claimed*: the fabric non-OKAY OR-term of `host_path_err` (a DMA transfer that completes DECERR or SLVERR). Lockstep punch-through.
+*Not claimed*: lockstep punch-through. Register-path command-integrity inject (the DMA hole proves the unmapped SLVERR term of `reg_path_err`).
 
 '''''
 

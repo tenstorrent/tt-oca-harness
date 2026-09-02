@@ -9,10 +9,12 @@ sep_internal_interrupts bit is observed by the test through the tb_top
 sep_internal_interrupts_probe_o mirror (the OSS analog of the reference suite's sep_irq_probe_if).
 
 Also issues one in-window unmapped 32-bit read through the Secure DMA adapter
-and one through the HMAC adapter. Those complete SLVERR and latch
-DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive aggregator bits [39]
-and [41]. A dead-space beat past the xbar window is DECERR and never sets
-err_o, so the probes stay inside each adapter's routed extent.
+and one through each of the HMAC, KMAC and OTBN adapters. Those complete
+SLVERR and latch DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive
+aggregator bits [39] and [41]. A dead-space beat past an adapter window is
+DECERR and never sets err_o, so the probes stay inside each routed extent.
+AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
+beat there is past the rule and DECERRs.
 
 OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
@@ -28,7 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from sep_reg_meta import HMAC, SEP_CPU_CTRL, sym
+from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -59,6 +61,10 @@ DMA_HOST_PATH_BIT = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_STATUS", "host_path_err
 DMA_CLR_BIT = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_CLEAR", "clr")
 PERIPH_HMAC_BIT = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", "hmac")
 PERIPH_HMAC_CLR = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", "hmac")
+PERIPH_KMAC_BIT = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", "kmac")
+PERIPH_KMAC_CLR = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", "kmac")
+PERIPH_OTBN_BIT = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", "otbn")
+PERIPH_OTBN_CLR = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", "otbn")
 
 
 def dma_reg_unmapped_addr() -> int:
@@ -90,6 +96,57 @@ def hmac_reg_unmapped_addr() -> int:
     if after_csr >= fifo:
         raise RuntimeError(
             f"HMAC CSR/FIFO gap closed: 0x{after_csr:08x} >= 0x{fifo:08x}"
+        )
+    return after_csr
+
+
+def kmac_reg_unmapped_addr() -> int:
+    """First unused word between the KMAC CSRs and the STATE window.
+
+    KMAC's demux rule is the 4 kB export. The CSR block ends at ``ERR_CODE``;
+    STATE starts at ``KMAC_STATE_MEM``. A word in between is still routed to
+    the KMAC TL-UL adapter.
+    """
+    after_csr = KMAC.addr("ERR_CODE") + 4
+    state = sym("KMAC_STATE_MEM_BASE_ADDR")
+    if after_csr >= state:
+        raise RuntimeError(
+            f"KMAC CSR/STATE gap closed: 0x{after_csr:08x} >= 0x{state:08x}"
+        )
+    return after_csr
+
+
+@dataclass(frozen=True)
+class PeriphHole:
+    """One in-window adapter hole and the STATUS/CLEAR bits it must raise."""
+
+    name: str
+    addr: int
+    status_bit: int
+    clear_bit: int
+
+
+def periph_holes() -> tuple[PeriphHole, ...]:
+    """HMAC / KMAC / OTBN holes that still reach an adapter ``err_o``."""
+    return (
+        PeriphHole("hmac", hmac_reg_unmapped_addr(), PERIPH_HMAC_BIT, PERIPH_HMAC_CLR),
+        PeriphHole("kmac", kmac_reg_unmapped_addr(), PERIPH_KMAC_BIT, PERIPH_KMAC_CLR),
+        PeriphHole("otbn", otbn_reg_unmapped_addr(), PERIPH_OTBN_BIT, PERIPH_OTBN_CLR),
+    )
+
+
+def otbn_reg_unmapped_addr() -> int:
+    """First unused word between the OTBN CSRs and IMEM.
+
+    OTBN's demux rule is the 48 kB export (CSR + IMEM + DMEM). The CSR block
+    ends at ``LOAD_CHECKSUM``; IMEM starts at ``OTBN_IMEM_MEM``. A word in
+    between is still routed to the OTBN TL-UL adapter.
+    """
+    after_csr = OTBN.addr("LOAD_CHECKSUM") + 4
+    imem = sym("OTBN_IMEM_MEM_BASE_ADDR")
+    if after_csr >= imem:
+        raise RuntimeError(
+            f"OTBN CSR/IMEM gap closed: 0x{after_csr:08x} >= 0x{imem:08x}"
         )
     return after_csr
 
