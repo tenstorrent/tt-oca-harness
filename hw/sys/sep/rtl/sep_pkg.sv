@@ -442,18 +442,6 @@ package sep_pkg;
         logic region_valid;
     } remap_region_t;
 
-    typedef struct packed {
-        logic test_en;
-    } test_straps_t;
-
-    typedef struct packed {
-        logic bypass_mem_repair;
-    } boot_stratps_t;
-
-    typedef struct packed {
-        test_straps_t test_straps;
-        boot_stratps_t boot_straps;
-    } sep_straps_t;
 
     /////////////////////////////////////
     // SEP Software Reset Controller   //

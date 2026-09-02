@@ -530,6 +530,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
@@ -1168,6 +1169,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv

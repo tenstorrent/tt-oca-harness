@@ -279,8 +279,9 @@ module smu_wrapper
     // SEP WDT clock
     input  logic  clk_sep_wdt_i,
 
-    // SEP straps
-    input  sep_pkg::sep_straps_t  sep_straps_i,
+    // SEP secure test mode request: GPIO 14, strap TEST_EN. Latched into secure_tm
+    // inside sep_efuse_wrapper; see hw/sys/sep/doc/test_mode.adoc.
+    input  logic                  secure_tm_req_i,
 
     // I3C DAT/DCT/RLT memory interfaces (macro interfaces, passed straight through)
     input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,

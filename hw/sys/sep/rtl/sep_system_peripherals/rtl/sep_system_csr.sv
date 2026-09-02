@@ -40,9 +40,6 @@ module sep_system_csr
 	input  logic                                                              smc_fuse_sense_done_i,
 	input  logic                                                              sep_fuse_sense_done_i,
 
-	// SEP Straps inputs
-	input  sep_pkg::sep_straps_t                                              sep_straps_i,
-
 	// SEP NMI VEC output
 	output logic [31:1]                                                       nmi_vec_o,
 
@@ -755,10 +752,6 @@ module sep_system_csr
 
 	// SEP_FUSE_SENSE_STATUS
 	assign sep_cpu_ctrl_hwif_in.SEP_FUSE_SENSE_STATUS.sep_fuse_sense_done.next = sep_fuse_sense_done_i;
-
-	// SEP_STRAPS
-	assign sep_cpu_ctrl_hwif_in.SEP_STRAPS.test_en.next           = sep_straps_i.test_straps.test_en;
-	assign sep_cpu_ctrl_hwif_in.SEP_STRAPS.bypass_mem_repair.next = sep_straps_i.boot_straps.bypass_mem_repair;
 
 	// SEP_NMI_VEC
 	assign nmi_vec_o = sep_cpu_ctrl_hwif_out.SEP_NMI_VEC.nmi_vec.value;

@@ -731,11 +731,15 @@ name = "smc_efuse_secure_tm_force_test"
 module = "smc_efuse_secure_tm_force_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
-# [[tests]]
-# name = "smu_smc_gpio_strap_sanity_test"
-# module = "smu_smc_gpio_strap_sanity_test"
-# tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+# Strap capture and its STRAPS_LO/HI registers moved out of the core reset_unit into
+# the smc_external supplementary window (adopter-owned). The open harness routes that
+# range to a DECERR slave and has no strap bus, so there is nothing to drive or read.
+[[tests]]
+name = "smu_smc_gpio_strap_sanity_test"
+module = "smu_smc_gpio_strap_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["deferred", "needs_adopter_straps"]
 
 # smu_smc_mailbox_int_test → promoted to testlists/smc.toml (SMU_ALL_004 r8 EXT.S2)
 

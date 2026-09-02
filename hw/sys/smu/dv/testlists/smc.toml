@@ -47,8 +47,6 @@ timeout_sec = 1800
 tags = ["smc", "mailbox", "phase1", "smu_all_004"]
 run_modes = ["smc"]
 
-# smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
-
 # smc_efuse_reg_sanity_test → testlists/deferred.toml
 
 # smu_smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
@@ -106,14 +104,6 @@ timeout_sec = 1800
 tags = ["smc", "wdt", "tier_c", "depth"]
 run_modes = ["smc"]
 
-# Depth: reset-unit STRAPS_* track captured_straps_i (SEP=0; no Force).
-[[tests]]
-name = "smu_smc_gpio_strap_sanity_test"
-module = "smu_smc_gpio_strap_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["smc", "gpio", "tier_c", "depth"]
-run_modes = ["smc"]
 
 # Depth: mailbox outbound-0 STATUS/IRQEN via fabric J2A (SEP=0; no Force).
 [[tests]]

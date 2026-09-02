@@ -105,7 +105,7 @@
 |`smc_fuse_sense_done_i` |`logic` |Input |1 |SMC fuse sense done indication. |SMC `fuse_sense_done_o` |N/A
 |`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A
 
-|`sep_straps_i` |`sep_pkg::sep_straps_t` |Input |- |SEP configuration straps. |GPIO padring / tie-off |N/A
+|`secure_tm_req_i` |`logic` |Input |- |Secure test mode request (GPIO 14, strap TEST_EN). Latched into `secure_tm` by `sep_efuse_wrapper`. |GPIO padring / tie-off |N/A
 
 |`axi_extension_axi_req_o` |`sep_32_64_6_12_axi_req_t` |Output |- |AXI extension port request for adopter peripheral expansion. |Adopter peripherals |N/A
 |`axi_extension_axi_resp_i` |`sep_32_64_6_12_axi_resp_t` |Input |- |AXI extension port response. |Adopter peripherals |Tie to DECERR if unused

@@ -12,6 +12,9 @@ schema_version = 1
 #   needs_dtp_csr_sub  — smc_wrapper TB only: DTP err_slv removed; idle
 #                        axil_dtp_csr_resp. NOT an SMU gap (smu.sv wires DTP).
 #   rtl_placeholder    — exercises pll/pvt OKAY wraps only (adopter IP pending)
+#   needs_adopter_straps — strap capture + STRAPS_LO/HI live in the smc_external
+#                        supplementary window; the open harness DECERRs that range,
+#                        so there is no strap bus and no CSR to read here
 #   fake_bfm           — Python fake BFM retired
 #   tb_glue / not_dut_rtl — TB-only demo (e.g. hardcoded capture token); not DUT RTL
 #   needs_shared_i2c_bus — commercial shorts I2C0/1/2 pads (tranif1); local
@@ -417,9 +420,17 @@ seed = 1
 timeout_sec = 1800
 tags = ["deferred", "rtl_placeholder"]
 
+# Strap capture and its STRAPS_LO/HI registers moved out of the core reset_unit into
+# the smc_external supplementary window (adopter-owned). The open harness routes that
+# range to a DECERR slave and has no strap bus, so there is nothing to drive or read.
+[[tests]]
+name = "smc_captured_straps_test"
+module = "smc_captured_straps_test"
+seed = 1
+timeout_sec = 1800
+tags = ["deferred", "needs_adopter_straps"]
+
 # smc_cool_reset_from_pcie_test → reset.toml (cfg_flr_pf_active_i, not rst_cool_ni)
-# smc_captured_straps_test → reset.toml (captured_straps_i → STRAPS_LO/HI;
-#     unique vs GPIO smc_gpio_strap_sanity_test)
 # smc_ss_reset_complete_test → reset.toml (ss_reset_complete_i + SS_WARM SS0;
 #     unique vs FW reset_warm_reset_handshake_test)
 # smc_jtag_reset_ctrl_test → reset.toml (packed jtag_reset_ctrl_i cool+SS0;

@@ -409,14 +409,6 @@ module sep_uvm_top
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
     sep_pkg::jtag_sep_reset_ctrl_t   jtag_sep_reset_ctrl_idle = '0;
-    // TEST_EN strap is a real DUT input (sep_straps_i.test_straps.test_en). The
-    // rest of the strap struct stays idle-0. Not a force.
-    sep_pkg::sep_straps_t            sep_straps_drive;
-    always_comb begin
-        sep_straps_drive = '0;
-        sep_straps_drive.test_straps.test_en = test_en_strap_i;
-    end
-
     // Outbound mailbox responder buses and CPU trace (the only DUT struct nets the
     // wrapper flow still needs; the retired mem/efuse/spi responder buses are gone).
     sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_req_w;
@@ -645,17 +637,18 @@ module sep_uvm_top
         .smc_fuse_sense_done_i        (1'b0),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
-        // Straps (TEST_EN driven from test_en_strap_i; other fields idle-0)
-        .sep_straps_i                 (sep_straps_drive),
+        // TEST_EN strap (GPIO 14) drives the DUT's secure test mode request directly.
+        // Real DUT input, not a force. TB pin keeps the pad's name; DUT port is the request.
+        .secure_tm_req_i              (test_en_strap_i),
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4001_0100+, straps 0x4000_2090, SMC SRAM
+        // Route the SMC region (scratch 0x4001_0100+, straps 0x4040_5800, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
         // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
         .smc_global_base_addr_i       (56'h4000_0000),
-        .smc_region_size_i            (56'h0020_0000),
+        .smc_region_size_i            (56'h0100_0000),
 `else
         .smc_global_base_addr_i       ('0),
         .smc_region_size_i            ('0),
