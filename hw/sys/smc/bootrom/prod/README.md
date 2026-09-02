@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+
 # SMC Production ROM
 
 > [!WARNING]
@@ -47,7 +50,7 @@ Useful targets:
 | `make size` | Print section and aggregate image sizes. |
 | `make memory` | Print the largest linked symbols. |
 | `make clean` | Remove the local `build/` directory. |
-| `make help` | List the supported build options. |
+| `make help` | List the basic build commands and options. |
 
 Set `ENABLE_RELEASE_PRINTS=1` to retain debug console calls in a release build.
 Set `I3C_CORE=swap` to compile the open HCI I3C driver. `EXTRA_DEFINES` provides

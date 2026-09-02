@@ -230,6 +230,10 @@ The current handler validates these two values independently; it does not
 require the body-length field to equal 12 plus the encoded write size.
 The address attributes and reserved field are parsed but do not affect behavior.
 The destination must be 32-bit aligned and pass the target's memory-access policy.
+For a four-byte transfer, the ROM FW performs one 32-bit access.
+For an eight-byte transfer to an eight-byte-aligned address, it performs one
+64-bit access.
+All other transfer sizes use byte accesses in increasing address order.
 A successful response has an empty body.
 
 ==== ReadData
@@ -248,6 +252,10 @@ The request body is exactly 12 bytes.
 The read size must be from 1 through 2047 bytes.
 The address attributes and reserved field do not affect behavior.
 The source must be 32-bit aligned and pass the target's memory-access policy.
+For a four-byte transfer, the ROM FW performs one 32-bit access.
+For an eight-byte transfer from an eight-byte-aligned address, it performs one
+64-bit access.
+All other transfer sizes use byte accesses in increasing address order.
 The response body is the requested data and always carries a body CRC.
 
 ==== ExecuteImage and AuthenticateImage

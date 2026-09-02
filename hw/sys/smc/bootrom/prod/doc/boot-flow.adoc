@@ -32,8 +32,18 @@ endif
 :Initialize gp and early mtvec;
 :Clear coordination scratch 8, 9, 11, 13, 14;
 :Select per-hart stack and enter _start;
-:Hart 0 copies data and clears BSS;
-:Other harts wait in WFI;
+if (Hart 0?) then (yes)
+  :Copy initialized data, clear BSS,\nand run constructors;
+else (no)
+  :Skip runtime initialization;
+endif
+:Call no-op hart-synchronization hook;
+if (Hart 0?) then (yes)
+  :Continue to main;
+else (no)
+  :Enter secondary_main WFI loop;
+  stop
+endif
 :Phase 0 - initialize POST, status, and coordination;
 :Publish status-buffer offset and ready;
 :Publish SEP-safe SRAM range and SRAM ready;
@@ -79,7 +89,12 @@ endif
 . Clear coordination scratch registers 8, 9, 11, 13, and 14 while preserving scratch register 15.
 . Establish a 16-byte-aligned stack for the current hart and call `_start`.
 
-The C runtime copies initialized data from ROM, clears BSS, initializes TLS and constructors, synchronizes harts, and disables interrupt sources before calling `main` on hart 0.
+On hart 0, the C runtime copies initialized data from ROM, clears BSS, and
+initializes TLS and constructors.
+Other harts skip that initialization.
+Every hart calls `__metal_synchronize_harts`, whose implementation linked into
+the production ROM FW is a no-op, and then disables its interrupt sources.
+Hart 0 calls `main`; the other harts enter the `secondary_main` `wfi` loop.
 
 Unused ROM is filled with the 32-bit `EBREAK` instruction.
 Once the early trap vector is installed, a breakpoint whose `mepc` lies in the linker-defined padding range writes `0xBADF00D0` to scratch register 15 and loops.
