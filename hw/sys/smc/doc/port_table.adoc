@@ -53,9 +53,9 @@
 |`wdt_first_timeout_o` |`logic` |Output |1 |First watchdog timeout signal. |CPU cluster WDT → Reset Unit |N/A
 |`wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |Reset Unit → External systems |N/A
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |SMC Internal Registers → External systems |N/A
-|`ext_interrupts_i` |`logic` |Input |`[NUM_EXT_INTERRUPTS-1:0]` |External interrupt inputs. Width is config-dependent: 32 (1-core) or 256 (4-core). Synchronized to `clk_smc` (3-stage) in `smc_base`, then maps directly to `cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]`. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
-|`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed through `peripheral_interrupts[7:0]` → `cpu_interrupts_o[NUM_EXT_INTERRUPTS+7 : NUM_EXT_INTERRUPTS]` (1-core: bits 39–32, 4-core: bits 263–256). |SEP → Interrupt aggregator |N/A, tie to '0 if unused
-|`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset (active low). Active-low polarity is inverted before routing to `peripheral_interrupts[26]` → `cpu_interrupts_o[NUM_EXT_INTERRUPTS+26]` (1-core: bit 58, 4-core: bit 282). |SEP → Interrupt aggregator |N/A
+|`ext_interrupts_i` |`logic` |Input |`[NUM_EXT_INTERRUPTS-1:0]` |External interrupt inputs. Width is config-dependent: 32 (1-core) or 256 (4-core). Synchronized to `clk_smc` (3-stage) in `smc_base`, then drives internal interrupts to the SMC CPU. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
+|`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A, tie to '0 if unused
+|`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset (active low). Active-low polarity is inverted before routing to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A
 |`fuse_sense_done_o` |`logic` |Output |1 |Fuse sense completion output. |eFuse controller → Memory repair logic |N/A
 |`fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output (after 16 pipeline stages). |eFuse controller → External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Reset Unit → Memory repair logic |N/A
