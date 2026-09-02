@@ -3,10 +3,9 @@
 /*
  * sep_mbox_irq  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SEP producer sep_smc_mbox_irq.c + SMC consumer main.c) and parsed
- * by the cocotb checker so the DUT stimulus and the DV expectations can never drift (AGENTS.md
- * one-source rule). Keep every value a plain integer/hex #define so the Python parser can read
- * it -- no expressions the parser cannot evaluate.
+ * Included by BOTH firmwares (SEP producer sep_smc_mbox_irq.c + SMC consumer main.c).
+ * sep_mbox_golden.py derives the same mailbox offsets and masks from PeakRDL; it
+ * does not parse this header.
  *
  * Anchor scope: the eight SEP mailbox channels' source
  * interrupts PACK one-hot onto SMC cpu_interrupts[263:256] (4-core NUM_EXT_INTERRUPTS=256), and
@@ -44,10 +43,10 @@
  * generated OCH_SEP_TOP_AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
  * sep.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
  * COLLIDE with the SMC's own smc_top_regs.h ("conflicting types"), so the SMC toolchain uses the
- * literal mirror below. This is not a silent duplication: the cocotb checker parses
- * sep.h INDEPENDENTLY (see the leaf test), so any drift between these SMC literals and
- * the generated addresses makes the SMC's transactions land at an address the checker does not
- * expect -> the test FAILS. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
+ * literal mirror below. This is not a silent duplication: sep_mbox_golden.py
+ * derives the same offsets and masks from PeakRDL, so an SMC literal that
+ * drifts from RDL lands at an address the golden does not expect and the
+ * test fails. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
  * stride = OUTBOUND_1-OUTBOUND_0 (= 2*MAILBOX_SIZE = 0x1000). */
 #ifdef OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth */
 #define SMU015_MBOX_OUTBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
@@ -77,7 +76,7 @@
     (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR - \
      OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define SMU015_MBOX_REG_BLOCK_SIZE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
-#else /* SMC fw / cocotb text parse: literal mirror */
+#else /* SMC fw: literal mirror */
 #define SMU015_MBOX_OUTBOUND_BASE 0x10A00000
 #define SMU015_MBOX_INBOUND_BASE 0x10A00800
 #define SMU015_MBOX_CH_STRIDE 0x1000

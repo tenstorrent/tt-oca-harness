@@ -3,9 +3,9 @@
 /*
  * smu_sep_ext_axi_combined_probe_test  --  shared protocol contract.
  *
- * Included by both firmwares (the SEP and SMC outbound producers) and parsed by
- * the cocotb checker so DUT stimulus and DV expectations share one contract.
- * Every value is a plain integer/hex #define for the Python parser.
+ * Included by both firmwares (the SEP and SMC outbound producers). Python
+ * goldens derive CSR facts independently from PeakRDL; they do not parse this
+ * header.
  *
  * Test shape (four legal external legs + one blocked route + recovery):
  *   ext_in -> SMC aperture (route data 0x11223344 @ SMC scratch8)
@@ -100,11 +100,7 @@
  * (SMC differs: its remap target_base is nonzero so global 0x020390xx -> local 0x000390xx
  * is a valid SMC-fabric alias, which is why the SMC leg already passed.) */
 #define EXTAXI_SEP_GLOBAL_BASE 0x04000000 /* SEP_CPU_CTRL.SEP_GLOBAL_BASE_ADDR */
-/* Keep value on the same line as #define: cocotb parses this header with a
- * single-line regex (see smu_sep_ext_axi_combined_probe_test._parse_protocol_header). */
-// clang-format off
 #define EXTAXI_SEP_REGION_SIZE 0x11000000 /* SEP_CPU_CTRL.SEP_REGION_SIZE (covers local 0x10802040) */
-// clang-format on
 #define EXTAXI_SMC_GLOBAL_BASE 0x02000000 /* SMC_BASE_CONFIG.GLOBAL_BASE */
 #define EXTAXI_SMC_REGION_SIZE 0x01000000 /* SMC_BASE_CONFIG.REGION_SIZE */
 
@@ -145,9 +141,10 @@
 #define EXTAXI_SEP_COLD7_LOCAL 0x10802038
 #endif
 
-/* Bind duplicated protocol literals to each owning generated register header. The shared header
- * is parsed directly by cocotb, so the literals remain here; a firmware build must fail if RDL
- * moves any local scratch or if a global-address derivation drifts. */
+/* Bind duplicated protocol literals to each owning generated register header.
+ * The hex forms stay for the SMC translation unit, which cannot include sep.h.
+ * A firmware build must fail if RDL moves a local scratch or a global-address
+ * derivation drifts. */
 #if defined(SMC_CPU_CTRL_SCRATCH_6__REG_ADDR)
 _Static_assert(EXTAXI_SMC_SCRATCH6_LOCAL == SMC_CPU_CTRL_SCRATCH_6__REG_ADDR,
                "SMC scratch6 local address drift");

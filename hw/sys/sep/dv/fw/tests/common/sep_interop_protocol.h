@@ -3,10 +3,9 @@
 /*
  * sep_interop  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SMC producer main.c + SEP consumer sep_smc_interop.c) and
- * parsed by the cocotb checker so the DUT stimulus and the DV expectations can never drift
- * (AGENTS.md one-source rule). Keep every value a plain integer/hex #define so the Python
- * parser can read it -- no expressions the parser cannot evaluate.
+ * Included by BOTH firmwares (SMC producer main.c + SEP consumer sep_smc_interop.c).
+ * Python goldens derive mailbox CSR facts independently from PeakRDL; they do
+ * not parse this header.
  *
  * Topology -- the SMC CPU and the real SEP CPU exchange 32-bit words over the two ports of
  * the SEP AXI-lite mailbox pair (sep.h AXIL_MAILBOX_*):

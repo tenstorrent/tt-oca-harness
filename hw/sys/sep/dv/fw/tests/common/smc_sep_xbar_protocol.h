@@ -3,9 +3,8 @@
 /*
  * smc_sep_xbar  --  shared protocol contract (single source of truth).
  *
- * Included by both firmwares (SEP consumer + SMC producer) and parsed by the
- * cocotb checker so DUT stimulus and DV expectations share one contract. Every
- * value is a plain integer/hex #define for the Python parser.
+ * Included by both firmwares (SEP consumer + SMC producer). Python goldens
+ * derive CSR facts independently from PeakRDL; they do not parse this header.
  *
  * Force-free SEP-driven bootstrap (pivoted 2026-07-20 off the ext_in launch, which
  * segfaults VCS on a CPU_CTRL write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU boots
