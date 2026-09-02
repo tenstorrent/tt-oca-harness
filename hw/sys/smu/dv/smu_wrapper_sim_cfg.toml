@@ -218,9 +218,7 @@ description = "Fallback: OSS wrapper no-SEP profile"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
   "SMU_NO_SEP",
-  "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
-  "RV_BUILD_AXI_NATIVE=1",
 ]
 
 [targets.default.tools.verilator]
@@ -235,9 +233,7 @@ description = "OSS smu_wrapper with NoSepCfg and SEP=0"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
   "SMU_NO_SEP",
-  "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
-  "RV_BUILD_AXI_NATIVE=1",
 ]
 
 [targets.compile_smu_chiplet_no_sep.tools.verilator]
@@ -251,10 +247,7 @@ flags = [
 description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
 defines = [
-  "SMU_SEP_RTL",
-  "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
-  "RV_BUILD_AXI_NATIVE=1",
 ]
 
 [targets.compile_smu_chiplet_sep_rtl.tools.verilator]

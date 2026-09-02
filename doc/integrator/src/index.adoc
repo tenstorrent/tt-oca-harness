@@ -2132,10 +2132,9 @@ Flows other than Design Compiler and Fusion Compiler must apply the equivalent
 [[prim-cell-replacement-simulation]]
 === Simulation
 
-These constraints have no functional effect and no simulation impact. All OCAH
-simulation flows compile with `+define+NO_LIBCELL`, which selects the behavioral
-model inside every primitive, so no library cell is ever elaborated by a
-simulator.
+These constraints have no functional effect and no simulation impact. RTL
+simulation compiles the technology-independent primitive models (`not(synth)`).
+Library cells are not on that filelist, so a simulator never elaborates them.
 
 Confirming that the protected cells survived is therefore a gate-level netlist
 check. RTL simulation cannot detect their loss.
