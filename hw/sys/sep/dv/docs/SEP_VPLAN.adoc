@@ -613,7 +613,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |SPI-OT flash command set
 |PROVEN
-|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the Phase-1 reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the row above and is not re-credited here.
+|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the Phase-1 reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here.
 
 |WDT bark → NMI, pet, lock
 |PROVEN
@@ -2869,7 +2869,7 @@ poll and yields the same pass.
 |CHK-PROGRAM / CHK-READ
 |A page program followed by a read returns the exact random pattern at the exact random address.
 |CHK-ERASE
-|A sector erase leaves the programmed region reading all-ones and leaves the adjacent 4 KiB neighbour sector intact. The same-address read immediately before the erase returned non-erased random data through the same path.
+|A sector erase leaves the programmed region reading all-ones and leaves the adjacent 4 KiB neighbour sector intact. The region is proven non-erased earlier in the walk, by the page program and read-back pair that `CHK-PROGRAM`/`CHK-READ` covers, so the all-ones result is a change of state rather than a region that was never written.
 |CHK-NO-ERROR
 |The SPI host error status is zero after the sequence.
 |CHK-JEDEC
@@ -3202,7 +3202,7 @@ feature credit. Closing the isolation claim needs both a run mode where
 |CHK-INTR-TEST
 |`INTR_TEST` forces `INTR_STATE.wkup_expired` with the wakeup counter off, then write-one-to-clear releases it.
 |CHK-REGWEN-SCOPE
-|With the watchdog lock closed, `WKUP_THOLD_LO` and `WDOG_COUNT` still accept writes. The lock covers the watchdog configuration only. The counter probe value is derived to sit below the seeded bark threshold, so the check cannot leave the block in a seed-dependent interrupt state.
+|With the watchdog lock closed, `WKUP_THOLD_LO` and `WDOG_COUNT` still accept writes. The lock covers the watchdog configuration only. The counter probe value is half the seeded bark threshold, and the threshold is drawn from 2 upward so that half of it is always non-zero and always strictly below it. The check therefore cannot leave the block in a seed-dependent interrupt state.
 |===
 
 '''''

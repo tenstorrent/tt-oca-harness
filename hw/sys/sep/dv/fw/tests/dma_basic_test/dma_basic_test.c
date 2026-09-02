@@ -320,7 +320,7 @@ static int chk_range_regwen(void) {
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00001000u);
     if (rd(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x00001000u) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN RANGE_BASE not writable before lock\n");
-        return 1;
+        return e + 1;
     }
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0u);
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
@@ -338,7 +338,8 @@ static int chk_range_regwen(void) {
     }
     if (!e) {
         sep_mbx_puts("CHK-RANGE-REGWEN PASS: RANGE_VALID=0 gated (range_valid_error), "
-                     "full range locked rw0c (range write rejected)\n");
+                     "limit-below-base raised base_limit_error exclusively with no "
+                     "STATUS.done, full range locked rw0c (range write rejected)\n");
     }
     return e;
 }
@@ -522,15 +523,17 @@ static int chk_done_rw1c(void) {
     return e;
 }
 
-// ---- CHK-ERR-ADDR: the engine's address and range validation ----
+// ---- CHK-ERR-ADDR: the engine's address validation ----
 // The RDL defines nine ERROR_CODE bits; before this only opcode_error and
-// range_valid_error were ever provoked. These three are the address-validation
-// legs, which is what stops a mis-programmed descriptor from moving bytes: a
-// transfer whose address does not meet the alignment its width requires, and a
-// DMA-enabled range whose limit sits below its base. Each cell asserts the
-// error EXCLUSIVELY, so a fault that raises a different bit is a failure rather
-// than a pass, and each is followed by a clean transfer proving the engine
-// recovers.
+// range_valid_error were ever provoked. These four cells are the
+// address-validation legs, which is what stops a mis-programmed descriptor from
+// moving bytes: a transfer whose source or destination address does not meet the
+// alignment its width requires, at both the 4-byte and the 2-byte width. Each
+// cell asserts its error EXCLUSIVELY, so a fault that raises a different bit is
+// a failure rather than a pass, and a clean transfer after the four proves the
+// engine recovers. The inverted-range leg (limit below base) is NOT here: it
+// must run before chk_range_regwen closes the one-way RANGE_REGWEN lock, so it
+// lives in that function.
 static int chk_err_addr(void) {
     int e = 0;
     struct {

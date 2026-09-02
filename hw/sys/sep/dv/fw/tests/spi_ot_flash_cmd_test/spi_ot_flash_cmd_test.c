@@ -12,13 +12,13 @@
 // WREN -> PAGE PROGRAM -> READ + verify == pattern -> FAST_READ, then neighbour
 // PAGE PROGRAM, then WREN -> SECTOR ERASE -> READ == 0xFF with neighbour intact.
 // Then the write-protect and status-register-2 breadth: RDSR proves the erase
-// cleared WIP and consumed WEL, a PAGE PROGRAM with WEL clear must NOT land, and
-// RDSR2 (0x35) must return SR2 rather than the SR1 value. ERROR_STATUS checked
+// consumed WEL, a PAGE PROGRAM with WEL clear must NOT land, and RDSR2 (0x35)
+// must return SR2 rather than the SR1 value. ERROR_STATUS checked
 // == 0 across all of that. Finally the host error classes are provoked one at a
 // time (underflow, reserved CMD.SPEED, out-of-range CSID) and recovered.
 //
-// The flash model is instant-ready, so WIP is never observed set; the WIP check
-// is "a defined status with WIP clear", not a busy-then-idle waveform. Dual and
+// The flash model is instant-ready, so WIP is never observed set. There is
+// deliberately no WIP checker: a "WIP clear" assertion could not fail. Dual and
 // quad lanes are not modeled, so no checker here covers them.
 //
 // The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
@@ -56,7 +56,6 @@
 #define FLASH_CMD_READ 0x03u
 #define FLASH_CMD_FAST 0x0Bu
 #define FLASH_CMD_ERASE 0x20u
-#define FLASH_SR_WIP (1u << 0)
 #define FLASH_SR_WEL (1u << 1)
 #define FLASH_JEDEC_RX 0x0018BA20u
 

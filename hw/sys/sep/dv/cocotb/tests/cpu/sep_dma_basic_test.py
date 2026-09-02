@@ -23,7 +23,8 @@ the boot scoreboard gates on. The firmware self-checks (each with a positive PAS
 line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock),
 CHK-RANGE-REGWEN (range gating + rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
 expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
-(opcode_error + recovery). The scoreboard also checks the banner + ICCM execution.
+(opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
+raising its ERROR_CODE bit exclusively, then a recovery copy). The scoreboard also checks the banner + ICCM execution.
 
 cpu / +skip_fuse_sense (no fuse data is read).
 """

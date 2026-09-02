@@ -38,7 +38,8 @@ Checks (each asserts an exact value, so a stuck/X register fails):
   CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset.
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
                    default (stronger than the reference suite). Probe cross-check on the cold bank.
-  CHK-COLD-BANK  : the cold reset clears all 16 registers of both banks.
+  CHK-COLD-BANK  : the cold reset clears both banks -- 8 registers each, 16 in
+                   total.
 
 no_cpu / +skip_fuse_sense (the scratch banks are reached over the CPU-LSU AXI
 splice; the reset stimulus is the wdt_rst_ni_i / rst_ni primary inputs -- no OTP
