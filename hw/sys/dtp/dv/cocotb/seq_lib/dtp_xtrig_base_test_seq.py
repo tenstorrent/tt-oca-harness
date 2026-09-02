@@ -148,7 +148,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # CSR helpers
     # ------------------------------------------------------------------
     async def csr_write(self, addr: int, data: int, *, wstrb: int = 0xF, label: str = "") -> int:
-        resp = await self.axil.write(addr, data, wstrb=wstrb)
+        resp = await self.axil.write(addr, data, strb=wstrb)
         self.log.info(
             "XTRIG CSR WRITE %-34s addr=0x%03x data=0x%08x wstrb=0x%x resp=%d",
             label,
@@ -161,7 +161,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         return resp
 
     async def csr_read(self, addr: int, *, label: str = "") -> int:
-        data, resp = await self.axil.read(addr)
+        result = await self.axil.read_result(addr)
+        data, resp = result.data, result.resp
         self.log.info(
             "XTRIG CSR READ  %-34s addr=0x%03x data=0x%08x resp=%d",
             label,
@@ -754,32 +755,29 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         rng = self.rng("axi_channel_skew")
         d1, d2, d3 = (rng.getrandbits(16) for _ in range(3))
         addr = ctp_stretch_addr(rng.randrange(XTRIG_NUM_CTP))
-        resp = await self.axil.write_skewed(
-            addr, d1, aw_before_w=True, gap_cycles=rng.randint(3, 7), bready_delay=rng.randint(1, 4)
+        result = await self.axil.write_skewed_result(
+            addr, d1, w_valid_delay=rng.randint(3, 7), b_ready_delay=rng.randint(1, 4)
         )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", result.resp, self.AXI_OKAY)
         await self.write_read_check(
             addr, d2, d2, mask=XTRIG_CTP_STRETCH_MASK, label="axi_skew.normal_after_aw"
         )
-        resp = await self.axil.write_skewed(
+        result = await self.axil.write_skewed_result(
             addr,
             d3,
-            aw_before_w=False,
-            gap_cycles=rng.randint(3, 7),
-            bready_delay=rng.randint(1, 4),
+            aw_valid_delay=rng.randint(3, 7),
+            b_ready_delay=rng.randint(1, 4),
         )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", result.resp, self.AXI_OKAY)
         observed = await self.csr_read(addr, label="axi_skew.final_read")
         self.check_evidence(
             self.CHK_AXIL, "axi_skew.final_stretch", observed & XTRIG_CTP_STRETCH_MASK, d3
         )
-        data, rresp, stable = await self.axil.read_with_rready_hold(
-            addr, hold_cycles=rng.randint(3, 7)
-        )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rresp", rresp, self.AXI_OKAY)
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rstable", stable, 1)
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rdata", data & XTRIG_CTP_STRETCH_MASK, d3)
-        self.log_summary("axi_channel_skew", final=f"0x{data:08x}")
+        held = await self.axil.read_hold_result(addr, rng.randint(3, 7))
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rresp", held.resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rstable", int(held.hold_stable), 1)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rdata", held.data & XTRIG_CTP_STRETCH_MASK, d3)
+        self.log_summary("axi_channel_skew", final=f"0x{held.data:08x}")
 
     async def run_axi_channel_skew_demux_aw_lock_release(self) -> None:
         self.log_banner("DTP XTRIG AXI-Lite demux AW-lock release")
@@ -805,14 +803,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         )
         for idx, (addr, data, aw_first) in enumerate(cases, start=1):
             self.log_iteration(idx, 3, "addr=0x%x data=0x%x aw_first=%d", addr, data, aw_first)
-            resp = await self.axil.write_skewed(
+            gap = rng.randint(4, 8)
+            result = await self.axil.write_skewed_result(
                 addr,
                 data,
-                aw_before_w=aw_first,
-                gap_cycles=rng.randint(4, 8),
-                bready_delay=rng.randint(1, 4),
+                aw_valid_delay=0 if aw_first else gap,
+                w_valid_delay=gap if aw_first else 0,
+                b_ready_delay=rng.randint(1, 4),
             )
-            self.check_evidence(self.CHK_AXIL, f"demux_aw_lock.{idx}.bresp", resp, self.AXI_OKAY)
+            self.check_evidence(
+                self.CHK_AXIL, f"demux_aw_lock.{idx}.bresp", result.resp, self.AXI_OKAY
+            )
             observed = await self.csr_read(addr, label=f"demux_aw_lock.{idx}.readback")
             mask = XTRIG_CTP_CONFIG_MASK if addr >= 0x200 else XTRIG_CTM_SELECT_MASK
             self.check_evidence(
@@ -828,14 +829,22 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         for idx, addr in enumerate(
             (XTRIG_UNMAPPED_BASE + offsets[0] * 4, XTRIG_UNMAPPED_BASE + offsets[1] * 4), start=1
         ):
-            data, resp, stable = await self.axil.read_with_rready_hold(
-                addr, hold_cycles=rng.randint(4, 8)
-            )
+            held = await self.axil.read_hold_result(addr, rng.randint(4, 8))
             self.log_iteration(
-                idx, 2, "unmapped addr=0x%x data=0x%x resp=%d stable=%d", addr, data, resp, stable
+                idx,
+                2,
+                "unmapped addr=0x%x data=0x%x resp=%d stable=%d",
+                addr,
+                held.data,
+                held.resp,
+                int(held.hold_stable),
             )
-            self.check_evidence(self.CHK_AXIL, f"read_decode.{idx}.resp", resp, self.AXI_DECERR)
-            self.check_evidence(self.CHK_AXIL, f"read_decode.{idx}.stable", stable, 1)
+            self.check_evidence(
+                self.CHK_AXIL, f"read_decode.{idx}.resp", held.resp, self.AXI_DECERR
+            )
+            self.check_evidence(
+                self.CHK_AXIL, f"read_decode.{idx}.stable", int(held.hold_stable), 1
+            )
         self.log_summary(
             "axi_channel_skew_read_decode_backpressure", unmapped_base=f"0x{XTRIG_UNMAPPED_BASE:x}"
         )
