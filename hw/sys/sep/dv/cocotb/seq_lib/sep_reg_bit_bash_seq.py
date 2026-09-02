@@ -61,6 +61,8 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "SEP_STRAPS"): "hw-driven straps",
     ("SEP_CPU_CTRL", "TIMEOUT_CLEAR"): "write-only",
     ("SEP_CPU_CTRL", "TIMEOUT_MODE"): "write-only",
+    ("SEP_CPU_CTRL", "DMA_BUS_ERR_CLEAR"): "write-only",
+    ("SEP_CPU_CTRL", "PERIPH_BUS_ERR_CLEAR"): "write-only",
     ("WDT_TIMER", "WKUP_COUNT_HI"): "hw-driven timer",
     ("WDT_TIMER", "WKUP_COUNT_LO"): "hw-driven timer",
     ("WDT_TIMER", "WDOG_COUNT"): "hw-driven timer",
