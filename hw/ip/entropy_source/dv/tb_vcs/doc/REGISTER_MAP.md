@@ -96,26 +96,33 @@ Removed registers leave reserved holes at 0x008, 0x058-0x05C,
 ## Key Implementation Notes
 
 ### Decorrelator Configuration (NEW Changes)
+
 **DECORRELATOR_CTRL Register (0x0A0)**:
+
 - **SAMPLE_CLK_DIV field**: Moved from [23:16] to [31:12] (commit 7883562f)
 - **Field width**: Changed from 8-bit to 20-bit
 - **Default value**: Still 63 (division by 64)
 - **Range**: 8-255 for div-8 to div-256
 
 **Common configurations**:
+
 - Full decorrelation: BYPASS=0x000, DIV=63 (div-64)
 - Full bypass: BYPASS=0xFFF, DIV=7 (div-8)
 - Fast sampling: BYPASS=0x000, DIV=7 (div-8)
 - Slow sampling: BYPASS=0x000, DIV=255 (div-256)
 
 ### Downsampling Configuration (NEW Default)
+
 **CTRL.DOWNSAMPLE_RATE field (0x004[25:16])**:
+
 - **Default changed**: From 63 to 0 (commit 7883562f)
 - **Behavior**: Rate=0 means NO downsampling (capture all samples)
 - **Applied after**: DECORRELATOR_CTRL.SAMPLE_CLK_DIV
 
 ### Compressor Bypass Mode (NEW Feature)
+
 **CTRL.BYPASS_ENTROPY_COMPRESSOR field (0x004[8])**:
+
 - **Added**: Commit b7bed4f0
 - **Default**: 0 (compressor enabled)
 - **When BYPASS=1**: Pushes raw 12-byte RO data directly to FIFO without compression
@@ -124,27 +131,35 @@ Removed registers leave reserved holes at 0x008, 0x058-0x05C,
 - **Use Case**: Debug mode to observe raw RO outputs before compression
 
 **Normal Mode (BYPASS=0)**:
+
 - Compressor enabled: 12 bytes -> 4 bytes (32-bit compressed entropy)
 - FIFO push: 1 word per sample
 
 **Bypass Mode (BYPASS=1)**:
+
 - Compressor bypassed: 12 bytes pushed as-is
 - FIFO push: 3 words per sample (bytes [3:0], [7:4], [11:8])
 
 ### Debug Monitor
+
 **DEBUG_CTRL.SELECT_SIGNAL field (0x00C[7:0])**:
+
 - **Signal count**: Selects one of 256 observation inputs
-- **Observed data**: Includes raw uncompressed entropy_stream_uncompressed[11:0][7:0]
+- **Observed data**: Includes raw uncompressed `entropy_stream_uncompressed[11:0][7:0]`
 
 ### Interrupt System
+
 All eight interrupts use the same pattern:
+
 1. **INTR_STATUS**: Write-1-Clear status latches
 2. **INTR_ENABLE**: Enable/disable gating
 3. **INTR_TEST**: Software injection for testing
 4. **Output**: irq_o = |(INTR_STATUS & INTR_ENABLE)
 
 ### FIFO Security Features
+
 Implemented in entropy_fifo.sv:
+
 1. **Parity Protection**: 4-bit odd parity per 32-bit word (one per byte)
 2. **Differential Pointers**: Normal + inverted storage for wptr/rptr
 3. **Security Alert**: Combined parity_error | pointer_error -> FIFO_ERROR interrupt
@@ -152,6 +167,7 @@ Implemented in entropy_fifo.sv:
 [WARNING] Individual error signals not exposed to APB - requires backdoor access for testing
 
 ### Health Test Architecture
+
 - **HEALTH_TEST_STATUS (0x040)**: Tests the 32-bit post-BIW stream
 - **GENERATOR_*_HEALTH_STATUS (0xC0-0xEC)**: Per-generator 8-bit byte-stream testing
 - **Single interrupt**: HEALTH_TEST_FAILED triggers for any test failure
@@ -160,4 +176,5 @@ Implemented in entropy_fifo.sv:
 ---
 
 **Documentation References**:
+
 - Complete test specifications: `TEST_PLAN.txt`

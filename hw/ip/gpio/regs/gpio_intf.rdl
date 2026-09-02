@@ -87,7 +87,7 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "When set, LSIO acceses will be blocked from the GPIO interface";
+            desc = "When set, LSIO accesses will be blocked from the GPIO interface";
         } lsio_disable[19:19] = 0x0;
 
         field {

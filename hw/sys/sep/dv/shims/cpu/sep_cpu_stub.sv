@@ -97,11 +97,10 @@ module sep_cpu
     output logic dec_tlu_perfcnt2,
     output logic dec_tlu_perfcnt3,
 
-  `ifdef RV_LOCKSTEP_ENABLE
-    input  logic disable_corruption_detection_i,
-    input  logic lockstep_err_injection_en_i,
-    output logic corruption_detected_o,
-  `endif
+    // Unconditional, matching sep_cpu: the port footprint does not depend on
+    // the lockstep build define.
+    input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t lockstep_status_o,
 
     // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
     output sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -247,9 +246,10 @@ module sep_cpu
   assign dec_tlu_perfcnt2    = 1'b0;
   assign dec_tlu_perfcnt3    = 1'b0;
 
-`ifdef RV_LOCKSTEP_ENABLE
-  assign corruption_detected_o = 1'b0;
-`endif
+  assign lockstep_status_o = '0;
+
+  logic unused_lockstep_ctrl;
+  assign unused_lockstep_ctrl = |lockstep_ctrl_i;
 
   // TCM (ICCM/DCCM) request to memory macros - idle (no core)
   assign sep_cpu_tcm_req_o   = '0;
