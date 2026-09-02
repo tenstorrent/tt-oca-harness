@@ -2492,11 +2492,11 @@ typedef struct __attribute__ ((__packed__)) {
 
 // addrmap - oca_i3c_wrap
 typedef struct __attribute__ ((__packed__)) {
-    I3CCSR_t i3c_csr;
+    I3CCSR_t i3c_csr[6];
 } oca_i3c_wrap_t;
 
 
-static_assert(sizeof(oca_i3c_wrap_t) == 0x1000, "Packing error");
+static_assert(sizeof(oca_i3c_wrap_t) == 0x6000, "Packing error");
 
 #ifdef __cplusplus
 }
