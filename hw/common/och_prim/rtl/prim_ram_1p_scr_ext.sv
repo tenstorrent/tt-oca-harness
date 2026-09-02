@@ -71,7 +71,7 @@ module prim_ram_1p_scr_ext
   input        [AddrWidth-1:0]             addr_i,
   input        [Width-1:0]                 wdata_i,
   input        [Width-1:0]                 wmask_i,  // Needs to be byte-aligned for parity
-  // On integrity errors, the primitive surpresses any real transaction to the memory.
+  // On integrity errors, the primitive suppresses any real transaction to the memory.
   input                                    intg_error_i,
   output logic [Width-1:0]                 rdata_o,
   output logic                             rvalid_o, // Read response (rdata_o) is valid

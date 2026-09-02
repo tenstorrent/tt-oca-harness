@@ -182,7 +182,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_mailbox_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_mailbox_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_mailbox_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -249,7 +249,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_outbound_filter_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_ob_filter_reg_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_ob_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -419,7 +419,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_inbound_filter_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_ib_filter_reg_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_ib_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -574,7 +574,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_mR_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -673,7 +673,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_xR_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -772,7 +772,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_aR_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -874,7 +874,7 @@ module smc_internal_regs
 		.tdr_dbg_ctrl_clocks_stopped_by_cla_o		(tdr_dbg_ctrl_clocks_stopped_by_cla_o),
 
 		.dbg_mux_sel_csr_i							(dbg_mux_sel_csr),
-		.debug_bus_i								(debug_bus_i),    // We could add a sync2 here for every bit of the debug bus to smc clk but I thats alot of area 'wasted'
+		.debug_bus_i								(debug_bus_i),    // We could add a sync2 here for every bit of the debug bus to smc clk but I that's a lot of area 'wasted'
 		.debug_marker_o								(debug_marker_o),
 
 		.trace_mem_req_o							(trace_mem_req_o),

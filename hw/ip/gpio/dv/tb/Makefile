@@ -74,6 +74,7 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 gpio.f:
 	bender script flist-plus -t common_cells_rtl -t apb_rtl -t axi_rtl -t peripheral -t gpio > gpio.f
 
+.PHONY: filelist lint wave
 clean:: # cocotb's own `clean` uses double colon
 	rm -rf __pycache__ *.f
 

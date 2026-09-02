@@ -23,4 +23,6 @@ descriptions, and cross-guide references with the current tree.
 compile-time defines that apply across OCAH, starting with `SIMULATION`: how to
 set it, the testbench hooks and models it enables, and the flows it must not
 reach.
+|0.0.4 |2026-08-31 |Ben Melton |Documented the SMU IC_RESET TDR slice layout
+(SMC, SEP, external) and marked the external slice as adopter-defined.
 |=======================================================================
