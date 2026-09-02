@@ -87,7 +87,7 @@ ocah-regen-regs-clean:
 ocah_vhr_name = $(notdir $(basename $(call ocah_vhr_rdl,$(1))))
 OCAH_SELECTED_VENDOR_HJSON_RDLS = $(if $(RDL),$(foreach e,$(OCAH_VENDOR_HJSON_RDLS),$(if $(filter $(RDL),$(call ocah_vhr_name,$(e))),$(e))),$(OCAH_VENDOR_HJSON_RDLS))
 .PHONY: ocah-regen-vendor-rdl
-ocah-regen-vendor-rdl: | uv-sync
+ocah-regen-vendor-rdl: | $(OCAH_REG_UV_PREREQ)
 	@$(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),\
 		echo "Exporting HJSON register description to RDL: $(call ocah_vhr_rdl,$(e))"; \
 		$(call ocah_vendor_hjson_rdl_regen,$(e)); )
