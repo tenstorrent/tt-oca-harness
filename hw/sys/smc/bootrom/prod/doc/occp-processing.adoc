@@ -67,7 +67,8 @@ While latched, traffic on other interfaces is ignored.
 One million polling iterations without receive data causes the current interface to be flushed and unlatched.
 Five consecutive header-read or command-execution errors also cause an unlatch.
 A successfully completed handler clears the consecutive-error count.
-`smc_occp_force_unlatch` exposes the same unlatch operation to linked firmware code.
+`smc_occp_force_unlatch` exposes the same unlatch operation to linked ROM FW
+code.
 
 === Receive and dispatch
 

@@ -100,6 +100,104 @@ For the architecture-level responsibility split between the integrator, firmware
 and the internal SEP/SMC maps, see
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
 
+[[immutable-rom-fw-integration]]
+=== Immutable ROM FW Integration
+
+OCAH contains three immutable ROM FW images: the SMC production ROM FW, the
+SEP BL0 ROM FW, and the Key Manager ROM FW. Each image has two integration
+contracts. The adopter connects and configures the corresponding ROM macro,
+and the final ROM FW image must be present before its processor leaves reset.
+Where ROM FW must initialize or access an adopter-owned peripheral outside
+OCAH, the image may also expose build-time integration hooks.
+
+[[rom-fw-override-method]]
+==== Weak-symbol override method
+
+An immutable ROM FW image may provide selected vendor-neutral integration hooks
+as weak symbols. Supply an adopter implementation as a strong definition of the
+same symbol before the final image is frozen. The strong implementation must
+program the same adopter-owned IP instantiated by the RTL integration, and its
+signature, ABI, return values, and documented semantics must match the weak
+declaration.
+
+This mechanism applies only when the ROM FW needs to interact with a peripheral
+outside OCAH. It is a build-time image-composition mechanism, not a runtime
+extension mechanism. The per-ROM sections below identify the build input used
+to add sources; do not assume that one ROM FW image's build variable applies to
+the others.
+
+Inspect the final ELF or linker map after linking. For example,
+`riscv64-unknown-elf-nm` must report each selected implementation as a strong
+symbol rather than `W`; successful linking alone does not prove that the weak
+default was replaced.
+
+[[smc-rom-fw-integration]]
+==== SMC ROM FW integration
+
+Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
+implementation. In the current four-core configuration, the request provides
+the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
+one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
+ROM FW image must be present before the first boot; its build is under
+`hw/sys/smc/bootrom/prod/`.
+
+Connect the ROM macro configuration input reached as `rom_cfg_i` and
+`mem_cfg_i` according to the selected macro's contract. OCAH forwards these 11
+bits without assigning technology-specific semantics; the reference
+`smc_ip_integration.sv` ties them to zero. Set the eFuse shadow value that
+drives the CPU's `rom_flip_endianness_i` path to match the byte order of the
+image and ROM macro. Deasserted passes each 64-bit read word unchanged;
+asserted reverses its eight bytes.
+
+.SMC ROM FW override inventory
+[width="100%",cols="22%,28%,50%",options="header"]
+|=======================================================================
+|Hook |Weak default |Override and integration action
+|`smc_pll_init()`
+|Returns `SMC_PLL_SUCCESS` without programming PLL hardware.
+|Override when `BL0_PLLCLK` is asserted and the adopter's PLL requires
+ROM-time configuration. Provide the same
+`smc_pll_result_t smc_pll_init(void)` signature through
+`NONFREE_DRIVER_SOURCES`. Any result other than `SMC_PLL_SUCCESS` is fatal:
+the ROM FW records an interface error and remains in `wfi`.
+|`i3c_release_reset()`, `cfg_ps()`, `init_i3c_ctrl()`, and
+`I3C_GetDriverInstance()`
+|Permit the ROM FW to boot without an active I3C implementation; I3C data
+operations report a hardware error.
+|When the ROM FW must use an active I3C target, select the open HCI
+implementation with `I3C_CORE=swap`, or provide strong implementations through
+`NONFREE_DRIVER_SOURCES` that conform to
+`drivers/include/i3c_target_driver.h`.
+|=======================================================================
+
+[[sep-rom-fw-integration]]
+==== SEP ROM FW integration
+
+The SEP exposes the `sep_boot_rom` memory interface for its immutable BL0 ROM
+FW image. The detailed ROM-macro configuration, image-loading contract, and
+adopter override inventory are not yet documented here.
+
+.SEP ROM FW override inventory
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Hook |Status
+|_To be documented_ |No adopter override requirement is defined here yet.
+|=======================================================================
+
+[[km-rom-fw-integration]]
+==== Key Manager ROM FW integration
+
+The Key Manager exposes the `km_rom_mem` interface through SEP for its
+immutable ROM FW image. The detailed ROM-macro configuration, image-loading
+contract, and adopter override inventory are not yet documented here.
+
+.Key Manager ROM FW override inventory
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Hook |Status
+|_To be documented_ |No adopter override requirement is defined here yet.
+|=======================================================================
+
 [[smc-integration]]
 === System Management Controller (SMC) Integration
 
@@ -330,25 +428,8 @@ indicates completion of this sensing operation.
 ==== Memory Subsystem Integration
 
 The SMC includes an embedded RISC-V CPU cluster with associated memory
-interfaces.
-
-[[smc-rom-macro-integration]]
-===== ROM Macro Integration
-
-Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
-implementation. In the current four-core configuration, the request provides
-the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
-one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
-ROM image must be present before the first boot; the production image build is
-under `hw/sys/smc/bootrom/prod/`.
-
-Connect the ROM macro configuration input reached as `rom_cfg_i` and
-`mem_cfg_i` according to the selected macro's contract. OCAH forwards these 11
-bits without assigning technology-specific semantics; the reference
-`smc_ip_integration.sv` ties them to zero. Set the eFuse shadow value that
-drives the CPU's `rom_flip_endianness_i` path to match the byte order of the
-image and ROM macro. Deasserted passes each 64-bit read word unchanged;
-asserted reverses its eight bytes.
+interfaces. See <<immutable-rom-fw-integration>> for the ROM FW integration
+contract.
 
 [[smc-sram-cache-integration]]
 ===== SRAM and Cache Array Integration
@@ -409,7 +490,7 @@ Repair completion and success are reported through
 `DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
 indicates completion regardless of success, while `mem_repair_success` indicates
 successful repair. Both bits are set by the external repair controller. The SMC
-ROM firmware monitors these bits during initialization to verify repair
+ROM FW monitors these bits during initialization to verify repair
 completion.
 
 **Bypass Configuration:**
@@ -487,10 +568,11 @@ straps sampled during this phase determine boot modes and operational settings. 
 sensing completes, the SMC releases internal subsystem resets based on the programmed reset
 sequencing configuration.
 
-The CPU cluster begins firmware execution from the boot ROM after reset release. The firmware
-performs additional initialization including peripheral configuration, memory testing (unless
-disabled), and system health checks. The `init_mem_done_o` signal indicates completion of
-memory initialization if automatic SRAM zeroing is enabled.
+The CPU cluster begins executing the ROM FW after reset release. The ROM FW
+performs additional initialization including peripheral configuration, memory
+testing (unless disabled), and system health checks. The `init_mem_done_o`
+signal indicates completion of memory initialization if automatic SRAM zeroing
+is enabled.
 
 For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger a warm reset
 sequence. This isolates subsystems through `isolate_req_o` signals and performs controlled
@@ -756,7 +838,7 @@ their own integration logic. Tie the input low when unused.
 ==== Bring-Up Considerations
 
 The SEP boot sequence begins after the SMC completes fuse sensing and releases
-the SEP reset. The SEP BL0 ROM firmware verifies the BL1 software image using
+the SEP reset. The SEP BL0 ROM FW verifies the BL1 software image using
 non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
@@ -831,39 +913,6 @@ scratchpad RAM, cache tag and data arrays), and trace memory instances.
 `sep_ip_integration.sv` demonstrates integration of SEP-side technology
 components: SEP memory macros (TCM, scratch SRAM, boot ROM, OTBN IMEM/DMEM,
 Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
-
-[[vendor-ip-firmware-overrides]]
-===== Vendor-IP Firmware Overrides
-
-Firmware that will be fixed in ROM provides selected vendor-neutral integration
-hooks as weak symbols. Supply the adopter implementation as a strong definition
-of the same symbol, and compile and link it into the production ROM with
-`NONFREE_DRIVER_SOURCES`. The strong implementation must program the same
-technology-specific IP instantiated by the adopter's RTL integration, and its
-signature, ABI, return values, and documented semantics must match the weak
-declaration.
-
-Inspect the final ELF or linker map after linking. For example,
-`riscv64-unknown-elf-nm` must report the selected implementation as a strong
-symbol rather than `W`; successful linking alone does not prove that the weak
-default was replaced.
-
-[[smc-production-rom-firmware-overrides]]
-====== SMC Production ROM Example
-
-`smc_pll_init()` is the SMC production ROM hook corresponding to the adopter's
-PLL integration. Its weak default performs no PLL hardware programming and
-returns success. An adopter that substitutes its own PLL for the model shown in
-the reference `smc_ip_integration.sv` supplies a strong implementation with the
-same `smc_pll_result_t smc_pll_init(void)` signature and result semantics.
-Any result other than `SMC_PLL_SUCCESS` is fatal: the ROM records an interface
-error and remains in `wfi`.
-
-The public I3C target-driver symbols in
-`hw/sys/smc/bootrom/prod/drivers/src/i3c_target_driver.c` provide another set of
-weak hooks. A strong target driver must implement the declarations and
-semantics in `drivers/include/i3c_target_driver.h` for the I3C IP used by the
-adopter's RTL integration.
 
 ===== Wrapper Clock and PLL Architecture
 

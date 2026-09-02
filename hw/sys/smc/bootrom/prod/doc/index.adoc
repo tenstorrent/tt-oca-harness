@@ -23,6 +23,15 @@ The implementation is divided into:
 * OCCP, security, status, scratch-register coordination, and ring-buffer support in `lib/`; and
 * the ROM/SRAM image layout in `linker/smc/smc_rom.ld`.
 
+Selected adopter-facing services are weak-symbol ROM FW integration hooks.
+The open definitions allow the image to build without adopter-owned PLL or I3C
+implementations; a final adopter ROM FW image can replace them with strong
+definitions before the ROM FW is frozen. The detailed sections identify the
+hooks where they are used. For the build-time override method and the SMC
+override inventory, see
+xref:ocah-integrator-guide::index.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
+in the Integrator Guide.
+
 The ROM has two terminal handoff paths.
 `ExecuteImage` sends a success response and transfers control directly in non-secure lifecycle states.
 `AuthenticateImage` sends a success response, publishes a manifest offset to the coordination scratch registers, and parks the SMC in `wfi`.

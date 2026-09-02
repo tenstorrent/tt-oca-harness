@@ -1,6 +1,6 @@
 # SMC Production ROM
 
-The production ROM has a self-contained firmware build. For its architecture, boot
+The production ROM FW has a self-contained build. For its architecture, boot
 behavior, OCCP protocol, and implementation details, see
 [SMC Production ROM documentation](doc/index.adoc).
 

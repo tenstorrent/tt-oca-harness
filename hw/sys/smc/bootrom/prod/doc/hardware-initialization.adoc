@@ -88,7 +88,8 @@ The ROM does not perform a DMA-reset step.
 
 === MBIST and memory repair
 
-The production image links strong overrides for both early checks, so the weak no-op definitions in `mbist_check.S` are not used.
+The production ROM FW image links strong overrides for both early checks, so
+the weak no-op definitions in `mbist_check.S` are not used.
 Both checks read the SMU DFX status register at `0xC000B800`.
 They run after SRAM initialization and before stack setup.
 
@@ -118,6 +119,7 @@ On its normal completion path, the repair check preserves a preceding MBIST fail
 
 The C flow calls `smc_pll_init` only when `BL0_PLLCLK` is asserted.
 The open implementation is weak and its internal configuration function performs no register writes, so the default behavior is a successful no-op.
-A platform build may provide a strong implementation through the build's additional driver-source hook.
+An adopter ROM FW build may provide a strong implementation through the
+build's additional driver-source hook.
 If that implementation returns any value other than `SMC_PLL_SUCCESS`, the
 ROM records an interface error and remains in `wfi`.

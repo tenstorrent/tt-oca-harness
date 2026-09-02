@@ -30,7 +30,7 @@ I2C channels are initialized in target mode.
 
 The default I3C target symbols are weak.
 Their initialization functions succeed so the ROM remains linkable without an active I3C implementation, while their data methods report a hardware error and their receive-availability method reports no data.
-A platform build can replace those symbols with a strong driver.
+An adopter ROM FW build can replace those symbols with a strong driver.
 
 Setting `I3C_CORE=swap` at build time enables the open MIPI HCI/I3CCSR implementation in `i3c_hci_driver.c`.
 That implementation configures the target transaction interface, static address, dynamic-address-assignment acceptance, queue thresholds, and open-drain timing.
