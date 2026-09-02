@@ -408,7 +408,7 @@ class SepEfuseImage:
 
     def secret_words(self) -> frozenset:
         """Word indices the DUT blanks while secure_tm is asserted."""
-        idx = set()
+        idx: set[int] = set()
         for name in _SECRET_REGS:
             fld = self.field(name)
             idx.update(range(fld.word, fld.word + fld.n_words))
