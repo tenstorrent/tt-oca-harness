@@ -122,9 +122,7 @@ WIDEN_ADJ_BELOW = (
 # The last table entry: the write-once lock is sticky until reset, so it must not
 # land on an entry the matrix or burst walk reprograms.
 WIDEN_ENTRY = INFILT_N_ENTRIES - 1
-FILTER_LOCKED_HI_BIT = (
-    INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32
-)
+FILTER_LOCKED_HI_BIT = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32
 
 
 class SepInboundFilterWidenCfg:

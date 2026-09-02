@@ -53,9 +53,7 @@ CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
 ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-ALIAS_STRIDE = (
-    sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
-)
+ALIAS_STRIDE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
 ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
 ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
 ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
@@ -69,15 +67,11 @@ REMAP_ATTRS = 0x00  # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
-FILTER_STRIDE = (
-    sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
-)
+FILTER_STRIDE = sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
 FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
 
 # remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
-WOSET_HI_BIT = (
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
-)
+WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
 
 # axi_pkg response codes (a locked filter entry rejects a further write with SLVERR).
 RESP_OKAY = 0
