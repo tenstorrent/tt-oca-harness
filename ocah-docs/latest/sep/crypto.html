@@ -204,17 +204,17 @@ distinct buses:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>AXI4-lite data and CSR bus</p>
+<p>AXI4 data and CSR bus</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Mastered by top host AXI4-lite bridge</p>
+<p>Mastered by the SEP system fabric</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p>AXI4-lite secret key bus</p>
+<p>AXI4-lite secret key buses</p>
 <div class="ulist">
 <ul>
 <li>
@@ -249,22 +249,28 @@ whenever a new accelerator is added to the subsystem.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>sep_crypto</code> module implements the integration layer. A single 64-bit AXI
-slave port from the SEP system fabric feeds an <code>axi_demux</code> that decodes the
-address and routes each transaction to the appropriate accelerator or internal
-peripheral. Each OpenTitan wrapper converts the AXI bus to TL-UL through a
-standard three-stage pipeline: <code>axi_dw_converter</code> (64-bit to 32-bit),
-<code>axi_to_axi_lite</code>, and <code>axi_lite_to_tlul</code>. The Key Manager drives a private
-AXI4-Lite key bus to each accelerator wrapper, which maps key words into the
-sideload structures expected by the OpenTitan cores.</p>
+<p>The <code>sep_crypto</code> module implements the integration layer, with
+<code>sep_crypto_axi_interconnect</code> centralizing its bus infrastructure. A single
+64-bit AXI slave port from the SEP system fabric is decoded to the accelerators
+and internal peripherals. The host paths to OTBN, HMAC, AES, KMAC, ESRC, CSRNG,
+and EDN are converted to AXI4-Lite before isolation, with data-width conversion
+where required by the endpoint. The OpenTitan wrappers then bridge the isolated
+AXI4-Lite paths to TL-UL.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager drives private AXI4-Lite key buses to the accelerator wrappers,
+which map key words into the sideload structures expected by the OpenTitan
+cores. These buses are independently isolated so that they drain before either
+the Key Manager or the destination accelerator enters software reset.</p>
 </div>
 <div class="paragraph">
 <p>Alerts from all crypto components are collected by 11 <code>prim_alert_receiver</code>
 instances within <code>sep_crypto</code> and aggregated into a single <code>crypto_alert_o</code>
-output. Each accelerator has its own independent software-controllable reset,
-gated with the system reset through the SEP Reset Controller; the entropy
-source, CSRNG, and EDN share a single one. See <a href="#sep-trng-reset">[sep-trng-reset]</a> for the
-constraints that apply to that shared reset.</p>
+output. Each accelerator has its own software-controllable reset. The SEP Reset
+Controller drains and isolates both its host and Key Manager paths before
+asserting reset; a Key Manager reset similarly drains all of its key paths. The
+entropy source, CSRNG, and EDN share one coordinated reset. See
+<a href="#sep-reset-controller">[sep-reset-controller]</a> and <a href="#sep-trng-reset">[sep-trng-reset]</a>.</p>
 </div>
 <div class="paragraph">
 <p>The crypto complex uses whole-instance Class 2 scan boundaries so all
@@ -305,16 +311,16 @@ Software must access the whole crypto region with single-beat transactions.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>hmac_wrapper</code> receives a 64-bit AXI slave port from the crypto crossbar and
-narrows it to 32-bit AXI, then to AXI-Lite, and finally to TL-UL for the
-<code>tt_hmac</code> core. The address path subtracts the HMAC base address and masks to a
-13-bit window (8 KB), accommodating both the register space and the message
-FIFO window at offset <code>0x1000</code>. The Key Manager provides an 8-word-per-share
-key through the <code>hmac_wrapper_key_reg</code> block, which maps directly to the
-<code>keymgr_key_i</code> sideload input. HMAC exposes a single fatal alert channel (index
-[0] in the <code>sep_crypto</code> aggregation), three interrupts (<code>done</code>, <code>fifo_empty</code>,
-<code>err</code>), and an <code>idle_o</code> status output. Unlike the other crypto wrappers, HMAC
-has no EDN connection.</p>
+<p>The crypto interconnect narrows HMAC&#8217;s host path from 64-bit AXI to 32-bit AXI,
+converts and isolates it as AXI-Lite, then <code>hmac_wrapper</code> bridges it to TL-UL
+for the <code>tt_hmac</code> core. The address path subtracts the HMAC base address and
+masks to a 13-bit window (8 KB), accommodating both the register space and the
+message FIFO window at offset <code>0x1000</code>. The Key Manager provides an
+8-word-per-share key through the <code>hmac_wrapper_key_reg</code> block, which maps
+directly to the <code>keymgr_key_i</code> sideload input. HMAC exposes a single fatal
+alert channel (index [0] in the <code>sep_crypto</code> aggregation), three interrupts
+(<code>done</code>, <code>fifo_empty</code>, <code>err</code>), and an <code>idle_o</code> status output. Unlike the other
+crypto wrappers, HMAC has no EDN connection.</p>
 </div>
 <div class="paragraph">
 <p>Consult the
@@ -415,12 +421,13 @@ memory allowing firmware updates to be made in the field.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>sep_crypto_otbn_wrapper</code> is the most complex of the OpenTitan wrappers. The
-64-bit AXI slave port requires a <code>CACHE_MODIFIABLE</code> bit fix before the
-<code>axi_dw_converter</code>, because the VeeR CPU may emit non-modifiable cache
-attributes for MMIO accesses that would be rejected by the AXI-to-AXI-Lite
-converter. After data-width conversion and protocol bridging, TL-UL drives the
-standard <code>otbn</code> core configured with <code>Stub = 0</code> and <code>RegFile = RegFileFF</code>.</p>
+<p>The OTBN host path is the most complex OpenTitan path. The crypto interconnect
+applies a <code>CACHE_MODIFIABLE</code> bit fix before the <code>axi_dw_converter</code>, because the
+VeeR CPU may emit non-modifiable cache attributes for MMIO accesses that would
+be rejected by the AXI-to-AXI-Lite converter. After data-width conversion and
+AXI-Lite isolation, <code>sep_crypto_otbn_wrapper</code> bridges the request to TL-UL and
+drives the standard <code>otbn</code> core configured with <code>Stub = 0</code> and
+<code>RegFile = RegFileFF</code>.</p>
 </div>
 <div class="paragraph">
 <p>OTBN&#8217;s instruction and data memories are external SRAM macros; the IMEM and
@@ -487,11 +494,12 @@ space and produces 128-bit output blocks <em>round</em> number of cycles. The
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>aes_wrapper</code> follows the standard three-stage bus conversion (64-bit AXI →
-32-bit AXI → AXI-Lite → TL-UL) without address adjustment or cache-attribute
-patching. The <code>aes_wrapper_key_reg</code> block provides an 8-word-per-share key
-mapping to the <code>keymgr_pkg::hw_key_req_t</code> sideload input. EDN requests are
-served by the shared <code>drbg_axis_edn_adapter</code> instance
+<p>The AES host path follows the standard conversion and isolation sequence in the
+crypto interconnect (64-bit AXI → 32-bit AXI → AXI-Lite → isolate), without
+address adjustment or cache-attribute patching. <code>aes_wrapper</code> bridges the
+isolated path to TL-UL. The <code>aes_wrapper_key_reg</code> block provides an
+8-word-per-share key mapping to the <code>keymgr_pkg::hw_key_req_t</code> sideload input.
+EDN requests are served by the shared <code>drbg_axis_edn_adapter</code> instance
 <code>u_axis_edn_crypto_s3c_scan</code>, which converts the post-CSRNG DRBG AXI-Stream feed
 for the crypto sink domain into AES&#8217;s native-protocol EDN response. The adapter
 forwards the per-beat FIPS bit from the stream&#8217;s <code>tuser</code> sideband into
@@ -527,12 +535,13 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>kmac_wrapper</code> uses the same bus conversion pipeline as AES. The address
-path subtracts the KMAC base address and masks to a 12-bit window (4 KB) before
-the <code>axi_to_axi_lite</code> stage, aligning the internal decoder with the OpenTitan
-register block. The <code>kmac_wrapper_key_reg</code> block provides the same
-8-word-per-share key mapping. EDN is handled identically to AES: KMAC is one of
-the four clients arbitrated by <code>u_axis_edn_crypto_s3c_scan</code> (the shared
+<p>The KMAC host path uses the same conversion and isolation sequence as AES. The
+address path subtracts the KMAC base address and masks to a 12-bit window
+(4 KB) before the <code>axi_to_axi_lite</code> stage, aligning the internal decoder with
+the OpenTitan register block. <code>kmac_wrapper</code> bridges the isolated AXI-Lite path
+to TL-UL. The <code>kmac_wrapper_key_reg</code> block provides the same 8-word-per-share
+key mapping. EDN is handled identically to AES: KMAC is one of the four clients
+arbitrated by <code>u_axis_edn_crypto_s3c_scan</code> (the shared
 <code>drbg_axis_edn_adapter</code>), served from the same post-CSRNG DRBG AXI-Stream feed.
 The <code>app_i</code> application interface is tied off since the SEP does not use the
 KMAC hardware application path. Life-cycle escalation is inactive. KMAC
@@ -743,12 +752,11 @@ provenance of the bits they are receiving.</p>
 </div>
 <div class="paragraph">
 <p>The internal entropy complex uses one software-reset request,
-<code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code>. It covers ESRC, CSRNG, EDN, all
-three CSR conversion paths, DRBG endpoint queues, and the two post-mux EDN
-adapters. A coordinator drains and isolates the independent ESRC, CSRNG, and
-EDN AXI ports before asserting the shared reset. The fabric entropy pool
-remains AXI-accessible but synchronously scrubs pending requests, partially
-packed data, FIFO contents, and stall state.</p>
+<code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code>. It resets ESRC, CSRNG, EDN, and the
+DRBG endpoint queues. A coordinator drains and isolates their three converted
+AXI4-Lite CSR paths before asserting the shared reset. While reset is active,
+the two post-mux EDN adapters and the fabric entropy pool synchronously clear
+their pending and buffered state; the pool remains AXI-accessible.</p>
 </div>
 <div class="paragraph">
 <p>There is no atomic reset boundary across the entropy consumers. Alarm recovery

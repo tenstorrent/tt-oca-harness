@@ -1007,34 +1007,37 @@ AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes <code>1
 release an IP from reset and writes <code>0</code> to request its software reset.</p>
 </div>
 <div class="paragraph">
-<p>Inside <code>sep_reset_ctrl</code>, each bit is ANDed with <code>sep_reset_n</code> and then passed
-through a per-IP JTAG override mux (<code>jtag_sep_reset_ctrl_i</code>). The <code>sep_reset_n</code>
-term holds every IP in reset until eFuse sensing completes during boot.</p>
+<p>Each <code>SW_RESET_N</code> bit is a request to a per-domain sequencer. The sequencer
+isolates the domain&#8217;s AXI4-Lite paths, waits for outstanding transactions to
+drain, and then asserts reset. New transactions presented while isolated
+terminate with DECERR. Isolation remains asserted for the duration of reset and
+is released with reset when software removes the request.</p>
 </div>
 <div class="paragraph">
-<p>The Key Manager reset (<code>km_sw_rst_n</code>) is applied directly as the KM warm reset.
-The four crypto accelerators (<code>otbn</code>, <code>aes</code>, <code>hmac</code>, <code>kmac</code>) are AXI subordinates
-on the <code>sep_crypto</code> demux, so resetting one mid-transaction would strand an
-in-flight request and hang its master. Their reset bits are therefore treated as
-requests: <code>sep_crypto_axi_isolate</code> first isolates the accelerator&#8217;s AXI port,
-draining outstanding transactions and terminating new ones with DECERR, and only
-then asserts the reset. The isolation is held for the duration of the reset and
-released when the software bit deasserts.</p>
+<p>An accelerator reset waits for both its host CSR path and Key Manager key path
+to isolate. A Key Manager reset waits for all of its outgoing accelerator and
+eFuse key paths. This prevents either endpoint of a key path from entering
+reset with a transaction in flight.</p>
+</div>
+<div class="paragraph">
+<p>The sequenced resets are ANDed with <code>sep_reset_n</code>, which holds every IP in reset
+until eFuse sensing completes during boot. The per-IP JTAG override muxes are
+applied last, allowing debug to force reset without waiting for isolation.</p>
 </div>
 <div class="sect4">
 <h5 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">Resetting the TRNG</a></h5>
 <div class="paragraph">
 <p>The TRNG reset bit controls one reset domain containing the entropy source,
-CSRNG, EDN, their AXI converters, the DRBG endpoint state, and both post-mux EDN
-adapters. Because ESRC, CSRNG, and EDN occupy three independent demux ports, a
-shared coordinator requests isolation on all three and does not assert the TRNG
-reset until all three report isolated. On release, reset is removed while the
-ports remain isolated for one cycle, then all three ports reopen together.</p>
+CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
+independent demux ports, a shared coordinator requests isolation on all three
+converted AXI4-Lite paths and does not assert the TRNG reset until all three
+report isolated. Reset and isolation are released together.</p>
 </div>
 <div class="paragraph">
 <p>The fabric entropy-pool AXI responder is not reset, so accesses remain
-responsive. While the TRNG reset is active, its pending EDN request, half-packed
-word, FIFO contents, and fill-stall state are synchronously cleared.</p>
+responsive. While the TRNG reset is active, both post-mux EDN adapters and the
+pool synchronously clear their pending and buffered state, including the pool&#8217;s
+half-packed word, FIFO contents, and fill-stall state.</p>
 </div>
 <div class="paragraph">
 <p>Consumers are not part of the reset coordinator. Native EDN requests from AES,
