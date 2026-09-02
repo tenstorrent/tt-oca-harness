@@ -1397,7 +1397,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-ISOLATION
 |While the CPU reset is asserted, the main SEP reset stays high — and that observable is proven capable of reading 0, by asserting the main reset at the end of the test. Without that anchor a stuck-high read would have satisfied this row identically.
 |CHK-RELEASE
-|Releasing the input returns the CPU reset high — the path is not sticky.
+|Releasing the SEP input `wdt_rst_ni_i` returns `sep_cpu_reset_n` high. This is the pin path only. Closed-loop bite stickiness is outside this DUT.
 |===
 
 '''''

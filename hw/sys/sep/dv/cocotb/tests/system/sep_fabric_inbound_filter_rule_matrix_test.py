@@ -757,20 +757,20 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         resp, _ = await self._ext_read(cfg_addr)
         assert resp == RESP_DECERR, (
             f"external read of filter cfg 0x{cfg_addr:08x} resp={resp}, expected DECERR "
-            f"(external master must NOT read the filter config)"
+            f"(CFG is outside every allow window)"
         )
         resp = await self._ext_write(cfg_addr, 0xFFFF_FFFF)
         assert resp == RESP_DECERR, (
             f"external write of filter cfg 0x{cfg_addr:08x} resp={resp}, expected DECERR "
-            f"(external master must NOT program the filter)"
+            f"(CFG is outside every allow window)"
         )
         cpu_cfg_after = await self.filt.read_cpu(cfg_addr)
         assert (cpu_cfg_after & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (
             f"filter cfg corrupted by denied ext write: 0x{cpu_cfg_after:08x}"
         )
         self.logger.info(
-            "CHK-OWNERSHIP PASS: filter cfg 0x%08x -- CPU-LSU reads rule (rw 0x%08x), external "
-            "R+W DECERR, rule intact",
+            "CHK-OWNERSHIP PASS: filter cfg 0x%08x outside every allow window -- "
+            "CPU-LSU reads rule (rw 0x%08x), external R+W DECERR, rule intact",
             cfg_addr,
             cpu_cfg & FILTER_RW_MASK,
         )
