@@ -183,10 +183,10 @@ information.
 [cols="2,2,1,7",options="header"]
 |===
 |Bits |Field |Access |Description
-|31:28 |si_rev |RO |Silicon revision
-|27:12 |part_num |RO |Chiplet model ID
-|11:1 |mfr_id |RO |JEDEC-assigned manufacturer ID, encoded into 11 bits
-|0 |marker |RO |Marker bit, always 1
+|31:28 |si_rev |R |Silicon revision
+|27:12 |part_num |R |Chiplet model ID
+|11:1 |mfr_id |R |JEDEC-assigned manufacturer ID, encoded into 11 bits
+|0 |marker |R |Marker bit, always 1
 |===
 
 To access the IDCODE TDR:
@@ -206,7 +206,7 @@ debug and control of the design.
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
 |Bits |Field |Access |Reset |Description
-|4 |cla_clock_stop |RO |0 |When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when _cla_clock_stop_en_ is set.
+|4 |cla_clock_stop |R |0 |When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when _cla_clock_stop_en_ is set.
 |3 |jtag_clock_stop |RW |0 |When set, stops all clocks in the chiplet. This is wired to the functional clock gaters on all of the PLLs in the chiplet. This bit is active high.
 |2 |cla_clock_stop_en |RW |0 |When set, enables the CLAs to stop the clocks in the design. This bit indicates that an external debugger is connected and ready to do debug or scan dump operations after the CLA stops the clocks. This bit is intended to protect against unintentional CLA clock stops in the field due to incorrect CLA programming. This bit is active high.
 |1 |boot_stall_ovrd |RW |0 |When set, overrides the boot stall signal to the internals of the part to use the value from boot_stall in this TDR instead. This bit is active high.
@@ -230,25 +230,25 @@ number and general configuration parameters for the DTP.
 [width="100%",cols="2,2,1,7",options="header"]
 |===
 |Bits |Field |Access |Description
-|59:54 |num_xtrig_int_ct |RO |The number of internal cross trigger signals.
-|53:48 |num_xtrig_ctp |RO |The number of Cross Trigger Ports.
-|47:44 |num_xtra_stap |RO |The number of additional DTP STAP interfaces.
-|43 |stap_io_en |RO |The STAP interface for chiplet-to-chiplet connectivity is enabled.
-|42 |sep_dbg_en |RO |The SEP STAP interface enabled.
-|41 |smc_dbg_en |RO |The SMC JTAG2AXI interface is enabled.
-|40:33 |num_smc_ic_rst |RO |The number of SMC IC_RESET override ports.
-|32:25 |num_sep_ic_rst |RO |The number of SEP IC_RESET override ports.
-|24:17 |num_ext_ic_rst |RO |The number of external IC_RESET override ports.
-|16 |ic_rst_inst_en |RO |The IC_RESET instruction is enabled.
-|15 |tmp_inst_en |RO |The TMP controller functionality and instructions are enabled.
-|14 |runbist_inst_en |RO |The RUNBIST instruction is enabled.
-|13 |highz_inst_en |RO |The HIGHZ instruction is enabled.
-|12 |clamp_inst_en |RO |The CLAMP instruction is enabled.
-|11 |intest_inst_en |RO |The INTEST instruction is enabled.
-|10 |extest_pulse_en |RO |The EXTEST_PULSE instruction is enabled.
-|9 |extest_train_en |RO |The EXTEST_TRAIN instruction is enabled.
-|8 |bsr_inst_en |RO |All mandatory boundary scan instructions are enabled.
-|7:0 |och_ver |RO |The MAJOR version number of the DTP IP.
+|59:54 |num_xtrig_int_ct |R |The number of internal cross trigger signals.
+|53:48 |num_xtrig_ctp |R |The number of Cross Trigger Ports.
+|47:44 |num_xtra_stap |R |The number of additional DTP STAP interfaces.
+|43 |stap_io_en |R |The STAP interface for chiplet-to-chiplet connectivity is enabled.
+|42 |sep_dbg_en |R |The SEP STAP interface enabled.
+|41 |smc_dbg_en |R |The SMC JTAG2AXI interface is enabled.
+|40:33 |num_smc_ic_rst |R |The number of SMC IC_RESET override ports.
+|32:25 |num_sep_ic_rst |R |The number of SEP IC_RESET override ports.
+|24:17 |num_ext_ic_rst |R |The number of external IC_RESET override ports.
+|16 |ic_rst_inst_en |R |The IC_RESET instruction is enabled.
+|15 |tmp_inst_en |R |The TMP controller functionality and instructions are enabled.
+|14 |runbist_inst_en |R |The RUNBIST instruction is enabled.
+|13 |highz_inst_en |R |The HIGHZ instruction is enabled.
+|12 |clamp_inst_en |R |The CLAMP instruction is enabled.
+|11 |intest_inst_en |R |The INTEST instruction is enabled.
+|10 |extest_pulse_en |R |The EXTEST_PULSE instruction is enabled.
+|9 |extest_train_en |R |The EXTEST_TRAIN instruction is enabled.
+|8 |bsr_inst_en |R |All mandatory boundary scan instructions are enabled.
+|7:0 |och_ver |R |The MAJOR version number of the DTP IP.
 |===
 
 To access the JTAG_CAPS TDR:
@@ -423,11 +423,11 @@ configuration parameters for the given JTAG2AXI debugging instrument.
 [width="100%",cols="2,2,1,7",options="header"]
 |===
 |Bits |Field |Access |Description
-|13:12 |rd_pl_depth |RO |The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time.
-|11:10 |wr_pl_depth |RO |The depth of the transaction write queue where 0 indicates only a single outstanding transaction allowed at any given time.
-|9:7 |data_size |RO |The size of AxDATA in powers-of-2 bytes. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
-|6:1 |addr_size |RO |The size of AxADDR in bits.
-|0 |bus_type |RO |The type of the AXI bus. 0: AXI4 1: AXI4-Lite
+|13:12 |rd_pl_depth |R |The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time.
+|11:10 |wr_pl_depth |R |The depth of the transaction write queue where 0 indicates only a single outstanding transaction allowed at any given time.
+|9:7 |data_size |R |The size of AxDATA in powers-of-2 bytes. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|6:1 |addr_size |R |The size of AxADDR in bits.
+|0 |bus_type |R |The type of the AXI bus. 0: AXI4 1: AXI4-Lite
 |===
 
 ====== *_AXI_SINGLE_OP
