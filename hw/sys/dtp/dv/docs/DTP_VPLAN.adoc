@@ -14,8 +14,8 @@
 |Project |OCAH
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
-|Reference SPEC |`DTP_SPEC.adoc`
-|Reference CSR |`DTP_CSR.adoc`
+|Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned; includes the `jtag_intf_unit`, `jtag_ptap`, `jtag_stap`, and cross-trigger IP chapters)
+|Register sources |`hw/ip/cross_trigger/cross_trigger_port/regs/cross_trigger_port.rdl`, `hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl` (SystemRDL); JTAG TDR layouts in the `jtag_ptap` IP documentation
 |Open-source scenario-expanded test cases |151
 |===
 

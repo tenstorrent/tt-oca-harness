@@ -22,7 +22,7 @@ Tests inherit `dtp_base_test` (env build + clock/reset + `start_seq` helper);
 sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test has
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
-- `docs/` — public verification plan, TB architecture, register/coverage notes.
+- `docs/` — public verification plan, TB architecture, and functional-coverage plan. The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
 - `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, shared by the cocotb and SV-UVM flows) and `dtp_tb_if`.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).

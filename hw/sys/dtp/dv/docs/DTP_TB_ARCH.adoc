@@ -120,8 +120,6 @@ DtpEnv
 ----
 hw/sys/dtp/dv/
   docs/
-    DTP_SPEC.adoc
-    DTP_CSR.adoc
     DTP_TB_ARCH.adoc
     DTP_VPLAN.adoc
     DTP_FCOV.adoc
