@@ -1,0 +1,59 @@
+# SMC Production ROM
+
+The production ROM has a self-contained firmware build. For its architecture, boot
+behavior, OCCP protocol, and implementation details, see
+[SMC Production ROM documentation](doc/index.adoc).
+
+## Quick Start
+
+Build the release image from the harness root:
+
+```bash
+make -C hw/sys/smc/bootrom/prod
+```
+
+For a debug build:
+
+```bash
+make -C hw/sys/smc/bootrom/prod BUILD_TYPE=debug
+```
+
+If the RISC-V tools are not on `PATH`, provide their binary directory:
+
+```bash
+make -C hw/sys/smc/bootrom/prod \
+  RISCV_TOOLCHAIN=/path/to/riscv64/bin
+```
+
+Build products are written under `build/release/` or `build/debug/`. The `bin/`
+directory contains the ELF and binary image, `hex/` contains the generated ROM
+formats, and `disasm/` contains the disassembly.
+
+## Build and Development
+
+The build requires `riscv64-unknown-elf-gcc` and related binutils with the
+configured picolibc specs, plus Python 3 for image conversion.
+
+Useful targets:
+
+| Target | Purpose |
+|---|---|
+| `make` | Build the selected release or debug image and all output formats. |
+| `make check` | Check tool availability and the linker script. |
+| `make size` | Print section and aggregate image sizes. |
+| `make memory` | Print the largest linked symbols. |
+| `make clean` | Remove the local `build/` directory. |
+| `make help` | List the supported build options. |
+
+Set `ENABLE_RELEASE_PRINTS=1` to retain debug console calls in a release build.
+Set `I3C_CORE=swap` to compile the open HCI I3C driver. `EXTRA_DEFINES` provides
+additional build-time definitions.
+
+Key implementation directories are:
+
+- `boot/` — assembly entry, C runtime, traps, SRAM initialization, and early memory checks
+- `src/` — the C boot phases
+- `drivers/` — strap, eFuse, PLL, I2C, and I3C interfaces
+- `lib/` — OCCP, status, security, and coordination support
+- `linker/smc/` — ROM and SRAM placement
+- `scripts/` — output-image conversion and ECC generation
