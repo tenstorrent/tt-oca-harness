@@ -65,7 +65,7 @@ project_default: &project_default
     verilog_lib:
     comp_args:
     ram_models: false
-    ram_models_cmd: "+define+RAM_MODELS"
+    ram_models_cmd:
     xprop: false
     rand_cdc: false
     waves: false

@@ -81,7 +81,7 @@ project_i3ccore: &project_i3ccore
   # Non-null overrides so TTEM's schema validation passes (project_default
   # leaves these empty; the block TB doesn't normally use waves/coverage here).
   waves:
-    comp_options: -kdb +define+FSDB_FIX
+    comp_options: -kdb
     run_options: +waves +fsdb+delta +vcs+dumparrays
     open: $VERDI_HOME/bin/verdi -dbdir $OUT/compile_i3ccore/simv.daidir -ssf $OUT/waves.fsdb
     <<: *waves
