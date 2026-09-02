@@ -559,11 +559,29 @@ module sep_uvm_top
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
-        // otbn_rnd.sv:233 UrndNoReseedOnReset_A is unsatisfiable here, not a DUT
-        // contract: it arms only in reset on CURRENT rst_ni while its body reads
-        // SAMPLED rst_ni, and SEP asserts OTBN reset ON a clk_i edge (flop output of
-        // hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv), so that edge demands
-        // seed_en_q=1 -- it fires every SW reset whatever the DUT does.
+
+    end
+
+    // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
+    // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
+    // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
+    // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
+    // output of hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv, so at that edge the
+    // guard sees reset active and arms an attempt whose body still sees the
+    // pre-reset value and therefore demands seed_en_q be high. It fires on every
+    // software reset whatever the DUT does.
+    //
+    // This holds the property off for the WHOLE RUN, not just that edge, so no
+    // in-reset cycle is checked in any test. Little is lost because of the flop at
+    // otbn_rnd.sv:205-213: seed_en_q is asynchronously cleared by the same rst_ni
+    // the property checks it against, and that flop is what stops a reseed request
+    // -- held high through reset by design -- from starting one. A reseed cannot
+    // begin mid-reset unless that flop's reset is broken, and its declaration is
+    // what guarantees it is not.
+    //
+    // The repair is upstream: the guard should sample as the body does. It belongs
+    // to a vendor bump, not to this tree.
+    initial begin
         $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
