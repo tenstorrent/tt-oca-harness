@@ -1211,7 +1211,8 @@ module smc_uvm_top
     // Ports absorbed by smc_ip_integration and NOT present on this boundary:
     // smc_external_*, efuse_bank_ctrl_*, efuse_shim_command_*, pad2core_i, core2pad_o,
     // pad2core_en_o, core2pad_en_o (internal smc_wrapper nets → gpio_pad_io).
-    // CPU ROM/scratch/L1$ macros are inside smc_ip_integration.
+    // CPU ROM/scratch/L1$ macros and the trace sink RAMs are inside
+    // smc_ip_integration.
     // ------------------------------------------------------------------
     smc_wrapper u_dut (
         .clk_smc_i,
@@ -1313,8 +1314,6 @@ module smc_uvm_top
         .xtrigger_ss_i              ('0),
         .tdr_dbg_ctrl_clock_stop_en_i (1'b0),
         .tdr_dbg_ctrl_clocks_stopped_by_cla_o (),
-        .trace_mem_req_o            (),
-        .trace_mem_resp_i           ('0),
         .ext_debug_bus_i            ('0),
         // DFT scan controls: cocotb drives tb_test_en_i (default 0 in bring-up).
         // scan reset deasserted -- matches smc.sv port names (test_en_i / scan_rst_ni).

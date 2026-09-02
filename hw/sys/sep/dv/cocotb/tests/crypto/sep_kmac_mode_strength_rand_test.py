@@ -113,7 +113,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
 
     async def _run_cell(
         self, mode: str, sec: int, outb: int, key_bits: int | None, s: bytes
-    ) -> None:
+    ) -> tuple[int, ...]:
         msg = self._rand_words(self.rng.randrange(1, 9))
         key = self._rand_words(key_bits // 32) if mode == "kmac" else None
         cfg = SepKmacCfg(

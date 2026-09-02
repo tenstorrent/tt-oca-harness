@@ -109,6 +109,11 @@ module tb_drbg import drbg_pkg::*; #(
     logic intr_cs_fatal_err_o;
     logic intr_edn_cmd_req_done_o;
     logic intr_edn_fatal_err_o;
+    logic csrng_bus_err_o;
+    logic edn_bus_err_o;
+    // Initialised: an X here would propagate into the bridge's sticky-error latch.
+    logic csrng_bus_err_clr_i = 1'b0;
+    logic edn_bus_err_clr_i = 1'b0;
     logic [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_p_o;
     logic [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_n_o;
     logic [csrng_reg_pkg::NumAlerts-1:0] csrng_inner_alert_p_o;
@@ -230,7 +235,11 @@ module tb_drbg import drbg_pkg::*; #(
         .intr_cs_hw_inst_exc_o,
         .intr_cs_fatal_err_o,
         .intr_edn_cmd_req_done_o,
-        .intr_edn_fatal_err_o
+        .intr_edn_fatal_err_o,
+        .csrng_bus_err_o,
+        .csrng_bus_err_clr_i,
+        .edn_bus_err_o,
+        .edn_bus_err_clr_i
     );
 
     // Allow cocotb to inject endpoint responses without masking the real EDN path by default.

@@ -86,9 +86,9 @@ class SepAxiStrobeWindowCfg:
         writes: list[NarrowWrite] = []
         for base in (SCRATCH_COLD_0, SCRATCH_WARM_0):
             # Every AxSIZE at every legal lane offset, every seed: the size and
-            # alignment axes are small enough to walk exhaustively, and leaving
-            # them to the seed meant some runs never issued a 1-byte write at
-            # all. The seed varies the data, not whether a case is covered.
+            # alignment axes are small enough to walk exhaustively, so every
+            # size and lane runs on every seed. The seed varies the data, not
+            # whether a case is covered.
             slots = [
                 (size, off) for size in sorted(SIZE_BYTES) for off in range(0, 4, SIZE_BYTES[size])
             ]

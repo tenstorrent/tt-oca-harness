@@ -1156,7 +1156,7 @@ async def test_large_private_write(dut):
     # Helper function to read a batch of RX data (8-bit entries packed into 32-bit words)
     async def read_rx_batch(max_bytes: int):
         """Read up to max_bytes from target RX FIFO."""
-        bytes_read = []
+        bytes_read: list[int] = []
         # RX FIFO is 8-bit entries, but we read 32-bit words (4 bytes per read)
         words_to_read = (max_bytes + 3) // 4
         tb.log.info(f"      read_rx_batch: max_bytes={max_bytes}, words_to_read={words_to_read}")

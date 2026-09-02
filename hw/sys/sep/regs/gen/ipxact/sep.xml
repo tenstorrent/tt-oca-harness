@@ -11197,7 +11197,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11209,7 +11209,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11529,7 +11529,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11541,7 +11541,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11861,7 +11861,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11873,7 +11873,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12193,7 +12193,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12205,7 +12205,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12525,7 +12525,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12537,7 +12537,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12857,7 +12857,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12869,7 +12869,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13189,7 +13189,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13201,7 +13201,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13521,7 +13521,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13533,7 +13533,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13853,7 +13853,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13865,7 +13865,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14185,7 +14185,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14197,7 +14197,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14517,7 +14517,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14529,7 +14529,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14849,7 +14849,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14861,7 +14861,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15181,7 +15181,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15193,7 +15193,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15513,7 +15513,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15525,7 +15525,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15845,7 +15845,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15857,7 +15857,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16177,7 +16177,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16189,7 +16189,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -17642,6 +17642,280 @@ The NMI interrupt is used for the WDT Bark interrupt.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>DMA_BUS_ERR_STATUS</ipxact:name>
+            <ipxact:description>Secure DMA bridge fault status. Each bit is latched in hardware and held
+until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+dedicated PIC sources.
+
+Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the DMA), so a bit read as set immediately after boot may describe
+a fault from before that reset rather than a new one.</ipxact:description>
+            <ipxact:addressOffset>'h1a8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>reg_path_err</ipxact:name>
+              <ipxact:description>Register-path bus error: a CPU access to a Secure DMA register returned
+a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
+The faulting access also received SLVERR synchronously.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>host_path_err</ipxact:name>
+              <ipxact:description>DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+to a DMA transfer, or a TL-UL command-integrity check failed on a command
+issued by the DMA. The latter is a fault-detection event with no other
+reporting path.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DMA_BUS_ERR_CLEAR</ipxact:name>
+            <ipxact:description>Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+to both latches. A fault arriving in the same cycle as the clear still
+latches, so acknowledging cannot drop a concurrent fault.</ipxact:description>
+            <ipxact:addressOffset>'h1b0</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>clr</ipxact:name>
+              <ipxact:description>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PERIPH_BUS_ERR_STATUS</ipxact:name>
+            <ipxact:description>Peripheral register-bridge fault status, one bit per block. Each bit latches
+when a CPU access to that block's registers returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial), and is held until the
+matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also
+received SLVERR synchronously.
+
+All bits OR together into a single PIC source, so read this register to
+identify which block faulted.
+
+No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the peripherals), so a bit read as set immediately after boot may
+describe a fault from before that reset rather than a new one.</ipxact:description>
+            <ipxact:addressOffset>'h1b8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>aes</ipxact:name>
+              <ipxact:description>AES register bridge error.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>hmac</ipxact:name>
+              <ipxact:description>HMAC register bridge error.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>kmac</ipxact:name>
+              <ipxact:description>KMAC register bridge error.</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>otbn</ipxact:name>
+              <ipxact:description>OTBN register bridge error.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>csrng</ipxact:name>
+              <ipxact:description>CSRNG register bridge error (DRBG CSRNG path).</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>edn</ipxact:name>
+              <ipxact:description>EDN register bridge error (DRBG EDN path).</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>wdt</ipxact:name>
+              <ipxact:description>Watchdog timer register bridge error.</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PERIPH_BUS_ERR_CLEAR</ipxact:name>
+            <ipxact:description>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+clear pulse to that block's latch; bit order matches
+PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+cannot discard a fault another block raised between the status read and
+this write. A fault arriving in the same cycle as its own clear still
+latches.</ipxact:description>
+            <ipxact:addressOffset>'h1c0</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>aes</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>hmac</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>kmac</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>otbn</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>csrng</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>edn</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>wdt</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SEP_VERSION_ID</ipxact:name>
             <ipxact:addressOffset>'h1000</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
@@ -18189,7 +18463,7 @@ pulses.</ipxact:description>
 
 For read or write segments, this field controls the
 number of 1-byte bursts to transmit and or receive in
-this command segment.  The number of cyles required
+this command segment.  The number of cycles required
 to send or received a byte will depend on !!COMMAND.SPEED.
 For dummy segments, (!!COMMAND.DIRECTION == 0), this register
 controls the number of dummy cycles to issue.
@@ -18562,7 +18836,7 @@ goes low</ipxact:description>
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>init_time</ipxact:name>
-                <ipxact:description>Most OTP have a initalization time before sensing can be done</ipxact:description>
+                <ipxact:description>Most OTP have a initialization time before sensing can be done</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>

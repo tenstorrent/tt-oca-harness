@@ -377,7 +377,7 @@ static Occp_ErrMsgID smc_occp_validate_header(packet_header hdr) {
 static Occp_ErrMsgID smc_occp_validate_body(uint8_t *data_buffer, size_t data_len,
                                             bool crc_present) {
     simputshex16("OCCP: Validating body of length: ", data_len);
-    if (data_len == 0) // This condition should not be hit, as the calling function should ahve
+    if (data_len == 0) // This condition should not be hit, as the calling function should have
                        // checked this earlier
     {
         return Invalid_header;
