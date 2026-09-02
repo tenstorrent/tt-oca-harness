@@ -4,8 +4,7 @@
 ifndef ocah_pre_commit_mk
 ocah_pre_commit_mk := 1
 
-OCAH_PRE_COMMIT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_PRE_COMMIT_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 ## @section Git hooks (pre-commit)
 
