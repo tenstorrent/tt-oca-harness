@@ -28,6 +28,12 @@ ocah_format_c_files = $(shell find $(OCAH_ROOT)/$(FORMAT_C_PATH) \( -name '*.c' 
 
 ocah_format_c_check_files = @[ -n "$(strip $(ocah_format_c_files))" ] || { echo "error: no .c/.h/.cpp files under $(FORMAT_C_PATH)" >&2; exit 1; }
 
+ifndef OCAH_CLANG_FORMAT_SKIP_UV
+CLANG_FORMAT := $(OCAH_UV_RUN) clang-format
+else
+CLANG_FORMAT := clang-format
+endif
+
 ## @section Format (clang-format)
 
 ## Format C/C++ sources in place with clang-format (style: .clang-format).
@@ -36,7 +42,7 @@ ocah_format_c_check_files = @[ -n "$(strip $(ocah_format_c_files))" ] || { echo 
 .PHONY: ocah-format-c
 ocah-format-c:
 	$(ocah_format_c_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked clang-format -style=file -i $(ocah_format_c_files)
+	$(CLANG_FORMAT) -style=file -i $(ocah_format_c_files)
 
 ## Check C/C++ formatting without modifying files (CI-friendly: exit 0 clean, 1 would-reformat).
 ## @param FORMAT_C_PATH=hw/sys/smc Optional path to scope the check; default hw
@@ -44,7 +50,7 @@ ocah-format-c:
 .PHONY: ocah-format-c-check
 ocah-format-c-check:
 	$(ocah_format_c_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked clang-format -style=file --dry-run --Werror $(ocah_format_c_files)
+	$(CLANG_FORMAT) -style=file --dry-run --Werror $(ocah_format_c_files)
 
 OCAH_PHONY += ocah-format-c ocah-format-c-check
 

@@ -27,6 +27,12 @@ ocah_yaml_files = $(shell cd $(OCAH_ROOT) && find $(YAML_PATH) \( -name '*.yml' 
 
 ocah_yaml_check_files = @[ -n "$(strip $(ocah_yaml_files))" ] || { echo "error: no .yml/.yaml files under $(YAML_PATH)" >&2; exit 1; }
 
+ifndef OCAH_YAMLLINT_SKIP_UV
+YAMLLINT := $(OCAH_UV_RUN) yamllint
+else
+YAMLLINT := yamllint
+endif
+
 ## @section Lint (yamllint)
 
 ## Lint YAML sources with yamllint (no autofix; hand-fix reported violations).
@@ -34,7 +40,7 @@ ocah_yaml_check_files = @[ -n "$(strip $(ocah_yaml_files))" ] || { echo "error: 
 .PHONY: ocah-lint-yaml
 ocah-lint-yaml:
 	$(ocah_yaml_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked yamllint -c "$(OCAH_ROOT)/.yamllint.yml" $(ocah_yaml_files)
+	$(YAMLLINT) -c "$(OCAH_ROOT)/.yamllint.yml" $(ocah_yaml_files)
 
 OCAH_PHONY += ocah-lint-yaml
 

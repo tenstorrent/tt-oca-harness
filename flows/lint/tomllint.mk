@@ -29,6 +29,12 @@ ocah_toml_files = $(shell find $(ocah_toml_root) -name '*.toml' \
 
 ocah_toml_check_files = @[ -n "$(strip $(ocah_toml_files))" ] || { echo "error: no .toml files under $(if $(TOML_PATH),$(TOML_PATH),repo root)" >&2; exit 1; }
 
+ifndef OCAH_TOMLLINT_SKIP_UV
+TOMLLINT := $(OCAH_UV_RUN) tomllint
+else
+TOMLLINT := tomllint
+endif
+
 ## @section Lint (tomllint)
 
 ## Check TOML syntax with tomllint (basic syntactic errors only -- it carries
@@ -39,7 +45,7 @@ ocah_toml_check_files = @[ -n "$(strip $(ocah_toml_files))" ] || { echo "error: 
 .PHONY: ocah-lint-toml
 ocah-lint-toml:
 	$(ocah_toml_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked tomllint $(ocah_toml_files)
+	$(TOMLLINT) $(ocah_toml_files)
 
 OCAH_PHONY += ocah-lint-toml
 

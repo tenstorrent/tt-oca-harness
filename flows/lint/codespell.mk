@@ -13,13 +13,19 @@ include $(OCAH_LINT_CODESPELL_DIR)/../common.mk
 # [tool.codespell] in pyproject.toml, which codespell auto-discovers.
 CODESPELL_PATH ?= .
 
+ifndef OCAH_CODESPELL_SKIP_UV
+CODESPELL := $(OCAH_UV_RUN) codespell
+else
+CODESPELL := codespell
+endif
+
 ## @section Lint (codespell)
 
 ## Check spelling with codespell (no autofix; use ocah-lint-spelling-fix).
 ## @param CODESPELL_PATH=doc Optional path to scope the check; default repo root
 .PHONY: ocah-lint-spelling
 ocah-lint-spelling:
-	$(UV) --directory "$(OCAH_ROOT)" run --locked codespell $(CODESPELL_PATH)
+	$(CODESPELL) $(CODESPELL_PATH)
 
 ## Apply codespell's suggested fixes in place. Words with more than one
 ## candidate fix are left unmodified (and still reported) -- resolve those
@@ -27,7 +33,7 @@ ocah-lint-spelling:
 ## @param CODESPELL_PATH=doc Optional path to scope the fix; default repo root
 .PHONY: ocah-lint-spelling-fix
 ocah-lint-spelling-fix:
-	$(UV) --directory "$(OCAH_ROOT)" run --locked codespell --write-changes $(CODESPELL_PATH)
+	$(CODESPELL) --write-changes $(CODESPELL_PATH)
 
 OCAH_PHONY += ocah-lint-spelling ocah-lint-spelling-fix
 
