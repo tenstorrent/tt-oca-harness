@@ -2408,6 +2408,45 @@ def _vcs_uvm_lib(vcs_cfg: dict[str, Any]) -> str:
     return lib or _VCS_UVM_LIB
 
 
+def _uvm_testname_override(extra_args: list[str]) -> str:
+    """Return the +UVM_TESTNAME= value supplied in extra_args, or '' when absent.
+
+    UVM takes the FIRST +UVM_TESTNAME occurrence, and the simulator-shipped
+    uvm-1.2 library applies command-line factory overrides only after
+    run_test() has created the test component, so +uvm_set_type_override
+    cannot swap the test itself. Selecting a factory-registered subclass of a
+    testlist scenario therefore comes through +UVM_TESTNAME: when the caller
+    supplies one, the runner must not emit its testlist-mapped name ahead of
+    it.
+    """
+    for arg in extra_args:
+        if arg.startswith("+UVM_TESTNAME="):
+            return arg[len("+UVM_TESTNAME=") :]
+    return ""
+
+
+def _vcs_uvm_precompile_cmd(
+    vcs_cfg: dict[str, Any], compile_target: dict[str, Any], args: argparse.Namespace
+) -> str:
+    """The UVM-library precompile line for the split vlogan -> vcs flow.
+
+    Carries the same defines as the user-source analysis: size-changing defines
+    (e.g. UVM_PACKER_MAX_BYTES) must agree across every analysis step of one
+    work library, or consumers of the precompiled uvm_pkg see a mismatched
+    packer geometry. Tokens are shell-quoted because the line is embedded in a
+    `bash -c` script (define values may carry quotes).
+    """
+    return " ".join(
+        [
+            "vlogan",
+            "-full64",
+            "-ntb_opts",
+            shlex.quote(_vcs_uvm_lib(vcs_cfg)),
+            *(shlex.quote(d) for d in _vcs_defines(compile_target, args)),
+        ]
+    )
+
+
 def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
     pre: list[str] = []
     if bool(vcs_cfg.get("sverilog", True)):
@@ -2558,7 +2597,7 @@ def vcs_analyze(
         argv = [
             "bash",
             "-c",
-            f'set -euo pipefail\nvlogan -full64 -ntb_opts {_vcs_uvm_lib(vcs_cfg)}\nexec "$@"',
+            f'set -euo pipefail\n{_vcs_uvm_precompile_cmd(vcs_cfg, info["compile_target"], args)}\nexec "$@"',
             "vcs-analyze",
             *analyze_argv,
         ]
@@ -2660,16 +2699,17 @@ def vcs_sim(
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
-    argv = [str(simv)]
-    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")):
-        argv.append(f"+UVM_TESTNAME={uvm_test}")
-    argv.append(f"+ntb_random_seed={seed}")
-    argv += [
+    extra_args = [
         *sim_global_args(sim_cfg),
         *_render_run_test_args(run_mode, test, seed, root),
         *(args.sim_arg or []),
         *(args.plusarg or []),
     ]
+    argv = [str(simv)]
+    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _uvm_testname_override(extra_args):
+        argv.append(f"+UVM_TESTNAME={uvm_test}")
+    argv.append(f"+ntb_random_seed={seed}")
+    argv += extra_args
     if args.cov:
         tool_cov = coverage_cfg(sim_cfg).get("vcs", {})
         if not isinstance(tool_cov, dict):

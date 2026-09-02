@@ -41,7 +41,7 @@ protocol BFMs behind a stable API:
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
-| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM) / DUT-local `DtpFlatAxiLiteMaster` (cocotb) | The SV-UVM flow drives the CSR port through the shared VIP master (channel-skew and RREADY-hold operations included); the cocotb flattened-fixture master stays local pending the same migration. |
+| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM / `OcahAxiLiteMasterAgent`, cocotb) | Both flows drive the CSR port through the shared VIP master; the channel-skew, RREADY-hold, and partial-strobe operations live on its sequence APIs. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
@@ -290,7 +290,12 @@ An overlay is three adopter-owned files, kept outside this repository
    observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
    2-bit ID). The stock scenario, evidence arming, and looped runner are
    inherited unchanged, so the in-repo `CHK-*` checkers and the vendor
-   monitor run side by side on the same traffic.
+   monitor run side by side on the same traffic. Select the overlay class
+   per run with `--plusarg +UVM_TESTNAME=<overlay class>` on the stock
+   `--items` name: the runner emits the testlist-mapped test name only when
+   none is supplied, and a `+uvm_set_type_override` cannot swap the test
+   itself because the simulator-shipped UVM library applies command-line
+   factory overrides only after `run_test()` has created the test.
 3. **Vendor package compile unit** — the vendor library analyzed into the
    same work library before `dtp_uvm_compile.f`, then both tops elaborated
    (`dtp_uvm_top` plus the wiring top).
