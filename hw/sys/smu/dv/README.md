@@ -12,11 +12,11 @@ verification plan.
 
 **Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
 Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
-`testlists/deferred.toml` — **not** reportable as PASS.
+not ported — **not** reportable as PASS.
 
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
-**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): [`testlists/deferred.toml`](testlists/deferred.toml).
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
 
 ```
 smu_<scenario>_test
@@ -33,7 +33,6 @@ smu_<scenario>_test
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
 | `cocotb/tests_deferred/` | Force-era raise stubs (catalog only) |
 | `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
-| `testlists/deferred.toml` | Non-enrolled inventory (not default-included) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
 | `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |

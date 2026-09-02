@@ -17,7 +17,7 @@ timeout_sec = 1800
 tags = ["smoke", "ci", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_macro_axil_routing_test → testlists/deferred.toml (rtl_placeholder / dtp)
+# smc_macro_axil_routing_test — not ported (rtl_placeholder / dtp)
 
 [[groups]]
 name = "axil"

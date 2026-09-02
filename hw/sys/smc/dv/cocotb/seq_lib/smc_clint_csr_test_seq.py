@@ -83,7 +83,7 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
 
         # Third window in the same family: PLIC at 0xC400_0000 (bit 26). #1237
         # lists "whether PLIC and CLINT have the same SEP_IN fold" as an open
-        # question; both discriminators are re-used here to answer it.
+        # question; both discriminators are reused here to answer it.
         plic_probe1 = await self.csr_read("PLIC_FOLD_PROBE", 0xC400_0020)
         plic_probe2 = await self.csr_read("PLIC_FOLD_PROBE2", 0xC400_4034)
         cocotb.log.info(

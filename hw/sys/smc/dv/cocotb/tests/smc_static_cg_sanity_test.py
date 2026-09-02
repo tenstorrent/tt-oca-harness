@@ -64,7 +64,6 @@ class smc_static_cg_sanity_test(smc_base_test):
                 f"STATIC_CG P0+P1 LIVE: measured={seq.measured} "
                 f"cells={seq.required_cells_hit}. Enable-threshold coverage is "
                 f"hysteresis 8 and 63 only; the CG_HYSTERESIS 0..7 band is "
-                f"carried as unproven in testlists/deferred.toml and is not "
-                f"claimed here."
+                f"not exercised and is not claimed here."
             ),
         )

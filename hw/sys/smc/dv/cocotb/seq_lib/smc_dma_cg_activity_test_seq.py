@@ -16,8 +16,8 @@ violate.
 
 Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly
 asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..7 band is
-carried as UNPROVEN by `testlists/deferred.toml:215-239` (issue
-tenstorrent/tt-oca-harness#1235) and must not be counted as covered by any
+carried as UNPROVEN by issue tenstorrent/tt-oca-harness#1235 and must not be
+counted as covered by any
 closure report -- see P2_LOW_BAND_EXCLUSION_REASON.
 """
 
@@ -180,18 +180,16 @@ P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
 # The 0..7 hysteresis band is SWEPT and exactly asserted below, but it is
 # deliberately NOT booked as covered by this testcase's coverage artifact.
-# `hw/sys/smc/dv/testlists/deferred.toml:215-239`
-# (`smc_clk_multi_window_test_hyst_low_band_0_7`, tags `dut_defect_suspect` /
-# `needs_product_issue`, filed issue tenstorrent/tt-oca-harness#1235) states
-# verbatim: "the within-1-cycle hysteresis-scaling proof holds for 8..63 ONLY.
-# The 0..7 band is UNPROVEN and must not be counted as covered by any closure
-# report." Booking `hyst-gap=0` / `hyst-gap=1` as hit here would contradict
-# that ledger entry, so the two gaps stay as stimulus and as a fail-capable
-# compare while the coverage claim stays with the ledger until #1235 closes.
+# Issue tenstorrent/tt-oca-harness#1235 ("DMA command never completes at legal
+# hysteresis 0 and 1 when dma_cg_en=1") is open against that band, so the
+# within-1-cycle hysteresis-scaling proof holds for 8..63 only. Booking
+# `hyst-gap=0` / `hyst-gap=1` as hit here would claim coverage of a band whose
+# DUT behaviour is under dispute, so the two gaps stay as stimulus and as a
+# fail-capable compare, and the coverage claim waits for #1235 to close.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
-    "deferred.toml:215-239 smc_clk_multi_window_test_hyst_low_band_0_7 "
-    "(dut_defect_suspect, tenstorrent/tt-oca-harness#1235): the 0..7 "
+    "tenstorrent/tt-oca-harness#1235 (DMA command never completes at legal "
+    "hysteresis 0 and 1 when dma_cg_en=1): the 0..7 "
     "hysteresis band is UNPROVEN and must not be counted as covered by any "
     "closure report. Swept and exactly asserted here, but not booked."
 )

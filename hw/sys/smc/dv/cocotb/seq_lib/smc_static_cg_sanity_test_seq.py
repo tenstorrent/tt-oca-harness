@@ -361,7 +361,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         # The cells are named after the hysteresis value each one measures.
         # CG_HYSTERESIS is a 6-bit field whose true minimum is 0; THRESH_MIN is
         # the lowest point this sequence exercises, not the field's floor, and
-        # the 0..7 band is carried as unproven in `testlists/deferred.toml`.
+        # the 0..7 band is unproven -- see tenstorrent/tt-oca-harness#1235.
         d_min = await self._measure_threshold(
             "S3b",
             THRESH_MIN,

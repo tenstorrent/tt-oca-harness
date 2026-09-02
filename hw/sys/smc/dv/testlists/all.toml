@@ -7,7 +7,6 @@ schema_version = 1
 # Mirrors the shared all.toml convention.
 #
 # TB-policy deferred (I3C DAT, DTP CSR idle, pll/pvt placeholder, fake BFM):
-# testlists/deferred.toml — NOT included here.
 includes = ["reset.toml", "i2c.toml", "uart.toml", "clock.toml", "irq.toml", "gpio.toml", "axil.toml", "combined.toml", "batch_b.toml", "batch_c.toml", "batch_d.toml", "vplan_triplets.toml", "p1_coverage_gap.toml", "p1_coverage_gap_r2.toml", "p1_coverage_gap_r3.toml", "p1_coverage_gap_r4.toml"]
 
 [[groups]]
@@ -215,7 +214,7 @@ name = "p2_phase_b"
 tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_ecc_fault_inject_test",
-    # smc_dfd_dbs_fault_inject_test → deferred.toml (tb_glue; not DUT DFD RTL)
+    # smc_dfd_dbs_fault_inject_test — not ported (tb_glue; not DUT DFD RTL)
     "smc_jtag_dmi_smoke_test",
 ]
 

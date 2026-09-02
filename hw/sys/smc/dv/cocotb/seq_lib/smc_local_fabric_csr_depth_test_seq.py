@@ -121,7 +121,7 @@ LOCAL_FABRIC_READS = [
 # Independent floor, written out here rather than computed from the table the
 # body walks. Every entry of LOCAL_FABRIC_READS carries a non-null `expected`, so
 # each read must book one scoreboard VALUE compare -- not merely one access.
-# Four `covered_by_live` deferrals in testlists/deferred.toml lean on this sweep,
+# Other testcases lean on this sweep for their own `covered_by_live` claims,
 # which is exactly why its own gate may not be a self-count.
 LOCAL_FABRIC_MIN_VALUE_CHECKS = 12
 

@@ -284,6 +284,6 @@ outbound filter (ISSUE-16); SEP eFuse `shadow_regs` tied `0` at the wrapper
 
 Enrolled SMU open-source DV is defined by `hw/sys/smu/dv/testlists/*.toml`
 (primarily `all.toml` for SEP=0 density and `wrapper.toml` for the production
-wrapper baseline). Deferred / SEP=1 inventory lives in `testlists/deferred.toml`
+wrapper baseline). The deferred / SEP=1 inventory is not ported
 and is not reportable as PASS. Live stimulus and checkers are under
 `hw/sys/smu/dv/cocotb/` and `hw/sys/smu/dv/cocotb_wrapper/`.

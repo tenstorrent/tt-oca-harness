@@ -37,8 +37,8 @@ assumed -- an instrumented run held the core enabled for 4000 ``clk_smc_i``
 cycles and both nets stayed 0 for the whole window. Making the core actually
 drive SCL/SDA requires queueing real I3C bus traffic, and
 ``hw/sys/smc/dv/README.md:11-15`` defers exactly that ("only claim **real DUT
-RTL paths**. I3C CCC/IBI / real-core protocol ... belong in
-``testlists/deferred.toml`` -- not reportable as feature PASS"). So no
+RTL paths**. I3C CCC/IBI / real-core protocol ... are not ported -- not
+reportable as feature PASS"). So no
 ``PROBE_CONTROLS`` entry can be built for these nets in this bench today.
 
 Registering the two nets in ``PROBE_SIGNALS`` / ``UNBACKABLE_PROBES``
@@ -205,7 +205,7 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
         "applies: the core IS enabled here and its HC_CONTROL.BUS_ENABLE "
         "readback is value-checked, but a DUT-driven low needs queued I3C bus "
         "traffic, which hw/sys/smc/dv/README.md:11-15 defers (I3C real-core "
-        "protocol -> testlists/deferred.toml). Registering these nets in "
+        "protocol is not ported). Registering these nets in "
         "env/smc_probe_liveness.py UNBACKABLE_PROBES is the remaining step and "
         "is owned outside this helper.",
         observed,

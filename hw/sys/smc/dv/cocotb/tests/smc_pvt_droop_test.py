@@ -3,7 +3,7 @@
 """smc_pvt_droop_test — DEFERRED (rtl_placeholder).
 
 Exercises pll/pvt OKAY wraps only. Shelved until real adopter IP.
-See testlists/deferred.toml.
+Not ported.
 """
 
 from __future__ import annotations
@@ -18,6 +18,5 @@ class smc_pvt_droop_test(smc_base_test):
 
     async def run_scenario(self) -> None:
         raise AssertionError(
-            "smc_pvt_droop_test deferred: pll/pvt placeholder wraps. "
-            "See testlists/deferred.toml (rtl_placeholder)."
+            "smc_pvt_droop_test deferred: pll/pvt placeholder wraps. Not ported (rtl_placeholder)."
         )

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import random
-from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -29,36 +28,29 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # Parameters" table) documents `CG_HYSTERESIS_W = 6` as a "6-bit = 0-63 cycle
 # delay", and `hw/sys/smc/doc/clk_rst.adoc` ("Clock Gating Control Parameters")
 # lists Hysteresis Control as 6-bit programmable with no reserved encodings.
-# Nothing in either document makes 0..7 illegal, so the narrowing below is a
-# *stimulus exclusion*, not a legality boundary -- it is recorded as a named
-# exception (`HYST_LOW_EXCLUSION`) and emitted into the kept log by `body()`
-# so retained evidence carries the narrowed range and its reason
-# ([BY-DESIGN-EXCEPTION]).
+# Nothing in either document makes 0..7 illegal, so the low bound below is a
+# stimulus exclusion, not a legality boundary.
+#
+# What was measured at hyst=1, programming it into this sequence's low window:
+# the DMA accepts the command -- DMA_CTRL_NEXT_ID_0 returns a non-zero id -- but
+# DMA_CTRL_DONE_0 never advances, and the bounded completion wait expires with
+# both busy inputs already low ("TIMEOUT waiting DMA done: baseline=1
+# status=0xff gater_busy=0 busy=0"). The transfer is dropped rather than slow.
+# hyst=0 has never been run under cg_enable.
+#
+# The consequence for coverage: the within-1-cycle hysteresis-scaling proof
+# holds for 8..63 only. The 0..7 band is unproven by this testcase.
 HYST_LEGAL_LO = 8
 HYST_LEGAL_HI = 63
-
-# Deferral-ledger entry that tracks the 0..7 exclusion outside this file.
-HYST_DEFERRAL_LEDGER = Path(__file__).resolve().parents[2] / "testlists" / "deferred.toml"
-HYST_DEFERRAL_ENTRY = "smc_clk_multi_window_test_hyst_low_band_0_7"
-
-
-def _deferral_entry_present() -> bool:
-    """True when the deferral ledger still carries this exclusion's entry."""
-    try:
-        text = HYST_DEFERRAL_LEDGER.read_text(encoding="utf-8")
-    except OSError:
-        return False
-    return f'name = "{HYST_DEFERRAL_ENTRY}"' in text
 
 
 # Named, log-emitted exclusion record for the unexercised 0..7 band. This is a
 # DV-side stimulus carve-out with NO SPEC basis -- the observed hyst=1 behaviour
 # (DMA accepts a command via NEXT_ID but DMA_CTRL_DONE never advances, so
 # `_wait_dma_done` reaches its bound) looks like DUT/integration misbehaviour on
-# a SPEC-legal encoding. It is written out here, printed at run time, and
-# tracked by a `deferred.toml` ledger entry that `body()` asserts still exists,
-# precisely so it cannot pass as a silent source comment. Filing the product
-# issue and replacing the ledger reference with its id is the open action.
+# a SPEC-legal encoding, and is filed as tenstorrent/tt-oca-harness#1235. It is
+# written out here and printed at run time precisely so it cannot pass as a
+# silent source comment. The band is restored to the draw when #1235 closes.
 HYST_LOW_EXCLUSION = {
     "name": "HYST-LOW-BAND-0-7-NOT-EXERCISED",
     "tag": "[BY-DESIGN-EXCEPTION]",
@@ -82,17 +74,7 @@ HYST_LOW_EXCLUSION = {
         "already low while DONE is still stale, i.e. the transfer was dropped "
         "rather than merely slow"
     ),
-    # Tracked deferral, not a silent source comment: the carve-out has an entry
-    # in the deferral ledger that records the SPEC range, the reproduced symptom,
-    # the coverage consequence and the next action. `linked_issue` still holds no
-    # product-issue id -- filing that issue is the remaining action item named in
-    # the ledger entry -- but the exclusion is no longer untracked.
-    "linked_issue": (
-        "hw/sys/smc/dv/testlists/deferred.toml "
-        "[[tests]] smc_clk_multi_window_test_hyst_low_band_0_7 "
-        "(tags: dut_defect_suspect, needs_product_issue); "
-        "no product-issue id yet"
-    ),
+    "linked_issue": "tenstorrent/tt-oca-harness#1235",
     "consequence": (
         "the within-1-cycle hysteresis-scaling proof holds only for "
         f"{HYST_LEGAL_LO}..{HYST_LEGAL_HI}; the 0..7 band is UNPROVEN by this "
@@ -434,16 +416,6 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         # UNPROVEN here. Recording it in the retained evidence (rather than only
         # in a source comment) is what keeps the carve-out auditable
         # ([BY-DESIGN-EXCEPTION]).
-        # ... and prove the "tracked deferral" half of the record is true rather
-        # than asserted: the ledger entry it names must actually exist. Without
-        # this, deleting the deferred.toml entry would leave the retained log
-        # claiming a tracked carve-out that nothing tracks.
-        assert _deferral_entry_present(), (
-            f"HYST_LOW_EXCLUSION names ledger entry {HYST_DEFERRAL_ENTRY!r} in "
-            f"{HYST_DEFERRAL_LEDGER}, but that entry is not present: the 0..7 "
-            f"exclusion would be an untracked carve-out on SPEC-legal stimulus "
-            f"([BY-DESIGN-EXCEPTION])"
-        )
         cocotb.log.info(
             "EXCEPTION-RECORD %s %s: scope=%s | spec_range=%s | observed=%s | "
             "linked_issue=%s | consequence=%s",

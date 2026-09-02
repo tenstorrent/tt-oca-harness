@@ -45,7 +45,7 @@ certify nothing.
 ``tb_top.sv:1151`` ties ``axil_dtp_csr_resp = '0'`` -- there is no responder, so
 an AXI-Lite access into the DTP CSR window would wedge instead of completing --
 and the DTP CSR boundary is a recorded TB-policy deferral
-(``hw/sys/smc/dv/README.md``, ``hw/sys/smc/dv/testlists/deferred.toml``).  It is
+(``hw/sys/smc/dv/README.md``).  It is
 listed in ``env.smc_probe_liveness.UNBACKABLE_PROBES`` and its idle value is
 OBSERVED-ONLY, never closure evidence.
 

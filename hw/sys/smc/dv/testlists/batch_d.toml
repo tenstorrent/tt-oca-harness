@@ -100,7 +100,7 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "cpu_depth", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_pll_pvt_clock_config_test → testlists/deferred.toml (rtl_placeholder)
+# smc_pll_pvt_clock_config_test — not ported (rtl_placeholder)
 
 [[tests]]
 name = "smc_gpio_irq_active_test"
@@ -174,7 +174,7 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "depth_uart_log", "u2_spi_pad", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_sideband_avsbus_octs_bfm_test → testlists/deferred.toml (fake_bfm)
+# smc_sideband_avsbus_octs_bfm_test — not ported (fake_bfm)
 
 [[tests]]
 name = "smc_octs_dual_sync_test"
@@ -224,6 +224,16 @@ module = "smc_dbs_idle_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "batch_d", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+# Discriminator for the Xcelium SYS_OUT write hang (AW handshake, no W).
+# Not in the batch_d / balanced_ip groups: run with --items.
+[[tests]]
+name = "smc_sys_out_aw_w_split_test"
+module = "smc_sys_out_aw_w_split_test"
+seed = 1
+timeout_sec = 1800
+tags = ["diag", "dut_defect_suspect", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

@@ -15,7 +15,7 @@
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
 |Live test bodies |59 under `cocotb/tests/`, 56 of them enrolled
 |Enrolled leaf entries |55 in `sep0_p4_all`, 53 in `sep0_all`
-|Non-enrolled inventory |123 entries in `testlists/deferred.toml`, 28 bodies under `cocotb/tests_deferred/`
+|Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
 |===
 
 This plan describes what the SMU open-source suite verifies and against which
@@ -154,7 +154,7 @@ so the map cannot drift away from what the test does.
 |Enrolled in `sep0_p4_all` |55
 |Enrolled in `sep0_all` (nightly) |53
 |Non-enrolled bodies (`cocotb/tests_deferred/`) |28
-|Non-enrolled catalog entries (`testlists/deferred.toml`) |123
+|Non-enrolled bodies (`cocotb/tests_deferred/`) |28
 |===
 
 === Regression Groups
@@ -192,7 +192,7 @@ subset of `sep0_all`.
 
 * *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
   dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
-  blocker and is catalogued in `testlists/deferred.toml`, not enrolled.
+  blocker and is not ported.
 * *The wrapper is a separate surface.* `--dut smu_wrapper` proves production-pin
   boot and elaboration. Its PASSes are labelled `DUT_TAG=WRAPPER` and are not
   counted as `sep0_all` density evidence.

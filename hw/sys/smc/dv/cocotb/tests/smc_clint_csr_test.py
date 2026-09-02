@@ -1,6 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS cluster CLINT MTIME/MSIP CSR test."""
+"""SMC OSS cluster CLINT MTIME/MSIP CSR test.
+
+Not enrolled: the reads do not reach the CLINT. The whole `0xC800_0000`
+cluster-local window folds onto `0xC000_0000` on the SEP_IN path. Two
+discriminators from different blocks, measured in the same run:
+
+    0xC8000020 -> 0x00001000   CORE0 WDT CMP reset      (WDT,    0xC0000020)
+    0xC8004034 -> 0x000001ff   AVS_INTERRUPT_MASK reset (AVSBUS, 0xC0004034)
+
+and MTIME, a free-running counter, reads 0x0 twice 512 `clk_smc_i` apart.
+
+This is the bit-27 fold of #1237, which was filed for the BEU sub-window
+`0xC801_xxxx`; the scope is the whole `0xC8xx_xxxx` region. The testcase is kept
+because its MTIME-monotonic leg is the cheapest regression guard for that
+decode -- it starts passing when the fold is repaired.
+"""
 
 from __future__ import annotations
 

@@ -16,7 +16,7 @@ AXIL_SAMPLE_FIELDS = AXIL_PORT_FIELDS + ("any_master_active",)
 # `tb_top.sv:1151` ties `axil_dtp_csr_resp = '0'`, so there is no responder and
 # an AXI-Lite access into the DTP CSR window would wedge instead of completing;
 # the DTP CSR boundary is a recorded TB-policy deferral
-# (`hw/sys/smc/dv/README.md`, `hw/sys/smc/dv/testlists/deferred.toml`). Any
+# (`hw/sys/smc/dv/README.md`). Any
 # sequence-side idle helper must iterate this tuple, not AXIL_SAMPLE_FIELDS, and
 # report `dtp_csr_active` as OBSERVED-ONLY / not closure evidence
 # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).

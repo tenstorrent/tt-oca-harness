@@ -3,7 +3,7 @@
 """smc_pll_cgm_awm_config_test — DEFERRED (rtl_placeholder).
 
 Exercises pll/pvt OKAY wraps only. Shelved until real adopter IP.
-See testlists/deferred.toml.
+Not ported.
 """
 
 from __future__ import annotations
@@ -19,5 +19,5 @@ class smc_pll_cgm_awm_config_test(smc_base_test):
     async def run_scenario(self) -> None:
         raise AssertionError(
             "smc_pll_cgm_awm_config_test deferred: pll/pvt placeholder wraps. "
-            "See testlists/deferred.toml (rtl_placeholder)."
+            "Not ported (rtl_placeholder)."
         )
