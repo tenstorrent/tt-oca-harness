@@ -5,7 +5,7 @@
 Snoops a top-level AXI bus directly (by signal prefix) -- independent of the
 cocotbext-axi master, which resolves X/Z away in ``int.from_bytes(resp.data)``.
 This is the in-testbench substitute for the RTL SVA assertions, which the OSS
-Verilator build cannot run (gated off by ``DISABLE_ASSERT``/``SYNTHESIS``). It
+Verilator build cannot run (gated off by ``VERILATOR``). It
 checks, per accepted bus beat:
 
   * **read-data integrity** -- an accepted R beat (``rvalid && rready``) that

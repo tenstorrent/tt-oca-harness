@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[occp-command-processing]]
+== OCCP command processing
+
+This section describes the ROM command-loop implementation.
+Packet formats, command semantics, CRCs, transport binding, and controller-visible errors are defined in <<occp-protocol>>.
+
+[[occp-processing-flow]]
+.OCCP command-processing flow
+[plantuml]
+....
+@startuml
+start
+if (Interface latched?) then (yes)
+  :Poll only latched interface;
+  if (One million empty polls?) then (yes)
+    :Flush and unlatch;
+  endif
+else (no)
+  :Poll all active interfaces round-robin;
+endif
+:Read eight-byte packet header;
+if (Header transaction complete?) then (no)
+  :Send transport error when classifiable;
+  :Record interface error;
+else (yes)
+  if (Header CRC valid?) then (no)
+    :Flush failed frame;
+    :Send Corrupt_header;
+  else (yes)
+    if (Known AppID and MsgID?) then (no)
+      :Send Invalid_Appid or Invalid_Msgid;
+    else (yes)
+      :Latch source interface;
+      :Run command handler;
+      if (Body and operation valid?) then (yes)
+        :Send success response;
+        :Clear consecutive-error count;
+      else (no)
+        :Flush residual failed-frame data;
+        :Send error response;
+        :Increment consecutive-error count;
+      endif
+    endif
+  endif
+endif
+if (Five consecutive errors while latched?) then (yes)
+  :Flush and unlatch;
+endif
+:Increment command count if iteration reaches common completion;
+:Return to interface polling;
+stop
+@enduml
+....
+
+=== Polling and latching
+
+Before latching, the loop polls each active interface in array order: I3C0, I3C1, I3C3, I2C0, and I2C1.
+After an unlatch, round-robin polling begins with the interface after the one just released.
+
+The ROM latches when it receives a header with a valid CRC and a numerically recognized AppID/MsgID.
+Latching occurs before command-body length, CRC, address, and execution checks, so a recognized command that later fails validation still selects the interface.
+While latched, traffic on other interfaces is ignored.
+
+One million polling iterations without receive data causes the current interface to be flushed and unlatched.
+While an interface is latched, five consecutive header-read or
+command-execution errors also cause an unlatch.
+Errors received before any interface is latched do not increment that
+threshold counter.
+A successfully completed handler clears the consecutive-error count.
+`smc_occp_force_unlatch` exposes the same unlatch operation to linked ROM FW
+code.
+
+=== Receive and dispatch
+
+The loop reads the eight-byte packet header first.
+For a valid header, it dispatches directly on AppID and MsgID.
+Each handler then checks its required body length, reads the body plus optional CRC, validates body integrity, performs command-specific policy checks, and sends a response.
+
+The POST OCCP-state field progresses through command received, processing, response ready, and complete or error.
+The software OCCP command count increments when a packet-header transport read
+succeeds and processing reaches the common end of the command iteration. This
+includes header-validation failures, invalid application or message IDs, and
+handlers that return success or error.
+Successful `ExecuteImage` and `AuthenticateImage` handlers do not return and
+therefore do not increment the count.
+Initial header-read failures return to polling before that increment.
+
+=== Failed-frame cleanup
+
+Failed-frame cleanup occurs in these contexts:
+
+* header-validation errors flush residual body data before transmitting the
+  error response;
+* the `GetVersion` handlers flush unexpected residual bytes and report
+  `Oversize_msg` when any are found;
+* a command failure flushes residual data unless its error-response path
+  already performed the flush; and
+* an unlatch flushes the selected interface before returning to
+  all-interface polling.
+
+The I2C flush is bounded by the configured transport timeout and a maximum of 2,079 bytes.
+The HCI I3C flush is frame-aware: it discards bytes owed by the abandoned frame and complete stale frames already represented by descriptors, then stops when that frame ledger is clean.
+It does not use an idle-time window to consume newly arriving commands.
+
+=== Terminal commands
+
+`ExecuteImage` sends its success response before transferring control and therefore never returns to this loop.
+`AuthenticateImage` sends its success response before publishing the manifest coordination state and parking in `wfi`.
+No command-processing or status-only service loop remains active after `AuthenticateImage`.
