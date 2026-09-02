@@ -1802,7 +1802,7 @@ remapped routes to the error slave and never executes.
 *Test Procedure*:
 
 [arabic]
-. Real-sense a production image; wait for sense-done; publish CPU-ready.
+. Real-sense a production image; wait for sense-done; both OTP JTAG2AXIL `dbg_disable` bits read 0; publish CPU-ready.
 . CPU: a free-running loop reading and value-checking a token register, publishing a counter to cold scratch. The CPU issues no eFuse writes, so only the read channel is contended.
 . Host, concurrently: 16 debug-port register rounds (52 AXI-Lite operations), all expected to succeed.
 . Host: attempt a debug-port read of the protected shadow window; expect a decode error.
@@ -1830,6 +1830,8 @@ remapped routes to the error slave and never executes.
 |In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/periphs.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
 |CHK-JTAG-IFACE-DENY
 |In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
+|CHK-OTP-JTAG2AXI-UNGATED
+|After sense-done, `dbg_disable_o.smc_otp_jtag2axi` and `sep_otp_jtag2axi` both read 0. The common post-sense helper emits this on every leaf that waits for fuse-sense-done. Fuse-interface allow/deny stays on the checkers above.
 |===
 
 '''''
