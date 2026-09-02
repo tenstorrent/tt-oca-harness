@@ -103,6 +103,8 @@ If MBIST was not run, the ROM continues.
 If it passed, the ROM continues.
 An abort records `0xDEADC0DE` and halts.
 A failure records `0xDEADBEEF` and halts unless eFuse `RESERVED_2[0]` permits continuation.
+Scratch register 15 contains `0x12345678` while the MBIST result check is in
+progress.
 `MEM_BIST_BYPASS` records `0x12340002` and skips the check.
 
 The memory-repair check uses:
@@ -114,6 +116,8 @@ If repair was not run or succeeded, the final status is normally `0x600DCAFE`.
 A failure records `0xBADC0FFE` and halts unless eFuse `RESERVED_2[0]` permits continuation.
 `MEM_REPAIR_BYPASS` records `0x12340001` and skips the check.
 On its normal completion path, the repair check preserves a preceding MBIST failure, timeout, or bypass status.
+If both bypass straps are asserted, the memory-repair check runs second and
+replaces the MBIST-bypass value with `0x12340001`.
 
 === Clock hook
 

@@ -128,6 +128,9 @@ Successful responses with no body clear it.
 ==== GetVersion
 
 The request body is empty.
+Both `GetVersion` handlers also flush the selected receive interface before
+responding. If bytes remain after the nominal zero-length request, the ROM FW
+returns `Oversize_msg` instead of the version.
 The four-byte response body is:
 
 .GetVersion response body
@@ -195,6 +198,17 @@ protocol error codes carried by error-response bodies:
 |`0x0A` |Oversized transport frame
 |`0xFF` |General error
 |===
+
+These are the values defined by the software OCCP status interface; not every
+value is emitted by the current handlers. In particular, misaligned read,
+write, execute, and authenticate addresses record access violation (`0x02`);
+alignment error (`0x03`) is defined but not emitted.
+
+For a packet-header read that is incomplete or oversized, the wire response
+uses `Incomplete_msg` or `Oversize_msg`, but the internal error field remains
+timeout (`0x07`) because the command-loop return value has not yet been
+replaced. Equivalent failures returned from a command-body handler record
+incomplete (`0x09`) or overflow (`0x0A`).
 
 ==== WriteData
 
