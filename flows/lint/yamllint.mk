@@ -4,8 +4,7 @@
 ifndef ocah_lint_yamllint_mk
 ocah_lint_yamllint_mk := 1
 
-OCAH_LINT_YAMLLINT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_YAMLLINT_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # Path to lint, scoped by filesystem rather than by block. Not named PATH=,
 # which would override the shell's own command-search PATH.

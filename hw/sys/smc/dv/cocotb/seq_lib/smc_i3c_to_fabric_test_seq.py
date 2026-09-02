@@ -17,7 +17,7 @@ from pathlib import Path
 import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import _SMC_BASE_CFG_H, I3C_CG_EN, _field_mask, smc_addr
+from .smc_addr_map import _SMC_BASE_CFG_H, I3C_CG_EN, _field_mask, smc_addr, smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_i3c_vip_utils import observe_i3c0_external_pull_low
 
@@ -136,7 +136,7 @@ def _i3c_multifield_reg_from_rdl(reg_name: str) -> tuple[int, int, dict[str, int
     raise RuntimeError(f"register {reg_name} not found in {_I3C_BASE_RDL}")
 
 
-I3C0_CSR_WINDOW = smc_addr("SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR")
+I3C0_CSR_WINDOW = smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR", 0)
 HCI_VERSION_OFFSET, I3C_HCI_VERSION_RESET = _i3c_reg_from_rdl("HCI_VERSION")
 I3C0_HCI_VERSION = I3C0_CSR_WINDOW + HCI_VERSION_OFFSET
 
