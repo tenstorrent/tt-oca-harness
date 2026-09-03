@@ -11,25 +11,25 @@
 module RO_Jitter_Model #(
   parameter int PROB_SCALE = 1_000_000  // Probability scale for fixed-point params
 ) (
-  input logic clk_i,  // Sampling clock (e.g., rosc_sample_clk_i)
-  input logic rstn_i, // Active-low reset
+  input  logic              clk_i,           // Sampling clock (e.g., rosc_sample_clk_i)
+  input  logic              rstn_i,          // Active-low reset
 
   // Configuration
-  input logic        cfg_enable_i,      // Enable output updates on each clk_i edge
-  input logic        cfg_seed_en_i,     // Pulse to reseed PRNG
-  input int unsigned cfg_seed_i,        // Seed value
-  input int unsigned cfg_p_bias_i,      // Probability of '1' when independent (0..PROB_SCALE)
-  input int unsigned cfg_p_corr_i,      // Probability current bit == previous (0..PROB_SCALE)
-  input logic        cfg_stuck_en_i,    // Force stuck-at output
-  input logic        cfg_stuck_value_i, // Value when stuck
+  input  logic              cfg_enable_i,    // Enable output updates on each clk_i edge
+  input  logic              cfg_seed_en_i,   // Pulse to reseed PRNG
+  input  int unsigned       cfg_seed_i,      // Seed value
+  input  int unsigned       cfg_p_bias_i,    // Probability of '1' when independent (0..PROB_SCALE)
+  input  int unsigned       cfg_p_corr_i,    // Probability current bit == previous (0..PROB_SCALE)
+  input  logic              cfg_stuck_en_i,  // Force stuck-at output
+  input  logic              cfg_stuck_value_i, // Value when stuck
 
   // Outputs
-  output logic bit_o,  // Output bit
-  output logic vld_o   // Valid each sample cycle
+  output logic              bit_o,           // Output bit
+  output logic              vld_o            // Valid each sample cycle
 );
 
   // Internal state
-  logic        prev_bit_q;
+  logic prev_bit_q;
   // Temporary sanitized config (module-scope to satisfy older tool restrictions)
   logic        _enable_d;
   logic        _stuck_en_d;
@@ -40,7 +40,7 @@ module RO_Jitter_Model #(
   logic        _enable_q;
 
   // One-shot initializer to avoid X propagation without adding another driver
-  logic        init_done;
+  logic init_done;
 
   // Reseed PRNG when requested
   always_ff @(posedge clk_i or negedge rstn_i) begin
@@ -75,8 +75,8 @@ module RO_Jitter_Model #(
       end
       vld_o <= 1'b0;
       // Sanitize potentially unknown config inputs; provide safe defaults
-      _enable_d    = (cfg_enable_i === 1'b1);
-      _stuck_en_d  = (cfg_stuck_en_i === 1'b1);
+      _enable_d    = (cfg_enable_i      === 1'b1);
+      _stuck_en_d  = (cfg_stuck_en_i    === 1'b1);
       _stuck_val_d = (cfg_stuck_value_i === 1'b1);
       _p_bias_d    = (cfg_p_bias_i > PROB_SCALE) ? PROB_SCALE : cfg_p_bias_i;
       _p_corr_d    = (cfg_p_corr_i > PROB_SCALE) ? PROB_SCALE : cfg_p_corr_i;
@@ -84,7 +84,7 @@ module RO_Jitter_Model #(
       // Generate valid one clock after enable is observed
       // IMPORTANT: bit_o and vld_o must be synchronized!
       // Both use _enable_q (delayed enable) so they update together
-      vld_o <= _enable_q;
+      vld_o   <= _enable_q;
       _enable_q <= _enable_d;
 
       if (_enable_q) begin  // Changed from _enable_d to _enable_q for synchronization

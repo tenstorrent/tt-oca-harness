@@ -38,72 +38,72 @@ module tb_drbg
   logic rst_ni;
 
   logic [31:0] entropy_stream_data_i;
-  logic entropy_stream_vld_i;
-  logic entropy_axis_tvalid_o;
+  logic        entropy_stream_vld_i;
+  logic        entropy_axis_tvalid_o;
   logic [31:0] entropy_axis_tdata_o;
-  logic [3:0] entropy_axis_tstrb_o;
-  logic entropy_axis_tready_i;
+  logic [3:0]  entropy_axis_tstrb_o;
+  logic        entropy_axis_tready_i;
   drbg_axis_req_t entropy_axis;
   drbg_axis_rsp_t entropy_axis_rsp;
 
-  logic [EDN_ENDPOINT_COUNT-1:0] edn_axis_tvalid_o;
+  logic [EDN_ENDPOINT_COUNT-1:0]       edn_axis_tvalid_o;
   logic [EDN_ENDPOINT_COUNT-1:0][31:0] edn_axis_tdata_o;
-  logic [EDN_ENDPOINT_COUNT-1:0][3:0] edn_axis_tstrb_o;
-  logic [EDN_ENDPOINT_COUNT-1:0] edn_axis_tready_i;
+  logic [EDN_ENDPOINT_COUNT-1:0][3:0]  edn_axis_tstrb_o;
+  logic [EDN_ENDPOINT_COUNT-1:0]       edn_axis_tready_i;
   drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0] edn_axis;
   drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_rsp;
 
-  logic csrng_axil_awvalid_i;
-  logic csrng_axil_awready_o;
+  logic        csrng_axil_awvalid_i;
+  logic        csrng_axil_awready_o;
   logic [31:0] csrng_axil_awaddr_i;
-  logic [2:0] csrng_axil_awprot_i;
-  logic csrng_axil_wvalid_i;
-  logic csrng_axil_wready_o;
+  logic [2:0]  csrng_axil_awprot_i;
+  logic        csrng_axil_wvalid_i;
+  logic        csrng_axil_wready_o;
   logic [63:0] csrng_axil_wdata_i;
-  logic [7:0] csrng_axil_wstrb_i;
-  logic csrng_axil_bvalid_o;
-  logic csrng_axil_bready_i;
-  logic [1:0] csrng_axil_bresp_o;
-  logic csrng_axil_arvalid_i;
-  logic csrng_axil_arready_o;
+  logic [7:0]  csrng_axil_wstrb_i;
+  logic        csrng_axil_bvalid_o;
+  logic        csrng_axil_bready_i;
+  logic [1:0]  csrng_axil_bresp_o;
+  logic        csrng_axil_arvalid_i;
+  logic        csrng_axil_arready_o;
   logic [31:0] csrng_axil_araddr_i;
-  logic [2:0] csrng_axil_arprot_i;
-  logic csrng_axil_rvalid_o;
-  logic csrng_axil_rready_i;
+  logic [2:0]  csrng_axil_arprot_i;
+  logic        csrng_axil_rvalid_o;
+  logic        csrng_axil_rready_i;
   logic [63:0] csrng_axil_rdata_o;
-  logic [1:0] csrng_axil_rresp_o;
-  drbg_axil64_req_t csrng_axil_req;
+  logic [1:0]  csrng_axil_rresp_o;
+  drbg_axil64_req_t  csrng_axil_req;
   drbg_axil64_resp_t csrng_axil_rsp;
 
-  logic edn_axil_awvalid_i;
-  logic edn_axil_awready_o;
+  logic        edn_axil_awvalid_i;
+  logic        edn_axil_awready_o;
   logic [31:0] edn_axil_awaddr_i;
-  logic [2:0] edn_axil_awprot_i;
-  logic edn_axil_wvalid_i;
-  logic edn_axil_wready_o;
+  logic [2:0]  edn_axil_awprot_i;
+  logic        edn_axil_wvalid_i;
+  logic        edn_axil_wready_o;
   logic [63:0] edn_axil_wdata_i;
-  logic [7:0] edn_axil_wstrb_i;
-  logic edn_axil_bvalid_o;
-  logic edn_axil_bready_i;
-  logic [1:0] edn_axil_bresp_o;
-  logic edn_axil_arvalid_i;
-  logic edn_axil_arready_o;
+  logic [7:0]  edn_axil_wstrb_i;
+  logic        edn_axil_bvalid_o;
+  logic        edn_axil_bready_i;
+  logic [1:0]  edn_axil_bresp_o;
+  logic        edn_axil_arvalid_i;
+  logic        edn_axil_arready_o;
   logic [31:0] edn_axil_araddr_i;
-  logic [2:0] edn_axil_arprot_i;
-  logic edn_axil_rvalid_o;
-  logic edn_axil_rready_i;
+  logic [2:0]  edn_axil_arprot_i;
+  logic        edn_axil_rvalid_o;
+  logic        edn_axil_rready_i;
   logic [63:0] edn_axil_rdata_o;
-  logic [1:0] edn_axil_rresp_o;
-  drbg_axil64_req_t edn_axil_req;
+  logic [1:0]  edn_axil_rresp_o;
+  drbg_axil64_req_t  edn_axil_req;
   drbg_axil64_resp_t edn_axil_rsp;
 
   prim_mubi_pkg::mubi8_t otp_en_csrng_sw_app_read_i;
-  lc_ctrl_pkg::lc_tx_t lc_hw_debug_en_i;
+  lc_ctrl_pkg::lc_tx_t   lc_hw_debug_en_i;
 
   prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i;
   prim_alert_pkg::alert_tx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_tx_o;
-  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0] edn_alert_rx_i;
-  prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0] edn_alert_tx_o;
+  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_rx_i;
+  prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_tx_o;
 
   logic intr_cs_cmd_req_done_o;
   logic intr_cs_entropy_req_o;
@@ -120,10 +120,10 @@ module tb_drbg
   logic [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_n_o;
   logic [csrng_reg_pkg::NumAlerts-1:0] csrng_inner_alert_p_o;
   logic [csrng_reg_pkg::NumAlerts-1:0] csrng_inner_alert_n_o;
-  logic [edn_reg_pkg::NumAlerts-1:0] edn_alert_p_o;
-  logic [edn_reg_pkg::NumAlerts-1:0] edn_alert_n_o;
-  logic [edn_reg_pkg::NumAlerts-1:0] edn_inner_alert_p_o;
-  logic [edn_reg_pkg::NumAlerts-1:0] edn_inner_alert_n_o;
+  logic [edn_reg_pkg::NumAlerts-1:0]   edn_alert_p_o;
+  logic [edn_reg_pkg::NumAlerts-1:0]   edn_alert_n_o;
+  logic [edn_reg_pkg::NumAlerts-1:0]   edn_inner_alert_p_o;
+  logic [edn_reg_pkg::NumAlerts-1:0]   edn_inner_alert_n_o;
 
   // Wrapper-local observability hooks for cocotb.
   logic route_distribution_pulse_o;
@@ -148,9 +148,9 @@ module tb_drbg
   logic [EDN_ENDPOINT_COUNT-1:0] edn_req_valid_o;
   logic [CSRNG_NUM_HW_APPS-1:0] csrng_hw_req_valid_o;
   logic [EDN_ENDPOINT_COUNT-1:0][31:0] edn_endpoint_bus_i;
-  logic [EDN_ENDPOINT_COUNT-1:0] edn_endpoint_fips_i;
-  logic [EDN_ENDPOINT_COUNT-1:0] edn_endpoint_ack_i;
-  logic [EDN_ENDPOINT_COUNT-1:0] edn_endpoint_force_i;
+  logic [EDN_ENDPOINT_COUNT-1:0]       edn_endpoint_fips_i;
+  logic [EDN_ENDPOINT_COUNT-1:0]       edn_endpoint_ack_i;
+  logic [EDN_ENDPOINT_COUNT-1:0]       edn_endpoint_force_i;
 
   // Keep the cocotb surface flattened while the DUT uses typed AXI-Lite ports.
   assign csrng_axil_req.aw_valid = csrng_axil_awvalid_i;
@@ -218,14 +218,14 @@ module tb_drbg
     .rst_ni,
     .entropy_stream_data_i,
     .entropy_stream_vld_i,
-    .entropy_axis_o  (entropy_axis),
-    .entropy_axis_i  (entropy_axis_rsp),
-    .edn_axis_o      (edn_axis),
-    .edn_axis_i      (edn_axis_rsp),
-    .csrng_axil_req_i(csrng_axil_req),
-    .csrng_axil_rsp_o(csrng_axil_rsp),
-    .edn_axil_req_i  (edn_axil_req),
-    .edn_axil_rsp_o  (edn_axil_rsp),
+    .entropy_axis_o          (entropy_axis),
+    .entropy_axis_i          (entropy_axis_rsp),
+    .edn_axis_o              (edn_axis),
+    .edn_axis_i              (edn_axis_rsp),
+    .csrng_axil_req_i        (csrng_axil_req),
+    .csrng_axil_rsp_o        (csrng_axil_rsp),
+    .edn_axil_req_i          (edn_axil_req),
+    .edn_axil_rsp_o          (edn_axil_rsp),
     .otp_en_csrng_sw_app_read_i,
     .lc_hw_debug_en_i,
     .csrng_alert_rx_i,

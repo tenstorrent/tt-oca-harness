@@ -49,7 +49,7 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
       "ctm_rand_p2p_only":      run_ctm_random("p2p_only", "all", "all", 1'b0, 1'b1);
       "ctm_rand_cla_to_ctp":    run_ctm_random("cla_to_ctp", "internal", "ctp", 1'b1, 1'b1);
       "ctm_rand_ctp_to_cla":    run_ctm_random("ctp_to_cla", "ctp", "internal", 1'b1, 1'b1);
-      default:                  super.dispatch_scenario();
+      default: super.dispatch_scenario();
     endcase
   endtask
 
@@ -180,7 +180,7 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     pick_distinct(XtrigNumIntCt, 2, ints);
     pick_distinct(XtrigNumCtp, 3, ctps);
     if (mode == CtpModeWireOr) begin
-      mask_ports  = {ctps[0], ctps[1]};
+      mask_ports = {ctps[0], ctps[1]};
       output_mask = ports_mask(mask_ports);
     end else output_mask = 32'd1 << external_ctp_port(ctps[0]);
     verify_route(internal_ct_port(ints[0]), output_mask, mode, $sformatf("reset_%s.pre", name));
@@ -223,9 +223,9 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     port_pool(dest_class, dest_pool);
     for (int unsigned idx = 0; idx < random_count; idx++) begin
       int unsigned input_port = pick_one(source_pool);
-      int unsigned mode = (allow_p2p && (!multicast || $urandom_range(
-          1
-      ))) ? CtpModeP2p : CtpModeWireOr;
+      int unsigned mode = (allow_p2p &&
+                                 (!multicast || $urandom_range(1)))
+                                ? CtpModeP2p : CtpModeWireOr;
       int unsigned choices[$], selected[$];
       bit [31:0] output_mask;
       foreach (dest_pool[i]) begin

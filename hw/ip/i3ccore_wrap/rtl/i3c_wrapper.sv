@@ -20,33 +20,33 @@ module i3c_wrapper #(
 
   // AXI4-Lite Interface
   // Write Address Channel
-  input  logic                        awvalid_i,
-  output logic                        awready_o,
-  input  logic [AxiLiteAddrWidth-1:0] awaddr_i,
-  input  logic [                 2:0] awprot_i,
+  input  logic                           awvalid_i,
+  output logic                           awready_o,
+  input  logic [AxiLiteAddrWidth-1:0]    awaddr_i,
+  input  logic [2:0]                     awprot_i,
 
   // Write Data Channel
-  input  logic                          wvalid_i,
-  output logic                          wready_o,
-  input  logic [  AxiLiteDataWidth-1:0] wdata_i,
-  input  logic [AxiLiteDataWidth/8-1:0] wstrb_i,
+  input  logic                           wvalid_i,
+  output logic                           wready_o,
+  input  logic [AxiLiteDataWidth-1:0]    wdata_i,
+  input  logic [AxiLiteDataWidth/8-1:0]  wstrb_i,
 
   // Write Response Channel
-  output logic       bvalid_o,
-  input  logic       bready_i,
-  output logic [1:0] bresp_o,
+  output logic                           bvalid_o,
+  input  logic                           bready_i,
+  output logic [1:0]                     bresp_o,
 
   // Read Address Channel
-  input  logic                        arvalid_i,
-  output logic                        arready_o,
-  input  logic [AxiLiteAddrWidth-1:0] araddr_i,
-  input  logic [                 2:0] arprot_i,
+  input  logic                           arvalid_i,
+  output logic                           arready_o,
+  input  logic [AxiLiteAddrWidth-1:0]    araddr_i,
+  input  logic [2:0]                     arprot_i,
 
   // Read Data Channel
-  output logic                        rvalid_o,
-  input  logic                        rready_i,
-  output logic [AxiLiteDataWidth-1:0] rdata_o,
-  output logic [                 1:0] rresp_o,
+  output logic                           rvalid_o,
+  input  logic                           rready_i,
+  output logic [AxiLiteDataWidth-1:0]    rdata_o,
+  output logic [1:0]                     rresp_o,
 
 
   // I3C bus driver signals
@@ -82,14 +82,14 @@ module i3c_wrapper #(
   output i3c_pkg::rlt_mem_sink_t rlt_mem_sink_o
 );
 
-  logic core_scl_o;  // core SCL output is the bus level (1=release), not a pad OE
+  logic core_scl_o;   // core SCL output is the bus level (1=release), not a pad OE
   logic core_sda_oe;  // core drives this only in target mode (tied 0 for active controller)
 
   i3c #(
     .AxiDataWidth(AxiLiteDataWidth),
     .AxiAddrWidth(AxiLiteAddrWidth),
     .AxiUserWidth(32),
-    .AxiIdWidth  (1),
+    .AxiIdWidth(1),
 
     .CsrDataWidth(CsrDataWidth),
     .CsrAddrWidth(CsrAddrWidth),
@@ -101,8 +101,8 @@ module i3c_wrapper #(
 
     // AXI4 Write Address Channel (AXI-Lite -> AXI4, single beat)
     .awaddr_i (AxiLiteAddrWidth'(awaddr_i)),
-    .awburst_i(2'b01),                             // INCR; irrelevant for awlen==0
-    .awsize_i (3'($clog2(AxiLiteDataWidth / 8))),
+    .awburst_i(2'b01),                       // INCR; irrelevant for awlen==0
+    .awsize_i (3'($clog2(AxiLiteDataWidth/8))),
     .awlen_i  (8'd0),
     .awuser_i ({32{1'b0}}),
     .awid_i   ({1{1'b0}}),
@@ -146,21 +146,21 @@ module i3c_wrapper #(
     .rready_i(rready_i),
 
 
-    .i3c_scl_i(scl_i),
-    .i3c_scl_o(core_scl_o),
-    .i3c_sda_i(sda_i),
-    .i3c_sda_o(sda_o),
+    .i3c_scl_i  (scl_i),
+    .i3c_scl_o  (core_scl_o),
+    .i3c_sda_i  (sda_i),
+    .i3c_sda_o  (sda_o),
     .sel_od_pp_o(sel_od_pp_o),
     .i3c_sda_oe_o(core_sda_oe),
 
-    .dat_mem_src_i (dat_mem_src_i),  // Pass through from wrapper ports
-    .dat_mem_sink_o(dat_mem_sink_o), // Pass through to wrapper ports (driven by i3c.sv)
+    .dat_mem_src_i (dat_mem_src_i),   // Pass through from wrapper ports
+    .dat_mem_sink_o(dat_mem_sink_o),  // Pass through to wrapper ports (driven by i3c.sv)
 
-    .dct_mem_src_i (dct_mem_src_i),  // Pass through from wrapper ports
-    .dct_mem_sink_o(dct_mem_sink_o), // Pass through to wrapper ports (driven by i3c.sv)
+    .dct_mem_src_i (dct_mem_src_i),   // Pass through from wrapper ports
+    .dct_mem_sink_o(dct_mem_sink_o),  // Pass through to wrapper ports (driven by i3c.sv)
 
-    .rlt_mem_src_i (rlt_mem_src_i),  // Pass through from wrapper ports
-    .rlt_mem_sink_o(rlt_mem_sink_o), // Pass through to wrapper ports (driven by i3c.sv)
+    .rlt_mem_src_i (rlt_mem_src_i),   // Pass through from wrapper ports
+    .rlt_mem_sink_o(rlt_mem_sink_o),  // Pass through to wrapper ports (driven by i3c.sv)
 
     .recovery_payload_available_o(recovery_payload_available_o),
     .recovery_image_activated_o  (recovery_image_activated_o),

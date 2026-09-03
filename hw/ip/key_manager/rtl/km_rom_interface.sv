@@ -26,31 +26,31 @@ module km_rom_interface
   parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic   clk_i,
+  input  logic   rst_ni,
 
   // PicoRV32 native memory interface (input from CPU)
-  input  logic        mem_valid_i,  // Memory request valid
-  output logic        mem_ready_o,  // Memory ready (data available)
-  input  logic [31:0] mem_addr_i,   // Byte address
-  input  logic [31:0] mem_wdata_i,  // Write data (unused, ROM is read-only)
-  input  logic [ 3:0] mem_wstrb_i,  // Write strobe (unused, ROM is read-only)
-  input  logic [ 3:0] mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU)
-  output logic [31:0] mem_rdata_o,  // Read data
+  input  logic   mem_valid_i,     // Memory request valid
+  output logic        mem_ready_o,     // Memory ready (data available)
+  input  logic [31:0] mem_addr_i,      // Byte address
+  input  logic [31:0] mem_wdata_i,     // Write data (unused, ROM is read-only)
+  input  logic [3:0] mem_wstrb_i,     // Write strobe (unused, ROM is read-only)
+  input  logic [3:0] mem_rstrb_i,     // Read strobe (byte lanes consumed by CPU)
+  output logic [31:0] mem_rdata_o,     // Read data
 
   // PicoRV32 look-ahead interface (for prefetching)
-  input logic mem_la_read_i,  // Look-ahead read signal (1 cycle before mem_valid)
-  input logic [31:0] mem_la_addr_i,  // Look-ahead address
-  input logic [3:0] mem_la_rstrb_i,  // Look-ahead read strobe
+  input  logic   mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid)
+  input  logic [31:0] mem_la_addr_i,   // Look-ahead address
+  input  logic [3:0] mem_la_rstrb_i,  // Look-ahead read strobe
 
   // ROM memory interface (exposed at subsystem boundary)
   output km_rom_mem_req_t rom_mem_req_o,
   input  km_rom_mem_rsp_t rom_mem_rsp_i,
 
   // Parity error output (to KMCSR)
-  output logic parity_error_o,  // Parity error detected (pulse)
+  output logic        parity_error_o,    // Parity error detected (pulse)
   // ROM write error output (to KMCSR)
-  output logic rom_write_err_o  // ROM write attempt detected (pulse)
+  output logic        rom_write_err_o    // ROM write attempt detected (pulse)
 );
 
   `include "prim_assert.sv"
@@ -105,7 +105,7 @@ module km_rom_interface
   // This is critical for pipelined memory when the CPU may de-assert mem_valid
   // before all responses arrive (e.g., second word of unaligned instruction)
   // Support pipelined sequential reads: can accept new request in same cycle as response
-  logic       request_pending_q;
+  logic request_pending_q;
   logic [3:0] pending_rstrb_q;
   logic [3:0] req_rstrb;
   logic [3:0] current_rsp_rstrb;
@@ -118,7 +118,7 @@ module km_rom_interface
   // 2. On regular read (when mem_valid is asserted)
   // Don't issue new request if one is already pending and not yet completed
   // EXCEPT: allow new request in same cycle as response (pipelined operation)
-  logic       issue_new_request;
+  logic issue_new_request;
   assign issue_new_request = (mem_la_read_i || is_read) &&
                                (!request_pending_q || rom_mem_rsp_i.rvalid);
   assign req_rstrb = mem_la_read_i ? mem_la_rstrb_i : mem_rstrb_i;
@@ -136,7 +136,7 @@ module km_rom_interface
       // If new request is issued in same cycle as response, keep pending set
       if (rom_mem_req_o.req) begin
         request_pending_q <= 1'b1;
-        pending_rstrb_q   <= req_rstrb;
+        pending_rstrb_q <= req_rstrb;
       end else if (rom_mem_rsp_i.rvalid) begin
         // Clear pending only if no new request is being issued
         request_pending_q <= 1'b0;
@@ -148,7 +148,7 @@ module km_rom_interface
     end
   end
 
-  assign rom_mem_req_o.req = req_enable && issue_new_request;
+  assign rom_mem_req_o.req  = req_enable && issue_new_request;
   // Use look-ahead address for prefetch, regular address otherwise
   assign rom_mem_req_o.addr = mem_la_read_i ? la_word_addr : word_addr;
 
@@ -177,9 +177,9 @@ module km_rom_interface
   ////////////////////////////////////////////////////////////////////////////
 
   // Check parity on the byte lanes actually consumed by the CPU on this read response.
-  assign parity_error_o = read_complete ? check_parity(
-      rom_mem_rsp_i.rdata, rom_mem_rsp_i.parity, current_rsp_rstrb
-  ) : 1'b0;
+  assign parity_error_o = read_complete ?
+                            check_parity(rom_mem_rsp_i.rdata, rom_mem_rsp_i.parity,
+                                         current_rsp_rstrb) : 1'b0;
 
   ////////////////////////////////////////////////////////////////////////////
   // ROM Write Error Output

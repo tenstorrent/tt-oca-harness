@@ -39,9 +39,9 @@ module ocah_jtag_sva #(
   input wire logic        tck,
   input wire logic        tms,
   input wire logic        tdi,
-  input wire logic        trst_n,      // active-low asynchronous TAP reset
+  input wire logic        trst_n,   // active-low asynchronous TAP reset
   input wire logic        tdo,
-  input wire logic        tdo_oen,     // active-high TDO output enable
+  input wire logic        tdo_oen,  // active-high TDO output enable
   input wire logic        en_i,
   input wire logic [15:0] tap_state_i  // one-hot; tie '0 when EN_STATE_RULES=0
 );
@@ -71,7 +71,7 @@ module ocah_jtag_sva #(
       16'h2000: return tms_bit ? 16'h4000 : 16'h2000;  // Pause-IR
       16'h4000: return tms_bit ? 16'h8000 : 16'h0800;  // Exit2-IR
       16'h8000: return tms_bit ? 16'h0004 : 16'h0002;  // Update-IR
-      default:  return '0;  // illegal input
+      default:  return '0;                             // illegal input
     endcase
   endfunction
 

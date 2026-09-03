@@ -24,21 +24,21 @@
 `include "ocah_fcov_macros.svh"
 
 module dtp_jtag2axi_fcov (
-  input wire                                              tck_i,
-  input wire                                              trst_ni,
-  input wire                                              clk_i,
-  input wire                                              rst_ni,
-  input wire                                       [15:0] tap_state_i,
-  input wire                                       [63:0] inst_decoded_i,
-  input wire sep_lifecycle_ctrl_pkg::dbg_disable_t        dbg_disable_i,
+  input wire        tck_i,
+  input wire        trst_ni,
+  input wire        clk_i,
+  input wire        rst_ni,
+  input wire [15:0] tap_state_i,
+  input wire [63:0] inst_decoded_i,
+  input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_i,
 
   // SMC fabric bridge (AXI4): TCK-domain bridge state + launched-op fields
-  input wire [ 1:0] smc_axi_status_i,
+  input wire [1:0]  smc_axi_status_i,
   input wire        smc_axi_pending_i,
-  input wire [ 1:0] smc_axi_op_i,
+  input wire [1:0]  smc_axi_op_i,
   input wire [55:0] smc_axi_addr_i,
-  input wire [ 2:0] smc_axi_size_i,
-  input wire [ 7:0] smc_axi_wstrb_i,
+  input wire [2:0]  smc_axi_size_i,
+  input wire [7:0]  smc_axi_wstrb_i,
   // SMC fabric bus handshakes (system-clock domain)
   input wire        smc_axi_awvalid_i,
   input wire        smc_axi_awready_i,
@@ -52,12 +52,12 @@ module dtp_jtag2axi_fcov (
   input wire        smc_axi_rready_i,
 
   // SMC OTP bridge (AXI4-Lite)
-  input wire [ 1:0] smc_otp_status_i,
+  input wire [1:0]  smc_otp_status_i,
   input wire        smc_otp_pending_i,
-  input wire [ 1:0] smc_otp_op_i,
+  input wire [1:0]  smc_otp_op_i,
   input wire [31:0] smc_otp_addr_i,
-  input wire [ 2:0] smc_otp_size_i,
-  input wire [ 3:0] smc_otp_wstrb_i,
+  input wire [2:0]  smc_otp_size_i,
+  input wire [3:0]  smc_otp_wstrb_i,
   input wire        smc_otp_awvalid_i,
   input wire        smc_otp_awready_i,
   input wire        smc_otp_wvalid_i,
@@ -70,12 +70,12 @@ module dtp_jtag2axi_fcov (
   input wire        smc_otp_rready_i,
 
   // SEP OTP bridge (AXI4-Lite)
-  input wire [ 1:0] sep_otp_status_i,
+  input wire [1:0]  sep_otp_status_i,
   input wire        sep_otp_pending_i,
-  input wire [ 1:0] sep_otp_op_i,
+  input wire [1:0]  sep_otp_op_i,
   input wire [31:0] sep_otp_addr_i,
-  input wire [ 2:0] sep_otp_size_i,
-  input wire [ 3:0] sep_otp_wstrb_i,
+  input wire [2:0]  sep_otp_size_i,
+  input wire [3:0]  sep_otp_wstrb_i,
   input wire        sep_otp_awvalid_i,
   input wire        sep_otp_awready_i,
   input wire        sep_otp_wvalid_i,
@@ -378,7 +378,7 @@ module dtp_jtag2axi_fcov (
   endgroup
 
   cg_jtag2axi_single_op u_cg_single_op = new();
-  cg_jtag2axi_response  u_cg_response = new();
+  cg_jtag2axi_response u_cg_response = new();
 
   `define DTP_J2A_CG_SAMPLE(__t, __id)                                                     \
     always_ff @(posedge tck_i) begin                                                       \

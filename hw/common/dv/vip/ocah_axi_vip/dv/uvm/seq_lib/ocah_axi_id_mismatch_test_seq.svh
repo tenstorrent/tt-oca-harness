@@ -23,7 +23,7 @@ class ocah_axi_id_mismatch_test_seq extends ocah_axi_master_sequence;
   ocah_axi_checker        evidence;
   ocah_axi_slave_sequence slave_seq;
 
-  int unsigned            n_rounds   = 3;
+  int unsigned n_rounds = 3;
 
   function new(string name = "ocah_axi_id_mismatch_test_seq");
     super.new(name);

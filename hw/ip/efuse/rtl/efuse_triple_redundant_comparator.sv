@@ -27,11 +27,11 @@
 module efuse_triple_redundant_comparator #(
   localparam int TokenWidth = 256
 ) (
-  input  logic                  compute_comparison_vld_i,
-  input  logic [TokenWidth-1:0] token_digest_i,
-  input  logic [TokenWidth-1:0] token_expected_i,
-  output logic [           5:0] token_match_o,
-  output logic                  redundancy_fault_o
+  input  logic                   compute_comparison_vld_i,
+  input  logic [TokenWidth-1:0]  token_digest_i,
+  input  logic [TokenWidth-1:0]  token_expected_i,
+  output logic [5:0]             token_match_o,
+  output logic                   redundancy_fault_o
 );
 
   logic [2:0] match_p_raw, match_n_raw;
@@ -44,10 +44,10 @@ module efuse_triple_redundant_comparator #(
   // Three independent token digest comparators.
   for (genvar i = 0; i < 3; i++) begin : gen_token_digest_comparators
     efuse_token_digest_comparator u_token_digest_comparator (
-      .token_digest_i  (token_digest_i),
-      .token_expected_i(token_expected_i),
-      .match_p_o       (match_p_raw[i]),
-      .match_n_o       (match_n_raw[i])
+      .token_digest_i   (token_digest_i),
+      .token_expected_i (token_expected_i),
+      .match_p_o        (match_p_raw[i]),
+      .match_n_o        (match_n_raw[i])
     );
 
     prim_and2 #(

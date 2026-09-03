@@ -20,36 +20,36 @@ module ocah_axil_ram_responder #(
   parameter int unsigned DATA_WIDTH = 32,
   parameter int unsigned MEM_BYTES  = 65536  // power of two
 ) (
-  input wire logic clk_i,
-  input wire logic rst_ni,
+  input  wire logic                    clk_i,
+  input  wire logic                    rst_ni,
 
   // AXI4-Lite subordinate.
-  input  wire logic [  ADDR_WIDTH-1:0] awaddr,
-  input  wire logic [             2:0] awprot,
+  input  wire logic [ADDR_WIDTH-1:0]   awaddr,
+  input  wire logic [2:0]              awprot,
   input  wire logic                    awvalid,
   output logic                         awready,
-  input  wire logic [  DATA_WIDTH-1:0] wdata,
+  input  wire logic [DATA_WIDTH-1:0]   wdata,
   input  wire logic [DATA_WIDTH/8-1:0] wstrb,
   input  wire logic                    wvalid,
   output logic                         wready,
-  output logic      [             1:0] bresp,
+  output logic [1:0]                   bresp,
   output logic                         bvalid,
   input  wire logic                    bready,
-  input  wire logic [  ADDR_WIDTH-1:0] araddr,
-  input  wire logic [             2:0] arprot,
+  input  wire logic [ADDR_WIDTH-1:0]   araddr,
+  input  wire logic [2:0]              arprot,
   input  wire logic                    arvalid,
   output logic                         arready,
-  output logic      [  DATA_WIDTH-1:0] rdata,
-  output logic      [             1:0] rresp,
+  output logic [DATA_WIDTH-1:0]        rdata,
+  output logic [1:0]                   rresp,
   output logic                         rvalid,
   input  wire logic                    rready,
 
   // Error-injection controls (driven from a TB interface).
-  input wire logic                  err_arm_i,
-  input wire logic [ADDR_WIDTH-1:0] err_addr_i,
-  input wire logic [           1:0] err_resp_i,
-  input wire logic                  err_on_read_i,
-  input wire logic                  err_on_write_i
+  input  wire logic                    err_arm_i,
+  input  wire logic [ADDR_WIDTH-1:0]   err_addr_i,
+  input  wire logic [1:0]              err_resp_i,
+  input  wire logic                    err_on_read_i,
+  input  wire logic                    err_on_write_i
 );
 
   localparam int unsigned StrbWidth = DATA_WIDTH / 8;
@@ -74,7 +74,7 @@ module ocah_axil_ram_responder #(
   logic aw_pend, w_pend;
   logic [ADDR_WIDTH-1:0] aw_addr_q;
   logic [DATA_WIDTH-1:0] w_data_q;
-  logic [ StrbWidth-1:0] w_strb_q;
+  logic [StrbWidth-1:0]  w_strb_q;
 
   assign awready = rst_ni && !aw_pend && !bvalid;
   assign wready  = rst_ni && !w_pend && !bvalid;

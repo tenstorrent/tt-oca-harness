@@ -108,25 +108,25 @@ interface dtp_tb_if;
   // the pad-cell din/dout/en quartets.
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_ack = '0;
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_din = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_din = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_din = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din = '0;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din = '0;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din  = '0;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din  = '0;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din = '0;
 
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_ack;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout_en;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din_en;
 
   // XTRIG CSR request-activity pulse-counter mirrors (driven by tb_top).
   logic [31:0] xtrig_axil_awvalid_count;

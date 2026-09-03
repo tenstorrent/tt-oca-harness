@@ -15,17 +15,17 @@ module ctm_src_selector #(
   parameter int unsigned NUM_CT_DST = 4
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                    clk_i,
+  input  logic                    rst_ni,
 
   // CT_Dst input pulses
-  input logic [NUM_CT_DST-1:0] ct_dst_i,
+  input  logic [NUM_CT_DST-1:0]   ct_dst_i,
 
   // Selection mask from register (each bit enables corresponding CT_Dst)
-  input logic [NUM_CT_DST-1:0] select_i,
+  input  logic [NUM_CT_DST-1:0]   select_i,
 
   // CT_Src output pulse (registered)
-  output logic ct_src_o
+  output logic                    ct_src_o
 );
 
   // Combinatorial logic: AND each CT_Dst with its select bit, then OR all together

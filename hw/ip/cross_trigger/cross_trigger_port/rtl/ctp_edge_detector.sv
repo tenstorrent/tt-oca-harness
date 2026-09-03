@@ -11,11 +11,11 @@
 
 
 module ctp_edge_detector (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // Synchronized input signal
-  input logic signal_i,
+  input  logic signal_i,
 
   // Positive edge pulse output (registered)
   output logic posedge_pulse_o

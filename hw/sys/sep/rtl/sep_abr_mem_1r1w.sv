@@ -17,11 +17,11 @@
 `include "prim_assert.sv"
 
 module sep_abr_mem_1r1w #(
-  parameter int unsigned Width             = 32,
-  parameter int unsigned Depth             = 64,
+  parameter int unsigned Width       = 32,
+  parameter int unsigned Depth       = 64,
   // Read latency in clocks: 1 is the bare SRAM, >1 appends (ReadLatency-1)
   // pipeline stages behind it.
-  parameter int unsigned ReadLatency       = 1,
+  parameter int unsigned ReadLatency = 1,
   // Set 0 on channels where abr_ctrl is known to issue writes past the end of the
   // array.
   parameter bit          EnWriteRangeCheck = 1'b1,
@@ -34,12 +34,12 @@ module sep_abr_mem_1r1w #(
   // Write port
   input wire logic                 we_i,
   input wire logic [AddrWidth-1:0] waddr_i,
-  input wire logic [    Width-1:0] wdata_i,
+  input wire logic [Width-1:0]     wdata_i,
 
   // Read port
   input  wire logic                 re_i,
   input  wire logic [AddrWidth-1:0] raddr_i,
-  output logic      [    Width-1:0] rdata_o
+  output logic      [Width-1:0]     rdata_o
 );
 
   if (ReadLatency == 0) begin : g_read_latency_check
@@ -49,9 +49,9 @@ module sep_abr_mem_1r1w #(
   logic [Width-1:0] ram_rdata;
 
   prim_ram_1r1w #(
-    .Width          (Width),
-    .Depth          (Depth),
-    .DataBitsPerMask(1)
+    .Width           (Width),
+    .Depth           (Depth),
+    .DataBitsPerMask (1)
   ) u_ram (
     .clk_a_i  (clk_i),
     .clk_b_i  (clk_i),
@@ -67,7 +67,7 @@ module sep_abr_mem_1r1w #(
     .b_addr_i (raddr_i),
     .b_rdata_o(ram_rdata),
     .cfg_i    ('0),
-    .cfg_rsp_o(  /* unused */)
+    .cfg_rsp_o(/* unused */)
   );
 
   // prim_ram_1r1w holds its last read value when the read port is idle. Force the

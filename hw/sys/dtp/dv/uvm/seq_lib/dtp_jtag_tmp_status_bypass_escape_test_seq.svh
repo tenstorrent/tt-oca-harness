@@ -16,10 +16,8 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq extends dtp_debug_tdr_base_test
   endfunction
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR",
-                          "CHK-TMP-PERSIST",
-                          "CHK-TMP-ESCAPE",
-                          "CHK-BYPASS-DELAY"};
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-TMP-PERSIST",
+                              "CHK-TMP-ESCAPE", "CHK-BYPASS-DELAY"};
     bit [1:0] armed_shifts[2] = '{2'b01, 2'b11};
     bit persistence, bypass_escape;
     bit [63:0] bypass_pattern;

@@ -18,19 +18,20 @@ module i2c_wrap #(
   parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_SIZE      = 0,
   parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_INSTANCE_SPACING     = 0,
 
-  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2,  // +1 for ctrl +1 for error slave
+  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2, // +1 for ctrl +1 for error slave
   localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],
-  localparam i2c_wrap_reg_map_select_t CTRL_REG_MAP = i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 2),
+  localparam i2c_wrap_reg_map_select_t CTRL_REG_MAP =
+        i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 2),
   localparam i2c_wrap_reg_map_select_t UNDEFINED_REG_MAP =
         i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 1)
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                clk_i,
+  input  logic                rst_ni,
 
   // AXI4-Lite Register Interface
-  input  i2c_wrap_pkg::axil_req_t  axil_req_i,
-  output i2c_wrap_pkg::axil_resp_t axil_resp_o,
+  input  i2c_wrap_pkg::axil_req_t           axil_req_i,
+  output i2c_wrap_pkg::axil_resp_t          axil_resp_o,
 
   // Control Interface
   output logic [NUM_I2CS-1:0] i2c_en_o,
@@ -70,7 +71,7 @@ module i2c_wrap #(
 
   logic [NUM_I2CS-1:0] smbus_en;
 
-  i2c_wrap_pkg::axil_req_t [NUM_REG_MAPS-1:0] axil_reqs;
+  i2c_wrap_pkg::axil_req_t  [NUM_REG_MAPS-1:0] axil_reqs;
   i2c_wrap_pkg::axil_resp_t [NUM_REG_MAPS-1:0] axil_resps;
 
 
@@ -121,48 +122,48 @@ module i2c_wrap #(
   end
 
   axi_lite_demux #(
-    .aw_chan_t  (i2c_wrap_pkg::axil_aw_chan_t),
-    .w_chan_t   (i2c_wrap_pkg::axil_w_chan_t),
-    .b_chan_t   (i2c_wrap_pkg::axil_b_chan_t),
-    .ar_chan_t  (i2c_wrap_pkg::axil_ar_chan_t),
-    .r_chan_t   (i2c_wrap_pkg::axil_r_chan_t),
-    .axi_req_t  (i2c_wrap_pkg::axil_req_t),
-    .axi_resp_t (i2c_wrap_pkg::axil_resp_t),
-    .NoMstPorts (NUM_REG_MAPS),
-    .MaxTrans   (1),
-    .FallThrough(1'b0),
-    .SpillAw    (1'b1),
-    .SpillW     (1'b0),
-    .SpillB     (1'b0),
-    .SpillAr    (1'b1),
-    .SpillR     (1'b0)
+    .aw_chan_t       (i2c_wrap_pkg::axil_aw_chan_t),
+    .w_chan_t        (i2c_wrap_pkg::axil_w_chan_t),
+    .b_chan_t        (i2c_wrap_pkg::axil_b_chan_t),
+    .ar_chan_t       (i2c_wrap_pkg::axil_ar_chan_t),
+    .r_chan_t        (i2c_wrap_pkg::axil_r_chan_t),
+    .axi_req_t       (i2c_wrap_pkg::axil_req_t),
+    .axi_resp_t      (i2c_wrap_pkg::axil_resp_t),
+    .NoMstPorts      (NUM_REG_MAPS),
+    .MaxTrans        (1),
+    .FallThrough     (1'b0),
+    .SpillAw         (1'b1),
+    .SpillW          (1'b0),
+    .SpillB          (1'b0),
+    .SpillAr         (1'b1),
+    .SpillR          (1'b0)
   ) axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i         (1'b0),
-    .slv_req_i      (axil_req_i),
-    .slv_aw_select_i(axil_aw_select),
-    .slv_ar_select_i(axil_ar_select),
-    .slv_resp_o     (axil_resp_o),
-    .mst_reqs_o     (axil_reqs),
-    .mst_resps_i    (axil_resps)
+    .test_i          (1'b0),
+    .slv_req_i       (axil_req_i),
+    .slv_aw_select_i (axil_aw_select),
+    .slv_ar_select_i (axil_ar_select),
+    .slv_resp_o      (axil_resp_o),
+    .mst_reqs_o      (axil_reqs),
+    .mst_resps_i     (axil_resps)
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH(i2c_wrap_pkg::REG_ADDR_WIDTH),
-    .AXI_DATA_WIDTH(i2c_wrap_pkg::REG_DATA_WIDTH),
-    .axil_req_t    (i2c_wrap_pkg::axil_req_t),
-    .axil_resp_t   (i2c_wrap_pkg::axil_resp_t),
-    .RESP          (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH    (i2c_wrap_pkg::REG_DATA_WIDTH),
-    .RESP_DATA     (32'hBADCAB1E),
-    .MAX_TRANS     (1)
+    .AXI_ADDR_WIDTH (i2c_wrap_pkg::REG_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (i2c_wrap_pkg::REG_DATA_WIDTH),
+    .axil_req_t     (i2c_wrap_pkg::axil_req_t),
+    .axil_resp_t    (i2c_wrap_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (i2c_wrap_pkg::REG_DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
   ) prim_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
-    .axil_req_i (axil_reqs[UNDEFINED_REG_MAP]),
-    .axil_resp_o(axil_resps[UNDEFINED_REG_MAP])
+    .axil_req_i     (axil_reqs [UNDEFINED_REG_MAP]),
+    .axil_resp_o    (axil_resps[UNDEFINED_REG_MAP])
   );
 
 
@@ -179,44 +180,44 @@ module i2c_wrap #(
     `AXI_LITE_ASSIGN_RESP_STRUCT(axil_resps[i], i2c_axil_resp)
 
     i2c #(
-      .CONTROLLER_TX_FIFO_DEPTH(CONTROLLER_TX_FIFO_DEPTH),
-      .CONTROLLER_RX_FIFO_DEPTH(CONTROLLER_RX_FIFO_DEPTH),
-      .TARGET_TX_FIFO_DEPTH    (TARGET_TX_FIFO_DEPTH),
-      .TARGET_RX_FIFO_DEPTH    (TARGET_RX_FIFO_DEPTH),
-      .INPUT_DELAY_CYCLES      (INPUT_DELAY_CYCLES)
+      .CONTROLLER_TX_FIFO_DEPTH (CONTROLLER_TX_FIFO_DEPTH),
+      .CONTROLLER_RX_FIFO_DEPTH (CONTROLLER_RX_FIFO_DEPTH),
+      .TARGET_TX_FIFO_DEPTH     (TARGET_TX_FIFO_DEPTH),
+      .TARGET_RX_FIFO_DEPTH     (TARGET_RX_FIFO_DEPTH),
+      .INPUT_DELAY_CYCLES       (INPUT_DELAY_CYCLES)
     ) i2c (
       // Global Interface
       .clk_i,
       .rst_ni,
 
       // AXI4-Lite Register Interface
-      .axil_req_i (i2c_axil_req),
-      .axil_resp_o(i2c_axil_resp),
+      .axil_req_i               (i2c_axil_req),
+      .axil_resp_o              (i2c_axil_resp),
 
       // I2C Interface
-      .scl_i(scl_i[i]),
-      .scl_o(scl_o[i]),
-      .sda_i(sda_i[i]),
-      .sda_o(sda_o[i]),
+      .scl_i                    (scl_i[i]),
+      .scl_o                    (scl_o[i]),
+      .sda_i                    (sda_i[i]),
+      .sda_o                    (sda_o[i]),
 
       // SMBus Interface
-      .smbus_en_i (smbus_en[i]),
-      .smbsus_ni  (smbsus_ni[i]),
-      .smbsus_no  (smbsus_no[i]),
-      .smbalert_ni(smbalert_ni[i]),
-      .smbalert_no(smbalert_no[i]),
+      .smbus_en_i               (smbus_en   [i]),
+      .smbsus_ni                (smbsus_ni  [i]),
+      .smbsus_no                (smbsus_no  [i]),
+      .smbalert_ni              (smbalert_ni[i]),
+      .smbalert_no              (smbalert_no[i]),
 
       // DMA Interface
-      .controller_tx_ready_o(controller_tx_ready_o[i]),
-      .controller_rx_ready_o(controller_rx_ready_o[i]),
-      .target_tx_ready_o    (target_tx_ready_o[i]),
-      .target_rx_ready_o    (target_rx_ready_o[i]),
+      .controller_tx_ready_o    (controller_tx_ready_o[i]),
+      .controller_rx_ready_o    (controller_rx_ready_o[i]),
+      .target_tx_ready_o        (target_tx_ready_o    [i]),
+      .target_rx_ready_o        (target_rx_ready_o    [i]),
 
       // Interrupt Interface
-      .irq_o(i2c_irq_o[i]),
+      .irq_o                    (i2c_irq_o[i]),
 
       // Debug Interface
-      .debug_o(i2c_debug_o[i])
+      .debug_o                  (i2c_debug_o[i])
     );
 
   end
@@ -229,34 +230,34 @@ module i2c_wrap #(
   i2c_ctrl_reg_pkg::i2c_ctrl__out_t reg_out;
 
   i2c_ctrl_reg i2c_ctrl_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-    .s_axil_awready(axil_resps[CTRL_REG_MAP].aw_ready),
-    .s_axil_awvalid(axil_reqs[CTRL_REG_MAP].aw_valid),
+    .s_axil_awready (axil_resps[CTRL_REG_MAP].aw_ready),
+    .s_axil_awvalid (axil_reqs [CTRL_REG_MAP].aw_valid),
     .s_axil_awaddr  (axil_reqs [CTRL_REG_MAP].aw.addr[
                             i2c_ctrl_reg_pkg::I2C_CTRL_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_awprot(axil_reqs[CTRL_REG_MAP].aw.prot),
-    .s_axil_wready(axil_resps[CTRL_REG_MAP].w_ready),
-    .s_axil_wvalid(axil_reqs[CTRL_REG_MAP].w_valid),
-    .s_axil_wdata(axil_reqs[CTRL_REG_MAP].w.data),
-    .s_axil_wstrb(axil_reqs[CTRL_REG_MAP].w.strb),
-    .s_axil_bready(axil_reqs[CTRL_REG_MAP].b_ready),
-    .s_axil_bvalid(axil_resps[CTRL_REG_MAP].b_valid),
-    .s_axil_bresp(axil_resps[CTRL_REG_MAP].b.resp),
-    .s_axil_arready(axil_resps[CTRL_REG_MAP].ar_ready),
-    .s_axil_arvalid(axil_reqs[CTRL_REG_MAP].ar_valid),
+    .s_axil_awprot  (axil_reqs [CTRL_REG_MAP].aw.prot),
+    .s_axil_wready  (axil_resps[CTRL_REG_MAP].w_ready),
+    .s_axil_wvalid  (axil_reqs [CTRL_REG_MAP].w_valid),
+    .s_axil_wdata   (axil_reqs [CTRL_REG_MAP].w.data),
+    .s_axil_wstrb   (axil_reqs [CTRL_REG_MAP].w.strb),
+    .s_axil_bready  (axil_reqs [CTRL_REG_MAP].b_ready),
+    .s_axil_bvalid  (axil_resps[CTRL_REG_MAP].b_valid),
+    .s_axil_bresp   (axil_resps[CTRL_REG_MAP].b.resp),
+    .s_axil_arready (axil_resps[CTRL_REG_MAP].ar_ready),
+    .s_axil_arvalid (axil_reqs [CTRL_REG_MAP].ar_valid),
     .s_axil_araddr  (axil_reqs [CTRL_REG_MAP].ar.addr[
                             i2c_ctrl_reg_pkg::I2C_CTRL_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_arprot(axil_reqs[CTRL_REG_MAP].ar.prot),
-    .s_axil_rready(axil_reqs[CTRL_REG_MAP].r_ready),
-    .s_axil_rvalid(axil_resps[CTRL_REG_MAP].r_valid),
-    .s_axil_rdata(axil_resps[CTRL_REG_MAP].r.data),
-    .s_axil_rresp(axil_resps[CTRL_REG_MAP].r.resp),
+    .s_axil_arprot  (axil_reqs [CTRL_REG_MAP].ar.prot),
+    .s_axil_rready  (axil_reqs [CTRL_REG_MAP].r_ready),
+    .s_axil_rvalid  (axil_resps[CTRL_REG_MAP].r_valid),
+    .s_axil_rdata   (axil_resps[CTRL_REG_MAP].r.data),
+    .s_axil_rresp   (axil_resps[CTRL_REG_MAP].r.resp),
 
-    .hwif_out(reg_out)
+    .hwif_out       (reg_out)
   );
 
   // I2C_CTRL Registers

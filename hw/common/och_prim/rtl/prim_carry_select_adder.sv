@@ -19,22 +19,22 @@ module prim_carry_select_adder #(
 
   logic [NUM_CHUNKS-1:0][CHUNK_WIDTH-1:0] sum_chunk;
   logic [NUM_CHUNKS-1:1][CHUNK_WIDTH:0] sum_chunk_c0, sum_chunk_c1;
-  logic [NUM_CHUNKS-1:0] carry;
-  logic                  carry_prev;
+  logic [NUM_CHUNKS-1:0]                  carry;
+  logic carry_prev;
 
   always_comb begin
 
     // Sum 1st chunk separately, as it doesn't need carry-select logic
-    {carry_prev, sum_chunk[0]} = a[0+:CHUNK_WIDTH] + b[0+:CHUNK_WIDTH];
+    {carry_prev, sum_chunk[0]} = a[0 +: CHUNK_WIDTH] + b[0 +: CHUNK_WIDTH];
     carry[0]                   = carry_prev;
 
     // Sum the rest with carry-select logic
     for (int i = 1; i < NUM_CHUNKS; i++) begin
       // Compute sum and mux based on carry
-      sum_chunk_c0[i] = a[i*CHUNK_WIDTH+:CHUNK_WIDTH] + b[i*CHUNK_WIDTH+:CHUNK_WIDTH];
-      sum_chunk_c1[i] = a[i*CHUNK_WIDTH+:CHUNK_WIDTH] + b[i*CHUNK_WIDTH+:CHUNK_WIDTH] + 1'b1;
+      sum_chunk_c0[i]          = a[i*CHUNK_WIDTH +: CHUNK_WIDTH] + b[i*CHUNK_WIDTH +: CHUNK_WIDTH];
+      sum_chunk_c1[i]          = a[i*CHUNK_WIDTH +: CHUNK_WIDTH] + b[i*CHUNK_WIDTH +: CHUNK_WIDTH] + 1'b1;
       {carry[i], sum_chunk[i]} = carry_prev ? sum_chunk_c1[i] : sum_chunk_c0[i];
-      carry_prev = carry[i];
+      carry_prev               = carry[i];
     end
   end
 

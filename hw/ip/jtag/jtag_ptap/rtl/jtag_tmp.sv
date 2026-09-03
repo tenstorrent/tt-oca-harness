@@ -11,24 +11,24 @@ module jtag_tmp
   import jtag_tmp_pkg::*;
 (
   // TAP control interface
-  input jtag_tap_ctrl_t tap_ctrl_i,
+  input  jtag_tap_ctrl_t  tap_ctrl_i,
 
   // IR update signal (from TAP controller)
-  input logic update_ir_i,
+  input  logic             update_ir_i,
 
   // Test logic reset (from TAP controller state)
-  input logic test_logic_reset_i,
+  input  logic             test_logic_reset_i,
 
   // Centralized instruction decoding inputs (from instruction register)
-  input logic clamp_hold_selected_i,     // CLAMP_HOLD instruction selected
-  input logic clamp_release_selected_i,  // CLAMP_RELEASE instruction selected
-  input logic bypass_selected_i,         // BYPASS instruction selected
+  input  logic             clamp_hold_selected_i,      // CLAMP_HOLD instruction selected
+  input  logic             clamp_release_selected_i,   // CLAMP_RELEASE instruction selected
+  input  logic             bypass_selected_i,          // BYPASS instruction selected
 
   // TMP controller status outputs
-  output logic persistence_mode_o,  // 1 = Persistence-On, 0 = Persistence-Off
+  output logic             persistence_mode_o,     // 1 = Persistence-On, 0 = Persistence-Off
 
   // TMP status register input
-  input logic bypass_escape_enable_i  // Bypass escape enable input from status register
+  input  logic             bypass_escape_enable_i // Bypass escape enable input from status register
 );
   // Tie off unused fields to satisfy lint
   logic unused_tap;
@@ -98,10 +98,10 @@ module jtag_tmp
     .Width($bits(tmp_state_e)),
     .ResetValue(TMP_PERSISTENCE_OFF)
   ) u_tmp_state_flop (
-    .clk_i (tap_ctrl_i.tck),
-    .rst_ni(tap_ctrl_i.trst_n),
-    .d_i   (tmp_state_d),
-    .q_o   (tmp_state_q_bits)
+    .clk_i  (tap_ctrl_i.tck),
+    .rst_ni (tap_ctrl_i.trst_n),
+    .d_i    (tmp_state_d),
+    .q_o    (tmp_state_q_bits)
   );
 
   //--------------------------------------------------------------------------

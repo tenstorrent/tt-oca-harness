@@ -25,11 +25,11 @@ class ocah_jtag_event extends uvm_object;
   bit tms;
   bit tdi;
   bit tdo;
-  bit trst_n;  // level during the step (0 = TAP held in reset)
+  bit trst_n;          // level during the step (0 = TAP held in reset)
   int unsigned index;  // monotonically increasing TCK-cycle counter
 
   // TRST fields.
-  bit trst_asserted;  // 1 = falling edge (reset asserted), 0 = released
+  bit trst_asserted;   // 1 = falling edge (reset asserted), 0 = released
 
   // Debug context.
   time timestamp;

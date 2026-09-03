@@ -29,14 +29,14 @@ module sep_abr_mem_1r1w_be #(
 
   // Write port, one strobe bit per byte of wdata_i
   input wire logic                   we_i,
-  input wire logic [  AddrWidth-1:0] waddr_i,
-  input wire logic [      Width-1:0] wdata_i,
+  input wire logic [AddrWidth-1:0]   waddr_i,
+  input wire logic [Width-1:0]       wdata_i,
   input wire logic [StrobeWidth-1:0] wstrobe_i,
 
   // Read port
   input  wire logic                 re_i,
   input  wire logic [AddrWidth-1:0] raddr_i,
-  output logic      [    Width-1:0] rdata_o
+  output logic      [Width-1:0]     rdata_o
 );
 
   if (ReadLatency == 0) begin : g_read_latency_check
@@ -55,9 +55,9 @@ module sep_abr_mem_1r1w_be #(
   end
 
   prim_ram_1r1w #(
-    .Width          (Width),
-    .Depth          (Depth),
-    .DataBitsPerMask(8)
+    .Width           (Width),
+    .Depth           (Depth),
+    .DataBitsPerMask (8)
   ) u_ram (
     .clk_a_i  (clk_i),
     .clk_b_i  (clk_i),
@@ -73,7 +73,7 @@ module sep_abr_mem_1r1w_be #(
     .b_addr_i (raddr_i),
     .b_rdata_o(ram_rdata),
     .cfg_i    ('0),
-    .cfg_rsp_o(  /* unused */)
+    .cfg_rsp_o(/* unused */)
   );
 
   logic             re_q;

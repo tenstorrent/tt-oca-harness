@@ -45,7 +45,7 @@ module picorv32_wrapper
   import axi_pkg::*;
 #(
   // AXI-Lite interface types (for peripherals)
-  parameter type axil_req_t = km_axil_req_t,
+  parameter type axil_req_t  = km_axil_req_t,
   parameter type axil_resp_t = km_axil_resp_t,
   // Address widths for memory interfaces
   parameter int unsigned ROM_ADDR_WIDTH = km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH,
@@ -57,15 +57,15 @@ module picorv32_wrapper
   parameter bit LATCHED_MEM_RDATA = 1'b0
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
-  input logic rst_sync_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
+  input  logic rst_sync_ni,
 
   // ROM Interface (with parity checking)
   output km_rom_mem_req_t rom_mem_req_o,
   input  km_rom_mem_rsp_t rom_mem_rsp_i,
   output logic            rom_parity_err_o,
-  output logic            rom_write_err_o,   // ROM write attempt detected (pulse)
+  output logic            rom_write_err_o,  // ROM write attempt detected (pulse)
 
   // SRAM Interface (with scrambling and parity checking)
   output km_sram_mem_req_t sram_mem_req_o,
@@ -73,33 +73,33 @@ module picorv32_wrapper
   output logic             sram_parity_err_o,
 
   // Scrambler control (from KMCSR, passed through to SRAM interface)
-  input logic [31:0] scrambler_key_i,
-  input logic scrambler_en_i,
+  input  logic [31:0] scrambler_key_i,
+  input  logic   scrambler_en_i,
 
   // SRAM write-lock (from KMCSR): bit[i]=1 locks region i
-  input logic [31:0] sram_lock_bits_i,
+  input  logic [31:0] sram_lock_bits_i,
 
   // SRAM write-lock violation (to KMCSR): one-hot region that had attempted write while locked
   output logic [31:0] sram_write_lock_violation_region_o,
 
   // Execute-permission whitelist mode (from KMCSR): 0=ROM-only, 1=write-locked-SRAM
-  input  logic sram_exec_mode_i,
+  input  logic   sram_exec_mode_i,
   // Execute-permission whitelist violation (to KMCSR): pulse on committed fetch outside whitelist
-  output logic exec_violation_o,
+  output logic        exec_violation_o,
   // ROM lockout violation (to KMCSR): pulse on ROM fetch or data read after lockout engages
-  output logic rom_access_violation_o,
+  output logic        rom_access_violation_o,
 
   // AXI4-Lite Master Interface (for peripherals via crossbar)
   output axil_req_t  axi_mst_req_o,
   input  axil_resp_t axi_mst_resp_i,
 
   // Interrupt Inputs
-  input logic irq_i,               // KMCSR aggregated interrupt (sticky error sources)
-  input logic mbox_irq_i,          // Mailbox inbound data available (level-sensitive)
-  input logic abr_sharedkey_irq_i, // ML-KEM shared-key valid (level-sensitive)
+  input  logic irq_i,                 // KMCSR aggregated interrupt (sticky error sources)
+  input  logic mbox_irq_i,            // Mailbox inbound data available (level-sensitive)
+  input  logic abr_sharedkey_irq_i,   // ML-KEM shared-key valid (level-sensitive)
 
   // Runtime IRQ handler entry PC (from KMCSR; reset default 0x0000_0010)
-  input logic [31:0] irq_entry_addr_i,
+  input  logic [31:0] irq_entry_addr_i,
 
   // Trap Output (for debugging)
   output logic trap_o,
@@ -153,34 +153,34 @@ module picorv32_wrapper
   //=========================================================================
 
   // Native PicoRV32 memory interface
-  logic                                 mem_valid;
-  logic                                 mem_instr;
-  logic                                 mem_ready;
-  logic [                         31:0] mem_addr;
-  logic [                         31:0] mem_wdata;
-  logic [                          3:0] mem_wstrb;
-  logic [                          3:0] mem_rstrb;
-  logic [                         31:0] mem_rdata;
+  logic        mem_valid;
+  logic        mem_instr;
+  logic        mem_ready;
+  logic [31:0] mem_addr;
+  logic [31:0] mem_wdata;
+  logic [3:0]  mem_wstrb;
+  logic [3:0]  mem_rstrb;
+  logic [31:0] mem_rdata;
 
   // PicoRV32 look-ahead interface (for prefetching)
   // These signals are asserted one cycle before mem_valid to allow
   // pipelined memory to start fetching early
-  logic                                 mem_la_read;
-  logic                                 mem_la_write;
-  logic [                         31:0] mem_la_addr;
-  logic [                         31:0] mem_la_wdata;
-  logic [                          3:0] mem_la_wstrb;
-  logic [                          3:0] mem_la_rstrb;
+  logic        mem_la_read;
+  logic        mem_la_write;
+  logic [31:0] mem_la_addr;
+  logic [31:0] mem_la_wdata;
+  logic [3:0]  mem_la_wstrb;
+  logic [3:0]  mem_la_rstrb;
 
   // Pico Co-Processor Interface (PCPI) for custom CRC instructions
-  logic                                 pcpi_valid;
-  logic [                         31:0] pcpi_insn;
-  logic [                         31:0] pcpi_rs1;
-  logic [                         31:0] pcpi_rs2;
-  logic                                 pcpi_wr;
-  logic [                         31:0] pcpi_rd;
-  logic                                 pcpi_wait;
-  logic                                 pcpi_ready;
+  logic        pcpi_valid;
+  logic [31:0] pcpi_insn;
+  logic [31:0] pcpi_rs1;
+  logic [31:0] pcpi_rs2;
+  logic        pcpi_wr;
+  logic [31:0] pcpi_rd;
+  logic        pcpi_wait;
+  logic        pcpi_ready;
 
   // EOI signal from PicoRV32 (active while ISR is executing)
   logic [PICORV32_IRQ_VECTOR_WIDTH-1:0] eoi_vector;
@@ -202,7 +202,7 @@ module picorv32_wrapper
 
   logic [PICORV32_IRQ_VECTOR_WIDTH-1:0] irq_vector;
   always_comb begin
-    irq_vector                                 = '0;
+    irq_vector = '0;
     irq_vector[PICORV32_KMCSR_IRQ_BIT]         = irq_i;
     irq_vector[PICORV32_MBOX_IRQ_BIT]          = mbox_irq_i;
     irq_vector[PICORV32_ABR_SHAREDKEY_IRQ_BIT] = abr_sharedkey_irq_i;
@@ -217,72 +217,72 @@ module picorv32_wrapper
   //=========================================================================
 
   picorv32 #(
-    .ENABLE_COUNTERS(1'b0),  // Area optimization
-    .ENABLE_COUNTERS64(1'b0),  // Area optimization
-    .ENABLE_REGS_16_31(1'b0),  // RV32E: 16 registers only (x0-x15)
+    .ENABLE_COUNTERS     (1'b0),  // Area optimization
+    .ENABLE_COUNTERS64   (1'b0),  // Area optimization
+    .ENABLE_REGS_16_31   (1'b0),  // RV32E: 16 registers only (x0-x15)
     .ENABLE_REGS_DUALPORT(1'b0),  // Single-port RF for area savings
     .LATCHED_MEM_RDATA   (LATCHED_MEM_RDATA),  // Configurable: set by integrator based on memory support
-    .TWO_STAGE_SHIFT(1'b1),  // Multi-cycle shift
-    .BARREL_SHIFTER(1'b0),  // Area optimization
-    .TWO_CYCLE_COMPARE(1'b0),  // Single-cycle compare
-    .TWO_CYCLE_ALU(1'b0),  // Single-cycle ALU
-    .COMPRESSED_ISA(1'b1),  // C extension for code density
-    .CATCH_MISALIGN(1'b1),  // Trap misaligned accesses
-    .CATCH_ILLINSN(1'b1),  // Trap illegal instructions
-    .ENABLE_PCPI(1'b1),  // External PCPI interface
-    .ENABLE_MUL(1'b1),  // M extension: multiply
-    .ENABLE_FAST_MUL(1'b0),  // Area optimization
-    .ENABLE_DIV(1'b1),  // M extension: divide
-    .ENABLE_IRQ(1'b1),  // Interrupt support
-    .ENABLE_IRQ_QREGS(1'b1),  // Use q-reg IRQ context (q0=retpc, q1=mask)
-    .ENABLE_IRQ_TIMER(1'b0),  // No internal timer
-    .ENABLE_TRACE(1'b0),  // No trace interface
-    .REGS_INIT_ZERO(1'b0),  // Disable GPR zero-init
-    .MASKED_IRQ(PICORV32_MASKED_IRQ),
-    .LATCHED_IRQ(PICORV32_LATCHED_IRQ),
-    .PROGADDR_RESET(PICORV32_PROGADDR_RESET),
-    .STACKADDR(PICORV32_STACKADDR)
+    .TWO_STAGE_SHIFT     (1'b1),  // Multi-cycle shift
+    .BARREL_SHIFTER      (1'b0),  // Area optimization
+    .TWO_CYCLE_COMPARE   (1'b0),  // Single-cycle compare
+    .TWO_CYCLE_ALU       (1'b0),  // Single-cycle ALU
+    .COMPRESSED_ISA      (1'b1),  // C extension for code density
+    .CATCH_MISALIGN      (1'b1),  // Trap misaligned accesses
+    .CATCH_ILLINSN       (1'b1),  // Trap illegal instructions
+    .ENABLE_PCPI         (1'b1),  // External PCPI interface
+    .ENABLE_MUL          (1'b1),  // M extension: multiply
+    .ENABLE_FAST_MUL     (1'b0),  // Area optimization
+    .ENABLE_DIV          (1'b1),  // M extension: divide
+    .ENABLE_IRQ          (1'b1),  // Interrupt support
+    .ENABLE_IRQ_QREGS    (1'b1),  // Use q-reg IRQ context (q0=retpc, q1=mask)
+    .ENABLE_IRQ_TIMER    (1'b0),  // No internal timer
+    .ENABLE_TRACE        (1'b0),  // No trace interface
+    .REGS_INIT_ZERO      (1'b0),  // Disable GPR zero-init
+    .MASKED_IRQ          (PICORV32_MASKED_IRQ),
+    .LATCHED_IRQ         (PICORV32_LATCHED_IRQ),
+    .PROGADDR_RESET      (PICORV32_PROGADDR_RESET),
+    .STACKADDR           (PICORV32_STACKADDR)
   ) u_picorv32 (
-    .clk   (clk_i),
-    .resetn(rst_sync_ni),
-    .trap  (trap_o),
+    .clk                 (clk_i),
+    .resetn              (rst_sync_ni),
+    .trap                (trap_o),
 
     // Native memory interface
-    .mem_valid(mem_valid),
-    .mem_instr(mem_instr),
-    .mem_ready(mem_ready),
-    .mem_addr (mem_addr),
-    .mem_wdata(mem_wdata),
-    .mem_wstrb(mem_wstrb),
-    .mem_rstrb(mem_rstrb),
-    .mem_rdata(mem_rdata),
+    .mem_valid           (mem_valid),
+    .mem_instr           (mem_instr),
+    .mem_ready           (mem_ready),
+    .mem_addr            (mem_addr),
+    .mem_wdata           (mem_wdata),
+    .mem_wstrb           (mem_wstrb),
+    .mem_rstrb           (mem_rstrb),
+    .mem_rdata           (mem_rdata),
 
     // Look-ahead interface (for prefetching with pipelined memory)
-    .mem_la_read (mem_la_read),
-    .mem_la_write(mem_la_write),
-    .mem_la_addr (mem_la_addr),
-    .mem_la_wdata(mem_la_wdata),
-    .mem_la_wstrb(mem_la_wstrb),
-    .mem_la_rstrb(mem_la_rstrb),
+    .mem_la_read         (mem_la_read),
+    .mem_la_write        (mem_la_write),
+    .mem_la_addr         (mem_la_addr),
+    .mem_la_wdata        (mem_la_wdata),
+    .mem_la_wstrb        (mem_la_wstrb),
+    .mem_la_rstrb        (mem_la_rstrb),
 
     // PCPI interface
-    .pcpi_valid(pcpi_valid),
-    .pcpi_insn (pcpi_insn),
-    .pcpi_rs1  (pcpi_rs1),
-    .pcpi_rs2  (pcpi_rs2),
-    .pcpi_wr   (pcpi_wr),
-    .pcpi_rd   (pcpi_rd),
-    .pcpi_wait (pcpi_wait),
-    .pcpi_ready(pcpi_ready),
+    .pcpi_valid          (pcpi_valid),
+    .pcpi_insn           (pcpi_insn),
+    .pcpi_rs1            (pcpi_rs1),
+    .pcpi_rs2            (pcpi_rs2),
+    .pcpi_wr             (pcpi_wr),
+    .pcpi_rd             (pcpi_rd),
+    .pcpi_wait           (pcpi_wait),
+    .pcpi_ready          (pcpi_ready),
 
     // IRQ interface
-    .irq             (irq_vector),
-    .irq_entry_addr_i(irq_entry_addr_i),
-    .eoi             (eoi_vector),
+    .irq                 (irq_vector),
+    .irq_entry_addr_i    (irq_entry_addr_i),
+    .eoi                 (eoi_vector),
 
     // Trace interface (unused; tie off to avoid TFIPC warning)
-    .trace_valid(trace_unused_valid),
-    .trace_data (trace_unused_data)
+    .trace_valid         (trace_unused_valid),
+    .trace_data          (trace_unused_data)
   );
 
   //=========================================================================
@@ -308,14 +308,14 @@ module picorv32_wrapper
 
   // Determine if address is ROM, SRAM, virtual ROM, or peripheral
   logic is_rom_addr, is_sram_addr, is_vrom_addr, is_periph_addr;
-  assign is_rom_addr = (mem_addr >= ROM_BASE) && (mem_addr <= ROM_END);
-  assign is_sram_addr = (mem_addr >= SRAM_BASE) && (mem_addr <= SRAM_END);
-  assign is_vrom_addr = (mem_addr >= VROM_BASE) && (mem_addr <= VROM_END);
+  assign is_rom_addr   = (mem_addr >= ROM_BASE)   && (mem_addr <= ROM_END);
+  assign is_sram_addr  = (mem_addr >= SRAM_BASE)  && (mem_addr <= SRAM_END);
+  assign is_vrom_addr  = (mem_addr >= VROM_BASE)  && (mem_addr <= VROM_END);
   assign is_periph_addr = !is_rom_addr && !is_sram_addr && !is_vrom_addr;
 
   // Look-ahead address qualification
   logic is_la_rom_addr, is_la_sram_addr, is_la_vrom_addr;
-  assign is_la_rom_addr  = (mem_la_addr >= ROM_BASE) && (mem_la_addr <= ROM_END);
+  assign is_la_rom_addr  = (mem_la_addr >= ROM_BASE)  && (mem_la_addr <= ROM_END);
   assign is_la_sram_addr = (mem_la_addr >= SRAM_BASE) && (mem_la_addr <= SRAM_END);
   assign is_la_vrom_addr = (mem_la_addr >= VROM_BASE) && (mem_la_addr <= VROM_END);
 
@@ -344,21 +344,23 @@ module picorv32_wrapper
   localparam int unsigned SRAM_REGION_INDEX_W = $clog2(km_intf_pkg::SRAM_NUM_LOCK_REGIONS);
   localparam int unsigned SRAM_REGION_LSB = $clog2(km_intf_pkg::SRAM_LOCK_REGION_BYTES);
 
-  logic                           committed_fetch;
-  logic                           exec_allowed;
-  logic                           sram_exec_allowed;
-  logic                           rom_lockout_q;
+  logic        committed_fetch;
+  logic        exec_allowed;
+  logic        sram_exec_allowed;
+  logic        rom_lockout_q;
   logic [SRAM_REGION_INDEX_W-1:0] fetch_region;
 
-  assign committed_fetch   = mem_valid && mem_instr && !(|mem_wstrb);
-  assign fetch_region      = mem_addr[SRAM_REGION_LSB+SRAM_REGION_INDEX_W-1 : SRAM_REGION_LSB];
+  assign committed_fetch = mem_valid && mem_instr && !(|mem_wstrb);
+  assign fetch_region    = mem_addr[SRAM_REGION_LSB + SRAM_REGION_INDEX_W - 1 : SRAM_REGION_LSB];
   assign sram_exec_allowed = is_sram_addr && sram_exec_mode_i && sram_lock_bits_i[fetch_region];
-  assign exec_allowed      = (is_rom_addr && !rom_lockout_q) || is_vrom_addr || sram_exec_allowed;
+  assign exec_allowed      = (is_rom_addr && !rom_lockout_q)
+                             || is_vrom_addr
+                             || sram_exec_allowed;
 
   // exec_allowed above is the whitelist as documented; the ROM exclusion here
   // is what keeps the two status bits disjoint, since a ROM fetch refused by
   // the lockout is reported on rom_access_violation_o instead.
-  assign exec_violation_o  = committed_fetch && !exec_allowed && !is_rom_addr;
+  assign exec_violation_o = committed_fetch && !exec_allowed && !is_rom_addr;
 
   //=========================================================================
   // ROM Lockout
@@ -406,7 +408,7 @@ module picorv32_wrapper
   logic        vrom_mem_instr;
   logic [31:0] vrom_mem_addr;
   logic [31:0] vrom_mem_wdata;
-  logic [ 3:0] vrom_mem_wstrb;
+  logic [3:0]  vrom_mem_wstrb;
   logic        vrom_mem_la_read;
   logic [31:0] vrom_mem_la_addr;
 
@@ -416,20 +418,20 @@ module picorv32_wrapper
   logic        axi_adapter_mem_ready;
   logic [31:0] axi_adapter_mem_addr;
   logic [31:0] axi_adapter_mem_wdata;
-  logic [ 3:0] axi_adapter_mem_wstrb;
+  logic [3:0]  axi_adapter_mem_wstrb;
   logic [31:0] axi_adapter_mem_rdata;
 
   // Route memory requests based on address
   assign axi_adapter_mem_valid = mem_valid && is_periph_addr;
   assign axi_adapter_mem_instr = mem_instr;
-  assign axi_adapter_mem_addr = mem_addr;
+  assign axi_adapter_mem_addr  = mem_addr;
   assign axi_adapter_mem_wdata = mem_wdata;
   assign axi_adapter_mem_wstrb = mem_wstrb;
 
   // Expose virtual ROM memory bus signals for testbench
   assign vrom_mem_valid = mem_valid && is_vrom_addr;
   assign vrom_mem_instr = mem_instr;
-  assign vrom_mem_addr = mem_addr;
+  assign vrom_mem_addr  = mem_addr;
   assign vrom_mem_wdata = mem_wdata;
   assign vrom_mem_wstrb = mem_wstrb;
   assign vrom_mem_la_read = mem_la_read && is_la_vrom_addr;
@@ -453,7 +455,7 @@ module picorv32_wrapper
     MemRdataSelPeriph
   } mem_rdata_sel_e;
 
-  logic           current_read_complete;
+  logic          current_read_complete;
   mem_rdata_sel_e mem_rdata_sel_q;
   mem_rdata_sel_e mem_rdata_sel;
 
@@ -543,25 +545,25 @@ module picorv32_wrapper
     .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
     .SRAM_NUM_LOCK_REGIONS(km_intf_pkg::SRAM_NUM_LOCK_REGIONS)
   ) u_sram_if (
-    .clk_i                        (clk_i),
-    .rst_ni                       (rst_ni),
-    .mem_valid_i                  (mem_valid && is_sram_addr),
-    .mem_ready_o                  (sram_mem_ready),
-    .mem_addr_i                   (mem_addr),
-    .mem_wdata_i                  (mem_wdata),
-    .mem_wstrb_i                  (mem_wstrb),
-    .mem_rstrb_i                  (mem_rstrb),
-    .mem_rdata_o                  (sram_mem_rdata),
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .mem_valid_i     (mem_valid && is_sram_addr),
+    .mem_ready_o     (sram_mem_ready),
+    .mem_addr_i      (mem_addr),
+    .mem_wdata_i     (mem_wdata),
+    .mem_wstrb_i     (mem_wstrb),
+    .mem_rstrb_i     (mem_rstrb),
+    .mem_rdata_o     (sram_mem_rdata),
     // Look-ahead interface for prefetching (supports code execution from SRAM)
-    .mem_la_read_i                (mem_la_read && is_la_sram_addr),
-    .mem_la_addr_i                (mem_la_addr),
-    .mem_la_rstrb_i               (mem_la_rstrb),
-    .sram_mem_req_o               (sram_mem_req_o),
-    .sram_mem_rsp_i               (sram_mem_rsp_i),
-    .scrambler_key_i              (scrambler_key_i),
-    .scrambler_en_i               (scrambler_en_i),
-    .sram_lock_bits_i             (sram_lock_bits_i),
-    .parity_error_o               (sram_parity_err_o),
+    .mem_la_read_i   (mem_la_read && is_la_sram_addr),
+    .mem_la_addr_i   (mem_la_addr),
+    .mem_la_rstrb_i  (mem_la_rstrb),
+    .sram_mem_req_o  (sram_mem_req_o),
+    .sram_mem_rsp_i  (sram_mem_rsp_i),
+    .scrambler_key_i (scrambler_key_i),
+    .scrambler_en_i  (scrambler_en_i),
+    .sram_lock_bits_i(sram_lock_bits_i),
+    .parity_error_o  (sram_parity_err_o),
     .write_lock_violation_region_o(sram_write_lock_violation_region_o)
   );
 
@@ -582,12 +584,12 @@ module picorv32_wrapper
   logic        mem_axi_awvalid;
   logic        mem_axi_awready;
   logic [31:0] mem_axi_awaddr;
-  logic [ 2:0] mem_axi_awprot;
+  logic [2:0]  mem_axi_awprot;
 
   logic        mem_axi_wvalid;
   logic        mem_axi_wready;
   logic [31:0] mem_axi_wdata;
-  logic [ 3:0] mem_axi_wstrb;
+  logic [3:0]  mem_axi_wstrb;
 
   logic        mem_axi_bvalid;
   logic        mem_axi_bready;
@@ -595,47 +597,47 @@ module picorv32_wrapper
   logic        mem_axi_arvalid;
   logic        mem_axi_arready;
   logic [31:0] mem_axi_araddr;
-  logic [ 2:0] mem_axi_arprot;
+  logic [2:0]  mem_axi_arprot;
 
   logic        mem_axi_rvalid;
   logic        mem_axi_rready;
   logic [31:0] mem_axi_rdata;
 
   picorv32_axi_adapter u_axi_adapter (
-    .clk   (clk_i),
-    .resetn(rst_sync_ni),
+    .clk                 (clk_i),
+    .resetn              (rst_sync_ni),
 
     // Native PicoRV32 memory interface (input)
-    .mem_valid(axi_adapter_mem_valid),
-    .mem_instr(axi_adapter_mem_instr),
-    .mem_ready(axi_adapter_mem_ready),
-    .mem_addr (axi_adapter_mem_addr),
-    .mem_wdata(axi_adapter_mem_wdata),
-    .mem_wstrb(axi_adapter_mem_wstrb),
-    .mem_rdata(axi_adapter_mem_rdata),
+    .mem_valid           (axi_adapter_mem_valid),
+    .mem_instr           (axi_adapter_mem_instr),
+    .mem_ready           (axi_adapter_mem_ready),
+    .mem_addr            (axi_adapter_mem_addr),
+    .mem_wdata           (axi_adapter_mem_wdata),
+    .mem_wstrb           (axi_adapter_mem_wstrb),
+    .mem_rdata           (axi_adapter_mem_rdata),
 
     // AXI4-Lite master interface (output)
-    .mem_axi_awvalid(mem_axi_awvalid),
-    .mem_axi_awready(mem_axi_awready),
-    .mem_axi_awaddr (mem_axi_awaddr),
-    .mem_axi_awprot (mem_axi_awprot),
+    .mem_axi_awvalid     (mem_axi_awvalid),
+    .mem_axi_awready     (mem_axi_awready),
+    .mem_axi_awaddr      (mem_axi_awaddr),
+    .mem_axi_awprot      (mem_axi_awprot),
 
-    .mem_axi_wvalid(mem_axi_wvalid),
-    .mem_axi_wready(mem_axi_wready),
-    .mem_axi_wdata (mem_axi_wdata),
-    .mem_axi_wstrb (mem_axi_wstrb),
+    .mem_axi_wvalid      (mem_axi_wvalid),
+    .mem_axi_wready      (mem_axi_wready),
+    .mem_axi_wdata       (mem_axi_wdata),
+    .mem_axi_wstrb       (mem_axi_wstrb),
 
-    .mem_axi_bvalid(mem_axi_bvalid),
-    .mem_axi_bready(mem_axi_bready),
+    .mem_axi_bvalid      (mem_axi_bvalid),
+    .mem_axi_bready      (mem_axi_bready),
 
-    .mem_axi_arvalid(mem_axi_arvalid),
-    .mem_axi_arready(mem_axi_arready),
-    .mem_axi_araddr (mem_axi_araddr),
-    .mem_axi_arprot (mem_axi_arprot),
+    .mem_axi_arvalid     (mem_axi_arvalid),
+    .mem_axi_arready     (mem_axi_arready),
+    .mem_axi_araddr      (mem_axi_araddr),
+    .mem_axi_arprot      (mem_axi_arprot),
 
-    .mem_axi_rvalid(mem_axi_rvalid),
-    .mem_axi_rready(mem_axi_rready),
-    .mem_axi_rdata (mem_axi_rdata)
+    .mem_axi_rvalid      (mem_axi_rvalid),
+    .mem_axi_rready      (mem_axi_rready),
+    .mem_axi_rdata       (mem_axi_rdata)
   );
 
   //=========================================================================
@@ -710,8 +712,8 @@ module picorv32_wrapper
     end
   end
 
-  assign read_slverr  = read_r_handshake && (axi_mst_resp_i.r.resp == axi_pkg::RESP_SLVERR);
-  assign read_decerr  = read_r_handshake && (axi_mst_resp_i.r.resp == axi_pkg::RESP_DECERR);
+  assign read_slverr = read_r_handshake && (axi_mst_resp_i.r.resp == axi_pkg::RESP_SLVERR);
+  assign read_decerr = read_r_handshake && (axi_mst_resp_i.r.resp == axi_pkg::RESP_DECERR);
 
   // Combine write and read errors into pulse signals
   assign axi_slverr_o = write_slverr || read_slverr;

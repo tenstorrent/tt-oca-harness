@@ -12,39 +12,39 @@ module efuse_read_interface #(
   parameter type fuse_command_resp_t = logic,
   parameter type efuse_data_t = logic
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic               clk_i,
+  input  logic               rst_ni,
+  input  logic               test_en_i,
 
-  input  logic        read_enable_i,
-  output logic        is_reading_o,
-  output efuse_addr_t read_target_addr_o,
+  input  logic               read_enable_i,
+  output logic               is_reading_o,
+  output efuse_addr_t        read_target_addr_o,
 
-  input  efuse_addr_t read_addr_i,
-  input  logic        read_go_i,
-  output logic        read_busy_o,
-  output logic        read_done_o,
-  output logic        read_error_o,
-  output efuse_data_t read_back_data_o,
+  input  efuse_addr_t        read_addr_i,
+  input  logic               read_go_i,
+  output logic               read_busy_o,
+  output logic               read_done_o,
+  output logic               read_error_o,
+  output efuse_data_t        read_back_data_o,
 
   // Address validation: oob computed in controller against full-width
   // CSR field (the cast to efuse_addr_t that produces read_addr_i
   // truncates upper bits, so the bounds check must live upstream).
-  input  logic read_addr_oob_i,
-  output logic read_addr_error_o,
-  input  logic read_addr_error_clear_i,
+  input  logic               read_addr_oob_i,
+  output logic               read_addr_error_o,
+  input  logic               read_addr_error_clear_i,
 
-  input logic efuse_req_err_i,
-  input logic secure_tm_blocked_i,
+  input  logic               efuse_req_err_i,
+  input  logic               secure_tm_blocked_i,
 
-  input logic        read_req_timeout_en_i,
-  input logic [27:0] read_req_timeout_cycles_i,
+  input  logic               read_req_timeout_en_i,
+  input  logic [27:0]        read_req_timeout_cycles_i,
 
   output fuse_command_req_t  fuse_command_req_o,
   input  fuse_command_resp_t fuse_command_resp_i,
 
   // Debug signals
-  output logic is_read_timeout_debug_o
+  output logic               is_read_timeout_debug_o
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
@@ -52,16 +52,16 @@ module efuse_read_interface #(
 
   // Timeout logic
   logic [27:0] timeout_count_q, timeout_count_d;
-  logic              read_timeout_event;
+  logic        read_timeout_event;
 
   fuse_command_req_t fuse_command_req_d;
 
-  efuse_addr_t       captured_read_addr;
+  efuse_addr_t captured_read_addr;
 
   // Program execution state machine
   typedef enum logic {
-    ST_READ_IDLE = 1'b0,
-    ST_WAIT_RESP = 1'b1
+    ST_READ_IDLE    = 1'b0,
+    ST_WAIT_RESP    = 1'b1
   } efuse_read_state_e;
 
 
@@ -104,12 +104,12 @@ module efuse_read_interface #(
       ST_READ_IDLE: begin
         if (read_go_i) begin
           read_done_d = 1'b0;
-          timeout_count_d = 'd0;  // Reset timeout counter on new operation
+          timeout_count_d = 'd0; // Reset timeout counter on new operation
           if (!read_enable_i) begin
             read_state_d = ST_READ_IDLE;
-            read_busy_d  = 1'b0;
-            read_done_d  = 1'b1;
-            read_err_d   = 1'b1;
+            read_busy_d = 1'b0;
+            read_done_d = 1'b1;
+            read_err_d = 1'b1;
           end else if (read_addr_oob_i) begin
             read_state_d = ST_READ_IDLE;
             read_busy_d = 1'b0;
@@ -144,7 +144,7 @@ module efuse_read_interface #(
         end else if (fuse_command_resp_i.valid) begin
           read_done_d = 1'b1;
           read_busy_d = 1'b0;
-          read_err_d = 1'b0;  // EFUSE_READ_OK
+          read_err_d = 1'b0; // EFUSE_READ_OK
           read_back_data_d = fuse_command_resp_i.data;
           fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
           read_state_d = ST_READ_IDLE;

@@ -41,29 +41,29 @@
 
 
 module tlul_socket_1n #(
-  parameter int unsigned           N            = 4,
-  parameter bit                    HReqPass     = 1'b1,
-  parameter bit                    HRspPass     = 1'b1,
-  parameter bit          [  N-1:0] DReqPass     = {N{1'b1}},
-  parameter bit          [  N-1:0] DRspPass     = {N{1'b1}},
-  parameter bit          [    3:0] HReqDepth    = 4'h1,
-  parameter bit          [    3:0] HRspDepth    = 4'h1,
-  parameter bit          [N*4-1:0] DReqDepth    = {N{4'h1}},
-  parameter bit          [N*4-1:0] DRspDepth    = {N{4'h1}},
-  parameter bit                    ExplicitErrs = 1'b1,
+  parameter int unsigned  N            = 4,
+  parameter bit           HReqPass     = 1'b1,
+  parameter bit           HRspPass     = 1'b1,
+  parameter bit [N-1:0]   DReqPass     = {N{1'b1}},
+  parameter bit [N-1:0]   DRspPass     = {N{1'b1}},
+  parameter bit [3:0]     HReqDepth    = 4'h1,
+  parameter bit [3:0]     HRspDepth    = 4'h1,
+  parameter bit [N*4-1:0] DReqDepth    = {N{4'h1}},
+  parameter bit [N*4-1:0] DRspDepth    = {N{4'h1}},
+  parameter bit           ExplicitErrs = 1'b1,
 
   // The width of dev_select_i. We must be able to select any of the N devices
   // (i.e. values 0..N-1). If ExplicitErrs is set, we also need to be able to
   // represent N.
-  localparam int unsigned NWD = $clog2(ExplicitErrs ? N + 1 : N)
+  localparam int unsigned NWD = $clog2(ExplicitErrs ? N+1 : N)
 ) (
-  input                               clk_i,
-  input                               rst_ni,
-  input  tlul_pkg::tl_h2d_t           tl_h_i,
-  output tlul_pkg::tl_d2h_t           tl_h_o,
-  output tlul_pkg::tl_h2d_t           tl_d_o      [N],
-  input  tlul_pkg::tl_d2h_t           tl_d_i      [N],
-  input                     [NWD-1:0] dev_select_i
+  input                     clk_i,
+  input                     rst_ni,
+  input  tlul_pkg::tl_h2d_t tl_h_i,
+  output tlul_pkg::tl_d2h_t tl_h_o,
+  output tlul_pkg::tl_h2d_t tl_d_o    [N],
+  input  tlul_pkg::tl_d2h_t tl_d_i    [N],
+  input  [NWD-1:0]          dev_select_i
 );
 
   `include "prim_assert.sv"
@@ -78,14 +78,14 @@ module tlul_socket_1n #(
   // FIFO'd version of device select
   logic [NWD-1:0] dev_select_t;
 
-  tlul_pkg::tl_h2d_t tl_t_o;
-  tlul_pkg::tl_d2h_t tl_t_i;
+  tlul_pkg::tl_h2d_t   tl_t_o;
+  tlul_pkg::tl_d2h_t   tl_t_i;
 
   tlul_fifo_sync #(
-    .ReqPass  (HReqPass),
-    .RspPass  (HRspPass),
-    .ReqDepth (HReqDepth),
-    .RspDepth (HRspDepth),
+    .ReqPass(HReqPass),
+    .RspPass(HRspPass),
+    .ReqDepth(HReqDepth),
+    .RspDepth(HRspDepth),
     .SpareReqW(NWD)
   ) fifo_h (
     .clk_i,
@@ -94,10 +94,10 @@ module tlul_socket_1n #(
     .tl_h_o,
     .tl_d_o     (tl_t_o),
     .tl_d_i     (tl_t_i),
-    .spare_req_i(dev_select_i),
-    .spare_req_o(dev_select_t),
-    .spare_rsp_i(1'b0),
-    .spare_rsp_o()
+    .spare_req_i (dev_select_i),
+    .spare_req_o (dev_select_t),
+    .spare_rsp_i (1'b0),
+    .spare_rsp_o ()
   );
 
 
@@ -107,12 +107,12 @@ module tlul_socket_1n #(
   localparam int MaxOutstanding = 2 ** top_pkg::TL_AIW;  // Up to 256 outstanding
   localparam int OutstandingW = $clog2(MaxOutstanding + 1);
   logic [OutstandingW-1:0] num_req_outstanding;
-  logic [         NWD-1:0] dev_select_outstanding;
+  logic [NWD-1:0]          dev_select_outstanding;
   logic                    hold_all_requests;
   logic accept_t_req, accept_t_rsp;
 
-  assign accept_t_req = tl_t_o.a_valid & tl_t_i.a_ready;
-  assign accept_t_rsp = tl_t_i.d_valid & tl_t_o.d_ready;
+  assign  accept_t_req = tl_t_o.a_valid & tl_t_i.a_ready;
+  assign  accept_t_rsp = tl_t_i.d_valid & tl_t_o.d_ready;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -136,8 +136,8 @@ module tlul_socket_1n #(
   // Make N copies of 't' request side with modified reqvalid, call
   // them 'u[0]' .. 'u[n-1]'.
 
-  tlul_pkg::tl_h2d_t tl_u_o[N+1];
-  tlul_pkg::tl_d2h_t tl_u_i[N+1];
+  tlul_pkg::tl_h2d_t   tl_u_o [N+1];
+  tlul_pkg::tl_d2h_t   tl_u_i [N+1];
 
   // ensure that when a device is not selected, both command
   // data integrity can never match
@@ -172,7 +172,7 @@ module tlul_socket_1n #(
   end
 
 
-  tlul_pkg::tl_d2h_t tl_t_p;
+  tlul_pkg::tl_d2h_t tl_t_p ;
 
   // for the returning reqready, only look at the device we're addressing
   logic hfifo_reqready;
@@ -194,55 +194,57 @@ module tlul_socket_1n #(
       if (dev_select_outstanding == NWD'(idx)) tl_t_p = tl_u_i[idx];
     end
   end
-  assign tl_t_i.d_valid  = tl_t_p.d_valid;
+  assign tl_t_i.d_valid  = tl_t_p.d_valid ;
   assign tl_t_i.d_opcode = tl_t_p.d_opcode;
-  assign tl_t_i.d_param  = tl_t_p.d_param;
-  assign tl_t_i.d_size   = tl_t_p.d_size;
+  assign tl_t_i.d_param  = tl_t_p.d_param ;
+  assign tl_t_i.d_size   = tl_t_p.d_size  ;
   assign tl_t_i.d_source = tl_t_p.d_source;
-  assign tl_t_i.d_sink   = tl_t_p.d_sink;
-  assign tl_t_i.d_data   = tl_t_p.d_data;
-  assign tl_t_i.d_user   = tl_t_p.d_user;
-  assign tl_t_i.d_error  = tl_t_p.d_error;
+  assign tl_t_i.d_sink   = tl_t_p.d_sink  ;
+  assign tl_t_i.d_data   = tl_t_p.d_data  ;
+  assign tl_t_i.d_user   = tl_t_p.d_user  ;
+  assign tl_t_i.d_error  = tl_t_p.d_error ;
 
   // Instantiate all the device FIFOs
   for (genvar i = 0; i < N; i++) begin : gen_dfifo
     tlul_fifo_sync #(
-      .ReqPass (DReqPass[i]),
-      .RspPass (DRspPass[i]),
+      .ReqPass(DReqPass[i]),
+      .RspPass(DRspPass[i]),
       .ReqDepth(DReqDepth[i*4+:4]),
       .RspDepth(DRspDepth[i*4+:4])
     ) fifo_d (
       .clk_i,
       .rst_ni,
-      .tl_h_i     (tl_u_o[i]),
-      .tl_h_o     (tl_u_i[i]),
-      .tl_d_o     (tl_d_o[i]),
-      .tl_d_i     (tl_d_i[i]),
-      .spare_req_i(1'b0),
-      .spare_req_o(),
-      .spare_rsp_i(1'b0),
-      .spare_rsp_o()
+      .tl_h_i      (tl_u_o[i]),
+      .tl_h_o      (tl_u_i[i]),
+      .tl_d_o      (tl_d_o[i]),
+      .tl_d_i      (tl_d_i[i]),
+      .spare_req_i (1'b0),
+      .spare_req_o (),
+      .spare_rsp_i (1'b0),
+      .spare_rsp_o ()
     );
   end
 
   // Instantiate the error responder. It's only needed if a value greater than
   // N-1 is actually representable in NWD bits.
   if ($clog2(N + 1) <= NWD) begin : gen_err_resp
-    assign tl_u_o[N].d_ready   = tl_t_o.d_ready;
-    assign tl_u_o[N].a_valid   = tl_t_o.a_valid & (dev_select_t >= NWD'(N)) & ~hold_all_requests;
-    assign tl_u_o[N].a_opcode  = tl_t_o.a_opcode;
-    assign tl_u_o[N].a_param   = tl_t_o.a_param;
-    assign tl_u_o[N].a_size    = tl_t_o.a_size;
-    assign tl_u_o[N].a_source  = tl_t_o.a_source;
-    assign tl_u_o[N].a_address = tl_t_o.a_address;
-    assign tl_u_o[N].a_mask    = tl_t_o.a_mask;
-    assign tl_u_o[N].a_data    = tl_t_o.a_data;
-    assign tl_u_o[N].a_user    = tl_t_o.a_user;
+    assign tl_u_o[N].d_ready     = tl_t_o.d_ready;
+    assign tl_u_o[N].a_valid     = tl_t_o.a_valid &
+                                   (dev_select_t >= NWD'(N)) &
+                                   ~hold_all_requests;
+    assign tl_u_o[N].a_opcode    = tl_t_o.a_opcode;
+    assign tl_u_o[N].a_param     = tl_t_o.a_param;
+    assign tl_u_o[N].a_size      = tl_t_o.a_size;
+    assign tl_u_o[N].a_source    = tl_t_o.a_source;
+    assign tl_u_o[N].a_address   = tl_t_o.a_address;
+    assign tl_u_o[N].a_mask      = tl_t_o.a_mask;
+    assign tl_u_o[N].a_data      = tl_t_o.a_data;
+    assign tl_u_o[N].a_user      = tl_t_o.a_user;
     tlul_err_resp err_resp (
       .clk_i,
       .rst_ni,
-      .tl_h_i(tl_u_o[N]),
-      .tl_h_o(tl_u_i[N])
+      .tl_h_i     (tl_u_o[N]),
+      .tl_h_o     (tl_u_i[N])
     );
   end else begin : gen_no_err_resp  // block: gen_err_resp
     assign tl_u_o[N] = '0;

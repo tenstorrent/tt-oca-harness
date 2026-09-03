@@ -59,17 +59,17 @@ module prim_clk_counter #(
   end
 
   cdc_4phase sync_cnt_en (
-    .src_rst_ni (i_refclk_reset_n),
-    .src_clk_i  (i_refclk),
-    .src_data_i (cnt_en_d),
-    .src_valid_i(cnt_en_valid),
-    .src_ready_o(cnt_en_src_ready),
+    .src_rst_ni  (i_refclk_reset_n),
+    .src_clk_i   (i_refclk),
+    .src_data_i  (cnt_en_d),
+    .src_valid_i (cnt_en_valid),
+    .src_ready_o (cnt_en_src_ready),
 
-    .dst_rst_ni (reset_n_synced),
-    .dst_clk_i  (i_clk),
-    .dst_data_o (cnt_en_synced),
-    .dst_valid_o(cnt_en_sync_valid),
-    .dst_ready_i(1'b1)
+    .dst_rst_ni  (reset_n_synced),
+    .dst_clk_i   (i_clk),
+    .dst_data_o  (cnt_en_synced),
+    .dst_valid_o (cnt_en_sync_valid),
+    .dst_ready_i (1'b1)
   );
 
   always_ff @(posedge i_clk) begin
@@ -105,10 +105,7 @@ module prim_clk_counter #(
       o_clk_cnt_valid <= 1'b0;
     end else begin
       o_clk_cnt <= cnt_done_synced ? clk_cnt : o_clk_cnt;
-      o_clk_cnt_valid <= cnt_en_synced ? (cnt_done_synced
-                                              ? 1'b1
-                                              : (cnt_start_synced ? 1'b0 : o_clk_cnt_valid))
-                                        : 1'b0;
+      o_clk_cnt_valid <= cnt_en_synced ? (cnt_done_synced ? 1'b1 : (cnt_start_synced ? 1'b0 : o_clk_cnt_valid)) : 1'b0;
     end
   end
 

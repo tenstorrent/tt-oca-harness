@@ -19,8 +19,8 @@ module prim_sync3r #(
   wire [WIDTH-1:0] d_del;
 
   prim_sync_randomized_delay #(
-    .WIDTH                 (WIDTH),
-    .RANDOM_DELAY_RESET    (1),
+    .WIDTH             (WIDTH),
+    .RANDOM_DELAY_RESET(1),
     .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
   ) rand_del (
     .i_clk(i_clk),  // input                   Clock

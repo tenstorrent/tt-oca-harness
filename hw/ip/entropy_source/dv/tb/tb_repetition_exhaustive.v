@@ -136,7 +136,7 @@ module tb_repetition_exhaustive;
 
     // Release reset
     repeat (5) @(posedge clk);
-    rstn   = 1;
+    rstn = 1;
     enable = 1;
     repeat (5) @(posedge clk);
 

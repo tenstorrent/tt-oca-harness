@@ -79,9 +79,9 @@ class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
   // One raw TCK step (tms/tdi) from any state.
   task step(bit tms, bit tdi = 1'b0);
     ocah_jtag_item it = ocah_jtag_item::type_id::create("step");
-    it.op          = OCAH_JTAG_RAW_TMS;
-    it.tms_bits    = new[1];
-    it.tdi_bits    = new[1];
+    it.op       = OCAH_JTAG_RAW_TMS;
+    it.tms_bits = new[1];
+    it.tdi_bits = new[1];
     it.tms_bits[0] = tms;
     it.tdi_bits[0] = tdi;
     do_jtag(it);

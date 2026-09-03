@@ -14,13 +14,9 @@ class dtp_jtag_ac_extest_train_test_seq extends dtp_jtag_cmd_lib_seq;
   endfunction
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR",
-                          "CHK-IR-DECODE",
-                          "CHK-BSR-LOOPBACK",
-                          "CHK-SCAN-COUNT",
-                          "CHK-SCAN-IR-LEN",
-                          "CHK-SCAN-DR-LEN",
-                          "CHK-NONVAC"};
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK",
+                              "CHK-SCAN-COUNT", "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN",
+                              "CHK-NONVAC"};
     bit [63:0] train_patterns[$] = {64'h0F, 64'hF0, 64'h33, 64'hCC};
     seed_scenario_rng();
     attach_family_checker(required);

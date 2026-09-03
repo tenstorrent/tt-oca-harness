@@ -51,18 +51,18 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
   } j2a_status_e;
 
   typedef struct {
-    string                                name;
+    string       name;
     jtag_inst_reg_pkg::jtag_instruction_e single_op_instr;
     jtag_inst_reg_pkg::jtag_instruction_e series_ctrl_instr;
     jtag_inst_reg_pkg::jtag_instruction_e series_data_incr_instr;
     jtag_inst_reg_pkg::jtag_instruction_e series_data_no_incr_instr;
     jtag_inst_reg_pkg::jtag_instruction_e series_data_with_status_instr;
-    int unsigned                          addr_width;
-    int unsigned                          data_width;
-    int unsigned                          size_bits;
-    int unsigned                          wstrb_bits;
-    int unsigned                          default_size;
-    int unsigned                          beat_bytes;
+    int unsigned addr_width;
+    int unsigned data_width;
+    int unsigned size_bits;
+    int unsigned wstrb_bits;
+    int unsigned default_size;
+    int unsigned beat_bytes;
     // The one dbg_disable_t field that gates this bridge (one-hot mask).
     sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_mask;
   } j2a_target_t;
@@ -89,19 +89,19 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
   // --- target geometry (mirrors dtp_types.py JTAG2AXI_TARGETS) ----------
   static function j2a_target_t target_smc_otp();
     j2a_target_t t;
-    t.name = "smc_otp";
-    t.single_op_instr = jtag_inst_reg_pkg::SMC_OTP_AXI_SINGLE_OP_INSTR;
-    t.series_ctrl_instr = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_CTRL_INSTR;
-    t.series_data_incr_instr = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_INCR_INSTR;
-    t.series_data_no_incr_instr = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+    t.name                          = "smc_otp";
+    t.single_op_instr               = jtag_inst_reg_pkg::SMC_OTP_AXI_SINGLE_OP_INSTR;
+    t.series_ctrl_instr             = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_CTRL_INSTR;
+    t.series_data_incr_instr        = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_INCR_INSTR;
+    t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
     t.series_data_with_status_instr =
             jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
-    t.addr_width = 32;
-    t.data_width = 32;
-    t.size_bits = 2;
-    t.wstrb_bits = 4;
-    t.default_size = 2;
-    t.beat_bytes = 4;
+    t.addr_width      = 32;
+    t.data_width      = 32;
+    t.size_bits       = 2;
+    t.wstrb_bits      = 4;
+    t.default_size    = 2;
+    t.beat_bytes      = 4;
     t.dbg_disable_mask = '0;
     t.dbg_disable_mask.smc_otp_jtag2axi = 1'b1;
     return t;
@@ -109,19 +109,19 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
 
   static function j2a_target_t target_sep_otp();
     j2a_target_t t;
-    t.name = "sep_otp";
-    t.single_op_instr = jtag_inst_reg_pkg::SEP_OTP_AXI_SINGLE_OP_INSTR;
-    t.series_ctrl_instr = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_CTRL_INSTR;
-    t.series_data_incr_instr = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
-    t.series_data_no_incr_instr = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+    t.name                          = "sep_otp";
+    t.single_op_instr               = jtag_inst_reg_pkg::SEP_OTP_AXI_SINGLE_OP_INSTR;
+    t.series_ctrl_instr             = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_CTRL_INSTR;
+    t.series_data_incr_instr        = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
+    t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
     t.series_data_with_status_instr =
             jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
-    t.addr_width = 32;
-    t.data_width = 32;
-    t.size_bits = 2;
-    t.wstrb_bits = 4;
-    t.default_size = 2;
-    t.beat_bytes = 4;
+    t.addr_width      = 32;
+    t.data_width      = 32;
+    t.size_bits       = 2;
+    t.wstrb_bits      = 4;
+    t.default_size    = 2;
+    t.beat_bytes      = 4;
     t.dbg_disable_mask = '0;
     t.dbg_disable_mask.sep_otp_jtag2axi = 1'b1;
     return t;
@@ -129,19 +129,19 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
 
   static function j2a_target_t target_smc_axi();
     j2a_target_t t;
-    t.name = "smc_axi";
-    t.single_op_instr = jtag_inst_reg_pkg::SMC_AXI_SINGLE_OP_INSTR;
-    t.series_ctrl_instr = jtag_inst_reg_pkg::SMC_AXI_SERIES_CTRL_INSTR;
-    t.series_data_incr_instr = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_INCR_INSTR;
-    t.series_data_no_incr_instr = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_NO_INCR_INSTR;
+    t.name                          = "smc_axi";
+    t.single_op_instr               = jtag_inst_reg_pkg::SMC_AXI_SINGLE_OP_INSTR;
+    t.series_ctrl_instr             = jtag_inst_reg_pkg::SMC_AXI_SERIES_CTRL_INSTR;
+    t.series_data_incr_instr        = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_INCR_INSTR;
+    t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_NO_INCR_INSTR;
     t.series_data_with_status_instr =
             jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
-    t.addr_width = 56;
-    t.data_width = 64;
-    t.size_bits = 2;
-    t.wstrb_bits = 8;
-    t.default_size = 3;
-    t.beat_bytes = 8;
+    t.addr_width      = 56;
+    t.data_width      = 64;
+    t.size_bits       = 2;
+    t.wstrb_bits      = 8;
+    t.default_size    = 3;
+    t.beat_bytes      = 8;
     t.dbg_disable_mask = '0;
     t.dbg_disable_mask.smc_jtag2axi = 1'b1;
     return t;
@@ -183,7 +183,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
   // Beat-aligned random address inside the responder memory window; wider
   // alignment when the transfer size exceeds the beat.
   function bit [63:0] random_target_aligned_addr(j2a_target_t t, int unsigned size);
-    int unsigned align = (size_bytes(size) > t.beat_bytes) ? size_bytes(size) : t.beat_bytes;
+    int unsigned align = (size_bytes(size) > t.beat_bytes) ? size_bytes(size)
+                                                               : t.beat_bytes;
     int unsigned max_slot = (TargetMemBytes - align) / align;
     return 64'($urandom_range(max_slot) * align);
   endfunction
@@ -272,10 +273,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
   function bit [63:0] pack_series_ctrl(j2a_target_t t, j2a_op_e op, bit [63:0] addr,
                                        int unsigned pipeline_depth, int unsigned size,
                                        bit series_reset);
-    int unsigned size_off = 2;
+    int unsigned size_off     = 2;
     int unsigned pl_depth_off = size_off + t.size_bits;
-    int unsigned addr_off = pl_depth_off + 2;
-    int unsigned reset_off = addr_off + t.addr_width;
+    int unsigned addr_off     = pl_depth_off + 2;
+    int unsigned reset_off    = addr_off + t.addr_width;
     return (64'(int'(op)) & 64'h3) | ((64'(size) & bit_mask(
         t.size_bits
     )) << size_off) | ((64'(pipeline_depth) & 64'h3) << pl_depth_off) | ((addr & bit_mask(
@@ -286,10 +287,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
   function void unpack_series_ctrl(j2a_target_t t, bit [63:0] value, output bit series_reset,
                                    output bit [63:0] addr, output int unsigned pipeline_depth,
                                    output int unsigned size, output j2a_status_e status);
-    int unsigned size_off = 2;
+    int unsigned size_off     = 2;
     int unsigned pl_depth_off = size_off + t.size_bits;
-    int unsigned addr_off = pl_depth_off + 2;
-    int unsigned reset_off = addr_off + t.addr_width;
+    int unsigned addr_off     = pl_depth_off + 2;
+    int unsigned reset_off    = addr_off + t.addr_width;
     status         = j2a_status_e'(value & 64'h3);
     size           = int'((value >> size_off) & bit_mask(t.size_bits));
     pipeline_depth = int'((value >> pl_depth_off) & 64'h3);

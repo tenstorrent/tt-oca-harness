@@ -64,35 +64,35 @@ module tb_sample_clk_divider;
   localparam integer SHARED_TAPPED_LENGTH = 101;
 
   // Jitter (noise generating) RO lengths per generator
-  integer jitter_ro_lengths[0:11];
-  integer jitter_ro_tapped_lengths[0:11];
+  integer jitter_ro_lengths [0:11];
+  integer jitter_ro_tapped_lengths [0:11];
 
   initial begin
     // Jitter RO normal lengths (updated shorter lengths)
-    jitter_ro_lengths[0] = 5;
-    jitter_ro_lengths[1] = 7;
-    jitter_ro_lengths[2] = 11;
-    jitter_ro_lengths[3] = 13;
-    jitter_ro_lengths[4] = 17;
-    jitter_ro_lengths[5] = 19;
-    jitter_ro_lengths[6] = 6;
-    jitter_ro_lengths[7] = 8;
-    jitter_ro_lengths[8] = 12;
-    jitter_ro_lengths[9] = 14;
+    jitter_ro_lengths[0]  = 5;
+    jitter_ro_lengths[1]  = 7;
+    jitter_ro_lengths[2]  = 11;
+    jitter_ro_lengths[3]  = 13;
+    jitter_ro_lengths[4]  = 17;
+    jitter_ro_lengths[5]  = 19;
+    jitter_ro_lengths[6]  = 6;
+    jitter_ro_lengths[7]  = 8;
+    jitter_ro_lengths[8]  = 12;
+    jitter_ro_lengths[9]  = 14;
     jitter_ro_lengths[10] = 18;
     jitter_ro_lengths[11] = 20;
 
     // Jitter RO detuned lengths
-    jitter_ro_tapped_lengths[0] = 3;
-    jitter_ro_tapped_lengths[1] = 6;
-    jitter_ro_tapped_lengths[2] = 9;
-    jitter_ro_tapped_lengths[3] = 10;
-    jitter_ro_tapped_lengths[4] = 15;
-    jitter_ro_tapped_lengths[5] = 17;
-    jitter_ro_tapped_lengths[6] = 4;
-    jitter_ro_tapped_lengths[7] = 7;
-    jitter_ro_tapped_lengths[8] = 11;
-    jitter_ro_tapped_lengths[9] = 12;
+    jitter_ro_tapped_lengths[0]  = 3;
+    jitter_ro_tapped_lengths[1]  = 6;
+    jitter_ro_tapped_lengths[2]  = 9;
+    jitter_ro_tapped_lengths[3]  = 10;
+    jitter_ro_tapped_lengths[4]  = 15;
+    jitter_ro_tapped_lengths[5]  = 17;
+    jitter_ro_tapped_lengths[6]  = 4;
+    jitter_ro_tapped_lengths[7]  = 7;
+    jitter_ro_tapped_lengths[8]  = 11;
+    jitter_ro_tapped_lengths[9]  = 12;
     jitter_ro_tapped_lengths[10] = 15;
     jitter_ro_tapped_lengths[11] = 16;
   end
@@ -101,9 +101,9 @@ module tb_sample_clk_divider;
   // DUT Instantiation
   //--------------------------------------------------------------------------
   entropy_generator_test_wrapper #(
-    .TOTAL_LENGTH (17),  // Will be overridden per test
-    .TAPPED_LENGTH(13),
-    .CLKDIV_WIDTH (24)
+    .TOTAL_LENGTH  (17),  // Will be overridden per test
+    .TAPPED_LENGTH (13),
+    .CLKDIV_WIDTH  (24)
   ) dut (
     .clk_i               (clk),
     .rst_ni              (rst_n),
@@ -144,7 +144,7 @@ module tb_sample_clk_divider;
     if (divided_clk && !divided_clk_prev) begin
       if (edge_count > 0) begin
         current_edge_time = $time;
-        measured_period   = current_edge_time - last_edge_time;
+        measured_period = current_edge_time - last_edge_time;
       end
       last_edge_time = $time;
       edge_count = edge_count + 1;
@@ -205,8 +205,8 @@ module tb_sample_clk_divider;
         fail_count = fail_count + 1;
       end else begin
         // Calculate frequencies
-        expected_freq = 1000.0 / expected_period;  // MHz
-        measured_freq = 1000.0 / measured_period;  // MHz
+        expected_freq = 1000.0 / expected_period; // MHz
+        measured_freq = 1000.0 / measured_period; // MHz
         freq_error = 100.0 * (measured_freq - expected_freq) / expected_freq;
 
         $display("  Sample clock: %.2f MHz", 1000.0 / SAMPLE_CLK_PERIOD);

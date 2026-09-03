@@ -23,12 +23,12 @@
 `include "ocah_fcov_macros.svh"
 
 module dtp_fcov (
-  input wire tck_i,
-  input wire tms_i,
-  input wire tdi_i,
-  input wire tdo_i,
-  input wire trst_ni,
-  input wire [15:0] tap_state_i,  // one-hot jtag_tap_pkg::tap_state_e
+  input wire        tck_i,
+  input wire        tms_i,
+  input wire        tdi_i,
+  input wire        tdo_i,
+  input wire        trst_ni,
+  input wire [15:0] tap_state_i,     // one-hot jtag_tap_pkg::tap_state_e
   input wire [63:0] inst_decoded_i,  // one-hot decoded IR
   input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_i
 );
@@ -43,9 +43,9 @@ module dtp_fcov (
   // tap_state_i, and *_committed means the UPDATE_* state was left on this
   // edge with inst_decoded_i already showing the committed instruction.
   // ------------------------------------------------------------------
-  wire         in_reset = (trst_ni !== 1'b1);
-  wire         update_ir = (tap_state_i == jtag_tap_pkg::UPDATE_IR);
-  wire         update_dr = (tap_state_i == jtag_tap_pkg::UPDATE_DR);
+  wire in_reset  = (trst_ni !== 1'b1);
+  wire update_ir = (tap_state_i == jtag_tap_pkg::UPDATE_IR);
+  wire update_dr = (tap_state_i == jtag_tap_pkg::UPDATE_DR);
 
   // No declaration initializers: VCS rejects them on always_ff-driven
   // variables (initializer_driver_checks). Until the first TCK edge the
@@ -72,8 +72,8 @@ module dtp_fcov (
   // cover-property bodies; hoisting each condition into a named wire is the
   // portable shape. Follow it for every added point.
   wire [15:0] tap_state_prev = tap_state_q;
-  wire tms_prev = tms_q;
-  wire ir_seen_since_tlr = ir_loaded_since_tlr;
+  wire        tms_prev = tms_q;
+  wire        ir_seen_since_tlr = ir_loaded_since_tlr;
 
   wire ir_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_IR) && !in_reset;
   wire dr_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_DR) && !in_reset;
@@ -325,7 +325,8 @@ module dtp_fcov (
 
   wire behavior_enabled_e = ir_committed && !disabled_instruction_committed
       && (|(inst_decoded_i & ~(CatReserved | CatUndefined)));
-  wire behavior_undefined_e = ir_committed && (|(inst_decoded_i & (CatReserved | CatUndefined)));
+  wire behavior_undefined_e =
+      ir_committed && (|(inst_decoded_i & (CatReserved | CatUndefined)));
   `OCAH_FCOV_COVER(c_ir_behavior_enabled_instruction, behavior_enabled_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_ir_behavior_undefined_to_bypass, behavior_undefined_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_ir_behavior_disabled_to_bypass, disabled_instruction_committed, tck_i,

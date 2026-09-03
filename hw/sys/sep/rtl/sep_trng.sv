@@ -52,9 +52,9 @@ module sep_trng #(
 
   logic trng_gated_rst_n;
 
-  sep_pkg::sep_32_64_6_12_axi_req_t esrc_axi_isolated_req;
-  sep_pkg::sep_32_64_6_12_axi_req_t csrng_axi_isolated_req;
-  sep_pkg::sep_32_64_6_12_axi_req_t edn_axi_isolated_req;
+  sep_pkg::sep_32_64_6_12_axi_req_t  esrc_axi_isolated_req;
+  sep_pkg::sep_32_64_6_12_axi_req_t  csrng_axi_isolated_req;
+  sep_pkg::sep_32_64_6_12_axi_req_t  edn_axi_isolated_req;
   sep_pkg::sep_32_64_6_12_axi_resp_t esrc_axi_isolated_resp;
   sep_pkg::sep_32_64_6_12_axi_resp_t csrng_axi_isolated_resp;
   sep_pkg::sep_32_64_6_12_axi_resp_t edn_axi_isolated_resp;

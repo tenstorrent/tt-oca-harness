@@ -7,23 +7,23 @@
 //-------------------------------------------------
 
 module smc_cool_reset_wrap (
-  input logic clk_ref_i,
-  input logic rst_cold_ref_ni, // cold reset, reference clock domain
+  input  logic                                   clk_ref_i,
+  input  logic                                   rst_cold_ref_ni,             // cold reset, reference clock domain
 
-  input logic clk_smc_i,
-  input logic rst_cold_smc_ni, // cold reset, SMC clock domain
+  input  logic                                   clk_smc_i,
+  input  logic                                   rst_cold_smc_ni,             // cold reset, SMC clock domain
 
   // Register Interface
-  input  reset_unit_reg_pkg::reset_unit__out_t hwif_out,
-  output reset_unit_reg_pkg::reset_unit__in_t  hwif_in,
+  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out,
+  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in,
 
   // FLR Resets
   input  logic                                   isolate_req_pin_i,           // Set which subsystems are isolated from cool reset from external pin
-  input logic cfg_flr_pf_active_i,  // Indicates that FLR is requested from PCIe
+  input  logic                                   cfg_flr_pf_active_i,         // Indicates that FLR is requested from PCIe
   input  logic                                   rst_cool_ni,                 // Incoming cool reset request from primary chiplet to place in internal register for visibility
   output logic [31:0]                            isolate_req_o,               // Controls isolation of subsystems like PCIe and/or ETH during FLR
-  output logic skip_mem_repair_o,  // Signal to skip memory repair & MBIST during FLR
-  output logic rst_cool_no  // Cool reset from primary chiplet to other chiplets
+  output logic                                   skip_mem_repair_o,           // Signal to skip memory repair & MBIST during FLR
+  output logic                                   rst_cool_no                  // Cool reset from primary chiplet to other chiplets
 );
 
   /////////////////////////
@@ -31,42 +31,42 @@ module smc_cool_reset_wrap (
   /////////////////////////
 
   // Register Interface Signals
-  logic        isolate_req_pin_sync_smc;
-  logic        cfg_flr_pf_active_sync_smc;
-  logic        cfg_flr_pf_active_sync_ref;
+  logic                        isolate_req_pin_sync_smc;
+  logic                        cfg_flr_pf_active_sync_smc;
+  logic                        cfg_flr_pf_active_sync_ref;
 
-  logic        rst_cool_ni_sync_smc;
-  logic        rst_cool_no_sync_smc;
+  logic                        rst_cool_ni_sync_smc;
+  logic                        rst_cool_no_sync_smc;
 
-  logic [31:0] isolate_req_reg_wr_data;
-  logic [31:0] isolate_req_reg_wr_mask;
-  logic        isolate_req_reg_wr_en;
-  logic [31:0] isolate_req_reg;
+  logic [31:0]                 isolate_req_reg_wr_data;
+  logic [31:0]                 isolate_req_reg_wr_mask;
+  logic                        isolate_req_reg_wr_en;
+  logic [31:0]                 isolate_req_reg;
 
-  logic [31:0] isolate_req_pinen_reg_wr_data;
-  logic [31:0] isolate_req_pinen_reg_wr_mask;
-  logic        isolate_req_pinen_reg_wr_en;
-  logic [31:0] isolate_req_pinen_reg;
+  logic [31:0]                 isolate_req_pinen_reg_wr_data;
+  logic [31:0]                 isolate_req_pinen_reg_wr_mask;
+  logic                        isolate_req_pinen_reg_wr_en;
+  logic [31:0]                 isolate_req_pinen_reg;
 
-  logic        isolate_req_smc_reg_wr_en;
-  logic        isolate_req_smc_reg;
+  logic                        isolate_req_smc_reg_wr_en;
+  logic                        isolate_req_smc_reg;
 
-  logic [31:0] isolate_req_smcen_reg_wr_data;
-  logic [31:0] isolate_req_smcen_reg_wr_mask;
-  logic        isolate_req_smcen_wr_en;
-  logic [31:0] isolate_req_smcen_reg;
+  logic [31:0]                 isolate_req_smcen_reg_wr_data;
+  logic [31:0]                 isolate_req_smcen_reg_wr_mask;
+  logic                        isolate_req_smcen_wr_en;
+  logic [31:0]                 isolate_req_smcen_reg;
 
-  logic [31:0] flr_set_cnt_wr_data;
-  logic [31:0] flr_set_cnt_wr_mask;
-  logic        flr_set_cnt_wr_en;
-  logic [31:0] flr_set_cnt;
-  logic [31:0] flr_set_cnt_ref_clk;
+  logic [31:0]                 flr_set_cnt_wr_data;
+  logic [31:0]                 flr_set_cnt_wr_mask;
+  logic                        flr_set_cnt_wr_en;
+  logic [31:0]                 flr_set_cnt;
+  logic [31:0]                 flr_set_cnt_ref_clk;
 
-  logic [31:0] flr_reset_set_cnt_wr_data;
-  logic [31:0] flr_reset_set_cnt_wr_mask;
-  logic        flr_reset_set_cnt_wr_en;
-  logic [31:0] flr_reset_set_cnt;
-  logic [31:0] flr_reset_set_cnt_ref_clk;
+  logic [31:0]                 flr_reset_set_cnt_wr_data;
+  logic [31:0]                 flr_reset_set_cnt_wr_mask;
+  logic                        flr_reset_set_cnt_wr_en;
+  logic [31:0]                 flr_reset_set_cnt;
+  logic [31:0]                 flr_reset_set_cnt_ref_clk;
 
   // FLR Logic Signals
   logic cfg_flr_pf_active_sync_ref_q, cfg_flr_pf_active_sync_ref_posedge;
@@ -80,67 +80,67 @@ module smc_cool_reset_wrap (
     hwif_in = '{default: '0};
 
     // ISOLATE_REQ_VIS
-    hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.next = isolate_req_pin_sync_smc;
-    hwif_in.ISOLATE_REQ_VIS.cool_reset_n_i.next = rst_cool_ni_sync_smc;
-    hwif_in.ISOLATE_REQ_VIS.cool_reset_n_o.next = rst_cool_no_sync_smc;
+    hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.next                     = isolate_req_pin_sync_smc;
+    hwif_in.ISOLATE_REQ_VIS.cool_reset_n_i.next                      = rst_cool_ni_sync_smc;
+    hwif_in.ISOLATE_REQ_VIS.cool_reset_n_o.next                      = rst_cool_no_sync_smc;
 
     // ISOLATE_REQ_REG
     hwif_in.ISOLATE_REQ_REG.rd_ack                                    = hwif_out.ISOLATE_REQ_REG.req && !hwif_out.ISOLATE_REQ_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_REG.rd_data = isolate_req_reg;
-    hwif_in.ISOLATE_REQ_REG.wr_ack = isolate_req_reg_wr_en;
+    hwif_in.ISOLATE_REQ_REG.rd_data                                   = isolate_req_reg;
+    hwif_in.ISOLATE_REQ_REG.wr_ack                                    = isolate_req_reg_wr_en;
 
     // ISOLATE_REQ_PINEN_REG
     hwif_in.ISOLATE_REQ_PINEN_REG.rd_ack                              = hwif_out.ISOLATE_REQ_PINEN_REG.req && !hwif_out.ISOLATE_REQ_PINEN_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_PINEN_REG.rd_data = isolate_req_pinen_reg;
-    hwif_in.ISOLATE_REQ_PINEN_REG.wr_ack = isolate_req_pinen_reg_wr_en;
+    hwif_in.ISOLATE_REQ_PINEN_REG.rd_data                             = isolate_req_pinen_reg;
+    hwif_in.ISOLATE_REQ_PINEN_REG.wr_ack                              = isolate_req_pinen_reg_wr_en;
 
     // ISOLATE_REQ_SMC_REG
     hwif_in.ISOLATE_REQ_SMC_REG.rd_ack                                = hwif_out.ISOLATE_REQ_SMC_REG.req && !hwif_out.ISOLATE_REQ_SMC_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_SMC_REG.rd_data = {31'b0, isolate_req_smc_reg};
-    hwif_in.ISOLATE_REQ_SMC_REG.wr_ack = isolate_req_smc_reg_wr_en;
+    hwif_in.ISOLATE_REQ_SMC_REG.rd_data                               = {31'b0, isolate_req_smc_reg};
+    hwif_in.ISOLATE_REQ_SMC_REG.wr_ack                                = isolate_req_smc_reg_wr_en;
 
     // ISOLATE_REQ_SMCEN_REG
     hwif_in.ISOLATE_REQ_SMCEN_REG.rd_ack                              = hwif_out.ISOLATE_REQ_SMCEN_REG.req && !hwif_out.ISOLATE_REQ_SMCEN_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_SMCEN_REG.rd_data = isolate_req_smcen_reg;
-    hwif_in.ISOLATE_REQ_SMCEN_REG.wr_ack = isolate_req_smcen_wr_en;
+    hwif_in.ISOLATE_REQ_SMCEN_REG.rd_data                             = isolate_req_smcen_reg;
+    hwif_in.ISOLATE_REQ_SMCEN_REG.wr_ack                              = isolate_req_smcen_wr_en;
 
     // ISOLATE_REQ_FLR_COUNTER_VALUE
     hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_ack                      = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req && !hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req_is_wr;
-    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_data = flr_set_cnt;
-    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_ack = flr_set_cnt_wr_en;
+    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_data                     = flr_set_cnt;
+    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_ack                      = flr_set_cnt_wr_en;
 
     // ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
     hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_ack                = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req && !hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req_is_wr;
-    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_data = flr_reset_set_cnt;
-    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_ack = flr_reset_set_cnt_wr_en;
+    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_data               = flr_reset_set_cnt;
+    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_ack                = flr_reset_set_cnt_wr_en;
   end
 
   // ISOLATE_REQ_REG
-  assign isolate_req_reg_wr_data = hwif_out.ISOLATE_REQ_REG.wr_data;
-  assign isolate_req_reg_wr_mask = hwif_out.ISOLATE_REQ_REG.wr_biten;
-  assign isolate_req_reg_wr_en = hwif_out.ISOLATE_REQ_REG.req && hwif_out.ISOLATE_REQ_REG.req_is_wr;
+  assign isolate_req_reg_wr_data                                           = hwif_out.ISOLATE_REQ_REG.wr_data;
+  assign isolate_req_reg_wr_mask                                           = hwif_out.ISOLATE_REQ_REG.wr_biten;
+  assign isolate_req_reg_wr_en                                             = hwif_out.ISOLATE_REQ_REG.req && hwif_out.ISOLATE_REQ_REG.req_is_wr;
 
   // ISOLATE_REQ_PINEN_REG
-  assign isolate_req_pinen_reg_wr_data = hwif_out.ISOLATE_REQ_PINEN_REG.wr_data;
-  assign isolate_req_pinen_reg_wr_mask = hwif_out.ISOLATE_REQ_PINEN_REG.wr_biten;
+  assign isolate_req_pinen_reg_wr_data                                     = hwif_out.ISOLATE_REQ_PINEN_REG.wr_data;
+  assign isolate_req_pinen_reg_wr_mask                                     = hwif_out.ISOLATE_REQ_PINEN_REG.wr_biten;
   assign isolate_req_pinen_reg_wr_en                                       = hwif_out.ISOLATE_REQ_PINEN_REG.req && hwif_out.ISOLATE_REQ_PINEN_REG.req_is_wr;
 
   // ISOLATE_REQ_SMC_REG
   assign isolate_req_smc_reg_wr_en                                         = hwif_out.ISOLATE_REQ_SMC_REG.req && hwif_out.ISOLATE_REQ_SMC_REG.req_is_wr;
 
   // ISOLATE_REQ_SMCEN_REG
-  assign isolate_req_smcen_reg_wr_data = hwif_out.ISOLATE_REQ_SMCEN_REG.wr_data;
-  assign isolate_req_smcen_reg_wr_mask = hwif_out.ISOLATE_REQ_SMCEN_REG.wr_biten;
+  assign isolate_req_smcen_reg_wr_data                                     = hwif_out.ISOLATE_REQ_SMCEN_REG.wr_data;
+  assign isolate_req_smcen_reg_wr_mask                                     = hwif_out.ISOLATE_REQ_SMCEN_REG.wr_biten;
   assign isolate_req_smcen_wr_en                                           = hwif_out.ISOLATE_REQ_SMCEN_REG.req && hwif_out.ISOLATE_REQ_SMCEN_REG.req_is_wr;
 
   // ISOLATE_REQ_FLR_COUNTER_VALUE
-  assign flr_set_cnt_wr_data = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_data;
-  assign flr_set_cnt_wr_mask = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_biten;
+  assign flr_set_cnt_wr_data                                               = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_data;
+  assign flr_set_cnt_wr_mask                                               = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_biten;
   assign flr_set_cnt_wr_en                                                 = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req && hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req_is_wr;
 
   // ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
-  assign flr_reset_set_cnt_wr_data = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_data;
-  assign flr_reset_set_cnt_wr_mask = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_biten;
+  assign flr_reset_set_cnt_wr_data                                         = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_data;
+  assign flr_reset_set_cnt_wr_mask                                         = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_biten;
   assign flr_reset_set_cnt_wr_en                                           = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req && hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req_is_wr;
 
   ////////////////////////
@@ -342,18 +342,18 @@ module smc_cool_reset_wrap (
     .Width(32),
     .ResetValue(32'b0)
   ) u_flr_counter (
-    .clk_i(clk_ref_i),
-    .reset_n_i(rst_cold_ref_ni),  // top level cold reset
-    .clear_i(1'b0),
-    .set_i(flr_set),  // Starts counting down once cfg_flr_pf_active is asserted
-    .set_cnt_i(flr_set_cnt_ref_clk),  // Set value for the counter (synchronized from SMCCLK).
-    .incr_en_i(1'b0),
-    .decr_en_i(1'b1),  // Decrement always
-    .step_i(32'd1),  // Increment/decrement by step when enabled - step by 1
-    .commit_i(flr_commit),
-    .count_o(flr_count_value),  // Current counter state
-    .cnt_after_commit_o(),
-    .err_o()
+    .clk_i              (clk_ref_i),
+    .reset_n_i          (rst_cold_ref_ni),        // top level cold reset
+    .clear_i            (1'b0),
+    .set_i              (flr_set),                // Starts counting down once cfg_flr_pf_active is asserted
+    .set_cnt_i          (flr_set_cnt_ref_clk),    // Set value for the counter (synchronized from SMCCLK).
+    .incr_en_i          (1'b0),
+    .decr_en_i          (1'b1),                   // Decrement always
+    .step_i             (32'd1),                  // Increment/decrement by step when enabled - step by 1
+    .commit_i           (flr_commit),
+    .count_o            (flr_count_value),        // Current counter state
+    .cnt_after_commit_o (),
+    .err_o              ()
   );
 
   always_comb begin
@@ -367,56 +367,56 @@ module smc_cool_reset_wrap (
           // Check if counter value is set to 0 already, go to EQUAL_ZERO
           if (flr_set_cnt_ref_clk == '0) begin
 
-            flr_set                = 1'b0;
-            flr_commit             = 1'b1;
-            flr_counter_expire_nxt = 1'b1;
+            flr_set                   = 1'b0;
+            flr_commit                = 1'b1;
+            flr_counter_expire_nxt    = 1'b1;
 
-            flr_counter_state_nxt  = EQUAL_ZERO;
+            flr_counter_state_nxt     = EQUAL_ZERO;
           end else begin
 
-            flr_set                = 1'b1;
-            flr_commit             = 1'b1;
-            flr_counter_expire_nxt = 1'b0;
+            flr_set                   = 1'b1;
+            flr_commit                = 1'b1;
+            flr_counter_expire_nxt    = 1'b0;
 
-            flr_counter_state_nxt  = COUNT_DOWN;
+            flr_counter_state_nxt     = COUNT_DOWN;
           end
 
         end else begin
-          flr_set                = 1'b0;
-          flr_commit             = 1'b0;
-          flr_counter_expire_nxt = 1'b0;
+          flr_set                   = 1'b0;
+          flr_commit                = 1'b0;
+          flr_counter_expire_nxt    = 1'b0;
 
-          flr_counter_state_nxt  = IDLE;
+          flr_counter_state_nxt     = IDLE;
         end
       end
 
       COUNT_DOWN: begin
 
-        flr_set    = 1'b0;
-        flr_commit = 1'b1;
+        flr_set                   = 1'b0;
+        flr_commit                = 1'b1;
 
         // Counter reached one -> zero on next cycle
         if (flr_count_value == 32'd1) begin
-          flr_counter_expire_nxt = 1'b1;
-          flr_counter_state_nxt  = EQUAL_ZERO;
+          flr_counter_expire_nxt    = 1'b1;
+          flr_counter_state_nxt     = EQUAL_ZERO;
         end else begin
-          flr_counter_expire_nxt = 1'b0;
-          flr_counter_state_nxt  = COUNT_DOWN;
+          flr_counter_expire_nxt    = 1'b0;
+          flr_counter_state_nxt     = COUNT_DOWN;
         end
       end
 
       EQUAL_ZERO: begin
-        flr_set                = 1'b0;
-        flr_commit             = 1'b0;
-        flr_counter_expire_nxt = 1'b0;
-        flr_counter_state_nxt  = IDLE;
+        flr_set                   = 1'b0;
+        flr_commit                = 1'b0;
+        flr_counter_expire_nxt    = 1'b0;
+        flr_counter_state_nxt     = IDLE;
       end
 
       default: begin
-        flr_set                = 1'b0;
-        flr_commit             = 1'b0;
-        flr_counter_expire_nxt = 1'b0;
-        flr_counter_state_nxt  = IDLE;
+        flr_set                   = 1'b0;
+        flr_commit                = 1'b0;
+        flr_counter_expire_nxt    = 1'b0;
+        flr_counter_state_nxt     = IDLE;
       end
 
     endcase
@@ -427,18 +427,18 @@ module smc_cool_reset_wrap (
     .Width     (32),
     .ResetValue(32'b0)
   ) u_flr_reset_counter (
-    .clk_i(clk_ref_i),
-    .reset_n_i(rst_cold_ref_ni),  // top level cold reset
-    .clear_i(1'b0),
-    .set_i(flr_reset_set),  // Starts counting down once flr_reset_n is asserted
-    .set_cnt_i(flr_reset_set_cnt_ref_clk),  // Set value for the counter (synchronized from SMCCLK).
-    .incr_en_i(1'b0),
-    .decr_en_i(1'b1),  // Decrement always
-    .step_i(32'd1),  // Increment/decrement by step when enabled - step by 1
-    .commit_i(flr_reset_commit),
-    .count_o(flr_reset_count_value),  // Current counter state
+    .clk_i             (clk_ref_i),
+    .reset_n_i         (rst_cold_ref_ni),            // top level cold reset
+    .clear_i           (1'b0),
+    .set_i             (flr_reset_set),              // Starts counting down once flr_reset_n is asserted
+    .set_cnt_i         (flr_reset_set_cnt_ref_clk),  // Set value for the counter (synchronized from SMCCLK).
+    .incr_en_i         (1'b0),
+    .decr_en_i         (1'b1),                       // Decrement always
+    .step_i            (32'd1),                      // Increment/decrement by step when enabled - step by 1
+    .commit_i          (flr_reset_commit),
+    .count_o           (flr_reset_count_value),      // Current counter state
     .cnt_after_commit_o(),
-    .err_o()
+    .err_o             ()
   );
 
   always_comb begin
@@ -449,13 +449,13 @@ module smc_cool_reset_wrap (
         flr_reset_counter_expire_nxt = 1'b0;
 
         if (flr_counter_expire_nxt) begin
-          flr_reset_set               = 1'b1;
-          flr_reset_commit            = 1'b1;
-          flr_reset_counter_state_nxt = COUNT_DOWN;
+          flr_reset_set                    = 1'b1;
+          flr_reset_commit                 = 1'b1;
+          flr_reset_counter_state_nxt      = COUNT_DOWN;
         end else begin
-          flr_reset_set               = 1'b0;
-          flr_reset_commit            = 1'b0;
-          flr_reset_counter_state_nxt = IDLE;
+          flr_reset_set                    = 1'b0;
+          flr_reset_commit                 = 1'b0;
+          flr_reset_counter_state_nxt      = IDLE;
         end
       end
 
@@ -475,17 +475,17 @@ module smc_cool_reset_wrap (
       end
 
       EQUAL_ZERO: begin
-        flr_reset_set                = 1'b0;
-        flr_reset_commit             = 1'b0;
-        flr_reset_counter_expire_nxt = 1'b0;
-        flr_reset_counter_state_nxt  = IDLE;
+        flr_reset_set                    = 1'b0;
+        flr_reset_commit                 = 1'b0;
+        flr_reset_counter_expire_nxt     = 1'b0;
+        flr_reset_counter_state_nxt      = IDLE;
       end
 
       default: begin
-        flr_reset_set                = 1'b0;
-        flr_reset_commit             = 1'b0;
-        flr_reset_counter_expire_nxt = 1'b0;
-        flr_reset_counter_state_nxt  = IDLE;
+        flr_reset_set                    = 1'b0;
+        flr_reset_commit                 = 1'b0;
+        flr_reset_counter_expire_nxt     = 1'b0;
+        flr_reset_counter_state_nxt      = IDLE;
       end
 
     endcase

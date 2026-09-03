@@ -28,28 +28,28 @@
 // the KM IP / reference testbenches). Keep the port list in sync with
 // hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv.
 module abr_wrapper_key_reg (
-  input wire clk,
-  input wire arst_n,
+  input  wire                                           clk,
+  input  wire                                           arst_n,
 
-  output logic        s_axil_awready,
-  input  wire         s_axil_awvalid,
-  input  wire  [10:0] s_axil_awaddr,
-  input  wire  [ 2:0] s_axil_awprot,
-  output logic        s_axil_wready,
-  input  wire         s_axil_wvalid,
-  input  wire  [31:0] s_axil_wdata,
-  input  wire  [ 3:0] s_axil_wstrb,
-  input  wire         s_axil_bready,
-  output logic        s_axil_bvalid,
-  output logic [ 1:0] s_axil_bresp,
-  output logic        s_axil_arready,
-  input  wire         s_axil_arvalid,
-  input  wire  [10:0] s_axil_araddr,
-  input  wire  [ 2:0] s_axil_arprot,
-  input  wire         s_axil_rready,
-  output logic        s_axil_rvalid,
-  output logic [31:0] s_axil_rdata,
-  output logic [ 1:0] s_axil_rresp,
+  output logic                                          s_axil_awready,
+  input  wire                                           s_axil_awvalid,
+  input  wire  [10:0]                                   s_axil_awaddr,
+  input  wire  [2:0]                                    s_axil_awprot,
+  output logic                                          s_axil_wready,
+  input  wire                                           s_axil_wvalid,
+  input  wire  [31:0]                                   s_axil_wdata,
+  input  wire  [3:0]                                    s_axil_wstrb,
+  input  wire                                           s_axil_bready,
+  output logic                                          s_axil_bvalid,
+  output logic [1:0]                                    s_axil_bresp,
+  output logic                                          s_axil_arready,
+  input  wire                                           s_axil_arvalid,
+  input  wire  [10:0]                                   s_axil_araddr,
+  input  wire  [2:0]                                    s_axil_arprot,
+  input  wire                                           s_axil_rready,
+  output logic                                          s_axil_rvalid,
+  output logic [31:0]                                   s_axil_rdata,
+  output logic [1:0]                                    s_axil_rresp,
 
   input  abr_wrapper_key_reg_pkg::abr_wrapper_key__in_t  hwif_in,
   output abr_wrapper_key_reg_pkg::abr_wrapper_key__out_t hwif_out
@@ -68,7 +68,7 @@ module abr_wrapper_key_reg (
   localparam int unsigned IRQ_ENABLE_W =
         abr_wrapper_key_addrmap_pkg::ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR >> 2;
 
-  logic [31:0] regfile   [NWORDS];
+  logic [31:0] regfile [NWORDS];
 
   // ---------------------------- write channel -----------------------------------
   // AW and W latched independently; single outstanding B (accept next only once the
@@ -77,11 +77,11 @@ module abr_wrapper_key_reg (
   logic [10:0] aw_addr_q;
   logic        w_val_q;
   logic [31:0] w_data_q;
-  logic [ 3:0] w_strb_q;
+  logic [3:0]  w_strb_q;
   logic        do_wr;
 
   assign s_axil_awready = ~aw_val_q & ~s_axil_bvalid;
-  assign s_axil_wready  = ~w_val_q & ~s_axil_bvalid;
+  assign s_axil_wready  = ~w_val_q  & ~s_axil_bvalid;
   assign do_wr          = aw_val_q & w_val_q & ~s_axil_bvalid;
 
   always_ff @(posedge clk or negedge arst_n) begin
@@ -115,7 +115,7 @@ module abr_wrapper_key_reg (
         aw_val_q      <= 1'b0;
         w_val_q       <= 1'b0;
         s_axil_bvalid <= 1'b1;
-        s_axil_bresp  <= 2'b00;  // OKAY -- never DECERR (KM boot depends on it)
+        s_axil_bresp  <= 2'b00;   // OKAY -- never DECERR (KM boot depends on it)
       end else if (s_axil_bvalid & s_axil_bready) begin
         s_axil_bvalid <= 1'b0;
       end
@@ -143,7 +143,7 @@ module abr_wrapper_key_reg (
       if (ar_val_q & ~s_axil_rvalid) begin
         s_axil_rdata  <= regfile[ar_addr_q[10:2]];
         s_axil_rvalid <= 1'b1;
-        s_axil_rresp  <= 2'b00;  // OKAY
+        s_axil_rresp  <= 2'b00;    // OKAY
         ar_val_q      <= 1'b0;
       end else if (s_axil_rvalid & s_axil_rready) begin
         s_axil_rvalid <= 1'b0;

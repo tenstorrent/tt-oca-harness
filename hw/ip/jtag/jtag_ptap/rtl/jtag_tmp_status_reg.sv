@@ -11,16 +11,16 @@ module jtag_tmp_status_reg
 (
   /* verilator lint_off UNUSEDSIGNAL */
   // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic            scan_in_i,
-  output logic            scan_out_o,
+  input  logic             scan_in_i,
+  output logic             scan_out_o,
 
   // TMP controller state input
-  input logic persistence_mode_i,  // TMP controller persistence mode
+  input  logic             persistence_mode_i,    // TMP controller persistence mode
 
   // TMP status output
-  output logic bypass_escape_bit_o  // Bypass escape enable bit
+  output logic             bypass_escape_bit_o     // Bypass escape enable bit
 );
 
   //--------------------------------------------------------------------------
@@ -46,13 +46,11 @@ module jtag_tmp_status_reg
     .RESET_VAL(2'b10),  // Default: bypass_escape=1, persistence=0
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_tmp_status_scan_reg (
-    .scan_ctrl_i(scan_ctrl_i),
-    .scan_in_i(scan_in_i),
-    .scan_out_o(scan_out_o),
-    .data_in_i({
-      persistence_mode_i, tmp_status_reg_q[0]
-    }),  // Capture: TMP-status from controller, bypass-escape retains value
-    .data_out_o(tmp_status_reg_q)
+    .scan_ctrl_i   (scan_ctrl_i),
+    .scan_in_i     (scan_in_i),
+    .scan_out_o    (scan_out_o),
+    .data_in_i     ({persistence_mode_i, tmp_status_reg_q[0]}),  // Capture: TMP-status from controller, bypass-escape retains value
+    .data_out_o    (tmp_status_reg_q)
   );
 
   // Extract bypass-escape bit for output to TMP controller

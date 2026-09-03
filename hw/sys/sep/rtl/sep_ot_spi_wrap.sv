@@ -24,11 +24,11 @@ module sep_ot_spi_wrap #(
   parameter int unsigned NUM_CS = 1  // Number of chip selects
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // Test/Scan Interface
-  input logic test_en_i,
+  input  logic test_en_i,
 
   //=========================================================================
   // AXI4-Lite Register Interface
@@ -41,24 +41,24 @@ module sep_ot_spi_wrap #(
   // SPI Pad Interface (directly active signals)
   //=========================================================================
   // Clock
-  output logic spi_sck_o,
-  output logic spi_sck_oe_o,
+  output logic              spi_sck_o,
+  output logic              spi_sck_oe_o,
 
   // Chip Select (directly active-low, directly active OE)
-  output logic [NUM_CS-1:0] spi_cs_no,   // Active-low chip select
-  output logic [NUM_CS-1:0] spi_cs_oe_o, // Output enable (directly active)
+  output logic [NUM_CS-1:0] spi_cs_no,     // Active-low chip select
+  output logic [NUM_CS-1:0] spi_cs_oe_o,   // Output enable (directly active)
 
   // Data (directly active signals, only 4 bits for OpenTitan)
-  output logic [3:0] spi_sd_o,     // Data output (directly active)
-  output logic [3:0] spi_sd_oe_o,  // Output enable (directly active)
-  input  logic [3:0] spi_sd_i,     // Data input
+  output logic [3:0]        spi_sd_o,      // Data output (directly active)
+  output logic [3:0]        spi_sd_oe_o,   // Output enable (directly active)
+  input  logic [3:0]        spi_sd_i,      // Data input
 
   //=========================================================================
   // Status and Interrupt Interface
   //=========================================================================
-  output logic irq_o,          // interrupt
-  output logic busy_o,         // Controller busy (active transaction)
-  output logic lsio_trigger_o  // DMA trigger
+  output logic              irq_o,     // interrupt
+  output logic              busy_o,          // Controller busy (active transaction)
+  output logic              lsio_trigger_o    // DMA trigger
 );
 
   /////////////////////////////////////////////////////////////////////////////
@@ -125,36 +125,36 @@ module sep_ot_spi_wrap #(
   /////////////////////////////////////////////////////////////////////////////
 
   spi_controller #(
-    .NUM_CS        (NUM_CS),
-    .BYTE_ORDER    (spi_controller_pkg::LITTLE_ENDIAN),
-    .TX_FIFO_DEPTH (72),
-    .RX_FIFO_DEPTH (64),
-    .CMD_FIFO_DEPTH(4)
+    .NUM_CS         (NUM_CS),
+    .BYTE_ORDER     (spi_controller_pkg::LITTLE_ENDIAN),
+    .TX_FIFO_DEPTH  (72),
+    .RX_FIFO_DEPTH  (64),
+    .CMD_FIFO_DEPTH (4)
   ) u_spi_controller (
     .clk_i,
     .rst_ni,
 
     // AXI4-Lite Register Interface
-    .axil_req_i (spi_ctrl_axil_req),
-    .axil_resp_o(spi_ctrl_axil_resp),
+    .axil_req_i  (spi_ctrl_axil_req),
+    .axil_resp_o (spi_ctrl_axil_resp),
 
     // SPI Interface
-    .sck_o   (spi_sck_o),
-    .sck_en_o(spi_sck_oe_o),
-    .cs_no   (spi_cs_no),
-    .cs_en_o (spi_cs_oe_o),
-    .io_o    (spi_sd_o),
-    .io_en_o (spi_sd_oe_o),
-    .io_i    (spi_sd_i),
+    .sck_o       (spi_sck_o),
+    .sck_en_o    (spi_sck_oe_o),
+    .cs_no       (spi_cs_no),
+    .cs_en_o     (spi_cs_oe_o),
+    .io_o        (spi_sd_o),
+    .io_en_o     (spi_sd_oe_o),
+    .io_i        (spi_sd_i),
 
     // DMA Interface
-    .lsio_trigger_o(lsio_trigger_o),
+    .lsio_trigger_o (lsio_trigger_o),
 
     // Interrupt Interface
-    .irq_o(irq_o),
+    .irq_o       (irq_o),
 
     // Status Interface
-    .busy_o(busy_o)
+    .busy_o      (busy_o)
   );
 
 endmodule

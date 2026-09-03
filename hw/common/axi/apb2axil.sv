@@ -10,14 +10,14 @@
 `include "axi/typedef.svh"
 
 module apb2axil #(
-  parameter int unsigned ADDR_WIDTH = 32,  // AXI address width
-  parameter int unsigned MEM_ADDR_WIDTH = ADDR_WIDTH,  // APB/mem address width (may be narrower)
-  parameter int unsigned DATA_WIDTH = 32,
-  parameter bit [2:0] AXI_PROT_VALUE = 3'b000,  // AXI prot bits for all transactions
-  parameter type apb_req_t = logic,  // APB request struct type
-  parameter type apb_resp_t = logic,  // APB response struct type
-  parameter type axi_req_t = logic,  // AXI-Lite request struct type
-  parameter type axi_resp_t = logic  // AXI-Lite response struct type
+  parameter int unsigned       ADDR_WIDTH     = 32,         // AXI address width
+  parameter int unsigned       MEM_ADDR_WIDTH = ADDR_WIDTH, // APB/mem address width (may be narrower)
+  parameter int unsigned       DATA_WIDTH     = 32,
+  parameter bit          [2:0] AXI_PROT_VALUE = 3'b000,     // AXI prot bits for all transactions
+  parameter type               apb_req_t      = logic,      // APB request struct type
+  parameter type               apb_resp_t     = logic,      // APB response struct type
+  parameter type               axi_req_t      = logic,      // AXI-Lite request struct type
+  parameter type               axi_resp_t     = logic       // AXI-Lite response struct type
 ) (
   input logic clk_i,
   input logic rst_ni,

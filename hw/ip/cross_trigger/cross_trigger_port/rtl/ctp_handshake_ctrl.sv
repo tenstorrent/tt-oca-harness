@@ -13,26 +13,26 @@
 
 
 module ctp_handshake_ctrl (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // Core-side signals
-  input  logic ct_src_i,  // Cross trigger source pulse (synchronous)
-  output logic ct_dst_o,  // Cross trigger destination pulse (registered)
+  input  logic ct_src_i,      // Cross trigger source pulse (synchronous)
+  output logic ct_dst_o,       // Cross trigger destination pulse (registered)
 
   // Handshake reset (from CONFIG.RESET register)
-  input logic reset_i,
+  input  logic reset_i,
 
   // Synchronized pad inputs
-  input logic ct_req_in_sync_i,  // Synchronized CT_Req_in
-  input logic ct_ack_in_sync_i,  // Synchronized CT_Ack_in
+  input  logic ct_req_in_sync_i,   // Synchronized CT_Req_in
+  input  logic ct_ack_in_sync_i,   // Synchronized CT_Ack_in
 
   // Pad outputs (all registered)
-  output logic ct_req_out_o,  // CT_Req_out output
-  output logic ct_ack_out_o,  // CT_Ack_out output
+  output logic ct_req_out_o,       // CT_Req_out output
+  output logic ct_ack_out_o,        // CT_Ack_out output
 
   // Status
-  output logic busy_o  // Handshake in progress
+  output logic busy_o               // Handshake in progress
 );
 
   // Sender state machine states

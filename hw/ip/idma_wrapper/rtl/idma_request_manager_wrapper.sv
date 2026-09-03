@@ -8,26 +8,26 @@
 
 module idma_request_manager_wrapper #(
   parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_MST_INTERFACES  = 1,  // must be >= 1
+  parameter int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
 
-  parameter type req_t  = logic,
+  parameter type req_t = logic,
   parameter type resp_t = logic
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic clk_i,
+  input  logic rst_ni,
+  input  logic test_en_i,
 
-  input  req_t [NUM_CTRL_INTERFACES-1:0] ctrl_req_i,
-  input  logic [NUM_CTRL_INTERFACES-1:0] ctrl_req_valid_i,
-  output logic [NUM_CTRL_INTERFACES-1:0] ctrl_req_ready_o,
+  input  req_t  [NUM_CTRL_INTERFACES-1:0] ctrl_req_i,
+  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_valid_i,
+  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_ready_o,
 
   output resp_t [NUM_CTRL_INTERFACES-1:0] ctrl_resp_o,
   output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_valid_o,
   input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_ready_i,
 
-  output req_t [NUM_MST_INTERFACES-1:0] mst_req_o,
-  output logic [NUM_MST_INTERFACES-1:0] mst_req_valid_o,
-  input  logic [NUM_MST_INTERFACES-1:0] mst_req_ready_i,
+  output req_t  [NUM_MST_INTERFACES-1:0] mst_req_o,
+  output logic  [NUM_MST_INTERFACES-1:0] mst_req_valid_o,
+  input  logic  [NUM_MST_INTERFACES-1:0] mst_req_ready_i,
 
   input  resp_t [NUM_MST_INTERFACES-1:0] mst_resp_i,
   input  logic  [NUM_MST_INTERFACES-1:0] mst_resp_valid_i,
@@ -66,11 +66,11 @@ module idma_request_manager_wrapper #(
     for (genvar m = 0; m < NUM_MST_INTERFACES; m = m + 1) begin : gen_req_manager
       // ctrl reqs get arbitrated to mst
       rr_arb_tree #(
-        .NumIn(NUM_CTRL_INTERFACES),
-        .DataType(req_t),
-        .ExtPrio(0),
+        .NumIn    (NUM_CTRL_INTERFACES),
+        .DataType (req_t),
+        .ExtPrio  (0),
         .AxiVldRdy(1),
-        .LockIn(0)  // don't lock in so in case mst is not ready, req can try a different req
+        .LockIn   (0)   // don't lock in so in case mst is not ready, req can try a different req
       ) i_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
@@ -96,7 +96,7 @@ module idma_request_manager_wrapper #(
         end
 
         // don't ready/valid any requests if the req tracking fifo is full
-        mst_req_ready[m]   = mst_req_ready_i[m] && ~req_tracking_fifo_full[m];
+        mst_req_ready[m] = mst_req_ready_i[m] && ~req_tracking_fifo_full[m];
         mst_req_valid_o[m] = mst_req_valid[m] && ~req_tracking_fifo_full[m];
       end
 
@@ -113,8 +113,8 @@ module idma_request_manager_wrapper #(
         .flush_i   (1'b0),
         .testmode_i(test_en_i),
         .full_o    (req_tracking_fifo_full[m]),
-        .empty_o   (  /* NOT CONNECTED */),
-        .usage_o   (  /* NOT CONNECTED */),
+        .empty_o   (/* NOT CONNECTED */),
+        .usage_o   (/* NOT CONNECTED */),
         .data_i    (ctrl_winner_id[m]),
         .push_i    (mst_req_valid[m] & mst_req_ready[m]),
         .data_o    (ctrl_completed_id[m]),
@@ -134,7 +134,7 @@ module idma_request_manager_wrapper #(
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),
         .testmode_i(test_en_i),
-        .usage_o   (  /* NOT CONNECTED */),
+        .usage_o   (/* NOT CONNECTED */),
         .data_i    (mst_resp_i[m]),
         .valid_i   (mst_resp_valid_i[m]),
         .ready_o   (mst_resp_ready_o[m]),

@@ -29,9 +29,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
 
   virtual function dtp_jtag_base_test_seq create_scenario_seq();
     dtp_dbg_disable_jtag2axi_matrix_test_seq seq =
-            dtp_dbg_disable_jtag2axi_matrix_test_seq::type_id::create(
-        "seq"
-    );
+            dtp_dbg_disable_jtag2axi_matrix_test_seq::type_id::create("seq");
     int unsigned rows;
     if ($value$plusargs("DTP_DBG_DISABLE_MULTI_HOT_ROWS=%d", rows)) seq.multi_hot_rows = rows;
     return seq;

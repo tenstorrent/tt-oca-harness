@@ -11,10 +11,10 @@ module jtag_byp_reg
 (
   /* verilator lint_off UNUSEDSIGNAL */
   // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic            scan_in_i,
-  output logic            scan_out_o
+  input  logic             scan_in_i,
+  output logic             scan_out_o
 );
 
   //--------------------------------------------------------------------------
@@ -28,12 +28,12 @@ module jtag_byp_reg
     .RESET_VAL('0),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_byp_scan_reg (
-    .scan_ctrl_i(scan_ctrl_i),
-    .scan_in_i  (scan_in_i),
-    .scan_out_o (scan_out_o),
-    .data_in_i  ('0),
+    .scan_ctrl_i   (scan_ctrl_i),
+    .scan_in_i     (scan_in_i),
+    .scan_out_o    (scan_out_o),
+    .data_in_i     ('0),
     /* verilator lint_off PINCONNECTEMPTY */
-    .data_out_o (  /* UNUSED */)
+    .data_out_o    (/* UNUSED */)
     /* verilator lint_on PINCONNECTEMPTY */
   );
 

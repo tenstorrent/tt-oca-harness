@@ -23,11 +23,11 @@ module tb_scrambler_1024x32_bw;
   localparam MEM_DEPTH = 1024;
   localparam SCRAMBLER_KEY = 32'hDEADBEEF;
 
-  reg                   clk;
-  reg                   rst_n;
+  reg clk;
+  reg rst_n;
 
   reg  [ADDR_WIDTH-1:0] logical_addr;
-  reg  [           3:0] byte_mask;
+  reg  [3:0]            byte_mask;
   reg  [DATA_WIDTH-1:0] write_data;
   wire [DATA_WIDTH-1:0] read_data;
   reg                   write_enable;
@@ -36,24 +36,24 @@ module tb_scrambler_1024x32_bw;
   wire [DATA_WIDTH-1:0] scrambled_write_data;
   reg  [DATA_WIDTH-1:0] scrambled_read_data;
 
-  reg  [DATA_WIDTH-1:0] memory               [0:MEM_DEPTH-1];
-  reg  [DATA_WIDTH-1:0] expected_data        [0:MEM_DEPTH-1];
+  reg [DATA_WIDTH-1:0] memory [0:MEM_DEPTH-1];
+  reg [DATA_WIDTH-1:0] expected_data [0:MEM_DEPTH-1];
 
   integer i, errors, total_errors;
 
   scrambler_1024x32 #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_scrambler (
-    .addr_i                (logical_addr),
-    .byte_mask_i           (byte_mask),
-    .scrambler_key_i       (SCRAMBLER_KEY),
-    .scrambled_addr_o      (scrambled_addr),
-    .write_data_i          (write_data),
+    .addr_i               (logical_addr),
+    .byte_mask_i          (byte_mask),
+    .scrambler_key_i      (SCRAMBLER_KEY),
+    .scrambled_addr_o     (scrambled_addr),
+    .write_data_i         (write_data),
     .scrambled_write_data_o(scrambled_write_data),
     .scrambled_read_data_i (scrambled_read_data),
-    .read_data_o           (read_data)
+    .read_data_o          (read_data)
   );
 
   always #5 clk = ~clk;
@@ -129,7 +129,7 @@ module tb_scrambler_1024x32_bw;
       write_enable = 1;
       for (i = 0; i < MEM_DEPTH; i = i + 1) begin
         logical_addr = i[ADDR_WIDTH-1:0];
-        write_data = 32'h55555555;
+        write_data   = 32'h55555555;
         // Bytes where mask=1 → new value 0x55, mask=0 → old value 0xAA
         expected_data[i] = 32'h0;
         for (b = 0; b < 4; b = b + 1) begin

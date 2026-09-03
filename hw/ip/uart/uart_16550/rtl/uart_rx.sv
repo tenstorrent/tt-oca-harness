@@ -14,16 +14,16 @@ module uart_rx
   import uart_16550_pkg::*;
 #(
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic       clk_i,
+  input  logic       rst_ni,
 
-  input logic       rx_enable_i,
-  input logic       tick_baud_x16_i,
-  input logic       parity_enable_i,
-  input logic       parity_odd_i,
-  input logic       parity_force_i,
-  input logic [3:0] word_length_i,
-  input logic       extra_stop_bit_i,
+  input  logic       rx_enable_i,
+  input  logic       tick_baud_x16_i,
+  input  logic       parity_enable_i,
+  input  logic       parity_odd_i,
+  input  logic       parity_force_i,
+  input  logic [3:0] word_length_i,
+  input  logic       extra_stop_bit_i,
 
   output logic       tick_baud_o,
   output logic       rx_valid_o,
@@ -32,7 +32,7 @@ module uart_rx
   output logic       frame_err_o,
   output logic       rx_parity_err_o,
 
-  input logic rx_i
+  input logic        rx_i
 );
 
   logic [11:0] sreg_q, sreg_d;
@@ -109,8 +109,11 @@ module uart_rx
   end
 
   assign rx_data_o = get_rx_data_from_frame(
-      sreg_q, word_length_i, extra_stop_bit_i, parity_enable_i
-  );
+                           sreg_q,
+                           word_length_i,
+                           extra_stop_bit_i,
+                           parity_enable_i
+                       );
 
   assign frame_err_o = rx_valid_o && (
                              extra_stop_bit_i && word_length_i != 4'd5 ? sreg_q[11:10] != 2'h3 :

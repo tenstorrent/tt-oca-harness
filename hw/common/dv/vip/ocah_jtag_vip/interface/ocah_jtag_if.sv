@@ -17,7 +17,7 @@ interface ocah_jtag_if;
   // Driven by the TB (BFM / sequence / agent driver).
   logic tck;
   logic tms;
-  logic trst_n;  // active-low asynchronous TAP reset
+  logic trst_n;   // active-low asynchronous TAP reset
   logic tdi;
 
   // Driven by the DUT.

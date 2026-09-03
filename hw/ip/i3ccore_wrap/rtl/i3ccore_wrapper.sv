@@ -30,33 +30,33 @@ module i3ccore_wrapper
 
   // AXI4-Lite slave interface
   // Write Address Channel
-  input  logic            awvalid_i,
-  output logic            awready_o,
-  input  reg_addr_t       awaddr_i,
-  input  logic      [2:0] awprot_i,
+  input  logic           awvalid_i,
+  output logic           awready_o,
+  input  reg_addr_t      awaddr_i,
+  input  logic [2:0]     awprot_i,
 
   // Write Data Channel
-  input  logic      wvalid_i,
-  output logic      wready_o,
-  input  reg_data_t wdata_i,
-  input  reg_strb_t wstrb_i,
+  input  logic           wvalid_i,
+  output logic           wready_o,
+  input  reg_data_t      wdata_i,
+  input  reg_strb_t      wstrb_i,
 
   // Write Response Channel
-  output logic       bvalid_o,
-  input  logic       bready_i,
-  output logic [1:0] bresp_o,
+  output logic           bvalid_o,
+  input  logic           bready_i,
+  output logic [1:0]     bresp_o,
 
   // Read Address Channel
-  input  logic            arvalid_i,
-  output logic            arready_o,
-  input  reg_addr_t       araddr_i,
-  input  logic      [2:0] arprot_i,
+  input  logic           arvalid_i,
+  output logic           arready_o,
+  input  reg_addr_t      araddr_i,
+  input  logic [2:0]     arprot_i,
 
   // Read Data Channel
-  output logic            rvalid_o,
-  input  logic            rready_i,
-  output reg_data_t       rdata_o,
-  output logic      [1:0] rresp_o,
+  output logic           rvalid_o,
+  input  logic           rready_i,
+  output reg_data_t      rdata_o,
+  output logic [1:0]     rresp_o,
 
   // Interrupts - one per I3C instance
   output logic [NUM_I3C-1:0] irq_o,
@@ -100,15 +100,15 @@ module i3ccore_wrapper
 
   // Pack input signals into request struct
   assign axil_req = '{
-          aw: '{addr: awaddr_i, prot: awprot_i},
-          aw_valid: awvalid_i,
-          w: '{data: wdata_i, strb: wstrb_i},
-          w_valid: wvalid_i,
-          b_ready: bready_i,
-          ar: '{addr: araddr_i, prot: arprot_i},
-          ar_valid: arvalid_i,
-          r_ready: rready_i
-      };
+    aw: '{addr: awaddr_i, prot: awprot_i},
+    aw_valid: awvalid_i,
+    w: '{data: wdata_i, strb: wstrb_i},
+    w_valid: wvalid_i,
+    b_ready: bready_i,
+    ar: '{addr: araddr_i, prot: arprot_i},
+    ar_valid: arvalid_i,
+    r_ready: rready_i
+  };
 
   // Unpack response struct to outputs
   assign awready_o = axil_resp.aw_ready;
@@ -123,7 +123,7 @@ module i3ccore_wrapper
   // Calculate instance select from address (use write address if valid, else read address)
   select_t read_select, write_select;
   reg_addr_t read_adjusted_addr, write_adjusted_addr;
-  assign read_adjusted_addr  = araddr_i - BASE_ADDR;
+  assign read_adjusted_addr = araddr_i - BASE_ADDR;
   assign write_adjusted_addr = awaddr_i - BASE_ADDR;
 
   // Instance selection based on address range (INSTANCE_SPACING per instance)
@@ -194,33 +194,33 @@ module i3ccore_wrapper
       .CsrAddrWidth(CsrAddrWidth),
       .CsrDataWidth(CsrDataWidth)
     ) u_i3c_wrapper (
-      .clk_i (clk_i),
+      .clk_i(clk_i),
       .rst_ni(rst_ni),
 
       // AXI4-Lite interface
       .awvalid_i(axil_req_demuxed[idx].aw_valid),
       .awready_o(axil_resp_demuxed[idx].aw_ready),
-      .awaddr_i (awaddr_offset),
-      .awprot_i (axil_req_demuxed[idx].aw.prot),
+      .awaddr_i(awaddr_offset),
+      .awprot_i(axil_req_demuxed[idx].aw.prot),
 
       .wvalid_i(axil_req_demuxed[idx].w_valid),
       .wready_o(axil_resp_demuxed[idx].w_ready),
-      .wdata_i (axil_req_demuxed[idx].w.data),
-      .wstrb_i (axil_req_demuxed[idx].w.strb),
+      .wdata_i(axil_req_demuxed[idx].w.data),
+      .wstrb_i(axil_req_demuxed[idx].w.strb),
 
       .bvalid_o(axil_resp_demuxed[idx].b_valid),
       .bready_i(axil_req_demuxed[idx].b_ready),
-      .bresp_o (bresp),
+      .bresp_o(bresp),
 
       .arvalid_i(axil_req_demuxed[idx].ar_valid),
       .arready_o(axil_resp_demuxed[idx].ar_ready),
-      .araddr_i (araddr_offset),
-      .arprot_i (axil_req_demuxed[idx].ar.prot),
+      .araddr_i(araddr_offset),
+      .arprot_i(axil_req_demuxed[idx].ar.prot),
 
       .rvalid_o(axil_resp_demuxed[idx].r_valid),
       .rready_i(axil_req_demuxed[idx].r_ready),
-      .rdata_o (rdata),
-      .rresp_o (rresp),
+      .rdata_o(rdata),
+      .rresp_o(rresp),
 
       // I3C bus signals
       .scl_i(scl_i[idx]),

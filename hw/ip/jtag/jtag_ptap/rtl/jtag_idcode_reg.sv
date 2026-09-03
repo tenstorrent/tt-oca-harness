@@ -9,16 +9,16 @@
 module jtag_idcode_reg
   import prim_jtag_pkg::*;
 #(
-  parameter logic [10:0] IDCODE_MFR_ID   = 11'h000,   // JTAG IDCODE manufacturer ID (11 bits)
-  parameter logic [15:0] IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number (16 bits)
-  parameter logic [ 3:0] IDCODE_SI_REV   = 4'h0       // JTAG IDCODE silicon revision (4 bits)
+  parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,   // JTAG IDCODE manufacturer ID (11 bits)
+  parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number (16 bits)
+  parameter logic [3:0]   IDCODE_SI_REV   = 4'h0       // JTAG IDCODE silicon revision (4 bits)
 ) (
   /* verilator lint_off UNUSEDSIGNAL */
   // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic            scan_in_i,
-  output logic            scan_out_o
+  input  logic             scan_in_i,
+  output logic             scan_out_o
 );
 
   //--------------------------------------------------------------------------
@@ -51,12 +51,12 @@ module jtag_idcode_reg
     .RESET_VAL(IDCODE_VALUE),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_idcode_scan_reg (
-    .scan_ctrl_i(scan_ctrl_i),
-    .scan_in_i  (scan_in_i),
-    .scan_out_o (scan_out_o),
-    .data_in_i  (IDCODE_VALUE),   // Always capture the IDCODE value (read-only)
+    .scan_ctrl_i   (scan_ctrl_i),
+    .scan_in_i     (scan_in_i),
+    .scan_out_o    (scan_out_o),
+    .data_in_i     (IDCODE_VALUE),  // Always capture the IDCODE value (read-only)
     /* verilator lint_off PINCONNECTEMPTY */
-    .data_out_o (  /* UNUSED */)  // No update register needed for read-only IDCODE
+    .data_out_o    (/* UNUSED */)   // No update register needed for read-only IDCODE
     /* verilator lint_on PINCONNECTEMPTY */
   );
 

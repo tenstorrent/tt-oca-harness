@@ -19,112 +19,112 @@ package sep_efuse_pkg;
   //   Slots 29-31 : v0.5.22 identity fuses (SEP_CHIPLET_ID / SIP / SYS)  — bits [58:63]
   // Slots 32-39 (spare0-spare7) and unassigned slots 40-47 live in LOCKS_SPARE.
   typedef struct packed {
-    logic [0:0] sep_sys_id_read_lock;                 // [63]     slot 31
-    logic [0:0] sep_sys_id_write_lock;                // [62]     slot 31
-    logic [0:0] sep_sip_id_read_lock;                 // [61]     slot 30
-    logic [0:0] sep_sip_id_write_lock;                // [60]     slot 30
-    logic [0:0] sep_chiplet_id_read_lock;             // [59]     slot 29
-    logic [0:0] sep_chiplet_id_write_lock;            // [58]     slot 29
-    logic [0:0] sip_pubk_pqc_hash1_read_lock;         // [57]     slot 28
-    logic [0:0] sip_pubk_pqc_hash1_write_lock;        // [56]     slot 28
-    logic [0:0] sip_pubk_hash1_read_lock;             // [55]     slot 27
-    logic [0:0] sip_pubk_hash1_write_lock;            // [54]     slot 27
-    logic [0:0] sys_pubk_pqc_hash_read_lock;          // [53]     slot 26
-    logic [0:0] sys_pubk_pqc_hash_write_lock;         // [52]     slot 26
-    logic [0:0] sip_pubk_pqc_hash0_read_lock;         // [51]     slot 25
-    logic [0:0] sip_pubk_pqc_hash0_write_lock;        // [50]     slot 25
-    logic [0:0] chiplet_pubk_pqc_hash1_read_lock;     // [49]     slot 24
-    logic [0:0] chiplet_pubk_pqc_hash1_write_lock;    // [48]     slot 24
-    logic [0:0] chiplet_pubk_pqc_hash0_read_lock;     // [47]     slot 23
-    logic [0:0] chiplet_pubk_pqc_hash0_write_lock;    // [46]     slot 23
-    logic [0:0] required_algs_read_lock;              // [45]     slot 22
-    logic [0:0] required_algs_write_lock;             // [44]     slot 22
-    logic [0:0] required_signers_read_lock;           // [43]     slot 21
-    logic [0:0] required_signers_write_lock;          // [42]     slot 21
-    logic [0:0] chiplet_pubk_hash1_read_lock;         // [41]     slot 20
-    logic [0:0] chiplet_pubk_hash1_write_lock;        // [40]     slot 20
-    logic [0:0] chiplet_pubk_hash0_read_lock;         // [39]     slot 19
-    logic [0:0] chiplet_pubk_hash0_write_lock;        // [38]     slot 19
-    logic [0:0] spi_config_en_read_lock;              // [37]     slot 18
-    logic [0:0] spi_config_en_write_lock;             // [36]     slot 18
-    logic [0:0] rom_ctl_read_lock;                    // [35]     slot 17
-    logic [0:0] rom_ctl_write_lock;                   // [34]     slot 17
-    logic [0:0] status_rpt_read_lock;                 // [33]     slot 16
-    logic [0:0] status_rpt_write_lock;                // [32]     slot 16
-    logic [0:0] sys_uid_read_lock;                    // [31]     slot 15
-    logic [0:0] sys_uid_write_lock;                   // [30]     slot 15
-    logic [0:0] sys_pubk_hash_read_lock;              // [29]     slot 14
-    logic [0:0] sys_pubk_hash_write_lock;             // [28]     slot 14
-    logic [0:0] sip_uid_read_lock;                    // [27]     slot 13
-    logic [0:0] sip_uid_write_lock;                   // [26]     slot 13
-    logic [0:0] sip_pubk_hash0_read_lock;             // [25]     slot 12
-    logic [0:0] sip_pubk_hash0_write_lock;            // [24]     slot 12
-    logic [0:0] chiplet_uid_read_lock;                // [23]     slot 11
-    logic [0:0] chiplet_uid_write_lock;               // [22]     slot 11
-    logic [0:0] bl2_version_read_lock;                // [21]     slot 10
-    logic [0:0] bl2_version_write_lock;               // [20]     slot 10
-    logic [0:0] bl1_version_read_lock;                // [19]     slot  9
-    logic [0:0] bl1_version_write_lock;               // [18]     slot  9
-    logic [0:0] chiplet_pubk_revoke_read_lock;        // [17]     slot  8
-    logic [0:0] chiplet_pubk_revoke_write_lock;       // [16]     slot  8
-    logic [0:0] class_key_read_lock;                  // [15]     slot  7
-    logic [0:0] class_key_write_lock;                 // [14]     slot  7
-    logic [0:0] rma_chiplet_token_digest_read_lock;   // [13]     slot  6
-    logic [0:0] rma_chiplet_token_digest_write_lock;  // [12]     slot  6
-    logic [0:0] rma_sip_token_digest_read_lock;       // [11]     slot  5
-    logic [0:0] rma_sip_token_digest_write_lock;      // [10]     slot  5
-    logic [0:0] sys_dis_read_lock;                    // [9]      slot  4
-    logic [0:0] sys_dis_write_lock;                   // [8]      slot  4
-    logic [0:0] sip_dis_read_lock;                    // [7]      slot  3
-    logic [0:0] sip_dis_write_lock;                   // [6]      slot  3
-    logic [0:0] transient_rma_en_read_lock;           // [5]      slot  2
-    logic [0:0] transient_rma_en_write_lock;          // [4]      slot  2
-    logic [0:0] sboot_dis_read_lock;                  // [3]      slot  1
-    logic [0:0] sboot_dis_write_lock;                 // [2]      slot  1
-    logic [0:0] lc_state_read_lock;                   // [1]      slot  0
-    logic [0:0] lc_state_write_lock;                  // [0]      slot  0
+    logic [0:0]   sep_sys_id_read_lock ;                // [63]     slot 31
+    logic [0:0]   sep_sys_id_write_lock ;               // [62]     slot 31
+    logic [0:0]   sep_sip_id_read_lock ;                // [61]     slot 30
+    logic [0:0]   sep_sip_id_write_lock ;               // [60]     slot 30
+    logic [0:0]   sep_chiplet_id_read_lock ;            // [59]     slot 29
+    logic [0:0]   sep_chiplet_id_write_lock ;           // [58]     slot 29
+    logic [0:0]   sip_pubk_pqc_hash1_read_lock ;       // [57]     slot 28
+    logic [0:0]   sip_pubk_pqc_hash1_write_lock ;      // [56]     slot 28
+    logic [0:0]   sip_pubk_hash1_read_lock ;            // [55]     slot 27
+    logic [0:0]   sip_pubk_hash1_write_lock ;           // [54]     slot 27
+    logic [0:0]   sys_pubk_pqc_hash_read_lock ;        // [53]     slot 26
+    logic [0:0]   sys_pubk_pqc_hash_write_lock ;       // [52]     slot 26
+    logic [0:0]   sip_pubk_pqc_hash0_read_lock ;       // [51]     slot 25
+    logic [0:0]   sip_pubk_pqc_hash0_write_lock ;      // [50]     slot 25
+    logic [0:0]   chiplet_pubk_pqc_hash1_read_lock ;   // [49]     slot 24
+    logic [0:0]   chiplet_pubk_pqc_hash1_write_lock ;  // [48]     slot 24
+    logic [0:0]   chiplet_pubk_pqc_hash0_read_lock ;   // [47]     slot 23
+    logic [0:0]   chiplet_pubk_pqc_hash0_write_lock ;  // [46]     slot 23
+    logic [0:0]   required_algs_read_lock ;             // [45]     slot 22
+    logic [0:0]   required_algs_write_lock ;            // [44]     slot 22
+    logic [0:0]   required_signers_read_lock ;          // [43]     slot 21
+    logic [0:0]   required_signers_write_lock ;         // [42]     slot 21
+    logic [0:0]   chiplet_pubk_hash1_read_lock ;        // [41]     slot 20
+    logic [0:0]   chiplet_pubk_hash1_write_lock ;       // [40]     slot 20
+    logic [0:0]   chiplet_pubk_hash0_read_lock ;        // [39]     slot 19
+    logic [0:0]   chiplet_pubk_hash0_write_lock ;       // [38]     slot 19
+    logic [0:0]   spi_config_en_read_lock ;             // [37]     slot 18
+    logic [0:0]   spi_config_en_write_lock ;            // [36]     slot 18
+    logic [0:0]   rom_ctl_read_lock ;                   // [35]     slot 17
+    logic [0:0]   rom_ctl_write_lock ;                  // [34]     slot 17
+    logic [0:0]   status_rpt_read_lock ;                // [33]     slot 16
+    logic [0:0]   status_rpt_write_lock ;               // [32]     slot 16
+    logic [0:0]   sys_uid_read_lock ;                   // [31]     slot 15
+    logic [0:0]   sys_uid_write_lock ;                  // [30]     slot 15
+    logic [0:0]   sys_pubk_hash_read_lock ;             // [29]     slot 14
+    logic [0:0]   sys_pubk_hash_write_lock ;            // [28]     slot 14
+    logic [0:0]   sip_uid_read_lock ;                   // [27]     slot 13
+    logic [0:0]   sip_uid_write_lock ;                  // [26]     slot 13
+    logic [0:0]   sip_pubk_hash0_read_lock ;            // [25]     slot 12
+    logic [0:0]   sip_pubk_hash0_write_lock ;           // [24]     slot 12
+    logic [0:0]   chiplet_uid_read_lock ;               // [23]     slot 11
+    logic [0:0]   chiplet_uid_write_lock ;              // [22]     slot 11
+    logic [0:0]   bl2_version_read_lock ;               // [21]     slot 10
+    logic [0:0]   bl2_version_write_lock ;              // [20]     slot 10
+    logic [0:0]   bl1_version_read_lock ;               // [19]     slot  9
+    logic [0:0]   bl1_version_write_lock ;              // [18]     slot  9
+    logic [0:0]   chiplet_pubk_revoke_read_lock ;       // [17]     slot  8
+    logic [0:0]   chiplet_pubk_revoke_write_lock ;      // [16]     slot  8
+    logic [0:0]   class_key_read_lock ;                 // [15]     slot  7
+    logic [0:0]   class_key_write_lock ;                // [14]     slot  7
+    logic [0:0]   rma_chiplet_token_digest_read_lock ;  // [13]     slot  6
+    logic [0:0]   rma_chiplet_token_digest_write_lock ; // [12]     slot  6
+    logic [0:0]   rma_sip_token_digest_read_lock ;      // [11]     slot  5
+    logic [0:0]   rma_sip_token_digest_write_lock ;     // [10]     slot  5
+    logic [0:0]   sys_dis_read_lock ;                   // [9]      slot  4
+    logic [0:0]   sys_dis_write_lock ;                  // [8]      slot  4
+    logic [0:0]   sip_dis_read_lock ;                   // [7]      slot  3
+    logic [0:0]   sip_dis_write_lock ;                  // [6]      slot  3
+    logic [0:0]   transient_rma_en_read_lock ;          // [5]      slot  2
+    logic [0:0]   transient_rma_en_write_lock ;         // [4]      slot  2
+    logic [0:0]   sboot_dis_read_lock ;                 // [3]      slot  1
+    logic [0:0]   sboot_dis_write_lock ;                // [2]      slot  1
+    logic [0:0]   lc_state_read_lock ;                  // [1]      slot  0
+    logic [0:0]   lc_state_write_lock ;                 // [0]      slot  0
   } sep_efuse_map_locks_reg_t;
 
   // LOCKS_SPARE — 32-bit register (regwidth=32; accesswidth=32), slots 32-47.
   //   [15:0]  slots 32-39: spare0-spare7 write/read lock pairs
   //   [31:16] slots 40-47: unassigned, reserved for future lock slots
   typedef struct packed {
-    logic [15:0] spare_lock_rsvd;    // [31:16] slots 40-47, unassigned
-    logic [0:0]  spare7_read_lock;   // [15]    slot 39
-    logic [0:0]  spare7_write_lock;  // [14]    slot 39
-    logic [0:0]  spare6_read_lock;   // [13]    slot 38
-    logic [0:0]  spare6_write_lock;  // [12]    slot 38
-    logic [0:0]  spare5_read_lock;   // [11]    slot 37
-    logic [0:0]  spare5_write_lock;  // [10]    slot 37
-    logic [0:0]  spare4_read_lock;   // [9]     slot 36
-    logic [0:0]  spare4_write_lock;  // [8]     slot 36
-    logic [0:0]  spare3_read_lock;   // [7]     slot 35
-    logic [0:0]  spare3_write_lock;  // [6]     slot 35
-    logic [0:0]  spare2_read_lock;   // [5]     slot 34
-    logic [0:0]  spare2_write_lock;  // [4]     slot 34
-    logic [0:0]  spare1_read_lock;   // [3]     slot 33
-    logic [0:0]  spare1_write_lock;  // [2]     slot 33
-    logic [0:0]  spare0_read_lock;   // [1]     slot 32
-    logic [0:0]  spare0_write_lock;  // [0]     slot 32
+    logic [15:0]  spare_lock_rsvd ;      // [31:16] slots 40-47, unassigned
+    logic [0:0]   spare7_read_lock ;     // [15]    slot 39
+    logic [0:0]   spare7_write_lock ;    // [14]    slot 39
+    logic [0:0]   spare6_read_lock ;     // [13]    slot 38
+    logic [0:0]   spare6_write_lock ;    // [12]    slot 38
+    logic [0:0]   spare5_read_lock ;     // [11]    slot 37
+    logic [0:0]   spare5_write_lock ;    // [10]    slot 37
+    logic [0:0]   spare4_read_lock ;     // [9]     slot 36
+    logic [0:0]   spare4_write_lock ;    // [8]     slot 36
+    logic [0:0]   spare3_read_lock ;     // [7]     slot 35
+    logic [0:0]   spare3_write_lock ;    // [6]     slot 35
+    logic [0:0]   spare2_read_lock ;     // [5]     slot 34
+    logic [0:0]   spare2_write_lock ;    // [4]     slot 34
+    logic [0:0]   spare1_read_lock ;     // [3]     slot 33
+    logic [0:0]   spare1_write_lock ;    // [2]     slot 33
+    logic [0:0]   spare0_read_lock ;     // [1]     slot 32
+    logic [0:0]   spare0_write_lock ;    // [0]     slot 32
   } sep_efuse_map_locks_spare_reg_t;
 
   typedef struct packed {
-    logic [23:0] rsvd;
-    logic [7:0]  lc_state;
+    logic [23:0]   rsvd ;
+    logic [7:0]   lc_state ;
   } sep_efuse_map_lc_state_reg_t;
 
 
 
   typedef struct packed {
-    logic [30:0] rsvd;
-    logic [0:0]  disable_secure_boot;
+    logic [30:0]   rsvd ;
+    logic [0:0]   disable_secure_boot ;
   } sep_efuse_map_sboot_dis_reg_t;
 
 
 
   typedef struct packed {
-    logic [30:0] rsvd;
-    logic [0:0]  transient_rma_en;
+    logic [30:0]   rsvd ;
+    logic [0:0]   transient_rma_en ;
   } sep_efuse_map_transient_rma_en_reg_t;
 
 
@@ -138,17 +138,17 @@ package sep_efuse_pkg;
   //   Test  [47:32] — forced to 0 when SECURE_TM=0 (final gate in LCC)
   //   Func  [63:48] — always gated by SIP_DIS/SYS_DIS per LC state
   typedef struct packed {
-    logic [15:0] func_reserved;        // [63:48] Function group
-    logic [8:0]  test_reserved;        // [47:39] Test group (reserved)
-    logic [0:0]  fuse_vendor_test;     // [38]    FUSE_VENDOR_TEST
-    logic [0:0]  smc_fuse_test;        // [37]    SMC_FUSE_TEST
-    logic [3:0]  test_reserved_lo;     // [36:33] Test group (reserved, low)
-    logic [0:0]  sep_fuse_test;        // [32]    SEP_FUSE_TEST
-    logic [14:0] debug_reserved_dbg2;  // [31:17] DBG_2 reserved
-    logic [0:0]  sip_debug;            // [16]    SIP_DBG (DBG_2)
-    logic [13:0] debug_reserved_dbg1;  // [15:2]  DBG_1 reserved
-    logic [0:0]  chiplet_dbg;          // [1]     CHIPLET_DBG (DBG_1)
-    logic [0:0]  sep_debug;            // [0]     SEP_DBG (DBG_1)
+    logic [15:0]  func_reserved ;         // [63:48] Function group
+    logic [8:0]   test_reserved ;         // [47:39] Test group (reserved)
+    logic [0:0]   fuse_vendor_test ;      // [38]    FUSE_VENDOR_TEST
+    logic [0:0]   smc_fuse_test ;         // [37]    SMC_FUSE_TEST
+    logic [3:0]   test_reserved_lo ;      // [36:33] Test group (reserved, low)
+    logic [0:0]   sep_fuse_test ;         // [32]    SEP_FUSE_TEST
+    logic [14:0]  debug_reserved_dbg2 ;   // [31:17] DBG_2 reserved
+    logic [0:0]   sip_debug ;             // [16]    SIP_DBG (DBG_2)
+    logic [13:0]  debug_reserved_dbg1 ;   // [15:2]  DBG_1 reserved
+    logic [0:0]   chiplet_dbg ;           // [1]     CHIPLET_DBG (DBG_1)
+    logic [0:0]   sep_debug ;             // [0]     SEP_DBG (DBG_1)
   } sep_efuse_map_lc_disable_reg_t;
 
 
@@ -198,24 +198,24 @@ package sep_efuse_pkg;
 
 
   typedef struct packed {
-    logic [29:0] reserved;
-    logic [1:0]  rpt;
+    logic [29:0]   reserved ;
+    logic [1:0]   rpt ;
   } sep_efuse_map_status_rpt_reg_t;
 
 
 
   typedef struct packed {
-    logic [25:0] reserved;
-    logic [4:0]  rom_swap_ctrl;
-    logic [0:0]  rom_endianness_ctrl;
+    logic [25:0]   reserved ;
+    logic [4:0]    rom_swap_ctrl ;
+    logic [0:0]    rom_endianness_ctrl ;
   } sep_efuse_map_rom_ctl_reg_t;
 
 
 
   typedef struct packed {
-    logic [12:0] spi_control_field_en_rsvd;
-    logic [10:0] smu_pll_sysclk;
-    logic [7:0]  spi_control_field_en;
+    logic [12:0]   spi_control_field_en_rsvd ;
+    logic [10:0]   smu_pll_sysclk ;
+    logic [7:0]    spi_control_field_en ;
   } sep_efuse_map_sep_spi_ctrl_field_en_reg_t;
 
 
@@ -258,17 +258,17 @@ package sep_efuse_pkg;
 
 
   typedef struct packed {
-    logic [29:0] reserved;
-    logic [1:0]  required_signers;
+    logic [29:0]   reserved ;
+    logic [1:0]    required_signers ;
   } sep_efuse_map_required_signers_v_t;
 
 
 
   typedef struct packed {
-    logic [19:0] reserved;
-    logic [3:0]  sys_algs;
-    logic [3:0]  sip_algs;
-    logic [3:0]  chiplet_algs;
+    logic [19:0]   reserved ;
+    logic [3:0]    sys_algs ;
+    logic [3:0]    sip_algs ;
+    logic [3:0]    chiplet_algs ;
   } sep_efuse_map_required_algs_reg_t;
 
 
@@ -293,105 +293,105 @@ package sep_efuse_pkg;
   // -------------------------------------------------------------------------
   typedef struct packed {
     // 0x3e0: spare7 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare7;
+    sep_efuse_map_spare_256_reg_t              spare7 ;
     // 0x3c0: spare6 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare6;
+    sep_efuse_map_spare_256_reg_t              spare6 ;
     // 0x3a0: spare5 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare5;
+    sep_efuse_map_spare_256_reg_t              spare5 ;
     // 0x380: spare4 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare4;
+    sep_efuse_map_spare_256_reg_t              spare4 ;
     // 0x360: spare3 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare3;
+    sep_efuse_map_spare_256_reg_t              spare3 ;
     // 0x340: spare2 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare2;
+    sep_efuse_map_spare_256_reg_t              spare2 ;
     // 0x320: spare1 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare1;
+    sep_efuse_map_spare_256_reg_t              spare1 ;
     // 0x300: spare0 (256 bits)
-    sep_efuse_map_spare_256_reg_t                spare0;
+    sep_efuse_map_spare_256_reg_t              spare0 ;
     // 0x2e0: SEP_SYS_ID (256 bits)
-    sep_efuse_map_sep_id_reg_t                   sep_sys_id;
+    sep_efuse_map_sep_id_reg_t                 sep_sys_id ;
     // 0x2c0: SEP_SIP_ID (256 bits)
-    sep_efuse_map_sep_id_reg_t                   sep_sip_id;
+    sep_efuse_map_sep_id_reg_t                 sep_sip_id ;
     // 0x2a0: SEP_CHIPLET_ID (256 bits)
-    sep_efuse_map_sep_id_reg_t                   sep_chiplet_id;
+    sep_efuse_map_sep_id_reg_t                 sep_chiplet_id ;
     // 0x280: SIP_PUBK_PQC_HASH1 (256 bits)
-    sep_efuse_map_pqc_hash_reg_t                 sip_pubk_pqc_hash1;
+    sep_efuse_map_pqc_hash_reg_t               sip_pubk_pqc_hash1 ;
     // 0x260: SIP_PUBK_HASH1 (256 bits)
-    sep_efuse_map_sip_pubk_hash_reg_t            sip_pubk_hash1;
+    sep_efuse_map_sip_pubk_hash_reg_t          sip_pubk_hash1 ;
     // 0x240: SYS_PUBK_PQC_HASH (256 bits)
-    sep_efuse_map_pqc_hash_reg_t                 sys_pubk_pqc_hash;
+    sep_efuse_map_pqc_hash_reg_t               sys_pubk_pqc_hash ;
     // 0x220: SIP_PUBK_PQC_HASH0 (256 bits)
-    sep_efuse_map_pqc_hash_reg_t                 sip_pubk_pqc_hash0;
+    sep_efuse_map_pqc_hash_reg_t               sip_pubk_pqc_hash0 ;
     // 0x200: CHIPLET_PUBK_PQC_HASH1 (256 bits)
-    sep_efuse_map_pqc_hash_reg_t                 chiplet_pubk_pqc_hash1;
+    sep_efuse_map_pqc_hash_reg_t               chiplet_pubk_pqc_hash1 ;
     // 0x1e0: CHIPLET_PUBK_PQC_HASH0 (256 bits)
-    sep_efuse_map_pqc_hash_reg_t                 chiplet_pubk_pqc_hash0;
+    sep_efuse_map_pqc_hash_reg_t               chiplet_pubk_pqc_hash0 ;
     // 0x1dc: REQUIRED_ALGS (32 bits)
-    sep_efuse_map_required_algs_reg_t            required_algs;
+    sep_efuse_map_required_algs_reg_t          required_algs ;
     // 0x1d8: REQUIRED_SIGNERS (32 bits)
-    sep_efuse_map_required_signers_v_t           required_signers;
+    sep_efuse_map_required_signers_v_t         required_signers ;
     // 0x1b8: CHIPLET_PUBK_HASH1 (256 bits)
-    sep_efuse_map_chiplet_pubk_hash_reg_t        chiplet_pubk_hash1;
+    sep_efuse_map_chiplet_pubk_hash_reg_t      chiplet_pubk_hash1 ;
     // 0x198: CHIPLET_PUBK_HASH0 (256 bits)
-    sep_efuse_map_chiplet_pubk_hash_reg_t        chiplet_pubk_hash0;
+    sep_efuse_map_chiplet_pubk_hash_reg_t      chiplet_pubk_hash0 ;
     // 0x194: SPI_RB_VALID_TIME (32 bits)
-    sep_efuse_map_spi_rb_valid_time_reg_t        spi_rb_valid_time;
+    sep_efuse_map_spi_rb_valid_time_reg_t      spi_rb_valid_time ;
     // 0x190: SPI_PHY_MISC (32 bits)
-    sep_efuse_map_spi_phy_misc_reg_t             spi_phy_misc;
+    sep_efuse_map_spi_phy_misc_reg_t           spi_phy_misc ;
     // 0x18c: SPI_PHY_DLL_MASTER (32 bits)
-    sep_efuse_map_spi_phy_dll_master_reg_t       spi_phy_dll_master;
+    sep_efuse_map_spi_phy_dll_master_reg_t     spi_phy_dll_master ;
     // 0x188: SPI_PHY_DLL_SLAVE (32 bits)
-    sep_efuse_map_spi_phy_dll_slave_reg_t        spi_phy_dll_slave;
+    sep_efuse_map_spi_phy_dll_slave_reg_t      spi_phy_dll_slave ;
     // 0x184: SPI_PHY_GATE_LPBK (32 bits)
-    sep_efuse_map_spi_phy_gate_lpbk_reg_t        spi_phy_gate_lpbk;
+    sep_efuse_map_spi_phy_gate_lpbk_reg_t      spi_phy_gate_lpbk ;
     // 0x180: SPI_PHY_DQS_TIMING (32 bits)
-    sep_efuse_map_spi_phy_dqs_timing_reg_t       spi_phy_dqs_timing;
+    sep_efuse_map_spi_phy_dqs_timing_reg_t     spi_phy_dqs_timing ;
     // 0x17c: SPI_PHY_DQ_TIMING (32 bits)
-    sep_efuse_map_spi_phy_dq_timing_reg_t        spi_phy_dq_timing;
+    sep_efuse_map_spi_phy_dq_timing_reg_t      spi_phy_dq_timing ;
     // 0x178: SPI_DISCOVERY_CTRL (32 bits)
-    sep_efuse_map_spi_discovery_ctrl_reg_t       spi_discovery_ctrl;
+    sep_efuse_map_spi_discovery_ctrl_reg_t     spi_discovery_ctrl ;
     // 0x174: SEP_SPI_CTRL_FIELD_EN (32 bits)
-    sep_efuse_map_sep_spi_ctrl_field_en_reg_t    sep_spi_ctrl_field_en;
+    sep_efuse_map_sep_spi_ctrl_field_en_reg_t  sep_spi_ctrl_field_en ;
     // 0x170: ROM_CTL (32 bits)
-    sep_efuse_map_rom_ctl_reg_t                  rom_ctl;
+    sep_efuse_map_rom_ctl_reg_t                rom_ctl ;
     // 0x16c: STATUS_RPT (32 bits)
-    sep_efuse_map_status_rpt_reg_t               status_rpt;
+    sep_efuse_map_status_rpt_reg_t             status_rpt ;
     // 0x14c: SYS_UID (256 bits)
-    sep_efuse_map_sys_uid_reg_t                  sys_uid;
+    sep_efuse_map_sys_uid_reg_t                sys_uid ;
     // 0x12c: SYS_PUBK_HASH (256 bits)
-    sep_efuse_map_sys_pubk_hash_reg_t            sys_pubk_hash;
+    sep_efuse_map_sys_pubk_hash_reg_t          sys_pubk_hash ;
     // 0x10c: SIP_UID (256 bits)
-    sep_efuse_map_sip_uid_reg_t                  sip_uid;
+    sep_efuse_map_sip_uid_reg_t                sip_uid ;
     // 0xec: SIP_PUBK_HASH0 (256 bits)
-    sep_efuse_map_sip_pubk_hash_reg_t            sip_pubk_hash0;
+    sep_efuse_map_sip_pubk_hash_reg_t          sip_pubk_hash0 ;
     // 0xcc: CHIPLET_UID (256 bits)
-    sep_efuse_map_chiplet_uid_reg_t              chiplet_uid;
+    sep_efuse_map_chiplet_uid_reg_t            chiplet_uid ;
     // 0xac: BL2_VERSION (256 bits)
-    sep_efuse_map_bl2_version_reg_t              bl2_version;
+    sep_efuse_map_bl2_version_reg_t            bl2_version ;
     // 0x8c: BL1_VERSION (256 bits)
-    sep_efuse_map_bl1_version_reg_t              bl1_version;
+    sep_efuse_map_bl1_version_reg_t            bl1_version ;
     // 0x88: CHIPLET_PUBK_REVOKE (32 bits)
-    sep_efuse_map_chiplet_pubk_revoke_reg_t      chiplet_pubk_revoke;
+    sep_efuse_map_chiplet_pubk_revoke_reg_t    chiplet_pubk_revoke ;
     // 0x68: CLASS_KEY (256 bits)
-    sep_efuse_map_class_key_reg_t                class_key;
+    sep_efuse_map_class_key_reg_t              class_key ;
     // 0x48: RMA_CHIPLET_TOKEN_DIGEST (256 bits)
-    sep_efuse_map_rma_chiplet_token_digest_reg_t rma_chiplet_token_digest;
+    sep_efuse_map_rma_chiplet_token_digest_reg_t rma_chiplet_token_digest ;
     // 0x28: RMA_SIP_TOKEN_DIGEST (256 bits)
-    sep_efuse_map_rma_sip_token_digest_reg_t     rma_sip_token_digest;
+    sep_efuse_map_rma_sip_token_digest_reg_t   rma_sip_token_digest ;
     // 0x20: SYS_DIS (64 bits)
-    sep_efuse_map_lc_disable_reg_t               sys_dis;
+    sep_efuse_map_lc_disable_reg_t             sys_dis ;
     // 0x18: SIP_DIS (64 bits)
-    sep_efuse_map_lc_disable_reg_t               sip_dis;
+    sep_efuse_map_lc_disable_reg_t             sip_dis ;
     // 0x14: TRANSIENT_RMA_EN (32 bits)
-    sep_efuse_map_transient_rma_en_reg_t         transient_rma_en;
+    sep_efuse_map_transient_rma_en_reg_t       transient_rma_en ;
     // 0x10: SBOOT_DIS (32 bits)
-    sep_efuse_map_sboot_dis_reg_t                sboot_dis;
+    sep_efuse_map_sboot_dis_reg_t              sboot_dis ;
     // 0x0c: LC_STATE (32 bits)
-    sep_efuse_map_lc_state_reg_t                 lc_state;
+    sep_efuse_map_lc_state_reg_t               lc_state ;
     // 0x08: LOCKS_SPARE (32 bits)
-    sep_efuse_map_locks_spare_reg_t              locks_spare;
+    sep_efuse_map_locks_spare_reg_t            locks_spare ;
     // 0x00: LOCKS (64 bits)
-    sep_efuse_map_locks_reg_t                    locks;
+    sep_efuse_map_locks_reg_t                  locks ;
   } sep_efuse_map_regmap_t;
   `include "apb/typedef.svh"
   `include "axi/typedef.svh"

@@ -23,63 +23,63 @@ module i3ccore_stub
   parameter int unsigned DatAw = i3c_pkg::DatAw,
   parameter int unsigned DctAw = i3c_pkg::DctAw
 ) (
-  input wire logic clk_i,
-  input wire logic rst_ni,
+  input  wire logic clk_i,
+  input  wire logic rst_ni,
 
   // AXI4-Lite slave interface
   // Write Address Channel
-  input  wire logic            awvalid_i,
-  output logic                 awready_o,
-  input  wire reg_addr_t       awaddr_i,
-  input  wire logic      [2:0] awprot_i,
+  input  wire logic           awvalid_i,
+  output logic                awready_o,
+  input  wire reg_addr_t      awaddr_i,
+  input  wire logic [2:0]     awprot_i,
 
   // Write Data Channel
-  input  wire logic      wvalid_i,
-  output logic           wready_o,
-  input  wire reg_data_t wdata_i,
-  input  wire reg_strb_t wstrb_i,
+  input  wire logic           wvalid_i,
+  output logic                wready_o,
+  input  wire reg_data_t      wdata_i,
+  input  wire reg_strb_t      wstrb_i,
 
   // Write Response Channel
-  output logic            bvalid_o,
-  input  wire logic       bready_i,
-  output logic      [1:0] bresp_o,
+  output logic                bvalid_o,
+  input  wire logic           bready_i,
+  output logic [1:0]          bresp_o,
 
   // Read Address Channel
-  input  wire logic            arvalid_i,
-  output logic                 arready_o,
-  input  wire reg_addr_t       araddr_i,
-  input  wire logic      [2:0] arprot_i,
+  input  wire logic           arvalid_i,
+  output logic                arready_o,
+  input  wire reg_addr_t      araddr_i,
+  input  wire logic [2:0]     arprot_i,
 
   // Read Data Channel
-  output logic            rvalid_o,
-  input  wire logic       rready_i,
-  output reg_data_t       rdata_o,
-  output logic      [1:0] rresp_o,
+  output logic                rvalid_o,
+  input  wire logic           rready_i,
+  output reg_data_t           rdata_o,
+  output logic [1:0]          rresp_o,
 
   // Interrupts - one per I3C instance
-  output logic [NUM_I3C-1:0] irq_o,
+  output logic [NUM_I3C-1:0]  irq_o,
 
   // I3C bus signals - one set per instance
-  input wire logic [NUM_I3C-1:0] scl_i,
-  input wire logic [NUM_I3C-1:0] sda_i,
-  output logic [NUM_I3C-1:0] scl_o,
-  output logic [NUM_I3C-1:0] sda_o,
-  output logic [NUM_I3C-1:0] scl_oe_o,
-  output logic [NUM_I3C-1:0] sda_oe_o,
-  output logic [NUM_I3C-1:0] sel_od_pp_o,
+  input  wire logic [NUM_I3C-1:0] scl_i,
+  input  wire logic [NUM_I3C-1:0] sda_i,
+  output logic [NUM_I3C-1:0]  scl_o,
+  output logic [NUM_I3C-1:0]  sda_o,
+  output logic [NUM_I3C-1:0]  scl_oe_o,
+  output logic [NUM_I3C-1:0]  sda_oe_o,
+  output logic [NUM_I3C-1:0]  sel_od_pp_o,
 
   // Recovery interface signals
-  output logic [NUM_I3C-1:0] recovery_payload_available_o,
-  output logic [NUM_I3C-1:0] recovery_image_activated_o,
-  output logic [NUM_I3C-1:0] peripheral_reset_o,
-  input wire logic [NUM_I3C-1:0] peripheral_reset_done_i,
-  output logic [NUM_I3C-1:0] escalated_reset_o,
+  output logic [NUM_I3C-1:0]  recovery_payload_available_o,
+  output logic [NUM_I3C-1:0]  recovery_image_activated_o,
+  output logic [NUM_I3C-1:0]  peripheral_reset_o,
+  input  wire logic [NUM_I3C-1:0] peripheral_reset_done_i,
+  output logic [NUM_I3C-1:0]  escalated_reset_o,
 
   // I3C DAT/DCT memory interfaces (NUM_I3C instances)
-  input  wire i3c_pkg::dat_mem_src_t [NUM_I3C-1:0] dat_mem_src_i,
-  output i3c_pkg::dat_mem_sink_t     [NUM_I3C-1:0] dat_mem_sink_o,
-  input  wire i3c_pkg::dct_mem_src_t [NUM_I3C-1:0] dct_mem_src_i,
-  output i3c_pkg::dct_mem_sink_t     [NUM_I3C-1:0] dct_mem_sink_o
+  input  wire i3c_pkg::dat_mem_src_t  [NUM_I3C-1:0] dat_mem_src_i,
+  output i3c_pkg::dat_mem_sink_t      [NUM_I3C-1:0] dat_mem_sink_o,
+  input  wire i3c_pkg::dct_mem_src_t  [NUM_I3C-1:0] dct_mem_src_i,
+  output i3c_pkg::dct_mem_sink_t      [NUM_I3C-1:0] dct_mem_sink_o
 );
 
   ///////////////////////////////
@@ -104,29 +104,29 @@ module i3ccore_stub
   // Error slave: completes any access with an SLVERR response so the bus never
   // hangs (SLVERR lets the CPU continue executing past the access)
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH(i3ccore_wrap_pkg::REG_ADDR_WIDTH),
-    .AXI_DATA_WIDTH(i3ccore_wrap_pkg::REG_DATA_WIDTH),
-    .axil_req_t    (i3ccore_wrap_pkg::axil_req_t),
-    .axil_resp_t   (i3ccore_wrap_pkg::axil_resp_t),
-    .RESP          (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH    (i3ccore_wrap_pkg::REG_DATA_WIDTH),
-    .RESP_DATA     (32'hBADCAB1E)
+    .AXI_ADDR_WIDTH (i3ccore_wrap_pkg::REG_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (i3ccore_wrap_pkg::REG_DATA_WIDTH),
+    .axil_req_t     (i3ccore_wrap_pkg::axil_req_t),
+    .axil_resp_t    (i3ccore_wrap_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (i3ccore_wrap_pkg::REG_DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E)
   ) u_err_slv (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .axil_req_i (axil_req),
-    .axil_resp_o(axil_resp)
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .axil_req_i  (axil_req),
+    .axil_resp_o (axil_resp)
   );
 
   // Unpack response struct to the flat AXI-Lite outputs (mirrors the wrapper)
-  assign awready_o                    = axil_resp.aw_ready;
-  assign wready_o                     = axil_resp.w_ready;
-  assign bvalid_o                     = axil_resp.b_valid;
-  assign bresp_o                      = axil_resp.b.resp;
-  assign arready_o                    = axil_resp.ar_ready;
-  assign rvalid_o                     = axil_resp.r_valid;
-  assign rdata_o                      = axil_resp.r.data;
-  assign rresp_o                      = axil_resp.r.resp;
+  assign awready_o = axil_resp.aw_ready;
+  assign wready_o  = axil_resp.w_ready;
+  assign bvalid_o  = axil_resp.b_valid;
+  assign bresp_o   = axil_resp.b.resp;
+  assign arready_o = axil_resp.ar_ready;
+  assign rvalid_o  = axil_resp.r_valid;
+  assign rdata_o   = axil_resp.r.data;
+  assign rresp_o   = axil_resp.r.resp;
 
   ///////////////////////
   // Tie-off / Defaults //

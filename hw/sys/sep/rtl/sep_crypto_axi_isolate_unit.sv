@@ -20,10 +20,10 @@ module sep_crypto_axi_isolate_unit #(
   parameter type axi_req_t  = logic,
   parameter type axi_resp_t = logic
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic      clk_i,
+  input  logic      rst_ni,
   // Software reset request (active low), from sep_reset_ctrl
-  input logic sw_rst_req_ni,
+  input  logic      sw_rst_req_ni,
 
   // Slave port (from sep_crypto demux)
   input  axi_req_t  slv_req_i,
@@ -33,13 +33,13 @@ module sep_crypto_axi_isolate_unit #(
   input  axi_resp_t mst_resp_i,
 
   // Sequenced reset to the accelerator wrapper (active low)
-  output logic gated_rst_no
+  output logic      gated_rst_no
 );
 
   typedef enum logic [1:0] {
-    StReset,  // wrapper in reset, port isolated
-    StDrain,  // isolation requested, waiting for in-flight drain
-    StRun     // normal operation
+    StReset,    // wrapper in reset, port isolated
+    StDrain,    // isolation requested, waiting for in-flight drain
+    StRun       // normal operation
   } isolate_state_e;
 
   isolate_state_e state_q, state_d;
@@ -93,24 +93,24 @@ module sep_crypto_axi_isolate_unit #(
   assign gated_rst_no = ~gated_rst_q;
 
   axi_isolate #(
-    .NumPending          (NUM_PENDING),
-    .TerminateTransaction(1'b1),
-    .AtopSupport         (1'b0),
-    .AxiAddrWidth        (ADDR_WIDTH),
-    .AxiDataWidth        (DATA_WIDTH),
-    .AxiIdWidth          (ID_WIDTH),
-    .AxiUserWidth        (USER_WIDTH),
-    .axi_req_t           (axi_req_t),
-    .axi_resp_t          (axi_resp_t)
+    .NumPending           (NUM_PENDING),
+    .TerminateTransaction (1'b1),
+    .AtopSupport          (1'b0),
+    .AxiAddrWidth         (ADDR_WIDTH),
+    .AxiDataWidth         (DATA_WIDTH),
+    .AxiIdWidth           (ID_WIDTH),
+    .AxiUserWidth         (USER_WIDTH),
+    .axi_req_t            (axi_req_t),
+    .axi_resp_t           (axi_resp_t)
   ) u_axi_isolate (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .slv_req_i (slv_req_i),
-    .slv_resp_o(slv_resp_o),
-    .mst_req_o (mst_req_o),
-    .mst_resp_i(mst_resp_i),
-    .isolate_i (isolate_req),
-    .isolated_o(isolated)
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (slv_req_i),
+    .slv_resp_o (slv_resp_o),
+    .mst_req_o  (mst_req_o),
+    .mst_resp_i (mst_resp_i),
+    .isolate_i  (isolate_req),
+    .isolated_o (isolated)
   );
 
   // The wrapper reset must never assert while the port is still open

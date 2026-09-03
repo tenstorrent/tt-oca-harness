@@ -17,39 +17,39 @@
 module cross_trigger_matrix_tb_top
   import cross_trigger_matrix_pkg::*;
 (
-  input wire clk,
-  input wire rst_n,
+  input  wire                   clk,
+  input  wire                   rst_n,
 
   // AXI4-Lite management port (flattened, VIP master side)
-  input  wire        axil_awvalid,
-  input  wire [31:0] axil_awaddr,
-  input  wire [ 2:0] axil_awprot,
-  output wire        axil_awready,
+  input  wire                   axil_awvalid,
+  input  wire [31:0]            axil_awaddr,
+  input  wire [2:0]             axil_awprot,
+  output wire                   axil_awready,
 
-  input  wire        axil_wvalid,
-  input  wire [31:0] axil_wdata,
-  input  wire [ 3:0] axil_wstrb,
-  output wire        axil_wready,
+  input  wire                   axil_wvalid,
+  input  wire [31:0]            axil_wdata,
+  input  wire [3:0]             axil_wstrb,
+  output wire                   axil_wready,
 
-  input  wire       axil_bready,
-  output wire       axil_bvalid,
-  output wire [1:0] axil_bresp,
+  input  wire                   axil_bready,
+  output wire                   axil_bvalid,
+  output wire [1:0]             axil_bresp,
 
-  input  wire        axil_arvalid,
-  input  wire [31:0] axil_araddr,
-  input  wire [ 2:0] axil_arprot,
-  output wire        axil_arready,
+  input  wire                   axil_arvalid,
+  input  wire [31:0]            axil_araddr,
+  input  wire [2:0]             axil_arprot,
+  output wire                   axil_arready,
 
-  input  wire        axil_rready,
-  output wire        axil_rvalid,
-  output wire [31:0] axil_rdata,
-  output wire [ 1:0] axil_rresp,
+  input  wire                   axil_rready,
+  output wire                   axil_rvalid,
+  output wire [31:0]            axil_rdata,
+  output wire [1:0]             axil_rresp,
 
   // Cross trigger destination inputs (sources for the matrix)
-  input wire [NUM_CT_DST-1:0] ct_dst,
+  input  wire [NUM_CT_DST-1:0]  ct_dst,
 
   // Cross trigger source outputs (sinks for the matrix)
-  output wire [NUM_CT_SRC-1:0] ct_src
+  output wire [NUM_CT_SRC-1:0]  ct_src
 );
 
   ctm_axil_req_t  axil_req;
@@ -80,14 +80,14 @@ module cross_trigger_matrix_tb_top
   assign axil_rresp        = axil_resp.r.resp;
 
   cross_trigger_matrix u_dut (
-    .clk_i (clk),
-    .rst_ni(rst_n),
+    .clk_i       (clk),
+    .rst_ni      (rst_n),
 
-    .axil_req_i (axil_req),
-    .axil_resp_o(axil_resp),
+    .axil_req_i  (axil_req),
+    .axil_resp_o (axil_resp),
 
-    .ct_dst_i(ct_dst),
-    .ct_src_o(ct_src)
+    .ct_dst_i    (ct_dst),
+    .ct_src_o    (ct_src)
   );
 
 endmodule : cross_trigger_matrix_tb_top

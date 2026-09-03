@@ -10,7 +10,7 @@
 module telemetry_receiver
   import telemetry_receiver_pkg::*;
 #(
-  parameter int unsigned BUFFER_DEPTH                 = 8,  // Must be greater than or equal to 2
+  parameter int unsigned BUFFER_DEPTH                 = 8, // Must be greater than or equal to 2
   parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,
 
   // Dependent Parameters
@@ -36,12 +36,12 @@ module telemetry_receiver
   localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0]
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic            clk_i,
+  input  logic            rst_ni,
 
   // AXI4-Lite Register Interface
-  input  axil_req_t  axil_req_i,
-  output axil_resp_t axil_resp_o,
+  input  axil_req_t       axil_req_i,
+  output axil_resp_t      axil_resp_o,
 
   // ATB Telemetry Interface
   input  telemetry_data_t atdata_i,
@@ -52,14 +52,14 @@ module telemetry_receiver
   input  logic            afready_i,
 
   // Interrupt Interface
-  output logic irq_o,
+  output logic            irq_o,
 
   // Debug Interface
   // [0]: missing_last_event      - assembly buffer filled without last_packet marker
   // [1]: message_buffer_full     - message buffer overflow (dropping oldest entry)
   // [2]: message_buffer_empty    - no messages available to read
   // [3]: assembly_buffer_full    - assembly buffer at capacity
-  output logic [3:0] debug_o
+  output logic [3:0]      debug_o
 );
 
   `include "prim_assert.sv"
@@ -84,16 +84,16 @@ module telemetry_receiver
   // Signal Declarations //
   /////////////////////////
 
-  logic                                                 telemetry_receiver_flush;
+  logic telemetry_receiver_flush;
 
-  logic                                                 last_packet_received;
+  logic last_packet_received;
 
-  telemetry_packet_t  [MAX_NUM_PACKETS_PER_MESSAGE-1:0] received_telemetry_packets;
-  telemetry_message_t                                   received_telemetry_message;
+  telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] received_telemetry_packets;
+  telemetry_message_t                                  received_telemetry_message;
 
-  logic                                                 message_buffer_pop;
+  logic message_buffer_pop;
   logic message_buffer_full, message_buffer_empty;
-  telemetry_message_t  message_buffer_rd_data;
+  telemetry_message_t message_buffer_rd_data;
 
   message_buffer_ptr_t buffer_threshold;
 
@@ -131,9 +131,8 @@ module telemetry_receiver
 
   logic end_of_packet, end_of_packet_q;
 
-  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(
-      NUM_BEATS_PER_PACKET
-  )-1:0] && telemetry_beat_received;
+  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(NUM_BEATS_PER_PACKET)-1:0] &&
+                           telemetry_beat_received;
 
   assign last_packet_received =
         end_of_packet_q &&
@@ -183,11 +182,11 @@ module telemetry_receiver
   assign received_telemetry_message.probe_id = get_telemetry_probe_id(received_telemetry_packets);
 
   logic [PACKET_INDEX_WIDTH-1:0] packet_index;
-  logic [ BLOCK_INDEX_WIDTH-1:0] block_index;
+  logic [BLOCK_INDEX_WIDTH-1:0]  block_index;
 
   always_comb begin
     packet_index = 0;
-    block_index  = 1;
+    block_index = 1;
 
     for (int i = 0; i < MAX_NUM_COUNTERS_PER_MESSAGE; i++) begin
       received_telemetry_message.counters[i].vld = 1'b1;
@@ -316,35 +315,35 @@ module telemetry_receiver
   telemetry_receiver_reg_pkg::telemetry_receiver__out_t reg_out;
 
   telemetry_receiver_reg telemetry_receiver_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-    .s_axil_awready(axil_resp_o.aw_ready),
-    .s_axil_awvalid(axil_req_i.aw_valid),
-    .s_axil_awaddr (axil_req_i.aw.addr),
-    .s_axil_awprot (axil_req_i.aw.prot),
-    .s_axil_wready (axil_resp_o.w_ready),
-    .s_axil_wvalid (axil_req_i.w_valid),
-    .s_axil_wdata  (axil_req_i.w.data),
-    .s_axil_wstrb  (axil_req_i.w.strb),
-    .s_axil_bready (axil_req_i.b_ready),
-    .s_axil_bvalid (axil_resp_o.b_valid),
-    .s_axil_bresp  (axil_resp_o.b.resp),
-    .s_axil_arready(axil_resp_o.ar_ready),
-    .s_axil_arvalid(axil_req_i.ar_valid),
-    .s_axil_araddr (axil_req_i.ar.addr),
-    .s_axil_arprot (axil_req_i.ar.prot),
-    .s_axil_rready (axil_req_i.r_ready),
-    .s_axil_rvalid (axil_resp_o.r_valid),
-    .s_axil_rdata  (axil_resp_o.r.data),
-    .s_axil_rresp  (axil_resp_o.r.resp),
+    .s_axil_awready (axil_resp_o.aw_ready),
+    .s_axil_awvalid (axil_req_i.aw_valid),
+    .s_axil_awaddr  (axil_req_i.aw.addr),
+    .s_axil_awprot  (axil_req_i.aw.prot),
+    .s_axil_wready  (axil_resp_o.w_ready),
+    .s_axil_wvalid  (axil_req_i.w_valid),
+    .s_axil_wdata   (axil_req_i.w.data),
+    .s_axil_wstrb   (axil_req_i.w.strb),
+    .s_axil_bready  (axil_req_i.b_ready),
+    .s_axil_bvalid  (axil_resp_o.b_valid),
+    .s_axil_bresp   (axil_resp_o.b.resp),
+    .s_axil_arready (axil_resp_o.ar_ready),
+    .s_axil_arvalid (axil_req_i.ar_valid),
+    .s_axil_araddr  (axil_req_i.ar.addr),
+    .s_axil_arprot  (axil_req_i.ar.prot),
+    .s_axil_rready  (axil_req_i.r_ready),
+    .s_axil_rvalid  (axil_resp_o.r_valid),
+    .s_axil_rdata   (axil_resp_o.r.data),
+    .s_axil_rresp   (axil_resp_o.r.resp),
 
-    .hwif_in (reg_in),
-    .hwif_out(reg_out)
+    .hwif_in        (reg_in),
+    .hwif_out       (reg_out)
   );
 
   // CTRL Register
-  assign message_buffer_pop = reg_out.CTRL.BUFFER_POP.value;
+  assign message_buffer_pop       = reg_out.CTRL.BUFFER_POP.value;
   assign telemetry_receiver_flush = reg_out.CTRL.TELEMETRY_RX_FLUSH.value;
 
   assign afvalid_o = reg_out.CTRL.TELEMETRY_TX_FLUSH.value;
@@ -354,7 +353,7 @@ module telemetry_receiver
 
   // STATUS Register
   assign reg_in.STATUS.BUFFER_EMPTY.next = message_buffer_empty;
-  assign reg_in.STATUS.BUFFER_FULL.next = message_buffer_full;
+  assign reg_in.STATUS.BUFFER_FULL.next  = message_buffer_full;
 
   // INTR_STATE Register
   assign reg_in.INTR_STATUS.MISSING_LAST.next =
@@ -367,7 +366,7 @@ module telemetry_receiver
   assign buffer_threshold_intr_en = reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value;
 
   // INTR_TEST Register
-  assign missing_last_intr_test = reg_out.INTR_TEST.MISSING_LAST.value;
+  assign missing_last_intr_test     = reg_out.INTR_TEST.MISSING_LAST.value;
   assign buffer_threshold_intr_test = reg_out.INTR_TEST.BUFFER_THRESHOLD.value;
 
   // TELEMETRY_PROBE_ID Register

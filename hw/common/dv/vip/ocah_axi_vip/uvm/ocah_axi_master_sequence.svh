@@ -87,9 +87,9 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
                     input ocah_axi_burst_e burst = OCAH_AXI_BURST_INCR, input bit [2:0] prot = '0,
                     input bit check_response = 1'b1, input bit allow_timeout = 1'b0);
     ocah_axi_item it = ocah_axi_item::type_id::create("write");
-    it.protocol  = resolve_cfg().protocol;
-    it.direction = OCAH_AXI_DIR_WRITE;
-    it.address   = addr;
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_WRITE;
+    it.address        = addr;
     it.data_words.push_back(data);
     it.strobes.push_back(resolve_strb(strb));
     it.size           = resolve_size(size);
@@ -152,9 +152,9 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
       input int unsigned b_ready_delay = 0, input bit [7:0] strb = 8'hFF, input int size = -1,
       input bit [2:0] prot = '0, input bit check_response = 1'b1, input bit allow_timeout = 1'b0);
     ocah_axi_item it = ocah_axi_item::type_id::create("write_skewed");
-    it.protocol  = resolve_cfg().protocol;
-    it.direction = OCAH_AXI_DIR_WRITE;
-    it.address   = addr;
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_WRITE;
+    it.address        = addr;
     it.data_words.push_back(data);
     it.strobes.push_back(resolve_strb(strb));
     it.size           = resolve_size(size);
@@ -199,10 +199,10 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
     ocah_axi_item it = ocah_axi_item::type_id::create("burst_write");
     if (data_words.size() == 0)
       `uvm_fatal(get_type_name(), "burst_write_result called with empty data_words")
-    it.protocol   = resolve_cfg().protocol;
-    it.direction  = OCAH_AXI_DIR_WRITE;
-    it.address    = addr;
-    it.data_words = data_words;
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_WRITE;
+    it.address        = addr;
+    it.data_words     = data_words;
     foreach (data_words[i])
       it.strobes.push_back((i < strb_words.size()) ? resolve_strb(strb_words[i]) : cfg.full_strb());
     it.size           = resolve_size(size);

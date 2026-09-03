@@ -11,46 +11,46 @@ module gpio_shim
   parameter bit ENABLE_PULL = 1'b0,
   parameter bit USE_PULL_UP = 1'b0
 ) (
-  input logic clk_i,
-  input logic rst_primary_ni,
-  input logic rst_cold_ni,
-  input logic test_en_i,
+  input  logic        clk_i,
+  input  logic        rst_primary_ni,
+  input  logic        rst_cold_ni,
+  input  logic        test_en_i,
 
   // GPIO request/response
-  input  wire core2pad_i,
-  input  wire core2pad_en_i,
-  output wire pad2core_o,
-  input  wire pad2core_en_i,
+  input  wire         core2pad_i,
+  input  wire         core2pad_en_i,
+  output wire         pad2core_o,
+  input  wire         pad2core_en_i,
 
   // GPIO 2nd HW Function Override
-  input  logic core2pad_ovrd_i,
-  input  logic core2pad_en_ovrd_i,
-  output logic pad2core_ovrd_o,
-  input  logic pad2core_en_ovrd_i,
+  input  logic        core2pad_ovrd_i,
+  input  logic        core2pad_en_ovrd_i,
+  output logic        pad2core_ovrd_o,
+  input  logic        pad2core_en_ovrd_i,
 
   // Safety preempt: when asserted, force the primary/normal plane regardless
   // of hw2_ovrd (e.g. CAT-THERM preempts a 2nd-HW-function override)
-  input logic force_primary_i,
+  input  logic        force_primary_i,
 
   // External GPIO Control
-  input logic       ext_intf_sel_i,
-  input logic       reg_lsio_sel_i,
-  input logic       reg_lsio_disable_i,
-  input logic [2:0] ext_drive_strength_i,
-  input logic       ext_pull_en_i,
-  input logic       ext_pull_sel_i,
-  input logic       ext_gf_disable_i,
+  input  logic        ext_intf_sel_i,
+  input  logic        reg_lsio_sel_i,
+  input  logic        reg_lsio_disable_i,
+  input  logic [2:0]  ext_drive_strength_i,
+  input  logic        ext_pull_en_i,
+  input  logic        ext_pull_sel_i,
+  input  logic        ext_gf_disable_i,
 
   // Strap
-  output logic captured_strap_o,
+  output logic        captured_strap_o,
 
   // GPIO Hardware Interface
-  input  logic               gpio_in_i,
-  output logic               gpio_out_o,
-  output logic               gpio_in_en_o,
-  output logic               gpio_out_en_o,
-  output gpio_model_ctrl_t   gpio_ctrl_o,
-  input  gpio_model_status_t gpio_status_i,
+  input  logic                gpio_in_i,
+  output logic                gpio_out_o,
+  output logic                gpio_in_en_o,
+  output logic                gpio_out_en_o,
+  output gpio_model_ctrl_t    gpio_ctrl_o,
+  input  gpio_model_status_t  gpio_status_i,
 
 
   // GPIO Register Interface
@@ -69,10 +69,10 @@ module gpio_shim
 
   // Decode logic for err slv
 
-  gpio_axil_req_t axil_req_to_demux;
+  gpio_axil_req_t  axil_req_to_demux;
   gpio_axil_resp_t axil_resp_from_demux;
 
-  gpio_axil_req_t [1:0] axil_reqs_demuxed;
+  gpio_axil_req_t  [1:0] axil_reqs_demuxed;
   gpio_axil_resp_t [1:0] axil_resps_demuxed;
 
   assign axil_req_to_demux = axil_req_i;
@@ -98,21 +98,21 @@ module gpio_shim
   end
 
   axi_lite_demux #(
-    .aw_chan_t  (gpio_axil_aw_chan_t),
-    .w_chan_t   (gpio_axil_w_chan_t),
-    .b_chan_t   (gpio_axil_b_chan_t),
-    .ar_chan_t  (gpio_axil_ar_chan_t),
-    .r_chan_t   (gpio_axil_r_chan_t),
-    .axi_req_t  (gpio_axil_req_t),
-    .axi_resp_t (gpio_axil_resp_t),
-    .NoMstPorts (2),
-    .MaxTrans   (1),
-    .FallThrough(1'b0),
-    .SpillAw    (1'b0),
-    .SpillW     (1'b0),
-    .SpillB     (1'b0),
-    .SpillAr    (1'b0),
-    .SpillR     (1'b0)
+    .aw_chan_t   (gpio_axil_aw_chan_t),
+    .w_chan_t    (gpio_axil_w_chan_t),
+    .b_chan_t    (gpio_axil_b_chan_t),
+    .ar_chan_t   (gpio_axil_ar_chan_t),
+    .r_chan_t    (gpio_axil_r_chan_t),
+    .axi_req_t   (gpio_axil_req_t),
+    .axi_resp_t  (gpio_axil_resp_t),
+    .NoMstPorts  (2),
+    .MaxTrans    (1),
+    .FallThrough (1'b0),
+    .SpillAw     (1'b0),
+    .SpillW      (1'b0),
+    .SpillB      (1'b0),
+    .SpillAr     (1'b0),
+    .SpillR      (1'b0)
   ) shim_axil_demux (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
@@ -207,14 +207,14 @@ module gpio_shim
   assign pad2core_o = pad2core_muxed;
 
   always_comb begin
-    gpio_ctrl_o.gpio_drive_strength = 3'b010;  // default taken from RDL
+    gpio_ctrl_o.gpio_drive_strength = 3'b010; // default taken from RDL
     gpio_ctrl_o.gpio_pull_en = ENABLE_PULL;
     gpio_ctrl_o.gpio_pull_sel = USE_PULL_UP;
-    gpio_ctrl_o.gpio_sps = 1'b0;  // default inactive
+    gpio_ctrl_o.gpio_sps = 1'b0; // default inactive
     gpio_ctrl_o.gpio_glitch_filter_enable = 1'b1; // enabled by default, meaning GPIO uses a Schmitt trigger
 
     if (~rst_cold_ni) begin
-      gpio_ctrl_o.gpio_drive_strength = 3'b010;  // default taken from RDL
+      gpio_ctrl_o.gpio_drive_strength = 3'b010; // default taken from RDL
       gpio_ctrl_o.gpio_pull_en = ENABLE_PULL;
       gpio_ctrl_o.gpio_pull_sel = USE_PULL_UP;
       gpio_ctrl_o.gpio_sps = 1'b0;
@@ -223,13 +223,13 @@ module gpio_shim
       gpio_ctrl_o.gpio_drive_strength = reg__drive_strength;
       gpio_ctrl_o.gpio_pull_en = reg__pull_enable;
       gpio_ctrl_o.gpio_pull_sel = reg__pull_select;
-      gpio_ctrl_o.gpio_sps = 1'b0;  // maintain default
+      gpio_ctrl_o.gpio_sps = 1'b0; // maintain default
       gpio_ctrl_o.gpio_glitch_filter_enable = reg__schmitt_select;
     end else if ((ext_intf_sel_i || reg_lsio_sel_i) && ~reg_lsio_disable_i) begin
       gpio_ctrl_o.gpio_drive_strength = ext_drive_strength_i;
       gpio_ctrl_o.gpio_pull_en = ext_pull_en_i;
       gpio_ctrl_o.gpio_pull_sel = ext_pull_sel_i;
-      gpio_ctrl_o.gpio_sps = 1'b0;  // maintain default
+      gpio_ctrl_o.gpio_sps = 1'b0; // maintain default
       gpio_ctrl_o.gpio_glitch_filter_enable = ~ext_gf_disable_i;
     end
   end
@@ -246,9 +246,9 @@ module gpio_shim
 
   if (INPUT_BY_DEFAULT) begin : gen_capture_strap
     prim_latch_n strap_latch (
-      .i_D (pad2core_o),
+      .i_D(pad2core_o),
       .i_Gn(rst_cold_ni),
-      .o_Q (captured_strap)
+      .o_Q(captured_strap)
     );
   end else begin : gen_no_strap
     assign captured_strap = 1'b0;

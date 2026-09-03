@@ -24,15 +24,15 @@ module entropy_decorrelator #(
   parameter int unsigned CLKDIV_WIDTH = 24,
   parameter bit          LFSR_MODE    = 1'b0
 ) (
-  input  logic                    clk_i,
-  input  logic                    rst_ni,
-  input  logic                    enable_i,
-  input  logic                    noise_i,
-  input  logic                    bypass_i,
-  input  logic [             7:0] byte_mask_i,
-  input  logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,
-  output logic [             7:0] entropy_byte_sample_o,
-  output logic                    entropy_byte_valid_o
+  input       logic                    clk_i,
+  input       logic                    rst_ni,
+  input       logic                    enable_i,
+  input       logic                    noise_i,
+  input       logic                    bypass_i,
+  input       logic [7:0]              byte_mask_i,
+  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,
+  output      logic [7:0]              entropy_byte_sample_o,
+  output      logic                    entropy_byte_valid_o
 );
 
   /////////////
@@ -40,7 +40,7 @@ module entropy_decorrelator #(
   /////////////
 
   logic [CLKDIV_WIDTH-1:0] clk_divider;
-  logic [      LENGTH-1:0] ff_stage;
+  logic [LENGTH-1:0]       ff_stage;
   logic                    feedback;
 
   ///////////////
@@ -77,8 +77,8 @@ module entropy_decorrelator #(
         entropy_byte_sample_o <= ff_stage[LENGTH-1:LENGTH-8] & byte_mask_i;
         entropy_byte_valid_o  <= 1'b1;
       end else begin
-        clk_divider          <= clk_divider - CLKDIV_WIDTH'(1);
-        entropy_byte_valid_o <= 1'b0;
+        clk_divider           <= clk_divider - CLKDIV_WIDTH'(1);
+        entropy_byte_valid_o  <= 1'b0;
       end
     end else begin
       // Keep the divider primed from the programmed value while idle so

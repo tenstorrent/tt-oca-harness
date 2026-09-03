@@ -34,10 +34,10 @@ module tb_scrambler_2048x32;
   wire [DATA_WIDTH-1:0] scrambled_write_data;
   reg [DATA_WIDTH-1:0] scrambled_read_data;
 
-  reg [DATA_WIDTH-1:0] memory[0:MEM_DEPTH-1];
+  reg [DATA_WIDTH-1:0] memory [0:MEM_DEPTH-1];
 
-  reg [DATA_WIDTH-1:0] expected_data[0:MEM_DEPTH-1];
-  reg [DATA_WIDTH-1:0] expected_scrambled[0:MEM_DEPTH-1];
+  reg [DATA_WIDTH-1:0] expected_data [0:MEM_DEPTH-1];
+  reg [DATA_WIDTH-1:0] expected_scrambled [0:MEM_DEPTH-1];
 
   integer i;
   integer j;

@@ -27,8 +27,8 @@ class dtp_jtag_bypass_test_seq extends dtp_jtag_cmd_lib_seq;
     shift_dr(pattern, width, observed);
     observed &= bit_mask(width);
     expected = ocah_jtag_checker::predict_bypass_tdo(pattern, width);
-    context_s =
-        $sformatf("case=%s opcode=0x%02h width=%0d pattern=0x%0h", label, instr, width, pattern);
+    context_s = $sformatf("case=%s opcode=0x%02h width=%0d pattern=0x%0h",
+                              label, instr, width, pattern);
     // Checker-ID grammar is uppercase-only; name the two encodings
     // explicitly rather than formatting the opcode.
     family_check((instr == BYPASS_ALT_INSTR) ? "CHK-BYPASS-00" : "CHK-BYPASS-3F", $sformatf(
@@ -72,7 +72,7 @@ class dtp_jtag_bypass_test_seq extends dtp_jtag_cmd_lib_seq;
                         delayed);
         if (delayed) delayed_observations++;
         seen_patterns[patterns[p]] = 1'b1;
-        seen_opcodes[opcodes[o]]   = 1'b1;
+        seen_opcodes[opcodes[o]] = 1'b1;
         case_count++;
       end
       // Focused short-width case per opcode.

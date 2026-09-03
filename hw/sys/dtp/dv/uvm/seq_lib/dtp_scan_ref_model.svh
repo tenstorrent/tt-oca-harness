@@ -135,25 +135,29 @@ class dtp_stap_3dcr_model;
   protected function bit field_value(layout_entry_t entry, int new_ptap_select,
                                      int new_ptap_config_hold, int new_sib_en[int],
                                      dtp_stap_3dcr_state_t new_payloads[int]);
-    bit eff_ptap_sel = (new_ptap_select < 0) ? ptap_select : bit'(new_ptap_select);
-    bit eff_ptap_hold = (new_ptap_config_hold < 0) ? ptap_config_hold : bit'(new_ptap_config_hold);
+    bit eff_ptap_sel  = (new_ptap_select < 0) ? ptap_select
+                                                  : bit'(new_ptap_select);
+    bit eff_ptap_hold = (new_ptap_config_hold < 0) ? ptap_config_hold
+                                                       : bit'(new_ptap_config_hold);
     if (entry.owner < 0) return (entry.field == FLD_STAP_SEL) ? eff_ptap_sel : eff_ptap_hold;
     case (entry.field)
       FLD_SIB:
-      return new_sib_en.exists(entry.owner) ? bit'(new_sib_en[entry.owner]) : sib_en[entry.owner];
-      FLD_SPLICE: return 1'b0;
+                return new_sib_en.exists(entry.owner)
+                     ? bit'(new_sib_en[entry.owner]) : sib_en[entry.owner];
+      FLD_SPLICE:
+                return 1'b0;
       FLD_TMS_HOLD:
-      return new_payloads.exists(
-          entry.owner
-      ) ? new_payloads[entry.owner].tms_hold : staps[entry.owner].tms_hold;
+                return new_payloads.exists(entry.owner)
+                     ? new_payloads[entry.owner].tms_hold
+                     : staps[entry.owner].tms_hold;
       FLD_STAP_SEL:
-      return new_payloads.exists(
-          entry.owner
-      ) ? new_payloads[entry.owner].stap_sel : staps[entry.owner].stap_sel;
+                return new_payloads.exists(entry.owner)
+                     ? new_payloads[entry.owner].stap_sel
+                     : staps[entry.owner].stap_sel;
       default:
-      return new_payloads.exists(
-          entry.owner
-      ) ? new_payloads[entry.owner].config_hold : staps[entry.owner].config_hold;
+                return new_payloads.exists(entry.owner)
+                     ? new_payloads[entry.owner].config_hold
+                     : staps[entry.owner].config_hold;
     endcase
   endfunction
 

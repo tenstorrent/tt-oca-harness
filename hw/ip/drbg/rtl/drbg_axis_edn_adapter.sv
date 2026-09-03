@@ -40,16 +40,16 @@ module drbg_axis_edn_adapter
 #(
   parameter int unsigned NUM_ENDPOINTS = 4
 ) (
-  input wire logic clk_i,
-  input wire logic rst_ni,
-  input wire logic clear_i,
+  input  wire logic clk_i,
+  input  wire logic rst_ni,
+  input  wire logic clear_i,
 
   // 32b AXI-Stream sink (producer drives valid/data/strb; adapter drives tready)
-  input wire drbg_axis_req_t axis_req_i,
+  input  wire drbg_axis_req_t axis_req_i,
   output drbg_axis_rsp_t axis_rsp_o,
 
   // Native EDN toward clients (clients drive req; adapter drives rsp)
-  input wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i,
+  input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i,
   output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o
 );
 
@@ -62,38 +62,38 @@ module drbg_axis_edn_adapter
   // -------------------------------------------------------------------------
   // Stream staging FIFO (32b data + 1b fips tuser, small depth)
   // -------------------------------------------------------------------------
-  logic                            stage_rvalid;
-  logic                            stage_rready;
-  logic [          StageWidth-1:0] stage_rdata_raw;
-  logic [           DataWidth-1:0] stage_rdata;
-  logic                            stage_rfips;
-  logic                            stage_full;
-  logic                            stage_wready;
+  logic                           stage_rvalid;
+  logic                           stage_rready;
+  logic [StageWidth-1:0]          stage_rdata_raw;
+  logic [DataWidth-1:0]           stage_rdata;
+  logic                           stage_rfips;
+  logic                           stage_full;
+  logic                           stage_wready;
   logic [$clog2(StageDepth+1)-1:0] unused_stage_depth;
-  logic                            unused_stage_err;
+  logic                           unused_stage_err;
 
   // Accept a stream word only when all strobes are high (32b word) and the
   // staging FIFO has space.
   assign axis_rsp_o.tready = !clear_i && !stage_full && (&axis_req_i.tstrb);
 
   prim_fifo_sync #(
-    .Width            (StageWidth),
-    .Pass             (1'b0),
-    .Depth            (StageDepth),
-    .OutputZeroIfEmpty(1'b1)
+    .Width             (StageWidth),
+    .Pass              (1'b0),
+    .Depth             (StageDepth),
+    .OutputZeroIfEmpty (1'b1)
   ) u_stage_fifo (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-    .clr_i   (clear_i),
-    .wvalid_i(axis_req_i.tvalid && axis_rsp_o.tready),
-    .wready_o(stage_wready),
-    .wdata_i ({axis_req_i.tuser, axis_req_i.tdata}),
-    .rvalid_o(stage_rvalid),
-    .rready_i(stage_rready),
-    .rdata_o (stage_rdata_raw),
-    .full_o  (stage_full),
-    .depth_o (unused_stage_depth),
-    .err_o   (unused_stage_err)
+    .clk_i    (clk_i),
+    .rst_ni   (rst_ni),
+    .clr_i    (clear_i),
+    .wvalid_i (axis_req_i.tvalid && axis_rsp_o.tready),
+    .wready_o (stage_wready),
+    .wdata_i  ({axis_req_i.tuser, axis_req_i.tdata}),
+    .rvalid_o (stage_rvalid),
+    .rready_i (stage_rready),
+    .rdata_o  (stage_rdata_raw),
+    .full_o   (stage_full),
+    .depth_o  (unused_stage_depth),
+    .err_o    (unused_stage_err)
   );
 
   assign stage_rdata = stage_rdata_raw[DataWidth-1:0];
@@ -109,28 +109,28 @@ module drbg_axis_edn_adapter
   logic [NUM_ENDPOINTS-1:0] arb_gnt;
   logic                     arb_valid;
   logic                     arb_ready;
-  logic [              0:0] arb_data_i        [NUM_ENDPOINTS];
-  logic [              0:0] unused_arb_data_o;
+  logic [0:0]               arb_data_i [NUM_ENDPOINTS];
+  logic [0:0]               unused_arb_data_o;
 
   for (genvar k = 0; k < NUM_ENDPOINTS; k++) begin : gen_arb_data_tie
     assign arb_data_i[k] = 1'b0;
   end
 
   prim_arbiter_ppc #(
-    .N         (NUM_ENDPOINTS),
-    .DW        (1),
-    .EnDataPort(1'b0)
+    .N          (NUM_ENDPOINTS),
+    .DW         (1),
+    .EnDataPort (1'b0)
   ) u_arbiter (
-    .clk_i    (clk_i),
-    .rst_ni   (rst_ni),
-    .req_chk_i(1'b1),
-    .req_i    (arb_req),
-    .data_i   (arb_data_i),
-    .gnt_o    (arb_gnt),
-    .idx_o    (),
-    .valid_o  (arb_valid),
-    .data_o   (unused_arb_data_o),
-    .ready_i  (arb_ready)
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .req_chk_i (1'b1),
+    .req_i     (arb_req),
+    .data_i    (arb_data_i),
+    .gnt_o     (arb_gnt),
+    .idx_o     (),
+    .valid_o   (arb_valid),
+    .data_o    (unused_arb_data_o),
+    .ready_i   (arb_ready)
   );
 
   // Only honour a grant when the staging FIFO actually has a word.
@@ -158,36 +158,36 @@ module drbg_axis_edn_adapter
     assign ep_push[i] = !clear_i && stage_rready && arb_gnt[i];
 
     prim_fifo_sync #(
-      .Width            (StageWidth),
-      .Pass             (1'b0),
-      .Depth            (1),
-      .OutputZeroIfEmpty(1'b1)
+      .Width             (StageWidth),
+      .Pass              (1'b0),
+      .Depth             (1),
+      .OutputZeroIfEmpty (1'b1)
     ) u_ep_fifo (
-      .clk_i   (clk_i),
-      .rst_ni  (rst_ni),
-      .clr_i   (ep_clr[i] | clear_i),
-      .wvalid_i(ep_push[i]),
-      .wready_o(ep_wready[i]),
-      .wdata_i ({stage_rfips, stage_rdata}),
-      .rvalid_o(ep_rvalid[i]),
-      .rready_i(ep_pop[i]),
-      .rdata_o (ep_rdata_raw[i]),
-      .full_o  (),
-      .depth_o (),
-      .err_o   (ep_err[i])
+      .clk_i    (clk_i),
+      .rst_ni   (rst_ni),
+      .clr_i    (ep_clr[i] | clear_i),
+      .wvalid_i (ep_push[i]),
+      .wready_o (ep_wready[i]),
+      .wdata_i  ({stage_rfips, stage_rdata}),
+      .rvalid_o (ep_rvalid[i]),
+      .rready_i (ep_pop[i]),
+      .rdata_o  (ep_rdata_raw[i]),
+      .full_o   (),
+      .depth_o  (),
+      .err_o    (ep_err[i])
     );
 
     edn_ack_sm u_edn_ack_sm (
-      .clk_i           (clk_i),
-      .rst_ni          (rst_ni),
-      .enable_i        (!clear_i),
-      .req_i           (edn_req_i[i].edn_req),
-      .ack_o           (ep_ack[i]),
-      .fifo_not_empty_i(ep_rvalid[i]),
-      .fifo_pop_o      (ep_pop[i]),
-      .fifo_clr_o      (ep_clr[i]),
-      .local_escalate_i(1'b0),
-      .ack_sm_err_o    (ack_sm_err[i])
+      .clk_i            (clk_i),
+      .rst_ni           (rst_ni),
+      .enable_i         (!clear_i),
+      .req_i            (edn_req_i[i].edn_req),
+      .ack_o            (ep_ack[i]),
+      .fifo_not_empty_i (ep_rvalid[i]),
+      .fifo_pop_o       (ep_pop[i]),
+      .fifo_clr_o       (ep_clr[i]),
+      .local_escalate_i (1'b0),
+      .ack_sm_err_o     (ack_sm_err[i])
     );
 
     assign edn_rsp_o[i].edn_ack  = ep_ack[i] & ~clear_i;

@@ -14,14 +14,14 @@ package tlul_pkg;
   parameter ArbiterImpl = "PPC";
 
   typedef enum logic [2:0] {
-    PutFullData    = 3'h0,
-    PutPartialData = 3'h1,
-    Get            = 3'h4
+    PutFullData    = 3'h 0,
+    PutPartialData = 3'h 1,
+    Get            = 3'h 4
   } tl_a_op_e;
 
   typedef enum logic [2:0] {
-    AccessAck     = 3'h0,
-    AccessAckData = 3'h1
+    AccessAck     = 3'h 0,
+    AccessAckData = 3'h 1
   } tl_d_op_e;
 
   parameter int H2DCmdMaxWidth = 57;
@@ -58,24 +58,24 @@ package tlul_pkg;
   };
 
   typedef struct packed {
-    prim_mubi_pkg::mubi4_t      instr_type;
-    logic [top_pkg::TL_AW-1:0]  addr;
-    tl_a_op_e                   opcode;
-    logic [top_pkg::TL_DBW-1:0] mask;
+    prim_mubi_pkg::mubi4_t        instr_type;
+    logic   [top_pkg::TL_AW-1:0]  addr;
+    tl_a_op_e                     opcode;
+    logic  [top_pkg::TL_DBW-1:0]  mask;
   } tl_h2d_cmd_intg_t;
 
   typedef struct packed {
-    logic                       a_valid;
-    tl_a_op_e                   a_opcode;
-    logic [2:0]                 a_param;
-    logic [top_pkg::TL_SZW-1:0] a_size;
-    logic [top_pkg::TL_AIW-1:0] a_source;
-    logic [top_pkg::TL_AW-1:0]  a_address;
-    logic [top_pkg::TL_DBW-1:0] a_mask;
-    logic [top_pkg::TL_DW-1:0]  a_data;
-    tl_a_user_t                 a_user;
+    logic                         a_valid;
+    tl_a_op_e                     a_opcode;
+    logic                  [2:0]  a_param;
+    logic  [top_pkg::TL_SZW-1:0]  a_size;
+    logic  [top_pkg::TL_AIW-1:0]  a_source;
+    logic   [top_pkg::TL_AW-1:0]  a_address;
+    logic  [top_pkg::TL_DBW-1:0]  a_mask;
+    logic   [top_pkg::TL_DW-1:0]  a_data;
+    tl_a_user_t                   a_user;
 
-    logic d_ready;
+    logic                         d_ready;
   } tl_h2d_t;
 
   // The choice of all 1's as the blanked value is deliberate.
@@ -95,8 +95,8 @@ package tlul_pkg;
   };
 
   typedef struct packed {
-    logic [D2HRspIntgWidth-1:0] rsp_intg;
-    logic [DataIntgWidth-1:0]   data_intg;
+    logic [D2HRspIntgWidth-1:0]    rsp_intg;
+    logic [DataIntgWidth-1:0]      data_intg;
   } tl_d_user_t;
 
   parameter tl_d_user_t TL_D_USER_DEFAULT = '{
@@ -105,29 +105,29 @@ package tlul_pkg;
   };
 
   typedef struct packed {
-    logic                       d_valid;
-    tl_d_op_e                   d_opcode;
-    logic [2:0]                 d_param;
-    logic [top_pkg::TL_SZW-1:0] d_size;    // Bouncing back a_size
-    logic [top_pkg::TL_AIW-1:0] d_source;
-    logic [top_pkg::TL_DIW-1:0] d_sink;
-    logic [top_pkg::TL_DW-1:0]  d_data;
-    tl_d_user_t                 d_user;
-    logic                       d_error;
+    logic                         d_valid;
+    tl_d_op_e                     d_opcode;
+    logic                  [2:0]  d_param;
+    logic  [top_pkg::TL_SZW-1:0]  d_size;   // Bouncing back a_size
+    logic  [top_pkg::TL_AIW-1:0]  d_source;
+    logic  [top_pkg::TL_DIW-1:0]  d_sink;
+    logic   [top_pkg::TL_DW-1:0]  d_data;
+    tl_d_user_t                   d_user;
+    logic                         d_error;
 
-    logic a_ready;
+    logic                         a_ready;
 
   } tl_d2h_t;
 
   typedef struct packed {
-    tl_d_op_e                   opcode;
-    logic [top_pkg::TL_SZW-1:0] size;
+    tl_d_op_e                     opcode;
+    logic  [top_pkg::TL_SZW-1:0]  size;
     // Temporarily removed because source changes throughout the fabric
     // and thus cannot be used for end-to-end checking.
     // A different PR will propose a work-around (a hoaky one) to see if
     // it gets the job done.
     //logic  [top_pkg::TL_AIW-1:0]  source;
-    logic                       error;
+    logic                         error;
   } tl_d2h_rsp_intg_t;
 
   localparam tl_d2h_t TL_D2H_DEFAULT = '{
@@ -141,7 +141,7 @@ package tlul_pkg;
   function automatic logic tl_a_user_chk(tl_a_user_t user);
     logic malformed_err;
     logic unused_user;
-    unused_user   = |user;
+    unused_user = |user;
     malformed_err = prim_mubi_pkg::mubi4_test_invalid(user.instr_type);
     return malformed_err;
   endfunction  // tl_a_user_chk
@@ -164,9 +164,9 @@ package tlul_pkg;
     logic unused_tlul;
     unused_tlul = ^tl;
     payload.opcode = tl.d_opcode;
-    payload.size = tl.d_size;
+    payload.size   = tl.d_size;
     //payload.source = tl.d_source;
-    payload.error = tl.d_error;
+    payload.error  = tl.d_error;
     return payload;
   endfunction  // extract_d2h_rsp_intg
 
@@ -187,8 +187,8 @@ package tlul_pkg;
     logic [top_pkg::TL_DW-1:0] unused_data;
     logic [DataIntgWidth + top_pkg::TL_DW - 1 : 0] enc_data;
     enc_data = prim_secded_pkg::prim_secded_inv_39_32_enc(data);
-    data_intg = enc_data[DataIntgWidth+top_pkg::TL_DW-1 : top_pkg::TL_DW];
-    unused_data = enc_data[top_pkg::TL_DW-1 : 0];
+    data_intg = enc_data[DataIntgWidth + top_pkg::TL_DW - 1 : top_pkg::TL_DW];
+    unused_data = enc_data[top_pkg::TL_DW - 1 : 0];
     return data_intg;
   endfunction  // get_data_intg
 

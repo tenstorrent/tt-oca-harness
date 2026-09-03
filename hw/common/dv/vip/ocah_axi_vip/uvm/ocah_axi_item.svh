@@ -16,21 +16,21 @@
 class ocah_axi_item extends uvm_sequence_item;
   `uvm_object_utils(ocah_axi_item)
 
-  ocah_axi_protocol_e protocol = OCAH_AXI_PROTO_AXI4_LITE;
-  ocah_axi_dir_e direction = OCAH_AXI_DIR_READ;
-  bit [63:0] address;
-  bit [63:0] data_words[$];  // one entry per beat (raw bus word)
-  bit [7:0] strobes[$];  // write beats only
-  int unsigned size;  // AxSIZE
-  ocah_axi_burst_e burst = OCAH_AXI_BURST_INCR;
-  bit [15:0] transaction_id;
-  bit [2:0] prot;
-  ocah_axi_resp_e resp_list[$];  // per beat (reads) / single (writes)
-  int unsigned expected_beats = 1;  // AxLEN + 1 recorded at the address phase
-  bit expected_armed;  // expected items: non-OKAY was armed
-  time start_time;
-  time end_time;
-  string source = "";
+  ocah_axi_protocol_e protocol  = OCAH_AXI_PROTO_AXI4_LITE;
+  ocah_axi_dir_e      direction = OCAH_AXI_DIR_READ;
+  bit [63:0]          address;
+  bit [63:0]          data_words[$];       // one entry per beat (raw bus word)
+  bit [7:0]           strobes[$];          // write beats only
+  int unsigned        size;                // AxSIZE
+  ocah_axi_burst_e    burst = OCAH_AXI_BURST_INCR;
+  bit [15:0]          transaction_id;
+  bit [2:0]           prot;
+  ocah_axi_resp_e     resp_list[$];        // per beat (reads) / single (writes)
+  int unsigned        expected_beats = 1;  // AxLEN + 1 recorded at the address phase
+  bit                 expected_armed;      // expected items: non-OKAY was armed
+  time                start_time;
+  time                end_time;
+  string              source = "";
 
   // Master stimulus-shaping knobs (cross-flow parity with the cocotb flat
   // master's skewed accesses). AXI permits the write address and data
@@ -40,10 +40,10 @@ class ocah_axi_item extends uvm_sequence_item;
   // RREADY low for N cycles after RVALID asserts while the driver samples
   // RDATA/RRESP stability. All-zero keeps the plain concurrent-channel
   // master timing.
-  int unsigned aw_valid_delay;
-  int unsigned w_valid_delay;
-  int unsigned b_ready_delay;
-  int unsigned r_ready_delay;
+  int unsigned        aw_valid_delay;
+  int unsigned        w_valid_delay;
+  int unsigned        b_ready_delay;
+  int unsigned        r_ready_delay;
 
   // Master-result extras (cross-flow parity with the cocotb result
   // contract): observed_id is the BID/RID sampled live from the completing
@@ -53,10 +53,10 @@ class ocah_axi_item extends uvm_sequence_item;
   // watchdog expiry (see ocah_axi_master_config.timeout_cycles).
   // hold_stable reports that RVALID stayed asserted with RDATA/RRESP
   // unchanged across a nonzero r_ready_delay window (stays 1 otherwise).
-  bit [15:0] observed_id;
-  bit observed_id_valid;
-  bit timed_out;
-  bit hold_stable = 1'b1;
+  bit [15:0]          observed_id;
+  bit                 observed_id_valid;
+  bit                 timed_out;
+  bit                 hold_stable = 1'b1;
 
   function new(string name = "ocah_axi_item");
     super.new(name);
@@ -105,25 +105,25 @@ class ocah_axi_item extends uvm_sequence_item;
     ocah_axi_item rhs_item;
     super.do_copy(rhs);
     if (!$cast(rhs_item, rhs)) `uvm_fatal(get_type_name(), "do_copy type mismatch")
-    protocol          = rhs_item.protocol;
-    direction         = rhs_item.direction;
-    address           = rhs_item.address;
-    data_words        = rhs_item.data_words;
-    strobes           = rhs_item.strobes;
-    size              = rhs_item.size;
-    burst             = rhs_item.burst;
-    transaction_id    = rhs_item.transaction_id;
-    prot              = rhs_item.prot;
-    resp_list         = rhs_item.resp_list;
-    expected_beats    = rhs_item.expected_beats;
-    expected_armed    = rhs_item.expected_armed;
-    start_time        = rhs_item.start_time;
-    end_time          = rhs_item.end_time;
-    source            = rhs_item.source;
-    aw_valid_delay    = rhs_item.aw_valid_delay;
-    w_valid_delay     = rhs_item.w_valid_delay;
-    b_ready_delay     = rhs_item.b_ready_delay;
-    r_ready_delay     = rhs_item.r_ready_delay;
+    protocol       = rhs_item.protocol;
+    direction      = rhs_item.direction;
+    address        = rhs_item.address;
+    data_words     = rhs_item.data_words;
+    strobes        = rhs_item.strobes;
+    size           = rhs_item.size;
+    burst          = rhs_item.burst;
+    transaction_id = rhs_item.transaction_id;
+    prot           = rhs_item.prot;
+    resp_list      = rhs_item.resp_list;
+    expected_beats = rhs_item.expected_beats;
+    expected_armed = rhs_item.expected_armed;
+    start_time     = rhs_item.start_time;
+    end_time       = rhs_item.end_time;
+    source         = rhs_item.source;
+    aw_valid_delay = rhs_item.aw_valid_delay;
+    w_valid_delay  = rhs_item.w_valid_delay;
+    b_ready_delay  = rhs_item.b_ready_delay;
+    r_ready_delay  = rhs_item.r_ready_delay;
     observed_id       = rhs_item.observed_id;
     observed_id_valid = rhs_item.observed_id_valid;
     timed_out         = rhs_item.timed_out;

@@ -25,12 +25,12 @@ class ocah_axi_vip_env extends uvm_env;
   // Scenario-level named evidence (response-ID observation checks written
   // by the selftest sequences); finalized here. Tests arm require_checks
   // and required_ids.
-  ocah_axi_checker       m_checker;
-  bit                    require_checks;
+  ocah_axi_checker m_checker;
+  bit require_checks;
 
-  bit                    en_passive      = 1'b1;
+  bit en_passive = 1'b1;
 
-  virtual ocah_axi_if    axi_vif;
+  virtual ocah_axi_if axi_vif;
 
   function new(string name = "ocah_axi_vip_env", uvm_component parent = null);
     super.new(name, parent);
@@ -42,7 +42,7 @@ class ocah_axi_vip_env extends uvm_env;
       `uvm_fatal(get_type_name(), "virtual ocah_axi_if `axi_vif` not found in uvm_config_db")
     void'(uvm_config_db#(bit)::get(this, "", "en_passive", en_passive));
 
-    m_master_cfg            = ocah_axi_master_config::type_id::create("m_master_cfg");
+    m_master_cfg = ocah_axi_master_config::type_id::create("m_master_cfg");
     m_master_cfg.vif        = axi_vif;
     m_master_cfg.protocol   = OCAH_AXI_PROTO_AXI4;
     m_master_cfg.addr_width = 32;
@@ -50,9 +50,9 @@ class ocah_axi_vip_env extends uvm_env;
     m_master_cfg.id_width   = 8;
     m_master_cfg.name_tag   = "ocah_axi_vip_master";
     uvm_config_db#(ocah_axi_master_config)::set(this, "m_master_env*", "cfg", m_master_cfg);
-    m_master_env           = ocah_axi_master_env::type_id::create("m_master_env", this);
+    m_master_env = ocah_axi_master_env::type_id::create("m_master_env", this);
 
-    m_slave_cfg            = ocah_axi_slave_config::type_id::create("m_slave_cfg");
+    m_slave_cfg = ocah_axi_slave_config::type_id::create("m_slave_cfg");
     m_slave_cfg.vif        = axi_vif;
     m_slave_cfg.protocol   = OCAH_AXI_PROTO_AXI4;
     m_slave_cfg.addr_width = 32;
@@ -61,9 +61,9 @@ class ocah_axi_vip_env extends uvm_env;
     m_slave_cfg.mem_bytes  = 65536;
     m_slave_cfg.name_tag   = "ocah_axi_vip_slave";
     uvm_config_db#(ocah_axi_slave_config)::set(this, "m_slave_agent*", "slave_cfg", m_slave_cfg);
-    m_slave_agent           = ocah_axi_slave_agent::type_id::create("m_slave_agent", this);
+    m_slave_agent = ocah_axi_slave_agent::type_id::create("m_slave_agent", this);
 
-    m_axi_cfg               = ocah_axi_config::type_id::create("m_axi_cfg");
+    m_axi_cfg = ocah_axi_config::type_id::create("m_axi_cfg");
     m_axi_cfg.vif           = axi_vif;
     m_axi_cfg.protocol      = OCAH_AXI_PROTO_AXI4;
     m_axi_cfg.addr_width    = 32;

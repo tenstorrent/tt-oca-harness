@@ -130,19 +130,19 @@ package sep_crypto_pkg;
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
   // Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.
   typedef enum int unsigned {
-    SepCryptoAxiErrSlv     = 0,
-    SepCryptoAxiOtbn       = 1,
-    SepCryptoAxiHmac       = 2,
-    SepCryptoAxiAes        = 3,
-    SepCryptoAxiKmac       = 4,
-    SepCryptoAxiFuse       = 5,
-    SepCryptoAxiLifecycle  = 6,
-    SepCryptoAxiKm         = 7,
-    SepCryptoAxiCsrng      = 8,
-    SepCryptoAxiEdn        = 9,
-    SepCryptoAxiEntropySrc = 10,
-    SepCryptoAxiTrng       = 11,
-    SepCryptoAxiAbr        = 12
+    SepCryptoAxiErrSlv       = 0,
+    SepCryptoAxiOtbn         = 1,
+    SepCryptoAxiHmac         = 2,
+    SepCryptoAxiAes          = 3,
+    SepCryptoAxiKmac         = 4,
+    SepCryptoAxiFuse         = 5,
+    SepCryptoAxiLifecycle    = 6,
+    SepCryptoAxiKm           = 7,
+    SepCryptoAxiCsrng        = 8,
+    SepCryptoAxiEdn          = 9,
+    SepCryptoAxiEntropySrc   = 10,
+    SepCryptoAxiTrng         = 11,
+    SepCryptoAxiAbr          = 12
   } sep_crypto_axi_port_e;
 
   localparam int unsigned SEP_CRYPTO_NUM_AXI_MST = 13;
@@ -173,16 +173,16 @@ package sep_crypto_pkg;
   parameter int unsigned SEP_CRYPTO_PKA_IMEM_WORD_WIDTH = 39;
 
   typedef struct packed {
-    logic clk;  // Clock for external RAM
-    logic enable;  // RAM request enable
-    logic write;  // Write enable
-    logic [SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH-1:0] addr;  // Address (32-bit default, parameterizable)
+    logic         clk;      // Clock for external RAM
+    logic         enable;   // RAM request enable
+    logic         write;    // Write enable
+    logic [SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH-1:0]  addr;     // Address (32-bit default, parameterizable)
     logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0]  wdata;    // Write data (32-bit default, parameterizable)
     logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0]  wmask;    // Write mask (32-bit default, parameterizable)
   } sep_crypto_pka_imem_sram_req_t;
 
   typedef struct packed {
-    logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] rdata;
+    logic[SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] rdata;
     logic q_valid;
   } sep_crypto_pka_imem_sram_rsp_t;
 
@@ -192,12 +192,12 @@ package sep_crypto_pkg;
   parameter int unsigned SEP_CRYPTO_PKA_DMEM_WORD_WIDTH = 39 * 8;
 
   typedef struct packed {
-    logic                                      clk;     // Clock for external RAM
-    logic                                      enable;  // RAM request enable
-    logic                                      write;   // Write enable
-    logic [SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH-1:0] addr;    // Address
-    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0] wdata;   // Write data
-    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0] wmask;   // Write mask
+    logic         clk;      // Clock for external RAM
+    logic         enable;   // RAM request enable
+    logic         write;    // Write enable
+    logic [SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH-1:0]  addr;     // Address
+    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0]  wdata;    // Write data
+    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0]  wmask;    // Write mask
   } sep_crypto_pka_dmem_sram_req_t;
 
   typedef struct packed {
@@ -260,23 +260,23 @@ package sep_crypto_pkg;
   // masked twins, so the addr fields are sized to the WIDEST (INST2=11b); the
   // narrower channels use the low bits and the unused MSBs stay zero.
   typedef struct packed {
-    logic                                   we;
-    logic [SEP_CRYPTO_ABR_INST2_ADDR_W-1:0] waddr;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   wdata;
-    logic                                   re;
-    logic [SEP_CRYPTO_ABR_INST2_ADDR_W-1:0] raddr;
+    logic                                     we;
+    logic [SEP_CRYPTO_ABR_INST2_ADDR_W-1:0]   waddr;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]     wdata;
+    logic                                     re;
+    logic [SEP_CRYPTO_ABR_INST2_ADDR_W-1:0]   raddr;
   } abr_mem_ch_req_t;
 
   // Byte-enabled memory request channel -- used for pk_mem (320b data, 6b addr,
   // 40b strobe). sig_z_mem (160b/8b/20b) differs in width so it has dedicated
   // fields in abr_mem_req_t below rather than reusing this type.
   typedef struct packed {
-    logic                                 we;
-    logic [SEP_CRYPTO_ABR_PK_ADDR_W-1:0]  waddr;
-    logic [SEP_CRYPTO_ABR_PK_DATA_W-1:0]  wdata;
-    logic [SEP_CRYPTO_ABR_PK_WSTRB_W-1:0] wstrobe;
-    logic                                 re;
-    logic [SEP_CRYPTO_ABR_PK_ADDR_W-1:0]  raddr;
+    logic                                     we;
+    logic [SEP_CRYPTO_ABR_PK_ADDR_W-1:0]      waddr;
+    logic [SEP_CRYPTO_ABR_PK_DATA_W-1:0]      wdata;
+    logic [SEP_CRYPTO_ABR_PK_WSTRB_W-1:0]     wstrobe;
+    logic                                     re;
+    logic [SEP_CRYPTO_ABR_PK_ADDR_W-1:0]      raddr;
   } abr_mem_be_ch_req_t;
 
   // ABR memory request struct -- one field per `abr_mem_if` channel, req direction.
@@ -323,19 +323,19 @@ package sep_crypto_pkg;
 
   // ABR memory response struct -- one rdata field per `abr_mem_if` channel.
   typedef struct packed {
-    logic [SEP_CRYPTO_ABR_W1_DATA_W-1:0]   w1_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst0_bank0_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst0_bank1_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst1_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst2_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst0_bank0_masked_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst0_bank1_masked_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst1_masked_rdata;
-    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]  mem_inst2_masked_rdata;
-    logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]   sk_bank0_rdata;
-    logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]   sk_bank1_rdata;
-    logic [SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0] sig_z_rdata;
-    logic [SEP_CRYPTO_ABR_PK_DATA_W-1:0]   pk_rdata;
+    logic [SEP_CRYPTO_ABR_W1_DATA_W-1:0]    w1_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank0_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank1_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst1_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst2_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank0_masked_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank1_masked_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst1_masked_rdata;
+    logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst2_masked_rdata;
+    logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]    sk_bank0_rdata;
+    logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]    sk_bank1_rdata;
+    logic [SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0]  sig_z_rdata;
+    logic [SEP_CRYPTO_ABR_PK_DATA_W-1:0]    pk_rdata;
   } abr_mem_rsp_t;
 
   typedef logic sep_crypto_fuse_req_t;
@@ -349,9 +349,9 @@ package sep_crypto_pkg;
   localparam int unsigned EXT_TRNG_AXIS_STRB_WIDTH = EXT_TRNG_AXIS_DATA_WIDTH / 8;
 
   typedef struct packed {
-    logic                                tvalid;
-    logic [EXT_TRNG_AXIS_DATA_WIDTH-1:0] tdata;
-    logic [EXT_TRNG_AXIS_STRB_WIDTH-1:0] tstrb;
+    logic                                    tvalid;
+    logic [EXT_TRNG_AXIS_DATA_WIDTH-1:0]     tdata;
+    logic [EXT_TRNG_AXIS_STRB_WIDTH-1:0]     tstrb;
   } ext_trng_axis_req_t;
 
   typedef struct packed {logic tready;} ext_trng_axis_rsp_t;

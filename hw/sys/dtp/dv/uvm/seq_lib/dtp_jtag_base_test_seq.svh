@@ -20,12 +20,12 @@ class dtp_jtag_base_test_seq extends ocah_jtag_master_sequence;
   localparam bit [31:0] DtpDefaultIdcode = 32'h0000_0001;
 
   // Plumbed by the test from dtp_env before start(sequencer).
-  virtual dtp_tb_if      tb_vif;
+  virtual dtp_tb_if tb_vif;
 
   // Plumbed by the test (env.m_jtag_cfg.vif) for scenarios that hold or
   // sequence TRST directly (reset-family tests). Safe alongside the VIP
   // driver, which drives trst_n only while executing a TAP_RESET item.
-  virtual ocah_jtag_if   jtag_vif;
+  virtual ocah_jtag_if jtag_vif;
 
   // Optional shared-VIP evidence handles: when plumbed, TAP
   // resets, TLR walks, BYPASS latency, and reconstructed scan lengths also
@@ -38,11 +38,11 @@ class dtp_jtag_base_test_seq extends ocah_jtag_master_sequence;
   // random_count (+DTP_RANDOM_COUNT) before each start(); body() calls
   // seed_scenario_rng() first so every pass draws a distinct, replayable
   // random stream.
-  int unsigned           scenario_seed = 0;
-  int unsigned           random_count  = 5;
+  int unsigned scenario_seed = 0;
+  int unsigned random_count  = 5;
   // Pass index within the looped run (0-based); pass 0 follows the test's
   // clock/reset bring-up, later passes re-enter with the DUT live.
-  int unsigned           loop_index    = 0;
+  int unsigned loop_index = 0;
 
   function new(string name = "dtp_jtag_base_test_seq");
     super.new(name);

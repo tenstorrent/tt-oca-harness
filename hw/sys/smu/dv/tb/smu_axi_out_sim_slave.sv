@@ -22,7 +22,7 @@
 `timescale 1ps / 1fs
 
 module smu_axi_out_sim_slave #(
-  parameter type axi_req_t = logic,
+  parameter type axi_req_t  = logic,
   parameter type axi_resp_t = logic,
   parameter int unsigned AddrWidth = 56,
   // More outstanding requests per direction than the crossbar issues here; the
@@ -51,22 +51,22 @@ module smu_axi_out_sim_slave #(
   // Declared with initialisers, not only reset-assigned: the ready/valid
   // outputs are combinational from these, and an X before the first clock edge
   // would drive an X handshake back into the crossbar.
-  req_t aw_q[QueueDepth];
-  req_t ar_q[QueueDepth];
+  req_t                 aw_q [QueueDepth];
+  req_t                 ar_q [QueueDepth];
   logic [IdxWidth-1:0] aw_wr = '0, aw_rd = '0;
   logic [IdxWidth-1:0] ar_wr = '0, ar_rd = '0;
   logic aw_full = 1'b0, ar_full = 1'b0;
   logic [AddrWidth-1:0] wr_addr = '0;
   logic [AddrWidth-1:0] rd_addr = '0;
-  logic [          7:0] rd_beat = '0;
+  logic [7:0]           rd_beat = '0;
   logic                 wr_active = 1'b0;
   logic                 rd_active = 1'b0;
   logic                 b_pending = 1'b0;
-  logic [          7:0] b_id = '0;
-  logic [         63:0] wr_merged;
+  logic [7:0]           b_id = '0;
+  logic [63:0]          wr_merged;
 
-  wire                  aw_empty = (aw_wr == aw_rd) && !aw_full;
-  wire                  ar_empty = (ar_wr == ar_rd) && !ar_full;
+  wire aw_empty = (aw_wr == aw_rd) && !aw_full;
+  wire ar_empty = (ar_wr == ar_rd) && !ar_full;
 
   // FIXED bursts hold the address; INCR advances by the transfer size. WRAP is
   // not generated on this port and is treated as INCR.
@@ -85,7 +85,8 @@ module smu_axi_out_sim_slave #(
     axi_resp_o.b.resp   = axi_pkg::RESP_OKAY;
     axi_resp_o.r_valid  = rd_active;
     axi_resp_o.r.id     = ar_q[ar_rd].id;
-    axi_resp_o.r.data   = store.exists(rd_addr[AddrWidth-1:3]) ? store[rd_addr[AddrWidth-1:3]] : '0;
+    axi_resp_o.r.data   = store.exists(rd_addr[AddrWidth-1:3])
+                            ? store[rd_addr[AddrWidth-1:3]] : '0;
     axi_resp_o.r.resp   = axi_pkg::RESP_OKAY;
     axi_resp_o.r.last   = (rd_beat == ar_q[ar_rd].len);
   end
@@ -108,25 +109,21 @@ module smu_axi_out_sim_slave #(
       store.delete();
     end else begin
       if (axi_req_i.aw_valid) begin
-        aw_q[aw_wr] <= '{
-            id: axi_req_i.aw.id,
-            addr: axi_req_i.aw.addr,
-            len: axi_req_i.aw.len,
-            size: axi_req_i.aw.size,
-            burst: axi_req_i.aw.burst
-        };
-        aw_wr <= aw_wr + 1'b1;
+        aw_q[aw_wr] <= '{id:    axi_req_i.aw.id,
+                                 addr:  axi_req_i.aw.addr,
+                                 len:   axi_req_i.aw.len,
+                                 size:  axi_req_i.aw.size,
+                                 burst: axi_req_i.aw.burst};
+        aw_wr   <= aw_wr + 1'b1;
         aw_full <= (IdxWidth'(aw_wr + 1'b1) == aw_rd);
       end
       if (axi_req_i.ar_valid) begin
-        ar_q[ar_wr] <= '{
-            id: axi_req_i.ar.id,
-            addr: axi_req_i.ar.addr,
-            len: axi_req_i.ar.len,
-            size: axi_req_i.ar.size,
-            burst: axi_req_i.ar.burst
-        };
-        ar_wr <= ar_wr + 1'b1;
+        ar_q[ar_wr] <= '{id:    axi_req_i.ar.id,
+                                 addr:  axi_req_i.ar.addr,
+                                 len:   axi_req_i.ar.len,
+                                 size:  axi_req_i.ar.size,
+                                 burst: axi_req_i.ar.burst};
+        ar_wr   <= ar_wr + 1'b1;
         ar_full <= (IdxWidth'(ar_wr + 1'b1) == ar_rd);
       end
 
@@ -166,7 +163,8 @@ module smu_axi_out_sim_slave #(
           ar_rd     <= ar_rd + 1'b1;
           ar_full   <= 1'b0;
         end else begin
-          rd_addr <= next_addr(rd_addr, ar_q[ar_rd].size, ar_q[ar_rd].burst);
+          rd_addr <= next_addr(rd_addr, ar_q[ar_rd].size,
+                                         ar_q[ar_rd].burst);
           rd_beat <= rd_beat + 8'd1;
         end
       end

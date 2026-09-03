@@ -7,15 +7,15 @@ module RO_Jitter_Array #(
   parameter int N = 16,
   parameter int PROB_SCALE = 1_000_000
 ) (
-  input  logic             clk_i,
-  input  logic             rstn_i,
+  input  logic         clk_i,
+  input  logic         rstn_i,
   // Per-lane enable from DUT (connected at TB top level)
-  input  logic     [N-1:0] enable_i,
+  input  logic [N-1:0] enable_i,
   // Config interface
-         ro_cfg_if         cfg,
+  ro_cfg_if            cfg,
   // Outputs
-  output logic     [N-1:0] bit_o,
-  output logic     [N-1:0] vld_o
+  output logic [N-1:0] bit_o,
+  output logic [N-1:0] vld_o
 );
   genvar i;
   generate
@@ -25,7 +25,7 @@ module RO_Jitter_Array #(
       ) u_ro (
         .clk_i            (clk_i),
         .rstn_i           (rstn_i),
-        .cfg_enable_i     (enable_i[i]),       // Use per-lane enable from DUT
+        .cfg_enable_i     (enable_i[i]),  // Use per-lane enable from DUT
         .cfg_seed_en_i    (cfg.seed_en),
         .cfg_seed_i       (cfg.seed[i]),
         .cfg_p_bias_i     (cfg.p_bias[i]),
@@ -45,13 +45,13 @@ module RO_Jitter_Array #(
   // Produces 1 word every 64 cycles (matching decorrelator sample rate)
   // Activated when cfg.word32_enable is high
 
-  logic        word32_bit;  // Single bit from word32 generator
-  logic        word32_bit_vld;  // Valid signal from word32 generator
+  logic        word32_bit;         // Single bit from word32 generator
+  logic        word32_bit_vld;     // Valid signal from word32 generator
   logic [31:0] word32_data_stage;  // Staging register for bit accumulation
-  logic [31:0] word32_data_q;  // Output register (only updates when word complete)
-  logic        word32_valid_q;  // Pulsed when word is complete
-  logic [ 4:0] bit_counter;  // Counts 0-31 for word accumulation
-  logic        sample_toggle;  // Toggle to sample every other bit
+  logic [31:0] word32_data_q;      // Output register (only updates when word complete)
+  logic        word32_valid_q;     // Pulsed when word is complete
+  logic [4:0]  bit_counter;        // Counts 0-31 for word accumulation
+  logic        sample_toggle;      // Toggle to sample every other bit
 
   // Instantiate dedicated RO_Jitter_Model for word32 generation
   // This reuses all existing bias/correlation/stuck-at logic
@@ -61,12 +61,12 @@ module RO_Jitter_Array #(
   ) u_word32_gen (
     .clk_i            (clk_i),
     .rstn_i           (rstn_i),
-    .cfg_enable_i     (cfg.word32_enable),  // Enable continuously when word32 mode active
-    .cfg_seed_en_i    (1'b0),               // No seed control for word32
+    .cfg_enable_i     (cfg.word32_enable),       // Enable continuously when word32 mode active
+    .cfg_seed_en_i    (1'b0),                    // No seed control for word32
     .cfg_seed_i       (32'h0),
     .cfg_p_bias_i     (cfg.word32_p_bias),
     .cfg_p_corr_i     (cfg.word32_p_corr),
-    .cfg_stuck_en_i   (1'b0),               // No stuck-at for word32
+    .cfg_stuck_en_i   (1'b0),                    // No stuck-at for word32
     .cfg_stuck_value_i(1'b0),
     .bit_o            (word32_bit),
     .vld_o            (word32_bit_vld)

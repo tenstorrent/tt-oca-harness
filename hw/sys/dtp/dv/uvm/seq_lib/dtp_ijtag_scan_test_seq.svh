@@ -35,7 +35,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
       int unsigned sib, bit [DtpIjtagSibCount-1:0] open_pattern,
       sep_lifecycle_ctrl_pkg::dbg_disable_t gate_mask, string context_s);
     string quiet[$];
-    string none [$];
+    string none[$];
     // Baseline: everything enabled, all SIBs closed.
     check_ijtag_pattern(3'b000, '0, {context_s, ".baseline"});
     // Attempt to open the target SIB while its disable is asserted.
@@ -60,7 +60,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     check_ijtag_pattern(3'b000, '0, "all_off.nominal");
     // Seeded per-pass disable mask: with every SIB closed, any lifecycle
     // gating state must leave the outcome identical (closed stays closed).
-    d               = '0;
+    d = '0;
     d.dft_secure    = bit'($urandom_range(1));
     d.dft_nonsecure = bit'($urandom_range(1));
     d.dfd           = bit'($urandom_range(1));
@@ -72,11 +72,11 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     int unsigned order[3] = '{0, 1, 2};
     `uvm_info(get_type_name(), "iJTAG SIB all-on", UVM_LOW)
     check_ijtag_pattern(3'b111, '0, "all_on.nominal");
-    gate_masks[0]               = '0;
+    gate_masks[0] = '0;
     gate_masks[0].dft_secure    = 1'b1;
-    gate_masks[1]               = '0;
+    gate_masks[1] = '0;
     gate_masks[1].dft_nonsecure = 1'b1;
-    gate_masks[2]               = '0;
+    gate_masks[2] = '0;
     gate_masks[2].dfd           = 1'b1;
     // Seeded per-pass order: each loop exercises a different gate
     // sequence.
@@ -97,7 +97,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
       check_ijtag_pattern(3'(pattern), '0, $sformatf("sweep.pattern_%03b", pattern));
     for (int unsigned idx = 0; idx < 16; idx++) begin
       bit [2:0] pattern = 3'($urandom_range(7));
-      d               = '0;
+      d = '0;
       d.dft_secure    = bit'($urandom_range(1));
       d.dft_nonsecure = bit'($urandom_range(1));
       d.dfd           = bit'($urandom_range(1));
@@ -116,7 +116,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
       bit       gate_secure;
       bit       gate_nonsecure;
     } dft_case_t;
-    dft_case_t   cases[4];
+    dft_case_t cases[4];
     int unsigned order[4] = '{0, 1, 2, 3};
     `uvm_info(get_type_name(), "iJTAG DFT secure/non-secure access", UVM_LOW)
     // Non-secure DFT only, then secure DFT only.
@@ -181,7 +181,9 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
       "sib_random":  run_sib_random();
       "dft":         run_dft();
       "dfd":         run_dfd();
-      default:       `uvm_fatal(get_type_name(), $sformatf("unknown iJTAG scenario %s", scenario))
+      default:
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "unknown iJTAG scenario %s", scenario))
     endcase
     enable_all_debug();
     program_ijtag_sibs(3'b000, "cleanup");

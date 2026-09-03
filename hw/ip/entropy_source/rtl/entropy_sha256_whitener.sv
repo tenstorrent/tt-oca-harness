@@ -14,22 +14,22 @@
  */
 
 module entropy_sha256_whitener (
-  input logic clk_i,
-  input logic rst_ni,
+  input       logic       clk_i,
+  input       logic       rst_ni,
 
-  input  logic        entropy_valid_i,
-  input  logic [31:0] entropy_data_i,
-  output logic        entropy_ready_o,
+  input       logic       entropy_valid_i,
+  input       logic [31:0] entropy_data_i,
+  output      logic       entropy_ready_o,
 
-  output logic        whitened_valid_o,
-  output logic [31:0] whitened_data_o,
-  input  logic        whitened_ready_i,
+  output      logic       whitened_valid_o,
+  output      logic [31:0] whitened_data_o,
+  input       logic       whitened_ready_i,
 
-  input logic enable_i,
+  input       logic       enable_i,
 
-  output logic       busy_o,
-  output logic [3:0] input_count_o,
-  output logic [2:0] output_count_o
+  output      logic       busy_o,
+  output      logic [3:0] input_count_o,
+  output      logic [2:0] output_count_o
 );
 
   /////////////////////
@@ -49,18 +49,18 @@ module entropy_sha256_whitener (
   logic [3:0] output_word_count_q, output_word_count_d;
   logic hashing_q, hashing_d;
   logic input_phase_q, input_phase_d;
-  logic                              sha_hash_done_q;
+  logic       sha_hash_done_q;
 
-  logic                       [31:0] output_buffer_q  [8];
-  logic                       [31:0] output_buffer_d  [8];
+  logic [31:0] output_buffer_q [8];
+  logic [31:0] output_buffer_d [8];
 
-  logic                              sha_fifo_valid;
-  prim_sha2_pkg::sha_fifo32_t        sha_fifo_data;
-  logic                              sha_fifo_ready;
-  logic                              sha_hash_start;
-  logic                              sha_hash_process;
-  logic                              sha_hash_done;
-  prim_sha2_pkg::sha_word64_t [ 7:0] sha_digest;
+  logic                            sha_fifo_valid;
+  prim_sha2_pkg::sha_fifo32_t      sha_fifo_data;
+  logic                            sha_fifo_ready;
+  logic                            sha_hash_start;
+  logic                            sha_hash_process;
+  logic                            sha_hash_done;
+  prim_sha2_pkg::sha_word64_t [7:0] sha_digest;
 
   /////////////////
   // Sub-instances
@@ -68,27 +68,27 @@ module entropy_sha256_whitener (
   prim_sha2_32 #(
     .MultimodeEn(1'b0)  // SHA-256 only
   ) u_sha2 (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .wipe_secret_i   (1'b0),
-    .wipe_v_i        (32'h0),
-    .fifo_rvalid_i   (sha_fifo_valid),
-    .fifo_rdata_i    (sha_fifo_data),
-    .fifo_rready_o   (sha_fifo_ready),
-    .sha_en_i        (1'b1),
-    .hash_start_i    (sha_hash_start),
-    .hash_stop_i     (1'b0),
-    .hash_continue_i (1'b0),
-    .digest_mode_i   (prim_sha2_pkg::SHA2_256),
-    .hash_process_i  (sha_hash_process),
-    .hash_done_o     (sha_hash_done),
-    .message_length_i(64'd512),                  // Always 512-bit blocks
-    .digest_i        ('0),
-    .digest_we_i     ('0),
-    .digest_o        (sha_digest),
-    .digest_on_blk_o (),
-    .hash_running_o  (),
-    .idle_o          ()
+    .clk_i              (clk_i),
+    .rst_ni             (rst_ni),
+    .wipe_secret_i      (1'b0),
+    .wipe_v_i           (32'h0),
+    .fifo_rvalid_i      (sha_fifo_valid),
+    .fifo_rdata_i       (sha_fifo_data),
+    .fifo_rready_o      (sha_fifo_ready),
+    .sha_en_i           (1'b1),
+    .hash_start_i       (sha_hash_start),
+    .hash_stop_i        (1'b0),
+    .hash_continue_i    (1'b0),
+    .digest_mode_i      (prim_sha2_pkg::SHA2_256),
+    .hash_process_i     (sha_hash_process),
+    .hash_done_o        (sha_hash_done),
+    .message_length_i   (64'd512),  // Always 512-bit blocks
+    .digest_i           ('0),
+    .digest_we_i        ('0),
+    .digest_o           (sha_digest),
+    .digest_on_blk_o    (),
+    .hash_running_o     (),
+    .idle_o             ()
   );
 
   /////////////////
@@ -135,7 +135,7 @@ module entropy_sha256_whitener (
       // before fifo_rready_o goes high
       if (!input_phase_q) begin
         sha_hash_start = 1'b1;
-        input_phase_d  = 1'b1;
+        input_phase_d = 1'b1;
       end
 
       sha_fifo_valid = entropy_valid_i;

@@ -24,16 +24,16 @@
 module efuse_token_digest_sha256
   import prim_sha2_pkg::*;
 (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic             clk_i,
+  input  logic             rst_ni,
 
-  input logic test_en_i,  // DFT test-enable: freeze the retained digest
+  input  logic             test_en_i,            // DFT test-enable: freeze the retained digest
 
-  input logic             start_i,  // start a hash of token_i
-  input logic [7:0][31:0] token_i,  // 256-bit token, MSW = token_i[7]
+  input  logic             start_i,              // start a hash of token_i
+  input  logic [7:0][31:0] token_i,              // 256-bit token, MSW = token_i[7]
 
-  output logic         digest_vld_sticky_o,  // sticky valid when digest_o is valid
-  output logic [255:0] sha_digest_sticky_o
+  output logic             digest_vld_sticky_o, // sticky valid when digest_o is valid
+  output logic [255:0]     sha_digest_sticky_o
 );
 
   typedef enum logic [2:0] {
@@ -47,29 +47,29 @@ module efuse_token_digest_sha256
   logic [2:0] word_idx_q, word_idx_d;
 
   // engine control / status
-  logic                hash_start;
-  logic                hash_process;
-  logic                fifo_rvalid;
-  logic                fifo_rready;
-  logic                hash_done;
-  logic                hash_done_q;
-  logic                idle;
-  sha_fifo32_t         fifo_rdata;
+  logic              hash_start;
+  logic              hash_process;
+  logic              fifo_rvalid;
+  logic              fifo_rready;
+  logic              hash_done;
+  logic              hash_done_q;
+  logic              idle;
+  sha_fifo32_t       fifo_rdata;
 
-  sha_word64_t [  7:0] sha_digest;
-  logic        [255:0] sha_digest_formatted;
-  logic                digest_vld_sticky_n0_scan;
-  logic        [255:0] sha_digest_sticky_n0_scan;
-  logic                digest_latch_en_pre;
-  logic                digest_latch_en;
-  logic                vld_latch_en_pre;
-  logic                vld_latch_en;
-  logic                vld_latch_d;
+  sha_word64_t [7:0] sha_digest;
+  logic [255:0] sha_digest_formatted;
+  logic              digest_vld_sticky_n0_scan;
+  logic [255:0]      sha_digest_sticky_n0_scan;
+  logic              digest_latch_en_pre;
+  logic              digest_latch_en;
+  logic              vld_latch_en_pre;
+  logic              vld_latch_en;
+  logic              vld_latch_d;
 
   // Feed the token most-significant word first so that token_i[7] lands in
   // message-schedule word w[0], which is the most-significant word of the token.
-  assign fifo_rdata.data = token_i[3'd7-word_idx_q];
-  assign fifo_rdata.mask = 4'hF;  // word-aligned: all bytes valid
+  assign fifo_rdata.data = token_i[3'd7 - word_idx_q];
+  assign fifo_rdata.mask = 4'hF; // word-aligned: all bytes valid
 
   always_comb begin
     state_d      = state_q;
@@ -129,27 +129,27 @@ module efuse_token_digest_sha256
   prim_sha2_32 #(
     .MultimodeEn(0)
   ) u_prim_sha2_32 (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .wipe_secret_i   (1'b0),
-    .wipe_v_i        (32'b0),
-    .fifo_rvalid_i   (fifo_rvalid),
-    .fifo_rdata_i    (fifo_rdata),
-    .fifo_rready_o   (fifo_rready),
-    .sha_en_i        (1'b1),
-    .hash_start_i    (hash_start),
-    .hash_stop_i     (1'b0),
-    .hash_continue_i (1'b0),
-    .digest_mode_i   (SHA2_None),     // unused in MultimodeEn = 0
-    .hash_process_i  (hash_process),
-    .hash_done_o     (hash_done),
-    .message_length_i(64'd256),       // single 256-bit block
-    .digest_i        ('0),
-    .digest_we_i     ('0),
-    .digest_o        (sha_digest),
-    .digest_on_blk_o (),              // unused
-    .hash_running_o  (),              // unused
-    .idle_o          (idle)
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+    .wipe_secret_i    (1'b0),
+    .wipe_v_i         (32'b0),
+    .fifo_rvalid_i    (fifo_rvalid),
+    .fifo_rdata_i     (fifo_rdata),
+    .fifo_rready_o    (fifo_rready),
+    .sha_en_i         (1'b1),
+    .hash_start_i     (hash_start),
+    .hash_stop_i      (1'b0),
+    .hash_continue_i  (1'b0),
+    .digest_mode_i    (SHA2_None),       // unused in MultimodeEn = 0
+    .hash_process_i   (hash_process),
+    .hash_done_o      (hash_done),
+    .message_length_i (64'd256),         // single 256-bit block
+    .digest_i         ('0),
+    .digest_we_i      ('0),
+    .digest_o         (sha_digest),
+    .digest_on_blk_o  (),                // unused
+    .hash_running_o   (),                // unused
+    .idle_o           (idle)
   );
 
   // Map the engine digest (H0..H7 in digest words 0..7, lower 32 bits each)

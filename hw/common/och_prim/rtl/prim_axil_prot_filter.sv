@@ -9,7 +9,7 @@
 module prim_axil_prot_filter #(
   parameter int unsigned ADDR_WIDTH = 32,
   parameter int unsigned DATA_WIDTH = 32,
-  parameter int unsigned MAX_TRANS  = 32,
+  parameter int unsigned MAX_TRANS = 32,
 
   parameter type axil_req_t     = logic,
   parameter type axil_resp_t    = logic,
@@ -42,10 +42,10 @@ module prim_axil_prot_filter #(
   // AXI4-Lite Filter Implementation
   //==========================================================================
 
-  axil_req_t axil_req_to_filter;
+  axil_req_t  axil_req_to_filter;
   axil_resp_t axil_resp_from_filter;
 
-  axil_req_t [1:0] axil_reqs_filtered;
+  axil_req_t  [1:0] axil_reqs_filtered;
   axil_resp_t [1:0] axil_resps_filtered;
 
   // Transaction detection signals
@@ -53,11 +53,11 @@ module prim_axil_prot_filter #(
   logic read_txn_complete, write_txn_complete;
   logic read_prot_check_pass, write_prot_check_pass;
 
-  assign read_req_valid = axil_req_i.ar_valid;
+  assign read_req_valid  = axil_req_i.ar_valid;
   assign write_req_valid = axil_req_i.aw_valid;
 
   // Transaction completion detection
-  assign read_txn_complete = axil_resp_o.r_valid && axil_req_i.r_ready;
+  assign read_txn_complete  = axil_resp_o.r_valid && axil_req_i.r_ready;
   assign write_txn_complete = axil_resp_o.b_valid && axil_req_i.b_ready;
 
   // Protection requirement checks
@@ -73,24 +73,24 @@ module prim_axil_prot_filter #(
   // "close" filter by passing to err (index 0)
   // "open"  filter by passing to IO (index 1)
   assign aw_filter_pass = write_req_valid & write_prot_check_pass;
-  assign ar_filter_pass = read_req_valid & read_prot_check_pass;
+  assign ar_filter_pass = read_req_valid  & read_prot_check_pass;
 
   axi_lite_demux #(
-    .aw_chan_t  (axil_aw_chan_t),
-    .w_chan_t   (axil_w_chan_t),
-    .b_chan_t   (axil_b_chan_t),
-    .ar_chan_t  (axil_ar_chan_t),
-    .r_chan_t   (axil_r_chan_t),
-    .axi_req_t  (axil_req_t),
-    .axi_resp_t (axil_resp_t),
-    .NoMstPorts (2),
-    .MaxTrans   (MAX_TRANS),
-    .FallThrough(1'b0),
-    .SpillAw    (1'b0),
-    .SpillW     (1'b0),
-    .SpillB     (1'b0),
-    .SpillAr    (1'b0),
-    .SpillR     (1'b0)
+    .aw_chan_t   (axil_aw_chan_t),
+    .w_chan_t    (axil_w_chan_t),
+    .b_chan_t    (axil_b_chan_t),
+    .ar_chan_t   (axil_ar_chan_t),
+    .r_chan_t    (axil_r_chan_t),
+    .axi_req_t   (axil_req_t),
+    .axi_resp_t  (axil_resp_t),
+    .NoMstPorts  (2),
+    .MaxTrans    (MAX_TRANS),
+    .FallThrough (1'b0),
+    .SpillAw     (1'b0),
+    .SpillW      (1'b0),
+    .SpillB      (1'b0),
+    .SpillAr     (1'b0),
+    .SpillR      (1'b0)
   ) axil_filter (
     .clk_i(clk_i),
     .rst_ni(rst_ni),

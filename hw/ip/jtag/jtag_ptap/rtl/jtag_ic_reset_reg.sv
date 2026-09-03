@@ -42,12 +42,12 @@ module jtag_ic_reset_reg
   parameter int unsigned NUM_IC_RESET_PORTS = 3  // Number of IC reset ports
 ) (
   // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
-  input  logic            scan_in_i,
-  output logic            scan_out_o,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  logic             scan_in_i,
+  output logic             scan_out_o,
 
   // TAP control interface (for reset control)
-  input jtag_tap_ctrl_t tap_ctrl_i,
+  input  jtag_tap_ctrl_t   tap_ctrl_i,
 
   // IC Reset control outputs. NOTE: `ic_reset_ovrd_o` is the *active-high*
   // override signal; it is the bit-wise inversion of the IEEE §17
@@ -72,16 +72,16 @@ module jtag_ic_reset_reg
   jtag_scan_ctrl_t reset_hold_scan_ctrl, reset_enable_control_scan_ctrl;
 
   // Reset hold register signals
-  logic                                  reset_hold_scan_out;
-  logic                                  reset_hold;
+  logic             reset_hold_scan_out;
+  logic             reset_hold;
 
   // Reset enable/control register signals
   logic                                  reset_enable_control_scan_out;
   logic [RESET_ENABLE_CONTROL_WIDTH-1:0] reset_enable_control_data;
 
   // Extracted control bits
-  logic [        NUM_IC_RESET_PORTS-1:0] reset_enable;
-  logic [        NUM_IC_RESET_PORTS-1:0] reset_control;
+  logic [NUM_IC_RESET_PORTS-1:0] reset_enable;
+  logic [NUM_IC_RESET_PORTS-1:0] reset_control;
 
   //--------------------------------------------------------------------------
   // Scan Control for Reset Hold Register
@@ -111,11 +111,11 @@ module jtag_ic_reset_reg
     .RESET_VAL({RESET_ENABLE_CONTROL_WIDTH{1'b1}}),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_reset_enable_control_scan_reg (
-    .scan_ctrl_i(reset_enable_control_scan_ctrl),
-    .scan_in_i  (scan_in_i),                       // TDI input
-    .scan_out_o (reset_enable_control_scan_out),
-    .data_in_i  (reset_enable_control_data),
-    .data_out_o (reset_enable_control_data)
+    .scan_ctrl_i   (reset_enable_control_scan_ctrl),
+    .scan_in_i     (scan_in_i),  // TDI input
+    .scan_out_o    (reset_enable_control_scan_out),
+    .data_in_i     (reset_enable_control_data),
+    .data_out_o    (reset_enable_control_data)
   );
 
   //--------------------------------------------------------------------------
@@ -128,11 +128,11 @@ module jtag_ic_reset_reg
     .RESET_VAL(1'b1),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_reset_hold_scan_reg (
-    .scan_ctrl_i(reset_hold_scan_ctrl),
-    .scan_in_i  (reset_enable_control_scan_out),
-    .scan_out_o (reset_hold_scan_out),
-    .data_in_i  (reset_hold),
-    .data_out_o (reset_hold)
+    .scan_ctrl_i   (reset_hold_scan_ctrl),
+    .scan_in_i     (reset_enable_control_scan_out),
+    .scan_out_o    (reset_hold_scan_out),
+    .data_in_i     (reset_hold),
+    .data_out_o    (reset_hold)
   );
 
   //--------------------------------------------------------------------------

@@ -12,28 +12,28 @@ module traffic_filter #(
   parameter int unsigned GroupIdWidth = 4,
   parameter int unsigned DataBusWidthLog2 = 3,
 
-  localparam type addr_t     = logic [   AddrWidth-1:0],
+  localparam type addr_t     = logic [    AddrWidth-1:0],
   localparam type src_id_t   = logic [  SrcIdWidth-1:0],
   localparam type group_id_t = logic [GroupIdWidth-1:0]
 ) (
-  input logic      cfg_allow_traffic_type_i,
-  input addr_t     cfg_start_addr_i,          // spyglass disable W240
-  input addr_t     cfg_end_addr_i,            // spyglass disable W240
-  input logic      cfg_entry_enabled_i,
-  input logic      cfg_burst_en_i,
-  input src_id_t   cfg_src_id_i,
-  input group_id_t cfg_group_id_i,
-  input logic      cfg_allow_ns_i,
+  input logic           cfg_allow_traffic_type_i,
+  input addr_t          cfg_start_addr_i,          // spyglass disable W240
+  input addr_t          cfg_end_addr_i,            // spyglass disable W240
+  input logic           cfg_entry_enabled_i,
+  input logic           cfg_burst_en_i,
+  input src_id_t        cfg_src_id_i,
+  input group_id_t      cfg_group_id_i,
+  input logic           cfg_allow_ns_i,
 
-  input logic          tx_valid_i,
-  input addr_t         tx_addr_i,          // spyglass disable W240
-  input src_id_t       tx_src_id_i,
-  input group_id_t     tx_group_id_i,
-  input logic          tx_ns_initiator_i,
-  input axi_pkg::len_t tx_len_i,
+  input logic        tx_valid_i,
+  input addr_t       tx_addr_i,   // spyglass disable W240
+  input src_id_t     tx_src_id_i,
+  input group_id_t   tx_group_id_i,
+  input logic        tx_ns_initiator_i,
+  input axi_pkg::len_t    tx_len_i,
 
-  output logic filter_hit_o,
-  output logic tx_rule_pass_o
+  output logic    filter_hit_o,
+  output logic    tx_rule_pass_o
 );
 
   logic tx_in_range;

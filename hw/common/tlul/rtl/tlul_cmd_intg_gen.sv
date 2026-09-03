@@ -21,7 +21,7 @@ module tlul_cmd_intg_gen
 
 tl_h2d_cmd_intg_t cmd;
   assign cmd = extract_h2d_cmd_intg(tl_i);
-  logic [ H2DCmdMaxWidth-1:0] unused_cmd_payload;
+  logic [H2DCmdMaxWidth-1:0] unused_cmd_payload;
 
   logic [H2DCmdIntgWidth-1:0] cmd_intg;
   prim_secded_inv_64_57_enc u_cmd_gen (
@@ -30,7 +30,7 @@ tl_h2d_cmd_intg_t cmd;
   );
 
   logic [top_pkg::TL_DW-1:0] data_final;
-  logic [ DataIntgWidth-1:0] data_intg;
+  logic [DataIntgWidth-1:0] data_intg;
 
   if (EnableDataIntgGen) begin : gen_data_intg
     assign data_final = tl_i.a_data;
@@ -42,7 +42,7 @@ tl_h2d_cmd_intg_t cmd;
     );
   end else begin : gen_passthrough_data_intg
     assign data_final = tl_i.a_data;
-    assign data_intg  = tl_i.a_user.data_intg;
+    assign data_intg = tl_i.a_user.data_intg;
   end
 
   always_comb begin

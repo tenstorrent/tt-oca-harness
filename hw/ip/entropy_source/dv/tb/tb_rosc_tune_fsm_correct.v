@@ -24,12 +24,12 @@
 module tb_rosc_tune_fsm_correct;
 
   // Clock and reset
-  reg     clk;
-  reg     rstn;
+  reg clk;
+  reg rstn;
 
   // DUT signals
-  reg     health_error;
-  wire    tune_state;
+  reg  health_error;
+  wire tune_state;
 
   // Test monitoring
   integer test_errors;
@@ -50,10 +50,10 @@ module tb_rosc_tune_fsm_correct;
 
   // DUT instantiation
   entropy_rosc_tune_fsm dut (
-    .clk_i         (clk),
-    .rst_ni        (rstn),
-    .health_error_i(health_error),
-    .tune_state_o  (tune_state)
+    .clk_i          (clk),
+    .rst_ni         (rstn),
+    .health_error_i (health_error),
+    .tune_state_o   (tune_state)
   );
 
   // Check state matches expected
@@ -291,7 +291,7 @@ module tb_rosc_tune_fsm_correct;
     $display("Expecting state to toggle ONLY on rising edges\n");
 
     // Reset counters for this test
-    rising_edge_count  = 0;
+    rising_edge_count = 0;
     state_toggle_count = 0;
 
     // Ensure clean start from LOW
@@ -309,7 +309,7 @@ module tb_rosc_tune_fsm_correct;
       // Vary HIGH period from 4 to 20 cycles
       high_period = 4 + (iteration % 17);
       // Vary LOW period from 4 to 20 cycles (different pattern)
-      low_period  = 4 + ((iteration * 7) % 17);
+      low_period = 4 + ((iteration * 7) % 17);
 
       // Rising edge: 0->1
       @(posedge clk);
@@ -338,7 +338,7 @@ module tb_rosc_tune_fsm_correct;
       if (tune_state !== last_state) begin
         $display("ERROR at iteration %0d: State toggled on falling edge!", iteration);
         test_errors = test_errors + 1;
-        last_state  = tune_state;
+        last_state = tune_state;
       end
 
       // Progress indicator every 20 iterations

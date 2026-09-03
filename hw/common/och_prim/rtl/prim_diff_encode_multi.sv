@@ -10,9 +10,9 @@ module prim_diff_encode_multi #(
   parameter int unsigned Width = 4,
   parameter bit OutputFlop = 1'b0
 ) (
-  input  logic               clk_i,
-  input  logic               rst_ni,
-  input  logic [  Width-1:0] data_i,
+  input  logic             clk_i,
+  input  logic             rst_ni,
+  input  logic [Width-1:0]   data_i,
   output logic [2*Width-1:0] data_o   // {diff_n[W-1:0], diff_p[W-1:0]}
 );
 
@@ -25,7 +25,7 @@ module prim_diff_encode_multi #(
         .rst_ni,
         .req_i  (data_i[i]),
         .diff_po(data_o[i]),
-        .diff_no(data_o[Width+i])
+        .diff_no(data_o[Width + i])
       );
     end
   end else begin : gen_comb
@@ -36,8 +36,8 @@ module prim_diff_encode_multi #(
     prim_sec_anchor_buf #(
       .Width(Width)
     ) u_buf_in (
-      .in_i (data_i),
-      .out_o(data_buf)
+      .in_i  (data_i),
+      .out_o (data_buf)
     );
 
     assign diff_p = data_buf;
@@ -46,8 +46,8 @@ module prim_diff_encode_multi #(
     prim_sec_anchor_buf #(
       .Width(2 * Width)
     ) u_buf_diff (
-      .in_i ({diff_n, diff_p}),
-      .out_o({diff_n_buf, diff_p_buf})
+      .in_i  ({diff_n,     diff_p}),
+      .out_o ({diff_n_buf, diff_p_buf})
     );
 
     assign data_o = {diff_n_buf, diff_p_buf};

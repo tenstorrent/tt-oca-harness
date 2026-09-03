@@ -19,41 +19,41 @@ class ocah_axi_slave_config extends uvm_object;
   // The responder drives its outputs on this interface procedurally; the
   // TB wires only the master-driven signals into it and routes the
   // responder-driven signals back to the DUT (see the DTP tb_top adoption).
-  virtual ocah_axi_if              vif;
+  virtual ocah_axi_if vif;
 
-  ocah_axi_protocol_e              protocol                  = OCAH_AXI_PROTO_AXI4_LITE;
-  int unsigned                     addr_width                = 32;
-  int unsigned                     data_width                = 32;
-  int unsigned                     id_width                  = 0;
+  ocah_axi_protocol_e protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+  int unsigned        addr_width = 32;
+  int unsigned        data_width = 32;
+  int unsigned        id_width   = 0;
 
-  uvm_active_passive_enum          is_active                 = UVM_ACTIVE;
+  uvm_active_passive_enum is_active = UVM_ACTIVE;
 
   // Backing memory footprint in bytes (power of two; addresses wrap).
-  int unsigned                     mem_bytes                 = 65536;
+  int unsigned mem_bytes = 65536;
 
   // Bounded READY backpressure, per master-driven channel (the SV-UVM
   // mirror of the cocotb bounded pause generator): when nonzero, the
   // responder repeats a low-for-N / high-for-one READY pattern on that
   // channel, so every handshake completes within N+1 cycles of VALID —
   // never a permanent stall.
-  int unsigned                     aw_stall_cycles           = 0;
-  int unsigned                     w_stall_cycles            = 0;
-  int unsigned                     ar_stall_cycles           = 0;
+  int unsigned aw_stall_cycles = 0;
+  int unsigned w_stall_cycles  = 0;
+  int unsigned ar_stall_cycles = 0;
 
   // Stable name for log messages.
-  string                           name_tag                  = "ocah_axi_slave";
+  string name_tag = "ocah_axi_slave";
 
   // One-shot injected-error tables, keyed by beat-aligned address.
-  protected ocah_axi_resp_e        m_inject_rd[bit  [63:0]];
-  protected ocah_axi_resp_e        m_inject_wr[bit  [63:0]];
+  protected ocah_axi_resp_e m_inject_rd[bit [63:0]];
+  protected ocah_axi_resp_e m_inject_wr[bit [63:0]];
 
   // One-shot response-ID corruption masks per direction (the SV-UVM mirror
   // of the cocotb fault slave's inject_id_corruption): the next selected
   // transaction answers request_id ^ mask (ID-width truncated) instead of
   // echoing the request ID. 0 = disarmed (a zero mask is rejected — it
   // would be an echo).
-  protected bit             [15:0] m_id_corrupt_rd;
-  protected bit             [15:0] m_id_corrupt_wr;
+  protected bit [15:0] m_id_corrupt_rd;
+  protected bit [15:0] m_id_corrupt_wr;
 
   function new(string name = "ocah_axi_slave_config");
     super.new(name);
@@ -136,12 +136,12 @@ class ocah_axi_slave_config extends uvm_object;
     foreach (channels[i]) begin
       case (channels[i])
         "aw": aw_stall_cycles = stall_cycles;
-        "w": w_stall_cycles = stall_cycles;
+        "w":  w_stall_cycles  = stall_cycles;
         "ar": ar_stall_cycles = stall_cycles;
         default:
-        `uvm_fatal(get_type_name(), $sformatf(
-                   "%s: unknown backpressure channel '%s' (expected aw/w/ar)", name_tag, channels[i]
-                   ))
+                    `uvm_fatal(get_type_name(), $sformatf(
+                        "%s: unknown backpressure channel '%s' (expected aw/w/ar)",
+                        name_tag, channels[i]))
       endcase
     end
     `uvm_info(get_type_name(), $sformatf(

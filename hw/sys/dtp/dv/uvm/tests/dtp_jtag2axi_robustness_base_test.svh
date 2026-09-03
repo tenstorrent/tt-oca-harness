@@ -55,22 +55,18 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
       `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_robustness_test_seq")
     // Index order mirrors the sequence's target order:
     // smc_axi, smc_otp, sep_otp.
-    rob_seq.target_cfgs = '{m_env.m_smc_axi_cfg, m_env.m_smc_otp_axi_cfg, m_env.m_sep_otp_axi_cfg};
-    rob_seq.target_evidence = '{
-        m_env.m_smc_axi_env.m_checker,
-        m_env.m_smc_otp_axi_env.m_checker,
-        m_env.m_sep_otp_axi_env.m_checker
-    };
-    rob_seq.target_ref_models = '{
-        m_env.m_smc_axi_env.m_ref_model,
-        m_env.m_smc_otp_axi_env.m_ref_model,
-        m_env.m_sep_otp_axi_env.m_ref_model
-    };
-    rob_seq.target_slaves = '{
-        m_env.m_smc_axi_slave_agent.seq,
-        m_env.m_smc_otp_slave_agent.seq,
-        m_env.m_sep_otp_slave_agent.seq
-    };
+    rob_seq.target_cfgs       = '{m_env.m_smc_axi_cfg,
+                                      m_env.m_smc_otp_axi_cfg,
+                                      m_env.m_sep_otp_axi_cfg};
+    rob_seq.target_evidence   = '{m_env.m_smc_axi_env.m_checker,
+                                      m_env.m_smc_otp_axi_env.m_checker,
+                                      m_env.m_sep_otp_axi_env.m_checker};
+    rob_seq.target_ref_models = '{m_env.m_smc_axi_env.m_ref_model,
+                                      m_env.m_smc_otp_axi_env.m_ref_model,
+                                      m_env.m_sep_otp_axi_env.m_ref_model};
+    rob_seq.target_slaves     = '{m_env.m_smc_axi_slave_agent.seq,
+                                      m_env.m_smc_otp_slave_agent.seq,
+                                      m_env.m_sep_otp_slave_agent.seq};
   endfunction
 
 endclass : dtp_jtag2axi_robustness_base_test

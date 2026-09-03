@@ -20,11 +20,11 @@
 `include "ocah_fcov_macros.svh"
 
 module dtp_scan_fcov (
-  input wire                                              tck_i,
-  input wire                                              trst_ni,
-  input wire                                       [15:0] tap_state_i,
-  input wire                                       [63:0] inst_decoded_i,
-  input wire sep_lifecycle_ctrl_pkg::dbg_disable_t        dbg_disable_i,
+  input wire        tck_i,
+  input wire        trst_ni,
+  input wire [15:0] tap_state_i,
+  input wire [63:0] inst_decoded_i,
+  input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_i,
 
   // iJTAG chain controls (flattened DUT outputs)
   input wire dft_secure_select_i,
@@ -84,7 +84,7 @@ module dtp_scan_fcov (
   logic sib_dfd_seen_q, sib_dfts_seen_q, sib_dftn_seen_q;
   always_ff @(posedge tck_i) begin
     if (in_capture_dr) begin
-      sib_dfd_seen_q  <= 1'b0;
+      sib_dfd_seen_q <= 1'b0;
       sib_dfts_seen_q <= 1'b0;
       sib_dftn_seen_q <= 1'b0;
     end else begin
@@ -110,7 +110,8 @@ module dtp_scan_fcov (
   `undef DTP_SIB_PATTERN
 
   wire instr_access_dfd_e = dfd_select_i && dfd_shift_en_i && !in_reset;
-  wire instr_access_dfts_e = dft_secure_select_i && dft_secure_shift_en_i && !in_reset;
+  wire instr_access_dfts_e = dft_secure_select_i && dft_secure_shift_en_i
+      && !in_reset;
   wire instr_access_dftn_e = dft_select_i && dft_shift_en_i && !in_reset;
   `OCAH_FCOV_COVER(c_instrument_access_dfd, instr_access_dfd_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_instrument_access_dft_secure, instr_access_dfts_e, tck_i, in_reset)
@@ -120,8 +121,10 @@ module dtp_scan_fcov (
   wire sib_enabled_dfts_e = dft_secure_select_i && !dbg_disable_i.dft_secure;
   wire sib_enabled_dftn_e = dft_select_i && !dbg_disable_i.dft_nonsecure;
   wire sib_gated_dfd_e = ijtag_committed && dbg_disable_i.dfd && !sib_dfd_seen_q;
-  wire sib_gated_dfts_e = ijtag_committed && dbg_disable_i.dft_secure && !sib_dfts_seen_q;
-  wire sib_gated_dftn_e = ijtag_committed && dbg_disable_i.dft_nonsecure && !sib_dftn_seen_q;
+  wire sib_gated_dfts_e =
+      ijtag_committed && dbg_disable_i.dft_secure && !sib_dfts_seen_q;
+  wire sib_gated_dftn_e =
+      ijtag_committed && dbg_disable_i.dft_nonsecure && !sib_dftn_seen_q;
   `OCAH_FCOV_COVER(c_sib_gating_enabled_dfd, sib_enabled_dfd_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_sib_gating_enabled_dft_secure, sib_enabled_dfts_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_sib_gating_enabled_dft_nonsecure, sib_enabled_dftn_e, tck_i, in_reset)
@@ -145,7 +148,8 @@ module dtp_scan_fcov (
 
   wire any_sel_int = stap_io_sel_int_i || stap_smc_sel_int_i
       || stap_sep_sel_int_i || stap_extra_sel_int_i;
-  wire any_sel = stap_io_sel_i || stap_smc_sel_i || stap_sep_sel_i || stap_extra_sel_i;
+  wire any_sel = stap_io_sel_i || stap_smc_sel_i || stap_sep_sel_i
+      || stap_extra_sel_i;
   wire any_tms_hold = stap_io_tms_hold_i || stap_smc_tms_hold_i
       || stap_sep_tms_hold_i || stap_extra_tms_hold_i;
   wire any_config_hold = stap_io_config_hold_i || stap_smc_config_hold_i

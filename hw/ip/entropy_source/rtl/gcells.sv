@@ -85,7 +85,7 @@ module gdffqb (
       q_o  <= 1'b0;
       qb_o <= 1'b1;
     end else begin
-      q_o  <= d_i;
+      q_o  <=  d_i;
       qb_o <= ~d_i;
     end
   end
@@ -105,24 +105,24 @@ module gdffsync (
   // 1st stage flip-flop
   gdff u_df0 (
     .d_i,
-    .cdn_i(1'b1),
+    .cdn_i (1'b1),
     .cp_i,
-    .q_o  (df0_o)
+    .q_o   (df0_o)
   );
   // HL|LH edge detector
   assign edgein = df0_o ^ d_i;
   gdff u_dfe (
-    .d_i  (edgein),
-    .cdn_i(1'b1),
+    .d_i   (edgein),
+    .cdn_i (1'b1),
     .cp_i,
-    .q_o  (dfe_o)
+    .q_o   (dfe_o)
   );
   // 2nd flip-flop randomly goes metastable on HL|LH edges
   assign metasig = dfe_o & $random;  // verilog_lint: waive invalid-system-task-function
-  assign df1_i   = metasig ^ df0_o;
+  assign df1_i = metasig ^ df0_o;
   gdff u_df1 (
-    .d_i  (df1_i),
-    .cdn_i(1'b1),
+    .d_i   (df1_i),
+    .cdn_i (1'b1),
     .cp_i,
     .q_o
   );
@@ -139,13 +139,13 @@ module gdffsync (
 
   gdff u_df0 (
     .d_i,
-    .cdn_i(1'b1),
+    .cdn_i (1'b1),
     .cp_i,
-    .q_o  (metasig)
+    .q_o   (metasig)
   );
   gdff u_df1 (
-    .d_i  (metasig),
-    .cdn_i(1'b1),
+    .d_i   (metasig),
+    .cdn_i (1'b1),
     .cp_i,
     .q_o
   );

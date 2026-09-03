@@ -20,7 +20,7 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq extends dtp_debug_tdr_bas
   protected task check_combo(bit jtag_clock_stop, bit cla_clock_stop_en,
                              bit [NumClkStopReq-1:0] clk_stop_req, string context_s);
     bit [63:0] control_value, readback;
-    bit expected_cla = |clk_stop_req;
+    bit expected_cla  = |clk_stop_req;
     bit expected_stop = jtag_clock_stop | expected_cla;
     control_value = pack_debug_control(.cla_clock_stop_en(cla_clock_stop_en), .jtag_clock_stop(
                                        jtag_clock_stop));

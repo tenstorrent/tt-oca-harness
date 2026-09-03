@@ -37,29 +37,29 @@ module sep_cpu
 ) (
   input logic clk_i,
   input logic rst_ni,
-  input logic dbg_rstb_i, // EL2 debugger reset
+  input logic dbg_rstb_i,  // EL2 debugger reset
 
-  input logic jtag_tck,  // JTAG clk
-  input logic jtag_tms,  // JTAG TMS
-  input logic jtag_tdi,  // JTAG tdi
-  input logic jtag_trst_n,  // JTAG Reset
-  output logic jtag_tdo,  // JTAG TDO
+  input  logic jtag_tck,    // JTAG clk
+  input  logic jtag_tms,    // JTAG TMS
+  input  logic jtag_tdi,    // JTAG tdi
+  input  logic jtag_trst_n, // JTAG Reset
+  output logic jtag_tdo,    // JTAG TDO
   output logic jtag_tdoEn,  // JTAG Test Data Output enable
 
   // external MPC halt/run interface
-  input  logic mpc_debug_halt_req,  // Async halt request
-  input  logic mpc_debug_run_req,   // Async run request
-  input  logic mpc_reset_run_req,   // Run/halt after reset
-  output logic mpc_debug_halt_ack,  // Halt ack
-  output logic mpc_debug_run_ack,   // Run ack
-  output logic debug_brkpt_status,  // debug breakpoint
+  input  logic mpc_debug_halt_req, // Async halt request
+  input  logic mpc_debug_run_req,  // Async run request
+  input  logic mpc_reset_run_req,  // Run/halt after reset
+  output logic mpc_debug_halt_ack, // Halt ack
+  output logic mpc_debug_run_ack,  // Run ack
+  output logic debug_brkpt_status, // debug breakpoint
 
-  input logic i_cpu_halt_req,  // Async halt req to CPU
-  output logic o_cpu_halt_ack,  // core response to halt
-  output logic o_cpu_halt_status,  // 1'b1 indicates core is halted
+  input  logic i_cpu_halt_req,      // Async halt req to CPU
+  output logic o_cpu_halt_ack,      // core response to halt
+  output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
   output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-  input logic i_cpu_run_req,  // Async restart req to CPU
-  output logic o_cpu_run_ack,  // Core response to run req
+  input  logic i_cpu_run_req,       // Async restart req to CPU
+  output logic o_cpu_run_ack,       // Core response to run req
 
   // Excluding from coverage as usage is determined by the integrator of the VeeR core.
   // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
@@ -80,9 +80,9 @@ module sep_cpu
   input logic [31:1] jtag_id,
 
   // IRQs
-  input logic                                  nmi_int,
-  input logic                                  timer_int,
-  input logic                                  soft_int,
+  input logic                       nmi_int,
+  input logic                       timer_int,
+  input logic                       soft_int,
   input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
 
   output sep_cpu_trace_t sep_cpu_trace,
@@ -92,7 +92,7 @@ module sep_cpu
   output logic dccm_ecc_single_error,
   output logic dccm_ecc_double_error,
 
-  output logic dec_tlu_perfcnt0,  // toggles when slot0 perf counter 0 has an event inc
+  output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
   output logic dec_tlu_perfcnt1,
   output logic dec_tlu_perfcnt2,
   output logic dec_tlu_perfcnt3,
@@ -107,33 +107,33 @@ module sep_cpu
   input  sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
 
   // AXI interfaces (IFU split into ROM and SRAM via internal demux)
-  output sep_32_64_3_12_axi_req_t  ifu_rom_axi_req_o,
-  input  sep_32_64_3_12_axi_resp_t ifu_rom_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
 
-  output sep_32_64_3_12_axi_req_t  ifu_sram_axi_req_o,
-  input  sep_32_64_3_12_axi_resp_t ifu_sram_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
 
-  output sep_32_64_3_12_axi_req_t  lsu_rom_axi_req_o,
-  input  sep_32_64_3_12_axi_resp_t lsu_rom_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
 
-  output sep_32_64_3_12_axi_req_t  lsu_xbar_axi_req_o,
-  input  sep_32_64_3_12_axi_resp_t lsu_xbar_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
 
-  output sep_32_64_3_12_axi_req_t  dbg_axi_req_o,
-  input  sep_32_64_3_12_axi_resp_t dbg_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
 
-  input  sep_32_64_6_12_axi_req_t  cpu_tcm_axi_req_i,
-  output sep_32_64_6_12_axi_resp_t cpu_tcm_axi_resp_o,
+  input  sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
+  output sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
 
-  input logic [31:0] sep_local_base_addr_i,
-  input logic [31:0] sep_region_size_i       // unused: alias remap lives in the real CPU wrapper
+  input  logic [31:0]                 sep_local_base_addr_i,
+  input  logic [31:0]                 sep_region_size_i   // unused: alias remap lives in the real CPU wrapper
 );
 
   // -------------------------------------------------------------------------
   // LSU intermediate nets referenced by the no_cpu tb via hierarchical name.
   // Same names/types as the real sep_cpu so force/probe hierarchy is identical.
   // -------------------------------------------------------------------------
-  sep_32_64_3_12_axi_req_t  lsu_axi_req;  // driven below from the tb cocotb master
+  sep_32_64_3_12_axi_req_t  lsu_axi_req;   // driven below from the tb cocotb master
   sep_32_64_3_12_axi_resp_t lsu_axi_resp;  // tb reads this net; driven by demux below
 
   // The stub is the SOLE driver of the LSU master (no VeeR core), so drive the
@@ -167,41 +167,41 @@ module sep_cpu
   end
 
   axi_demux #(
-    .AxiIdWidth (SEP_32_64_3_12_ID_WIDTH),
-    .AtopSupport(1'b0),
-    .aw_chan_t  (sep_32_64_3_12_axi_aw_chan_t),
-    .w_chan_t   (sep_32_64_3_12_axi_w_chan_t),
-    .b_chan_t   (sep_32_64_3_12_axi_b_chan_t),
-    .ar_chan_t  (sep_32_64_3_12_axi_ar_chan_t),
-    .r_chan_t   (sep_32_64_3_12_axi_r_chan_t),
-    .axi_req_t  (sep_32_64_3_12_axi_req_t),
-    .axi_resp_t (sep_32_64_3_12_axi_resp_t),
-    .NoMstPorts (SEP_LSU_DEMUX_NUM_PORTS),
-    .MaxTrans   (4),
-    .AxiLookBits(SEP_32_64_3_12_ID_WIDTH),
-    .UniqueIds  (1'b0),
-    .SpillAw    (1'b0),
-    .SpillW     (1'b0),
-    .SpillB     (1'b0),
-    .SpillAr    (1'b0),
-    .SpillR     (1'b0),
-    .SelHashIds (1'b0)
+    .AxiIdWidth  (SEP_32_64_3_12_ID_WIDTH),
+    .AtopSupport (1'b0),
+    .aw_chan_t   (sep_32_64_3_12_axi_aw_chan_t),
+    .w_chan_t    (sep_32_64_3_12_axi_w_chan_t),
+    .b_chan_t    (sep_32_64_3_12_axi_b_chan_t),
+    .ar_chan_t   (sep_32_64_3_12_axi_ar_chan_t),
+    .r_chan_t    (sep_32_64_3_12_axi_r_chan_t),
+    .axi_req_t   (sep_32_64_3_12_axi_req_t),
+    .axi_resp_t  (sep_32_64_3_12_axi_resp_t),
+    .NoMstPorts  (SEP_LSU_DEMUX_NUM_PORTS),
+    .MaxTrans    (4),
+    .AxiLookBits (SEP_32_64_3_12_ID_WIDTH),
+    .UniqueIds   (1'b0),
+    .SpillAw     (1'b0),
+    .SpillW      (1'b0),
+    .SpillB      (1'b0),
+    .SpillAr     (1'b0),
+    .SpillR      (1'b0),
+    .SelHashIds  (1'b0)
   ) u_lsu_axi_demux (
-    .clk_i          (clk_i),
-    .rst_ni         (rst_ni),
-    .test_i         (test_en_i),
-    .slv_req_i      (lsu_axi_req),
-    .slv_aw_select_i(lsu_aw_select),
-    .slv_ar_select_i(lsu_ar_select),
-    .sel_hash_i     ('0),
-    .slv_resp_o     (lsu_axi_resp),
-    .mst_reqs_o     (lsu_demux_req),
-    .mst_resps_i    (lsu_demux_resp)
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .test_i          (test_en_i),
+    .slv_req_i       (lsu_axi_req),
+    .slv_aw_select_i (lsu_aw_select),
+    .slv_ar_select_i (lsu_ar_select),
+    .sel_hash_i      ('0),
+    .slv_resp_o      (lsu_axi_resp),
+    .mst_reqs_o      (lsu_demux_req),
+    .mst_resps_i     (lsu_demux_resp)
   );
 
   // Connect demux outputs to module ports
-  assign lsu_rom_axi_req_o                       = lsu_demux_req[SEP_LSU_DEMUX_PORT_ROM];
-  assign lsu_demux_resp[SEP_LSU_DEMUX_PORT_ROM]  = lsu_rom_axi_resp_i;
+  assign lsu_rom_axi_req_o                      = lsu_demux_req[SEP_LSU_DEMUX_PORT_ROM];
+  assign lsu_demux_resp[SEP_LSU_DEMUX_PORT_ROM] = lsu_rom_axi_resp_i;
 
   assign lsu_xbar_axi_req_o                      = lsu_demux_req[SEP_LSU_DEMUX_PORT_XBAR];
   assign lsu_demux_resp[SEP_LSU_DEMUX_PORT_XBAR] = lsu_xbar_axi_resp_i;
@@ -210,59 +210,59 @@ module sep_cpu
   // Tie off all OTHER output ports to benign idle values (no VeeR core).
   // -------------------------------------------------------------------------
   // JTAG
-  assign jtag_tdo                                = 1'b0;
-  assign jtag_tdoEn                              = 1'b0;
+  assign jtag_tdo            = 1'b0;
+  assign jtag_tdoEn          = 1'b0;
 
   // MPC halt/run + debug status
-  assign mpc_debug_halt_ack                      = 1'b0;
-  assign mpc_debug_run_ack                       = 1'b0;
-  assign debug_brkpt_status                      = 1'b0;
+  assign mpc_debug_halt_ack  = 1'b0;
+  assign mpc_debug_run_ack   = 1'b0;
+  assign debug_brkpt_status  = 1'b0;
 
   // CPU halt/run handshake + debug mode
-  assign o_cpu_halt_ack                          = 1'b0;
-  assign o_cpu_halt_status                       = 1'b0;
-  assign o_debug_mode_status                     = 1'b0;
-  assign o_cpu_run_ack                           = 1'b0;
+  assign o_cpu_halt_ack      = 1'b0;
+  assign o_cpu_halt_status   = 1'b0;
+  assign o_debug_mode_status = 1'b0;
+  assign o_cpu_run_ack       = 1'b0;
 
   // DMI uncore port
-  assign dmi_uncore_en                           = 1'b0;
-  assign dmi_uncore_wr_en                        = 1'b0;
-  assign dmi_uncore_addr                         = '0;
-  assign dmi_uncore_wdata                        = '0;
-  assign dmi_active                              = 1'b0;
+  assign dmi_uncore_en       = 1'b0;
+  assign dmi_uncore_wr_en    = 1'b0;
+  assign dmi_uncore_addr     = '0;
+  assign dmi_uncore_wdata    = '0;
+  assign dmi_active          = 1'b0;
 
   // Trace
-  assign sep_cpu_trace                           = '0;
+  assign sep_cpu_trace       = '0;
 
   // ECC error status
-  assign iccm_ecc_single_error                   = 1'b0;
-  assign iccm_ecc_double_error                   = 1'b0;
-  assign dccm_ecc_single_error                   = 1'b0;
-  assign dccm_ecc_double_error                   = 1'b0;
+  assign iccm_ecc_single_error = 1'b0;
+  assign iccm_ecc_double_error = 1'b0;
+  assign dccm_ecc_single_error = 1'b0;
+  assign dccm_ecc_double_error = 1'b0;
 
   // Perf counters
-  assign dec_tlu_perfcnt0                        = 1'b0;
-  assign dec_tlu_perfcnt1                        = 1'b0;
-  assign dec_tlu_perfcnt2                        = 1'b0;
-  assign dec_tlu_perfcnt3                        = 1'b0;
+  assign dec_tlu_perfcnt0    = 1'b0;
+  assign dec_tlu_perfcnt1    = 1'b0;
+  assign dec_tlu_perfcnt2    = 1'b0;
+  assign dec_tlu_perfcnt3    = 1'b0;
 
-  assign lockstep_status_o                       = '0;
+  assign lockstep_status_o = '0;
 
   logic unused_lockstep_ctrl;
   assign unused_lockstep_ctrl = |lockstep_ctrl_i;
 
   // TCM (ICCM/DCCM) request to memory macros - idle (no core)
-  assign sep_cpu_tcm_req_o    = '0;
+  assign sep_cpu_tcm_req_o   = '0;
 
   // IFU AXI masters - idle (IFU demux not reproduced in the stub)
-  assign ifu_rom_axi_req_o    = '0;
-  assign ifu_sram_axi_req_o   = '0;
+  assign ifu_rom_axi_req_o   = '0;
+  assign ifu_sram_axi_req_o  = '0;
 
   // DBG/SB AXI master - idle (debug/SB path not reproduced in the stub)
-  assign dbg_axi_req_o        = '0;
+  assign dbg_axi_req_o       = '0;
 
   // DMA/TCM AXI slave response - idle (no core consuming the DMA channel)
-  assign cpu_tcm_axi_resp_o   = '0;
+  assign cpu_tcm_axi_resp_o  = '0;
 
 endmodule
 

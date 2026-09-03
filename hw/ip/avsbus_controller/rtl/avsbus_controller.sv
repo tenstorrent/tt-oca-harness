@@ -7,24 +7,24 @@
 
 
 module avsbus_controller #(
-  parameter int unsigned COMMAND_FIFO_DEPTH  = 8,
+  parameter int unsigned COMMAND_FIFO_DEPTH = 8,
   parameter int unsigned READBACK_FIFO_DEPTH = 8
 ) (
   // Global interface
-  input logic clk_reg_i,
-  input logic clk_ref_i,
-  input logic rst_ref_ni,  // async reset, deasserted synchronously to clk_ref_i
-  input logic rst_reg_ni,  // async reset, deasserted synchronously to clk_reg_i
+  input  logic            clk_reg_i,
+  input  logic            clk_ref_i,
+  input  logic            rst_ref_ni,     // async reset, deasserted synchronously to clk_ref_i
+  input  logic            rst_reg_ni,     // async reset, deasserted synchronously to clk_reg_i
   input  logic            rst_clk_div_ni, // clock divider needs to be taken out of reset before rest of AVS logic
 
   // AVSBus Interface
-  input  logic avs_sdata_i,
-  output logic avs_mdata_o,
-  output logic avs_clock_o,
-  output logic avs_gpio_enable_o,
+  input  logic            avs_sdata_i,
+  output logic            avs_mdata_o,
+  output logic            avs_clock_o,
+  output logic            avs_gpio_enable_o,
 
-  input  avsbus_controller_pkg::avsbus_axil_req_t  axil_req_i,
-  output avsbus_controller_pkg::avsbus_axil_resp_t axil_resp_o,
+  input  avsbus_controller_pkg::avsbus_axil_req_t              axil_req_i,
+  output avsbus_controller_pkg::avsbus_axil_resp_t             axil_resp_o,
 
   // Interrupt interface
   output logic interrupt_o,
@@ -309,7 +309,7 @@ module avsbus_controller #(
 
 
   // APB request/response signals from bridge
-  avsbus_controller_pkg::avsbus_apb_req_t  [0:0] apb_bridge_req;
+  avsbus_controller_pkg::avsbus_apb_req_t [0:0] apb_bridge_req;
   avsbus_controller_pkg::avsbus_apb_resp_t [0:0] apb_bridge_resp;
 
   axi_lite_to_apb #(
@@ -378,7 +378,7 @@ module avsbus_controller #(
   prim_prog_clk_div_posedge #(
     .RESET_WIDTH(ResetSyncStages),
     .INITIAL_DIVIDER_VAL(8'd4),  // by default, divide by 4 to create a slower freq for AVS
-    .DIVIDED_CLOCK_ON_RESET(1'b1)  // Select divided clock on reset
+    .DIVIDED_CLOCK_ON_RESET(1'b1) // Select divided clock on reset
   ) u_clk_div (
     .clk_i(pre_div_clk),
     .rst_ni(rst_clk_div_ni),
@@ -428,8 +428,8 @@ module avsbus_controller #(
 
   // AVS bus clock gate:
   prim_clkgater u_avs_bus_clkgate (
-    .i_clk(avs_clk),
-    .i_en (avs_clk_enable),
+    .i_clk (avs_clk),
+    .i_en  (avs_clk_enable),
     .i_te (test_en_i),
     .o_clk(avs_clock_o)
   );
@@ -448,10 +448,10 @@ module avsbus_controller #(
 
   // test mux to bypass APBCLK/REFCLK antiglitch mux in testmode:
   prim_clock_mux2 test_clkmux2_0 (
-    .clk0_i(apb_ref_muxed_clk),
-    .clk1_i(clk_test_i),
+    .clk0_i (apb_ref_muxed_clk),
+    .clk1_i (clk_test_i),
     .sel_i (test_en_i),
-    .clk_o (pre_div_clk)
+    .clk_o  (pre_div_clk)
   );
 
   // Select apbclk clock in test mode:
@@ -459,24 +459,24 @@ module avsbus_controller #(
 
   // apb_clk clock gate:
   prim_clkgater u_apbclk_clkgate (
-    .i_clk(clk_reg_i),
-    .i_en (~R_avs_cfg_1_F_turn_off_all_premux_clocks),
+    .i_clk (clk_reg_i),
+    .i_en  (~R_avs_cfg_1_F_turn_off_all_premux_clocks),
     .i_te (test_en_i),
     .o_clk(apb_clk_gated)
   );
 
   // refclk clock gate:
   prim_clkgater u_refclk_clkgate (
-    .i_clk(clk_ref_i),
-    .i_en (~R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk),
+    .i_clk (clk_ref_i),
+    .i_en  (~R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk),
     .i_te (test_en_i),
     .o_clk(refclk_gated)
   );
 
   prim_sync3 u_gate_refclk_en_sync (
     .i_clk(clk_ref_i),
-    .i_d  (R_avs_cfg_1_F_turn_off_all_premux_clocks),
-    .o_q  (R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk)
+    .i_d (R_avs_cfg_1_F_turn_off_all_premux_clocks),
+    .o_q (R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk)
   );
 
   assign avs_clk = pre_testmux_avs_clk;
@@ -521,20 +521,20 @@ module avsbus_controller #(
   // register re-synchronizers:
   prim_sync3 u_idle_clk_reg_resync (
     .i_clk(avs_clk),
-    .i_d  (R_avs_cfg_1_F_stop_avs_clock_on_idle),
-    .o_q  (R_avs_cfg_1_F_stop_avs_clock_on_idle_RS_avs_clk)
+    .i_d (R_avs_cfg_1_F_stop_avs_clock_on_idle),
+    .o_q (R_avs_cfg_1_F_stop_avs_clock_on_idle_RS_avs_clk)
   );
 
   prim_sync3 u_slave_resync_pending_resync (
     .i_clk(avs_clk),
-    .i_d  (slave_resync_pending),
-    .o_q  (slave_resync_pending_RS_avs_clk)
+    .i_d (slave_resync_pending),
+    .o_q (slave_resync_pending_RS_avs_clk)
   );
 
   prim_sync3 u_readback_fifo_full_resync (
     .i_clk(clk_reg_i),
-    .i_d  (R_avs_normal_status_F_readback_fifo_full_AVSCLK_q),
-    .o_q  (R_avs_normal_status_F_readback_fifo_full)
+    .i_d (R_avs_normal_status_F_readback_fifo_full_AVSCLK_q),
+    .o_q (R_avs_normal_status_F_readback_fifo_full)
   );
 
   // flop before re-sync'ing:
@@ -548,20 +548,20 @@ module avsbus_controller #(
 
   prim_sync3 u_slave_unresponsive_resync (
     .i_clk(clk_reg_i),
-    .i_d  (R_avs_interrupt_F_slave_unresponsive_int_AVSCLK),
-    .o_q  (R_avs_interrupt_F_slave_unresponsive_int)
+    .i_d (R_avs_interrupt_F_slave_unresponsive_int_AVSCLK),
+    .o_q (R_avs_interrupt_F_slave_unresponsive_int)
   );
 
   prim_sync3 u_slave_interrupt_resync (
     .i_clk(clk_reg_i),
-    .i_d  (R_avs_interrupt_F_avs_slave_issued_interrupt_AVSCLK),
-    .o_q  (R_avs_interrupt_F_avs_slave_issued_interrupt)
+    .i_d (R_avs_interrupt_F_avs_slave_issued_interrupt_AVSCLK),
+    .o_q (R_avs_interrupt_F_avs_slave_issued_interrupt)
   );
 
   prim_sync3 u_avs_readback_en_resync (
     .i_clk(clk_reg_i),
-    .i_d  (push_avs_readback_en_q),
-    .o_q  (push_avs_readback_en_RS_apb_clk)
+    .i_d (push_avs_readback_en_q),
+    .o_q (push_avs_readback_en_RS_apb_clk)
   );
 
   // flop before re-sync'ing:
@@ -575,8 +575,8 @@ module avsbus_controller #(
 
   prim_sync3 u_max_retries_attempted_resync (
     .i_clk(clk_reg_i),
-    .i_d  (avs_max_retries_attempted_q),
-    .o_q  (avs_max_retries_attempted_RS_apb_clk)
+    .i_d (avs_max_retries_attempted_q),
+    .o_q (avs_max_retries_attempted_RS_apb_clk)
   );
   // flop before re-sync'ing:
   always_ff @(posedge avs_clk) begin
@@ -1215,18 +1215,20 @@ module avsbus_controller #(
     .clk(clk_reg_i),
     .arst_n(reset_n_apb_clk_syncd),
 
-    .s_apb_psel   (psel),
-    .s_apb_penable(penable),
-    .s_apb_pwrite (pwrite),
-    .s_apb_pprot  (pprot),
-    .s_apb_paddr  (paddr[avsbus_controller_reg_pkg::AVSBUS_CONTROLLER_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_apb_pwdata (pwdata),
-    .s_apb_pstrb  (pstrb),
-    .s_apb_pready (pready),
-    .s_apb_prdata (prdata),
-    .s_apb_pslverr(reg_pslverr),
+    .s_apb_psel     (psel),
+    .s_apb_penable  (penable),
+    .s_apb_pwrite   (pwrite),
+    .s_apb_pprot    (pprot),
+    .s_apb_paddr    (paddr[
+                            avsbus_controller_reg_pkg::AVSBUS_CONTROLLER_REG_MIN_ADDR_WIDTH-1:0
+                        ]),
+    .s_apb_pwdata   (pwdata),
+    .s_apb_pstrb    (pstrb),
+    .s_apb_pready   (pready),
+    .s_apb_prdata   (prdata),
+    .s_apb_pslverr  (reg_pslverr),
 
-    .hwif_in (hwif_in),
+    .hwif_in(hwif_in),
     .hwif_out(hwif_out)
   );
 
@@ -1249,7 +1251,7 @@ module avsbus_controller #(
   assign hwif_in.AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE.next = R_avs_normal_status_F_avs_bus_is_idle;
   assign hwif_in.AVS_NORMAL_STATUS.AVS_SLAVE_IS_IN_RESYNC.next = R_avs_normal_status_F_avs_slave_is_in_resync;
 
-  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next = R_avs_slave_status_F_avs_slave_ack;
+  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next    = R_avs_slave_status_F_avs_slave_ack;
   assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_STATUS_RESPONSE.next    = R_avs_slave_status_F_avs_slave_status_response;
 
   assign hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_VACANT_SLOTS.next   = R_avs_fifos_status_F_readback_fifo_vacant_slots;
@@ -1257,12 +1259,12 @@ module avsbus_controller #(
   assign hwif_in.AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS.next        = R_avs_fifos_status_F_cmd_fifo_vacant_slots;
   assign hwif_in.AVS_FIFOS_STATUS.CMD_FIFO_OCCUPIED_SLOTS.next      = R_avs_fifos_status_F_cmd_fifo_occupied_slots;
 
-  assign hwif_in.AVS_INTERRUPT.READBACK_OVERFLOW_INT.next = R_avs_interrupt_F_readback_overflow_int;
+  assign hwif_in.AVS_INTERRUPT.READBACK_OVERFLOW_INT.next           = R_avs_interrupt_F_readback_overflow_int;
   assign hwif_in.AVS_INTERRUPT.READBACK_UNDERFLOW_INT.next          = R_avs_interrupt_F_readback_underflow_int;
-  assign hwif_in.AVS_INTERRUPT.CMD_FIFO_OVERFLOW_INT.next = R_avs_interrupt_F_cmd_fifo_overflow_int;
-  assign hwif_in.AVS_INTERRUPT.READBACK_HAS_DATA_INT.next = R_avs_interrupt_F_readback_has_data_int;
+  assign hwif_in.AVS_INTERRUPT.CMD_FIFO_OVERFLOW_INT.next           = R_avs_interrupt_F_cmd_fifo_overflow_int;
+  assign hwif_in.AVS_INTERRUPT.READBACK_HAS_DATA_INT.next           = R_avs_interrupt_F_readback_has_data_int;
   assign hwif_in.AVS_INTERRUPT.READBACK_FIFO_FULL_INT.next          = R_avs_interrupt_F_readback_fifo_full_int;
-  assign hwif_in.AVS_INTERRUPT.CMD_FIFO_FULL_INT.next = R_avs_interrupt_F_cmd_fifo_full_int;
+  assign hwif_in.AVS_INTERRUPT.CMD_FIFO_FULL_INT.next               = R_avs_interrupt_F_cmd_fifo_full_int;
   assign hwif_in.AVS_INTERRUPT.AVS_SLAVE_ISSUED_INTERRUPT.next      = R_avs_interrupt_F_avs_slave_issued_interrupt;
 
   assign R_avs_interrupt_mask_F_disable_readback_overflow_int = hwif_out.AVS_INTERRUPT_MASK.DISABLE_READBACK_OVERFLOW_INT.value;

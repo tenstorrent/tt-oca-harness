@@ -20,34 +20,34 @@ module axi_hang_detector #(
   parameter int unsigned OutstandingTx = 6
 ) (
   // Global interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic           clk_i,
+  input  logic           rst_ni,
 
   // AXI snoop inputs (same as prim_axi_snoop)
-  input logic snoop_aw_valid_i,
-  input logic snoop_aw_ready_i,
-  input logic snoop_w_valid_i,
-  input logic snoop_b_valid_i,
-  input logic snoop_b_ready_i,
-  input logic snoop_ar_valid_i,
-  input logic snoop_ar_ready_i,
-  input logic snoop_r_valid_i,
-  input logic snoop_r_ready_i,
-  input logic snoop_r_last_i,
+  input  logic           snoop_aw_valid_i,
+  input  logic           snoop_aw_ready_i,
+  input  logic           snoop_w_valid_i,
+  input  logic           snoop_b_valid_i,
+  input  logic           snoop_b_ready_i,
+  input  logic           snoop_ar_valid_i,
+  input  logic           snoop_ar_ready_i,
+  input  logic           snoop_r_valid_i,
+  input  logic           snoop_r_ready_i,
+  input  logic           snoop_r_last_i,
 
   // Configuration (from cpu_ctrl register block, clk_i domain)
-  input logic        enable_i,    // CTRL.enable
-  input logic        irq_en_i,    // CTRL.irq_en
-  input logic        irq_test_i,  // CTRL.irq_test
-  input logic [19:0] threshold_i, // TIMEOUT_THRESHOLD.value
+  input  logic           enable_i,      // CTRL.enable
+  input  logic           irq_en_i,      // CTRL.irq_en
+  input  logic           irq_test_i,    // CTRL.irq_test
+  input  logic [19:0]    threshold_i,   // TIMEOUT_THRESHOLD.value
 
   // Pass-through bus_active from snoop
-  output logic bus_active_o,
+  output logic           bus_active_o,
 
   // Interrupt output: direct combinational level.
   // Asserts when enable & irq_en are set and the stall counter reaches
   // threshold, or when irq_test is set for verification.
-  output logic irq_o
+  output logic           irq_o
 );
 
   /////////////////////////////
@@ -58,8 +58,8 @@ module axi_hang_detector #(
   localparam int unsigned ReqCountW = (OutstandingTx > 1) ? $clog2(OutstandingTx) + 2 : 2;
 
   logic complete_aw, complete_ar, any_completion;
-  logic [ReqCountW-1:0] req_count_q;
-  logic                 req_count_nonzero;
+  logic [ReqCountW-1:0]       req_count_q;
+  logic                       req_count_nonzero;
 
   prim_axi_snoop #(
     .OutstandingTx(OutstandingTx)
@@ -117,7 +117,8 @@ module axi_hang_detector #(
   // threshold == 0 disables detection: the loaded value 0 would read as fired
   // immediately, so guard it off.
   logic timeout_active;
-  assign timeout_active = enable_i && (threshold_i != 20'd0) && (stall_cnt_q == 20'd0);
+  assign timeout_active = enable_i && (threshold_i != 20'd0)
+                                     && (stall_cnt_q == 20'd0);
 
 
   ///////////////////////////////

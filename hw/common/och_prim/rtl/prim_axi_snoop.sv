@@ -12,31 +12,31 @@ module prim_axi_snoop #(
   // Derived parameters
   localparam int unsigned OutstandingTxW = OutstandingTx > 1 ? $clog2(OutstandingTx) + 1 : 1
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic        clk_i,
+  input  logic        rst_ni,
 
   // AXI Write Address Channel Snoop
-  input logic snoop_aw_valid_i,
-  input logic snoop_aw_ready_i,
+  input  logic        snoop_aw_valid_i,
+  input  logic        snoop_aw_ready_i,
 
   // AXI Write Data Channel Snoop
-  input logic snoop_w_valid_i,
+  input  logic        snoop_w_valid_i,
 
   // AXI Write Response Channel Snoop
-  input logic snoop_b_valid_i,
-  input logic snoop_b_ready_i,
+  input  logic        snoop_b_valid_i,
+  input  logic        snoop_b_ready_i,
 
   // AXI Read Address Channel Snoop
-  input logic snoop_ar_valid_i,
-  input logic snoop_ar_ready_i,
+  input  logic        snoop_ar_valid_i,
+  input  logic        snoop_ar_ready_i,
 
   // AXI Read Data Channel Snoop
-  input logic snoop_r_valid_i,
-  input logic snoop_r_ready_i,
-  input logic snoop_r_last_i,
+  input  logic        snoop_r_valid_i,
+  input  logic        snoop_r_ready_i,
+  input  logic        snoop_r_last_i,
 
   // Activity Indicator
-  output logic bus_active_o,
+  output logic                    bus_active_o,
 
   // Probes for downstream hang detection (axi_hang_detector consumes these)
   output logic                    complete_aw_o,
@@ -77,8 +77,8 @@ module prim_axi_snoop #(
 
     // Accept transactions on rising edge or one cycle after handshake while valid still asserted
     // (aw_valid && !aw_valid_q detects rising edge)
-    accept_aw = (snoop_aw_valid_i && !aw_valid_q) || (snoop_aw_valid_i && aw_handshake_q);
-    accept_ar = (snoop_ar_valid_i && !ar_valid_q) || (snoop_ar_valid_i && ar_handshake_q);
+    accept_aw   = (snoop_aw_valid_i && !aw_valid_q) || (snoop_aw_valid_i && aw_handshake_q);
+    accept_ar   = (snoop_ar_valid_i && !ar_valid_q) || (snoop_ar_valid_i && ar_handshake_q);
 
     // Complete transactions on b/r handshakes
     complete_aw = snoop_b_valid_i && snoop_b_ready_i;
@@ -89,7 +89,7 @@ module prim_axi_snoop #(
   end
 
   // Activity detection - active when there are pending requests or write data
-  assign bus_active_o  = |{snoop_aw_valid_i, snoop_w_valid_i, snoop_ar_valid_i, req_count_q};
+  assign bus_active_o = |{snoop_aw_valid_i, snoop_w_valid_i, snoop_ar_valid_i, req_count_q};
 
   // Expose internal probes for downstream hang detection
   assign complete_aw_o = complete_aw;
@@ -102,7 +102,7 @@ module prim_axi_snoop #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      req_count_q    <= count_t'(0);
+      req_count_q <= count_t'(0);
 
       aw_valid_q     <= 1'b0;
       aw_handshake_q <= 1'b0;
@@ -110,7 +110,7 @@ module prim_axi_snoop #(
       ar_handshake_q <= 1'b0;
 
     end else begin
-      req_count_q    <= req_count_d;
+      req_count_q <= req_count_d;
 
       aw_valid_q     <= snoop_aw_valid_i;
       aw_handshake_q <= snoop_aw_valid_i && snoop_aw_ready_i;

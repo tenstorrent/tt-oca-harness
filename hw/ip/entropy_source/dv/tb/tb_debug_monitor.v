@@ -21,22 +21,22 @@ module tb_debug_monitor ();
   // These are coprime to minimize correlation between signals
   real PERIODS[0:15];
   initial begin
-    PERIODS[0]  = 31.0;  // ~32.3 MHz
-    PERIODS[1]  = 37.0;  // ~27.0 MHz
-    PERIODS[2]  = 41.0;  // ~24.4 MHz
-    PERIODS[3]  = 43.0;  // ~23.3 MHz
-    PERIODS[4]  = 47.0;  // ~21.3 MHz
-    PERIODS[5]  = 53.0;  // ~18.9 MHz
-    PERIODS[6]  = 59.0;  // ~16.9 MHz
-    PERIODS[7]  = 61.0;  // ~16.4 MHz
-    PERIODS[8]  = 67.0;  // ~14.9 MHz
-    PERIODS[9]  = 71.0;  // ~14.1 MHz
+    PERIODS[0] = 31.0;   // ~32.3 MHz
+    PERIODS[1] = 37.0;   // ~27.0 MHz
+    PERIODS[2] = 41.0;   // ~24.4 MHz
+    PERIODS[3] = 43.0;   // ~23.3 MHz
+    PERIODS[4] = 47.0;   // ~21.3 MHz
+    PERIODS[5] = 53.0;   // ~18.9 MHz
+    PERIODS[6] = 59.0;   // ~16.9 MHz
+    PERIODS[7] = 61.0;   // ~16.4 MHz
+    PERIODS[8] = 67.0;   // ~14.9 MHz
+    PERIODS[9] = 71.0;   // ~14.1 MHz
     PERIODS[10] = 73.0;  // ~13.7 MHz
     PERIODS[11] = 79.0;  // ~12.7 MHz
     PERIODS[12] = 83.0;  // ~12.0 MHz
     PERIODS[13] = 89.0;  // ~11.2 MHz
     PERIODS[14] = 97.0;  // ~10.3 MHz
-    PERIODS[15] = 101.0;  // ~9.9 MHz
+    PERIODS[15] = 101.0; // ~9.9 MHz
   end
 
   // Test signals
@@ -61,7 +61,7 @@ module tb_debug_monitor ();
   integer test_phase = 0;
   integer signal_index = 0;
   integer freq_div_index = 0;
-  integer random_signal = 7;  // Random signal for frequency division test
+  integer random_signal = 7; // Random signal for frequency division test
 
   // Instantiate the DUT
   entropy_debug_monitor #(
@@ -104,7 +104,7 @@ module tb_debug_monitor ();
     // Initialize
     rst_ni = 0;
     select_signal_i = 0;
-    select_freq_div_i = 2;  // Default to divide by 4 (2^2)
+    select_freq_div_i = 2; // Default to divide by 4 (2^2)
     monitor_edges = 0;
 
     // Reset sequence
@@ -141,7 +141,7 @@ module tb_debug_monitor ();
     //===========================================
     $display("\n=== TEST PHASE 1: Signal Selection (Freq Div = 4) ===");
     test_phase = 1;
-    select_freq_div_i = 2;  // Divide by 4 (2^2)
+    select_freq_div_i = 2; // Divide by 4 (2^2)
 
     for (signal_index = 0; signal_index < NSIGNALS; signal_index = signal_index + 1) begin
       $display("\nTesting Signal[%0d] with frequency division of 4:", signal_index);
@@ -164,8 +164,8 @@ module tb_debug_monitor ();
       measurement_time = end_time - start_time;
 
       // Calculate frequencies
-      expected_freq = (1000.0 / PERIODS[signal_index]) / 4.0;  // MHz, divided by 4
-      measured_freq = (monitor_edges * 1000.0) / measurement_time;  // MHz
+      expected_freq = (1000.0/PERIODS[signal_index]) / 4.0; // MHz, divided by 4
+      measured_freq = (monitor_edges * 1000.0) / measurement_time; // MHz
 
       $display("  Expected: %.3f MHz, Measured: %.3f MHz (%0d edges in %0dns)", expected_freq,
                measured_freq, monitor_edges, measurement_time);
@@ -223,8 +223,8 @@ module tb_debug_monitor ();
       measurement_time = end_time - start_time;
 
       // Calculate frequencies
-      expected_freq = (1000.0 / PERIODS[random_signal]) / (1 << freq_div_index);  // MHz
-      measured_freq = (monitor_edges * 1000.0) / measurement_time;  // MHz
+      expected_freq = (1000.0/PERIODS[random_signal]) / (1 << freq_div_index); // MHz
+      measured_freq = (monitor_edges * 1000.0) / measurement_time; // MHz
 
       $display("  Divider: %3d, Expected: %.3f MHz, Measured: %.3f MHz (%0d edges in %0dns)",
                1 << freq_div_index, expected_freq, measured_freq, monitor_edges, measurement_time);

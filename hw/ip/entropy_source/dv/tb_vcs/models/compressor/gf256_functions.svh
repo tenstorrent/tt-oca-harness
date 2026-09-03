@@ -37,9 +37,9 @@
 function automatic logic [7:0] gf256_mult(input logic [7:0] a, input logic [7:0] b);
   localparam logic [7:0] POLY = 8'h1B;  // AES primitive polynomial
 
-  logic [7:0] p;  // Product accumulator
+  logic [7:0] p;          // Product accumulator
   logic [7:0] a_shifted;  // Shifted copy of 'a'
-  logic       hi_bit;  // High bit for reduction check
+  logic       hi_bit;     // High bit for reduction check
 
   // Initialize
   p = 8'h00;

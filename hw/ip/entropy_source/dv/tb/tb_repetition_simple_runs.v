@@ -70,7 +70,7 @@ module tb_repetition_simple_runs;
     $display("========================================\n");
 
     repeat (5) @(posedge clk);
-    rstn   = 1;
+    rstn = 1;
     enable = 1;
     repeat (5) @(posedge clk);
 
@@ -95,7 +95,7 @@ module tb_repetition_simple_runs;
         @(posedge clk);
 
         // Calculate how many full words and remaining bits
-        words_needed   = run_length / 32;
+        words_needed = run_length / 32;
         remaining_bits = run_length % 32;
 
         // Send full words of all zeros

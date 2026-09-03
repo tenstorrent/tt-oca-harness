@@ -23,9 +23,9 @@ module jtag_jtag2axi_caps_reg
   parameter bit IS_AXI4_LITE = 1'b0  // 0=AXI4, 1=AXI4-Lite
 ) (
   // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
-  input  logic            scan_in_i,
-  output logic            scan_out_o
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  logic             scan_in_i,
+  output logic             scan_out_o
 );
 
   //--------------------------------------------------------------------------
@@ -92,11 +92,11 @@ module jtag_jtag2axi_caps_reg
     .RESET_VAL(CAPS_VALUE),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_2axi_caps_scan_reg (
-    .scan_ctrl_i(scan_ctrl_i),
-    .scan_in_i  (scan_in_i),
-    .scan_out_o (scan_out_o),
-    .data_in_i  (CAPS_VALUE),
-    .data_out_o (  /* UNUSED */)
+    .scan_ctrl_i   (scan_ctrl_i),
+    .scan_in_i     (scan_in_i),
+    .scan_out_o    (scan_out_o),
+    .data_in_i     (CAPS_VALUE),
+    .data_out_o    (/* UNUSED */)
   );
 
 endmodule : jtag_jtag2axi_caps_reg

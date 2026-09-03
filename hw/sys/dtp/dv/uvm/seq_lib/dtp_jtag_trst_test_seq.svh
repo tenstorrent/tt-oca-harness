@@ -44,7 +44,7 @@ class dtp_jtag_trst_test_seq extends dtp_jtag_cmd_lib_seq;
     states[3] = $urandom_range(1) ? OCAH_JTAG_CAPTURE_IR : OCAH_JTAG_CAPTURE_DR;
 
     foreach (states[s]) begin
-      int unsigned assert_cycles = $urandom_range(8, 2);
+      int unsigned assert_cycles  = $urandom_range(8, 2);
       int unsigned release_cycles = $urandom_range(3, 1);
       bit [IrWidth-1:0] instr = $urandom_range(1) ? IDCODE_INSTR : BYPASS_INSTR;
       `uvm_info(get_type_name(), $sformatf(

@@ -93,10 +93,11 @@ class ocah_jtag_master_driver extends uvm_driver #(ocah_jtag_item);
       seq_item_port.get_next_item(req);
       `uvm_info(get_type_name(), {"drive ", req.convert2string()}, UVM_HIGH)
       case (req.op)
-        OCAH_JTAG_TAP_RESET: do_tap_reset();
+        OCAH_JTAG_TAP_RESET:                 do_tap_reset();
         OCAH_JTAG_IR_SCAN, OCAH_JTAG_DR_SCAN: do_scan(req);
-        OCAH_JTAG_RAW_TMS: do_raw(req);
-        default: `uvm_error(get_type_name(), $sformatf("unsupported op %s", req.op.name()))
+        OCAH_JTAG_RAW_TMS:                   do_raw(req);
+        default: `uvm_error(get_type_name(),
+                    $sformatf("unsupported op %s", req.op.name()))
       endcase
       seq_item_port.item_done();
     end

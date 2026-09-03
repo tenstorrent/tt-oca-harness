@@ -20,15 +20,15 @@
 module sep_outbound_mbx
   import sep_pkg::*;
 (
-  input  wire logic                                                clk_i,
-  input  wire logic                                                rst_ni,
-  input  sep_pkg::sep_system_peripherals_outbound_axi_req_t        req_i,
-  output sep_pkg::sep_system_peripherals_outbound_axi_resp_t       resp_o,
+  input  wire logic clk_i,
+  input  wire logic rst_ni,
+  input  sep_pkg::sep_system_peripherals_outbound_axi_req_t  req_i,
+  output sep_pkg::sep_system_peripherals_outbound_axi_resp_t resp_o,
   // Decoded firmware-console observables (read by cocotb via tb_top).
-  output logic                                                     fw_done_o,
-  output logic                                                     fw_pass_o,
-  output logic                                               [7:0] fw_char_o,
-  output logic                                                     fw_char_valid_o
+  output logic       fw_done_o,
+  output logic       fw_pass_o,
+  output logic [7:0] fw_char_o,
+  output logic       fw_char_valid_o
 );
 
   localparam logic [31:0] MAGIC0 = 32'hA5A5_5A5A;
@@ -40,19 +40,20 @@ module sep_outbound_mbx
   localparam int unsigned IDW = $bits(req_i.aw.id);
 
   logic [IDW-1:0] aw_id_q;
-  logic [ AW-1:0] aw_addr_q;
+  logic [AW-1:0]  aw_addr_q;
   logic           b_valid_q;
   logic           ar_active_q;
   logic [IDW-1:0] r_id_q;
-  logic [    8:0] r_beats_q;
+  logic [8:0]     r_beats_q;
   logic           magic_seen_q;
 
   // Address of the in-flight write (handle AW+W arriving on the same cycle).
-  wire  [ AW-1:0] cur_awaddr = req_i.aw_valid ? req_i.aw.addr : aw_addr_q;
-  wire            to_stdout = (cur_awaddr[31:0] == STDOUT_LO);
-  wire            w_fire = req_i.w_valid & resp_o.w_ready;
+  wire [AW-1:0] cur_awaddr = req_i.aw_valid ? req_i.aw.addr : aw_addr_q;
+  wire          to_stdout  = (cur_awaddr[31:0] == STDOUT_LO);
+  wire          w_fire     = req_i.w_valid & resp_o.w_ready;
   // 32-bit lane selected by the write strobe (upper lane for strb 0xF0).
-  wire  [   31:0] mbx_word = (req_i.w.strb[7:4] != 4'h0) ? req_i.w.data[63:32] : req_i.w.data[31:0];
+  wire [31:0]   mbx_word   = (req_i.w.strb[7:4] != 4'h0) ? req_i.w.data[63:32]
+                                                           : req_i.w.data[31:0];
 
   always_comb begin
     resp_o          = '0;
@@ -60,12 +61,12 @@ module sep_outbound_mbx
     resp_o.w_ready  = 1'b1;
     resp_o.b_valid  = b_valid_q;
     resp_o.b.id     = aw_id_q;
-    resp_o.b.resp   = 2'b00;  // OKAY
+    resp_o.b.resp   = 2'b00;          // OKAY
     resp_o.ar_ready = !ar_active_q;
     resp_o.r_valid  = ar_active_q;
     resp_o.r.id     = r_id_q;
     resp_o.r.data   = '0;
-    resp_o.r.resp   = 2'b00;  // OKAY
+    resp_o.r.resp   = 2'b00;          // OKAY
     resp_o.r.last   = (r_beats_q == 9'd1);
   end
 

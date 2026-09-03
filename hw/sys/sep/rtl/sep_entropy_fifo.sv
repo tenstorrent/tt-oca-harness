@@ -64,28 +64,28 @@ module sep_entropy_fifo
   parameter type axil_req_t  = sep_pkg::sep_32_64_axil_req_t,
   parameter type axil_resp_t = sep_pkg::sep_32_64_axil_resp_t
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic       clk_i,
+  input  logic       rst_ni,
 
   // Synchronous clear from the internal TRNG reset domain. This scrubs only
   // entropy-path state; the AXI responder remains alive and reports empty.
-  input logic entropy_clear_i,
+  input  logic       entropy_clear_i,
 
   // Test-mode enable for the internal AXI->AXI-Lite converter.
-  input logic test_en_i,
+  input  logic       test_en_i,
 
   // Native EDN fill port (HW pull -- filled autonomously from the DRBG native
   // endpoint routed out of sep_crypto). Not an AXI bus.
-  output edn_req_t edn_req_o,
-  input  edn_rsp_t edn_rsp_i,
+  output edn_req_t   edn_req_o,
+  input  edn_rsp_t   edn_rsp_i,
 
   // Full AXI4 read-only drain port from sep_local_axi_xbar.
-  input  axi_req_t  entropy_fifo_axi_req_i,
-  output axi_resp_t entropy_fifo_axi_resp_o,
+  input  axi_req_t   entropy_fifo_axi_req_i,
+  output axi_resp_t  entropy_fifo_axi_resp_o,
 
   // Status / interrupt outputs (routed to the SEP PIC in sep.sv).
-  output logic pool_low_o,  // occupancy below LowWatermark (informational)
-  output logic fill_stall_o,  // EDN not acknowledging for > StallThresh (fault)
+  output logic       pool_low_o,      // occupancy below LowWatermark (informational)
+  output logic       fill_stall_o,    // EDN not acknowledging for > StallThresh (fault)
   output logic [$clog2(FifoDepth+1)-1:0] fifo_level_o  // current occupancy in packed 64b entries
 );
 
@@ -108,24 +108,24 @@ module sep_entropy_fifo
   axil_resp_t s_axil_resp;
 
   axi_to_axi_lite #(
-    .AxiAddrWidth   (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-    .AxiDataWidth   (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-    .AxiIdWidth     (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-    .AxiUserWidth   (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns(4),
-    .AxiMaxReadTxns (4),
-    .full_req_t     (axi_req_t),
-    .full_resp_t    (axi_resp_t),
-    .lite_req_t     (axil_req_t),
-    .lite_resp_t    (axil_resp_t)
+    .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+    .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+    .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
+    .AxiMaxWriteTxns (4),
+    .AxiMaxReadTxns  (4),
+    .full_req_t      (axi_req_t),
+    .full_resp_t     (axi_resp_t),
+    .lite_req_t      (axil_req_t),
+    .lite_resp_t     (axil_resp_t)
   ) u_axi_to_axi_lite (
     .clk_i,
     .rst_ni,
-    .test_i    (test_en_i),
-    .slv_req_i (entropy_fifo_axi_req_i),
-    .slv_resp_o(entropy_fifo_axi_resp_o),
-    .mst_req_o (s_axil_req),
-    .mst_resp_i(s_axil_resp)
+    .test_i      (test_en_i),
+    .slv_req_i   (entropy_fifo_axi_req_i),
+    .slv_resp_o  (entropy_fifo_axi_resp_o),
+    .mst_req_o   (s_axil_req),
+    .mst_resp_i  (s_axil_resp)
   );
 
   // -------------------------------------------------------------------------
@@ -133,24 +133,24 @@ module sep_entropy_fifo
   // -------------------------------------------------------------------------
 
   // EDN handshake adapter
-  logic                           req_pending_q;
-  logic                           edn_word_valid;
-  logic [                   31:0] edn_word_data;
+  logic        req_pending_q;
+  logic        edn_word_valid;
+  logic [31:0] edn_word_data;
 
   // 32 -> 64 packer
-  logic                           packer_wready;
-  logic                           packer_rvalid;
-  logic [                   63:0] packer_rdata;
-  logic [                    1:0] packer_depth;
+  logic        packer_wready;
+  logic        packer_rvalid;
+  logic [63:0] packer_rdata;
+  logic [1:0]  packer_depth;
 
   // Pool FIFO
-  logic                           pool_wready;
-  logic                           pool_rvalid;
-  logic                           pool_rready;
-  logic [                   63:0] pool_rdata;
-  logic                           pool_full;
-  logic [$clog2(FifoDepth+1)-1:0] pool_depth;
-  logic                           pool_err;
+  logic                              pool_wready;
+  logic                              pool_rvalid;
+  logic                              pool_rready;
+  logic [63:0]                       pool_rdata;
+  logic                              pool_full;
+  logic [$clog2(FifoDepth+1)-1:0]    pool_depth;
+  logic                              pool_err;
 
   // -------------------------------------------------------------------------
   // EDN handshake adapter
@@ -185,20 +185,20 @@ module sep_entropy_fifo
   // (packer full) stalls the EDN adapter until the pool drains the packed word.
 
   prim_packer_fifo #(
-    .InW        (32),
-    .OutW       (64),
-    .ClearOnRead(1'b0)
+    .InW         (32),
+    .OutW        (64),
+    .ClearOnRead (1'b0)
   ) u_packer (
     .clk_i,
     .rst_ni,
-    .clr_i   (entropy_clear_i),
-    .wvalid_i(edn_word_valid),
-    .wdata_i (edn_word_data),
-    .wready_o(packer_wready),
-    .rvalid_o(packer_rvalid),
-    .rdata_o (packer_rdata),
-    .rready_i(pool_wready),
-    .depth_o (packer_depth)
+    .clr_i    (entropy_clear_i),
+    .wvalid_i (edn_word_valid),
+    .wdata_i  (edn_word_data),
+    .wready_o (packer_wready),
+    .rvalid_o (packer_rvalid),
+    .rdata_o  (packer_rdata),
+    .rready_i (pool_wready),
+    .depth_o  (packer_depth)
   );
 
   // -------------------------------------------------------------------------
@@ -215,20 +215,21 @@ module sep_entropy_fifo
   ) u_pool (
     .clk_i,
     .rst_ni,
-    .clr_i   (entropy_clear_i),
-    .wvalid_i(packer_rvalid),
-    .wready_o(pool_wready),
-    .wdata_i (packer_rdata),
-    .rvalid_o(pool_rvalid),
-    .rready_i(pool_rready),
-    .rdata_o (pool_rdata),
-    .full_o  (pool_full),
-    .depth_o (pool_depth),
-    .err_o   (pool_err)
+    .clr_i    (entropy_clear_i),
+    .wvalid_i (packer_rvalid),
+    .wready_o (pool_wready),
+    .wdata_i  (packer_rdata),
+    .rvalid_o (pool_rvalid),
+    .rready_i (pool_rready),
+    .rdata_o  (pool_rdata),
+    .full_o   (pool_full),
+    .depth_o  (pool_depth),
+    .err_o    (pool_err)
   );
 
   assign fifo_level_o = entropy_clear_i ? '0 : pool_depth;
-  assign pool_low_o   = entropy_clear_i || (pool_depth < LowWatermark[$clog2(FifoDepth+1)-1:0]);
+  assign pool_low_o   = entropy_clear_i ||
+                          (pool_depth < LowWatermark[$clog2(FifoDepth+1)-1:0]);
 
   // -------------------------------------------------------------------------
   // fill_stall_o -- active fault when EDN stops acknowledging
@@ -259,7 +260,7 @@ module sep_entropy_fifo
       fill_stall_q <= 1'b0;
     end else if (edn_rsp_i.edn_ack || !req_pending_q || !edn_armed_q) begin
       stall_cnt_q  <= '0;
-      fill_stall_q <= 1'b0;  // forward progress clears the fault
+      fill_stall_q <= 1'b0;                        // forward progress clears the fault
     end else begin
       if (stall_cnt_q != StallThresh[StallCntW-1:0]) begin
         stall_cnt_q <= stall_cnt_q + 1'b1;  // saturating
@@ -291,26 +292,26 @@ module sep_entropy_fifo
   //                                    SLVERR when the pool is empty)
   //   else   -> RRESP=SLVERR, RDATA=0
 
-  logic                  rd_pending_q;
-  logic           [63:0] rd_data_q;
-  axi_pkg::resp_t        rd_resp_q;
+  logic        rd_pending_q;
+  logic [63:0] rd_data_q;
+  axi_pkg::resp_t rd_resp_q;
 
-  logic                  rd_accept;
-  logic           [63:0] rd_data_next;
-  axi_pkg::resp_t        rd_resp_next;
-  logic           [15:0] rd_offset;
-  logic                  rd_pop;
-  logic                  rd_entropy_q;
+  logic        rd_accept;
+  logic [63:0] rd_data_next;
+  axi_pkg::resp_t rd_resp_next;
+  logic [15:0] rd_offset;
+  logic        rd_pop;
+  logic        rd_entropy_q;
 
-  logic           [63:0] status_word;
+  logic [63:0] status_word;
 
   // Status word: {..., pool_err, fill_stall, pool_low, fifo_level[5:0]}.
   always_comb begin
-    status_word      = 64'b0;
-    status_word[5:0] = 6'(fifo_level_o);
-    status_word[6]   = pool_low_o;
-    status_word[7]   = fill_stall_o;
-    status_word[8]   = pool_err;
+    status_word        = 64'b0;
+    status_word[5:0]   = 6'(fifo_level_o);
+    status_word[6]     = pool_low_o;
+    status_word[7]     = fill_stall_o;
+    status_word[8]     = pool_err;
   end
 
   assign rd_accept = s_axil_req.ar_valid & s_axil_resp.ar_ready;
@@ -328,7 +329,8 @@ module sep_entropy_fifo
         rd_pop       = pool_rvalid & ~entropy_clear_i;
         // Distinguish "no entropy available" from a popped word: an
         // empty pool returns SLVERR instead of OKAY with RDATA=0.
-        rd_resp_next = pool_rvalid && !entropy_clear_i ? axi_pkg::RESP_OKAY : axi_pkg::RESP_SLVERR;
+        rd_resp_next = pool_rvalid && !entropy_clear_i ? axi_pkg::RESP_OKAY
+                                                               : axi_pkg::RESP_SLVERR;
       end
       default: begin
         rd_data_next = 64'b0;
@@ -369,8 +371,10 @@ module sep_entropy_fifo
   end
 
   assign s_axil_resp.r_valid = rd_pending_q;
-  assign s_axil_resp.r.data  = entropy_clear_i && rd_entropy_q ? 64'b0 : rd_data_q;
-  assign s_axil_resp.r.resp  = entropy_clear_i && rd_entropy_q ? axi_pkg::RESP_SLVERR : rd_resp_q;
+  assign s_axil_resp.r.data  = entropy_clear_i && rd_entropy_q ? 64'b0
+                                                                 : rd_data_q;
+  assign s_axil_resp.r.resp  = entropy_clear_i && rd_entropy_q ? axi_pkg::RESP_SLVERR
+                                                                 : rd_resp_q;
 
   `OCAH_OT_ASSERT(
       ClearScrubsPendingRead_A,
@@ -394,7 +398,7 @@ module sep_entropy_fifo
   logic aw_hs;
   logic w_hs;
   assign aw_hs = s_axil_req.aw_valid & s_axil_resp.aw_ready;
-  assign w_hs  = s_axil_req.w_valid & s_axil_resp.w_ready;
+  assign w_hs  = s_axil_req.w_valid  & s_axil_resp.w_ready;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -406,7 +410,7 @@ module sep_entropy_fifo
       if (w_hs) w_recv_q <= 1'b1;
 
       if (!b_valid_q && (aw_recv_q || aw_hs) && (w_recv_q || w_hs)) begin
-        b_valid_q <= 1'b1;  // both channels seen -> raise B
+        b_valid_q <= 1'b1;         // both channels seen -> raise B
         aw_recv_q <= 1'b0;
         w_recv_q  <= 1'b0;
       end else if (b_valid_q && s_axil_req.b_ready) begin

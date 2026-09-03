@@ -34,8 +34,8 @@ module smc_cpu_mem_dv
   // Bound into smc_ip_integration: these connect to that module's own
   // memory interfaces, which the bind port list resolves in its scope.
   input rom_req_t            rom_req_i,
-  input scratch_ram_req_t    scratch_ram_req_i   [       NUM_SRAM_BANKS-1:0],
-  input l1_dcache_data_req_t l1_dcache_data_req_i[NUM_DCACHE_DATA_BANKS-1:0],
+  input scratch_ram_req_t    scratch_ram_req_i    [NUM_SRAM_BANKS-1:0],
+  input l1_dcache_data_req_t l1_dcache_data_req_i [NUM_DCACHE_DATA_BANKS-1:0],
 
   input logic ecc_inject_sbe_i,
   input logic ecc_inject_dbe_i,
@@ -46,7 +46,7 @@ module smc_cpu_mem_dv
   // SEP testbench, which writes codewords into the macro arrays directly.
   input logic        ecc_poke_en_i,
   input logic [31:0] ecc_poke_entry_i,
-  input logic [ 1:0] ecc_poke_mask_i
+  input logic [1:0]  ecc_poke_mask_i
 );
 
   localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
@@ -201,7 +201,7 @@ module smc_cpu_mem_dv
           loaded_words = 0;
           for (word_i = 0; word_i < int'(MAX_LINEAR_WORDS); word_i++) begin
             offset_i = word_i * int'(BYTES_PER_ENTRY);
-            bank_i = (offset_i / int'(BANK_STRIPE_BYTES)) % int'(NUM_SRAM_BANKS);
+            bank_i   = (offset_i / int'(BANK_STRIPE_BYTES)) % int'(NUM_SRAM_BANKS);
             entry_i  = (offset_i /
                                       (int'(BANK_STRIPE_BYTES) * int'(NUM_SRAM_BANKS)))
                                    * int'(ENTRIES_PER_STRIPE)

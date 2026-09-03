@@ -8,16 +8,16 @@
  */
 
 module picorv32_pcpi_crc (
-  input  logic        clk_i,
-  input  logic        rst_ni,
-  input  logic        pcpi_valid_i,
-  input  logic [31:0] pcpi_insn_i,
-  input  logic [31:0] pcpi_rs1_i,
-  input  logic [31:0] pcpi_rs2_i,
-  output logic        pcpi_wr_o,
-  output logic [31:0] pcpi_rd_o,
-  output logic        pcpi_wait_o,
-  output logic        pcpi_ready_o
+  input logic        clk_i,
+  input logic        rst_ni,
+  input logic        pcpi_valid_i,
+  input logic [31:0] pcpi_insn_i,
+  input logic [31:0] pcpi_rs1_i,
+  input logic [31:0] pcpi_rs2_i,
+  output logic            pcpi_wr_o,
+  output logic [31:0]     pcpi_rd_o,
+  output logic            pcpi_wait_o,
+  output logic            pcpi_ready_o
 );
 
   `include "prim_assert.sv"
@@ -48,7 +48,7 @@ module picorv32_pcpi_crc (
   logic [1:0] decoded_mode;
 
   logic active_q;
-  logic [1:0] op_mode_q;
+  logic [1:0]  op_mode_q;
   logic [31:0] op_state_q;
   logic [31:0] op_data_q;
 
@@ -76,8 +76,8 @@ module picorv32_pcpi_crc (
     end
   endfunction
 
-  assign opcode_match = pcpi_insn_i[6:0] == CRC_OPCODE_CUSTOM0;
-  assign funct7_match = pcpi_insn_i[31:25] == CRC_FUNCT7;
+  assign opcode_match    = pcpi_insn_i[6:0] == CRC_OPCODE_CUSTOM0;
+  assign funct7_match    = pcpi_insn_i[31:25] == CRC_FUNCT7;
   assign recognized_word = pcpi_valid_i && opcode_match && funct7_match &&
                              pcpi_insn_i[14:12] == CRC_FUNCT3_32C_WORD;
   assign recognized_byte = pcpi_valid_i && opcode_match && funct7_match &&

@@ -43,7 +43,8 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_jtag_cmd_lib_seq;
 
     seed_scenario_rng();
     scan_builder = null;
-    required = {"CHK-TAP-RESET-TLR", "CHK-TAP-TLR-TMS5", "CHK-TAP-TLR-IDCODE", "CHK-NONVAC"};
+    required = {"CHK-TAP-RESET-TLR", "CHK-TAP-TLR-TMS5", "CHK-TAP-TLR-IDCODE",
+                    "CHK-NONVAC"};
     attach_family_checker(required);
 
     if ($test$plusargs("DTP_JTAG_TAP_CHECKER_NEGATIVE")) begin

@@ -11,31 +11,31 @@
 // problem where we might include a FIFO but not use any of the assertions that this file defines.
 
 module prim_fifo_sync_parity #(
-  parameter int unsigned Width = 16,
-  parameter bit Pass = 1'b1,  // if == 1 allow requests to pass through empty FIFO
-  parameter int unsigned Depth = 4,
-  parameter bit OutputZeroIfEmpty = 1'b1,  // if == 1 always output 0 when FIFO is empty
-  parameter bit NeverClears = 1'b0,  // if set, the clr_i port is never high
-  parameter bit Secure = 1'b0,  // use prim count for pointers
+  parameter int unsigned Width       = 16,
+  parameter bit Pass                 = 1'b1, // if == 1 allow requests to pass through empty FIFO
+  parameter int unsigned Depth       = 4,
+  parameter bit OutputZeroIfEmpty    = 1'b1, // if == 1 always output 0 when FIFO is empty
+  parameter bit NeverClears          = 1'b0, // if set, the clr_i port is never high
+  parameter bit Secure               = 1'b0, // use prim count for pointers
   // derived parameter
-  localparam int DepthW = prim_util_pkg::vbits(Depth + 1)
+  localparam int          DepthW     = prim_util_pkg::vbits(Depth+1)
 ) (
-  input               clk_i,
-  input               rst_ni,
+  input                   clk_i,
+  input                   rst_ni,
   // synchronous clear / flush port
-  input               clr_i,
+  input                   clr_i,
   // write port
-  input               wvalid_i,
-  output              wready_o,
-  input  [ Width-1:0] wdata_i,
+  input                   wvalid_i,
+  output                  wready_o,
+  input   [Width-1:0]     wdata_i,
   // read port
-  output              rvalid_o,
-  input               rready_i,
-  output [ Width-1:0] rdata_o,
+  output                  rvalid_o,
+  input                   rready_i,
+  output  [Width-1:0]     rdata_o,
   // occupancy
-  output              full_o,
-  output [DepthW-1:0] depth_o,
-  output              err_o
+  output                  full_o,
+  output  [DepthW-1:0]    depth_o,
+  output                  err_o
 );
 
   `include "prim_assert.sv"
@@ -46,15 +46,15 @@ module prim_fifo_sync_parity #(
   if (Depth == 0) begin : gen_passthru_fifo
     `OCAH_OT_ASSERT_INIT(paramCheckPass, Pass == 1)
 
-    assign depth_o  = 1'b0;  //output is meaningless
+    assign depth_o = 1'b0; //output is meaningless
 
     // device facing
     assign rvalid_o = wvalid_i;
-    assign rdata_o  = wdata_i;
+    assign rdata_o = wdata_i;
 
     // host facing
     assign wready_o = rready_i;
-    assign full_o   = 1'b1;
+    assign full_o = 1'b1;
 
     // this avoids lint warnings
     logic unused_clr;
@@ -71,8 +71,8 @@ module prim_fifo_sync_parity #(
     // full_q is true if the (singleton) queue has data
     logic full_d, full_q;
 
-    assign full_o   = full_q;
-    assign depth_o  = full_q;
+    assign full_o = full_q;
+    assign depth_o = full_q;
     assign wready_o = ~full_q;
 
     // We can always read from the storage if it contains something, so rvalid_o is true if full_q
@@ -84,7 +84,7 @@ module prim_fifo_sync_parity #(
     // rvalid_o instead of full_q ensures we get the right behaviour with pass-through.
     //
     // In either case, any stored data will be forgotten if clr_i is true.
-    assign full_d   = (rvalid_o ? !rready_i : wvalid_i) && !clr_i;
+    assign full_d = (rvalid_o ? !rready_i : wvalid_i) && !clr_i;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
@@ -102,7 +102,7 @@ module prim_fifo_sync_parity #(
     logic [Width-1:0] rdata_int;
     logic             parity_err;
 
-    assign rdata_int = (full_q || Pass == 1'b0) ? Width'(storage) : wdata_i;
+    assign rdata_int  = (full_q || Pass == 1'b0) ? Width'(storage) : wdata_i;
     assign parity_err = full_q ? ~^storage : 1'b0;
 
     assign rdata_o = (OutputZeroIfEmpty && !rvalid_o) ? Width'(0) : rdata_int;
@@ -125,8 +125,8 @@ module prim_fifo_sync_parity #(
       ) u_inv_full (
         .clk_i,
         .rst_ni,
-        .d_i(~full_d),
-        .q_o(inv_full)
+        .d_i (~full_d),
+        .q_o (inv_full)
       );
 
       logic err_d, err_q;
@@ -151,7 +151,7 @@ module prim_fifo_sync_parity #(
 
     logic [PtrW-1:0] fifo_wptr, fifo_rptr;
     logic fifo_incr_wptr, fifo_incr_rptr, fifo_empty;
-    logic fifo_ptr_err;
+    logic            fifo_ptr_err;
 
     // module under reset flag
     logic under_rst;
@@ -190,8 +190,8 @@ module prim_fifo_sync_parity #(
     assign fifo_incr_wptr = wvalid_i & wready_o;
     assign fifo_incr_rptr = rvalid_o & rready_i & ~under_rst;
 
-    logic [      Depth-1:0][ParityWidth-1:0] storage;
-    logic [ParityWidth-1:0]                  storage_rdata;
+    logic [Depth-1:0][ParityWidth-1:0] storage;
+    logic            [ParityWidth-1:0] storage_rdata;
 
     assign storage_rdata = storage[fifo_rptr];
 
@@ -204,7 +204,7 @@ module prim_fifo_sync_parity #(
     logic             parity_err;
 
     if (Pass == 1'b1) begin : gen_pass
-      assign rdata_int = (fifo_empty && wvalid_i) ? wdata_i : Width'(storage_rdata);
+      assign rdata_int  = (fifo_empty && wvalid_i) ? wdata_i : Width'(storage_rdata);
       assign parity_err = fifo_empty ? 1'b0 : ~^storage_rdata;
       assign empty = fifo_empty & ~wvalid_i;
       assign rvalid_o = ~empty & ~under_rst;

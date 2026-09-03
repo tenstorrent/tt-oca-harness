@@ -80,11 +80,11 @@ package i2c_pkg;
 
   typedef enum bit {
     WRITE = 1'b0,
-    READ  = 1'b1
+    READ = 1'b1
   } rw_e;
 
   typedef enum bit {
-    ACK  = 1'b0,
+    ACK = 1'b0,
     NACK = 1'b1
   } acknack_e;
 

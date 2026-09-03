@@ -18,12 +18,12 @@ module entropy_noise_source #(
   parameter int unsigned TOTAL_LENGTH  = 17,
   parameter int unsigned TAPPED_LENGTH = 13
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic sample_clk_i,
-  input  logic enable_i,
-  input  logic detune_i,
-  output logic noise_o
+  input       logic clk_i,
+  input       logic rst_ni,
+  input       logic sample_clk_i,
+  input       logic enable_i,
+  input       logic detune_i,
+  output      logic noise_o
 );
 
   /////////////
@@ -39,35 +39,35 @@ module entropy_noise_source #(
   /////////////////
 
   entropy_ring_oscillator #(
-    .TOTAL_LENGTH (TOTAL_LENGTH),
-    .TAPPED_LENGTH(TAPPED_LENGTH)
+    .TOTAL_LENGTH  (TOTAL_LENGTH),
+    .TAPPED_LENGTH (TAPPED_LENGTH)
   ) u_ring_oscillator (
     .enable_i,
     .detune_i,
-    .noise_o(noise_async)
+    .noise_o  (noise_async)
   );
 
   // Metastable sample flip-flop — intentional async capture of RO output
   gdff u_smpl (
-    .d_i  (noise_async),
-    .cdn_i(rst_ni),
-    .cp_i (sample_clk_i),
-    .q_o  (noise_sample)
+    .d_i   (noise_async),
+    .cdn_i (rst_ni),
+    .cp_i  (sample_clk_i),
+    .q_o   (noise_sample)
   );
 
   // Two-flop synchroniser
   gdff u_sync0 (
-    .d_i  (noise_sample),
-    .cdn_i(rst_ni),
-    .cp_i (clk_i),
-    .q_o  (noise_sync[0])
+    .d_i   (noise_sample),
+    .cdn_i (rst_ni),
+    .cp_i  (clk_i),
+    .q_o   (noise_sync[0])
   );
 
   gdff u_sync1 (
-    .d_i  (noise_sync[0]),
-    .cdn_i(rst_ni),
-    .cp_i (clk_i),
-    .q_o  (noise_sync[1])
+    .d_i   (noise_sync[0]),
+    .cdn_i (rst_ni),
+    .cp_i  (clk_i),
+    .q_o   (noise_sync[1])
   );
 
   ///////////

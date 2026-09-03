@@ -66,7 +66,7 @@ module prim_updown_counter #(
     end
   end
 
-  assign cnt_q              = cnt_unforced_q;
+  assign cnt_q = cnt_unforced_q;
 
   assign err_o              = 1'b0;
 

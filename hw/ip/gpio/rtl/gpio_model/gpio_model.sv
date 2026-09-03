@@ -4,19 +4,19 @@
 // General purpose IO model
 
 module gpio_model #(
-  parameter type ctrl_t   = logic,
+  parameter type ctrl_t = logic,
   parameter type status_t = logic
 ) (
-  input wire core2pad_i,
-  input wire core2pad_en_i,
+  input  wire             core2pad_i,
+  input  wire             core2pad_en_i,
 
-  output wire pad2core_o,
-  input  wire pad2core_en_i,
+  output wire             pad2core_o,
+  input  wire             pad2core_en_i,
 
-  inout wire GPIO_PAD,
+  inout  wire             GPIO_PAD,
 
-  input  ctrl_t   gpio_ctrl,
-  output status_t gpio_status
+  input  ctrl_t           gpio_ctrl,
+  output status_t         gpio_status
 );
 
   // Internal signals
@@ -29,6 +29,6 @@ module gpio_model #(
   // Receive logic: pad to core
   assign pad2core_o = pad2core_en_i ? GPIO_PAD : 1'b0;
 
-  assign gpio_status = status_t'('0);  // Placeholder for status output
+  assign gpio_status = status_t'('0); // Placeholder for status output
 
 endmodule

@@ -14,37 +14,37 @@ module uart_16550
   parameter int unsigned RX_FIFO_DEPTH = 16
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input logic            clk_i,
+  input logic            rst_ni,
 
   // AXI4-Lite Register Interface
-  input  axil_req_t  axil_req_i,
-  output axil_resp_t axil_resp_o,
+  input  axil_req_t      axil_req_i,
+  output axil_resp_t     axil_resp_o,
 
   // UART Interface
-  input  logic rx_i,
-  output logic tx_o,
+  input  logic           rx_i,
+  output logic           tx_o,
 
   // Modem Interface
-  input logic cts_ni,
-  input logic dsr_ni,
-  input logic ri_ni,
-  input logic dcd_ni,
+  input  logic           cts_ni,
+  input  logic           dsr_ni,
+  input  logic           ri_ni,
+  input  logic           dcd_ni,
 
-  output logic rts_no,
-  output logic dtr_no,
-  output logic out1_no,
-  output logic out2_no,
+  output logic           rts_no,
+  output logic           dtr_no,
+  output logic           out1_no,
+  output logic           out2_no,
 
   // DMA Interface
-  output logic rxrdy_o,
-  output logic txrdy_o,
+  output logic           rxrdy_o,
+  output logic           txrdy_o,
 
   // Error Interface
-  output logic err_o,
+  output logic           err_o,
 
   // Interrupt Interface
-  output logic irq_o
+  output logic           irq_o
 );
 
   `include "prim_assert.sv"
@@ -70,16 +70,16 @@ module uart_16550
   ///////////////
 
   uart_core #(
-    .TX_FIFO_DEPTH(TX_FIFO_DEPTH),
-    .RX_FIFO_DEPTH(RX_FIFO_DEPTH)
+    .TX_FIFO_DEPTH       (TX_FIFO_DEPTH),
+    .RX_FIFO_DEPTH       (RX_FIFO_DEPTH)
   ) uart_core (
     // Global Interface
     .clk_i,
     .rst_ni,
 
     // Register Interface
-    .reg_out_i(reg_out),
-    .reg_in_o (reg_in),
+    .reg_out_i           (reg_out),
+    .reg_in_o            (reg_in),
 
     // UART Interface
     .rx_i,
@@ -112,23 +112,23 @@ module uart_16550
   // CSRs //
   //////////
 
-  axil_req_t axil_mst_req;
+  axil_req_t  axil_mst_req;
   axil_resp_t axil_mst_resp;
 
-  axil_req_t [NUM_REG_MAPS-1:0] axil_slv_reqs;
+  axil_req_t  [NUM_REG_MAPS-1:0] axil_slv_reqs;
   axil_resp_t [NUM_REG_MAPS-1:0] axil_slv_resps;
 
   assign axil_mst_req.aw_valid = axil_req_i.aw_valid;
-  assign axil_mst_req.aw.addr = axil_req_i.aw.addr;
-  assign axil_mst_req.aw.prot = axil_req_i.aw.prot;
-  assign axil_mst_req.w_valid = axil_req_i.w_valid;
-  assign axil_mst_req.w.data = axil_req_i.w.data;
-  assign axil_mst_req.w.strb = axil_req_i.w.strb;
-  assign axil_mst_req.b_ready = axil_req_i.b_ready;
+  assign axil_mst_req.aw.addr  = axil_req_i.aw.addr;
+  assign axil_mst_req.aw.prot  = axil_req_i.aw.prot;
+  assign axil_mst_req.w_valid  = axil_req_i.w_valid;
+  assign axil_mst_req.w.data   = axil_req_i.w.data;
+  assign axil_mst_req.w.strb   = axil_req_i.w.strb;
+  assign axil_mst_req.b_ready  = axil_req_i.b_ready;
   assign axil_mst_req.ar_valid = axil_req_i.ar_valid;
-  assign axil_mst_req.ar.addr = axil_req_i.ar.addr;
-  assign axil_mst_req.ar.prot = axil_req_i.ar.prot;
-  assign axil_mst_req.r_ready = axil_req_i.r_ready;
+  assign axil_mst_req.ar.addr  = axil_req_i.ar.addr;
+  assign axil_mst_req.ar.prot  = axil_req_i.ar.prot;
+  assign axil_mst_req.r_ready  = axil_req_i.r_ready;
   assign axil_resp_o = axil_mst_resp;
 
   // Register map demuxing logic
@@ -159,127 +159,127 @@ module uart_16550
   end
 
   axi_lite_demux #(
-    .aw_chan_t  (axil_aw_chan_t),
-    .w_chan_t   (axil_w_chan_t),
-    .b_chan_t   (axil_b_chan_t),
-    .ar_chan_t  (axil_ar_chan_t),
-    .r_chan_t   (axil_r_chan_t),
-    .axi_req_t  (axil_req_t),
-    .axi_resp_t (axil_resp_t),
-    .NoMstPorts (NUM_REG_MAPS),
-    .MaxTrans   (1),
-    .FallThrough(1'b0),
-    .SpillAw    (1'b1),            // Pipeline AW to ease timing and area
-    .SpillW     (1'b0),
-    .SpillB     (1'b0),
-    .SpillAr    (1'b1),            // Pipeline AR to ease timing and area
-    .SpillR     (1'b0)
+    .aw_chan_t       (axil_aw_chan_t),
+    .w_chan_t        (axil_w_chan_t),
+    .b_chan_t        (axil_b_chan_t),
+    .ar_chan_t       (axil_ar_chan_t),
+    .r_chan_t        (axil_r_chan_t),
+    .axi_req_t       (axil_req_t),
+    .axi_resp_t      (axil_resp_t),
+    .NoMstPorts      (NUM_REG_MAPS),
+    .MaxTrans        (1),
+    .FallThrough     (1'b0),
+    .SpillAw         (1'b1), // Pipeline AW to ease timing and area
+    .SpillW          (1'b0),
+    .SpillB          (1'b0),
+    .SpillAr         (1'b1), // Pipeline AR to ease timing and area
+    .SpillR          (1'b0)
   ) axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i         (1'b0),
-    .slv_req_i      (axil_mst_req),
-    .slv_aw_select_i(axil_aw_select),
-    .slv_ar_select_i(axil_ar_select),
-    .slv_resp_o     (axil_mst_resp),
-    .mst_reqs_o     (axil_slv_reqs),
-    .mst_resps_i    (axil_slv_resps)
+    .test_i          (1'b0),
+    .slv_req_i       (axil_mst_req),
+    .slv_aw_select_i (axil_aw_select),
+    .slv_ar_select_i (axil_ar_select),
+    .slv_resp_o      (axil_mst_resp),
+    .mst_reqs_o      (axil_slv_reqs),
+    .mst_resps_i     (axil_slv_resps)
   );
 
   // Register blocks
   uart_16550_main_reg uart_16550_main_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-    .s_axil_awready(axil_slv_resps[MAIN_REG_MAP].aw_ready),
-    .s_axil_awvalid(axil_slv_reqs[MAIN_REG_MAP].aw_valid),
+    .s_axil_awready (axil_slv_resps[MAIN_REG_MAP].aw_ready),
+    .s_axil_awvalid (axil_slv_reqs [MAIN_REG_MAP].aw_valid),
     .s_axil_awaddr  (axil_slv_reqs [MAIN_REG_MAP].aw.addr[
                              uart_16550_main_reg_pkg::UART_16550_MAIN_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_awprot(axil_slv_reqs[MAIN_REG_MAP].aw.prot),
-    .s_axil_wready(axil_slv_resps[MAIN_REG_MAP].w_ready),
-    .s_axil_wvalid(axil_slv_reqs[MAIN_REG_MAP].w_valid),
-    .s_axil_wdata(axil_slv_reqs[MAIN_REG_MAP].w.data),
-    .s_axil_wstrb(axil_slv_reqs[MAIN_REG_MAP].w.strb),
-    .s_axil_bready(axil_slv_reqs[MAIN_REG_MAP].b_ready),
-    .s_axil_bvalid(axil_slv_resps[MAIN_REG_MAP].b_valid),
-    .s_axil_bresp(axil_slv_resps[MAIN_REG_MAP].b.resp),
-    .s_axil_arready(axil_slv_resps[MAIN_REG_MAP].ar_ready),
-    .s_axil_arvalid(axil_slv_reqs[MAIN_REG_MAP].ar_valid),
+    .s_axil_awprot  (axil_slv_reqs [MAIN_REG_MAP].aw.prot),
+    .s_axil_wready  (axil_slv_resps[MAIN_REG_MAP].w_ready),
+    .s_axil_wvalid  (axil_slv_reqs [MAIN_REG_MAP].w_valid),
+    .s_axil_wdata   (axil_slv_reqs [MAIN_REG_MAP].w.data),
+    .s_axil_wstrb   (axil_slv_reqs [MAIN_REG_MAP].w.strb),
+    .s_axil_bready  (axil_slv_reqs [MAIN_REG_MAP].b_ready),
+    .s_axil_bvalid  (axil_slv_resps[MAIN_REG_MAP].b_valid),
+    .s_axil_bresp   (axil_slv_resps[MAIN_REG_MAP].b.resp),
+    .s_axil_arready (axil_slv_resps[MAIN_REG_MAP].ar_ready),
+    .s_axil_arvalid (axil_slv_reqs [MAIN_REG_MAP].ar_valid),
     .s_axil_araddr  (axil_slv_reqs [MAIN_REG_MAP].ar.addr[
                              uart_16550_main_reg_pkg::UART_16550_MAIN_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_arprot(axil_slv_reqs[MAIN_REG_MAP].ar.prot),
-    .s_axil_rready(axil_slv_reqs[MAIN_REG_MAP].r_ready),
-    .s_axil_rvalid(axil_slv_resps[MAIN_REG_MAP].r_valid),
-    .s_axil_rdata(axil_slv_resps[MAIN_REG_MAP].r.data),
-    .s_axil_rresp(axil_slv_resps[MAIN_REG_MAP].r.resp),
+    .s_axil_arprot  (axil_slv_reqs [MAIN_REG_MAP].ar.prot),
+    .s_axil_rready  (axil_slv_reqs [MAIN_REG_MAP].r_ready),
+    .s_axil_rvalid  (axil_slv_resps[MAIN_REG_MAP].r_valid),
+    .s_axil_rdata   (axil_slv_resps[MAIN_REG_MAP].r.data),
+    .s_axil_rresp   (axil_slv_resps[MAIN_REG_MAP].r.resp),
 
-    .hwif_in (reg_in.main),
-    .hwif_out(reg_out.main)
+    .hwif_in        (reg_in.main),
+    .hwif_out       (reg_out.main)
   );
 
   uart_16550_main_wo_reg uart_16550_main_wo_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-    .s_axil_awready(axil_slv_resps[MAIN_WO_REG_MAP].aw_ready),
-    .s_axil_awvalid(axil_slv_reqs[MAIN_WO_REG_MAP].aw_valid),
+    .s_axil_awready (axil_slv_resps[MAIN_WO_REG_MAP].aw_ready),
+    .s_axil_awvalid (axil_slv_reqs [MAIN_WO_REG_MAP].aw_valid),
     .s_axil_awaddr  (axil_slv_reqs [MAIN_WO_REG_MAP].aw.addr[
                              uart_16550_main_wo_reg_pkg::UART_16550_MAIN_WO_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_awprot(axil_slv_reqs[MAIN_WO_REG_MAP].aw.prot),
-    .s_axil_wready(axil_slv_resps[MAIN_WO_REG_MAP].w_ready),
-    .s_axil_wvalid(axil_slv_reqs[MAIN_WO_REG_MAP].w_valid),
-    .s_axil_wdata(axil_slv_reqs[MAIN_WO_REG_MAP].w.data),
-    .s_axil_wstrb(axil_slv_reqs[MAIN_WO_REG_MAP].w.strb),
-    .s_axil_bready(axil_slv_reqs[MAIN_WO_REG_MAP].b_ready),
-    .s_axil_bvalid(axil_slv_resps[MAIN_WO_REG_MAP].b_valid),
-    .s_axil_bresp(axil_slv_resps[MAIN_WO_REG_MAP].b.resp),
-    .s_axil_arready(axil_slv_resps[MAIN_WO_REG_MAP].ar_ready),
-    .s_axil_arvalid(axil_slv_reqs[MAIN_WO_REG_MAP].ar_valid),
+    .s_axil_awprot  (axil_slv_reqs [MAIN_WO_REG_MAP].aw.prot),
+    .s_axil_wready  (axil_slv_resps[MAIN_WO_REG_MAP].w_ready),
+    .s_axil_wvalid  (axil_slv_reqs [MAIN_WO_REG_MAP].w_valid),
+    .s_axil_wdata   (axil_slv_reqs [MAIN_WO_REG_MAP].w.data),
+    .s_axil_wstrb   (axil_slv_reqs [MAIN_WO_REG_MAP].w.strb),
+    .s_axil_bready  (axil_slv_reqs [MAIN_WO_REG_MAP].b_ready),
+    .s_axil_bvalid  (axil_slv_resps[MAIN_WO_REG_MAP].b_valid),
+    .s_axil_bresp   (axil_slv_resps[MAIN_WO_REG_MAP].b.resp),
+    .s_axil_arready (axil_slv_resps[MAIN_WO_REG_MAP].ar_ready),
+    .s_axil_arvalid (axil_slv_reqs [MAIN_WO_REG_MAP].ar_valid),
     .s_axil_araddr  (axil_slv_reqs [MAIN_WO_REG_MAP].ar.addr[
                              uart_16550_main_wo_reg_pkg::UART_16550_MAIN_WO_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_arprot(axil_slv_reqs[MAIN_WO_REG_MAP].ar.prot),
-    .s_axil_rready(axil_slv_reqs[MAIN_WO_REG_MAP].r_ready),
-    .s_axil_rvalid(axil_slv_resps[MAIN_WO_REG_MAP].r_valid),
-    .s_axil_rdata(axil_slv_resps[MAIN_WO_REG_MAP].r.data),
-    .s_axil_rresp(axil_slv_resps[MAIN_WO_REG_MAP].r.resp),
+    .s_axil_arprot  (axil_slv_reqs [MAIN_WO_REG_MAP].ar.prot),
+    .s_axil_rready  (axil_slv_reqs [MAIN_WO_REG_MAP].r_ready),
+    .s_axil_rvalid  (axil_slv_resps[MAIN_WO_REG_MAP].r_valid),
+    .s_axil_rdata   (axil_slv_resps[MAIN_WO_REG_MAP].r.data),
+    .s_axil_rresp   (axil_slv_resps[MAIN_WO_REG_MAP].r.resp),
 
-    .hwif_in (reg_in.main_wo),
-    .hwif_out(reg_out.main_wo)
+    .hwif_in        (reg_in.main_wo),
+    .hwif_out       (reg_out.main_wo)
   );
 
   uart_16550_dl_reg uart_16550_dl_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-    .s_axil_awready(axil_slv_resps[DL_REG_MAP].aw_ready),
-    .s_axil_awvalid(axil_slv_reqs[DL_REG_MAP].aw_valid),
+    .s_axil_awready (axil_slv_resps[DL_REG_MAP].aw_ready),
+    .s_axil_awvalid (axil_slv_reqs [DL_REG_MAP].aw_valid),
     .s_axil_awaddr  (axil_slv_reqs [DL_REG_MAP].aw.addr[
                              uart_16550_dl_reg_pkg::UART_16550_DL_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_awprot(axil_slv_reqs[DL_REG_MAP].aw.prot),
-    .s_axil_wready(axil_slv_resps[DL_REG_MAP].w_ready),
-    .s_axil_wvalid(axil_slv_reqs[DL_REG_MAP].w_valid),
-    .s_axil_wdata(axil_slv_reqs[DL_REG_MAP].w.data),
-    .s_axil_wstrb(axil_slv_reqs[DL_REG_MAP].w.strb),
-    .s_axil_bready(axil_slv_reqs[DL_REG_MAP].b_ready),
-    .s_axil_bvalid(axil_slv_resps[DL_REG_MAP].b_valid),
-    .s_axil_bresp(axil_slv_resps[DL_REG_MAP].b.resp),
-    .s_axil_arready(axil_slv_resps[DL_REG_MAP].ar_ready),
-    .s_axil_arvalid(axil_slv_reqs[DL_REG_MAP].ar_valid),
+    .s_axil_awprot  (axil_slv_reqs [DL_REG_MAP].aw.prot),
+    .s_axil_wready  (axil_slv_resps[DL_REG_MAP].w_ready),
+    .s_axil_wvalid  (axil_slv_reqs [DL_REG_MAP].w_valid),
+    .s_axil_wdata   (axil_slv_reqs [DL_REG_MAP].w.data),
+    .s_axil_wstrb   (axil_slv_reqs [DL_REG_MAP].w.strb),
+    .s_axil_bready  (axil_slv_reqs [DL_REG_MAP].b_ready),
+    .s_axil_bvalid  (axil_slv_resps[DL_REG_MAP].b_valid),
+    .s_axil_bresp   (axil_slv_resps[DL_REG_MAP].b.resp),
+    .s_axil_arready (axil_slv_resps[DL_REG_MAP].ar_ready),
+    .s_axil_arvalid (axil_slv_reqs [DL_REG_MAP].ar_valid),
     .s_axil_araddr  (axil_slv_reqs [DL_REG_MAP].ar.addr[
                              uart_16550_dl_reg_pkg::UART_16550_DL_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_arprot(axil_slv_reqs[DL_REG_MAP].ar.prot),
-    .s_axil_rready(axil_slv_reqs[DL_REG_MAP].r_ready),
-    .s_axil_rvalid(axil_slv_resps[DL_REG_MAP].r_valid),
-    .s_axil_rdata(axil_slv_resps[DL_REG_MAP].r.data),
-    .s_axil_rresp(axil_slv_resps[DL_REG_MAP].r.resp),
+    .s_axil_arprot  (axil_slv_reqs [DL_REG_MAP].ar.prot),
+    .s_axil_rready  (axil_slv_reqs [DL_REG_MAP].r_ready),
+    .s_axil_rvalid  (axil_slv_resps[DL_REG_MAP].r_valid),
+    .s_axil_rdata   (axil_slv_resps[DL_REG_MAP].r.data),
+    .s_axil_rresp   (axil_slv_resps[DL_REG_MAP].r.resp),
 
-    .hwif_out(reg_out.dl)
+    .hwif_out       (reg_out.dl)
   );
 
 
@@ -290,17 +290,17 @@ module uart_16550
   prim_alert_pkg::alert_tx_t unused_alert_tx;
 
   prim_alert_sender #(
-    .AsyncOn(1'b1),
-    .IsFatal(1'b0)
+    .AsyncOn       (1'b1),
+    .IsFatal       (1'b0)
   ) prim_alert_sender (
     .clk_i,
     .rst_ni,
-    .alert_test_i (1'b0),
-    .alert_req_i  (err_o),
-    .alert_ack_o  (  /* UNUSED */),
-    .alert_state_o(  /* UNUSED */),
-    .alert_rx_i   (prim_alert_pkg::ALERT_RX_DEFAULT),
-    .alert_tx_o   (unused_alert_tx)
+    .alert_test_i  (1'b0),
+    .alert_req_i   (err_o),
+    .alert_ack_o   (/* UNUSED */),
+    .alert_state_o (/* UNUSED */),
+    .alert_rx_i    (prim_alert_pkg::ALERT_RX_DEFAULT),
+    .alert_tx_o    (unused_alert_tx)
   );
 
 

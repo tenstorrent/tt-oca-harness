@@ -30,21 +30,21 @@ typedef enum int unsigned {
 function automatic ocah_jtag_tap_state_e ocah_jtag_next_state(ocah_jtag_tap_state_e cur, bit tms);
   case (cur)
     OCAH_JTAG_TEST_LOGIC_RESET: return tms ? OCAH_JTAG_TEST_LOGIC_RESET : OCAH_JTAG_RUN_TEST_IDLE;
-    OCAH_JTAG_RUN_TEST_IDLE:    return tms ? OCAH_JTAG_SELECT_DR_SCAN : OCAH_JTAG_RUN_TEST_IDLE;
-    OCAH_JTAG_SELECT_DR_SCAN:   return tms ? OCAH_JTAG_SELECT_IR_SCAN : OCAH_JTAG_CAPTURE_DR;
-    OCAH_JTAG_CAPTURE_DR:       return tms ? OCAH_JTAG_EXIT1_DR : OCAH_JTAG_SHIFT_DR;
-    OCAH_JTAG_SHIFT_DR:         return tms ? OCAH_JTAG_EXIT1_DR : OCAH_JTAG_SHIFT_DR;
-    OCAH_JTAG_EXIT1_DR:         return tms ? OCAH_JTAG_UPDATE_DR : OCAH_JTAG_PAUSE_DR;
-    OCAH_JTAG_PAUSE_DR:         return tms ? OCAH_JTAG_EXIT2_DR : OCAH_JTAG_PAUSE_DR;
-    OCAH_JTAG_EXIT2_DR:         return tms ? OCAH_JTAG_UPDATE_DR : OCAH_JTAG_SHIFT_DR;
-    OCAH_JTAG_UPDATE_DR:        return tms ? OCAH_JTAG_SELECT_DR_SCAN : OCAH_JTAG_RUN_TEST_IDLE;
+    OCAH_JTAG_RUN_TEST_IDLE:    return tms ? OCAH_JTAG_SELECT_DR_SCAN   : OCAH_JTAG_RUN_TEST_IDLE;
+    OCAH_JTAG_SELECT_DR_SCAN:   return tms ? OCAH_JTAG_SELECT_IR_SCAN   : OCAH_JTAG_CAPTURE_DR;
+    OCAH_JTAG_CAPTURE_DR:       return tms ? OCAH_JTAG_EXIT1_DR         : OCAH_JTAG_SHIFT_DR;
+    OCAH_JTAG_SHIFT_DR:         return tms ? OCAH_JTAG_EXIT1_DR         : OCAH_JTAG_SHIFT_DR;
+    OCAH_JTAG_EXIT1_DR:         return tms ? OCAH_JTAG_UPDATE_DR        : OCAH_JTAG_PAUSE_DR;
+    OCAH_JTAG_PAUSE_DR:         return tms ? OCAH_JTAG_EXIT2_DR         : OCAH_JTAG_PAUSE_DR;
+    OCAH_JTAG_EXIT2_DR:         return tms ? OCAH_JTAG_UPDATE_DR        : OCAH_JTAG_SHIFT_DR;
+    OCAH_JTAG_UPDATE_DR:        return tms ? OCAH_JTAG_SELECT_DR_SCAN   : OCAH_JTAG_RUN_TEST_IDLE;
     OCAH_JTAG_SELECT_IR_SCAN:   return tms ? OCAH_JTAG_TEST_LOGIC_RESET : OCAH_JTAG_CAPTURE_IR;
-    OCAH_JTAG_CAPTURE_IR:       return tms ? OCAH_JTAG_EXIT1_IR : OCAH_JTAG_SHIFT_IR;
-    OCAH_JTAG_SHIFT_IR:         return tms ? OCAH_JTAG_EXIT1_IR : OCAH_JTAG_SHIFT_IR;
-    OCAH_JTAG_EXIT1_IR:         return tms ? OCAH_JTAG_UPDATE_IR : OCAH_JTAG_PAUSE_IR;
-    OCAH_JTAG_PAUSE_IR:         return tms ? OCAH_JTAG_EXIT2_IR : OCAH_JTAG_PAUSE_IR;
-    OCAH_JTAG_EXIT2_IR:         return tms ? OCAH_JTAG_UPDATE_IR : OCAH_JTAG_SHIFT_IR;
-    OCAH_JTAG_UPDATE_IR:        return tms ? OCAH_JTAG_SELECT_DR_SCAN : OCAH_JTAG_RUN_TEST_IDLE;
+    OCAH_JTAG_CAPTURE_IR:       return tms ? OCAH_JTAG_EXIT1_IR         : OCAH_JTAG_SHIFT_IR;
+    OCAH_JTAG_SHIFT_IR:         return tms ? OCAH_JTAG_EXIT1_IR         : OCAH_JTAG_SHIFT_IR;
+    OCAH_JTAG_EXIT1_IR:         return tms ? OCAH_JTAG_UPDATE_IR        : OCAH_JTAG_PAUSE_IR;
+    OCAH_JTAG_PAUSE_IR:         return tms ? OCAH_JTAG_EXIT2_IR         : OCAH_JTAG_PAUSE_IR;
+    OCAH_JTAG_EXIT2_IR:         return tms ? OCAH_JTAG_UPDATE_IR        : OCAH_JTAG_SHIFT_IR;
+    OCAH_JTAG_UPDATE_IR:        return tms ? OCAH_JTAG_SELECT_DR_SCAN   : OCAH_JTAG_RUN_TEST_IDLE;
     default:                    return OCAH_JTAG_TEST_LOGIC_RESET;
   endcase
 endfunction
@@ -57,10 +57,10 @@ endfunction
 function automatic void ocah_jtag_tms_path(input ocah_jtag_tap_state_e from_state,
                                            input ocah_jtag_tap_state_e to_state,
                                            output bit path[$]);
-  bit          visited   [16];
+  bit          visited[16];
   int unsigned prev_state[16];
-  bit          prev_tms  [16];
-  int unsigned bfs_queue [ $];
+  bit          prev_tms[16];
+  int unsigned bfs_queue[$];
   path.delete();
   if (from_state == to_state) return;
   visited[int'(from_state)] = 1'b1;

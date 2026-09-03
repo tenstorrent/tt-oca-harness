@@ -9,12 +9,12 @@ module prim_pipe_stages #(
   parameter WIDTH      = 8,
   parameter NUM_STAGES = 1
 ) (
-  input logic             clk_i,
-  input logic             reset_n_i,
-  input logic             en_i,
-  input logic [WIDTH-1:0] d_i,
+  input  logic               clk_i,
+  input  logic               reset_n_i,
+  input  logic               en_i,
+  input  logic   [WIDTH-1:0] d_i,
 
-  output logic [WIDTH-1:0] q_o
+  output logic   [WIDTH-1:0] q_o
 );
 
   logic [WIDTH-1:0] stage_data[0:NUM_STAGES];
@@ -27,11 +27,11 @@ module prim_pipe_stages #(
     prim_pipe_stage #(
       .WIDTH(WIDTH)
     ) prim_pipe_stage (
-      .clk_i    (clk_i),
-      .reset_n_i(reset_n_i),
-      .en_i     (en_i),
-      .d_i      (stage_data[i]),
-      .q_o      (stage_data[i+1])
+      .clk_i      ( clk_i           ),
+      .reset_n_i  ( reset_n_i       ),
+      .en_i       ( en_i            ),
+      .d_i        ( stage_data[i]   ),
+      .q_o        ( stage_data[i+1] )
     );
 
   end

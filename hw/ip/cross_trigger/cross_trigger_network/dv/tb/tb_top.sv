@@ -19,33 +19,33 @@
 module cross_trigger_network_tb_top
   import cross_trigger_network_pkg::*;
 (
-  input wire clk,
-  input wire rst_n,
+  input  wire                                clk,
+  input  wire                                rst_n,
 
   // AXI4-Lite management port (flattened, VIP master side)
-  input  wire        axil_awvalid,
-  input  wire [31:0] axil_awaddr,
-  input  wire [ 2:0] axil_awprot,
-  output wire        axil_awready,
+  input  wire                                axil_awvalid,
+  input  wire [31:0]                         axil_awaddr,
+  input  wire [2:0]                          axil_awprot,
+  output wire                                axil_awready,
 
-  input  wire        axil_wvalid,
-  input  wire [31:0] axil_wdata,
-  input  wire [ 3:0] axil_wstrb,
-  output wire        axil_wready,
+  input  wire                                axil_wvalid,
+  input  wire [31:0]                         axil_wdata,
+  input  wire [3:0]                          axil_wstrb,
+  output wire                                axil_wready,
 
-  input  wire       axil_bready,
-  output wire       axil_bvalid,
-  output wire [1:0] axil_bresp,
+  input  wire                                axil_bready,
+  output wire                                axil_bvalid,
+  output wire [1:0]                          axil_bresp,
 
-  input  wire        axil_arvalid,
-  input  wire [31:0] axil_araddr,
-  input  wire [ 2:0] axil_arprot,
-  output wire        axil_arready,
+  input  wire                                axil_arvalid,
+  input  wire [31:0]                         axil_araddr,
+  input  wire [2:0]                          axil_arprot,
+  output wire                                axil_arready,
 
-  input  wire        axil_rready,
-  output wire        axil_rvalid,
-  output wire [31:0] axil_rdata,
-  output wire [ 1:0] axil_rresp,
+  input  wire                                axil_rready,
+  output wire                                axil_rvalid,
+  output wire [31:0]                         axil_rdata,
+  output wire [1:0]                          axil_rresp,
 
   // Clock stop control interface
   input  wire [DEFAULT_NUM_CLK_STOP_REQ-1:0] clk_stop_req,
@@ -54,34 +54,34 @@ module cross_trigger_network_tb_top
   output wire                                cla_clock_stop,
 
   // Internal cross trigger interface (CLA side of the internal CT ports)
-  output wire [DEFAULT_NUM_INT_CT-1:0] ctm_src_req,
-  input  wire [DEFAULT_NUM_INT_CT-1:0] ctm_src_ack,
-  input  wire [DEFAULT_NUM_INT_CT-1:0] ctm_dst_req,
-  output wire [DEFAULT_NUM_INT_CT-1:0] ctm_dst_ack,
+  output wire [DEFAULT_NUM_INT_CT-1:0]       ctm_src_req,
+  input  wire [DEFAULT_NUM_INT_CT-1:0]       ctm_src_ack,
+  input  wire [DEFAULT_NUM_INT_CT-1:0]       ctm_dst_req,
+  output wire [DEFAULT_NUM_INT_CT-1:0]       ctm_dst_ack,
 
   // External CTP GPIO pad interface - CT_Req_out
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_req_out_dout,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_req_out_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0] ctp_req_out_din,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_req_out_din_en,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_dout,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_dout_en,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din_en,
 
   // External CTP GPIO pad interface - CT_Req_in
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_req_in_dout,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_req_in_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0] ctp_req_in_din,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_req_in_din_en,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_dout,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_dout_en,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_din,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_din_en,
 
   // External CTP GPIO pad interface - CT_Ack_in
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0] ctp_ack_in_din,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_ack_in_din_en,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_dout,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_dout_en,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_din,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_din_en,
 
   // External CTP GPIO pad interface - CT_Ack_out
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_ack_out_dout,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_ack_out_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0] ctp_ack_out_din,
-  output wire [DEFAULT_NUM_CTP-1:0] ctp_ack_out_din_en
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_dout,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_dout_en,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_din,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_din_en
 );
 
   // Internal CTP mode split: lower half wire-OR (0), upper half P2P (1).
@@ -121,41 +121,41 @@ module cross_trigger_network_tb_top
   cross_trigger_network #(
     .INT_CT_MODE(IntCtMode)
   ) u_dut (
-    .clk_i (clk),
-    .rst_ni(rst_n),
+    .clk_i                 (clk),
+    .rst_ni                (rst_n),
 
-    .axil_req_i (axil_req),
-    .axil_resp_o(axil_resp),
+    .axil_req_i            (axil_req),
+    .axil_resp_o           (axil_resp),
 
-    .clk_stop_req_i   (clk_stop_req),
-    .jtag_clock_stop_i(jtag_clock_stop),
-    .stop_clks_o      (stop_clks),
-    .cla_clock_stop_o (cla_clock_stop),
+    .clk_stop_req_i        (clk_stop_req),
+    .jtag_clock_stop_i     (jtag_clock_stop),
+    .stop_clks_o           (stop_clks),
+    .cla_clock_stop_o      (cla_clock_stop),
 
-    .ctm_src_req_o(ctm_src_req),
-    .ctm_src_ack_i(ctm_src_ack),
-    .ctm_dst_req_i(ctm_dst_req),
-    .ctm_dst_ack_o(ctm_dst_ack),
+    .ctm_src_req_o         (ctm_src_req),
+    .ctm_src_ack_i         (ctm_src_ack),
+    .ctm_dst_req_i         (ctm_dst_req),
+    .ctm_dst_ack_o         (ctm_dst_ack),
 
-    .ctp_req_out_dout_o   (ctp_req_out_dout),
-    .ctp_req_out_dout_en_o(ctp_req_out_dout_en),
-    .ctp_req_out_din_i    (ctp_req_out_din),
-    .ctp_req_out_din_en_o (ctp_req_out_din_en),
+    .ctp_req_out_dout_o    (ctp_req_out_dout),
+    .ctp_req_out_dout_en_o (ctp_req_out_dout_en),
+    .ctp_req_out_din_i     (ctp_req_out_din),
+    .ctp_req_out_din_en_o  (ctp_req_out_din_en),
 
-    .ctp_req_in_dout_o   (ctp_req_in_dout),
-    .ctp_req_in_dout_en_o(ctp_req_in_dout_en),
-    .ctp_req_in_din_i    (ctp_req_in_din),
-    .ctp_req_in_din_en_o (ctp_req_in_din_en),
+    .ctp_req_in_dout_o     (ctp_req_in_dout),
+    .ctp_req_in_dout_en_o  (ctp_req_in_dout_en),
+    .ctp_req_in_din_i      (ctp_req_in_din),
+    .ctp_req_in_din_en_o   (ctp_req_in_din_en),
 
-    .ctp_ack_in_dout_o   (ctp_ack_in_dout),
-    .ctp_ack_in_dout_en_o(ctp_ack_in_dout_en),
-    .ctp_ack_in_din_i    (ctp_ack_in_din),
-    .ctp_ack_in_din_en_o (ctp_ack_in_din_en),
+    .ctp_ack_in_dout_o     (ctp_ack_in_dout),
+    .ctp_ack_in_dout_en_o  (ctp_ack_in_dout_en),
+    .ctp_ack_in_din_i      (ctp_ack_in_din),
+    .ctp_ack_in_din_en_o   (ctp_ack_in_din_en),
 
-    .ctp_ack_out_dout_o   (ctp_ack_out_dout),
-    .ctp_ack_out_dout_en_o(ctp_ack_out_dout_en),
-    .ctp_ack_out_din_i    (ctp_ack_out_din),
-    .ctp_ack_out_din_en_o (ctp_ack_out_din_en)
+    .ctp_ack_out_dout_o    (ctp_ack_out_dout),
+    .ctp_ack_out_dout_en_o (ctp_ack_out_dout_en),
+    .ctp_ack_out_din_i     (ctp_ack_out_din),
+    .ctp_ack_out_din_en_o  (ctp_ack_out_din_en)
   );
 
 endmodule : cross_trigger_network_tb_top

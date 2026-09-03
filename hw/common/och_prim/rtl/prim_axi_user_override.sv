@@ -7,20 +7,20 @@
 //--------------------------------------------------
 
 module prim_axi_user_override #(
-  parameter int unsigned AxiAddrWidth = 64,
-  parameter int unsigned AxiDataWidth = 64,
-  parameter int unsigned AxiIdWidth   = 1,
-  parameter int unsigned AxiUserWidth = 1,
+  parameter  int unsigned AxiAddrWidth = 64,
+  parameter  int unsigned AxiDataWidth = 64,
+  parameter  int unsigned AxiIdWidth   = 1,
+  parameter  int unsigned AxiUserWidth = 1,
 
-  parameter int unsigned AxiUserOverride = 0,
+  parameter  int unsigned AxiUserOverride = 0,
 
   localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,
 
-  localparam type addr_t = logic [AxiAddrWidth-1:0],
-  localparam type data_t = logic [AxiDataWidth-1:0],
-  localparam type id_t   = logic [  AxiIdWidth-1:0],
-  localparam type strb_t = logic [AxiStrbWidth-1:0],
-  localparam type user_t = logic [AxiUserWidth-1:0]
+  localparam type addr_t  = logic [AxiAddrWidth-1:0],
+  localparam type data_t  = logic [AxiDataWidth-1:0],
+  localparam type id_t    = logic [AxiIdWidth-1:0],
+  localparam type strb_t  = logic [AxiStrbWidth-1:0],
+  localparam type user_t  = logic [AxiUserWidth-1:0]
 ) (
   input  logic             axi_in_awvalid_i,
   input  id_t              axi_in_awid_i,
@@ -166,12 +166,12 @@ module prim_axi_user_override #(
 endmodule
 
 module prim_axi_user_override_struct #(
-  parameter int unsigned AxiAddrWidth = 64,
-  parameter int unsigned AxiDataWidth = 64,
-  parameter int unsigned AxiIdWidth   = 1,
-  parameter int unsigned AxiUserWidth = 1,
+  parameter  int unsigned AxiAddrWidth = 64,
+  parameter  int unsigned AxiDataWidth = 64,
+  parameter  int unsigned AxiIdWidth   = 1,
+  parameter  int unsigned AxiUserWidth = 1,
 
-  parameter int unsigned AxiUserOverride = 0,
+  parameter  int unsigned AxiUserOverride = 0,
 
   localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,
 
@@ -179,10 +179,10 @@ module prim_axi_user_override_struct #(
   parameter type axi_resp_t = logic,
   localparam type user_t = logic [AxiUserWidth-1:0]
 ) (
-  input  axi_req_t  axi_in_req_i,
+  input axi_req_t axi_in_req_i,
   output axi_resp_t axi_in_resp_o,
-  output axi_req_t  axi_out_req_o,
-  input  axi_resp_t axi_out_resp_i
+  output axi_req_t axi_out_req_o,
+  input axi_resp_t axi_out_resp_i
 );
 
   assign axi_out_req_o.aw_valid  = axi_in_req_i.aw_valid;
@@ -215,19 +215,19 @@ module prim_axi_user_override_struct #(
   assign axi_out_req_o.ar.region = axi_in_req_i.ar.region;
   assign axi_out_req_o.r_ready   = axi_in_req_i.r_ready;
 
-  assign axi_in_resp_o.aw_ready  = axi_out_resp_i.aw_ready;
-  assign axi_in_resp_o.w_ready   = axi_out_resp_i.w_ready;
-  assign axi_in_resp_o.b_valid   = axi_out_resp_i.b_valid;
-  assign axi_in_resp_o.b.id      = axi_out_resp_i.b.id;
-  assign axi_in_resp_o.b.resp    = axi_out_resp_i.b.resp;
-  assign axi_in_resp_o.b.user    = axi_out_resp_i.b.user;
-  assign axi_in_resp_o.ar_ready  = axi_out_resp_i.ar_ready;
-  assign axi_in_resp_o.r_valid   = axi_out_resp_i.r_valid;
-  assign axi_in_resp_o.r.id      = axi_out_resp_i.r.id;
-  assign axi_in_resp_o.r.data    = axi_out_resp_i.r.data;
-  assign axi_in_resp_o.r.resp    = axi_out_resp_i.r.resp;
-  assign axi_in_resp_o.r.last    = axi_out_resp_i.r.last;
-  assign axi_in_resp_o.r.user    = axi_out_resp_i.r.user;
+  assign axi_in_resp_o.aw_ready = axi_out_resp_i.aw_ready;
+  assign axi_in_resp_o.w_ready  = axi_out_resp_i.w_ready;
+  assign axi_in_resp_o.b_valid  = axi_out_resp_i.b_valid;
+  assign axi_in_resp_o.b.id     = axi_out_resp_i.b.id;
+  assign axi_in_resp_o.b.resp   = axi_out_resp_i.b.resp;
+  assign axi_in_resp_o.b.user   = axi_out_resp_i.b.user;
+  assign axi_in_resp_o.ar_ready = axi_out_resp_i.ar_ready;
+  assign axi_in_resp_o.r_valid  = axi_out_resp_i.r_valid;
+  assign axi_in_resp_o.r.id     = axi_out_resp_i.r.id;
+  assign axi_in_resp_o.r.data   = axi_out_resp_i.r.data;
+  assign axi_in_resp_o.r.resp   = axi_out_resp_i.r.resp;
+  assign axi_in_resp_o.r.last   = axi_out_resp_i.r.last;
+  assign axi_in_resp_o.r.user   = axi_out_resp_i.r.user;
 
   assign axi_out_req_o.aw.user   = user_t'(AxiUserOverride);
   assign axi_out_req_o.w.user    = user_t'(AxiUserOverride);

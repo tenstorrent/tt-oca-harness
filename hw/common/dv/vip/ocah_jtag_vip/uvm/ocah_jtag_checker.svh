@@ -95,18 +95,10 @@ class ocah_jtag_checker extends ocah_checker;
     bit passed;
     predicted = m_ref.step(tms);
     expected_onehot = 16'h1 << int'(predicted);
-    passed = record(
-        check_id,
-        observed_onehot === expected_onehot,
-        $sformatf(
-            "%s(0x%04h)", predicted.name(), expected_onehot
-        ),
-        onehot_label(
-            observed_onehot
-        ),
-        $sformatf(
-            "prev=%s tms=%0b %s", previous.name(), tms, context_s)
-    );
+    passed = record(check_id, observed_onehot === expected_onehot,
+                        $sformatf("%s(0x%04h)", predicted.name(), expected_onehot),
+                        onehot_label(observed_onehot),
+                        $sformatf("prev=%s tms=%0b %s", previous.name(), tms, context_s));
     // Keep later predictions meaningful by re-aligning to what the DUT
     // actually did (matters when the run aggregates evidence failures).
     if (!passed && onehot_to_state(observed_onehot, observed)) m_ref.sync_state(observed);
@@ -139,7 +131,8 @@ class ocah_jtag_checker extends ocah_checker;
                                     bit capture_bit = 1'b0, string context_s = "",
                                     string check_id = "CHK-BYPASS-LATENCY");
     bit [63:0] expected = predict_bypass_tdo(pattern, width, capture_bit);
-    bit [63:0] mask = (width == 0) ? '0 : (width < 64) ? ((64'h1 << width) - 1) : '1;
+    bit [63:0] mask = (width == 0) ? '0 :
+                          (width < 64) ? ((64'h1 << width) - 1) : '1;
     return record(
         check_id,
         (observed_tdo & mask) === expected,

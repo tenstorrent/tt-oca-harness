@@ -30,7 +30,7 @@ class ocah_jtag_master_config extends uvm_object;
   uvm_object vendor_cfg;
 
   // Bit-banged TCK timing: full period = 2 * tck_half_period.
-  time tck_half_period = 50ns;  // 10 MHz default
+  time tck_half_period = 50ns;    // 10 MHz default
 
   // TAP_RESET op: TCK cycles with TRST asserted (TMS held 1) before release.
   int unsigned trst_reset_cycles = 3;

@@ -18,19 +18,19 @@ module entropy_debug_monitor #(
   parameter int unsigned NSIGNALS       = 32,
   parameter int unsigned FREQ_DIV_WIDTH = 8
 ) (
-  input  logic                                rst_ni,
-  input  logic [        $clog2(NSIGNALS)-1:0] select_signal_i,
-  input  logic [                NSIGNALS-1:0] signal_i,
-  input  logic [$clog2(FREQ_DIV_WIDTH-1)-1:0] select_freq_div_i,
-  output logic                                sig_monitor_o
+  input       logic                                rst_ni,
+  input       logic [$clog2(NSIGNALS)-1:0]         select_signal_i,
+  input       logic [NSIGNALS-1:0]                 signal_i,
+  input       logic [$clog2(FREQ_DIV_WIDTH-1)-1:0] select_freq_div_i,
+  output      logic                                sig_monitor_o
 );
 
   /////////////
   // Signals
   /////////////
 
-  logic [      NSIGNALS-1:0] select_signal_binary_decode;
-  logic [      NSIGNALS-1:0] select_signal;
+  logic [NSIGNALS-1:0]       select_signal_binary_decode;
+  logic [NSIGNALS-1:0]       select_signal;
   logic                      fast_signal;
   logic [FREQ_DIV_WIDTH-1:0] div_signals;
   logic [FREQ_DIV_WIDTH-1:0] select_freq_binary_decode;
@@ -61,9 +61,9 @@ module entropy_debug_monitor #(
   entropy_ripple_divider #(
     .NUM_STAGES(FREQ_DIV_WIDTH - 1)
   ) u_ripple_divider (
-    .rst_ni(rst_ni),
-    .clk_i (fast_signal),
-    .div_o (div_signals)
+    .rst_ni (rst_ni),
+    .clk_i  (fast_signal),
+    .div_o  (div_signals)
   );
 
   ///////////

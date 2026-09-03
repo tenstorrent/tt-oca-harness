@@ -31,14 +31,16 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
 
   virtual task dispatch_scenario();
     case (scenario)
-      "reg_stall":                                 run_reg_stall();
-      "ctp_csr_sweep":                             run_ctp_csr_sweep();
-      "ctm_csr_sweep":                             run_ctm_csr_sweep();
-      "ctm_all_source_select":                     run_ctm_all_source_select();
-      "axi_channel_skew":                          run_axi_channel_skew();
-      "axi_channel_skew_demux_aw_lock_release":    run_demux_aw_lock_release();
-      "axi_channel_skew_read_decode_backpressure": run_read_decode_backpressure();
-      default:                                     super.dispatch_scenario();
+      "reg_stall":         run_reg_stall();
+      "ctp_csr_sweep":     run_ctp_csr_sweep();
+      "ctm_csr_sweep":     run_ctm_csr_sweep();
+      "ctm_all_source_select": run_ctm_all_source_select();
+      "axi_channel_skew":  run_axi_channel_skew();
+      "axi_channel_skew_demux_aw_lock_release":
+                run_demux_aw_lock_release();
+      "axi_channel_skew_read_decode_backpressure":
+                run_read_decode_backpressure();
+      default: super.dispatch_scenario();
     endcase
   endtask
 
@@ -138,7 +140,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     // Seeded per-pass extra mask on top of the deterministic
     // per-source set.
     for (int unsigned src_idx = 0; src_idx < XtrigNumCtmPorts; src_idx++) begin
-      nbr_idx  = (src_idx + 1) % XtrigNumCtmPorts;
+      nbr_idx = (src_idx + 1) % XtrigNumCtmPorts;
       masks[0] = 32'd1 << (src_idx % XtrigNumCtmPorts);
       masks[1] = (32'd1 << src_idx) | (32'd1 << nbr_idx);
       masks[2] = (~(32'd1 << src_idx)) & CtmSelectMask;
@@ -188,20 +190,22 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   endtask
 
   protected task run_demux_aw_lock_release();
-    bit [63:0] case_addr    [3];
-    bit [31:0] case_data    [3];
+    bit [63:0] case_addr[3];
+    bit [31:0] case_data[3];
     bit        case_aw_first[3];
     bit [31:0] observed, mask;
-    int unsigned  picks[$];
+    int unsigned picks[$];
     ocah_axi_item res;
     `uvm_info(get_type_name(), "XTRIG AXI-Lite demux AW-lock release", UVM_LOW)
     // Seeded per-pass targets, payloads, and skew timing.
     pick_distinct(XtrigNumCtp, 2, picks);
     case_addr[0]     = ctp_config_addr(picks[0]);
-    case_data[0]     = pack_ctp_config($urandom_range(1), bit'($urandom_range(1)));
+    case_data[0]     = pack_ctp_config($urandom_range(1),
+                                           bit'($urandom_range(1)));
     case_aw_first[0] = 1'b1;
     case_addr[1]     = ctp_config_addr(picks[1]);
-    case_data[1]     = pack_ctp_config($urandom_range(1), bit'($urandom_range(1)));
+    case_data[1]     = pack_ctp_config($urandom_range(1),
+                                           bit'($urandom_range(1)));
     case_aw_first[1] = 1'b1;
     case_addr[2]     = ctm_config_addr($urandom_range(XtrigNumCtmPorts - 1));
     case_data[2]     = $urandom_range(CtmSelectMask, 1);

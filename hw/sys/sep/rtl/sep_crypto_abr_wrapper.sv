@@ -39,35 +39,35 @@ module sep_crypto_abr_wrapper
   parameter bit          MASKING_EN   = 1,  // 2-share DOM masking (ship for SCA)
   parameter int unsigned SRAM_LATENCY = 1
 ) (
-  input wire logic clk_i,
-  input wire logic rst_ni,
+  input  wire logic clk_i,
+  input  wire logic rst_ni,
 
   // ---- Control/status path: 64-bit AXI from the sep_crypto demux ----
-  input  wire sep_pkg::sep_32_64_6_12_axi_req_t abr_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t     abr_axi_resp_o,
+  input  wire sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_i,
+  output      sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_o,
 
   // ---- Key path: KM private 32-bit AXI4-Lite key bus ----
   // Terminates on the internal abr_wrapper_key_reg CSR block (u_abr_key_csr),
   // matching the aes/otbn wrapper convention (raw AXI4-Lite in, not a decoded
   // hwif struct).
-  input  wire km_intf_pkg::km_axil_req_t abr_key_axil_req_i,
-  output km_intf_pkg::km_axil_resp_t     abr_key_axil_resp_o,
+  input  wire km_intf_pkg::km_axil_req_t  abr_key_axil_req_i,
+  output      km_intf_pkg::km_axil_resp_t abr_key_axil_resp_o,
 
   // ---- AB internal SRAMs: technology macros live in sep_ip_integration. ----
   // Packed req/rsp structs (OTBN convention). abr_top is the memory requester;
   // a local abr_mem_if + comb adapter packs its requests into abr_mem_req_o and
   // unpacks abr_mem_rsp_i back onto the interface read-data signals.
-  output abr_mem_req_t abr_mem_req_o,
-  input  abr_mem_rsp_t abr_mem_rsp_i,
+  output      abr_mem_req_t abr_mem_req_o,
+  input       abr_mem_rsp_t abr_mem_rsp_i,
 
   // ---- DFT ----
-  input wire logic scan_mode_i,
+  input  wire logic scan_mode_i,
 
   // ---- Interrupts + status ----
-  output logic mlkem_sharedkey_irq_o,  // ML-KEM shared-key ready (gated)
-  output logic error_intr_o,
-  output logic notif_intr_o,
-  output logic busy_o
+  output      logic mlkem_sharedkey_irq_o,  // ML-KEM shared-key ready (gated)
+  output      logic error_intr_o,
+  output      logic notif_intr_o,
+  output      logic busy_o
 );
 
   `include "prim_assert.sv"
@@ -78,11 +78,11 @@ module sep_crypto_abr_wrapper
   logic [31:0] ab_haddr;
   logic [63:0] ab_hwdata;
   logic [63:0] ab_hrdata;
-  logic [ 2:0] ab_hsize;
-  logic [ 2:0] ab_hburst;  // unused by abr_top (AB has no hburst input)
-  logic [ 3:0] ab_hprot;  // unused by abr_top
+  logic [2:0]  ab_hsize;
+  logic [2:0]  ab_hburst;     // unused by abr_top (AB has no hburst input)
+  logic [3:0]  ab_hprot;      // unused by abr_top
   logic        ab_hmastlock;  // unused by abr_top
-  logic [ 1:0] ab_htrans;
+  logic [1:0]  ab_htrans;
   logic        ab_hwrite;
   logic        ab_hreadyout;  // abr_top.hreadyout_o (single-slave global hready)
   logic        ab_hresp;
@@ -90,60 +90,60 @@ module sep_crypto_abr_wrapper
   axi4_to_ahb #(
     .TAG(sep_pkg::SEP_32_64_6_12_ID_WIDTH)  // carry the 6-bit SEP AXI ID
   ) u_axi4_to_ahb (
-    .clk               (clk_i),
-    .free_clk          (clk_i),
-    .rst_l             (rst_ni),
-    .scan_mode         (scan_mode_i),
-    .bus_clk_en        (1'b1),
-    .clk_override      (1'b0),
-    .dec_tlu_force_halt(1'b0),
+    .clk                (clk_i),
+    .free_clk           (clk_i),
+    .rst_l              (rst_ni),
+    .scan_mode          (scan_mode_i),
+    .bus_clk_en         (1'b1),
+    .clk_override       (1'b0),
+    .dec_tlu_force_halt (1'b0),
 
     // AXI slave (struct -> flat). Single-beat MMIO from the RV32 CPU, so the
     // bridge's lack of awlen/arlen is fine (len == 0).
-    .axi_awvalid(abr_axi_req_i.aw_valid),
-    .axi_awready(abr_axi_resp_o.aw_ready),
-    .axi_awid   (abr_axi_req_i.aw.id),
-    .axi_awaddr (abr_axi_req_i.aw.addr),
-    .axi_awsize (abr_axi_req_i.aw.size),
-    .axi_awprot (abr_axi_req_i.aw.prot),
+    .axi_awvalid (abr_axi_req_i.aw_valid),
+    .axi_awready (abr_axi_resp_o.aw_ready),
+    .axi_awid    (abr_axi_req_i.aw.id),
+    .axi_awaddr  (abr_axi_req_i.aw.addr),
+    .axi_awsize  (abr_axi_req_i.aw.size),
+    .axi_awprot  (abr_axi_req_i.aw.prot),
 
-    .axi_wvalid(abr_axi_req_i.w_valid),
-    .axi_wready(abr_axi_resp_o.w_ready),
-    .axi_wdata (abr_axi_req_i.w.data),
-    .axi_wstrb (abr_axi_req_i.w.strb),
-    .axi_wlast (abr_axi_req_i.w.last),
+    .axi_wvalid  (abr_axi_req_i.w_valid),
+    .axi_wready  (abr_axi_resp_o.w_ready),
+    .axi_wdata   (abr_axi_req_i.w.data),
+    .axi_wstrb   (abr_axi_req_i.w.strb),
+    .axi_wlast   (abr_axi_req_i.w.last),
 
-    .axi_bvalid(abr_axi_resp_o.b_valid),
-    .axi_bready(abr_axi_req_i.b_ready),
-    .axi_bresp (abr_axi_resp_o.b.resp),
-    .axi_bid   (abr_axi_resp_o.b.id),
+    .axi_bvalid  (abr_axi_resp_o.b_valid),
+    .axi_bready  (abr_axi_req_i.b_ready),
+    .axi_bresp   (abr_axi_resp_o.b.resp),
+    .axi_bid     (abr_axi_resp_o.b.id),
 
-    .axi_arvalid(abr_axi_req_i.ar_valid),
-    .axi_arready(abr_axi_resp_o.ar_ready),
-    .axi_arid   (abr_axi_req_i.ar.id),
-    .axi_araddr (abr_axi_req_i.ar.addr),
-    .axi_arsize (abr_axi_req_i.ar.size),
-    .axi_arprot (abr_axi_req_i.ar.prot),
+    .axi_arvalid (abr_axi_req_i.ar_valid),
+    .axi_arready (abr_axi_resp_o.ar_ready),
+    .axi_arid    (abr_axi_req_i.ar.id),
+    .axi_araddr  (abr_axi_req_i.ar.addr),
+    .axi_arsize  (abr_axi_req_i.ar.size),
+    .axi_arprot  (abr_axi_req_i.ar.prot),
 
-    .axi_rvalid(abr_axi_resp_o.r_valid),
-    .axi_rready(abr_axi_req_i.r_ready),
-    .axi_rid   (abr_axi_resp_o.r.id),
-    .axi_rdata (abr_axi_resp_o.r.data),
-    .axi_rresp (abr_axi_resp_o.r.resp),
-    .axi_rlast (abr_axi_resp_o.r.last),
+    .axi_rvalid  (abr_axi_resp_o.r_valid),
+    .axi_rready  (abr_axi_req_i.r_ready),
+    .axi_rid     (abr_axi_resp_o.r.id),
+    .axi_rdata   (abr_axi_resp_o.r.data),
+    .axi_rresp   (abr_axi_resp_o.r.resp),
+    .axi_rlast   (abr_axi_resp_o.r.last),
 
     // AHB master -> abr_top slave
-    .ahb_haddr    (ab_haddr),
-    .ahb_hburst   (ab_hburst),
-    .ahb_hmastlock(ab_hmastlock),
-    .ahb_hprot    (ab_hprot),
-    .ahb_hsize    (ab_hsize),
-    .ahb_htrans   (ab_htrans),
-    .ahb_hwrite   (ab_hwrite),
-    .ahb_hwdata   (ab_hwdata),
-    .ahb_hrdata   (ab_hrdata),
-    .ahb_hready   (ab_hreadyout),  // single slave: bus hready == slave hreadyout
-    .ahb_hresp    (ab_hresp)
+    .ahb_haddr     (ab_haddr),
+    .ahb_hburst    (ab_hburst),
+    .ahb_hmastlock (ab_hmastlock),
+    .ahb_hprot     (ab_hprot),
+    .ahb_hsize     (ab_hsize),
+    .ahb_htrans    (ab_htrans),
+    .ahb_hwrite    (ab_hwrite),
+    .ahb_hwdata    (ab_hwdata),
+    .ahb_hrdata    (ab_hrdata),
+    .ahb_hready    (ab_hreadyout),  // single slave: bus hready == slave hreadyout
+    .ahb_hresp     (ab_hresp)
   );
 
   // axi4_to_ahb has no AXI USER ports
@@ -167,41 +167,41 @@ module sep_crypto_abr_wrapper
         abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
 
   abr_wrapper_key_reg u_abr_key_csr (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk    (clk_i),
+    .arst_n (rst_ni),
 
     // AW channel
-    .s_axil_awvalid(abr_key_axil_req_i.aw_valid),
-    .s_axil_awaddr (abr_key_axil_req_i.aw.addr[ABR_KEY_CSR_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (abr_key_axil_req_i.aw.prot),
-    .s_axil_awready(abr_key_axil_resp_o.aw_ready),
+    .s_axil_awvalid (abr_key_axil_req_i.aw_valid),
+    .s_axil_awaddr  (abr_key_axil_req_i.aw.addr[ABR_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (abr_key_axil_req_i.aw.prot),
+    .s_axil_awready (abr_key_axil_resp_o.aw_ready),
 
     // W channel
-    .s_axil_wvalid(abr_key_axil_req_i.w_valid),
-    .s_axil_wdata (abr_key_axil_req_i.w.data),
-    .s_axil_wstrb (abr_key_axil_req_i.w.strb),
-    .s_axil_wready(abr_key_axil_resp_o.w_ready),
+    .s_axil_wvalid  (abr_key_axil_req_i.w_valid),
+    .s_axil_wdata   (abr_key_axil_req_i.w.data),
+    .s_axil_wstrb   (abr_key_axil_req_i.w.strb),
+    .s_axil_wready  (abr_key_axil_resp_o.w_ready),
 
     // B channel
-    .s_axil_bready(abr_key_axil_req_i.b_ready),
-    .s_axil_bvalid(abr_key_axil_resp_o.b_valid),
-    .s_axil_bresp (abr_key_axil_resp_o.b.resp),
+    .s_axil_bready  (abr_key_axil_req_i.b_ready),
+    .s_axil_bvalid  (abr_key_axil_resp_o.b_valid),
+    .s_axil_bresp   (abr_key_axil_resp_o.b.resp),
 
     // AR channel
-    .s_axil_arvalid(abr_key_axil_req_i.ar_valid),
-    .s_axil_araddr (abr_key_axil_req_i.ar.addr[ABR_KEY_CSR_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (abr_key_axil_req_i.ar.prot),
-    .s_axil_arready(abr_key_axil_resp_o.ar_ready),
+    .s_axil_arvalid (abr_key_axil_req_i.ar_valid),
+    .s_axil_araddr  (abr_key_axil_req_i.ar.addr[ABR_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (abr_key_axil_req_i.ar.prot),
+    .s_axil_arready (abr_key_axil_resp_o.ar_ready),
 
     // R channel
-    .s_axil_rready(abr_key_axil_req_i.r_ready),
-    .s_axil_rvalid(abr_key_axil_resp_o.r_valid),
-    .s_axil_rdata (abr_key_axil_resp_o.r.data),
-    .s_axil_rresp (abr_key_axil_resp_o.r.resp),
+    .s_axil_rready  (abr_key_axil_req_i.r_ready),
+    .s_axil_rvalid  (abr_key_axil_resp_o.r_valid),
+    .s_axil_rdata   (abr_key_axil_resp_o.r.data),
+    .s_axil_rresp   (abr_key_axil_resp_o.r.resp),
 
     // HW interface
-    .hwif_in (abr_key_hwif_in),
-    .hwif_out(abr_key_hwif_out)
+    .hwif_in  (abr_key_hwif_in),
+    .hwif_out (abr_key_hwif_out)
   );
 
   // ML-KEM shared-key IRQ: level-sensitive, gated by IRQ_ENABLE. Driven by the
@@ -215,7 +215,7 @@ module sep_crypto_abr_wrapper
   // =========================================================================
   kv_read_t    [2:0] ab_kv_read;
   kv_rd_resp_t [2:0] ab_kv_rd_resp;
-  kv_write_t         ab_kv_write;  // AB output (ML-DSA never asserts; ML-KEM does)
+  kv_write_t         ab_kv_write;    // AB output (ML-DSA never asserts; ML-KEM does)
   kv_wr_resp_t       ab_kv_wr_resp;  // driven by the shim ('{error:0})
 
   // Recovers the seed/msg blocks from the abr_wrapper_key_reg dual XOR shares:
@@ -224,12 +224,12 @@ module sep_crypto_abr_wrapper
   // kv_write drives the MLKEM_SHARED_KEY writeback + key_valid / IRQ_STATUS
   // hwset via abr_key_hwif_in.
   sep_abr_kv_shim u_sep_abr_kv_shim (
-    .hwif_i      (abr_key_hwif_out),
-    .hwif_o      (abr_key_hwif_in),
-    .kv_read_i   (ab_kv_read),
-    .kv_rd_resp_o(ab_kv_rd_resp),
-    .kv_write_i  (ab_kv_write),
-    .kv_wr_resp_o(ab_kv_wr_resp)
+    .hwif_i       (abr_key_hwif_out),
+    .hwif_o       (abr_key_hwif_in),
+    .kv_read_i    (ab_kv_read),
+    .kv_rd_resp_o (ab_kv_rd_resp),
+    .kv_write_i   (ab_kv_write),
+    .kv_wr_resp_o (ab_kv_wr_resp)
   );
 
   // =========================================================================
@@ -247,90 +247,90 @@ module sep_crypto_abr_wrapper
     abr_mem_req_o.clk = clk_i;
 
     // w1_mem (4-bit data)
-    abr_mem_req_o.w1_we = u_abr_mem.w1_mem_we_i;
+    abr_mem_req_o.w1_we    = u_abr_mem.w1_mem_we_i;
     abr_mem_req_o.w1_waddr = u_abr_mem.w1_mem_waddr_i;
     abr_mem_req_o.w1_wdata = u_abr_mem.w1_mem_wdata_i;
-    abr_mem_req_o.w1_re = u_abr_mem.w1_mem_re_i;
+    abr_mem_req_o.w1_re    = u_abr_mem.w1_mem_re_i;
     abr_mem_req_o.w1_raddr = u_abr_mem.w1_mem_raddr_i;
 
     // 96-bit coefficient memories
-    abr_mem_req_o.mem_inst0_bank0.we = u_abr_mem.mem_inst0_bank0_we_i;
+    abr_mem_req_o.mem_inst0_bank0.we    = u_abr_mem.mem_inst0_bank0_we_i;
     abr_mem_req_o.mem_inst0_bank0.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_waddr_i);
     abr_mem_req_o.mem_inst0_bank0.wdata = u_abr_mem.mem_inst0_bank0_wdata_i;
-    abr_mem_req_o.mem_inst0_bank0.re = u_abr_mem.mem_inst0_bank0_re_i;
+    abr_mem_req_o.mem_inst0_bank0.re    = u_abr_mem.mem_inst0_bank0_re_i;
     abr_mem_req_o.mem_inst0_bank0.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_raddr_i);
 
-    abr_mem_req_o.mem_inst0_bank1.we = u_abr_mem.mem_inst0_bank1_we_i;
+    abr_mem_req_o.mem_inst0_bank1.we    = u_abr_mem.mem_inst0_bank1_we_i;
     abr_mem_req_o.mem_inst0_bank1.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_waddr_i);
     abr_mem_req_o.mem_inst0_bank1.wdata = u_abr_mem.mem_inst0_bank1_wdata_i;
-    abr_mem_req_o.mem_inst0_bank1.re = u_abr_mem.mem_inst0_bank1_re_i;
+    abr_mem_req_o.mem_inst0_bank1.re    = u_abr_mem.mem_inst0_bank1_re_i;
     abr_mem_req_o.mem_inst0_bank1.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_raddr_i);
 
-    abr_mem_req_o.mem_inst1.we = u_abr_mem.mem_inst1_we_i;
+    abr_mem_req_o.mem_inst1.we    = u_abr_mem.mem_inst1_we_i;
     abr_mem_req_o.mem_inst1.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_waddr_i);
     abr_mem_req_o.mem_inst1.wdata = u_abr_mem.mem_inst1_wdata_i;
-    abr_mem_req_o.mem_inst1.re = u_abr_mem.mem_inst1_re_i;
+    abr_mem_req_o.mem_inst1.re    = u_abr_mem.mem_inst1_re_i;
     abr_mem_req_o.mem_inst1.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_raddr_i);
 
-    abr_mem_req_o.mem_inst2.we = u_abr_mem.mem_inst2_we_i;
+    abr_mem_req_o.mem_inst2.we    = u_abr_mem.mem_inst2_we_i;
     abr_mem_req_o.mem_inst2.waddr = u_abr_mem.mem_inst2_waddr_i;
     abr_mem_req_o.mem_inst2.wdata = u_abr_mem.mem_inst2_wdata_i;
-    abr_mem_req_o.mem_inst2.re = u_abr_mem.mem_inst2_re_i;
+    abr_mem_req_o.mem_inst2.re    = u_abr_mem.mem_inst2_re_i;
     abr_mem_req_o.mem_inst2.raddr = u_abr_mem.mem_inst2_raddr_i;
 
     // Masked coefficient memories (tied to '0 inside abr_top when MASKING_EN=0)
-    abr_mem_req_o.mem_inst0_bank0_masked.we = u_abr_mem.mem_inst0_bank0_masked_we_i;
+    abr_mem_req_o.mem_inst0_bank0_masked.we    = u_abr_mem.mem_inst0_bank0_masked_we_i;
     abr_mem_req_o.mem_inst0_bank0_masked.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_masked_waddr_i);
     abr_mem_req_o.mem_inst0_bank0_masked.wdata = u_abr_mem.mem_inst0_bank0_masked_wdata_i;
-    abr_mem_req_o.mem_inst0_bank0_masked.re = u_abr_mem.mem_inst0_bank0_masked_re_i;
+    abr_mem_req_o.mem_inst0_bank0_masked.re    = u_abr_mem.mem_inst0_bank0_masked_re_i;
     abr_mem_req_o.mem_inst0_bank0_masked.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_masked_raddr_i);
 
-    abr_mem_req_o.mem_inst0_bank1_masked.we = u_abr_mem.mem_inst0_bank1_masked_we_i;
+    abr_mem_req_o.mem_inst0_bank1_masked.we    = u_abr_mem.mem_inst0_bank1_masked_we_i;
     abr_mem_req_o.mem_inst0_bank1_masked.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_masked_waddr_i);
     abr_mem_req_o.mem_inst0_bank1_masked.wdata = u_abr_mem.mem_inst0_bank1_masked_wdata_i;
-    abr_mem_req_o.mem_inst0_bank1_masked.re = u_abr_mem.mem_inst0_bank1_masked_re_i;
+    abr_mem_req_o.mem_inst0_bank1_masked.re    = u_abr_mem.mem_inst0_bank1_masked_re_i;
     abr_mem_req_o.mem_inst0_bank1_masked.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_masked_raddr_i);
 
-    abr_mem_req_o.mem_inst1_masked.we = u_abr_mem.mem_inst1_masked_we_i;
+    abr_mem_req_o.mem_inst1_masked.we    = u_abr_mem.mem_inst1_masked_we_i;
     abr_mem_req_o.mem_inst1_masked.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_masked_waddr_i);
     abr_mem_req_o.mem_inst1_masked.wdata = u_abr_mem.mem_inst1_masked_wdata_i;
-    abr_mem_req_o.mem_inst1_masked.re = u_abr_mem.mem_inst1_masked_re_i;
+    abr_mem_req_o.mem_inst1_masked.re    = u_abr_mem.mem_inst1_masked_re_i;
     abr_mem_req_o.mem_inst1_masked.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_masked_raddr_i);
 
-    abr_mem_req_o.mem_inst2_masked.we = u_abr_mem.mem_inst2_masked_we_i;
+    abr_mem_req_o.mem_inst2_masked.we    = u_abr_mem.mem_inst2_masked_we_i;
     abr_mem_req_o.mem_inst2_masked.waddr = u_abr_mem.mem_inst2_masked_waddr_i;
     abr_mem_req_o.mem_inst2_masked.wdata = u_abr_mem.mem_inst2_masked_wdata_i;
-    abr_mem_req_o.mem_inst2_masked.re = u_abr_mem.mem_inst2_masked_re_i;
+    abr_mem_req_o.mem_inst2_masked.re    = u_abr_mem.mem_inst2_masked_re_i;
     abr_mem_req_o.mem_inst2_masked.raddr = u_abr_mem.mem_inst2_masked_raddr_i;
 
     // sk banks (32-bit data)
-    abr_mem_req_o.sk_bank0_we = u_abr_mem.sk_mem_bank0_we_i;
+    abr_mem_req_o.sk_bank0_we    = u_abr_mem.sk_mem_bank0_we_i;
     abr_mem_req_o.sk_bank0_waddr = u_abr_mem.sk_mem_bank0_waddr_i;
     abr_mem_req_o.sk_bank0_wdata = u_abr_mem.sk_mem_bank0_wdata_i;
-    abr_mem_req_o.sk_bank0_re = u_abr_mem.sk_mem_bank0_re_i;
+    abr_mem_req_o.sk_bank0_re    = u_abr_mem.sk_mem_bank0_re_i;
     abr_mem_req_o.sk_bank0_raddr = u_abr_mem.sk_mem_bank0_raddr_i;
 
-    abr_mem_req_o.sk_bank1_we = u_abr_mem.sk_mem_bank1_we_i;
+    abr_mem_req_o.sk_bank1_we    = u_abr_mem.sk_mem_bank1_we_i;
     abr_mem_req_o.sk_bank1_waddr = u_abr_mem.sk_mem_bank1_waddr_i;
     abr_mem_req_o.sk_bank1_wdata = u_abr_mem.sk_mem_bank1_wdata_i;
-    abr_mem_req_o.sk_bank1_re = u_abr_mem.sk_mem_bank1_re_i;
+    abr_mem_req_o.sk_bank1_re    = u_abr_mem.sk_mem_bank1_re_i;
     abr_mem_req_o.sk_bank1_raddr = u_abr_mem.sk_mem_bank1_raddr_i;
 
     // sig_z_mem (byte-enabled, 160-bit data)
-    abr_mem_req_o.sig_z_we = u_abr_mem.sig_z_mem_we_i;
-    abr_mem_req_o.sig_z_waddr = u_abr_mem.sig_z_mem_waddr_i;
-    abr_mem_req_o.sig_z_wdata = u_abr_mem.sig_z_mem_wdata_i;
+    abr_mem_req_o.sig_z_we      = u_abr_mem.sig_z_mem_we_i;
+    abr_mem_req_o.sig_z_waddr   = u_abr_mem.sig_z_mem_waddr_i;
+    abr_mem_req_o.sig_z_wdata   = u_abr_mem.sig_z_mem_wdata_i;
     abr_mem_req_o.sig_z_wstrobe = u_abr_mem.sig_z_mem_wstrobe_i;
-    abr_mem_req_o.sig_z_re = u_abr_mem.sig_z_mem_re_i;
-    abr_mem_req_o.sig_z_raddr = u_abr_mem.sig_z_mem_raddr_i;
+    abr_mem_req_o.sig_z_re      = u_abr_mem.sig_z_mem_re_i;
+    abr_mem_req_o.sig_z_raddr   = u_abr_mem.sig_z_mem_raddr_i;
 
     // pk_mem (byte-enabled, 320-bit data)
-    abr_mem_req_o.pk_mem.we = u_abr_mem.pk_mem_we_i;
-    abr_mem_req_o.pk_mem.waddr = u_abr_mem.pk_mem_waddr_i;
-    abr_mem_req_o.pk_mem.wdata = u_abr_mem.pk_mem_wdata_i;
+    abr_mem_req_o.pk_mem.we      = u_abr_mem.pk_mem_we_i;
+    abr_mem_req_o.pk_mem.waddr   = u_abr_mem.pk_mem_waddr_i;
+    abr_mem_req_o.pk_mem.wdata   = u_abr_mem.pk_mem_wdata_i;
     abr_mem_req_o.pk_mem.wstrobe = u_abr_mem.pk_mem_wstrobe_i;
-    abr_mem_req_o.pk_mem.re = u_abr_mem.pk_mem_re_i;
-    abr_mem_req_o.pk_mem.raddr = u_abr_mem.pk_mem_raddr_i;
+    abr_mem_req_o.pk_mem.re      = u_abr_mem.pk_mem_re_i;
+    abr_mem_req_o.pk_mem.raddr   = u_abr_mem.pk_mem_raddr_i;
   end
 
   // Response: struct input -> interface read-data signals (abr_top reads these)
@@ -453,36 +453,36 @@ module sep_crypto_abr_wrapper
   // source group in Bender.yml) so the seed arrives over kv_read and the SK lock
   // stays engaged.
   abr_top #(
-    .MASKING_EN       (MASKING_EN),
-    .SRAM_LATENCY     (SRAM_LATENCY),
-    .AHB_ADDR_WIDTH   (32),
-    .AHB_DATA_WIDTH   (64),
-    .CLIENT_DATA_WIDTH(32)
+    .MASKING_EN        (MASKING_EN),
+    .SRAM_LATENCY      (SRAM_LATENCY),
+    .AHB_ADDR_WIDTH    (32),
+    .AHB_DATA_WIDTH    (64),
+    .CLIENT_DATA_WIDTH (32)
   ) u_abr_top (
-    .clk  (clk_i),
-    .rst_b(rst_ni),
+    .clk         (clk_i),
+    .rst_b       (rst_ni),
 
     // AHB-lite slave (single slave: hsel tied high, hready == hreadyout)
-    .haddr_i    (ab_haddr),
-    .hwdata_i   (ab_hwdata),
-    .hsel_i     (1'b1),
-    .hwrite_i   (ab_hwrite),
-    .hready_i   (ab_hreadyout),
-    .htrans_i   (ab_htrans),
-    .hsize_i    (ab_hsize),
-    .hresp_o    (ab_hresp),
-    .hreadyout_o(ab_hreadyout),
-    .hrdata_o   (ab_hrdata),
+    .haddr_i     (ab_haddr),
+    .hwdata_i    (ab_hwdata),
+    .hsel_i      (1'b1),
+    .hwrite_i    (ab_hwrite),
+    .hready_i    (ab_hreadyout),
+    .htrans_i    (ab_htrans),
+    .hsize_i     (ab_hsize),
+    .hresp_o     (ab_hresp),
+    .hreadyout_o (ab_hreadyout),
+    .hrdata_o    (ab_hrdata),
 
     // SRAM macros are in sep_ip_integration; local interface bridged to the
     // struct ports by the adapter above.
-    .abr_memory_export(u_abr_mem),
+    .abr_memory_export (u_abr_mem),
 
     // Caliptra KV interface -> sep_abr_kv_shim
-    .kv_read   (ab_kv_read),
-    .kv_rd_resp(ab_kv_rd_resp),
-    .kv_write  (ab_kv_write),
-    .kv_wr_resp(ab_kv_wr_resp),
+    .kv_read     (ab_kv_read),
+    .kv_rd_resp  (ab_kv_rd_resp),
+    .kv_write    (ab_kv_write),
+    .kv_wr_resp  (ab_kv_wr_resp),
 
     // PCR signing / OCP L.O.C.K. unused in SEP for now
     .pcr_signing_data    ('0),
@@ -500,11 +500,11 @@ module sep_crypto_abr_wrapper
     // shifted, and under secure_tm=0 the Class 2 chain is tied off -- specifically so
     // crypto logic STAYS on the scan chain for DFT coverage. Firmware retains
     // MLDSA_CTRL.ZEROIZE / MLKEM_CTRL.ZEROIZE for explicit wipes.
-    .debugUnlock_or_scan_mode_switch(1'b0),
+    .debugUnlock_or_scan_mode_switch (1'b0),
 
-    .busy_o    (busy_o),
-    .error_intr(error_intr_o),
-    .notif_intr(notif_intr_o)
+    .busy_o      (busy_o),
+    .error_intr  (error_intr_o),
+    .notif_intr  (notif_intr_o)
   );
 
   // =========================================================================

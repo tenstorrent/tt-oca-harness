@@ -52,18 +52,18 @@ module gpio
   // Signal Declarations //
   /////////////////////////
 
-  logic                                     filter__write_filter_enable;
-  logic                                     filter__read_filter_enable;
-  logic                               [2:0] filter__awprot_requirement;
-  logic                               [2:0] filter__arprot_requirement;
+  logic        filter__write_filter_enable;
+  logic        filter__read_filter_enable;
+  logic [ 2:0] filter__awprot_requirement;
+  logic [ 2:0] filter__arprot_requirement;
 
-  gpio_intf_reg_pkg::gpio_intf__out_t       gpio_intf_hwif_out;
-  gpio_intf_reg_pkg::gpio_intf__in_t        gpio_intf_hwif_in;
+  gpio_intf_reg_pkg::gpio_intf__out_t gpio_intf_hwif_out;
+  gpio_intf_reg_pkg::gpio_intf__in_t gpio_intf_hwif_in;
 
   assign filter__write_filter_enable = gpio_intf_hwif_out.ACCESS_FILTER.write_filter_enable.value;
-  assign filter__read_filter_enable  = gpio_intf_hwif_out.ACCESS_FILTER.read_filter_enable.value;
-  assign filter__awprot_requirement  = gpio_intf_hwif_out.ACCESS_FILTER.awprot_requirement.value;
-  assign filter__arprot_requirement  = gpio_intf_hwif_out.ACCESS_FILTER.arprot_requirement.value;
+  assign filter__read_filter_enable = gpio_intf_hwif_out.ACCESS_FILTER.read_filter_enable.value;
+  assign filter__awprot_requirement = gpio_intf_hwif_out.ACCESS_FILTER.awprot_requirement.value;
+  assign filter__arprot_requirement = gpio_intf_hwif_out.ACCESS_FILTER.arprot_requirement.value;
 
   // Register signals from gpio_ctrl_reg hwif_out structure
   logic reg__pad2core;
@@ -132,23 +132,23 @@ module gpio
 
     .s_axil_awready(gpio_intf_axil_resp.aw_ready),
     .s_axil_awvalid(gpio_intf_axil_req.aw_valid),
-    .s_axil_awaddr(gpio_intf_axil_req.aw.addr[GPIO_INTF_ADDR_WIDTH-1:0]),
-    .s_axil_awprot(gpio_intf_axil_req.aw.prot),
-    .s_axil_wready(gpio_intf_axil_resp.w_ready),
-    .s_axil_wvalid(gpio_intf_axil_req.w_valid),
-    .s_axil_wdata(gpio_intf_axil_req.w.data),
-    .s_axil_wstrb(gpio_intf_axil_req.w.strb),
-    .s_axil_bready(gpio_intf_axil_req.b_ready),
-    .s_axil_bvalid(gpio_intf_axil_resp.b_valid),
-    .s_axil_bresp(gpio_intf_axil_resp.b.resp),
+    .s_axil_awaddr (gpio_intf_axil_req.aw.addr[GPIO_INTF_ADDR_WIDTH-1:0]),
+    .s_axil_awprot (gpio_intf_axil_req.aw.prot),
+    .s_axil_wready (gpio_intf_axil_resp.w_ready),
+    .s_axil_wvalid (gpio_intf_axil_req.w_valid),
+    .s_axil_wdata  (gpio_intf_axil_req.w.data),
+    .s_axil_wstrb  (gpio_intf_axil_req.w.strb),
+    .s_axil_bready (gpio_intf_axil_req.b_ready),
+    .s_axil_bvalid (gpio_intf_axil_resp.b_valid),
+    .s_axil_bresp  (gpio_intf_axil_resp.b.resp),
     .s_axil_arready(gpio_intf_axil_resp.ar_ready),
     .s_axil_arvalid(gpio_intf_axil_req.ar_valid),
-    .s_axil_araddr(gpio_intf_axil_req.ar.addr[GPIO_INTF_ADDR_WIDTH-1:0]),
-    .s_axil_arprot(gpio_intf_axil_req.ar.prot),
-    .s_axil_rready(gpio_intf_axil_req.r_ready),
-    .s_axil_rvalid(gpio_intf_axil_resp.r_valid),
-    .s_axil_rdata(gpio_intf_axil_resp.r.data),
-    .s_axil_rresp(gpio_intf_axil_resp.r.resp),
+    .s_axil_araddr (gpio_intf_axil_req.ar.addr[GPIO_INTF_ADDR_WIDTH-1:0]),
+    .s_axil_arprot (gpio_intf_axil_req.ar.prot),
+    .s_axil_rready (gpio_intf_axil_req.r_ready),
+    .s_axil_rvalid (gpio_intf_axil_resp.r_valid),
+    .s_axil_rdata  (gpio_intf_axil_resp.r.data),
+    .s_axil_rresp  (gpio_intf_axil_resp.r.resp),
     .hwif_in(gpio_intf_hwif_in),
     .hwif_out(gpio_intf_hwif_out)
   );

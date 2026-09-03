@@ -15,56 +15,56 @@
 module cross_trigger_port_tb_top
   import cross_trigger_port_pkg::*;
 (
-  input wire clk,
-  input wire rst_n,
+  input  wire        clk,
+  input  wire        rst_n,
 
   // AXI4-Lite management port (flattened, VIP master side)
   input  wire        axil_awvalid,
   input  wire [31:0] axil_awaddr,
-  input  wire [ 2:0] axil_awprot,
+  input  wire [2:0]  axil_awprot,
   output wire        axil_awready,
 
   input  wire        axil_wvalid,
   input  wire [31:0] axil_wdata,
-  input  wire [ 3:0] axil_wstrb,
+  input  wire [3:0]  axil_wstrb,
   output wire        axil_wready,
 
-  input  wire       axil_bready,
-  output wire       axil_bvalid,
-  output wire [1:0] axil_bresp,
+  input  wire        axil_bready,
+  output wire        axil_bvalid,
+  output wire [1:0]  axil_bresp,
 
   input  wire        axil_arvalid,
   input  wire [31:0] axil_araddr,
-  input  wire [ 2:0] axil_arprot,
+  input  wire [2:0]  axil_arprot,
   output wire        axil_arready,
 
   input  wire        axil_rready,
   output wire        axil_rvalid,
   output wire [31:0] axil_rdata,
-  output wire [ 1:0] axil_rresp,
+  output wire [1:0]  axil_rresp,
 
   // Core-side cross trigger interface
-  input  wire ct_src,
-  output wire ct_dst,
-  output wire busy,
+  input  wire        ct_src,
+  output wire        ct_dst,
+  output wire        busy,
 
   // GPIO pad interface - CT_Req_out
-  output wire ct_req_out_dout_en,
-  output wire ct_req_out_din_en,
-  output wire ct_req_out_dout,
-  input  wire ct_req_out_din,
+  output wire        ct_req_out_dout_en,
+  output wire        ct_req_out_din_en,
+  output wire        ct_req_out_dout,
+  input  wire        ct_req_out_din,
 
   // GPIO pad interface - CT_Req_in (point-to-point mode only)
-  output wire ct_req_in_din_en,
-  input  wire ct_req_in_din,
+  output wire        ct_req_in_din_en,
+  input  wire        ct_req_in_din,
 
   // GPIO pad interface - CT_Ack_in (point-to-point mode only)
-  output wire ct_ack_in_din_en,
-  input  wire ct_ack_in_din,
+  output wire        ct_ack_in_din_en,
+  input  wire        ct_ack_in_din,
 
   // GPIO pad interface - CT_Ack_out (point-to-point mode only)
-  output wire ct_ack_out_dout_en,
-  output wire ct_ack_out_dout
+  output wire        ct_ack_out_dout_en,
+  output wire        ct_ack_out_dout
 );
 
   ctp_axil_req_t  axil_req;
@@ -95,29 +95,29 @@ module cross_trigger_port_tb_top
   assign axil_rresp        = axil_resp.r.resp;
 
   cross_trigger_port u_dut (
-    .clk_i (clk),
-    .rst_ni(rst_n),
+    .clk_i                (clk),
+    .rst_ni               (rst_n),
 
-    .axil_req_i (axil_req),
-    .axil_resp_o(axil_resp),
+    .axil_req_i           (axil_req),
+    .axil_resp_o          (axil_resp),
 
-    .ct_src_i(ct_src),
-    .ct_dst_o(ct_dst),
-    .busy_o  (busy),
+    .ct_src_i             (ct_src),
+    .ct_dst_o             (ct_dst),
+    .busy_o               (busy),
 
-    .ct_req_out_dout_en_o(ct_req_out_dout_en),
-    .ct_req_out_din_en_o (ct_req_out_din_en),
-    .ct_req_out_dout_o   (ct_req_out_dout),
-    .ct_req_out_din_i    (ct_req_out_din),
+    .ct_req_out_dout_en_o (ct_req_out_dout_en),
+    .ct_req_out_din_en_o  (ct_req_out_din_en),
+    .ct_req_out_dout_o    (ct_req_out_dout),
+    .ct_req_out_din_i     (ct_req_out_din),
 
-    .ct_req_in_din_en_o(ct_req_in_din_en),
-    .ct_req_in_din_i   (ct_req_in_din),
+    .ct_req_in_din_en_o   (ct_req_in_din_en),
+    .ct_req_in_din_i      (ct_req_in_din),
 
-    .ct_ack_in_din_en_o(ct_ack_in_din_en),
-    .ct_ack_in_din_i   (ct_ack_in_din),
+    .ct_ack_in_din_en_o   (ct_ack_in_din_en),
+    .ct_ack_in_din_i      (ct_ack_in_din),
 
-    .ct_ack_out_dout_en_o(ct_ack_out_dout_en),
-    .ct_ack_out_dout_o   (ct_ack_out_dout)
+    .ct_ack_out_dout_en_o (ct_ack_out_dout_en),
+    .ct_ack_out_dout_o    (ct_ack_out_dout)
   );
 
 endmodule : cross_trigger_port_tb_top

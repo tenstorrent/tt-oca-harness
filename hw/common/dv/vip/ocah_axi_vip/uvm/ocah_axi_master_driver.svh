@@ -63,9 +63,9 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       req.start_time = $time;
       case (req.direction)
         OCAH_AXI_DIR_WRITE: do_write(req);
-        OCAH_AXI_DIR_READ: do_read(req);
-        default:
-        `uvm_error(get_type_name(), $sformatf("unsupported direction %s", req.direction.name()))
+        OCAH_AXI_DIR_READ:  do_read(req);
+        default: `uvm_error(get_type_name(), $sformatf(
+                    "unsupported direction %s", req.direction.name()))
       endcase
       req.end_time = $time;
       if (req.timed_out) timeout_count++;
@@ -271,8 +271,10 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
         repeat (it.w_valid_delay) @(cfg.vif.mon_cb);
         for (int unsigned beat = 0; beat < beats; beat++) begin
           cfg.vif.wdata  <= it.data_words[beat];
-          cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat] : cfg.full_strb());
-          cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 1'b1 : (beat == beats - 1);
+          cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat]
+                                         : cfg.full_strb());
+          cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                                      ? 1'b1 : (beat == beats - 1);
           cfg.vif.wvalid <= 1'b1;
           wait_w(w_timed_out);
           if (w_timed_out) break;

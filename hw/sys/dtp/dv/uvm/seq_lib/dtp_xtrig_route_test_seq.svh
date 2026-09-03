@@ -35,7 +35,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       "reset":          run_reset();
       "random":         run_random();
       "dst_port_sweep": run_dst_port_sweep();
-      default:          super.dispatch_scenario();
+      default: super.dispatch_scenario();
     endcase
   endtask
 
@@ -166,11 +166,11 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
   protected task run_random();
     `uvm_info(get_type_name(), "XTRIG seeded random CTP configuration", UVM_LOW)
     for (int unsigned idx = 0; idx < random_count; idx++) begin
-      int unsigned        ctp_idx = $urandom_range(XtrigNumCtp - 1);
-      int unsigned        mode = $urandom_range(1);
-      bit                 invert = bit'($urandom_range(1));
-      bit          [15:0] stretch = 16'($urandom_range(7));
-      int unsigned        int_idx = $urandom_range(XtrigNumIntCt - 1);
+      int unsigned ctp_idx = $urandom_range(XtrigNumCtp - 1);
+      int unsigned mode    = $urandom_range(1);
+      bit          invert  = bit'($urandom_range(1));
+      bit [15:0]   stretch = 16'($urandom_range(7));
+      int unsigned int_idx = $urandom_range(XtrigNumIntCt - 1);
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: ctp=%0d mode=%0d invert=%0d stretch=%0d internal=%0d",
                 idx + 1,

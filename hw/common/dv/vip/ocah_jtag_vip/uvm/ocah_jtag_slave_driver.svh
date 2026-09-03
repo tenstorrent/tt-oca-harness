@@ -99,19 +99,22 @@ class ocah_jtag_slave_driver extends uvm_component;
 
   protected function void reset_device();
     m_state = OCAH_JTAG_TEST_LOGIC_RESET;
-    m_active_ir = cfg.has_idcode ? cfg.idcode_opcode : width_mask(cfg.ir_width);
+    m_active_ir = cfg.has_idcode ? cfg.idcode_opcode
+                                     : width_mask(cfg.ir_width);
   endfunction
 
   protected function void clock_rise(bit tms, bit tdi);
     case (m_state)
-      OCAH_JTAG_CAPTURE_IR: m_ir_shift = (cfg.ir_capture | 64'h1) & width_mask(cfg.ir_width);
+      OCAH_JTAG_CAPTURE_IR:
+                m_ir_shift = (cfg.ir_capture | 64'h1) & width_mask(cfg.ir_width);
       OCAH_JTAG_SHIFT_IR:
-      m_ir_shift = ((m_ir_shift >> 1) | (64'(tdi) << (cfg.ir_width - 1))) &
-          width_mask(cfg.ir_width);
-      OCAH_JTAG_CAPTURE_DR: m_dr_shift = capture_dr_value();
+                m_ir_shift = ((m_ir_shift >> 1) | (64'(tdi) << (cfg.ir_width - 1)))
+                             & width_mask(cfg.ir_width);
+      OCAH_JTAG_CAPTURE_DR:
+                m_dr_shift = capture_dr_value();
       OCAH_JTAG_SHIFT_DR:
-      m_dr_shift = ((m_dr_shift >> 1) | (64'(tdi) << (selected_width() - 1))) &
-          width_mask(selected_width());
+                m_dr_shift = ((m_dr_shift >> 1) | (64'(tdi) << (selected_width() - 1)))
+                             & width_mask(selected_width());
       default: ;
     endcase
     m_state = ocah_jtag_next_state(m_state, tms);
@@ -119,7 +122,8 @@ class ocah_jtag_slave_driver extends uvm_component;
 
   protected function void clock_fall(output bit tdo, output bit oen);
     case (m_state)
-      OCAH_JTAG_UPDATE_IR: m_active_ir = m_ir_shift & width_mask(cfg.ir_width);
+      OCAH_JTAG_UPDATE_IR:
+                m_active_ir = m_ir_shift & width_mask(cfg.ir_width);
       OCAH_JTAG_UPDATE_DR: latch_dr();
       OCAH_JTAG_TEST_LOGIC_RESET: reset_device();
       default: ;
@@ -139,11 +143,11 @@ class ocah_jtag_slave_driver extends uvm_component;
     ocah_jtag_slave_update_t update;
     if (!cfg.reg_writable.exists(m_active_ir) || !cfg.reg_writable[m_active_ir]) return;
     m_reg_value[m_active_ir] = m_dr_shift & width_mask(cfg.reg_width[m_active_ir]);
-    update.reg_name          = cfg.reg_name[m_active_ir];
-    update.opcode            = m_active_ir;
-    update.value             = m_reg_value[m_active_ir];
-    update.width             = cfg.reg_width[m_active_ir];
-    update.timestamp         = $time;
+    update.reg_name  = cfg.reg_name[m_active_ir];
+    update.opcode    = m_active_ir;
+    update.value     = m_reg_value[m_active_ir];
+    update.width     = cfg.reg_width[m_active_ir];
+    update.timestamp = $time;
     updates.push_back(update);
     `uvm_info(get_type_name(), $sformatf(
               "Update-DR latched %s = 0x%0h", update.reg_name, update.value), UVM_MEDIUM)

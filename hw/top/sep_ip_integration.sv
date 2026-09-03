@@ -61,18 +61,18 @@ module sep_ip_integration
   output km_intf_pkg::km_sram_mem_rsp_t km_sram_mem_rsp_o,
 
   // Efuse interfaces (from sep.sv)
-  input  sep_efuse_pkg::efuse_axil_req_t    efuse_bank_ctrl_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t   efuse_bank_ctrl_resp_o,
-  input  sep_efuse_pkg::fuse_command_req_t  efuse_shim_command_req_i,
-  output sep_efuse_pkg::fuse_command_resp_t efuse_shim_command_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_i,
+  output sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_o,
+  input  sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_i,
+  output sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_o,
 
   // External TRNG AXI-Lite CSR interface (from sep.sv)
   input  sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_i,
   output sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_o,
 
   // External TRNG AXI-Stream (to sep.sv)
-  output ext_trng_axis_req_t ext_trng_axis_req_o[EXT_TRNG_NUM_AXIS-1:0],
-  input  ext_trng_axis_rsp_t ext_trng_axis_rsp_i[EXT_TRNG_NUM_AXIS-1:0],
+  output ext_trng_axis_req_t ext_trng_axis_req_o [EXT_TRNG_NUM_AXIS-1:0],
+  input  ext_trng_axis_rsp_t ext_trng_axis_rsp_i [EXT_TRNG_NUM_AXIS-1:0],
 
   // External TRNG interrupt and alarm (to sep.sv)
   output logic ext_trng_irq_o,
@@ -98,47 +98,47 @@ module sep_ip_integration
   /////////////////////
 
   efuse_interface_shim #(
-    .SHADOW_REG_BITS     (sep_efuse_pkg::SHADOW_REG_BITS),
-    .addr_t              (sep_efuse_pkg::addr_t),
-    .data_t              (sep_efuse_pkg::data_t),
-    .efuse_axil_req_t    (sep_efuse_pkg::efuse_axil_req_t),
-    .efuse_axil_resp_t   (sep_efuse_pkg::efuse_axil_resp_t),
-    .efuse_apb_req_t     (sep_efuse_pkg::efuse_apb_req_t),
-    .efuse_apb_resp_t    (sep_efuse_pkg::efuse_apb_resp_t),
-    .efuse_addr_byte_t   (sep_efuse_pkg::efuse_addr_byte_t),
-    .efuse_data_t        (sep_efuse_pkg::efuse_data_t),
-    .efuse_word_counter_t(sep_efuse_pkg::efuse_word_counter_t),
-    .fuse_command_req_t  (sep_efuse_pkg::fuse_command_req_t),
-    .fuse_command_resp_t (sep_efuse_pkg::fuse_command_resp_t)
+    .SHADOW_REG_BITS      (sep_efuse_pkg::SHADOW_REG_BITS),
+    .addr_t               (sep_efuse_pkg::addr_t),
+    .data_t               (sep_efuse_pkg::data_t),
+    .efuse_axil_req_t     (sep_efuse_pkg::efuse_axil_req_t),
+    .efuse_axil_resp_t    (sep_efuse_pkg::efuse_axil_resp_t),
+    .efuse_apb_req_t      (sep_efuse_pkg::efuse_apb_req_t),
+    .efuse_apb_resp_t     (sep_efuse_pkg::efuse_apb_resp_t),
+    .efuse_addr_byte_t    (sep_efuse_pkg::efuse_addr_byte_t),
+    .efuse_data_t         (sep_efuse_pkg::efuse_data_t),
+    .efuse_word_counter_t (sep_efuse_pkg::efuse_word_counter_t),
+    .fuse_command_req_t   (sep_efuse_pkg::fuse_command_req_t),
+    .fuse_command_resp_t  (sep_efuse_pkg::fuse_command_resp_t)
   ) u_efuse_interface_shim (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
 
-    .fuse_bank_ctrl_req_i (efuse_bank_ctrl_req_i),
-    .fuse_bank_ctrl_resp_o(efuse_bank_ctrl_resp_o),
+    .fuse_bank_ctrl_req_i  (efuse_bank_ctrl_req_i),
+    .fuse_bank_ctrl_resp_o (efuse_bank_ctrl_resp_o),
 
-    .fuse_command_req_i (efuse_shim_command_req_i),
-    .fuse_command_resp_o(efuse_shim_command_resp_o),
+    .fuse_command_req_i  (efuse_shim_command_req_i),
+    .fuse_command_resp_o (efuse_shim_command_resp_o),
 
-    .efuse_model_otp_req_o (efuse_model_otp_req),
-    .efuse_model_otp_resp_i(efuse_model_otp_resp),
+    .efuse_model_otp_req_o  (efuse_model_otp_req),
+    .efuse_model_otp_resp_i (efuse_model_otp_resp),
 
-    .debug_bus_o(efuse_debug_bus_o)
+    .debug_bus_o (efuse_debug_bus_o)
   );
 
   efuse_bank_model #(
-    .NumFuseByteWidth(sep_efuse_pkg::NumFuseByteWidth),
-    .IsSmcInstance   (1'b0),
-    .efuse_apb_req_t (sep_efuse_pkg::efuse_apb_req_t),
-    .efuse_apb_resp_t(sep_efuse_pkg::efuse_apb_resp_t)
+    .NumFuseByteWidth (sep_efuse_pkg::NumFuseByteWidth),
+    .IsSmcInstance    (1'b0),
+    .efuse_apb_req_t  (sep_efuse_pkg::efuse_apb_req_t),
+    .efuse_apb_resp_t (sep_efuse_pkg::efuse_apb_resp_t)
   ) u_efuse_bank_model (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
 
-    .apb_req_i (efuse_model_otp_req),
-    .apb_resp_o(efuse_model_otp_resp),
+    .apb_req_i  (efuse_model_otp_req),
+    .apb_resp_o (efuse_model_otp_resp),
 
-    .hwif_out()
+    .hwif_out ()
   );
 
   //////////////////////////
@@ -160,37 +160,37 @@ module sep_ip_integration
   sep_sram_interface_shim #(
     .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH)
   ) u_sep_sram_interface_shim (
-    .clk_i         (clk_i),
-    .rst_ni        (rst_ni),
-    .mem_req_i     (sep_sram_req),
-    .mem_rsp_o     (sep_sram_rsp),
-    .macro_req_o   (sram_macro_req),
-    .macro_write_o (sram_macro_write),
-    .macro_addr_o  (sram_macro_addr),
-    .macro_wdata_o (sram_macro_wdata),
-    .macro_wmask_o (sram_macro_wmask),
-    .macro_rdata_i (sram_macro_rdata),
-    .macro_rvalid_i(sram_macro_rvalid)
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+    .mem_req_i      (sep_sram_req),
+    .mem_rsp_o      (sep_sram_rsp),
+    .macro_req_o    (sram_macro_req),
+    .macro_write_o  (sram_macro_write),
+    .macro_addr_o   (sram_macro_addr),
+    .macro_wdata_o  (sram_macro_wdata),
+    .macro_wmask_o  (sram_macro_wmask),
+    .macro_rdata_i  (sram_macro_rdata),
+    .macro_rvalid_i (sram_macro_rvalid)
   );
 
   prim_ram_1p_adv #(
-    .Depth      (SRAM_N_ENTRIES),
-    .Width      (SRAM_DATA_WIDTH),
-    .MemInitFile("")
+    .Depth       (SRAM_N_ENTRIES),
+    .Width       (SRAM_DATA_WIDTH),
+    .MemInitFile ("")
   ) u_sep_sram (
-    .clk_i    (clk_i),
-    .rst_ni   (rst_ni),
-    .req_i    (sram_macro_req),
-    .write_i  (sram_macro_write),
-    .addr_i   (sram_macro_addr),
-    .wdata_i  (sram_macro_wdata),
-    .wmask_i  (sram_macro_wmask),
-    .rdata_o  (sram_macro_rdata),
-    .rvalid_o (sram_macro_rvalid),
-    .rerror_o (),
-    .alert_o  (),
-    .cfg_i    ('0),
-    .cfg_rsp_o()
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .req_i     (sram_macro_req),
+    .write_i   (sram_macro_write),
+    .addr_i    (sram_macro_addr),
+    .wdata_i   (sram_macro_wdata),
+    .wmask_i   (sram_macro_wmask),
+    .rdata_o   (sram_macro_rdata),
+    .rvalid_o  (sram_macro_rvalid),
+    .rerror_o  (),
+    .alert_o   (),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
   );
 
   /////////////////////////
@@ -208,26 +208,26 @@ module sep_ip_integration
   sep_rom_interface_shim #(
     .ROM_ADDR_WIDTH(ROM_ADDR_WIDTH)
   ) u_sep_rom_interface_shim (
-    .clk_i        (clk_i),
-    .rst_ni       (rst_ni),
-    .mem_req_i    (sep_boot_rom_req),
-    .mem_rsp_o    (sep_boot_rom_rsp),
-    .macro_req_o  (rom_macro_req),
-    .macro_addr_o (rom_macro_addr),
-    .macro_rdata_i(rom_macro_rdata)
+    .clk_i         (clk_i),
+    .rst_ni        (rst_ni),
+    .mem_req_i     (sep_boot_rom_req),
+    .mem_rsp_o     (sep_boot_rom_rsp),
+    .macro_req_o   (rom_macro_req),
+    .macro_addr_o  (rom_macro_addr),
+    .macro_rdata_i (rom_macro_rdata)
   );
 
   prim_rom #(
-    .Width      (ROM_DATA_WIDTH),
-    .Depth      (ROM_N_ENTRIES),
-    .MemInitFile("")
+    .Width       (ROM_DATA_WIDTH),
+    .Depth       (ROM_N_ENTRIES),
+    .MemInitFile ("")
   ) u_sep_boot_rom (
-    .clk_i  (clk_i),
-    .rst_ni (rst_ni),
-    .req_i  (rom_macro_req),
-    .addr_i (rom_macro_addr),
-    .rdata_o(rom_macro_rdata),
-    .cfg_i  ('0)
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+    .req_i   (rom_macro_req),
+    .addr_i  (rom_macro_addr),
+    .rdata_o (rom_macro_rdata),
+    .cfg_i   ('0)
   );
 
   /////////////////////////
@@ -238,8 +238,8 @@ module sep_ip_integration
   // (ram_<depth>x39), generated by the core's RAM-generation flow like in
   // upstream VeeR EL2's own reference testbench.
   sep_tcm_wrapper u_sep_tcm_wrapper (
-    .tcm_req_i(sep_cpu_tcm_req_i),
-    .tcm_rsp_o(sep_cpu_tcm_rsp_o)
+    .tcm_req_i (sep_cpu_tcm_req_i),
+    .tcm_rsp_o (sep_cpu_tcm_rsp_o)
   );
 
   ////////////////////////////
@@ -264,16 +264,16 @@ module sep_ip_integration
   end
 
   prim_rom #(
-    .Width      (KM_ROM_WIDTH),
-    .Depth      (KM_ROM_DEPTH),
-    .MemInitFile("")
+    .Width       (KM_ROM_WIDTH),
+    .Depth       (KM_ROM_DEPTH),
+    .MemInitFile ("")
   ) u_km_rom (
-    .clk_i  (clk_i),
-    .rst_ni (rst_ni),
-    .req_i  (km_rom_mem_req_i.req),
-    .addr_i (km_rom_mem_req_i.addr[KM_ROM_AW-1:0]),
-    .rdata_o(km_rom_rdata),
-    .cfg_i  ('0)
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+    .req_i   (km_rom_mem_req_i.req),
+    .addr_i  (km_rom_mem_req_i.addr[KM_ROM_AW-1:0]),
+    .rdata_o (km_rom_rdata),
+    .cfg_i   ('0)
   );
 
   /////////////////////////////
@@ -293,16 +293,16 @@ module sep_ip_integration
   for (genvar b = 0; b < 4; b++) begin : gen_km_sram_wmask
     assign km_sram_wmask[b*8+:8] = {8{km_sram_mem_req_i.be[b]}};
   end
-  assign km_sram_wmask[35:32]      = km_sram_mem_req_i.be;
+  assign km_sram_wmask[35:32] = km_sram_mem_req_i.be;
 
   assign km_sram_mem_rsp_o.gnt     = 1'b1;
   assign km_sram_mem_rsp_o.rdata   = km_sram_rdata[31:0];
   assign km_sram_mem_rsp_o.rparity = km_sram_rdata[35:32];
 
   prim_ram_1p_adv #(
-    .Depth      (KM_SRAM_DEPTH),
-    .Width      (KM_SRAM_WIDTH),
-    .MemInitFile("")
+    .Depth       (KM_SRAM_DEPTH),
+    .Width       (KM_SRAM_WIDTH),
+    .MemInitFile ("")
   ) u_km_sram (
     .clk_i    (clk_i),
     .rst_ni   (rst_ni),
@@ -329,9 +329,9 @@ module sep_ip_integration
   assign sep_crypto_pka_imem_sram_rsp.q_valid = 1'b0;
 
   prim_ram_1p #(
-    .Width          (sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH),
-    .Depth          (2 ** sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH),
-    .DataBitsPerMask(1)
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH),
+    .Depth           (2**sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH),
+    .DataBitsPerMask (1)
   ) u_otbn_imem_sram (
     .clk_i    (sep_crypto_pka_imem_sram_req.clk),
     .rst_ni   (rst_ni),
@@ -354,9 +354,9 @@ module sep_ip_integration
   assign sep_crypto_pka_dmem_sram_rsp.rdata = otbn_dmem_rdata;
 
   prim_ram_1p #(
-    .Width          (sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_WORD_WIDTH),
-    .Depth          (2 ** sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH),
-    .DataBitsPerMask(1)
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_WORD_WIDTH),
+    .Depth           (2**sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH),
+    .DataBitsPerMask (1)
   ) u_otbn_dmem_sram (
     .clk_i    (sep_crypto_pka_dmem_sram_req.clk),
     .rst_ni   (rst_ni),
@@ -447,18 +447,18 @@ module sep_ip_integration
 
   // w1_mem: 4-bit decomposed-w1 bits, own narrow addr/data fields.
   sep_abr_mem_1r1w #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
-    .Depth      (ABR_W1_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
+    .Depth       (ABR_W1_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_w1_mem (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.w1_we),
-    .waddr_i(abr_mem_req_i.w1_waddr),
-    .wdata_i(abr_mem_req_i.w1_wdata),
-    .re_i   (abr_mem_req_i.w1_re),
-    .raddr_i(abr_mem_req_i.w1_raddr),
-    .rdata_o(abr_mem_rsp_o.w1_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.w1_we),
+    .waddr_i (abr_mem_req_i.w1_waddr),
+    .wdata_i (abr_mem_req_i.w1_wdata),
+    .re_i    (abr_mem_req_i.w1_re),
+    .raddr_i (abr_mem_req_i.w1_raddr),
+    .rdata_o (abr_mem_rsp_o.w1_rdata)
   );
 
   // Unmasked 96-bit coefficient banks. These four ride in the shared
@@ -466,126 +466,126 @@ module sep_ip_integration
   // (the wrapper zero-extends them into the struct) while INST2, the widest,
   // uses the whole field.
   sep_abr_mem_1r1w #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-    .Depth      (ABR_INST0_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth       (ABR_INST0_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_mem_inst0_bank0 (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.mem_inst0_bank0.we),
-    .waddr_i(abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
-    .wdata_i(abr_mem_req_i.mem_inst0_bank0.wdata),
-    .re_i   (abr_mem_req_i.mem_inst0_bank0.re),
-    .raddr_i(abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
-    .rdata_o(abr_mem_rsp_o.mem_inst0_bank0_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.mem_inst0_bank0.we),
+    .waddr_i (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
+    .wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
+    .re_i    (abr_mem_req_i.mem_inst0_bank0.re),
+    .raddr_i (abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
+    .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_rdata)
   );
 
   sep_abr_mem_1r1w #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-    .Depth      (ABR_INST0_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth       (ABR_INST0_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_mem_inst0_bank1 (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.mem_inst0_bank1.we),
-    .waddr_i(abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
-    .wdata_i(abr_mem_req_i.mem_inst0_bank1.wdata),
-    .re_i   (abr_mem_req_i.mem_inst0_bank1.re),
-    .raddr_i(abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
-    .rdata_o(abr_mem_rsp_o.mem_inst0_bank1_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.mem_inst0_bank1.we),
+    .waddr_i (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
+    .wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
+    .re_i    (abr_mem_req_i.mem_inst0_bank1.re),
+    .raddr_i (abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
+    .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_rdata)
   );
 
   sep_abr_mem_1r1w #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-    .Depth      (ABR_INST1_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth       (ABR_INST1_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_mem_inst1 (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.mem_inst1.we),
-    .waddr_i(abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
-    .wdata_i(abr_mem_req_i.mem_inst1.wdata),
-    .re_i   (abr_mem_req_i.mem_inst1.re),
-    .raddr_i(abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
-    .rdata_o(abr_mem_rsp_o.mem_inst1_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.mem_inst1.we),
+    .waddr_i (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
+    .wdata_i (abr_mem_req_i.mem_inst1.wdata),
+    .re_i    (abr_mem_req_i.mem_inst1.re),
+    .raddr_i (abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
+    .rdata_o (abr_mem_rsp_o.mem_inst1_rdata)
   );
 
   sep_abr_mem_1r1w #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-    .Depth      (ABR_INST2_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth       (ABR_INST2_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_mem_inst2 (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.mem_inst2.we),
-    .waddr_i(abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
-    .wdata_i(abr_mem_req_i.mem_inst2.wdata),
-    .re_i   (abr_mem_req_i.mem_inst2.re),
-    .raddr_i(abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
-    .rdata_o(abr_mem_rsp_o.mem_inst2_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.mem_inst2.we),
+    .waddr_i (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
+    .wdata_i (abr_mem_req_i.mem_inst2.wdata),
+    .re_i    (abr_mem_req_i.mem_inst2.re),
+    .raddr_i (abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
+    .rdata_o (abr_mem_rsp_o.mem_inst2_rdata)
   );
 
   // Masked (second DOM share) twins of the four coefficient banks. They only exist
   // when abr_top is built with masking; otherwise their read data reads back zero.
   if (ABR_MEM_MASKING_EN) begin : g_abr_masked_mem
     sep_abr_mem_1r1w #(
-      .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-      .Depth      (ABR_INST0_DEPTH),
-      .ReadLatency(ABR_MEM_SRAM_LATENCY)
+      .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth       (ABR_INST0_DEPTH),
+      .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst0_bank0_masked (
-      .clk_i  (abr_mem_req_i.clk),
-      .rst_ni (rst_ni),
-      .we_i   (abr_mem_req_i.mem_inst0_bank0_masked.we),
-      .waddr_i(abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
-      .wdata_i(abr_mem_req_i.mem_inst0_bank0_masked.wdata),
-      .re_i   (abr_mem_req_i.mem_inst0_bank0_masked.re),
-      .raddr_i(abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
-      .rdata_o(abr_mem_rsp_o.mem_inst0_bank0_masked_rdata)
+      .clk_i   (abr_mem_req_i.clk),
+      .rst_ni  (rst_ni),
+      .we_i    (abr_mem_req_i.mem_inst0_bank0_masked.we),
+      .waddr_i (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+      .wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
+      .re_i    (abr_mem_req_i.mem_inst0_bank0_masked.re),
+      .raddr_i (abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+      .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_masked_rdata)
     );
 
     sep_abr_mem_1r1w #(
-      .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-      .Depth      (ABR_INST0_DEPTH),
-      .ReadLatency(ABR_MEM_SRAM_LATENCY)
+      .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth       (ABR_INST0_DEPTH),
+      .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst0_bank1_masked (
-      .clk_i  (abr_mem_req_i.clk),
-      .rst_ni (rst_ni),
-      .we_i   (abr_mem_req_i.mem_inst0_bank1_masked.we),
-      .waddr_i(abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
-      .wdata_i(abr_mem_req_i.mem_inst0_bank1_masked.wdata),
-      .re_i   (abr_mem_req_i.mem_inst0_bank1_masked.re),
-      .raddr_i(abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
-      .rdata_o(abr_mem_rsp_o.mem_inst0_bank1_masked_rdata)
+      .clk_i   (abr_mem_req_i.clk),
+      .rst_ni  (rst_ni),
+      .we_i    (abr_mem_req_i.mem_inst0_bank1_masked.we),
+      .waddr_i (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+      .wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
+      .re_i    (abr_mem_req_i.mem_inst0_bank1_masked.re),
+      .raddr_i (abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+      .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_masked_rdata)
     );
 
     sep_abr_mem_1r1w #(
-      .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-      .Depth      (ABR_INST1_DEPTH),
-      .ReadLatency(ABR_MEM_SRAM_LATENCY)
+      .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth       (ABR_INST1_DEPTH),
+      .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst1_masked (
-      .clk_i  (abr_mem_req_i.clk),
-      .rst_ni (rst_ni),
-      .we_i   (abr_mem_req_i.mem_inst1_masked.we),
-      .waddr_i(abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
-      .wdata_i(abr_mem_req_i.mem_inst1_masked.wdata),
-      .re_i   (abr_mem_req_i.mem_inst1_masked.re),
-      .raddr_i(abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
-      .rdata_o(abr_mem_rsp_o.mem_inst1_masked_rdata)
+      .clk_i   (abr_mem_req_i.clk),
+      .rst_ni  (rst_ni),
+      .we_i    (abr_mem_req_i.mem_inst1_masked.we),
+      .waddr_i (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
+      .wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
+      .re_i    (abr_mem_req_i.mem_inst1_masked.re),
+      .raddr_i (abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
+      .rdata_o (abr_mem_rsp_o.mem_inst1_masked_rdata)
     );
 
     sep_abr_mem_1r1w #(
-      .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-      .Depth      (ABR_INST2_DEPTH),
-      .ReadLatency(ABR_MEM_SRAM_LATENCY)
+      .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth       (ABR_INST2_DEPTH),
+      .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst2_masked (
-      .clk_i  (abr_mem_req_i.clk),
-      .rst_ni (rst_ni),
-      .we_i   (abr_mem_req_i.mem_inst2_masked.we),
-      .waddr_i(abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
-      .wdata_i(abr_mem_req_i.mem_inst2_masked.wdata),
-      .re_i   (abr_mem_req_i.mem_inst2_masked.re),
-      .raddr_i(abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
-      .rdata_o(abr_mem_rsp_o.mem_inst2_masked_rdata)
+      .clk_i   (abr_mem_req_i.clk),
+      .rst_ni  (rst_ni),
+      .we_i    (abr_mem_req_i.mem_inst2_masked.we),
+      .waddr_i (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
+      .wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
+      .re_i    (abr_mem_req_i.mem_inst2_masked.re),
+      .raddr_i (abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
+      .rdata_o (abr_mem_rsp_o.mem_inst2_masked_rdata)
     );
   end else begin : g_abr_no_masked_mem
     assign abr_mem_rsp_o.mem_inst0_bank0_masked_rdata = '0;
@@ -605,69 +605,69 @@ module sep_ip_integration
   // passes, but the write-side check would fire on every private-key load until the
   // vendor window is fixed.
   sep_abr_mem_1r1w #(
-    .Width            (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
-    .Depth            (ABR_SK_DEPTH),
-    .ReadLatency      (ABR_MEM_SRAM_LATENCY),
-    .EnWriteRangeCheck(1'b0)
+    .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+    .Depth             (ABR_SK_DEPTH),
+    .ReadLatency       (ABR_MEM_SRAM_LATENCY),
+    .EnWriteRangeCheck (1'b0)
   ) u_abr_sk_mem_bank0 (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.sk_bank0_we),
-    .waddr_i(abr_mem_req_i.sk_bank0_waddr),
-    .wdata_i(abr_mem_req_i.sk_bank0_wdata),
-    .re_i   (abr_mem_req_i.sk_bank0_re),
-    .raddr_i(abr_mem_req_i.sk_bank0_raddr),
-    .rdata_o(abr_mem_rsp_o.sk_bank0_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.sk_bank0_we),
+    .waddr_i (abr_mem_req_i.sk_bank0_waddr),
+    .wdata_i (abr_mem_req_i.sk_bank0_wdata),
+    .re_i    (abr_mem_req_i.sk_bank0_re),
+    .raddr_i (abr_mem_req_i.sk_bank0_raddr),
+    .rdata_o (abr_mem_rsp_o.sk_bank0_rdata)
   );
 
   sep_abr_mem_1r1w #(
-    .Width            (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
-    .Depth            (ABR_SK_DEPTH),
-    .ReadLatency      (ABR_MEM_SRAM_LATENCY),
-    .EnWriteRangeCheck(1'b0)
+    .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+    .Depth             (ABR_SK_DEPTH),
+    .ReadLatency       (ABR_MEM_SRAM_LATENCY),
+    .EnWriteRangeCheck (1'b0)
   ) u_abr_sk_mem_bank1 (
-    .clk_i  (abr_mem_req_i.clk),
-    .rst_ni (rst_ni),
-    .we_i   (abr_mem_req_i.sk_bank1_we),
-    .waddr_i(abr_mem_req_i.sk_bank1_waddr),
-    .wdata_i(abr_mem_req_i.sk_bank1_wdata),
-    .re_i   (abr_mem_req_i.sk_bank1_re),
-    .raddr_i(abr_mem_req_i.sk_bank1_raddr),
-    .rdata_o(abr_mem_rsp_o.sk_bank1_rdata)
+    .clk_i   (abr_mem_req_i.clk),
+    .rst_ni  (rst_ni),
+    .we_i    (abr_mem_req_i.sk_bank1_we),
+    .waddr_i (abr_mem_req_i.sk_bank1_waddr),
+    .wdata_i (abr_mem_req_i.sk_bank1_wdata),
+    .re_i    (abr_mem_req_i.sk_bank1_re),
+    .raddr_i (abr_mem_req_i.sk_bank1_raddr),
+    .rdata_o (abr_mem_rsp_o.sk_bank1_rdata)
   );
 
   // Signature-z and public-key memories: wide rows written a dword at a time,
   // hence the byte-enabled variant.
   sep_abr_mem_1r1w_be #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
-    .Depth      (ABR_SIGZ_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
+    .Depth       (ABR_SIGZ_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_sig_z_mem (
-    .clk_i    (abr_mem_req_i.clk),
-    .rst_ni   (rst_ni),
-    .we_i     (abr_mem_req_i.sig_z_we),
-    .waddr_i  (abr_mem_req_i.sig_z_waddr),
-    .wdata_i  (abr_mem_req_i.sig_z_wdata),
-    .wstrobe_i(abr_mem_req_i.sig_z_wstrobe),
-    .re_i     (abr_mem_req_i.sig_z_re),
-    .raddr_i  (abr_mem_req_i.sig_z_raddr),
-    .rdata_o  (abr_mem_rsp_o.sig_z_rdata)
+    .clk_i     (abr_mem_req_i.clk),
+    .rst_ni    (rst_ni),
+    .we_i      (abr_mem_req_i.sig_z_we),
+    .waddr_i   (abr_mem_req_i.sig_z_waddr),
+    .wdata_i   (abr_mem_req_i.sig_z_wdata),
+    .wstrobe_i (abr_mem_req_i.sig_z_wstrobe),
+    .re_i      (abr_mem_req_i.sig_z_re),
+    .raddr_i   (abr_mem_req_i.sig_z_raddr),
+    .rdata_o   (abr_mem_rsp_o.sig_z_rdata)
   );
 
   sep_abr_mem_1r1w_be #(
-    .Width      (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
-    .Depth      (ABR_PK_DEPTH),
-    .ReadLatency(ABR_MEM_SRAM_LATENCY)
+    .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
+    .Depth       (ABR_PK_DEPTH),
+    .ReadLatency (ABR_MEM_SRAM_LATENCY)
   ) u_abr_pk_mem (
-    .clk_i    (abr_mem_req_i.clk),
-    .rst_ni   (rst_ni),
-    .we_i     (abr_mem_req_i.pk_mem.we),
-    .waddr_i  (abr_mem_req_i.pk_mem.waddr),
-    .wdata_i  (abr_mem_req_i.pk_mem.wdata),
-    .wstrobe_i(abr_mem_req_i.pk_mem.wstrobe),
-    .re_i     (abr_mem_req_i.pk_mem.re),
-    .raddr_i  (abr_mem_req_i.pk_mem.raddr),
-    .rdata_o  (abr_mem_rsp_o.pk_rdata)
+    .clk_i     (abr_mem_req_i.clk),
+    .rst_ni    (rst_ni),
+    .we_i      (abr_mem_req_i.pk_mem.we),
+    .waddr_i   (abr_mem_req_i.pk_mem.waddr),
+    .wdata_i   (abr_mem_req_i.pk_mem.wdata),
+    .wstrobe_i (abr_mem_req_i.pk_mem.wstrobe),
+    .re_i      (abr_mem_req_i.pk_mem.re),
+    .raddr_i   (abr_mem_req_i.pk_mem.raddr),
+    .rdata_o   (abr_mem_rsp_o.pk_rdata)
   );
 `else
   // Adams Bridge compiled out (see above: not reached in any flow today). Hold the
@@ -688,15 +688,15 @@ module sep_ip_integration
   //=========================================================================
 
   prim_axi_lite_err_slv #(
-    .AXI_DATA_WIDTH(32),
-    .AXI_ADDR_WIDTH(32),
-    .axil_req_t    (sep_pkg::sep_32_32_axil_req_t),
-    .axil_resp_t   (sep_pkg::sep_32_32_axil_resp_t)
+    .AXI_DATA_WIDTH (32),
+    .AXI_ADDR_WIDTH (32),
+    .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+    .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
   ) u_ext_trng_axil_err_slv (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .axil_req_i (ext_trng_axil_req_i),
-    .axil_resp_o(ext_trng_axil_resp_o)
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .axil_req_i  (ext_trng_axil_req_i),
+    .axil_resp_o (ext_trng_axil_resp_o)
   );
 
   assign ext_trng_axis_req_o = '{default: '0};
@@ -709,20 +709,20 @@ module sep_ip_integration
   //=========================================================================
 
   axi_err_slv #(
-    .AxiIdWidth(sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-    .axi_req_t (sep_pkg::sep_32_64_6_12_axi_req_t),
-    .axi_resp_t(sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .Resp      (axi_pkg::RESP_DECERR),
-    .RespWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-    .RespData  ('0),
-    .ATOPs     (1'b0),
-    .MaxTrans  (2)
+    .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_DECERR),
+    .RespWidth  (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+    .RespData   ('0),
+    .ATOPs      (1'b0),
+    .MaxTrans   (2)
   ) u_axi_extension_err_slv (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .test_i    (test_en_i),
-    .slv_req_i (axi_extension_axi_req_i),
-    .slv_resp_o(axi_extension_axi_resp_o)
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (axi_extension_axi_req_i),
+    .slv_resp_o (axi_extension_axi_resp_o)
   );
 
 endmodule

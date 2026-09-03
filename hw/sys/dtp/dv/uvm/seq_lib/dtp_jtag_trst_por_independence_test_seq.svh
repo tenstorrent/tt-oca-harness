@@ -50,9 +50,9 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_cmd_lib_seq;
     state_choices[2] = OCAH_JTAG_SHIFT_DR;
     state_choices[3] = OCAH_JTAG_PAUSE_IR;
     state_choices[4] = OCAH_JTAG_PAUSE_DR;
-    target           = state_choices[$urandom_range(4)];
-    instr            = $urandom_range(1) ? IDCODE_INSTR : BYPASS_INSTR;
-    por_cycles       = $urandom_range(8, 2);
+    target     = state_choices[$urandom_range(4)];
+    instr      = $urandom_range(1) ? IDCODE_INSTR : BYPASS_INSTR;
+    por_cycles = $urandom_range(8, 2);
     `uvm_info(get_type_name(), $sformatf("POR independence: start=%s ir=0x%02h por_cycles=%0d",
                                          target.name(), instr, por_cycles), UVM_LOW)
 

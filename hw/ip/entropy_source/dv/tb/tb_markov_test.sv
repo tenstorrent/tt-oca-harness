@@ -240,7 +240,7 @@ module tb_markov_test ();
       total_tests_run++;
 
       enable_i = 1'b1;
-      inject_pattern = 1'b0;  // Use random LFSR data
+      inject_pattern = 1'b0; // Use random LFSR data
       current_pattern = PATTERN_RANDOM;
 
       $display("Testing with pseudorandom data (expecting balanced probabilities)");
@@ -357,7 +357,7 @@ module tb_markov_test ();
       end
 
       // Clean up
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
       repeat (SETTLE_CYCLES) @(posedge clk_i);
     end
@@ -397,7 +397,7 @@ module tb_markov_test ();
       end
 
       // Clean up
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
       repeat (SETTLE_CYCLES) @(posedge clk_i);
     end
@@ -444,7 +444,7 @@ module tb_markov_test ();
       end
 
       // Clean up
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
       repeat (SETTLE_CYCLES) @(posedge clk_i);
     end
@@ -483,7 +483,7 @@ module tb_markov_test ();
       end
 
       // Clean up
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
       repeat (SETTLE_CYCLES) @(posedge clk_i);
     end
@@ -503,7 +503,7 @@ module tb_markov_test ();
       prob_11_threshold_i = LOW_THRESHOLD;
 
       enable_i = 1'b1;
-      inject_pattern = 1'b0;  // Random data
+      inject_pattern = 1'b0; // Random data
       current_pattern = PATTERN_RANDOM;
       repeat (300) @(posedge clk_i);
 
@@ -567,7 +567,7 @@ module tb_markov_test ();
       total_tests_run++;
 
       // Rapidly toggle enable while running
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
 
       for (int i = 0; i < 20; i++) begin
@@ -668,7 +668,7 @@ module tb_markov_test ();
       end
 
       restore_default_thresholds();
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
     end
   endtask : test_dynamic_threshold_changes
@@ -686,7 +686,7 @@ module tb_markov_test ();
       current_pattern = PATTERN_CUSTOM;
 
       // Test pattern that should give exactly threshold probability
-      test_pattern = 32'hF0F0F0F0;  // Known pattern for testing
+      test_pattern = 32'hF0F0F0F0; // Known pattern for testing
       prob_01_threshold_i = 8'd50;  // Set specific threshold
       prob_10_threshold_i = 8'd50;
       prob_00_threshold_i = 8'd100;
@@ -709,7 +709,7 @@ module tb_markov_test ();
       end
 
       restore_default_thresholds();
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
     end
   endtask : test_boundary_conditions
@@ -753,7 +753,7 @@ module tb_markov_test ();
       enable_i = 1'b1;
       inject_pattern = 1'b1;
       current_pattern = PATTERN_CUSTOM;
-      test_pattern = 32'hF0F0F0F0;  // Known pattern: 11110000111100001111000011110000
+      test_pattern = 32'hF0F0F0F0; // Known pattern: 11110000111100001111000011110000
 
       $display("Testing with known pattern (F0F0) for probability accuracy");
       $display("Expected: some 01, 10 transitions at boundaries, many 00, 11 within blocks");
@@ -778,7 +778,7 @@ module tb_markov_test ();
       end
 
       // Clean up
-      inject_pattern  = 1'b0;
+      inject_pattern = 1'b0;
       current_pattern = PATTERN_RANDOM;
       repeat (SETTLE_CYCLES) @(posedge clk_i);
     end

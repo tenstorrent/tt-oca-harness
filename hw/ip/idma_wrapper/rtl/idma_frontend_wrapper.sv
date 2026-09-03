@@ -9,13 +9,13 @@
 
 module idma_frontend_wrapper #(
   parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_CTRL_STREAMS = 1,  // must be >= 1
+  parameter int unsigned NUM_CTRL_STREAMS = 1, // must be >= 1
 
   parameter int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, any value set here will create a depth of 1 + val
 
   parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,
 
-  parameter int unsigned NumDim   = 2,
+  parameter int unsigned NumDim = 2,
   parameter int unsigned RepWidth = 32,
 
   parameter type idma_req_t = logic,
@@ -33,9 +33,9 @@ module idma_frontend_wrapper #(
   parameter int unsigned CTRL_ID_WIDTH   = 8,
   parameter int unsigned CTRL_USER_WIDTH = 12
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic clk_i,
+  input  logic rst_ni,
+  input  logic test_en_i,
 
   output logic dma_frontend_wakeup_o,
   output logic dma_frontend_busy_o,
@@ -45,9 +45,9 @@ module idma_frontend_wrapper #(
   output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o,
 
   // iDMA request/response interface
-  output idma_req_t [NUM_CTRL_INTERFACES-1:0] req_o,
-  output logic      [NUM_CTRL_INTERFACES-1:0] req_valid_o,
-  input  logic      [NUM_CTRL_INTERFACES-1:0] req_ready_i,
+  output idma_req_t  [NUM_CTRL_INTERFACES-1:0] req_o,
+  output logic       [NUM_CTRL_INTERFACES-1:0] req_valid_o,
+  input  logic       [NUM_CTRL_INTERFACES-1:0] req_ready_i,
 
   input  idma_resp_t [NUM_CTRL_INTERFACES-1:0] resp_i,
   input  logic       [NUM_CTRL_INTERFACES-1:0] resp_valid_i,
@@ -83,7 +83,7 @@ module idma_frontend_wrapper #(
   `AXI_TYPEDEF_ALL(slv_axi, ctrl_addr_t, ctrl_id_t, ctrl_data_t, ctrl_strb_t, ctrl_user_t)
 
   // define AXI req/resp interface
-  slv_axi_req_t  [NUM_CTRL_INTERFACES-1:0] slv_axi_reqs_flopped;
+  slv_axi_req_t [NUM_CTRL_INTERFACES-1:0] slv_axi_reqs_flopped;
   slv_axi_resp_t [NUM_CTRL_INTERFACES-1:0] slv_axi_resps_flopped;
 
   // setup channel types for REG interface
@@ -91,7 +91,7 @@ module idma_frontend_wrapper #(
   `REG_BUS_TYPEDEF_RSP(reg_resp_t, reg_data_t)
 
   // define REG req/resp interface
-  reg_req_t [NUM_CTRL_INTERFACES-1:0] reg_reqs;
+  reg_req_t  [NUM_CTRL_INTERFACES-1:0] reg_reqs;
   reg_resp_t [NUM_CTRL_INTERFACES-1:0] reg_resps;
 
   // define iDMA frontend signals
@@ -164,7 +164,7 @@ module idma_frontend_wrapper #(
         .axi_rsp_o(slv_axi_resps_flopped[i]),
         .reg_req_o(reg_reqs[i]),
         .reg_rsp_i(reg_resps[i]),
-        .reg_id_o (  /* NOT CONNECTED */),
+        .reg_id_o (/* NOT CONNECTED */),
 
         .busy_o(fe_busy[i])  // busy when there is an inflight AXI command
       );
@@ -173,9 +173,9 @@ module idma_frontend_wrapper #(
       // Frontend
       // ----------
       idma_reg64_2d #(
-        .NumRegs       (1),                 // one reg interface
+        .NumRegs       (1),   // one reg interface
         .NumStreams    (NUM_CTRL_STREAMS),
-        .IdCounterWidth(32),                // next_id counter is 32 bits wide
+        .IdCounterWidth(32),  // next_id counter is 32 bits wide
         .reg_req_t     (reg_req_t),
         .reg_rsp_t     (reg_resp_t),
         .dma_req_t     (idma_nd_req_t)
@@ -200,12 +200,12 @@ module idma_frontend_wrapper #(
       idma_transfer_id_gen #(
         .IdWidth(32)  // next_id counter is 32 bits wide
       ) idma_transfer_id_gen (
-        .clk_i      (clk_i),
-        .rst_ni     (rst_ni),
-        .issue_i    (fe_req_valid[i] && fe_req_ready[i]),
-        .retire_i   (trans_complete[i]),
-        .next_o     (next_id[i]),
-        .completed_o(done_id[i])
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .issue_i      (fe_req_valid[i] && fe_req_ready[i]),
+        .retire_i     (trans_complete[i]),
+        .next_o       (next_id[i]),
+        .completed_o  (done_id[i])
       );
 
       // ----------
@@ -273,6 +273,6 @@ module idma_frontend_wrapper #(
   assign resp_ready_o = me_resp_ready;
 
   assign dma_frontend_wakeup_o = (|fe_busy) | (|f2m_req_valid) | (|me_busy);
-  assign dma_frontend_busy_o = (|f2m_req_valid) | (|me_busy);
+  assign dma_frontend_busy_o =(|f2m_req_valid) | (|me_busy);
 
 endmodule

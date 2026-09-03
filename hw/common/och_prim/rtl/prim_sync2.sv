@@ -44,7 +44,7 @@ module prim_sync2 #(
     .EnablePrimCdcRand(1'b0)
   ) sync2 (
     .clk_i (i_clk),
-    .rst_ni(1'b1),   // non-resettable variant; use prim_sync2r when a reset is needed
+    .rst_ni(1'b1),      // non-resettable variant; use prim_sync2r when a reset is needed
     .d_i   (d_del),
     .q_o   (o_q)
   );

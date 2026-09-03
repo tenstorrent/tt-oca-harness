@@ -4,31 +4,31 @@
 // System Management Controller Output Remap
 
 module output_remap #(
-  parameter type         axi_req_t       = logic,
-  parameter type         axi_resp_t      = logic,
-  parameter type         remap_addr_t    = logic,
-  parameter type         user_ovrd_t     = logic,
-  parameter int unsigned NumRegions      = 8,
-  parameter int unsigned RegionBase      = 0,
-  parameter int unsigned IdxStart        = 20,
-  parameter bit          UserOverrideEn  = 1'b1,
-  parameter user_ovrd_t  UserOverrideVal = '0,
+  parameter type          axi_req_t        = logic,
+  parameter type          axi_resp_t       = logic,
+  parameter type          remap_addr_t     = logic,
+  parameter type          user_ovrd_t      = logic,
+  parameter int unsigned  NumRegions       = 8,
+  parameter int unsigned  RegionBase       = 0,
+  parameter int unsigned  IdxStart         = 20,
+  parameter bit           UserOverrideEn   = 1'b1,
+  parameter user_ovrd_t   UserOverrideVal  = '0,
 
-  localparam int unsigned RemapIndexW = $clog2(NumRegions)
+  localparam int unsigned RemapIndexW      = $clog2(NumRegions)
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic                                       clk_i,
+  input  logic                                       rst_ni,
+  input  logic                                       test_en_i,
 
   // CSR structs for remap configuration
-  input output_remap_reg_pkg::output_remap__out_t remap_ctrl_i[NumRegions-1:0],
+  input  output_remap_reg_pkg::output_remap__out_t   remap_ctrl_i [NumRegions-1:0],
 
   // Main data AXI interface
-  input  axi_req_t  axi_req_i,
-  output axi_resp_t axi_resp_o,
+  input  axi_req_t           axi_req_i,
+  output axi_resp_t          axi_resp_o,
 
-  output axi_req_t  axi_remapped_req_o,
-  input  axi_resp_t axi_remapped_resp_i
+  output axi_req_t           axi_remapped_req_o,
+  input  axi_resp_t          axi_remapped_resp_i
 );
 
   /////////////////////////
@@ -66,12 +66,12 @@ module output_remap #(
 
     // Remap address: replace upper bits with table offset, preserve lower bits
     remapped_aw_addr = {
-      remap_table[remap_aw_idx].offset[55:IdxStart], adjusted_aw_addr[IdxStart-1:0]
-    };
+            remap_table[remap_aw_idx].offset[55:IdxStart], adjusted_aw_addr[IdxStart-1:0]
+        };
 
     remapped_ar_addr = {
-      remap_table[remap_ar_idx].offset[55:IdxStart], adjusted_ar_addr[IdxStart-1:0]
-    };
+            remap_table[remap_ar_idx].offset[55:IdxStart], adjusted_ar_addr[IdxStart-1:0]
+        };
   end
 
   /////////////////////
@@ -97,10 +97,10 @@ module output_remap #(
       .axi_req_t      (axi_req_t),
       .axi_resp_t     (axi_resp_t)
     ) u_user_override (
-      .axi_in_req_i  (axi_req_remapped),
-      .axi_in_resp_o (axi_resp_o),
-      .axi_out_req_o (axi_remapped_req_o),
-      .axi_out_resp_i(axi_remapped_resp_i)
+      .axi_in_req_i   (axi_req_remapped),
+      .axi_in_resp_o  (axi_resp_o),
+      .axi_out_req_o  (axi_remapped_req_o),
+      .axi_out_resp_i (axi_remapped_resp_i)
     );
   end else begin : gen_no_user_override
     assign axi_remapped_req_o = axi_req_remapped;

@@ -12,70 +12,70 @@
 module i2c_controller_fsm
   import i2c_pkg::*;
 #(
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
+  parameter  int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
   localparam int unsigned CONTROLLER_TX_FIFO_DEPTH_WIDTH = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1)
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                                      clk_i,
+  input  logic                                      rst_ni,
 
-  input  logic scl_i,
-  output logic scl_o,
-  input  logic sda_i,
-  output logic sda_o,
-  input  logic bus_free_i,     // Bus free for new transmission
-  output logic transmitting_o, // Transmitting SDA
+  input  logic                                      scl_i,
+  output logic                                      scl_o,
+  input  logic                                      sda_i,
+  output logic                                      sda_o,
+  input  logic                                      bus_free_i,                    // Bus free for new transmission
+  output logic                                      transmitting_o,                // Transmitting SDA
 
-  input logic host_enable_i,
-  input logic halt_controller_i, // Halt the controller FSM in Idle
+  input  logic                                      host_enable_i,
+  input  logic                                      halt_controller_i,             // Halt the controller FSM in Idle
 
-  input logic fmt_fifo_rvalid_i,  // Indicates there is valid data in fmt_fifo
-  input logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0] fmt_fifo_depth_i,  // fmt_fifo_depth
-  output logic fmt_fifo_rready_o,  // Populates fmt_fifo
-  input logic [7:0] fmt_byte_i,  // Byte in fmt_fifo to be sent to target
-  input logic fmt_flag_start_before_i,  // Issue start before sending byte
-  input logic fmt_flag_stop_after_i,  // Issue stop after sending byte
-  input logic fmt_flag_read_bytes_i,  // Indicates byte is an number of reads
-  input logic fmt_flag_read_continue_i,  // Host to send Ack to final byte read
-  input logic fmt_flag_nak_ok_i,  // No ACK is expected
-  input logic unhandled_unexp_nak_i,
-  input logic unhandled_nak_timeout_i,  // NACK handler timeout event not cleared
+  input  logic                                      fmt_fifo_rvalid_i,             // Indicates there is valid data in fmt_fifo
+  input  logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0] fmt_fifo_depth_i,              // fmt_fifo_depth
+  output logic                                      fmt_fifo_rready_o,             // Populates fmt_fifo
+  input  logic [7:0]                                fmt_byte_i,                    // Byte in fmt_fifo to be sent to target
+  input  logic                                      fmt_flag_start_before_i,       // Issue start before sending byte
+  input  logic                                      fmt_flag_stop_after_i,          // Issue stop after sending byte
+  input  logic                                      fmt_flag_read_bytes_i,          // Indicates byte is an number of reads
+  input  logic                                      fmt_flag_read_continue_i,       // Host to send Ack to final byte read
+  input  logic                                      fmt_flag_nak_ok_i,              // No ACK is expected
+  input  logic                                      unhandled_unexp_nak_i,
+  input  logic                                      unhandled_nak_timeout_i,        // NACK handler timeout event not cleared
 
-  output logic rx_fifo_wvalid_o,  // High if there is valid data in rx_fifo
-  output logic [CONTROLLER_RX_FIFO_WIDTH-1:0] rx_fifo_wdata_o,  // Byte in rx_fifo read from target
+  output logic                                      rx_fifo_wvalid_o,               // High if there is valid data in rx_fifo
+  output logic [CONTROLLER_RX_FIFO_WIDTH-1:0]       rx_fifo_wdata_o,                // Byte in rx_fifo read from target
 
-  output logic host_idle_o,  // Indicates the host is idle
+  output logic                                      host_idle_o,                    // Indicates the host is idle
 
-  input logic [12:0] thigh_i,  // High period of the SCL in clock units
-  input logic [12:0] tlow_i,  // Low period of the SCL in clock units
-  input logic [12:0] t_r_i,  // Rise time of both SDA and SCL in clock units
-  input logic [12:0] t_f_i,  // Fall time of both SDA and SCL in clock units
-  input logic [12:0] thd_sta_i,  // Hold time for (repeated) START in clock units
-  input logic [12:0] tsu_sta_i,  // Setup time for repeated START in clock units
-  input logic [12:0] tsu_sto_i,  // Setup time for STOP in clock units
-  input logic [12:0] thd_dat_i,  // Data hold time in clock units
-  input logic sda_interference_i,  // High when SCL is high and SDA doesn't match while transmitting
+  input  logic [12:0]                               thigh_i,                        // High period of the SCL in clock units
+  input  logic [12:0]                               tlow_i,                         // Low period of the SCL in clock units
+  input  logic [12:0]                               t_r_i,                          // Rise time of both SDA and SCL in clock units
+  input  logic [12:0]                               t_f_i,                          // Fall time of both SDA and SCL in clock units
+  input  logic [12:0]                               thd_sta_i,                      // Hold time for (repeated) START in clock units
+  input  logic [12:0]                               tsu_sta_i,                      // Setup time for repeated START in clock units
+  input  logic [12:0]                               tsu_sto_i,                      // Setup time for STOP in clock units
+  input  logic [12:0]                               thd_dat_i,                      // Data hold time in clock units
+  input  logic                                      sda_interference_i,             // High when SCL is high and SDA doesn't match while transmitting
   input  logic [29:0]                               stretch_timeout_i,              // Max time target connected to this host may stretch the clock
-  input logic timeout_enable_i,  // Assert if target stretches clock past max
+  input  logic                                      timeout_enable_i,               // Assert if target stretches clock past max
   input  logic [30:0]                               host_nack_handler_timeout_i,    // Timeout threshold for unhandled Host-Mode 'nak' irq.
-  input logic host_nack_handler_timeout_en_i,
+  input  logic                                      host_nack_handler_timeout_en_i,
 
-  output logic event_nak_o,                    // Target didn't Ack when expected
-  output logic event_unhandled_nak_timeout_o,  // SW didn't handle the NACK in time
-  output logic event_arbitration_lost_o,       // Lost arbitration after beginning a transaction
-  output logic event_scl_interference_o,       // Other device forcing SCL low
-  output logic event_stretch_timeout_o,        // Target stretches clock past max time
-  output logic event_sda_unstable_o,           // SDA is not constant during SCL pulse
-  output logic event_cmd_complete_o            // Command is complete
+  output logic                                      event_nak_o,                    // Target didn't Ack when expected
+  output logic                                      event_unhandled_nak_timeout_o,  // SW didn't handle the NACK in time
+  output logic                                      event_arbitration_lost_o,       // Lost arbitration after beginning a transaction
+  output logic                                      event_scl_interference_o,       // Other device forcing SCL low
+  output logic                                      event_stretch_timeout_o,        // Target stretches clock past max time
+  output logic                                      event_sda_unstable_o,           // SDA is not constant during SCL pulse
+  output logic                                      event_cmd_complete_o            // Command is complete
 );
 
   // I2C bus clock timing variables
-  logic [13:0] tcount_q;  // Current counter for setting delays
-  logic [13:0] tcount_d;  // Next counter for setting delays
-  logic        load_tcount;  // Indicates counter must be loaded
-  logic [30:0] stretch_idle_cnt;  // Counter for clock being stretched by target
-                                  // or clock idle by host.
-  logic [30:0] unhandled_nak_cnt;  // In Host-mode, count cycles where the FSM is halted awaiting
-                                   // the NACK IRQ to be handled by SW.
+  logic [13:0] tcount_q;                // Current counter for setting delays
+  logic [13:0] tcount_d;                // Next counter for setting delays
+  logic        load_tcount;             // Indicates counter must be loaded
+  logic [30:0] stretch_idle_cnt;        // Counter for clock being stretched by target
+                                        // or clock idle by host.
+  logic [30:0] unhandled_nak_cnt;       // In Host-mode, count cycles where the FSM is halted awaiting
+                                        // the NACK IRQ to be handled by SW.
   logic        incr_nak_cnt;
 
   // (IP in HOST-Mode) This bit is active when the FSM is in a state where a TARGET might
@@ -83,27 +83,27 @@ module i2c_controller_fsm
   logic        stretch_en;
 
   // Bit and byte counter variables
-  logic [ 2:0] bit_index;  // Bit being transmitted to or read from the bus
-  logic        bit_decr;  // Indicates bit_index must be decremented by 1
-  logic        bit_clr;  // Indicates bit_index must be reset to 7
-  logic [ 8:0] byte_num;  // Number of bytes to read
-  logic [ 8:0] byte_index;  // Byte being read from the bus
-  logic        byte_decr;  // Indicates byte_index must be decremented by 1
-  logic        byte_clr;  // Indicates byte_index must be reset to byte_num
+  logic [2:0]  bit_index;                // Bit being transmitted to or read from the bus
+  logic        bit_decr;                 // Indicates bit_index must be decremented by 1
+  logic        bit_clr;                  // Indicates bit_index must be reset to 7
+  logic [8:0]  byte_num;                 // Number of bytes to read
+  logic [8:0]  byte_index;               // Byte being read from the bus
+  logic        byte_decr;                // Indicates byte_index must be decremented by 1
+  logic        byte_clr;                 // Indicates byte_index must be reset to byte_num
 
   // Other internal variables
-  logic        scl_d;  // SCL internal
-  logic        sda_d;  // SDA internal
-  logic        scl_i_q;  // scl_i delayed by one clock
-  logic        sda_i_q;  // sda_i delayed by one clock
-  logic [ 7:0] read_byte;  // Register for reads from target
-  logic        read_byte_clr;  // Clear read_byte contents
-  logic        shift_data_en;  // Indicates data must be shifted in from the bus
-  logic        trans_started;  // Indicates a transaction has started
-  logic        pend_restart;  // There is a pending restart waiting to be processed
-  logic        req_restart;  // Request restart
-  logic        log_start;  // Indicates start is been issued
-  logic        log_stop;  // Indicates stop is been issued
+  logic        scl_d;                    // SCL internal
+  logic        sda_d;                    // SDA internal
+  logic        scl_i_q;                  // scl_i delayed by one clock
+  logic        sda_i_q;                  // sda_i delayed by one clock
+  logic [7:0]  read_byte;                // Register for reads from target
+  logic        read_byte_clr;            // Clear read_byte contents
+  logic        shift_data_en;            // Indicates data must be shifted in from the bus
+  logic        trans_started;            // Indicates a transaction has started
+  logic        pend_restart;             // There is a pending restart waiting to be processed
+  logic        req_restart;              // Request restart
+  logic        log_start;                // Indicates start is been issued
+  logic        log_stop;                 // Indicates stop is been issued
   logic auto_stop_d, auto_stop_q;  // Tracks whether a Stop symbol was autonomously generated.
   logic ctrl_symbol_failed;  // If SCL pulls low before the controller can issue Start/Stop
 
@@ -127,17 +127,17 @@ module i2c_controller_fsm
     tcount_d = tcount_q;
     if (load_tcount) begin
       unique case (tcount_sel)
-        tSetupStart: tcount_d = 13'(t_r_i) + 13'(tsu_sta_i);
-        tHoldStart:  tcount_d = 13'(t_f_i) + 13'(thd_sta_i);
-        tClockStart: tcount_d = 14'(thd_dat_i);
-        tClockLow:   tcount_d = 13'(tlow_i) - 13'(thd_dat_i);
-        tClockPulse: tcount_d = 13'(t_r_i) + 13'(thigh_i);
-        tClockHigh:  tcount_d = 14'(thigh_i);
-        tHoldBit:    tcount_d = 13'(t_f_i) + 13'(thd_dat_i);
-        tClockStop:  tcount_d = 13'(t_f_i) + 13'(tlow_i) - 13'(thd_dat_i);
-        tSetupStop:  tcount_d = 13'(t_r_i) + 13'(tsu_sto_i);
-        tNoDelay:    tcount_d = 14'h0001;
-        default:     tcount_d = 14'h0001;
+        tSetupStart : tcount_d = 13'(t_r_i) + 13'(tsu_sta_i);
+        tHoldStart  : tcount_d = 13'(t_f_i) + 13'(thd_sta_i);
+        tClockStart : tcount_d = 14'(thd_dat_i);
+        tClockLow   : tcount_d = 13'(tlow_i) - 13'(thd_dat_i);
+        tClockPulse : tcount_d = 13'(t_r_i) + 13'(thigh_i);
+        tClockHigh  : tcount_d = 14'(thigh_i);
+        tHoldBit    : tcount_d = 13'(t_f_i) + 13'(thd_dat_i);
+        tClockStop  : tcount_d = 13'(t_f_i) + 13'(tlow_i) - 13'(thd_dat_i);
+        tSetupStop  : tcount_d = 13'(t_r_i) + 13'(tsu_sto_i);
+        tNoDelay    : tcount_d = 14'h0001;
+        default     : tcount_d = 14'h0001;
       endcase
     end else if (host_enable_i ||
         // If we disable Host-Mode mid-txn, keep counting until the end of
@@ -515,8 +515,8 @@ module i2c_controller_fsm
         host_idle_o = 1'b0;
         scl_d = 1'b0;
         if (bit_index == '0 && tcount_q == 20'd1) begin
-          rx_fifo_wvalid_o = 1'b1;  // assert that rx_fifo has valid data
-          rx_fifo_wdata_o  = read_byte;  // transfer read data to rx_fifo
+          rx_fifo_wvalid_o = 1'b1;     // assert that rx_fifo has valid data
+          rx_fifo_wdata_o = read_byte; // transfer read data to rx_fifo
         end
       end
       // HostClockLowAck: SCL pulled low, SDA is conditional
@@ -753,7 +753,7 @@ module i2c_controller_fsm
         if (!scl_i && !scl_i_q && stretch_predict_cnt_expired) begin
           // Saw stretching. Remain in this state and don't count down until we see SCL high.
           load_tcount = 1'b1;
-          tcount_sel  = tClockHigh;
+          tcount_sel = tClockHigh;
         end else if (scl_i_q && scl_i && (sda_i_q != sda_i)) begin
           // Unexpected Stop / Start
           state_d = Idle;
@@ -769,12 +769,12 @@ module i2c_controller_fsm
       HoldBit: begin
         if (tcount_q == 20'd1) begin
           load_tcount = 1'b1;
-          tcount_sel  = tClockLow;
+          tcount_sel = tClockLow;
           if (bit_index == '0) begin
             state_d = ClockLowAck;
             bit_clr = 1'b1;
           end else begin
-            state_d  = ClockLow;
+            state_d = ClockLow;
             bit_decr = 1'b1;
           end
         end
@@ -793,7 +793,7 @@ module i2c_controller_fsm
         if (!scl_i && !scl_i_q && stretch_predict_cnt_expired) begin
           // Saw stretching. Remain in this state and don't count down until we see SCL high.
           load_tcount = 1'b1;
-          tcount_sel  = tClockHigh;
+          tcount_sel = tClockHigh;
         end else if (scl_i_q && scl_i && (sda_i_q != sda_i)) begin
           // Unexpected Stop / Start
           state_d = Idle;
@@ -832,7 +832,7 @@ module i2c_controller_fsm
         if (!scl_i && !scl_i_q && stretch_predict_cnt_expired) begin
           // Saw stretching. Remain in this state and don't count down until we see SCL high.
           load_tcount = 1'b1;
-          tcount_sel  = tClockHigh;
+          tcount_sel = tClockHigh;
         end else if (scl_i_q && scl_i && (sda_i_q != sda_i)) begin
           // Unexpected Stop / Start
           state_d = Idle;
@@ -840,20 +840,20 @@ module i2c_controller_fsm
           state_d = ReadHoldBit;
           load_tcount = 1'b1;
           tcount_sel = tHoldBit;
-          shift_data_en = 1'b1;  // SDA is sampled on the final clk_i cycle of the SCL pulse.
+          shift_data_en = 1'b1; // SDA is sampled on the final clk_i cycle of the SCL pulse.
         end
       end
       // ReadHoldBit: SCL is pulled low
       ReadHoldBit: begin
         if (tcount_q == 20'd1) begin
           load_tcount = 1'b1;
-          tcount_sel  = tClockLow;
+          tcount_sel = tClockLow;
           if (bit_index == '0) begin
             state_d = HostClockLowAck;
             bit_clr = 1'b1;
             read_byte_clr = 1'b1;
           end else begin
-            state_d  = ReadClockLow;
+            state_d = ReadClockLow;
             bit_decr = 1'b1;
           end
         end
@@ -872,7 +872,7 @@ module i2c_controller_fsm
         if (!scl_i && !scl_i_q && stretch_predict_cnt_expired) begin
           // Saw stretching. Remain in this state and don't count down until we see SCL high.
           load_tcount = 1'b1;
-          tcount_sel  = tClockHigh;
+          tcount_sel = tClockHigh;
         end else if (scl_i_q && scl_i && (sda_i_q != sda_i)) begin
           // Unexpected Stop / Start
           state_d = Idle;
@@ -916,7 +916,7 @@ module i2c_controller_fsm
         if (!scl_i && !scl_i_q && stretch_predict_cnt_expired) begin
           // Saw stretching. Remain in this state and don't count down until we see SCL high.
           load_tcount = 1'b1;
-          tcount_sel  = tSetupStop;
+          tcount_sel = tSetupStop;
         end else if (!scl_i && scl_i_q) begin
           // Failed to issue Stop before some other device could pull SCL low.
           state_d = Idle;

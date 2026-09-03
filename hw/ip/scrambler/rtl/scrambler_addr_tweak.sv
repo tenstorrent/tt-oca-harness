@@ -20,8 +20,8 @@ module scrambler_addr_tweak #(
   parameter int unsigned ADDR_WIDTH = 32
 ) (
   input  logic [ADDR_WIDTH-1:0] addr_i,
-  input  logic [          31:0] scrambler_key_i,
-  output logic [          31:0] round_key_o
+  input  logic [31:0]           scrambler_key_i,
+  output logic [31:0]           round_key_o
 );
   logic [31:0] expanded_addr;
 

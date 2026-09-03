@@ -20,8 +20,8 @@
 `include "ocah_fcov_macros.svh"
 
 module dtp_xtrig_fcov (
-  input wire clk_i,
-  input wire rst_ni,
+  input wire        clk_i,
+  input wire        rst_ni,
 
   // XTRIG CSR AXI-Lite write channel (driven by the cocotb flow)
   input wire [31:0] axil_awaddr_i,
@@ -32,8 +32,8 @@ module dtp_xtrig_fcov (
   input wire        axil_wready_i,
 
   // Cross-trigger matrix and CTP GPIO pins
-  input wire [ 9:0] ctm_src_req_i,
-  input wire [ 9:0] ctm_dst_req_i,
+  input wire [9:0]  ctm_src_req_i,
+  input wire [9:0]  ctm_dst_req_i,
   input wire [15:0] ctp_req_out_dout_i,
   input wire [15:0] ctp_req_out_dout_en_i,
   input wire [15:0] ctp_req_in_din_i,
@@ -57,13 +57,14 @@ module dtp_xtrig_fcov (
   wire w_hs = axil_wvalid_i && axil_wready_i;
   always_ff @(posedge clk_i) begin
     if (aw_hs) begin
-      awaddr_q  <= axil_awaddr_i;
+      awaddr_q <= axil_awaddr_i;
       aw_seen_q <= 1'b1;
     end else if (w_hs) begin
       aw_seen_q <= 1'b0;
     end
   end
-  wire ctp_csr_write = w_hs && aw_seen_q && (awaddr_q >= CtpBase) && (awaddr_q < CtpEnd);
+  wire ctp_csr_write = w_hs && aw_seen_q && (awaddr_q >= CtpBase)
+      && (awaddr_q < CtpEnd);
   wire [3:0] ctp_csr_off = awaddr_q[3:0];
   wire ctp_config_write = ctp_csr_write && (ctp_csr_off == 4'h0);
   wire ctp_stretch_write = ctp_csr_write && (ctp_csr_off == 4'h8);
@@ -79,7 +80,8 @@ module dtp_xtrig_fcov (
   wire [15:0] stretch_val = axil_wdata_i[15:0];
   wire ctp_stretch_min_e = ctp_stretch_write && (stretch_val == 16'd0);
   wire ctp_stretch_max_e = ctp_stretch_write && (stretch_val >= 16'd15);
-  wire ctp_stretch_mid_e = ctp_stretch_write && (stretch_val != 16'd0) && (stretch_val < 16'd15);
+  wire ctp_stretch_mid_e = ctp_stretch_write && (stretch_val != 16'd0)
+      && (stretch_val < 16'd15);
   `OCAH_FCOV_COVER(c_ctp_mode_wire_or, ctp_mode_wire_or_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_mode_p2p, ctp_mode_p2p_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_inversion_normal, ctp_inversion_normal_e, clk_i, in_reset)
@@ -116,7 +118,7 @@ module dtp_xtrig_fcov (
   logic [15:0] ctp_req_in_q, ctp_req_out_q;
   logic [9:0] ctm_dst_req_q, ctm_src_req_q;
   always_ff @(posedge clk_i) begin
-    ctp_req_in_q  <= ctp_req_in_din_i;
+    ctp_req_in_q <= ctp_req_in_din_i;
     ctp_req_out_q <= ctp_req_out_active;
     ctm_dst_req_q <= ctm_dst_req_i;
     ctm_src_req_q <= ctm_src_req_i;
@@ -137,7 +139,8 @@ module dtp_xtrig_fcov (
 
   // Fanout classes: destinations active simultaneously; "none" is a source
   // event whose window closes with no destination response.
-  wire [5:0] dest_active_count = 6'($countones(ctp_req_out_active)) + 6'($countones(ctm_src_req_i));
+  wire [5:0] dest_active_count =
+      6'($countones(ctp_req_out_active)) + 6'($countones(ctm_src_req_i));
   logic [6:0] src_window_q;
   logic dest_seen_q;
   wire any_source_rise = ctm_source_ctp_e || ctm_source_internal_e;
@@ -145,7 +148,7 @@ module dtp_xtrig_fcov (
   always_ff @(posedge clk_i) begin
     if (any_source_rise) begin
       src_window_q <= 7'd100;
-      dest_seen_q  <= 1'b0;
+      dest_seen_q <= 1'b0;
     end else if (src_window_q != 7'd0) begin
       src_window_q <= src_window_q - 7'd1;
       if (any_dest_active) dest_seen_q <= 1'b1;
@@ -153,7 +156,8 @@ module dtp_xtrig_fcov (
   end
   wire ctm_fanout_single_e = (dest_active_count == 6'd1);
   wire ctm_fanout_multicast_e = (dest_active_count >= 6'd2);
-  wire ctm_fanout_none_e = (src_window_q == 7'd1) && !dest_seen_q && !any_dest_active;
+  wire ctm_fanout_none_e = (src_window_q == 7'd1) && !dest_seen_q
+      && !any_dest_active;
   `OCAH_FCOV_COVER(c_ctm_fanout_single, ctm_fanout_single_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctm_fanout_multicast, ctm_fanout_multicast_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctm_fanout_none, ctm_fanout_none_e, clk_i, in_reset)

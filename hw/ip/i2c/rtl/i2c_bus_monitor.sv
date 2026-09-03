@@ -13,28 +13,28 @@
 module i2c_bus_monitor
   import i2c_pkg::*;
 (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic        clk_i,
+  input  logic        rst_ni,
 
-  input logic scl_i,
-  input logic sda_i,
+  input  logic        scl_i,
+  input  logic        sda_i,
 
-  input logic        controller_enable_i,
-  input logic        multi_controller_enable_i,
-  input logic        target_enable_i,
-  input logic        target_idle_i,
-  input logic [12:0] thd_dat_i,                  // Data hold time(< 200 ns, < thd_sta)
-  input logic [12:0] t_buf_i,                    // Bus free time (< 5 us)
-  input logic [29:0] bus_active_timeout_i,       // SCL held low  (~25 ms)
-  input logic        bus_active_timeout_en_i,
-  input logic [19:0] bus_inactive_timeout_i,     // SCL held high (~50 us)
+  input  logic        controller_enable_i,
+  input  logic        multi_controller_enable_i,
+  input  logic        target_enable_i,
+  input  logic        target_idle_i,
+  input  logic [12:0] thd_dat_i,                   // Data hold time(< 200 ns, < thd_sta)
+  input  logic [12:0] t_buf_i,                     // Bus free time (< 5 us)
+  input  logic [29:0] bus_active_timeout_i,        // SCL held low  (~25 ms)
+  input  logic        bus_active_timeout_en_i,
+  input  logic [19:0] bus_inactive_timeout_i,      // SCL held high (~50 us)
 
-  output logic bus_free_o,
-  output logic start_detect_o,
-  output logic stop_detect_o,
+  output logic        bus_free_o,
+  output logic        start_detect_o,
+  output logic        stop_detect_o,
 
-  output logic event_bus_active_timeout_o,
-  output logic event_host_timeout_o
+  output logic        event_bus_active_timeout_o,
+  output logic        event_host_timeout_o
 );
 
   // Only activate this monitor if at least one of the modules is enabled.
@@ -78,7 +78,7 @@ module i2c_bus_monitor
   logic start_det_trigger, start_det_pending;
   logic start_det;  // indicates start or repeated start is detected on the bus
   logic stop_det_trigger, stop_det_pending;
-  logic        stop_det;  // indicates stop is detected on the bus
+  logic        stop_det;      // indicates stop is detected on the bus
 
   // Stop / Start detection counter
   logic [13:0] ctrl_det_count;
@@ -222,7 +222,7 @@ module i2c_bus_monitor
           bus_release_cnt_sel = 30'(bus_inactive_timeout_i);
         end else if (scl_i) begin
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel  = bus_active_timeout_i;
+          bus_release_cnt_sel = bus_active_timeout_i;
           if (bus_active_timeout_det_q) begin
             // SCL was released due to the bus timeout, so go to BusFree.
             state_d = StBusFree;

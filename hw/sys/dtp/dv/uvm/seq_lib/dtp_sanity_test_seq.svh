@@ -48,74 +48,19 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
   // -----------------------------------------------------------------
   task run_deterministic_walk();
     bit walk[] = '{
-        // TLR self-loop, RTI, full DR leg incl. pause/exit2 re-shift
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        1'b0,
-        1'b1,
-        // full IR leg incl. pause/exit2 re-shift, Select-IR -> TLR
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        1'b1,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        1'b1,
-        // Exit2-DR -> Update-DR edge
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        // Exit2-IR -> Update-IR edge
-        1'b1,
-        1'b1,
-        1'b0,
-        1'b0,
-        1'b1,
-        1'b0,
-        1'b1,
-        1'b1,
-        // back to TLR via five consecutive TMS=1 cycles
-        1'b0,
-        1'b1,
-        1'b1,
-        1'b1,
-        1'b1,
-        1'b1
-    };
+            // TLR self-loop, RTI, full DR leg incl. pause/exit2 re-shift
+            1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0,
+            1'b1, 1'b0, 1'b1, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, 1'b1,
+            // full IR leg incl. pause/exit2 re-shift, Select-IR -> TLR
+            1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1,
+            1'b1, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b1,
+            // Exit2-DR -> Update-DR edge
+            1'b0, 1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1,
+            // Exit2-IR -> Update-IR edge
+            1'b1, 1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1,
+            // back to TLR via five consecutive TMS=1 cycles
+            1'b0, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1
+        };
     bit tdi[];
     tdi = new[walk.size()];
     `uvm_info(get_type_name(), $sformatf(
@@ -182,7 +127,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
   task run_idcode_checks();
     localparam int unsigned IdcodeReads = 3;
     bit [63:0] observed;
-    bit [63:0] reads[IdcodeReads];
+    bit [63:0] reads [IdcodeReads];
     bit [31:0] expected_idcode = DtpDefaultIdcode;
     bit stable;
 

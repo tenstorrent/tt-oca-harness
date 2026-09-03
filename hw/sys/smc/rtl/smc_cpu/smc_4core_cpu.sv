@@ -9,52 +9,52 @@
 
 module smc_4core_cpu (
   // Clock and reset
-  input logic clk_i,
-  input logic rst_isolate_ni,
+  input  logic                                            clk_i,
+  input  logic                                            rst_isolate_ni,
 
-  input logic mem_init_reset_ni,
+  input  logic                                            mem_init_reset_ni,
 
-  input logic                                        rst_uncore_ni,
-  input logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] rst_core_ni,
-  input logic                                        rst_debug_ni,
+  input  logic                                            rst_uncore_ni,
+  input  logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    rst_core_ni,
+  input  logic                                            rst_debug_ni,
 
   // Reset-drain handshake (driven by smc_cpu_ctrl_wrap, always-on domain)
-  input  logic isolate_req_i,
-  output logic drained_o,
+  input  logic                                            isolate_req_i,
+  output logic                                            drained_o,
 
   // Reset vector inputs
-  input logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,
+  input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,
 
   // Interrupts input
-  input logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0] interrupts_i,
+  input  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]      interrupts_i,
 
   // AXI interfaces
-  output smc_pkg::smc_cpu_mmio_axi_req_t  mmio_axi_req_o,
-  input  smc_pkg::smc_cpu_mmio_axi_resp_t mmio_axi_resp_i,
+  output smc_pkg::smc_cpu_mmio_axi_req_t                  mmio_axi_req_o,
+  input  smc_pkg::smc_cpu_mmio_axi_resp_t                 mmio_axi_resp_i,
 
-  input  smc_pkg::smc_cpu_l2_frontend_axi_req_t  l2_frontend_axi_req_i,
-  output smc_pkg::smc_cpu_l2_frontend_axi_resp_t l2_frontend_axi_resp_o,
+  input  smc_pkg::smc_cpu_l2_frontend_axi_req_t           l2_frontend_axi_req_i,
+  output smc_pkg::smc_cpu_l2_frontend_axi_resp_t          l2_frontend_axi_resp_o,
 
   // Debug interfaces (JTAG)
-  input  logic        smc_cpu_jtag_TCK_i,
-  input  logic        smc_cpu_jtag_TMS_i,
-  input  logic        smc_cpu_jtag_TDI_i,
-  output logic        smc_cpu_jtag_TDO_data_o,
-  input  logic        smc_cpu_jtag_reset_i,
-  input  logic [10:0] smc_cpu_jtag_mfr_id_i,
-  input  logic [15:0] smc_cpu_jtag_part_number_i,
-  input  logic [ 3:0] smc_cpu_jtag_version_i,
+  input  logic                                            smc_cpu_jtag_TCK_i,
+  input  logic                                            smc_cpu_jtag_TMS_i,
+  input  logic                                            smc_cpu_jtag_TDI_i,
+  output logic                                            smc_cpu_jtag_TDO_data_o,
+  input  logic                                            smc_cpu_jtag_reset_i,
+  input  logic [10:0]                                     smc_cpu_jtag_mfr_id_i,
+  input  logic [15:0]                                     smc_cpu_jtag_part_number_i,
+  input  logic [3:0]                                      smc_cpu_jtag_version_i,
 
   // Core status outputs
-  output logic                                                cluster_ded_o,
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][ 1-1:0] wb_pc_valid_o,
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0] wb_reg_pc_o,
+  output logic                                            cluster_ded_o,
+  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]    wb_pc_valid_o,
+  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]   wb_reg_pc_o,
 
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] wdt_reset_o,
+  output logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    wdt_reset_o,
 
   // Memory interface signals between DigitalTop and mems
-  output chipyard_4core_mem_pkg::rom_tilelink_req_t rom_intf_req_o,
-  input chipyard_4core_mem_pkg::rom_tilelink_rsp_t rom_intf_rsp_i,
+  output chipyard_4core_mem_pkg::rom_tilelink_req_t             rom_intf_req_o,
+  input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t             rom_intf_rsp_i,
   output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
   input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
   output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
@@ -66,12 +66,12 @@ module smc_4core_cpu (
   output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
   input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
 
-  input logic disable_sram_auto_init_i,
+  input  logic                                            disable_sram_auto_init_i,
 
-  output logic init_mem_done_o,
+  output logic                                            init_mem_done_o,
 
   // Test related signals
-  input logic test_en_i
+  input  logic                                            test_en_i
 );
   // Mem Init signals
   chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req_pre_init [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
@@ -97,8 +97,8 @@ module smc_4core_cpu (
   prim_flop_3sync_r sync_debug_active (
     .i_CK(clk_i),
     .i_RN(rst_debug_ni),
-    .i_D (debug_dmactive),
-    .o_Q (debug_dmactiveAck)
+    .i_D(debug_dmactive),
+    .o_Q(debug_dmactiveAck)
   );
 
   always @(posedge clk_i) begin
@@ -110,14 +110,14 @@ module smc_4core_cpu (
   end
 
   prim_clkgater debug_clock_gate (
-    .i_clk(clk_i),
-    .i_en (clock_en),
-    .i_te (test_en_i),
-    .o_clk(gated_debug_clock)
+    .i_clk    (clk_i),
+    .i_en     (clock_en),
+    .i_te     (test_en_i),
+    .o_clk    (gated_debug_clock)
   );
 
   // cluster_ded has glitches because of uneven combo path, flop to mitigate CDC glitches
-  logic [ 4-1:0][1-1:0] io_errors_uncorrectable_valid;
+  logic [4-1:0][1-1:0] io_errors_uncorrectable_valid;
   logic [32-1:0][1-1:0] uncorrectable_2;
 
   always_ff @(posedge clk_i) begin
@@ -138,7 +138,7 @@ module smc_4core_cpu (
   logic cluster_boundary_ready;
   logic [CLUSTER_ISOLATE_CYCLES-1:0] cluster_boundary_isolate_shift;
 
-  smc_pkg::smc_cpu_l2_frontend_axi_req_t l2_frontend_axi_isolated_req;
+  smc_pkg::smc_cpu_l2_frontend_axi_req_t  l2_frontend_axi_isolated_req;
   smc_pkg::smc_cpu_l2_frontend_axi_resp_t l2_frontend_axi_isolated_resp;
   logic l2_frontend_isolated;
 
@@ -149,13 +149,13 @@ module smc_4core_cpu (
   axi_pkg::cache_t mmio_ar_cache_raw;
 
   // CPU-side (pre-isolation) MMIO master signals fed into the isolate slave port
-  smc_pkg::smc_cpu_mmio_axi_req_t mmio_axi_cpu_req;
+  smc_pkg::smc_cpu_mmio_axi_req_t  mmio_axi_cpu_req;
   smc_pkg::smc_cpu_mmio_axi_resp_t mmio_axi_cpu_resp;
 
   // Raw (pre-clamp) status crossings driven by DigitalTop
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0] wb_pc_valid_raw;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]  wb_pc_valid_raw;
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0] wb_reg_pc_raw;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] wdt_reset_raw;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]         wdt_reset_raw;
 
   // Ready to connect: mem init, cores+uncore out of reset (HW/cold-boot backstop),
   // no isolate request -> immediate isolate, delayed de-isolate via shift below.
@@ -178,52 +178,52 @@ module smc_4core_cpu (
                                     | ~cluster_boundary_isolate_shift[CLUSTER_ISOLATE_CYCLES-1];
 
   axi_isolate #(
-    .NumPending(4),
+    .NumPending          (4),
     .TerminateTransaction(1'b0),  // Block transactions instead of terminating them
-    .AtopSupport(1'b0),
-    .AxiAddrWidth(smc_pkg::AXI_ADDR_WIDTH),
-    .AxiDataWidth(smc_pkg::AXI_DATA_WIDTH),
-    .AxiIdWidth(smc_pkg::SMC_CPU_L2_FRONTEND_AXI_ID_WIDTH),
-    .AxiUserWidth(smc_pkg::AXI_USER_WIDTH),
-    .axi_req_t(smc_pkg::smc_cpu_l2_frontend_axi_req_t),
-    .axi_resp_t(smc_pkg::smc_cpu_l2_frontend_axi_resp_t)
+    .AtopSupport         (1'b0),
+    .AxiAddrWidth        (smc_pkg::AXI_ADDR_WIDTH),
+    .AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
+    .AxiIdWidth          (smc_pkg::SMC_CPU_L2_FRONTEND_AXI_ID_WIDTH),
+    .AxiUserWidth        (smc_pkg::AXI_USER_WIDTH),
+    .axi_req_t           (smc_pkg::smc_cpu_l2_frontend_axi_req_t),
+    .axi_resp_t          (smc_pkg::smc_cpu_l2_frontend_axi_resp_t)
   ) u_l2_frontend_axi_isolate (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_isolate_ni),
-    .slv_req_i (l2_frontend_axi_req_i),
-    .slv_resp_o(l2_frontend_axi_resp_o),
-    .mst_req_o (l2_frontend_axi_isolated_req),
-    .mst_resp_i(l2_frontend_axi_isolated_resp),
-    .isolate_i (cluster_boundary_isolate),
-    .isolated_o(l2_frontend_isolated)
+    .clk_i       (clk_i),
+    .rst_ni      (rst_isolate_ni),
+    .slv_req_i   (l2_frontend_axi_req_i),
+    .slv_resp_o  (l2_frontend_axi_resp_o),
+    .mst_req_o   (l2_frontend_axi_isolated_req),
+    .mst_resp_i  (l2_frontend_axi_isolated_resp),
+    .isolate_i   (cluster_boundary_isolate),
+    .isolated_o  (l2_frontend_isolated)
   );
 
   // MMIO master AXI isolation (CPU = slave side, external fabric = master side)
   axi_isolate #(
-    .NumPending(4),
-    .TerminateTransaction(1'b1),  // terminate MMIO in case of x prop issues during reset
-    .AtopSupport(1'b0),
-    .AxiAddrWidth(smc_pkg::AXI_ADDR_WIDTH),
-    .AxiDataWidth(smc_pkg::AXI_DATA_WIDTH),
-    .AxiIdWidth(smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
-    .AxiUserWidth(smc_pkg::AXI_USER_WIDTH),
-    .axi_req_t(smc_pkg::smc_cpu_mmio_axi_req_t),
-    .axi_resp_t(smc_pkg::smc_cpu_mmio_axi_resp_t)
+    .NumPending          (4),
+    .TerminateTransaction(1'b1),    // terminate MMIO in case of x prop issues during reset
+    .AtopSupport         (1'b0),
+    .AxiAddrWidth        (smc_pkg::AXI_ADDR_WIDTH),
+    .AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
+    .AxiIdWidth          (smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
+    .AxiUserWidth        (smc_pkg::AXI_USER_WIDTH),
+    .axi_req_t           (smc_pkg::smc_cpu_mmio_axi_req_t),
+    .axi_resp_t          (smc_pkg::smc_cpu_mmio_axi_resp_t)
   ) u_mmio_axi_isolate (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_isolate_ni),
-    .slv_req_i (mmio_axi_cpu_req),
-    .slv_resp_o(mmio_axi_cpu_resp),
-    .mst_req_o (mmio_axi_req_o),
-    .mst_resp_i(mmio_axi_resp_i),
-    .isolate_i (cluster_boundary_isolate),
-    .isolated_o(mmio_isolated)
+    .clk_i       (clk_i),
+    .rst_ni      (rst_isolate_ni),
+    .slv_req_i   (mmio_axi_cpu_req),
+    .slv_resp_o  (mmio_axi_cpu_resp),
+    .mst_req_o   (mmio_axi_req_o),
+    .mst_resp_i  (mmio_axi_resp_i),
+    .isolate_i   (cluster_boundary_isolate),
+    .isolated_o  (mmio_isolated)
   );
 
   // Clamp the non-AXI status crossings to safe constants while isolated.
   assign wb_pc_valid_o = cluster_boundary_isolate ? '0 : wb_pc_valid_raw;
-  assign wb_reg_pc_o = cluster_boundary_isolate ? '0 : wb_reg_pc_raw;
-  assign wdt_reset_o = cluster_boundary_isolate ? '0 : wdt_reset_raw;
+  assign wb_reg_pc_o   = cluster_boundary_isolate ? '0 : wb_reg_pc_raw;
+  assign wdt_reset_o   = cluster_boundary_isolate ? '0 : wdt_reset_raw;
 
   // Cluster boundary fully isolated when both AXI paths have drained & isolated.
   assign drained_o = l2_frontend_isolated & mmio_isolated;
@@ -271,10 +271,10 @@ module smc_4core_cpu (
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_reset(~int_rst_core_n[0]),
 
     // Clock outputs
-    .auto_cbus_fixedClockNode_anon_out_clock(),  // unused
-    .auto_cbus_fixedClockNode_anon_out_reset(),  // unused
-    .auto_fbus_fixedClockNode_anon_out_clock(),  // unused
-    .auto_sbus_fixedClockNode_anon_out_clock(),  // unused
+    .auto_cbus_fixedClockNode_anon_out_clock(), // unused
+    .auto_cbus_fixedClockNode_anon_out_reset(), // unused
+    .auto_fbus_fixedClockNode_anon_out_clock(), // unused
+    .auto_sbus_fixedClockNode_anon_out_clock(), // unused
 
     // Reset control
     .resetctrl_hartResetReq_3 (hart_reset_req[3]),
@@ -401,14 +401,14 @@ module smc_4core_cpu (
 
   // MMIO CPU-side struct completion (feeds the isolate slave port)
   assign mmio_axi_cpu_req.aw.region = axi_pkg::region_t'(0);
-  assign mmio_axi_cpu_req.aw.atop = axi_pkg::atop_t'(0);
-  assign mmio_axi_cpu_req.aw.user = smc_pkg::smc_cpu_mmio_axi_id_t'(0);
-  assign mmio_axi_cpu_req.w.user = smc_pkg::smc_cpu_mmio_axi_id_t'(0);
+  assign mmio_axi_cpu_req.aw.atop   = axi_pkg::atop_t'(0);
+  assign mmio_axi_cpu_req.aw.user   = smc_pkg::smc_cpu_mmio_axi_id_t'(0);
+  assign mmio_axi_cpu_req.w.user    = smc_pkg::smc_cpu_mmio_axi_id_t'(0);
   assign mmio_axi_cpu_req.ar.region = axi_pkg::region_t'(0);
-  assign mmio_axi_cpu_req.ar.user = smc_pkg::smc_cpu_mmio_axi_id_t'(0);
+  assign mmio_axi_cpu_req.ar.user   = smc_pkg::smc_cpu_mmio_axi_id_t'(0);
   // Force modifiable bit (AXCACHE[1]) for CPU-originated MMIO transactions
-  assign mmio_axi_cpu_req.aw.cache = mmio_aw_cache_raw | axi_pkg::CACHE_MODIFIABLE;
-  assign mmio_axi_cpu_req.ar.cache = mmio_ar_cache_raw | axi_pkg::CACHE_MODIFIABLE;
+  assign mmio_axi_cpu_req.aw.cache  = mmio_aw_cache_raw | axi_pkg::CACHE_MODIFIABLE;
+  assign mmio_axi_cpu_req.ar.cache  = mmio_ar_cache_raw | axi_pkg::CACHE_MODIFIABLE;
 
   // Connect unconnected L2 Frontend AXI response signals to safe defaults
   // These are signals that should be driven by DigitalTop but aren't connected to ports
@@ -480,13 +480,13 @@ module smc_4core_cpu (
     assign muxed_en = init_mem_complete ? scratch_ram_intf_req_pre_init[i].en : init_mem_enable;
     assign muxed_wmode = init_mem_complete ? scratch_ram_intf_req_pre_init[i].wmode : 1'b1;
 
-    assign scratch_ram_intf_req_o[i].addr = muxed_addr;
-    assign scratch_ram_intf_req_o[i].clk = scratch_ram_intf_req_pre_init[i].clk;
-    assign scratch_ram_intf_req_o[i].wdata = muxed_wdata;
+    assign scratch_ram_intf_req_o[i].addr         = muxed_addr;
+    assign scratch_ram_intf_req_o[i].clk          = scratch_ram_intf_req_pre_init[i].clk;
+    assign scratch_ram_intf_req_o[i].wdata        = muxed_wdata;
     assign scratch_ram_intf_rsp_pre_init[i].rdata = scratch_ram_intf_rsp_i[i].rdata;
-    assign scratch_ram_intf_req_o[i].en = muxed_en;
-    assign scratch_ram_intf_req_o[i].wmode = muxed_wmode;
-    assign scratch_ram_intf_req_o[i].wmask = scratch_ram_intf_req_pre_init[i].wmask;
+    assign scratch_ram_intf_req_o[i].en           = muxed_en;
+    assign scratch_ram_intf_req_o[i].wmode        = muxed_wmode;
+    assign scratch_ram_intf_req_o[i].wmask        = scratch_ram_intf_req_pre_init[i].wmask;
   end
 
   assign init_mem_done_o = init_mem_complete;

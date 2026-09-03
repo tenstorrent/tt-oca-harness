@@ -49,9 +49,9 @@ module sep_abr_kv_shim
   import kv_defines_pkg::*;
   import abr_wrapper_key_reg_pkg::*;
 #(
-  parameter int unsigned SEED_DWORDS       = 8,  // ML-DSA-87 / ML-KEM seed block = 256 bits
-  parameter int unsigned MSG_DWORDS        = 8,  // ML-KEM message               = 256 bits
-  parameter int unsigned SHARED_KEY_DWORDS = 8   // ML-KEM shared key            = 256 bits
+  parameter int unsigned SEED_DWORDS       = 8, // ML-DSA-87 / ML-KEM seed block = 256 bits
+  parameter int unsigned MSG_DWORDS        = 8, // ML-KEM message               = 256 bits
+  parameter int unsigned SHARED_KEY_DWORDS = 8  // ML-KEM shared key            = 256 bits
 ) (
   // ---- ABR sideload CSR hardware interface (from u_abr_key_csr) ----
   // hwif_i : reg block outputs (KM-written seed shares, shared-key control).
@@ -59,14 +59,14 @@ module sep_abr_kv_shim
   // NOTE: the PeakRDL hwif types are *unpacked* structs, which cannot be a
   // net; declare with no explicit `wire` (defaults to var) to match the
   // generated abr_wrapper_key_reg port style and satisfy Xcelium (SVUPSL).
-  input  abr_wrapper_key__out_t hwif_i,
-  output abr_wrapper_key__in_t  hwif_o,
+  input       abr_wrapper_key__out_t hwif_i,
+  output      abr_wrapper_key__in_t  hwif_o,
 
   // ---- Adams Bridge Caliptra KV ports ----
-  input  wire kv_read_t  [2:0] kv_read_i,
-  output kv_rd_resp_t    [2:0] kv_rd_resp_o,
-  input  wire kv_write_t       kv_write_i,
-  output kv_wr_resp_t          kv_wr_resp_o
+  input  wire kv_read_t    [2:0] kv_read_i,
+  output      kv_rd_resp_t [2:0] kv_rd_resp_o,
+  input  wire kv_write_t         kv_write_i,
+  output      kv_wr_resp_t       kv_wr_resp_o
 );
 
   // ML-KEM seed is D||Z: two SEED_DWORDS blocks streamed as one KV entry.
@@ -86,10 +86,10 @@ module sep_abr_kv_shim
   // val[i] = KEY_SHARE0[i] ^ KEY_SHARE1[i]; each block is only valid once the
   // KM firmware sets that block's KEY_CTRL.KEY_VALID.
   // =========================================================================
-  logic [31:0] mldsa_seed  [SEED_DWORDS];
-  logic [31:0] mlkem_seed_d[SEED_DWORDS];
-  logic [31:0] mlkem_seed_z[SEED_DWORDS];
-  logic [31:0] mlkem_msg   [ MSG_DWORDS];
+  logic [31:0] mldsa_seed   [SEED_DWORDS];
+  logic [31:0] mlkem_seed_d [SEED_DWORDS];
+  logic [31:0] mlkem_seed_z [SEED_DWORDS];
+  logic [31:0] mlkem_msg    [MSG_DWORDS];
 
   for (genvar i = 0; i < SEED_DWORDS; i++) begin : gen_seed_share_xor
     assign mldsa_seed[i]   = hwif_i.MLDSA_SEED.KEY_SHARE0[i].data.value ^
@@ -120,25 +120,25 @@ module sep_abr_kv_shim
   assign kv_rd_resp_o[KV_RD_MLDSA_SEED].read_data = mldsa_seed[mldsa_off];
   assign kv_rd_resp_o[KV_RD_MLDSA_SEED].last      =
         (kv_read_i[KV_RD_MLDSA_SEED].read_offset == KV_ENTRY_SIZE_W'(SEED_DWORDS - 1));
-  assign kv_rd_resp_o[KV_RD_MLDSA_SEED].error = ~mldsa_seed_valid;
+  assign kv_rd_resp_o[KV_RD_MLDSA_SEED].error     = ~mldsa_seed_valid;
 
   // kv_read[1] : ML-KEM seed (16 dwords = D[0..7] then Z[0..7]). offset[3]
   // selects the Z half; the low bits index within the selected 8-dword block.
   wire [MKSEED_IDX_W-1:0] mlkem_seed_off  = kv_read_i[KV_RD_MLKEM_SEED].read_offset[MKSEED_IDX_W-1:0];
-  wire mlkem_seed_is_z = mlkem_seed_off[SEED_IDX_W];
-  wire [SEED_IDX_W-1:0] mlkem_seed_sub = mlkem_seed_off[SEED_IDX_W-1:0];
+  wire                    mlkem_seed_is_z = mlkem_seed_off[SEED_IDX_W];
+  wire [SEED_IDX_W-1:0]   mlkem_seed_sub  = mlkem_seed_off[SEED_IDX_W-1:0];
   assign kv_rd_resp_o[KV_RD_MLKEM_SEED].read_data =
         mlkem_seed_is_z ? mlkem_seed_z[mlkem_seed_sub] : mlkem_seed_d[mlkem_seed_sub];
   assign kv_rd_resp_o[KV_RD_MLKEM_SEED].last      =
         (kv_read_i[KV_RD_MLKEM_SEED].read_offset == KV_ENTRY_SIZE_W'(MLKEM_SEED_DWORDS - 1));
-  assign kv_rd_resp_o[KV_RD_MLKEM_SEED].error = ~(mlkem_seed_d_valid & mlkem_seed_z_valid);
+  assign kv_rd_resp_o[KV_RD_MLKEM_SEED].error     = ~(mlkem_seed_d_valid & mlkem_seed_z_valid);
 
   // kv_read[2] : ML-KEM message (8 dwords).
   wire [MSG_IDX_W-1:0] mlkem_msg_off = kv_read_i[KV_RD_MLKEM_MSG].read_offset[MSG_IDX_W-1:0];
   assign kv_rd_resp_o[KV_RD_MLKEM_MSG].read_data = mlkem_msg[mlkem_msg_off];
   assign kv_rd_resp_o[KV_RD_MLKEM_MSG].last      =
         (kv_read_i[KV_RD_MLKEM_MSG].read_offset == KV_ENTRY_SIZE_W'(MSG_DWORDS - 1));
-  assign kv_rd_resp_o[KV_RD_MLKEM_MSG].error = ~mlkem_msg_valid;
+  assign kv_rd_resp_o[KV_RD_MLKEM_MSG].error     = ~mlkem_msg_valid;
 
   // =========================================================================
   // KV write : ML-KEM shared-key writeback into MLKEM_SHARED_KEY.

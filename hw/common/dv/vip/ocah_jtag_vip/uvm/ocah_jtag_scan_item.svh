@@ -11,14 +11,14 @@
 class ocah_jtag_scan_item extends uvm_object;
   `uvm_object_utils(ocah_jtag_scan_item)
 
-  bit is_ir;  // 1 = IR scan, 0 = DR scan
-  bit tdi_bits[$];  // shifted-in bits, LSB-first
-  bit tdo_bits[$];  // observed TDO bits, LSB-first
-  int unsigned bit_count;  // shift-cycle count (== tdi_bits.size())
-  bit instruction_known;  // DR scans: active IR was observed
-  bit [63:0] instruction;  // DR scans: active IR value when known
-  time start_time;  // Capture-x entry
-  time end_time;  // Shift-x -> Exit1-x transition
+  bit          is_ir;              // 1 = IR scan, 0 = DR scan
+  bit          tdi_bits[$];        // shifted-in bits, LSB-first
+  bit          tdo_bits[$];        // observed TDO bits, LSB-first
+  int unsigned bit_count;          // shift-cycle count (== tdi_bits.size())
+  bit          instruction_known;  // DR scans: active IR was observed
+  bit [63:0]   instruction;        // DR scans: active IR value when known
+  time         start_time;         // Capture-x entry
+  time         end_time;           // Shift-x -> Exit1-x transition
 
   function new(string name = "ocah_jtag_scan_item");
     super.new(name);

@@ -4,59 +4,59 @@
 // System Management Controller Input Fabric
 
 module smc_local_fabric (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic                                         clk_i,
+  input logic                                         rst_ni,
+  input logic                                         test_en_i,
 
-  input smc_pkg::smc_axi_addr_t        local_base_addr_i,
-  input logic                   [31:0] region_size_i,
+  input smc_pkg::smc_axi_addr_t                       local_base_addr_i,
+  input logic [31:0]                                  region_size_i,
 
   // Input AXI
-  input  smc_pkg::smc_local_32_64_6_12_axi_req_t  input_axi_req_i,
-  output smc_pkg::smc_local_32_64_6_12_axi_resp_t input_axi_rsp_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_req_t  sep_in_axi_req_i,
-  output smc_pkg::smc_local_32_64_6_12_axi_resp_t sep_in_axi_rsp_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_req_t  local_axi_req_i,
-  output smc_pkg::smc_local_32_64_6_12_axi_resp_t local_axi_rsp_o,
+  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      input_axi_req_i,
+  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     input_axi_rsp_o,
+  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      sep_in_axi_req_i,
+  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     sep_in_axi_rsp_o,
+  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      local_axi_req_i,
+  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     local_axi_rsp_o,
 
   // Output AXI
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t  axi_front_port_req_o,
-  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t axi_front_port_rsp_i,
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t  axi_data_accel_ctrl_req_o,
-  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t axi_data_accel_ctrl_rsp_i,
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_front_port_req_o,
+  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_rsp_i,
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_data_accel_ctrl_req_o,
+  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_data_accel_ctrl_rsp_i,
 
   // Peripheral AXI-Lite (32-bit)
-  output smc_local_xbar_pkg::axi_lite32_req_t  periph_reg_req_o,
-  input  smc_local_xbar_pkg::axi_lite32_resp_t periph_reg_resp_i,
+  output smc_local_xbar_pkg::axi_lite32_req_t         periph_reg_req_o,
+  input  smc_local_xbar_pkg::axi_lite32_resp_t        periph_reg_resp_i,
 
   // Internal AXI-Lite (64-bit)
-  output smc_pkg::smc_axil_32_64_req_t  axil_aR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_aR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_mR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_mR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_xR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_xR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_inbound_filter_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_inbound_filter_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_outbound_filter_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_dfx_csr_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_aR_ctrl_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_aR_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_mR_ctrl_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_mR_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_xR_ctrl_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_xR_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_inbound_filter_ctrl_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_inbound_filter_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_outbound_filter_ctrl_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_outbound_filter_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_mailbox_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_mailbox_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_smc_base_config_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_smc_base_config_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_dfx_csr_req_o,
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_dfx_csr_resp_i,
 
   // DFD APB
-  output smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_o,
-  input  smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_i
+  output smc_pkg::smc_dfd_apb_req_t                   apb_smc_dfd_reg_req_o,
+  input  smc_pkg::smc_dfd_apb_resp_t                  apb_smc_dfd_reg_resp_i
 );
 
   // ===========================================================================
   // Intermediate Signals for Downstream Crossbars
   // ===========================================================================
-  smc_local_xbar_pkg::axi_lite64_req_t local_reg_req;
-  smc_local_xbar_pkg::axi_lite64_resp_t local_reg_resp;
+  smc_local_xbar_pkg::axi_lite64_req_t   local_reg_req;
+  smc_local_xbar_pkg::axi_lite64_resp_t  local_reg_resp;
 
   // Address-modified input requests for local_base_addr masking
   smc_local_xbar_pkg::axi64_req_t system_req_masked;
@@ -93,29 +93,29 @@ module smc_local_fabric (
   //------------------------//
 
   smc_local_xbar u_smc_local_xbar (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
-    .test_i(test_en_i),
+    .clk_i                    (clk_i),
+    .rst_ni                   (rst_ni),
+    .test_i                   (test_en_i),
 
     // Input ports
-    .system_req_i   (system_req_masked),
-    .system_resp_o  (input_axi_rsp_o),
-    .sep_in_req_i   (sep_in_req_masked),
-    .sep_in_resp_o  (sep_in_axi_rsp_o),
-    .local_in_req_i (local_req_masked),
-    .local_in_resp_o(local_axi_rsp_o),
+    .system_req_i             (system_req_masked),
+    .system_resp_o            (input_axi_rsp_o),
+    .sep_in_req_i             (sep_in_req_masked),
+    .sep_in_resp_o            (sep_in_axi_rsp_o),
+    .local_in_req_i           (local_req_masked),
+    .local_in_resp_o          (local_axi_rsp_o),
 
     // Output ports
-    .front_port_req_o      (axi_front_port_req_o),
-    .front_port_resp_i     (axi_front_port_rsp_i),
-    .data_accel_ctrl_req_o (axi_data_accel_ctrl_req_o),
-    .data_accel_ctrl_resp_i(axi_data_accel_ctrl_rsp_i),
-    .local_reg_req_o       (local_reg_req),
-    .local_reg_resp_i      (local_reg_resp),
-    .periph_reg_req_o      (periph_reg_req_o),
-    .periph_reg_resp_i     (periph_reg_resp_i),
-    .smc_dfd_reg_req_o     (apb_smc_dfd_reg_req_o),
-    .smc_dfd_reg_resp_i    (apb_smc_dfd_reg_resp_i)
+    .front_port_req_o         (axi_front_port_req_o),
+    .front_port_resp_i        (axi_front_port_rsp_i),
+    .data_accel_ctrl_req_o    (axi_data_accel_ctrl_req_o),
+    .data_accel_ctrl_resp_i   (axi_data_accel_ctrl_rsp_i),
+    .local_reg_req_o          (local_reg_req),
+    .local_reg_resp_i         (local_reg_resp),
+    .periph_reg_req_o         (periph_reg_req_o),
+    .periph_reg_resp_i        (periph_reg_resp_i),
+    .smc_dfd_reg_req_o        (apb_smc_dfd_reg_req_o),
+    .smc_dfd_reg_resp_i       (apb_smc_dfd_reg_resp_i)
   );
 
   //------------------------------------//
@@ -123,31 +123,31 @@ module smc_local_fabric (
   //------------------------------------//
 
   smc_internal_axi_lite_xbar u_smc_internal_axi_lite_xbar (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
-    .test_i(test_en_i),
+    .clk_i                            (clk_i),
+    .rst_ni                           (rst_ni),
+    .test_i                           (test_en_i),
 
     // Input from smc_local_xbar
-    .local_in_req_i (local_reg_req),
-    .local_in_resp_o(local_reg_resp),
+    .local_in_req_i                   (local_reg_req),
+    .local_in_resp_o                  (local_reg_resp),
 
     // Output ports
-    .smc_base_config_req_o      (axil_smc_base_config_req_o),
-    .smc_base_config_resp_i     (axil_smc_base_config_resp_i),
-    .aR_ctrl_req_o              (axil_aR_ctrl_req_o),
-    .aR_ctrl_resp_i             (axil_aR_ctrl_resp_i),
-    .mR_ctrl_req_o              (axil_mR_ctrl_req_o),
-    .mR_ctrl_resp_i             (axil_mR_ctrl_resp_i),
-    .xR_ctrl_req_o              (axil_xR_ctrl_req_o),
-    .xR_ctrl_resp_i             (axil_xR_ctrl_resp_i),
-    .inbound_filter_ctrl_req_o  (axil_inbound_filter_ctrl_req_o),
-    .inbound_filter_ctrl_resp_i (axil_inbound_filter_ctrl_resp_i),
-    .outbound_filter_ctrl_req_o (axil_outbound_filter_ctrl_req_o),
-    .outbound_filter_ctrl_resp_i(axil_outbound_filter_ctrl_resp_i),
-    .mailbox_req_o              (axil_mailbox_req_o),
-    .mailbox_resp_i             (axil_mailbox_resp_i),
-    .dfx_csr_req_o              (axil_dfx_csr_req_o),
-    .dfx_csr_resp_i             (axil_dfx_csr_resp_i)
+    .smc_base_config_req_o            (axil_smc_base_config_req_o),
+    .smc_base_config_resp_i           (axil_smc_base_config_resp_i),
+    .aR_ctrl_req_o                    (axil_aR_ctrl_req_o),
+    .aR_ctrl_resp_i                   (axil_aR_ctrl_resp_i),
+    .mR_ctrl_req_o                    (axil_mR_ctrl_req_o),
+    .mR_ctrl_resp_i                   (axil_mR_ctrl_resp_i),
+    .xR_ctrl_req_o                    (axil_xR_ctrl_req_o),
+    .xR_ctrl_resp_i                   (axil_xR_ctrl_resp_i),
+    .inbound_filter_ctrl_req_o        (axil_inbound_filter_ctrl_req_o),
+    .inbound_filter_ctrl_resp_i       (axil_inbound_filter_ctrl_resp_i),
+    .outbound_filter_ctrl_req_o       (axil_outbound_filter_ctrl_req_o),
+    .outbound_filter_ctrl_resp_i      (axil_outbound_filter_ctrl_resp_i),
+    .mailbox_req_o                    (axil_mailbox_req_o),
+    .mailbox_resp_i                   (axil_mailbox_resp_i),
+    .dfx_csr_req_o                    (axil_dfx_csr_req_o),
+    .dfx_csr_resp_i                   (axil_dfx_csr_resp_i)
   );
 
   // ===========================================================================

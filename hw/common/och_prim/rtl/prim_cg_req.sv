@@ -12,8 +12,8 @@ module prim_cg_req #(
   // Derived parameters
   localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // Power management interface
   input  logic qactive_i,

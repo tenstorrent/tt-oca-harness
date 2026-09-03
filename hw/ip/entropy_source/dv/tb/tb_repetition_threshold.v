@@ -22,20 +22,20 @@
 
 module tb_repetition_threshold;
   // Clock and reset
-  reg            clk;
-  reg            rstn;
+  reg clk;
+  reg rstn;
 
   // DUT signals
-  reg     [31:0] entropy;
-  reg            entropy_valid;
-  reg            enable;
-  reg     [ 7:0] repetition_limit;
-  wire    [ 7:0] ctr_repetition;
-  wire           status;
+  reg [31:0] entropy;
+  reg        entropy_valid;
+  reg        enable;
+  reg [7:0]  repetition_limit;
+  wire [7:0] ctr_repetition;
+  wire       status;
 
   // Test monitoring
-  integer        test_errors;
-  integer        cycle_count;
+  integer test_errors;
+  integer cycle_count;
 
   // Instantiate DUT
   entropy_repetition_test #(
@@ -90,7 +90,7 @@ module tb_repetition_threshold;
 
     // Release reset
     repeat (5) @(posedge clk);
-    rstn   = 1;
+    rstn = 1;
     enable = 1;
     repeat (5) @(posedge clk);
 

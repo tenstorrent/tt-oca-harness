@@ -10,18 +10,18 @@ module jtag_debug_ctrl_reg
   import prim_jtag_pkg::*;
 (
   // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
-  input  logic            scan_in_i,
-  output logic            scan_out_o,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  logic             scan_in_i,
+  output logic             scan_out_o,
 
   // Read-only status input
-  input logic cla_clock_stop_i,  // CLA clock stop status
+  input  logic             cla_clock_stop_i,      // CLA clock stop status
 
   // Debug control outputs
-  output logic jtag_clock_stop_o,    // JTAG stop clock control
-  output logic cla_clock_stop_en_o,  // CLA clock stop enable
-  output logic boot_stall_ovrd_o,    // Boot stall override enable
-  output logic boot_stall_o          // Boot stall control value
+  output logic             jtag_clock_stop_o,     // JTAG stop clock control
+  output logic             cla_clock_stop_en_o,  // CLA clock stop enable
+  output logic             boot_stall_ovrd_o,    // Boot stall override enable
+  output logic             boot_stall_o          // Boot stall control value
 );
 
   //--------------------------------------------------------------------------
@@ -59,10 +59,10 @@ module jtag_debug_ctrl_reg
   prim_flop_2sync #(
     .Width(1)
   ) u_cla_clock_stop_sync (
-    .clk_i (scan_ctrl_i.tck),
-    .rst_ni(1'b1),
-    .d_i   (cla_clock_stop_i),
-    .q_o   (cla_clock_stop_sync)
+    .clk_i  (scan_ctrl_i.tck),
+    .rst_ni (1'b1),
+    .d_i    (cla_clock_stop_i),
+    .q_o    (cla_clock_stop_sync)
   );
 
   //--------------------------------------------------------------------------
@@ -77,11 +77,11 @@ module jtag_debug_ctrl_reg
     .RESET_VAL(5'b00000),  // All bits reset to 0
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_debug_ctrl_scan_reg (
-    .scan_ctrl_i(scan_ctrl_i),
-    .scan_in_i  (scan_in_i),
-    .scan_out_o (scan_out_o),
-    .data_in_i  ({cla_clock_stop_sync, debug_ctrl_reg_q[3:0]}),
-    .data_out_o (debug_ctrl_reg_q)
+    .scan_ctrl_i   (scan_ctrl_i),
+    .scan_in_i     (scan_in_i),
+    .scan_out_o    (scan_out_o),
+    .data_in_i     ({cla_clock_stop_sync, debug_ctrl_reg_q[3:0]}),
+    .data_out_o    (debug_ctrl_reg_q)
   );
 
   //--------------------------------------------------------------------------

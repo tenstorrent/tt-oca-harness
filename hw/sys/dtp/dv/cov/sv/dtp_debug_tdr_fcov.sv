@@ -35,24 +35,24 @@ module dtp_debug_tdr_fcov (
   input wire [63:0] inst_decoded_i,
 
   // Flattened TDR outputs (TCK domain)
-  input wire       ic_reset_smc_ovrd_i,
-  input wire       ic_reset_smc_ctrl_n_i,
-  input wire       ic_reset_sep_ovrd_i,
-  input wire       ic_reset_sep_ctrl_n_i,
-  input wire       ic_reset_ext_ovrd_i,
-  input wire       ic_reset_ext_ctrl_n_i,
-  input wire       boot_stall_ovrd_i,
-  input wire       boot_stall_i,
-  input wire       stop_clks_i,
-  input wire       cla_clock_stop_en_i,
-  input wire [8:0] clk_stop_req_i,
+  input wire        ic_reset_smc_ovrd_i,
+  input wire        ic_reset_smc_ctrl_n_i,
+  input wire        ic_reset_sep_ovrd_i,
+  input wire        ic_reset_sep_ctrl_n_i,
+  input wire        ic_reset_ext_ovrd_i,
+  input wire        ic_reset_ext_ctrl_n_i,
+  input wire        boot_stall_ovrd_i,
+  input wire        boot_stall_i,
+  input wire        stop_clks_i,
+  input wire        cla_clock_stop_en_i,
+  input wire [8:0]  clk_stop_req_i,
 
   // Hierarchical references (TMP unit and DEBUG_CONTROL contributions)
-  input wire       tmp_state_i,        // 0 = off, 1 = persistence on
-  input wire [1:0] tmp_status_reg_i,   // [1] persistence, [0] escape arm
-  input wire       tmp_escape_cond_i,  // BYPASS double-load escape pulse
-  input wire       jtag_clock_stop_i,  // DEBUG_CONTROL JTAG stop
-  input wire       cla_clock_stop_i    // OR of CLA stop requests
+  input wire        tmp_state_i,           // 0 = off, 1 = persistence on
+  input wire [1:0]  tmp_status_reg_i,      // [1] persistence, [0] escape arm
+  input wire        tmp_escape_cond_i,     // BYPASS double-load escape pulse
+  input wire        jtag_clock_stop_i,     // DEBUG_CONTROL JTAG stop
+  input wire        cla_clock_stop_i       // OR of CLA stop requests
 );
 
   // ------------------------------------------------------------------
@@ -161,7 +161,8 @@ module dtp_debug_tdr_fcov (
       || (ic_reset_sep_ctrl_n_i != ic_sep_ctrl_q);
   wire ic_slice_ext_e = (ic_reset_ext_ovrd_i != ic_ext_ovrd_q)
       || (ic_reset_ext_ctrl_n_i != ic_ext_ctrl_q);
-  wire ic_ovrd_any = ic_reset_smc_ovrd_i || ic_reset_sep_ovrd_i || ic_reset_ext_ovrd_i;
+  wire ic_ovrd_any = ic_reset_smc_ovrd_i || ic_reset_sep_ovrd_i
+      || ic_reset_ext_ovrd_i;
   wire ic_override_disabled_e = dr_committed && ic_sel && !ic_ovrd_any;
   wire ic_override_enabled_e = dr_committed && ic_sel && ic_ovrd_any;
   wire ic_reset_asserted_e = (ic_reset_smc_ovrd_i && !ic_reset_smc_ctrl_n_i)
@@ -297,8 +298,8 @@ module dtp_debug_tdr_fcov (
     if (ir_committed) begin
       prev_instr_idcode_q <= cur_instr_idcode_q;
       prev_instr_bypass_q <= cur_instr_bypass_q;
-      cur_instr_idcode_q  <= |(inst_decoded_i & IdcodeInstr);
-      cur_instr_bypass_q  <= |(inst_decoded_i & BypassInstr);
+      cur_instr_idcode_q <= |(inst_decoded_i & IdcodeInstr);
+      cur_instr_bypass_q <= |(inst_decoded_i & BypassInstr);
     end
   end
 
@@ -325,7 +326,8 @@ module dtp_debug_tdr_fcov (
   wire [63:0] alt_5 = 64'h5555_5555_5555_5555 & shifted_mask;
   wire caps_wr_zero_e = caps_write_committed && (shifted_bits == '0);
   wire caps_wr_ones_e = caps_write_committed && (shifted_bits == shifted_mask);
-  wire caps_wr_alt_e = caps_write_committed && ((shifted_bits == alt_a) || (shifted_bits == alt_5));
+  wire caps_wr_alt_e = caps_write_committed
+      && ((shifted_bits == alt_a) || (shifted_bits == alt_5));
   wire caps_wr_random_e = caps_write_committed && (shifted_bits != '0)
       && (shifted_bits != shifted_mask) && (shifted_bits != alt_a)
       && (shifted_bits != alt_5);

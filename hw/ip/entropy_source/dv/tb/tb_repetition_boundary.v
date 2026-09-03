@@ -58,7 +58,7 @@ module tb_repetition_boundary;
     $display("Threshold = 10\n");
 
     repeat (5) @(posedge clk);
-    rstn   = 1;
+    rstn = 1;
     enable = 1;
     repeat (5) @(posedge clk);
 

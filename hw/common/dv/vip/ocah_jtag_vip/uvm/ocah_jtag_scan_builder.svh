@@ -26,13 +26,13 @@ class ocah_jtag_scan_builder extends uvm_subscriber #(ocah_jtag_event);
   ocah_jtag_scan_item dr_items[$];
 
   protected ocah_jtag_tap_state_e m_model = OCAH_JTAG_TEST_LOGIC_RESET;
-  protected bit m_tdi_acc[$];
-  protected bit m_tdo_acc[$];
-  protected time m_scan_start;
-  protected bit m_active_ir_known;
-  protected bit [63:0] m_active_ir;
-  protected bit m_pending_ir_valid;
-  protected bit [63:0] m_pending_ir;
+  protected bit          m_tdi_acc[$];
+  protected bit          m_tdo_acc[$];
+  protected time         m_scan_start;
+  protected bit          m_active_ir_known;
+  protected bit [63:0]   m_active_ir;
+  protected bit          m_pending_ir_valid;
+  protected bit [63:0]   m_pending_ir;
 
   function new(string name = "ocah_jtag_scan_builder", uvm_component parent = null);
     super.new(name, parent);
@@ -99,7 +99,7 @@ class ocah_jtag_scan_builder extends uvm_subscriber #(ocah_jtag_event);
     m_pending_ir_valid = 1'b0;
     // IEEE 1149.1: reset selects IDCODE (when implemented) or BYPASS;
     // the exact opcode is device-specific, so mark it unknown.
-    m_active_ir_known  = 1'b0;
+    m_active_ir_known = 1'b0;
   endfunction
 
   protected function ocah_jtag_scan_item publish(bit is_ir, time end_time);

@@ -47,27 +47,27 @@ module km_csr
   parameter type axil_resp_t = km_axil_resp_t
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic cold_rst_ni,  // Cold reset: async-assert/sync-deassert (AASD)
-  input logic warm_rst_ni,  // Warm reset: fully synchronous (from km_reset_conditioner)
+  input  logic clk_i,
+  input  logic cold_rst_ni,   // Cold reset: async-assert/sync-deassert (AASD)
+  input  logic warm_rst_ni,   // Warm reset: fully synchronous (from km_reset_conditioner)
 
   // AXI4-Lite Slave Interface (from crossbar)
-  input  axil_req_t  axil_req_i,
+  input  axil_req_t axil_req_i,
   output axil_resp_t axil_resp_o,
 
   // IRQ Event Inputs
-  input logic rom_parity_err_i,   // ROM parity error (pulse)
-  input logic sram_parity_err_i,  // SRAM parity error (pulse)
-  input logic rom_write_err_i,    // ROM write attempt detected (pulse)
-  input logic axi_slverr_i,       // AXI SLVERR error (pulse)
-  input logic axi_decerr_i,       // AXI DECERR error (pulse)
-  input logic drbg_err_i,         // DRBG Sampler error (pulse)
-  input logic wipe_state_i,       // Wipe state event (rising edge sets IRQ)
+  input  logic   rom_parity_err_i,    // ROM parity error (pulse)
+  input  logic   sram_parity_err_i,   // SRAM parity error (pulse)
+  input  logic   rom_write_err_i,     // ROM write attempt detected (pulse)
+  input  logic   axi_slverr_i,        // AXI SLVERR error (pulse)
+  input  logic   axi_decerr_i,        // AXI DECERR error (pulse)
+  input  logic   drbg_err_i,         // DRBG Sampler error (pulse)
+  input  logic   wipe_state_i,      // Wipe state event (rising edge sets IRQ)
 
   // Scrambler Control Outputs
-  output logic [31:0] scrambler_key_o,     // Scrambler key (0 when locked)
-  output logic        scrambler_enable_o,  // Scrambler enable
-  output logic        scrambler_lock_o,    // Scrambler lock status
+  output logic [31:0] scrambler_key_o,      // Scrambler key (0 when locked)
+  output logic        scrambler_enable_o,   // Scrambler enable
+  output logic        scrambler_lock_o,     // Scrambler lock status
 
   // SRAM write-lock (to SRAM interface): bit[i]=1 locks region i. Write-1-only.
   output logic [31:0] sram_lock_bits_o,
@@ -75,47 +75,47 @@ module km_csr
   input  logic [31:0] sram_write_lock_violation_region_i,
 
   // SRAM execute-permission mode (to CPU wrapper): 0=ROM-only whitelist, 1=write-locked-SRAM whitelist
-  output logic sram_exec_mode_o,
+  output logic        sram_exec_mode_o,
   // Execute-permission whitelist violation (from CPU wrapper): pulse when fetch is outside whitelist
-  input  logic exec_violation_i,
+  input  logic   exec_violation_i,
   // ROM lockout violation (from CPU wrapper): pulse on ROM fetch or read after lockout engages
-  input  logic rom_access_violation_i,
+  input  logic   rom_access_violation_i,
 
   // Aggregated IRQ Output (to CPU)
-  output logic km_irq_o,
+  output logic        km_irq_o,
 
   // Programmable IRQ entry address (to CPU wrapper / PicoRV32)
   output logic [31:0] irq_entry_addr_o,
 
   // Soft Reset Output
-  output logic soft_rst_o,
+  output logic        soft_rst_o,
 
   // Error condition output: recoverable error event
-  output logic recoverable_err_o,
+  output logic        recoverable_err_o,
 
   // Virtual UART Interface (for testbench communication)
   // TX: Firmware writes byte, testbench captures
-  output logic [7:0] vuart_tx_data_o,   // TX byte data
-  output logic       vuart_tx_valid_o,  // TX data valid strobe (pulse)
+  output logic [7:0]  vuart_tx_data_o,       // TX byte data
+  output logic        vuart_tx_valid_o,      // TX data valid strobe (pulse)
   // RX: Testbench writes byte, firmware reads
-  input  logic [7:0] vuart_rx_data_i,   // RX byte from testbench
-  input  logic       vuart_rx_valid_i,  // RX data valid
+  input  logic [7:0] vuart_rx_data_i,       // RX byte from testbench
+  input  logic   vuart_rx_valid_i,      // RX data valid
 
   // Test Protocol Interface (for firmware-testbench communication)
   // Firmware writes these, testbench reads
-  output logic [31:0] tb_result_o,      // Test result (0=fail, 1=pass)
-  output logic [31:0] tb_signature_o,   // Test completion signature
-  output logic [31:0] tb_errcode_o,     // Error code
-  output logic [31:0] tb_subtest_o,     // Current subtest number
-  output logic [31:0] tb_cmd_o,         // Command from firmware
-  output logic [31:0] tb_cmd_arg_o,     // Command argument
+  output logic [31:0] tb_result_o,           // Test result (0=fail, 1=pass)
+  output logic [31:0] tb_signature_o,        // Test completion signature
+  output logic [31:0] tb_errcode_o,          // Error code
+  output logic [31:0] tb_subtest_o,          // Current subtest number
+  output logic [31:0] tb_cmd_o,              // Command from firmware
+  output logic [31:0] tb_cmd_arg_o,          // Command argument
   // Testbench writes these, firmware reads
-  input  logic [31:0] tb_cmd_next_i,    // Testbench can write to clear command
-  input  logic [31:0] tb_cmd_status_i,  // Command status from testbench
-  input  logic [31:0] tb_cmd_result_i,  // Command result from testbench
+  input  logic [31:0] tb_cmd_next_i,         // Testbench can write to clear command
+  input  logic [31:0] tb_cmd_status_i,       // Command status from testbench
+  input  logic [31:0] tb_cmd_result_i,       // Command result from testbench
 
   // SEP OTP Data Interface
-  input km_otp_data_t otp_data_i  // Differentially encoded OTP data
+  input  km_otp_data_t otp_data_i            // Differentially encoded OTP data
 );
 
   `include "ocah_assert.svh"
@@ -158,7 +158,7 @@ module km_csr
   logic [2:0] reg_awprot;
   logic reg_wready, reg_wvalid;
   logic [31:0] reg_wdata;
-  logic [ 3:0] reg_wstrb;
+  logic [3:0] reg_wstrb;
   logic reg_bready, reg_bvalid;
   logic [1:0] reg_bresp;
   logic reg_arready, reg_arvalid;
@@ -166,33 +166,33 @@ module km_csr
   logic [2:0] reg_arprot;
   logic reg_rready, reg_rvalid;
   logic [31:0] reg_rdata;
-  logic [ 1:0] reg_rresp;
+  logic [1:0] reg_rresp;
 
   // Write address channel
   assign reg_awvalid = axil_req_i.aw_valid;
-  assign reg_awaddr = axil_req_i.aw.addr[km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH-1:0];
-  assign reg_awprot = axil_req_i.aw.prot;
+  assign reg_awaddr  = axil_req_i.aw.addr[km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH-1:0];
+  assign reg_awprot  = axil_req_i.aw.prot;
   assign axil_resp_o.aw_ready = reg_awready;
 
   // Write data channel
   assign reg_wvalid = axil_req_i.w_valid;
-  assign reg_wdata = axil_req_i.w.data;
-  assign reg_wstrb = axil_req_i.w.strb;
+  assign reg_wdata  = axil_req_i.w.data;
+  assign reg_wstrb  = axil_req_i.w.strb;
   assign axil_resp_o.w_ready = reg_wready;
 
   // Write response channel
-  assign axil_resp_o.b.resp = reg_bresp;
-  assign axil_resp_o.b_valid = reg_bvalid;
+  assign axil_resp_o.b.resp   = reg_bresp;
+  assign axil_resp_o.b_valid  = reg_bvalid;
   assign reg_bready = axil_req_i.b_ready;
 
   // Read address channel
   assign reg_arvalid = axil_req_i.ar_valid;
-  assign reg_araddr = axil_req_i.ar.addr[km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH-1:0];
-  assign reg_arprot = axil_req_i.ar.prot;
+  assign reg_araddr  = axil_req_i.ar.addr[km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH-1:0];
+  assign reg_arprot  = axil_req_i.ar.prot;
   assign axil_resp_o.ar_ready = reg_arready;
 
   // Read data channel
-  assign axil_resp_o.r.data = reg_rdata;
+  assign axil_resp_o.r.data  = reg_rdata;
   assign axil_resp_o.r.resp = reg_rresp;
   assign axil_resp_o.r_valid = reg_rvalid;
   assign reg_rready = axil_req_i.r_ready;
@@ -211,13 +211,13 @@ module km_csr
   // The generated module handles stickybit behavior: hwset sets the bit,
   // software writes 1 to clear.
 
-  assign hwif_in.IRQ_STATUS.rom_parity_err.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.sram_parity_err.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.rom_write_err.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.sram_write_lock_err.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.axi_slverr.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.axi_decerr.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.drbg_err.next = 1'b0;  // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.rom_parity_err.next      = 1'b0;      // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.sram_parity_err.next     = 1'b0;      // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.rom_write_err.next       = 1'b0;      // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.sram_write_lock_err.next = 1'b0;      // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.axi_slverr.next          = 1'b0;      // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.axi_decerr.next          = 1'b0;      // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.drbg_err.next            = 1'b0;      // Tie off (using hwset instead)
 
   // Sticky IRQ bits can be set by either:
   // 1. Hardware error pulse (normal operation)
@@ -231,24 +231,28 @@ module km_csr
                                                       hwif_out.IRQ_SET.rom_write_err_set.value;
   assign hwif_in.IRQ_STATUS.sram_write_lock_err.hwset = (|sram_write_lock_violation_region_i) |
                                                       hwif_out.IRQ_SET.sram_write_lock_err_set.value;
-  assign hwif_in.IRQ_STATUS.axi_slverr.hwset = axi_slverr_i | hwif_out.IRQ_SET.axi_slverr_set.value;
-  assign hwif_in.IRQ_STATUS.axi_decerr.hwset = axi_decerr_i | hwif_out.IRQ_SET.axi_decerr_set.value;
-  assign hwif_in.IRQ_STATUS.drbg_err.hwset = drbg_err_i | hwif_out.IRQ_SET.drbg_err_set.value;
-  assign hwif_in.IRQ_STATUS.wipe_state.next = 1'b0;  // Tie off (using hwset instead)
-  assign hwif_in.IRQ_STATUS.wipe_state.hwset = wipe_state_i | hwif_out.IRQ_SET.wipe_state_set.value;
+  assign hwif_in.IRQ_STATUS.axi_slverr.hwset      = axi_slverr_i |
+                                                      hwif_out.IRQ_SET.axi_slverr_set.value;
+  assign hwif_in.IRQ_STATUS.axi_decerr.hwset     = axi_decerr_i |
+                                                      hwif_out.IRQ_SET.axi_decerr_set.value;
+  assign hwif_in.IRQ_STATUS.drbg_err.hwset       = drbg_err_i |
+                                                      hwif_out.IRQ_SET.drbg_err_set.value;
+  assign hwif_in.IRQ_STATUS.wipe_state.next      = 1'b0;  // Tie off (using hwset instead)
+  assign hwif_in.IRQ_STATUS.wipe_state.hwset     = wipe_state_i |
+                                                      hwif_out.IRQ_SET.wipe_state_set.value;
 
   // OTP change and sigint IRQs are driven from otp_change_any / otp_sigint_any
   // computed in the OTP section below.
-  assign hwif_in.IRQ_STATUS.otp_change.next = 1'b0;
-  assign hwif_in.IRQ_STATUS.otp_sigint.next = 1'b0;
+  assign hwif_in.IRQ_STATUS.otp_change.next  = 1'b0;
+  assign hwif_in.IRQ_STATUS.otp_sigint.next  = 1'b0;
 
   // Execute-permission whitelist violation: set by pulse from CPU wrapper or by IRQ_SET (test)
-  assign hwif_in.IRQ_STATUS.exec_violation.next = 1'b0;
+  assign hwif_in.IRQ_STATUS.exec_violation.next  = 1'b0;
   assign hwif_in.IRQ_STATUS.exec_violation.hwset = exec_violation_i |
                                                      hwif_out.IRQ_SET.exec_violation_set.value;
 
   // ROM lockout violation: set by pulse from CPU wrapper or by IRQ_SET (test)
-  assign hwif_in.IRQ_STATUS.rom_access_violation.next = 1'b0;
+  assign hwif_in.IRQ_STATUS.rom_access_violation.next  = 1'b0;
   assign hwif_in.IRQ_STATUS.rom_access_violation.hwset =
         rom_access_violation_i | hwif_out.IRQ_SET.rom_access_violation_set.value;
 
@@ -260,30 +264,30 @@ module km_csr
   logic [NUM_IRQ_SOURCES-1:0] irq_enable;
   logic [NUM_IRQ_SOURCES-1:0] irq_masked;
 
-  assign irq_status[IRQ_AGG_ROM_PARITY_ERR_BIT] = hwif_out.IRQ_STATUS.rom_parity_err.value;
-  assign irq_status[IRQ_AGG_SRAM_PARITY_ERR_BIT] = hwif_out.IRQ_STATUS.sram_parity_err.value;
-  assign irq_status[IRQ_AGG_ROM_WRITE_ERR_BIT] = hwif_out.IRQ_STATUS.rom_write_err.value;
+  assign irq_status[IRQ_AGG_ROM_PARITY_ERR_BIT]      = hwif_out.IRQ_STATUS.rom_parity_err.value;
+  assign irq_status[IRQ_AGG_SRAM_PARITY_ERR_BIT]     = hwif_out.IRQ_STATUS.sram_parity_err.value;
+  assign irq_status[IRQ_AGG_ROM_WRITE_ERR_BIT]        = hwif_out.IRQ_STATUS.rom_write_err.value;
   assign irq_status[IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT] = hwif_out.IRQ_STATUS.sram_write_lock_err.value;
-  assign irq_status[IRQ_AGG_AXI_SLVERR_BIT] = hwif_out.IRQ_STATUS.axi_slverr.value;
-  assign irq_status[IRQ_AGG_AXI_DECERR_BIT] = hwif_out.IRQ_STATUS.axi_decerr.value;
-  assign irq_status[IRQ_AGG_DRBG_ERR_BIT] = hwif_out.IRQ_STATUS.drbg_err.value;
-  assign irq_status[IRQ_AGG_WIPE_STATE_BIT] = hwif_out.IRQ_STATUS.wipe_state.value;
-  assign irq_status[IRQ_AGG_OTP_CHANGE_BIT] = hwif_out.IRQ_STATUS.otp_change.value;
-  assign irq_status[IRQ_AGG_OTP_SIGINT_BIT] = hwif_out.IRQ_STATUS.otp_sigint.value;
-  assign irq_status[IRQ_AGG_EXEC_VIOLATION_BIT] = hwif_out.IRQ_STATUS.exec_violation.value;
+  assign irq_status[IRQ_AGG_AXI_SLVERR_BIT]          = hwif_out.IRQ_STATUS.axi_slverr.value;
+  assign irq_status[IRQ_AGG_AXI_DECERR_BIT]          = hwif_out.IRQ_STATUS.axi_decerr.value;
+  assign irq_status[IRQ_AGG_DRBG_ERR_BIT]            = hwif_out.IRQ_STATUS.drbg_err.value;
+  assign irq_status[IRQ_AGG_WIPE_STATE_BIT]           = hwif_out.IRQ_STATUS.wipe_state.value;
+  assign irq_status[IRQ_AGG_OTP_CHANGE_BIT]           = hwif_out.IRQ_STATUS.otp_change.value;
+  assign irq_status[IRQ_AGG_OTP_SIGINT_BIT]           = hwif_out.IRQ_STATUS.otp_sigint.value;
+  assign irq_status[IRQ_AGG_EXEC_VIOLATION_BIT]       = hwif_out.IRQ_STATUS.exec_violation.value;
   assign irq_status[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT] = hwif_out.IRQ_STATUS.rom_access_violation.value;
 
-  assign irq_enable[IRQ_AGG_ROM_PARITY_ERR_BIT] = hwif_out.IRQ_ENABLE.rom_parity_en.value;
-  assign irq_enable[IRQ_AGG_SRAM_PARITY_ERR_BIT] = hwif_out.IRQ_ENABLE.sram_parity_en.value;
-  assign irq_enable[IRQ_AGG_ROM_WRITE_ERR_BIT] = hwif_out.IRQ_ENABLE.rom_write_en.value;
+  assign irq_enable[IRQ_AGG_ROM_PARITY_ERR_BIT]      = hwif_out.IRQ_ENABLE.rom_parity_en.value;
+  assign irq_enable[IRQ_AGG_SRAM_PARITY_ERR_BIT]     = hwif_out.IRQ_ENABLE.sram_parity_en.value;
+  assign irq_enable[IRQ_AGG_ROM_WRITE_ERR_BIT]        = hwif_out.IRQ_ENABLE.rom_write_en.value;
   assign irq_enable[IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT] = hwif_out.IRQ_ENABLE.sram_write_lock_en.value;
-  assign irq_enable[IRQ_AGG_AXI_SLVERR_BIT] = hwif_out.IRQ_ENABLE.axi_slverr_en.value;
-  assign irq_enable[IRQ_AGG_AXI_DECERR_BIT] = hwif_out.IRQ_ENABLE.axi_decerr_en.value;
-  assign irq_enable[IRQ_AGG_DRBG_ERR_BIT] = hwif_out.IRQ_ENABLE.drbg_err_en.value;
-  assign irq_enable[IRQ_AGG_WIPE_STATE_BIT] = hwif_out.IRQ_ENABLE.wipe_state_en.value;
-  assign irq_enable[IRQ_AGG_OTP_CHANGE_BIT] = hwif_out.IRQ_ENABLE.otp_change_en.value;
-  assign irq_enable[IRQ_AGG_OTP_SIGINT_BIT] = hwif_out.IRQ_ENABLE.otp_sigint_en.value;
-  assign irq_enable[IRQ_AGG_EXEC_VIOLATION_BIT] = hwif_out.IRQ_ENABLE.exec_violation_en.value;
+  assign irq_enable[IRQ_AGG_AXI_SLVERR_BIT]          = hwif_out.IRQ_ENABLE.axi_slverr_en.value;
+  assign irq_enable[IRQ_AGG_AXI_DECERR_BIT]          = hwif_out.IRQ_ENABLE.axi_decerr_en.value;
+  assign irq_enable[IRQ_AGG_DRBG_ERR_BIT]            = hwif_out.IRQ_ENABLE.drbg_err_en.value;
+  assign irq_enable[IRQ_AGG_WIPE_STATE_BIT]           = hwif_out.IRQ_ENABLE.wipe_state_en.value;
+  assign irq_enable[IRQ_AGG_OTP_CHANGE_BIT]           = hwif_out.IRQ_ENABLE.otp_change_en.value;
+  assign irq_enable[IRQ_AGG_OTP_SIGINT_BIT]           = hwif_out.IRQ_ENABLE.otp_sigint_en.value;
+  assign irq_enable[IRQ_AGG_EXEC_VIOLATION_BIT]       = hwif_out.IRQ_ENABLE.exec_violation_en.value;
   assign irq_enable[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT] = hwif_out.IRQ_ENABLE.rom_access_violation_en.value;
 
   assign irq_masked = irq_status & irq_enable;
@@ -294,7 +298,7 @@ module km_csr
   //=========================================================================
 
   assign hwif_in.IRQ_ENTRY_ADDR.addr.swwel = hwif_out.IRQ_ENTRY_LOCK.lock.value;
-  assign irq_entry_addr_o = hwif_out.IRQ_ENTRY_ADDR.addr.value;
+  assign irq_entry_addr_o                  = hwif_out.IRQ_ENTRY_ADDR.addr.value;
 
   //=========================================================================
   // Scrambler Lock Logic
@@ -369,7 +373,7 @@ module km_csr
   // SRAM Write-Lock Violation Status
   //=========================================================================
   // Violation one-hot from SRAM interface: OR into sticky status register.
-  assign hwif_in.SRAM_WRITE_LOCK_VIOLATION.violation_bits.next = sram_write_lock_violation_region_i;
+  assign hwif_in.SRAM_WRITE_LOCK_VIOLATION.violation_bits.next  = sram_write_lock_violation_region_i;
   assign hwif_in.SRAM_WRITE_LOCK_VIOLATION.violation_bits.hwset  = |sram_write_lock_violation_region_i;
 
   //=========================================================================
@@ -418,8 +422,8 @@ module km_csr
   // identity captures are additionally cleared by warm reset (which also
   // carries the soft reset) and reload from otp_data_i on the first cycle
   // after release.
-  logic       otp_prev_valid;
-  logic [7:0] lc_enc_r;
+  logic         otp_prev_valid;
+  logic [7:0]   lc_enc_r;
   logic [1:0] dem1_enc_r, dem2_enc_r;
   logic [511:0] chiplet_enc_r, sip_enc_r, sys_enc_r;
   logic [511:0] class_key_enc_r;
@@ -467,11 +471,11 @@ module km_csr
   // Decoders for 256-bit fields (Width=256): chiplet_uid, sip_uid, sys_uid,
   // class_key, sep_chiplet_id, sep_sip_id, sep_sys_id.
 
-  logic [3:0] lc_decoded;
-  logic       lc_sigint;
+  logic [3:0]   lc_decoded;
+  logic         lc_sigint;
 
   prim_diff_decode_multi #(
-    .Width  (4),
+    .Width(4),
     .AsyncOn(1'b0)
   ) u_lc_dec (
     .clk_i,
@@ -483,7 +487,7 @@ module km_csr
 
   logic dem1_decoded, dem1_sigint;
   prim_diff_decode_multi #(
-    .Width  (1),
+    .Width(1),
     .AsyncOn(1'b0)
   ) u_dem1_dec (
     .clk_i,
@@ -495,7 +499,7 @@ module km_csr
 
   logic dem2_decoded, dem2_sigint;
   prim_diff_decode_multi #(
-    .Width  (1),
+    .Width(1),
     .AsyncOn(1'b0)
   ) u_dem2_dec (
     .clk_i,
@@ -508,7 +512,7 @@ module km_csr
   logic [255:0] chiplet_decoded;
   logic         chiplet_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_chiplet_dec (
     .clk_i,
@@ -521,7 +525,7 @@ module km_csr
   logic [255:0] sip_decoded;
   logic         sip_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_sip_dec (
     .clk_i,
@@ -534,7 +538,7 @@ module km_csr
   logic [255:0] sys_decoded;
   logic         sys_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_sys_dec (
     .clk_i,
@@ -547,7 +551,7 @@ module km_csr
   logic [255:0] class_key_decoded;
   logic         class_key_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_class_key_dec (
     .clk_i,
@@ -560,7 +564,7 @@ module km_csr
   logic [255:0] chip_id_decoded;
   logic         chip_id_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_chip_id_dec (
     .clk_i,
@@ -573,7 +577,7 @@ module km_csr
   logic [255:0] sip_id_decoded;
   logic         sip_id_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_sip_id_dec (
     .clk_i,
@@ -586,7 +590,7 @@ module km_csr
   logic [255:0] sys_id_decoded;
   logic         sys_id_sigint;
   prim_diff_decode_multi #(
-    .Width  (256),
+    .Width(256),
     .AsyncOn(1'b0)
   ) u_sys_id_dec (
     .clk_i,
@@ -608,16 +612,23 @@ module km_csr
   logic chip_id_change_pulse, sip_id_change_pulse, sys_id_change_pulse;
   logic otp_change_any, otp_sigint_any;
 
-  assign lc_change_pulse = otp_prev_valid && (otp_data_i.life_cycle != lc_enc_r);
+  assign lc_change_pulse        = otp_prev_valid && (otp_data_i.life_cycle       != lc_enc_r);
   assign dem_change_pulse       = otp_prev_valid && ((otp_data_i.demotion_state_1 != dem1_enc_r) ||
                                                        (otp_data_i.demotion_state_2 != dem2_enc_r));
-  assign chiplet_change_pulse = otp_prev_valid && (otp_data_i.chiplet_uid != chiplet_enc_r);
-  assign sip_change_pulse = otp_prev_valid && (otp_data_i.sip_uid != sip_enc_r);
-  assign sys_change_pulse = otp_prev_valid && (otp_data_i.sys_uid != sys_enc_r);
-  assign class_key_change_pulse = otp_prev_valid && (otp_data_i.class_key != class_key_enc_r);
-  assign chip_id_change_pulse = otp_prev_valid && (otp_data_i.sep_chiplet_id != chip_id_enc_r);
-  assign sip_id_change_pulse = otp_prev_valid && (otp_data_i.sep_sip_id != sip_id_enc_r);
-  assign sys_id_change_pulse = otp_prev_valid && (otp_data_i.sep_sys_id != sys_id_enc_r);
+  assign chiplet_change_pulse   = otp_prev_valid &&
+                                    (otp_data_i.chiplet_uid != chiplet_enc_r);
+  assign sip_change_pulse       = otp_prev_valid &&
+                                    (otp_data_i.sip_uid != sip_enc_r);
+  assign sys_change_pulse       = otp_prev_valid &&
+                                    (otp_data_i.sys_uid != sys_enc_r);
+  assign class_key_change_pulse = otp_prev_valid &&
+                                    (otp_data_i.class_key != class_key_enc_r);
+  assign chip_id_change_pulse   = otp_prev_valid &&
+                                    (otp_data_i.sep_chiplet_id != chip_id_enc_r);
+  assign sip_id_change_pulse    = otp_prev_valid &&
+                                    (otp_data_i.sep_sip_id != sip_id_enc_r);
+  assign sys_id_change_pulse    = otp_prev_valid &&
+                                    (otp_data_i.sep_sys_id != sys_id_enc_r);
 
   assign otp_change_any = lc_change_pulse | dem_change_pulse | chiplet_change_pulse |
                             sip_change_pulse | sys_change_pulse | class_key_change_pulse |
@@ -627,24 +638,24 @@ module km_csr
                             chip_id_sigint | sip_id_sigint | sys_id_sigint;
 
   // ---- OTP_CHANGE_STATUS register drives ----
-  assign hwif_in.OTP_CHANGE_STATUS.life_cycle.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.life_cycle.hwset = lc_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.demotion.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.demotion.hwset = dem_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.chiplet_uid.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.chiplet_uid.hwset = chiplet_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.sip_uid.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.sip_uid.hwset = sip_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.sys_uid.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.sys_uid.hwset = sys_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.class_key.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.class_key.hwset = class_key_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.next = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.life_cycle.next    = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.life_cycle.hwset   = lc_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.demotion.next      = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.demotion.hwset     = dem_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.chiplet_uid.next   = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.chiplet_uid.hwset  = chiplet_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.sip_uid.next       = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.sip_uid.hwset      = sip_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.sys_uid.next       = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.sys_uid.hwset      = sys_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.class_key.next     = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.class_key.hwset    = class_key_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.next  = 1'b0;
   assign hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.hwset = chip_id_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.sep_sip_id.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.sep_sip_id.hwset = sip_id_change_pulse;
-  assign hwif_in.OTP_CHANGE_STATUS.sep_sys_id.next = 1'b0;
-  assign hwif_in.OTP_CHANGE_STATUS.sep_sys_id.hwset = sys_id_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.sep_sip_id.next      = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.sep_sip_id.hwset     = sip_id_change_pulse;
+  assign hwif_in.OTP_CHANGE_STATUS.sep_sys_id.next      = 1'b0;
+  assign hwif_in.OTP_CHANGE_STATUS.sep_sys_id.hwset     = sys_id_change_pulse;
 
   // ---- IRQ_STATUS OTP_CHANGE and OTP_SIGINT hwset drives ----
   // (next fields were tied off above; here we provide the hwset side)
@@ -654,9 +665,9 @@ module km_csr
                                                   hwif_out.IRQ_SET.otp_sigint_set.value;
 
   // ---- OTP_LIFE_CYCLE and OTP_DEMOTION_STATE read-through (with lock masking) ----
-  assign hwif_in.OTP_LIFE_CYCLE.value.next = otp_lock_life_cycle ? '0 : lc_enc_r;
-  assign hwif_in.OTP_DEMOTION_STATE.demote_1_value.next = otp_lock_demotion ? '0 : dem1_enc_r;
-  assign hwif_in.OTP_DEMOTION_STATE.demote_2_value.next = otp_lock_demotion ? '0 : dem2_enc_r;
+  assign hwif_in.OTP_LIFE_CYCLE.value.next              = otp_lock_life_cycle ? '0 : lc_enc_r;
+  assign hwif_in.OTP_DEMOTION_STATE.demote_1_value.next = otp_lock_demotion   ? '0 : dem1_enc_r;
+  assign hwif_in.OTP_DEMOTION_STATE.demote_2_value.next = otp_lock_demotion   ? '0 : dem2_enc_r;
 
   // ---- Dual-rail word register read-through (with lock masking) ----
   // All word assignments use the registered captures, not raw otp_data_i.
@@ -664,10 +675,10 @@ module km_csr
   // CPL word n = <field>_enc_r[256+32n+31:256+32n] (upper 256 bits = ~value)
 
   // CHIPLET_UID (otp_lock_chiplet gates all 16 words)
-  assign hwif_in.OTP_CHIPLET_UID_VAL_0.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[31:0];
-  assign hwif_in.OTP_CHIPLET_UID_VAL_1.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[63:32];
-  assign hwif_in.OTP_CHIPLET_UID_VAL_2.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[95:64];
-  assign hwif_in.OTP_CHIPLET_UID_VAL_3.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[127:96];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_0.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[ 31:  0];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_1.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[ 63: 32];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_2.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[ 95: 64];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_3.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[127: 96];
   assign hwif_in.OTP_CHIPLET_UID_VAL_4.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[159:128];
   assign hwif_in.OTP_CHIPLET_UID_VAL_5.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[191:160];
   assign hwif_in.OTP_CHIPLET_UID_VAL_6.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[223:192];
@@ -682,10 +693,10 @@ module km_csr
   assign hwif_in.OTP_CHIPLET_UID_CPL_7.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[511:480];
 
   // SIP_UID
-  assign hwif_in.OTP_SIP_UID_VAL_0.value.next = otp_lock_sip ? '0 : sip_enc_r[31:0];
-  assign hwif_in.OTP_SIP_UID_VAL_1.value.next = otp_lock_sip ? '0 : sip_enc_r[63:32];
-  assign hwif_in.OTP_SIP_UID_VAL_2.value.next = otp_lock_sip ? '0 : sip_enc_r[95:64];
-  assign hwif_in.OTP_SIP_UID_VAL_3.value.next = otp_lock_sip ? '0 : sip_enc_r[127:96];
+  assign hwif_in.OTP_SIP_UID_VAL_0.value.next = otp_lock_sip ? '0 : sip_enc_r[ 31:  0];
+  assign hwif_in.OTP_SIP_UID_VAL_1.value.next = otp_lock_sip ? '0 : sip_enc_r[ 63: 32];
+  assign hwif_in.OTP_SIP_UID_VAL_2.value.next = otp_lock_sip ? '0 : sip_enc_r[ 95: 64];
+  assign hwif_in.OTP_SIP_UID_VAL_3.value.next = otp_lock_sip ? '0 : sip_enc_r[127: 96];
   assign hwif_in.OTP_SIP_UID_VAL_4.value.next = otp_lock_sip ? '0 : sip_enc_r[159:128];
   assign hwif_in.OTP_SIP_UID_VAL_5.value.next = otp_lock_sip ? '0 : sip_enc_r[191:160];
   assign hwif_in.OTP_SIP_UID_VAL_6.value.next = otp_lock_sip ? '0 : sip_enc_r[223:192];
@@ -700,10 +711,10 @@ module km_csr
   assign hwif_in.OTP_SIP_UID_CPL_7.value.next = otp_lock_sip ? '0 : sip_enc_r[511:480];
 
   // SYS_UID
-  assign hwif_in.OTP_SYS_UID_VAL_0.value.next = otp_lock_sys ? '0 : sys_enc_r[31:0];
-  assign hwif_in.OTP_SYS_UID_VAL_1.value.next = otp_lock_sys ? '0 : sys_enc_r[63:32];
-  assign hwif_in.OTP_SYS_UID_VAL_2.value.next = otp_lock_sys ? '0 : sys_enc_r[95:64];
-  assign hwif_in.OTP_SYS_UID_VAL_3.value.next = otp_lock_sys ? '0 : sys_enc_r[127:96];
+  assign hwif_in.OTP_SYS_UID_VAL_0.value.next = otp_lock_sys ? '0 : sys_enc_r[ 31:  0];
+  assign hwif_in.OTP_SYS_UID_VAL_1.value.next = otp_lock_sys ? '0 : sys_enc_r[ 63: 32];
+  assign hwif_in.OTP_SYS_UID_VAL_2.value.next = otp_lock_sys ? '0 : sys_enc_r[ 95: 64];
+  assign hwif_in.OTP_SYS_UID_VAL_3.value.next = otp_lock_sys ? '0 : sys_enc_r[127: 96];
   assign hwif_in.OTP_SYS_UID_VAL_4.value.next = otp_lock_sys ? '0 : sys_enc_r[159:128];
   assign hwif_in.OTP_SYS_UID_VAL_5.value.next = otp_lock_sys ? '0 : sys_enc_r[191:160];
   assign hwif_in.OTP_SYS_UID_VAL_6.value.next = otp_lock_sys ? '0 : sys_enc_r[223:192];
@@ -718,10 +729,10 @@ module km_csr
   assign hwif_in.OTP_SYS_UID_CPL_7.value.next = otp_lock_sys ? '0 : sys_enc_r[511:480];
 
   // CLASS_KEY
-  assign hwif_in.OTP_CLASS_KEY_VAL_0.value.next = otp_lock_class_key ? '0 : class_key_enc_r[31:0];
-  assign hwif_in.OTP_CLASS_KEY_VAL_1.value.next = otp_lock_class_key ? '0 : class_key_enc_r[63:32];
-  assign hwif_in.OTP_CLASS_KEY_VAL_2.value.next = otp_lock_class_key ? '0 : class_key_enc_r[95:64];
-  assign hwif_in.OTP_CLASS_KEY_VAL_3.value.next = otp_lock_class_key ? '0 : class_key_enc_r[127:96];
+  assign hwif_in.OTP_CLASS_KEY_VAL_0.value.next = otp_lock_class_key ? '0 : class_key_enc_r[ 31:  0];
+  assign hwif_in.OTP_CLASS_KEY_VAL_1.value.next = otp_lock_class_key ? '0 : class_key_enc_r[ 63: 32];
+  assign hwif_in.OTP_CLASS_KEY_VAL_2.value.next = otp_lock_class_key ? '0 : class_key_enc_r[ 95: 64];
+  assign hwif_in.OTP_CLASS_KEY_VAL_3.value.next = otp_lock_class_key ? '0 : class_key_enc_r[127: 96];
   assign hwif_in.OTP_CLASS_KEY_VAL_4.value.next = otp_lock_class_key ? '0 : class_key_enc_r[159:128];
   assign hwif_in.OTP_CLASS_KEY_VAL_5.value.next = otp_lock_class_key ? '0 : class_key_enc_r[191:160];
   assign hwif_in.OTP_CLASS_KEY_VAL_6.value.next = otp_lock_class_key ? '0 : class_key_enc_r[223:192];
@@ -736,9 +747,9 @@ module km_csr
   assign hwif_in.OTP_CLASS_KEY_CPL_7.value.next = otp_lock_class_key ? '0 : class_key_enc_r[511:480];
 
   // SEP_CHIPLET_ID
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_0.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[31:0];
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_1.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[63:32];
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_2.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[95:64];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_0.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 31:  0];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_1.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 63: 32];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_2.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 95: 64];
   assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_3.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[127: 96];
   assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_4.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[159:128];
   assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_5.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[191:160];
@@ -754,10 +765,10 @@ module km_csr
   assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_7.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[511:480];
 
   // SEP_SIP_ID
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_0.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[31:0];
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_1.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[63:32];
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_2.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[95:64];
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_3.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[127:96];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_0.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 31:  0];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_1.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 63: 32];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_2.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 95: 64];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_3.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[127: 96];
   assign hwif_in.OTP_SEP_SIP_ID_VAL_4.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[159:128];
   assign hwif_in.OTP_SEP_SIP_ID_VAL_5.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[191:160];
   assign hwif_in.OTP_SEP_SIP_ID_VAL_6.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[223:192];
@@ -772,10 +783,10 @@ module km_csr
   assign hwif_in.OTP_SEP_SIP_ID_CPL_7.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[511:480];
 
   // SEP_SYS_ID
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_0.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[31:0];
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_1.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[63:32];
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_2.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[95:64];
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_3.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[127:96];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_0.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 31:  0];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_1.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 63: 32];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_2.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 95: 64];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_3.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[127: 96];
   assign hwif_in.OTP_SEP_SYS_ID_VAL_4.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[159:128];
   assign hwif_in.OTP_SEP_SYS_ID_VAL_5.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[191:160];
   assign hwif_in.OTP_SEP_SYS_ID_VAL_6.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[223:192];
@@ -893,15 +904,15 @@ module km_csr
   // testbench reads them. Testbench writes status/results that firmware reads.
 
   // Firmware writes these, testbench reads via output ports
-  assign tb_result_o = hwif_out.TB_RESULT.result.value;
+  assign tb_result_o    = hwif_out.TB_RESULT.result.value;
   assign tb_signature_o = hwif_out.TB_SIGNATURE.signature.value;
-  assign tb_errcode_o = hwif_out.TB_ERRCODE.errcode.value;
-  assign tb_subtest_o = hwif_out.TB_SUBTEST.subtest.value;
-  assign tb_cmd_o = hwif_out.TB_CMD.cmd.value;
-  assign tb_cmd_arg_o = hwif_out.TB_CMD_ARG.arg.value;
+  assign tb_errcode_o   = hwif_out.TB_ERRCODE.errcode.value;
+  assign tb_subtest_o   = hwif_out.TB_SUBTEST.subtest.value;
+  assign tb_cmd_o       = hwif_out.TB_CMD.cmd.value;
+  assign tb_cmd_arg_o   = hwif_out.TB_CMD_ARG.arg.value;
 
   // Testbench writes these via input ports, firmware reads
-  assign hwif_in.TB_CMD.cmd.next = tb_cmd_next_i;
+  assign hwif_in.TB_CMD.cmd.next          = tb_cmd_next_i;
   assign hwif_in.TB_CMD_STATUS.status.next = tb_cmd_status_i;
   assign hwif_in.TB_CMD_RESULT.result.next = tb_cmd_result_i;
 
@@ -913,29 +924,29 @@ module km_csr
   assign hwif_in.WARM_RST_N = warm_rst_ni;
 
   km_csr_reg u_km_csr_reg (
-    .clk           (clk_i),
-    .arst_n        (cold_rst_ni),
-    .s_axil_awready(reg_awready),
-    .s_axil_awvalid(reg_awvalid),
-    .s_axil_awaddr (reg_awaddr),
-    .s_axil_awprot (reg_awprot),
-    .s_axil_wready (reg_wready),
-    .s_axil_wvalid (reg_wvalid),
-    .s_axil_wdata  (reg_wdata),
-    .s_axil_wstrb  (reg_wstrb),
-    .s_axil_bready (reg_bready),
-    .s_axil_bvalid (reg_bvalid),
-    .s_axil_bresp  (reg_bresp),
-    .s_axil_arready(reg_arready),
-    .s_axil_arvalid(reg_arvalid),
-    .s_axil_araddr (reg_araddr),
-    .s_axil_arprot (reg_arprot),
-    .s_axil_rready (reg_rready),
-    .s_axil_rvalid (reg_rvalid),
-    .s_axil_rdata  (reg_rdata),
-    .s_axil_rresp  (reg_rresp),
-    .hwif_in       (hwif_in),
-    .hwif_out      (hwif_out)
+    .clk            (clk_i),
+    .arst_n         (cold_rst_ni),
+    .s_axil_awready (reg_awready),
+    .s_axil_awvalid (reg_awvalid),
+    .s_axil_awaddr  (reg_awaddr),
+    .s_axil_awprot  (reg_awprot),
+    .s_axil_wready  (reg_wready),
+    .s_axil_wvalid  (reg_wvalid),
+    .s_axil_wdata   (reg_wdata),
+    .s_axil_wstrb   (reg_wstrb),
+    .s_axil_bready  (reg_bready),
+    .s_axil_bvalid  (reg_bvalid),
+    .s_axil_bresp   (reg_bresp),
+    .s_axil_arready (reg_arready),
+    .s_axil_arvalid (reg_arvalid),
+    .s_axil_araddr  (reg_araddr),
+    .s_axil_arprot  (reg_arprot),
+    .s_axil_rready  (reg_rready),
+    .s_axil_rvalid  (reg_rvalid),
+    .s_axil_rdata   (reg_rdata),
+    .s_axil_rresp   (reg_rresp),
+    .hwif_in        (hwif_in),
+    .hwif_out       (hwif_out)
   );
 
   //=========================================================================

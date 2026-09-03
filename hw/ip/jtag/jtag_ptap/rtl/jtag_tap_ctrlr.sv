@@ -13,26 +13,26 @@ module jtag_tap_ctrlr
   parameter bit TMP_ENABLE = 1  // Enables TMP controller functionality and instructions
 ) (
   // Standard JTAG input interface
-  input jtag_tap_ctrl_t client_tap_ctrl_i,  // TAP control inputs (tms, trst_n, tck)
+  input  jtag_tap_ctrl_t          client_tap_ctrl_i,    // TAP control inputs (tms, trst_n, tck)
 
   // TMP controller inputs
-  input logic persistence_mode_i,  // TMP persistence mode (1=On, 0=Off)
+  input  logic                    persistence_mode_i,   // TMP persistence mode (1=On, 0=Off)
 
   // RUNBIST instruction input
-  input logic runbist_i,  // RUNBIST instruction decoded
+  input  logic                    runbist_i,             // RUNBIST instruction decoded
 
   // Internal JTAG interface
-  output jtag_tap_ctrl_t host_tap_ctrl_o,  // TAP control outputs (tms, trst_n, tck)
+  output jtag_tap_ctrl_t          host_tap_ctrl_o,      // TAP control outputs (tms, trst_n, tck)
 
   // TDR scan interface
-  output jtag_scan_ctrl_t host_dr_scan_ctrl_o,  // DR scan control outputs
-  output jtag_scan_ctrl_t host_ir_scan_ctrl_o,  // IR scan control outputs
+  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs
+  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs
 
   // Debug and status signals
-  output tap_state_e current_state_o,
+  output tap_state_e              current_state_o,
 
   // TDO output enable
-  output logic tdo_oen_o
+  output logic                    tdo_oen_o
 );
 
   //--------------------------------------------------------------------------
@@ -61,20 +61,20 @@ module jtag_tap_ctrlr
     .Width($bits(tap_state_e)),
     .ResetValue(TEST_LOGIC_RESET)
   ) u_current_state_flop (
-    .clk_i (client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (next_state),
-    .q_o   (current_state_q_bits)
+    .clk_i  (client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (next_state),
+    .q_o    (current_state_q_bits)
   );
 
   prim_flop #(
     .Width(3),
     .ResetValue(3'b0)
   ) u_tms_reset_counter_flop (
-    .clk_i (client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (tms_reset_counter_d),
-    .q_o   (tms_reset_counter_q)
+    .clk_i  (client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (tms_reset_counter_d),
+    .q_o    (tms_reset_counter_q)
   );
 
   // Always block 2: Next state logic (combinational)
@@ -189,8 +189,8 @@ module jtag_tap_ctrlr
 
     // Generate control signals based on current state
     case (current_state_q)
-      UPDATE_DR:     update_dr = 1'b1;
-      UPDATE_IR:     update_ir = 1'b1;
+      UPDATE_DR:     update_dr  = 1'b1;
+      UPDATE_IR:     update_ir  = 1'b1;
       RUN_TEST_IDLE: run_test_idle = 1'b1;
       default: begin
       end
@@ -213,60 +213,60 @@ module jtag_tap_ctrlr
     .Width(1),
     .ResetValue(1'b0)
   ) u_capture_dr_flop (
-    .clk_i (~client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (capture_dr_d),
-    .q_o   (capture_dr)
+    .clk_i  (~client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (capture_dr_d),
+    .q_o    (capture_dr)
   );
 
   prim_flop #(
     .Width(1),
     .ResetValue(1'b0)
   ) u_shift_dr_flop (
-    .clk_i (~client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (shift_dr_d),
-    .q_o   (shift_dr)
+    .clk_i  (~client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (shift_dr_d),
+    .q_o    (shift_dr)
   );
 
   prim_flop #(
     .Width(1),
     .ResetValue(1'b0)
   ) u_capture_ir_flop (
-    .clk_i (~client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (capture_ir_d),
-    .q_o   (capture_ir)
+    .clk_i  (~client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (capture_ir_d),
+    .q_o    (capture_ir)
   );
 
   prim_flop #(
     .Width(1),
     .ResetValue(1'b0)
   ) u_shift_ir_flop (
-    .clk_i (~client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (shift_ir_d),
-    .q_o   (shift_ir)
+    .clk_i  (~client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (shift_ir_d),
+    .q_o    (shift_ir)
   );
 
   prim_flop #(
     .Width(1),
     .ResetValue(1'b1)
   ) u_test_logic_reset_flop (
-    .clk_i (~client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (test_logic_reset_d),
-    .q_o   (test_logic_reset)
+    .clk_i  (~client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (test_logic_reset_d),
+    .q_o    (test_logic_reset)
   );
 
   prim_flop #(
     .Width(1),
     .ResetValue(1'b0)
   ) u_tdo_oen_flop (
-    .clk_i (~client_tap_ctrl_i.tck),
-    .rst_ni(client_tap_ctrl_i.trst_n),
-    .d_i   (tdo_oen_d),
-    .q_o   (tdo_oen_o)
+    .clk_i  (~client_tap_ctrl_i.tck),
+    .rst_ni (client_tap_ctrl_i.trst_n),
+    .d_i    (tdo_oen_d),
+    .q_o    (tdo_oen_o)
   );
 
   //--------------------------------------------------------------------------
@@ -281,32 +281,32 @@ module jtag_tap_ctrlr
   //--------------------------------------------------------------------------
 
   // Data register scan interface
-  assign host_dr_scan_ctrl_o.tck = client_tap_ctrl_i.tck;
-  assign host_dr_scan_ctrl_o.rst_n = !test_logic_reset;
+  assign host_dr_scan_ctrl_o.tck              = client_tap_ctrl_i.tck;
+  assign host_dr_scan_ctrl_o.rst_n            = !test_logic_reset;
   assign host_dr_scan_ctrl_o.chrst_n          = TMP_ENABLE ? !test_logic_reset || persistence_mode_i : !test_logic_reset;
   assign host_dr_scan_ctrl_o.select           = current_state_q inside {EXIT2_DR, EXIT1_DR, SHIFT_DR, PAUSE_DR, SELECT_IR_SCAN, UPDATE_DR, CAPTURE_DR, SELECT_DR_SCAN};
-  assign host_dr_scan_ctrl_o.capture_en = capture_dr;
-  assign host_dr_scan_ctrl_o.shift_en = shift_dr;
-  assign host_dr_scan_ctrl_o.update_en = update_dr;
-  assign host_dr_scan_ctrl_o.run_test_idle = run_test_idle;
+  assign host_dr_scan_ctrl_o.capture_en       = capture_dr;
+  assign host_dr_scan_ctrl_o.shift_en         = shift_dr;
+  assign host_dr_scan_ctrl_o.update_en        = update_dr;
+  assign host_dr_scan_ctrl_o.run_test_idle    = run_test_idle;
   assign host_dr_scan_ctrl_o.test_logic_reset = test_logic_reset;
-  assign host_dr_scan_ctrl_o.runbist = runbist_i;
+  assign host_dr_scan_ctrl_o.runbist          = runbist_i;
 
   // Instruction register scan interface
-  assign host_ir_scan_ctrl_o.tck = client_tap_ctrl_i.tck;
-  assign host_ir_scan_ctrl_o.rst_n = !test_logic_reset;
+  assign host_ir_scan_ctrl_o.tck              = client_tap_ctrl_i.tck;
+  assign host_ir_scan_ctrl_o.rst_n            = !test_logic_reset;
   assign host_ir_scan_ctrl_o.chrst_n          = TMP_ENABLE ? !test_logic_reset || persistence_mode_i : !test_logic_reset;
   assign host_ir_scan_ctrl_o.select           = current_state_q inside {EXIT2_IR, EXIT1_IR, SHIFT_IR, PAUSE_IR, RUN_TEST_IDLE, UPDATE_IR, CAPTURE_IR, TEST_LOGIC_RESET};
-  assign host_ir_scan_ctrl_o.capture_en = capture_ir;
-  assign host_ir_scan_ctrl_o.shift_en = shift_ir;
-  assign host_ir_scan_ctrl_o.update_en = update_ir;
-  assign host_ir_scan_ctrl_o.run_test_idle = run_test_idle;
+  assign host_ir_scan_ctrl_o.capture_en       = capture_ir;
+  assign host_ir_scan_ctrl_o.shift_en         = shift_ir;
+  assign host_ir_scan_ctrl_o.update_en        = update_ir;
+  assign host_ir_scan_ctrl_o.run_test_idle    = run_test_idle;
   assign host_ir_scan_ctrl_o.test_logic_reset = test_logic_reset;
-  assign host_ir_scan_ctrl_o.runbist = runbist_i;
+  assign host_ir_scan_ctrl_o.runbist          = runbist_i;
 
   //--------------------------------------------------------------------------
   // Debug and Status Outputs
   //--------------------------------------------------------------------------
-  assign current_state_o = current_state_q;
+  assign current_state_o       = current_state_q;
 
 endmodule : jtag_tap_ctrlr

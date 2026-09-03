@@ -42,7 +42,8 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_cmd_lib_seq;
         goto_state(OCAH_JTAG_RUN_TEST_IDLE);
       end
       2: begin
-        bit [IrWidth-1:0] safe_irs[3] = '{BYPASS_ALT_INSTR, BYPASS_INSTR, SAMPLE_PRELOAD_INSTR};
+        bit [IrWidth-1:0] safe_irs[3] =
+                    '{BYPASS_ALT_INSTR, BYPASS_INSTR, SAMPLE_PRELOAD_INSTR};
         bit [IrWidth-1:0] instr = safe_irs[$urandom_range(2)];
         `uvm_info(get_type_name(), $sformatf(
                   "IDCODE loop %0d precondition: safe_ir 0x%02h", loop_idx, instr), UVM_LOW)
@@ -65,10 +66,10 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_cmd_lib_seq;
 
   task body();
     localparam bit [31:0] ExpectedIdcode = DtpDefaultIdcode;
-    bit    [63:0] observed;
-    bit    [31:0] reads         [$];
-    bit           seen_values   [bit [31:0]];
-    string        values_s = "";
+    bit [63:0] observed;
+    bit [31:0] reads[$];
+    bit        seen_values[bit [31:0]];
+    string     values_s = "";
 
     seed_scenario_rng();
     // No scan-count cross-check: the random-TMS-walk preconditions cross
@@ -91,7 +92,8 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_cmd_lib_seq;
       read_idcode(observed);
       reads.push_back(observed[31:0]);
       seen_values[observed[31:0]] = 1'b1;
-      values_s = {values_s, $sformatf("%s0x%08h", loop_idx ? "," : "", observed[31:0])};
+      values_s = {values_s, $sformatf("%s0x%08h", loop_idx ? "," : "",
+                                            observed[31:0])};
       family_check("CHK-IDCODE-RAW", "IDCODE read", observed[31:0], ExpectedIdcode, $sformatf(
                    "loop=%0d precondition=randomized", loop_idx));
     end

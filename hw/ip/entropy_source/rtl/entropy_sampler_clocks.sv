@@ -22,14 +22,14 @@
 module entropy_sampler_clocks #(
   parameter int unsigned NRINGS = 12
 ) (
-  input  logic                   clk_i,
-  input  logic                   rst_ni,
-  input  logic                   sample_clk_i,
-  input  logic [NRINGS-1:0]      sample_clk_select_i,
-  input  logic [NRINGS-1:0]      enable_i,
-  input  logic [NRINGS-1:0]      detune_ro_i,
-  input  logic [NRINGS-1:0][4:0] sample_clk_divide_i,
-  output logic [NRINGS-1:0]      sample_clk_o
+  input       logic                   clk_i,
+  input       logic                   rst_ni,
+  input       logic                   sample_clk_i,
+  input       logic [NRINGS-1:0]      sample_clk_select_i,
+  input       logic [NRINGS-1:0]      enable_i,
+  input       logic [NRINGS-1:0]      detune_ro_i,
+  input       logic [NRINGS-1:0][4:0] sample_clk_divide_i,
+  output      logic [NRINGS-1:0]      sample_clk_o
 );
 
   /////////////////////
@@ -45,8 +45,8 @@ module entropy_sampler_clocks #(
   // Signals
   /////////////
 
-  logic                   shared_ring_osc_clk;
-  logic                   shared_detune_enable;
+  logic shared_ring_osc_clk;
+  logic shared_detune_enable;
 
   logic [NRINGS-1:0]      selected_clk;
   logic [NRINGS-1:0][5:0] sample_clk_divided;
@@ -63,12 +63,12 @@ module entropy_sampler_clocks #(
   /////////////////
 
   entropy_ring_oscillator #(
-    .TOTAL_LENGTH (SHARED_TOTAL_LENGTH),
-    .TAPPED_LENGTH(SHARED_TAPPED_LENGTH)
+    .TOTAL_LENGTH  (SHARED_TOTAL_LENGTH),
+    .TAPPED_LENGTH (SHARED_TAPPED_LENGTH)
   ) u_shared_ro (
-    .enable_i(|enable_i),
-    .detune_i(shared_detune_enable),
-    .noise_o (shared_ring_osc_clk)
+    .enable_i (|enable_i),
+    .detune_i (shared_detune_enable),
+    .noise_o  (shared_ring_osc_clk)
   );
 
   for (genvar i = 0; i < NRINGS; i++) begin : g_sampler_clk
@@ -77,9 +77,9 @@ module entropy_sampler_clocks #(
     entropy_ripple_divider #(
       .NUM_STAGES(5)
     ) u_sample_clk_divider (
-      .rst_ni(rst_ni),
-      .clk_i (selected_clk[i]),
-      .div_o (sample_clk_divided[i])
+      .rst_ni (rst_ni),
+      .clk_i  (selected_clk[i]),
+      .div_o  (sample_clk_divided[i])
     );
 
     always_comb begin

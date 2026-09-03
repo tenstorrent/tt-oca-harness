@@ -14,25 +14,25 @@ module uart_tx
   import uart_16550_pkg::*;
 #(
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic       clk_i,
+  input  logic       rst_ni,
 
-  input logic       tx_enable_i,
-  input logic       tick_baud_x16_i,
-  input logic       parity_enable_i,
-  input logic [3:0] word_length_i,
-  input logic       extra_stop_bit_i,
+  input  logic       tx_enable_i,
+  input  logic       tick_baud_x16_i,
+  input  logic       parity_enable_i,
+  input  logic [3:0] word_length_i,
+  input  logic       extra_stop_bit_i,
 
   input  logic       wr_i,
   input  logic       wr_parity_i,
   input  logic [7:0] wr_data_i,
   output logic       idle_o,
 
-  output logic tx_o
+  output logic       tx_o
 );
 
-  logic [3:0] baud_div_q;
-  logic       tick_baud_q;
+  logic  [3:0] baud_div_q;
+  logic        tick_baud_q;
 
   logic [3:0] bit_cnt_q, bit_cnt_d;
   logic [11:0] sreg_q, sreg_d;
@@ -71,8 +71,18 @@ module uart_tx
       sreg_d    = sreg_q;
       tx_d      = tx_o;
       if (wr_i) begin
-        sreg_d = get_tx_frame_from_data(wr_data_i, wr_parity_i, word_length_i, parity_enable_i);
-        bit_cnt_d = get_frame_length(TX, word_length_i, extra_stop_bit_i, parity_enable_i);
+        sreg_d = get_tx_frame_from_data(
+                             wr_data_i,
+                             wr_parity_i,
+                             word_length_i,
+                             parity_enable_i
+                         );
+        bit_cnt_d = get_frame_length(
+                                TX,
+                                word_length_i,
+                                extra_stop_bit_i,
+                                parity_enable_i
+                            );
       end else if (tick_baud_q && bit_cnt_q != 4'd0) begin
         sreg_d    = {1'h1, sreg_q[11:1]};
         tx_d      = sreg_q[0];

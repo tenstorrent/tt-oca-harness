@@ -7,7 +7,7 @@
 interface ocah_axi_cov_if #(
   parameter int unsigned ADDR_WIDTH = 64,
   parameter int unsigned DATA_WIDTH = 64,
-  parameter int unsigned ID_WIDTH   = 8
+  parameter int unsigned ID_WIDTH = 8
 ) (
   input wire logic clk_i,
   input wire logic rst_ni
@@ -58,7 +58,7 @@ interface ocah_axi_cov_if #(
   endgroup
 
   axi_write_cg write_cg = new();
-  axi_read_cg  read_cg = new();
+  axi_read_cg read_cg = new();
 
   // Functions (no timing controls) so both procedural blocks and UVM
   // subscriber write() functions can sample coverage.
@@ -93,7 +93,7 @@ endinterface
 module ocah_axi_cov #(
   parameter int unsigned ADDR_WIDTH = 64,
   parameter int unsigned DATA_WIDTH = 64,
-  parameter int unsigned ID_WIDTH   = 8
+  parameter int unsigned ID_WIDTH = 8
 ) (
   input wire logic clk_i,
   input wire logic rst_ni,
@@ -116,9 +116,9 @@ module ocah_axi_cov #(
   ocah_axi_cov_if #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
-    .ID_WIDTH  (ID_WIDTH)
+    .ID_WIDTH(ID_WIDTH)
   ) cov_if (
-    .clk_i (clk_i),
+    .clk_i(clk_i),
     .rst_ni(rst_ni)
   );
 

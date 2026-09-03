@@ -4,26 +4,26 @@
 // DMA Wrapper
 
 module idma_wrapper #(
-  parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_CTRL_STREAMS = 1,  // must be >= 1
+  parameter  int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
+  parameter  int unsigned NUM_CTRL_STREAMS = 1, // must be >= 1
 
-  parameter int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
+  parameter  int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
 
-  parameter int unsigned DMA_MST_MAX_TXNS = 16,
+  parameter  int unsigned DMA_MST_MAX_TXNS = 16,
 
   // All in-flight transactions the ctrl port admits, for the frontend clock-gate snoop.
   // Must cover what the upstream fabric can present on dma_ctrl_axi_req_i[0]
-  parameter int unsigned CTRL_OUTSTANDING_TX = 16,
+  parameter  int unsigned CTRL_OUTSTANDING_TX = 16,
 
   parameter  int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, otherwise dma ctrl read bus will stall on cmd start
-  parameter int unsigned M2B_FIFO_DEPTH = 0,
+  parameter  int unsigned M2B_FIFO_DEPTH = 0,
 
-  parameter bit EN_R_AW_COUPLING = 1,  // recommended
+  parameter  bit EN_R_AW_COUPLING = 1,  // recommended
 
-  parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,
-  parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,
+  parameter  bit BYPASS_DMA_CTRL_FLOPS = 1'b0,
+  parameter  bit BYPASS_DMA_MST_FLOPS  = 1'b0,
 
-  parameter int unsigned CG_HYSTERESIS_W = 6,
+  parameter  int unsigned CG_HYSTERESIS_W = 6,
 
   // AXI ctrl interface types
   parameter type dma_ctrl_req_t  = logic,
@@ -41,27 +41,27 @@ module idma_wrapper #(
   parameter int unsigned MST_ID_WIDTH         = 3,
   parameter int unsigned BACKEND_INT_ID_WIDTH = 2
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   input  logic test_en_i,
   output logic dma_busy_o,
   output logic dma_intp_o,
 
-  input logic cg_enable_i,
-  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
+  input  logic cg_enable_i,
+  input  logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
 
   // AXI interface to DMA control registers
   input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i,
   output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o,
 
   // DMA Master
-  output dma_mst_req_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o,
-  input  dma_mst_resp_t [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i,
+  output dma_mst_req_t   [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o,
+  input  dma_mst_resp_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i,
 
   // Clock gater activity indicators
-  output logic frontend_clk_active_o,
-  output logic frontend_bus_active_o
+  output logic                                     frontend_clk_active_o,
+  output logic                                     frontend_bus_active_o
 );
 
   `include "idma/typedef.svh"
@@ -122,8 +122,8 @@ module idma_wrapper #(
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
   ) frontend_cg (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i    (clk_i),
+    .rst_ni    (rst_ni),
 
     .snoop_aw_valid_i(dma_ctrl_axi_req_i[0].aw_valid),
     .snoop_aw_ready_i(dma_ctrl_axi_resp_o[0].aw_ready),
@@ -134,15 +134,15 @@ module idma_wrapper #(
     .snoop_ar_ready_i(dma_ctrl_axi_resp_o[0].ar_ready),
     .snoop_r_valid_i (dma_ctrl_axi_resp_o[0].r_valid),
     .snoop_r_ready_i (dma_ctrl_axi_req_i[0].r_ready),
-    .snoop_r_last_i  (dma_ctrl_axi_resp_o[0].r.last),    // every beat is "last" in AXI-L
+    .snoop_r_last_i  (dma_ctrl_axi_resp_o[0].r.last), // every beat is "last" in AXI-L
 
-    .kick_i(~cg_enable_i | dma_busy),  // continuously kick to keep clock awake when not gating
+    .kick_i    (~cg_enable_i | dma_busy), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i(test_en_i),
-    .hysteresis_i (cg_hysteresis_i),
-    .clk_active_o (frontend_clk_active_o),
+    .test_clk_en_i  (test_en_i),
+    .hysteresis_i  (cg_hysteresis_i),
+    .clk_active_o  (frontend_clk_active_o),
     .gated_clk_o  (frontend_clock),
-    .bus_active_o (frontend_bus_active_o)
+    .bus_active_o  (frontend_bus_active_o)
   );
 
   prim_clk_gater_hysteresis #(
@@ -150,7 +150,7 @@ module idma_wrapper #(
   ) request_maneger_cg (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
-    .busy_i(dma_busy),  // when dma busy, enable the clock
+    .busy_i(dma_busy),      // when dma busy, enable the clock
     .enable_i(1'b1),
     .kick_i(~cg_enable_i),  // when cg is not enable, always kick to always keep the clock on
     .test_clk_en_i(test_en_i),
@@ -200,9 +200,9 @@ module idma_wrapper #(
     .test_en_i(test_en_i),
 
     .dma_frontend_wakeup_o(dma_frontend_wakeup),
-    .dma_frontend_busy_o  (dma_frontend_busy),
+    .dma_frontend_busy_o(dma_frontend_busy),
 
-    .dma_ctrl_axi_req_i (dma_ctrl_axi_req_i),
+    .dma_ctrl_axi_req_i(dma_ctrl_axi_req_i),
     .dma_ctrl_axi_resp_o(dma_ctrl_axi_resp_o),
 
     .req_o(f2r_req),
@@ -279,7 +279,7 @@ module idma_wrapper #(
     .resp_valid_o(r2b_resp_valid),
     .resp_ready_i(r2b_resp_ready),
 
-    .dma_mst_axi_req_o (dma_mst_axi_req_o),
+    .dma_mst_axi_req_o(dma_mst_axi_req_o),
     .dma_mst_axi_resp_i(dma_mst_axi_resp_i)
   );
 

@@ -23,7 +23,7 @@ class ocah_axi_id_match_test_seq extends ocah_axi_master_sequence;
   ocah_axi_config         axi_cfg;
   ocah_axi_slave_sequence slave_seq;
 
-  int unsigned            n_ops      = 12;
+  int unsigned n_ops = 12;
 
   function new(string name = "ocah_axi_id_match_test_seq");
     super.new(name);
@@ -62,7 +62,8 @@ class ocah_axi_id_match_test_seq extends ocah_axi_master_sequence;
       endcase
       addr = 64'($urandom_range(16383)) & ~64'h3;
       data = 64'($urandom());
-      ctx  = $sformatf("op=%0d addr=0x%0h awid=0x%0h arid=0x%0h", index, addr, awid, arid);
+      ctx  = $sformatf("op=%0d addr=0x%0h awid=0x%0h arid=0x%0h",
+                             index, addr, awid, arid);
 
       axi_cfg.arm_expected_write(addr, data, full_strb);
       write_result(addr, data, wres, awid);

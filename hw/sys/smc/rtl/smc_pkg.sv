@@ -448,7 +448,7 @@ package smc_pkg;
     logic dfd_dtb_ew_en;
     logic dfd_dtb_ns_en;
     logic [15:0] xtrig_clk_halt_mask;
-    logic [7:0] debug_marker;
+    logic [7:0]  debug_marker;
   } dfd_enable_t;
 
 
@@ -482,7 +482,7 @@ package smc_pkg;
 
   typedef struct packed {
     jtag_smc_reset_ctrl_ovrd_t ovrd;
-    jtag_smc_reset_ctrl_val_t  val;
+    jtag_smc_reset_ctrl_val_t val;
   } jtag_smc_reset_ctrl_t;
 
   function automatic logic is_pow2(input logic [31:0] value);

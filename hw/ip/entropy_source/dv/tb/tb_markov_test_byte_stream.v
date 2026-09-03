@@ -45,7 +45,7 @@ module tb_markov_test_byte_stream ();
 
   // Test control
   reg inject_failure = 0;
-  reg [1:0] failure_type = 0;  // 0=alternating, 1=blocks, 2=stuck-0, 3=stuck-1
+  reg [1:0] failure_type = 0; // 0=alternating, 1=blocks, 2=stuck-0, 3=stuck-1
 
   // Instantiate the DUT
   entropy_markov_test_byte_stream u_markov_test (
@@ -108,10 +108,10 @@ module tb_markov_test_byte_stream ();
 
     if (inject_failure) begin
       case (failure_type)
-        2'b00: entropy_i = 8'h55;  // Alternating pattern (01010101)
-        2'b01: entropy_i = 8'hF0;  // Block pattern (11110000)
-        2'b10: entropy_i = 8'h00;  // Stuck-at-0
-        2'b11: entropy_i = 8'hFF;  // Stuck-at-1
+        2'b00: entropy_i = 8'h55; // Alternating pattern (01010101)
+        2'b01: entropy_i = 8'hF0; // Block pattern (11110000)
+        2'b10: entropy_i = 8'h00; // Stuck-at-0
+        2'b11: entropy_i = 8'hFF; // Stuck-at-1
       endcase
     end else begin
       entropy_i = prng_data;
@@ -135,7 +135,7 @@ module tb_markov_test_byte_stream ();
 
     // Reset sequence
     #(CLOCK_PERIOD * 10);
-    rst_ni   = 1;
+    rst_ni = 1;
     enable_i = 1;
     #(CLOCK_PERIOD * 5);
 
@@ -155,7 +155,7 @@ module tb_markov_test_byte_stream ();
     //=== Test 2: Enable/Disable Functionality ===
     $display("\n=== Test 2: Enable/Disable Functionality ===");
     inject_failure = 1;
-    failure_type = 2'b00;  // Alternating pattern
+    failure_type = 2'b00; // Alternating pattern
 
     // Test with disabled
     enable_i = 0;
@@ -184,8 +184,8 @@ module tb_markov_test_byte_stream ();
     //=== Test 3: Alternating Pattern Detection ===
     $display("\n=== Test 3: Alternating Pattern Detection ===");
     inject_failure = 1;
-    failure_type = 2'b00;  // Pure alternating (01010101)
-    markov_prob_01_threshold_i = 8'd150;  // Set threshold for detection
+    failure_type = 2'b00; // Pure alternating (01010101)
+    markov_prob_01_threshold_i = 8'd150; // Set threshold for detection
     markov_prob_10_threshold_i = 8'd150;
     markov_prob_00_threshold_i = 8'd50;
     markov_prob_11_threshold_i = 8'd50;
@@ -204,11 +204,11 @@ module tb_markov_test_byte_stream ();
     //=== Test 4: Block Pattern Detection ===
     $display("\n=== Test 4: Block Pattern Detection ===");
     inject_failure = 1;
-    failure_type = 2'b01;  // Block pattern (11110000)
+    failure_type = 2'b01; // Block pattern (11110000)
     markov_prob_01_threshold_i = 8'd50;
     markov_prob_10_threshold_i = 8'd50;
-    markov_prob_00_threshold_i = 8'd150;  // Should detect excessive 0→0
-    markov_prob_11_threshold_i = 8'd150;  // Should detect excessive 1→1
+    markov_prob_00_threshold_i = 8'd150; // Should detect excessive 0→0
+    markov_prob_11_threshold_i = 8'd150; // Should detect excessive 1→1
 
     #(CLOCK_PERIOD * 300);
     total_tests = total_tests + 1;
@@ -223,10 +223,10 @@ module tb_markov_test_byte_stream ();
     //=== Test 5: Stuck-at-0 Detection ===
     $display("\n=== Test 5: Stuck-at-0 Detection ===");
     inject_failure = 1;
-    failure_type = 2'b10;  // Stuck-at-0
+    failure_type = 2'b10; // Stuck-at-0
     markov_prob_01_threshold_i = 8'd25;
     markov_prob_10_threshold_i = 8'd25;
-    markov_prob_00_threshold_i = 8'd200;  // Should detect excessive 0→0
+    markov_prob_00_threshold_i = 8'd200; // Should detect excessive 0→0
     markov_prob_11_threshold_i = 8'd25;
 
     #(CLOCK_PERIOD * 300);
@@ -242,11 +242,11 @@ module tb_markov_test_byte_stream ();
     //=== Test 6: Stuck-at-1 Detection ===
     $display("\n=== Test 6: Stuck-at-1 Detection ===");
     inject_failure = 1;
-    failure_type = 2'b11;  // Stuck-at-1
+    failure_type = 2'b11; // Stuck-at-1
     markov_prob_01_threshold_i = 8'd25;
     markov_prob_10_threshold_i = 8'd25;
     markov_prob_00_threshold_i = 8'd25;
-    markov_prob_11_threshold_i = 8'd200;  // Should detect excessive 1→1
+    markov_prob_11_threshold_i = 8'd200; // Should detect excessive 1→1
 
     #(CLOCK_PERIOD * 300);
     total_tests = total_tests + 1;
@@ -260,7 +260,7 @@ module tb_markov_test_byte_stream ();
 
     //=== Test 7: Recovery After Failure ===
     $display("\n=== Test 7: Recovery After Failure ===");
-    inject_failure = 0;  // Switch back to normal data
+    inject_failure = 0; // Switch back to normal data
     markov_prob_01_threshold_i = 8'd100;
     markov_prob_10_threshold_i = 8'd100;
     markov_prob_00_threshold_i = 8'd100;
@@ -278,7 +278,7 @@ module tb_markov_test_byte_stream ();
     //=== Test 8: Probability Calculation Accuracy ===
     $display("\n=== Test 8: Probability Calculation Accuracy ===");
     inject_failure = 1;
-    failure_type   = 2'b00;  // Alternating pattern
+    failure_type = 2'b00; // Alternating pattern
     #(CLOCK_PERIOD * 200);
 
     $display("Transition counts - 01:%d, 10:%d, 00:%d, 11:%d", count_01_o, count_10_o, count_00_o,
@@ -300,14 +300,14 @@ module tb_markov_test_byte_stream ();
     //=== Test 9: Reset During Operation ===
     $display("\n=== Test 9: Reset During Operation ===");
     inject_failure = 1;
-    failure_type   = 2'b00;
+    failure_type = 2'b00;
     #(CLOCK_PERIOD * 100);  // Build up some counts
 
     // Apply reset and disable processing to check clean reset
     inject_failure = 0;  // Stop injecting failures during reset check
     rst_ni = 0;
     #(CLOCK_PERIOD * 5);
-    rst_ni   = 1;
+    rst_ni = 1;
     enable_i = 0;  // Keep module disabled during reset check
     #(CLOCK_PERIOD * 5);
 
@@ -325,7 +325,7 @@ module tb_markov_test_byte_stream ();
     //=== Test 10: Threshold Boundary Tests ===
     $display("\n=== Test 10: Threshold Boundary Tests ===");
     inject_failure = 0;
-    markov_prob_01_threshold_i = 8'd200;  // High threshold
+    markov_prob_01_threshold_i = 8'd200; // High threshold
     markov_prob_10_threshold_i = 8'd200;
     markov_prob_00_threshold_i = 8'd200;
     markov_prob_11_threshold_i = 8'd200;

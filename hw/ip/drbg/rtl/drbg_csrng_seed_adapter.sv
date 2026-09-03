@@ -25,22 +25,22 @@ module drbg_csrng_seed_adapter
 #(
   parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH
 ) (
-  input wire logic clk_i,
-  input wire logic rst_ni,
+  input  wire logic                               clk_i,
+  input  wire logic                               rst_ni,
 
-  input  wire logic        csrng_word_valid_i,
-  input  wire logic [31:0] csrng_word_data_i,
-  output logic             csrng_word_ready_o,
+  input  wire logic                               csrng_word_valid_i,
+  input  wire logic [31:0]                        csrng_word_data_i,
+  output logic                                    csrng_word_ready_o,
 
-  input wire entropy_src_pkg::entropy_src_hw_if_req_t entropy_src_hw_if_req_i,
+  input  wire entropy_src_pkg::entropy_src_hw_if_req_t entropy_src_hw_if_req_i,
   output entropy_src_pkg::entropy_src_hw_if_rsp_t entropy_src_hw_if_rsp_o,
 
-  output logic                                   seed_queue_valid_o,
-  output logic [                          383:0] seed_queue_bits_o,
-  output logic                                   seed_queue_fips_o,
-  output logic                                   seed_push_o,
-  output logic [                            4:0] packer_word_count_o,
-  output logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0] seed_queue_depth_o
+  output logic                                    seed_queue_valid_o,
+  output logic [383:0]                            seed_queue_bits_o,
+  output logic                                    seed_queue_fips_o,
+  output logic                                    seed_push_o,
+  output logic [4:0]                              packer_word_count_o,
+  output logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0]  seed_queue_depth_o
 );
 
   `include "prim_assert.sv"
@@ -50,29 +50,29 @@ module drbg_csrng_seed_adapter
   localparam int unsigned FIPS_WIDTH = entropy_src_pkg::FIPS_BUS_WIDTH;
   localparam int unsigned SEED_FIFO_WIDTH = SEED_WIDTH + FIPS_WIDTH;
 
-  logic                       packer_rvalid;
-  logic [     SEED_WIDTH-1:0] packer_rdata;
+  logic                  packer_rvalid;
+  logic [SEED_WIDTH-1:0] packer_rdata;
 
-  logic                       seed_fifo_wready;
+  logic                  seed_fifo_wready;
   logic [SEED_FIFO_WIDTH-1:0] seed_fifo_rdata;
-  logic                       seed_fifo_full;
-  logic                       seed_fifo_err;
+  logic                  seed_fifo_full;
+  logic                  seed_fifo_err;
 
   prim_packer_fifo #(
     .InW        (WORD_WIDTH),
     .OutW       (SEED_WIDTH),
     .ClearOnRead(1'b1)
   ) u_seed_packer (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-    .clr_i   (1'b0),
-    .wvalid_i(csrng_word_valid_i),
-    .wdata_i (csrng_word_data_i),
-    .wready_o(csrng_word_ready_o),
-    .rvalid_o(packer_rvalid),
-    .rdata_o (packer_rdata),
-    .rready_i(seed_fifo_wready),
-    .depth_o (packer_word_count_o)
+    .clk_i    (clk_i),
+    .rst_ni   (rst_ni),
+    .clr_i    (1'b0),
+    .wvalid_i (csrng_word_valid_i),
+    .wdata_i  (csrng_word_data_i),
+    .wready_o (csrng_word_ready_o),
+    .rvalid_o (packer_rvalid),
+    .rdata_o  (packer_rdata),
+    .rready_i (seed_fifo_wready),
+    .depth_o  (packer_word_count_o)
   );
 
   assign seed_push_o = packer_rvalid && seed_fifo_wready;
@@ -83,18 +83,18 @@ module drbg_csrng_seed_adapter
     .Depth            (SEED_FIFO_DEPTH),
     .OutputZeroIfEmpty(1'b1)
   ) u_seed_fifo (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-    .clr_i   (1'b0),
-    .wvalid_i(packer_rvalid),
-    .wready_o(seed_fifo_wready),
-    .wdata_i ({DRBG_CSRNG_SEED_FIPS_PROVISIONAL, packer_rdata}),
-    .rvalid_o(seed_queue_valid_o),
-    .rready_i(entropy_src_hw_if_req_i.es_req && seed_queue_valid_o),
-    .rdata_o (seed_fifo_rdata),
-    .full_o  (seed_fifo_full),
-    .depth_o (seed_queue_depth_o),
-    .err_o   (seed_fifo_err)
+    .clk_i    (clk_i),
+    .rst_ni   (rst_ni),
+    .clr_i    (1'b0),
+    .wvalid_i (packer_rvalid),
+    .wready_o (seed_fifo_wready),
+    .wdata_i  ({DRBG_CSRNG_SEED_FIPS_PROVISIONAL, packer_rdata}),
+    .rvalid_o (seed_queue_valid_o),
+    .rready_i (entropy_src_hw_if_req_i.es_req && seed_queue_valid_o),
+    .rdata_o  (seed_fifo_rdata),
+    .full_o   (seed_fifo_full),
+    .depth_o  (seed_queue_depth_o),
+    .err_o    (seed_fifo_err)
   );
 
   assign seed_queue_fips_o = seed_fifo_rdata[SEED_FIFO_WIDTH-1];

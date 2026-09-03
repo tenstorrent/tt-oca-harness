@@ -25,25 +25,25 @@
 
 module tb_decorrelator_disable;
   // Clock and reset
-  reg            clk;
-  reg            rstn;
+  reg clk;
+  reg rstn;
 
   // DUT signals
-  reg            enable;
-  reg            noise;
-  reg            bypass;
-  reg     [ 7:0] byte_mask;
-  reg     [23:0] sample_clk_div;
-  wire    [ 7:0] entropy_byte;
-  wire           entropy_valid;
+  reg        enable;
+  reg        noise;
+  reg        bypass;
+  reg [7:0]  byte_mask;
+  reg [23:0] sample_clk_div;
+  wire [7:0] entropy_byte;
+  wire       entropy_valid;
 
   // Test monitoring
-  integer        test_errors;
-  integer        cycle_count;
-  integer        valid_pulse_count;
-  reg            captured_valid_high;
-  integer        stuck_count;
-  integer        i;
+  integer test_errors;
+  integer cycle_count;
+  integer valid_pulse_count;
+  reg     captured_valid_high;
+  integer stuck_count;
+  integer i;
 
   // Instantiate DUT
   entropy_decorrelator #(

@@ -20,25 +20,25 @@ module tb_axil_mailbox #(
   input logic test_en_i,
 
   // AXI4-Lite Interface - always flattened at testbench top level
-  input  logic                            awvalid,
-  output logic                            awready,
-  input  logic           [ADDR_WIDTH-1:0] awaddr,
-  input  axi_pkg::prot_t                  awprot,
-  input  logic                            wvalid,
-  output logic                            wready,
-  input  logic           [DATA_WIDTH-1:0] wdata,
-  input  logic           [STRB_WIDTH-1:0] wstrb,
-  output logic                            bvalid,
-  input  logic                            bready,
-  output axi_pkg::resp_t                  bresp,
-  input  logic                            arvalid,
-  output logic                            arready,
-  input  logic           [ADDR_WIDTH-1:0] araddr,
-  input  axi_pkg::prot_t                  arprot,
-  output logic                            rvalid,
-  input  logic                            rready,
-  output logic           [DATA_WIDTH-1:0] rdata,
-  output axi_pkg::resp_t                  rresp,
+  input  logic           awvalid,
+  output logic           awready,
+  input  logic [ADDR_WIDTH-1:0] awaddr,
+  input  axi_pkg::prot_t awprot,
+  input  logic           wvalid,
+  output logic           wready,
+  input  logic [DATA_WIDTH-1:0] wdata,
+  input  logic [STRB_WIDTH-1:0] wstrb,
+  output logic           bvalid,
+  input  logic           bready,
+  output axi_pkg::resp_t bresp,
+  input  logic           arvalid,
+  output logic           arready,
+  input  logic [ADDR_WIDTH-1:0] araddr,
+  input  axi_pkg::prot_t arprot,
+  output logic           rvalid,
+  input  logic           rready,
+  output logic [DATA_WIDTH-1:0] rdata,
+  output axi_pkg::resp_t rresp,
 
   output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
   output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
@@ -64,24 +64,24 @@ module tb_axil_mailbox #(
   axil_resp_t mailbox_axi_resp;
 
   assign mailbox_axi_req.aw_valid = awvalid;
-  assign mailbox_axi_req.aw.addr = awaddr;
-  assign mailbox_axi_req.aw.prot = awprot;
-  assign mailbox_axi_req.w_valid = wvalid;
-  assign mailbox_axi_req.w.data = wdata;
-  assign mailbox_axi_req.w.strb = wstrb;
-  assign mailbox_axi_req.b_ready = bready;
+  assign mailbox_axi_req.aw.addr  = awaddr;
+  assign mailbox_axi_req.aw.prot  = awprot;
+  assign mailbox_axi_req.w_valid  = wvalid;
+  assign mailbox_axi_req.w.data   = wdata;
+  assign mailbox_axi_req.w.strb   = wstrb;
+  assign mailbox_axi_req.b_ready  = bready;
   assign mailbox_axi_req.ar_valid = arvalid;
-  assign mailbox_axi_req.ar.addr = araddr;
-  assign mailbox_axi_req.ar.prot = arprot;
-  assign mailbox_axi_req.r_ready = rready;
+  assign mailbox_axi_req.ar.addr  = araddr;
+  assign mailbox_axi_req.ar.prot  = arprot;
+  assign mailbox_axi_req.r_ready  = rready;
   assign awready = mailbox_axi_resp.aw_ready;
-  assign wready = mailbox_axi_resp.w_ready;
-  assign bvalid = mailbox_axi_resp.b_valid;
-  assign bresp = mailbox_axi_resp.b.resp;
+  assign wready  = mailbox_axi_resp.w_ready;
+  assign bvalid  = mailbox_axi_resp.b_valid;
+  assign bresp   = mailbox_axi_resp.b.resp;
   assign arready = mailbox_axi_resp.ar_ready;
-  assign rvalid = mailbox_axi_resp.r_valid;
-  assign rdata = mailbox_axi_resp.r.data;
-  assign rresp = mailbox_axi_resp.r.resp;
+  assign rvalid  = mailbox_axi_resp.r_valid;
+  assign rdata   = mailbox_axi_resp.r.data;
+  assign rresp   = mailbox_axi_resp.r.resp;
 
   axil_mailbox #(
     .NUM_MAILBOXES(NUM_MAILBOXES),
@@ -103,10 +103,10 @@ module tb_axil_mailbox #(
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),
 
-    .mailbox_axi_req_i (mailbox_axi_req),
+    .mailbox_axi_req_i(mailbox_axi_req),
     .mailbox_axi_resp_o(mailbox_axi_resp),
 
-    .inbound_interrupt_o (inbound_interrupt_o),
+    .inbound_interrupt_o(inbound_interrupt_o),
     .outbound_interrupt_o(outbound_interrupt_o)
   );
 

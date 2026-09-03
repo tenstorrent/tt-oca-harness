@@ -18,7 +18,7 @@ module entropy_ring_oscillator #(
 
   logic unused;
 
-  assign unused  = enable_i ^ detune_i ^ ^TOTAL_LENGTH ^ ^TAPPED_LENGTH;
+  assign unused = enable_i ^ detune_i ^ ^TOTAL_LENGTH ^ ^TAPPED_LENGTH;
   assign noise_o = 1'b0;
 
 endmodule

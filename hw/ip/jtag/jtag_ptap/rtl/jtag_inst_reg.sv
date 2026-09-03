@@ -12,13 +12,13 @@ module jtag_inst_reg
 (
   /* verilator lint_off UNUSEDSIGNAL */
   // JTAG IR scan control interface
-  input  jtag_scan_ctrl_t scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic            scan_in_i,
-  output logic            scan_out_o,
+  input  logic             scan_in_i,
+  output logic             scan_out_o,
 
   // Decoded instruction output
-  output jtag_instruction_decoded_e inst_decoded_o  // Current decoded instruction
+  output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction
 );
   // Tie off unused fields to satisfy lint
   logic unused_scan_ctrl;
@@ -52,10 +52,10 @@ module jtag_inst_reg
     .Width($bits(jtag_instruction_decoded_e)),
     .ResetValue(DEFAULT_INSTRUCTION)
   ) u_instruction_reg_flop (
-    .clk_i(~scan_ctrl_i.tck),
-    .rst_ni(scan_ctrl_i.rst_n),
+    .clk_i  (~scan_ctrl_i.tck),
+    .rst_ni (scan_ctrl_i.rst_n),
     .d_i    (scan_ctrl_i.update_en ? jtag_instruction_decoded_e'(2 ** instruction_shift_reg_q) : instruction_reg_q),
-    .q_o(instruction_reg_q_bits)
+    .q_o    (instruction_reg_q_bits)
   );
 
   // Instruction shift register - used for capture and shift operations
@@ -80,10 +80,10 @@ module jtag_inst_reg
     .Width(IR_WIDTH),
     .ResetValue(BYPASS_ALT_INSTR)
   ) u_instruction_shift_reg_flop (
-    .clk_i (scan_ctrl_i.tck),
-    .rst_ni(scan_ctrl_i.rst_n),
-    .d_i   (instruction_shift_reg_d),
-    .q_o   (instruction_shift_reg_q_bits)
+    .clk_i  (scan_ctrl_i.tck),
+    .rst_ni (scan_ctrl_i.rst_n),
+    .d_i    (instruction_shift_reg_d),
+    .q_o    (instruction_shift_reg_q_bits)
   );
 
   //--------------------------------------------------------------------------

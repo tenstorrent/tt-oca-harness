@@ -193,12 +193,12 @@ class ocah_axi_monitor extends uvm_monitor;
                     ));
       return;
     end
-    info           = m_paired_wr[id].pop_front();
-    beats          = m_paired_beats[id].pop_front();
-    item           = ocah_axi_item::type_id::create("wr_item");
-    item.protocol  = cfg.protocol;
-    item.direction = OCAH_AXI_DIR_WRITE;
-    item.address   = info.address;
+    info  = m_paired_wr[id].pop_front();
+    beats = m_paired_beats[id].pop_front();
+    item = ocah_axi_item::type_id::create("wr_item");
+    item.protocol       = cfg.protocol;
+    item.direction      = OCAH_AXI_DIR_WRITE;
+    item.address        = info.address;
     foreach (beats[i]) begin
       item.data_words.push_back(beats[i].data);
       item.strobes.push_back(beats[i].strb);
@@ -268,14 +268,14 @@ class ocah_axi_monitor extends uvm_monitor;
                       "rid=0x%0h beats=%0d time=%0t", id, item.data_words.size(), $time));
         return;
       end
-      info                = m_ar_q[id].pop_front();
+      info = m_ar_q[id].pop_front();
       item.address        = info.address;
       item.size           = info.size;
       item.burst          = ocah_axi_burst_e'(info.burst);
       item.prot           = info.prot;
       item.expected_beats = info.length;
       item.start_time     = info.start_time;
-      item.end_time       = $time;
+      item.end_time = $time;
       m_cur_rd.delete(id);
       publish(item);
     end

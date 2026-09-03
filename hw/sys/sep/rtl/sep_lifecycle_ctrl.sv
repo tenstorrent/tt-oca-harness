@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 module sep_lifecycle_ctrl #(
-  parameter  int unsigned LC_STATE_WIDTH   = 4,
+  parameter int unsigned LC_STATE_WIDTH    = 4,
   localparam int unsigned DEMOTE_WIDTH     = 1,
   localparam int unsigned DEMOTE_OUT_WIDTH = 2 * DEMOTE_WIDTH
 ) (
@@ -16,14 +16,14 @@ module sep_lifecycle_ctrl #(
 
   input sep_efuse_pkg::efuse_map_t shadow_regs_i,
 
-  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t                        feat_ctrl_o,
-  output sep_lifecycle_ctrl_pkg::dbg_disable_t                                dbg_disable_o,
-  output logic                                         [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,
-  output logic                                         [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,
-  output logic                                                                lc_sigint_err_o,
-  output logic                                                                prod_dbg_active_o,
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
+  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,
+  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,
+  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,
+  output logic lc_sigint_err_o,
+  output logic prod_dbg_active_o,
 
-  input  sep_pkg::sep_32_64_6_12_axi_req_t  lifecycle_axi_req_i,
+  input sep_pkg::sep_32_64_6_12_axi_req_t lifecycle_axi_req_i,
   output sep_pkg::sep_32_64_6_12_axi_resp_t lifecycle_axi_resp_o
 );
 
@@ -44,9 +44,9 @@ module sep_lifecycle_ctrl #(
     .Width(DEMOTE_WIDTH)
   ) u_demote_1_diff_enc (
     .clk_i,
-    .rst_ni(reset_n_i),
-    .data_i(demote_reg_1.demote),
-    .data_o(lcc_demote_state_1_o)
+    .rst_ni  (reset_n_i),
+    .data_i  (demote_reg_1.demote),
+    .data_o  (lcc_demote_state_1_o)
   );
 
   // Differential encode/decode for DEMOTE_2
@@ -54,9 +54,9 @@ module sep_lifecycle_ctrl #(
     .Width(DEMOTE_WIDTH)
   ) u_demote_2_diff_enc (
     .clk_i,
-    .rst_ni(reset_n_i),
-    .data_i(demote_reg_2.demote),
-    .data_o(lcc_demote_state_2_o)
+    .rst_ni  (reset_n_i),
+    .data_i  (demote_reg_2.demote),
+    .data_o  (lcc_demote_state_2_o)
   );
 
   // Differential decode for LC_STATE
@@ -147,32 +147,32 @@ module sep_lifecycle_ctrl #(
   sep_pkg::sep_32_64_axil_resp_t lifecycle_axil_resp;
 
   axi_to_axi_lite #(
-    .AxiAddrWidth(sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
-    .AxiDataWidth(64),
-    .AxiIdWidth(sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
-    .AxiUserWidth(sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
+    .AxiAddrWidth   (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
+    .AxiDataWidth   (64),
+    .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
+    .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
     .AxiMaxWriteTxns(16),
-    .AxiMaxReadTxns(16),
-    .FullBW(1'b0),  // ID Queue in Full BW mode in axi_burst_splitter
-    .FallThrough(1'b0),  // FIFOs in Fall through mode in ID reflect
-    .SpillAw(1'b0),  // Spill register control
-    .SpillW(1'b0),
-    .SpillB(1'b0),
-    .SpillAr(1'b0),
-    .SpillR(1'b0),
-    .full_req_t(sep_pkg::sep_32_64_6_12_axi_req_t),
-    .full_resp_t(sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .lite_req_t(sep_pkg::sep_32_64_axil_req_t),
-    .lite_resp_t(sep_pkg::sep_32_64_axil_resp_t)
+    .AxiMaxReadTxns (16),
+    .FullBW         (1'b0), // ID Queue in Full BW mode in axi_burst_splitter
+    .FallThrough    (1'b0), // FIFOs in Fall through mode in ID reflect
+    .SpillAw        (1'b0), // Spill register control
+    .SpillW         (1'b0),
+    .SpillB         (1'b0),
+    .SpillAr        (1'b0),
+    .SpillR         (1'b0),
+    .full_req_t     (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .full_resp_t    (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .lite_req_t     (sep_pkg::sep_32_64_axil_req_t),
+    .lite_resp_t    (sep_pkg::sep_32_64_axil_resp_t)
   ) lifecycle_axi_to_axi_lite (
     .clk_i(clk_i),
     .rst_ni(reset_n_i),
     .test_i(test_en_i),
     // from AXI (32-bit after DW conversion)
-    .slv_req_i(lifecycle_axi_req_i),
+    .slv_req_i (lifecycle_axi_req_i),
     .slv_resp_o(lifecycle_axi_resp_o),
     // to AXIL (32-bit)
-    .mst_req_o(lifecycle_axil_req),
+    .mst_req_o (lifecycle_axil_req),
     .mst_resp_i(lifecycle_axil_resp)
   );
 
@@ -181,19 +181,19 @@ module sep_lifecycle_ctrl #(
   assign demote_wen_1 = ~demote_reg_1.lock; // When DEMOTE_1.lock is 0, firmware can assert DEMOTE_1.demote
   assign demote_wen_2 = ~demote_reg_2.lock; // When DEMOTE_2.lock is 0, firmware can assert DEMOTE_2.demote
 
-  sep_lifecycle_ctrl_reg_pkg::sep_lifecycle_ctrl__in_t  lifecycle_ctrl_hwif_in;
+  sep_lifecycle_ctrl_reg_pkg::sep_lifecycle_ctrl__in_t lifecycle_ctrl_hwif_in;
   sep_lifecycle_ctrl_reg_pkg::sep_lifecycle_ctrl__out_t lifecycle_ctrl_hwif_out;
 
   assign lifecycle_ctrl_hwif_in.FEAT_CTRL.feature_control.next = feat_ctrl_secure_tm;
   assign lifecycle_ctrl_hwif_in.DEMOTE_1.demote.swwe = demote_wen_1;
-  assign lifecycle_ctrl_hwif_in.DEMOTE_2.demote.swwe = demote_wen_2;
+  assign lifecycle_ctrl_hwif_in.DEMOTE_2.demote.swwe     = demote_wen_2;
 
   assign demote_reg_1.demote = lifecycle_ctrl_hwif_out.DEMOTE_1.demote.value;
-  assign demote_reg_1.lock = lifecycle_ctrl_hwif_out.DEMOTE_1.lock.value;
-  assign demote_reg_1.rsvd = lifecycle_ctrl_hwif_out.DEMOTE_1.rsvd.value;
+  assign demote_reg_1.lock   = lifecycle_ctrl_hwif_out.DEMOTE_1.lock.value;
+  assign demote_reg_1.rsvd   = lifecycle_ctrl_hwif_out.DEMOTE_1.rsvd.value;
   assign demote_reg_2.demote = lifecycle_ctrl_hwif_out.DEMOTE_2.demote.value;
-  assign demote_reg_2.lock = lifecycle_ctrl_hwif_out.DEMOTE_2.lock.value;
-  assign demote_reg_2.rsvd = lifecycle_ctrl_hwif_out.DEMOTE_2.rsvd.value;
+  assign demote_reg_2.lock   = lifecycle_ctrl_hwif_out.DEMOTE_2.lock.value;
+  assign demote_reg_2.rsvd   = lifecycle_ctrl_hwif_out.DEMOTE_2.rsvd.value;
 
   assign prod_dbg_active_o = demote_reg_1.demote | demote_reg_2.demote;
 
@@ -224,15 +224,15 @@ module sep_lifecycle_ctrl #(
   );
 
   // Debug-disable derivations (active-high; 1 = disabled).
-  assign dbg_disable_o.stap_io = !feat_ctrl_secure_tm.sip_debug;
+  assign dbg_disable_o.stap_io           = !feat_ctrl_secure_tm.sip_debug;
   assign dbg_disable_o.stap_smc          = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.stap_extra        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.stap_host         = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.dft_nonsecure     = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.dft_secure        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg; // Spec confirmation: #450
-  assign dbg_disable_o.dfd = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
+  assign dbg_disable_o.dfd               = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.smc_jtag2axi      = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.stap_sep          = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg || !feat_ctrl_secure_tm.sep_debug;
-  assign dbg_disable_o.smc_otp_jtag2axi = 1'b0;  // Spec confirmation: #452
-  assign dbg_disable_o.sep_otp_jtag2axi = 1'b0;  // Spec confirmation: #452
+  assign dbg_disable_o.smc_otp_jtag2axi  = 1'b0; // Spec confirmation: #452
+  assign dbg_disable_o.sep_otp_jtag2axi  = 1'b0; // Spec confirmation: #452
 endmodule

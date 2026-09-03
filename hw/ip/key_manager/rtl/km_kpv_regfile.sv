@@ -24,19 +24,19 @@ module km_kpv_regfile #(
   parameter int unsigned WORDS_PER_SLOT = 16,
   parameter int unsigned DATA_WIDTH     = 32
 ) (
-  input logic clk_i,
+  input  logic                                    clk_i,
 
   // Bulk wipe: zeroes ALL entries on the next clock edge
-  input logic wipe_i,
+  input  logic                                    wipe_i,
 
   // Write port (KM)
-  input logic                                        wr_a_en_i,
-  input logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i,
-  input logic [                      DATA_WIDTH-1:0] wr_a_data_i,
+  input  logic                                    wr_a_en_i,
+  input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i,
+  input  logic [DATA_WIDTH-1:0]                   wr_a_data_i,
 
   // Read port (KM only, combinational)
   input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] rd_addr_i,
-  output logic [                      DATA_WIDTH-1:0] rd_data_o
+  output logic [DATA_WIDTH-1:0]                        rd_data_o
 );
 
   /** @brief Derived address geometry for the flat storage array. */

@@ -8,83 +8,83 @@
 `timescale 1ps / 1fs
 
 module smu_wrapper_uvm_top (
-  input  wire logic        clk_smu_i,
-  input  wire logic        clk_ref_i,
-  input  wire logic        clk_periph_i,
-  input  wire logic        clk_sep_wdt_i,
-  input  wire logic        rst_cold_ni,
-  input  wire logic        powergood_i,
-  output logic             dut_present_o,
-  output logic             sep_enabled_o,
-  output logic             rst_cold_n_o,
-  output logic             powergood_o,
-  output logic             fuse_sense_done_o,
-  output logic             fuse_reset_n_delayed_o,
-  output logic             rst_primary_smc_clk_n_o,
-  output logic             init_mem_done_o,
-  output logic             sep_fuse_sense_done_o,
-  output logic             sep_reset_n_o,
-  output logic      [31:0] smc_scratch_0_o,
-  output logic             smc_test_pass_o,
-  output logic             smc_test_fail_o,
-  output logic      [31:0] smc_rom_read_count_o,
-  output logic      [31:0] smc_scratch_write_count_o,
-  output logic             sep_trace_valid_o,
-  output logic      [31:0] sep_pc_o,
-  output logic      [31:0] sep_inst_count_o,
-  output logic      [31:0] sep_iccm_write_count_o,
-  output logic      [31:0] sep_dccm_write_count_o,
-  output logic             sep_boot_rom_fetch_seen_o,
-  output logic             sep_iccm_fetch_seen_o,
-  output logic             sep_first_pc_valid_o,
-  output logic      [31:0] sep_first_pc_o,
-  output logic             fw_done_o,
-  output logic             fw_pass_o,
-  output logic      [ 7:0] fw_char_o,
-  output logic             fw_char_valid_o,
-  output logic      [31:0] smu_axi_out_write_count_o,
-  output logic      [31:0] smu_axi_out_read_count_o,
-  output logic      [31:0] ext_mailbox_interrupts_o,
+  input  wire logic clk_smu_i,
+  input  wire logic clk_ref_i,
+  input  wire logic clk_periph_i,
+  input  wire logic clk_sep_wdt_i,
+  input  wire logic rst_cold_ni,
+  input  wire logic powergood_i,
+  output logic        dut_present_o,
+  output logic        sep_enabled_o,
+  output logic        rst_cold_n_o,
+  output logic        powergood_o,
+  output logic        fuse_sense_done_o,
+  output logic        fuse_reset_n_delayed_o,
+  output logic        rst_primary_smc_clk_n_o,
+  output logic        init_mem_done_o,
+  output logic        sep_fuse_sense_done_o,
+  output logic        sep_reset_n_o,
+  output logic [31:0] smc_scratch_0_o,
+  output logic        smc_test_pass_o,
+  output logic        smc_test_fail_o,
+  output logic [31:0] smc_rom_read_count_o,
+  output logic [31:0] smc_scratch_write_count_o,
+  output logic        sep_trace_valid_o,
+  output logic [31:0] sep_pc_o,
+  output logic [31:0] sep_inst_count_o,
+  output logic [31:0] sep_iccm_write_count_o,
+  output logic [31:0] sep_dccm_write_count_o,
+  output logic        sep_boot_rom_fetch_seen_o,
+  output logic        sep_iccm_fetch_seen_o,
+  output logic        sep_first_pc_valid_o,
+  output logic [31:0] sep_first_pc_o,
+  output logic        fw_done_o,
+  output logic        fw_pass_o,
+  output logic [7:0]  fw_char_o,
+  output logic        fw_char_valid_o,
+  output logic [31:0] smu_axi_out_write_count_o,
+  output logic [31:0] smu_axi_out_read_count_o,
+  output logic [31:0] ext_mailbox_interrupts_o,
   // SEP run-gate / IFU bring-up probes (keep nets visible under VCS)
-  output logic      [15:0] sep_cla_custom_o,
-  output logic             sep_mpc_reset_run_o,
-  output logic             sep_mpc_debug_run_o,
-  output logic             sep_cpu_run_req_o,
-  output logic             sep_halt_status_o,
-  output logic             sep_debug_mode_o,
-  output logic      [31:0] sep_boot_rom_req_count_o,
-  output logic             sep_cpu_rst_ni_o,
-  output logic             sep_dbg_rstb_o,
-  output logic             sep_mod_rst_ni_o,
-  output logic      [31:0] sep_cpu_clk_count_o,
-  output logic             sep_rungate_at_release_valid_o,
-  output logic             sep_mpc_reset_run_at_release_o,
-  output logic             sep_mpc_xz_at_release_o,
-  output logic      [15:0] sep_cla_at_release_o,
+  output logic [15:0] sep_cla_custom_o,
+  output logic        sep_mpc_reset_run_o,
+  output logic        sep_mpc_debug_run_o,
+  output logic        sep_cpu_run_req_o,
+  output logic        sep_halt_status_o,
+  output logic        sep_debug_mode_o,
+  output logic [31:0] sep_boot_rom_req_count_o,
+  output logic        sep_cpu_rst_ni_o,
+  output logic        sep_dbg_rstb_o,
+  output logic        sep_mod_rst_ni_o,
+  output logic [31:0] sep_cpu_clk_count_o,
+  output logic        sep_rungate_at_release_valid_o,
+  output logic        sep_mpc_reset_run_at_release_o,
+  output logic        sep_mpc_xz_at_release_o,
+  output logic [15:0] sep_cla_at_release_o,
   // SMU_ALL_001 compose / clk-domain / lifecycle observe surface
-  output logic      [ 7:0] lc_state_o,
+  output logic [7:0]  lc_state_o,
   // Hierarchical SEP lifecycle source (for lc_state=from_sep identity).
   // Under SMU_NO_SEP this is tied off; checkers must not treat that as from_sep.
-  output logic      [ 7:0] obs_sep_lc_state_o,
+  output logic [7:0]  obs_sep_lc_state_o,
   // Legacy compile-time present flags — not used by SMU_ALL_001 FAIL-ON path
   // (presence is proven via hierarchical clk/rst identity observes below).
-  output logic             obs_compose_smc_present_o,
-  output logic             obs_compose_sep_present_o,
-  output logic             obs_compose_dtp_present_o,
-  output logic             obs_compose_xbar_present_o,
-  output logic             obs_dtp_clk_o,
-  output logic             obs_smc_clk_o,
-  output logic             obs_sep_clk_o,
-  output logic             obs_xbar_clk_o,
-  output logic             obs_dtp_rst_n_o,
-  output logic             obs_smc_rst_n_o,
-  output logic             obs_sep_rst_n_o,
-  output logic             obs_xbar_rst_n_o,
-  output logic             obs_smc_tel_clk_o,
-  output logic             obs_sep_wdt_clk_o,
-  output logic             obs_jtag_tdo_o,
-  output logic             obs_smu_axi_awready_o,
-  output logic             obs_xtrig_src_req0_o
+  output logic        obs_compose_smc_present_o,
+  output logic        obs_compose_sep_present_o,
+  output logic        obs_compose_dtp_present_o,
+  output logic        obs_compose_xbar_present_o,
+  output logic        obs_dtp_clk_o,
+  output logic        obs_smc_clk_o,
+  output logic        obs_sep_clk_o,
+  output logic        obs_xbar_clk_o,
+  output logic        obs_dtp_rst_n_o,
+  output logic        obs_smc_rst_n_o,
+  output logic        obs_sep_rst_n_o,
+  output logic        obs_xbar_rst_n_o,
+  output logic        obs_smc_tel_clk_o,
+  output logic        obs_sep_wdt_clk_o,
+  output logic        obs_jtag_tdo_o,
+  output logic        obs_smu_axi_awready_o,
+  output logic        obs_xtrig_src_req0_o
 );
 
 `ifdef SMU_NO_SEP
@@ -132,33 +132,37 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  assign jtag_ptap_client_tap_ctrl = '{tms: 1'b1, trst_n: rst_cold_ni, tck: tb_jtag_tck};
+  assign jtag_ptap_client_tap_ctrl = '{
+        tms: 1'b1,
+        trst_n: rst_cold_ni,
+        tck: tb_jtag_tck
+    };
   assign jtag_ptap_tdi = 1'b0;
 
-  smu_axi_xbar_pkg::axi_56_64_req_t                                    smu_axi_in_req;
-  smu_axi_xbar_pkg::axi_56_64_resp_t                                   smu_axi_in_resp;
-  smu_axi_xbar_pkg::axi_out_req_t                                      smu_axi_out_req;
-  smu_axi_xbar_pkg::axi_out_resp_t                                     smu_axi_out_resp;
-  logic                              [                            7:0] lc_state;
+  smu_axi_xbar_pkg::axi_56_64_req_t  smu_axi_in_req;
+  smu_axi_xbar_pkg::axi_56_64_resp_t smu_axi_in_resp;
+  smu_axi_xbar_pkg::axi_out_req_t     smu_axi_out_req;
+  smu_axi_xbar_pkg::axi_out_resp_t    smu_axi_out_resp;
+  logic [7:0] lc_state;
   // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
-  logic                              [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
+  logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
   // CPU memory macros are inside smc_ip_integration now, so the ROM request
   // is observed hierarchically instead of on a wrapper passthrough port.
-  chipyard_4core_mem_pkg::rom_req_t                                    rom_intf_req;
+  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
   assign rom_intf_req = u_dut.u_smc_ip_integration.rom_intf_req;
 
-  wire                     [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io;
-  logic                    [                       31:0] ext_mailbox_interrupts;
-  logic                    [                       31:0] smc_scratch_0_q;
-  logic                                                  rst_cold_stable_ref_clk_n;
-  logic                                                  rst_primary_smc_clk_n;
-  logic                                                  sep_reset_n;
-  sep_pkg::sep_cpu_trace_t                               sep_cpu_trace;
-  sep_pkg::sep_straps_t                                  sep_straps;
+  wire [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io;
+  logic [31:0] ext_mailbox_interrupts;
+  logic [31:0] smc_scratch_0_q;
+  logic        rst_cold_stable_ref_clk_n;
+  logic        rst_primary_smc_clk_n;
+  logic        sep_reset_n;
+  sep_pkg::sep_cpu_trace_t sep_cpu_trace;
+  sep_pkg::sep_straps_t    sep_straps;
 
-  i3c_pkg::dat_mem_src_t   [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
-  i3c_pkg::dct_mem_src_t   [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
+  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
+  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
   assign i3c_dat_src = '0;
   assign i3c_dct_src = '0;
 
@@ -168,8 +172,8 @@ module smu_wrapper_uvm_top (
   // Cocotb observe ports that hw/top/smu_wrapper does not expose directly.
   assign dut_present_o = 1'b1;
   assign sep_enabled_o = SEP_ENABLED;
-  assign powergood_o = powergood_i;
-  assign rst_cold_n_o = rst_cold_stable_ref_clk_n;
+  assign powergood_o   = powergood_i;
+  assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
 `ifndef SMU_NO_SEP
   assign sep_reset_n = u_dut.u_smu.gen_sep.u_sep.sep_reset_n;
@@ -214,27 +218,39 @@ module smu_wrapper_uvm_top (
   assign obs_sep_lc_state_o = 8'h00;
 `endif
 
-  assign smc_scratch_0_o = u_dut.u_smu.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[0];
+  assign smc_scratch_0_o =
+        u_dut.u_smu.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[0];
   assign smc_test_pass_o = smc_scratch_0_o == SMC_TEST_PASS;
   assign smc_test_fail_o = smc_scratch_0_o == SMC_TEST_FAIL;
 
   // Mask SEP trace while the CPU is in reset: VCS leaves the EL2 trace
   // struct at X and cocotb read_int() rejects X/Z.
-  assign sep_trace_valid_o = sep_reset_n ? sep_cpu_trace.trace_rv_i_valid_ip : 1'b0;
-  assign sep_pc_o = sep_reset_n ? sep_cpu_trace.trace_rv_i_address_ip : '0;
+  assign sep_trace_valid_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_valid_ip : 1'b0;
+  assign sep_pc_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_address_ip : '0;
 
   // Observe SEP run-gate nets. Use ifdef (not generate-if) so the no-SEP
   // compile never resolves gen_sep hierarchy XMRs.
 `ifndef SMU_NO_SEP
-  assign sep_cla_custom_o = 16'(u_dut.u_smu.cla_ext_action_custom);
-  assign sep_mpc_reset_run_o = u_dut.u_smu.gen_sep.u_sep.mpc_reset_run_req;
-  assign sep_mpc_debug_run_o = u_dut.u_smu.gen_sep.u_sep.mpc_debug_run_req;
-  assign sep_cpu_run_req_o = u_dut.u_smu.gen_sep.u_sep.i_cpu_run_req;
-  assign sep_halt_status_o = u_dut.u_smu.gen_sep.u_sep.o_cpu_halt_status;
-  assign sep_debug_mode_o = u_dut.u_smu.gen_sep.u_sep.o_debug_mode_status;
-  assign sep_cpu_rst_ni_o = u_dut.u_smu.gen_sep.u_sep.sep_cpu.rst_ni;
-  assign sep_dbg_rstb_o = u_dut.u_smu.gen_sep.u_sep.dbg_rstb_i;
-  assign sep_mod_rst_ni_o = u_dut.u_smu.gen_sep.u_sep.rst_ni;
+  assign sep_cla_custom_o =
+        16'(u_dut.u_smu.cla_ext_action_custom);
+  assign sep_mpc_reset_run_o =
+        u_dut.u_smu.gen_sep.u_sep.mpc_reset_run_req;
+  assign sep_mpc_debug_run_o =
+        u_dut.u_smu.gen_sep.u_sep.mpc_debug_run_req;
+  assign sep_cpu_run_req_o =
+        u_dut.u_smu.gen_sep.u_sep.i_cpu_run_req;
+  assign sep_halt_status_o =
+        u_dut.u_smu.gen_sep.u_sep.o_cpu_halt_status;
+  assign sep_debug_mode_o =
+        u_dut.u_smu.gen_sep.u_sep.o_debug_mode_status;
+  assign sep_cpu_rst_ni_o =
+        u_dut.u_smu.gen_sep.u_sep.sep_cpu.rst_ni;
+  assign sep_dbg_rstb_o =
+        u_dut.u_smu.gen_sep.u_sep.dbg_rstb_i;
+  assign sep_mod_rst_ni_o =
+        u_dut.u_smu.gen_sep.u_sep.rst_ni;
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
@@ -272,17 +288,17 @@ module smu_wrapper_uvm_top (
     end
   end
 `else
-  assign sep_cla_custom_o               = '0;
-  assign sep_mpc_reset_run_o            = 1'b0;
-  assign sep_mpc_debug_run_o            = 1'b0;
-  assign sep_cpu_run_req_o              = 1'b0;
-  assign sep_halt_status_o              = 1'b0;
-  assign sep_debug_mode_o               = 1'b0;
-  assign sep_boot_rom_req_count_o       = '0;
-  assign sep_cpu_rst_ni_o               = 1'b0;
-  assign sep_dbg_rstb_o                 = 1'b0;
-  assign sep_mod_rst_ni_o               = 1'b0;
-  assign sep_cpu_clk_count_o            = '0;
+  assign sep_cla_custom_o         = '0;
+  assign sep_mpc_reset_run_o      = 1'b0;
+  assign sep_mpc_debug_run_o      = 1'b0;
+  assign sep_cpu_run_req_o        = 1'b0;
+  assign sep_halt_status_o        = 1'b0;
+  assign sep_debug_mode_o         = 1'b0;
+  assign sep_boot_rom_req_count_o = '0;
+  assign sep_cpu_rst_ni_o         = 1'b0;
+  assign sep_dbg_rstb_o           = 1'b0;
+  assign sep_mod_rst_ni_o         = 1'b0;
+  assign sep_cpu_clk_count_o      = '0;
   assign sep_rungate_at_release_valid_o = 1'b0;
   assign sep_mpc_reset_run_at_release_o = 1'b0;
   assign sep_mpc_xz_at_release_o        = 1'b0;
@@ -375,37 +391,42 @@ module smu_wrapper_uvm_top (
 
   // smu_clk floor is 8ns (env_cfg); keep ApplDelay < AcqDelay < 8ns.
   axi_sim_mem #(
-    .AddrWidth        (56),
-    .DataWidth        (64),
-    .IdWidth          (10),
-    .UserWidth        (12),
-    .NumPorts         (1),
-    .axi_req_t        (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_rsp_t        (smu_axi_xbar_pkg::axi_out_resp_t),
-    .WarnUninitialized(1'b0),
-    .UninitializedData("zeros"),
-    .ClearErrOnAccess (1'b1),
-    .ApplDelay        (1ns),
-    .AcqDelay         (3ns)
+    .AddrWidth         (56),
+    .DataWidth         (64),
+    .IdWidth           (10),
+    .UserWidth         (12),
+    .NumPorts          (1),
+    .axi_req_t         (smu_axi_xbar_pkg::axi_out_req_t),
+    .axi_rsp_t         (smu_axi_xbar_pkg::axi_out_resp_t),
+    .WarnUninitialized (1'b0),
+    .UninitializedData ("zeros"),
+    .ClearErrOnAccess  (1'b1),
+    .ApplDelay         (1ns),
+    .AcqDelay          (3ns)
   ) u_axi_out_mem (
-    .clk_i    (clk_smu_i),
-    .rst_ni   (rst_cold_n_o),
-    .axi_req_i(axi_out_mem_req),
-    .axi_rsp_o(axi_out_mem_resp)
+    .clk_i     (clk_smu_i),
+    .rst_ni    (rst_cold_n_o),
+    .axi_req_i (axi_out_mem_req),
+    .axi_rsp_o (axi_out_mem_resp)
   );
 
   logic [55:0] axi_out_aw_addr_q;
-  logic fw_magic0_seen_q;
+  logic        fw_magic0_seen_q;
 
-  wire axi_out_aw_fire = smu_axi_out_req.aw_valid & smu_axi_out_resp.aw_ready;
-  wire axi_out_w_fire = smu_axi_out_req.w_valid & smu_axi_out_resp.w_ready;
-  wire axi_out_b_fire = smu_axi_out_resp.b_valid & smu_axi_out_req.b_ready;
+  wire axi_out_aw_fire =
+        smu_axi_out_req.aw_valid & smu_axi_out_resp.aw_ready;
+  wire axi_out_w_fire =
+        smu_axi_out_req.w_valid & smu_axi_out_resp.w_ready;
+  wire axi_out_b_fire =
+        smu_axi_out_resp.b_valid & smu_axi_out_req.b_ready;
   wire axi_out_r_last_fire =
         smu_axi_out_resp.r_valid & smu_axi_out_req.r_ready &
         smu_axi_out_resp.r.last;
   // Same-cycle AW+W: prefer live AW addr (SEP mbx cur_awaddr style).
-  wire [55:0] axi_out_cur_awaddr = axi_out_aw_fire ? smu_axi_out_req.aw.addr : axi_out_aw_addr_q;
-  wire axi_out_to_stdout = (axi_out_cur_awaddr[31:0] == FW_STDOUT_ADDR);
+  wire [55:0] axi_out_cur_awaddr =
+        axi_out_aw_fire ? smu_axi_out_req.aw.addr : axi_out_aw_addr_q;
+  wire axi_out_to_stdout =
+        (axi_out_cur_awaddr[31:0] == FW_STDOUT_ADDR);
   wire [31:0] axi_out_fw_word =
         (smu_axi_out_req.w.strb[7:4] != 4'h0)
             ? smu_axi_out_req.w.data[63:32]
@@ -471,172 +492,172 @@ module smu_wrapper_uvm_top (
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
   smu_wrapper #(
-    .Cfg(SMU_CFG),
-    .SEP(SEP_ENABLED[0])
+    .Cfg (SMU_CFG),
+    .SEP (SEP_ENABLED[0])
   ) u_dut (
     .clk_smu_i,
     .clk_ref_i,
     .clk_periph_i,
     .rst_cold_ni,
-    .rst_cold_stable_ref_clk_no(rst_cold_stable_ref_clk_n),
+    .rst_cold_stable_ref_clk_no (rst_cold_stable_ref_clk_n),
     .powergood_i,
 
-    .jtag_ptap_client_tap_ctrl_i(jtag_ptap_client_tap_ctrl),
-    .jtag_ptap_client_tdi_i     (jtag_ptap_tdi),
-    .jtag_ptap_client_tdo_o     (jtag_ptap_tdo),
-    .jtag_ptap_client_tdo_oen_o (jtag_ptap_tdo_oen),
+    .jtag_ptap_client_tap_ctrl_i (jtag_ptap_client_tap_ctrl),
+    .jtag_ptap_client_tdi_i      (jtag_ptap_tdi),
+    .jtag_ptap_client_tdo_o      (jtag_ptap_tdo),
+    .jtag_ptap_client_tdo_oen_o  (jtag_ptap_tdo_oen),
 
-    .jtag_bsr_host_scan_ctrl_o(),
-    .jtag_bsr_host_scan_in_i  (1'b0),
-    .jtag_bsr_host_scan_out_o (),
+    .jtag_bsr_host_scan_ctrl_o (),
+    .jtag_bsr_host_scan_in_i   (1'b0),
+    .jtag_bsr_host_scan_out_o  (),
 
-    .jtag_stap_io_host_tap_ctrl_o(),
-    .jtag_stap_io_host_tdi_i     (1'b0),
-    .jtag_stap_io_host_tdo_o     (),
-    .jtag_stap_io_host_tdo_oen_o (),
+    .jtag_stap_io_host_tap_ctrl_o (),
+    .jtag_stap_io_host_tdi_i      (1'b0),
+    .jtag_stap_io_host_tdo_o      (),
+    .jtag_stap_io_host_tdo_oen_o  (),
 
-    .jtag_stap_extra_host_tap_ctrl_o(),
-    .jtag_stap_extra_host_tdi_i     ('{default: '0}),
-    .jtag_stap_extra_host_tdo_o     (),
-    .jtag_stap_extra_host_tdo_oen_o (),
+    .jtag_stap_extra_host_tap_ctrl_o (),
+    .jtag_stap_extra_host_tdi_i      ('{default: '0}),
+    .jtag_stap_extra_host_tdo_o      (),
+    .jtag_stap_extra_host_tdo_oen_o  (),
 
-    .jtag_stap_host_scan_ctrl_o(),
-    .jtag_stap_host_scan_in_i  (1'b0),
-    .jtag_stap_host_scan_out_o (),
+    .jtag_stap_host_scan_ctrl_o (),
+    .jtag_stap_host_scan_in_i   (1'b0),
+    .jtag_stap_host_scan_out_o  (),
 
-    .jtag_dfd_host_scan_ctrl_o(),
-    .jtag_dfd_host_scan_in_i  (1'b0),
-    .jtag_dfd_host_scan_out_o (),
+    .jtag_dfd_host_scan_ctrl_o (),
+    .jtag_dfd_host_scan_in_i   (1'b0),
+    .jtag_dfd_host_scan_out_o  (),
 
-    .jtag_dft_secure_host_scan_ctrl_o(),
-    .jtag_dft_secure_host_scan_in_i  (1'b0),
-    .jtag_dft_secure_host_scan_out_o (),
+    .jtag_dft_secure_host_scan_ctrl_o (),
+    .jtag_dft_secure_host_scan_in_i   (1'b0),
+    .jtag_dft_secure_host_scan_out_o  (),
 
-    .jtag_dft_host_scan_ctrl_o(),
-    .jtag_dft_host_scan_in_i  (1'b0),
-    .jtag_dft_host_scan_out_o (),
+    .jtag_dft_host_scan_ctrl_o (),
+    .jtag_dft_host_scan_in_i   (1'b0),
+    .jtag_dft_host_scan_out_o  (),
 
-    .dtp_stop_clks_o(),
-    .jtag_ptap_state_o(),
-    .jtag_ptap_inst_decoded_o(),
-    .jtag_ic_reset_ext_o(),
+    .dtp_stop_clks_o (),
+    .jtag_ptap_state_o (),
+    .jtag_ptap_inst_decoded_o (),
+    .jtag_ic_reset_ext_o (),
 
     .xtrig_ctm_src_req_o (xtrig_ctm_src_req),
     .xtrig_ctm_src_ack_i ('0),
     .xtrig_ctm_dst_req_i ('0),
     .xtrig_ctm_dst_ack_o (),
-    .xtrig_clk_stop_req_i('0),
+    .xtrig_clk_stop_req_i ('0),
 
-    .xtrig_ctp_req_out_dout_o(),
-    .xtrig_ctp_req_out_dout_en_o(),
-    .xtrig_ctp_req_out_din_i('0),
-    .xtrig_ctp_req_out_din_en_o(),
-    .xtrig_ctp_req_in_dout_o(),
-    .xtrig_ctp_req_in_dout_en_o(),
-    .xtrig_ctp_req_in_din_i('0),
-    .xtrig_ctp_req_in_din_en_o(),
-    .xtrig_ctp_ack_in_dout_o(),
-    .xtrig_ctp_ack_in_dout_en_o(),
-    .xtrig_ctp_ack_in_din_i('0),
-    .xtrig_ctp_ack_in_din_en_o(),
-    .xtrig_ctp_ack_out_dout_o(),
-    .xtrig_ctp_ack_out_dout_en_o(),
-    .xtrig_ctp_ack_out_din_i('0),
-    .xtrig_ctp_ack_out_din_en_o(),
+    .xtrig_ctp_req_out_dout_o (),
+    .xtrig_ctp_req_out_dout_en_o (),
+    .xtrig_ctp_req_out_din_i ('0),
+    .xtrig_ctp_req_out_din_en_o (),
+    .xtrig_ctp_req_in_dout_o (),
+    .xtrig_ctp_req_in_dout_en_o (),
+    .xtrig_ctp_req_in_din_i ('0),
+    .xtrig_ctp_req_in_din_en_o (),
+    .xtrig_ctp_ack_in_dout_o (),
+    .xtrig_ctp_ack_in_dout_en_o (),
+    .xtrig_ctp_ack_in_din_i ('0),
+    .xtrig_ctp_ack_in_din_en_o (),
+    .xtrig_ctp_ack_out_dout_o (),
+    .xtrig_ctp_ack_out_dout_en_o (),
+    .xtrig_ctp_ack_out_din_i ('0),
+    .xtrig_ctp_ack_out_din_en_o (),
 
-    .rst_primary_ref_clk_no(),
-    .rst_primary_smc_clk_no(rst_primary_smc_clk_n),
+    .rst_primary_ref_clk_no (),
+    .rst_primary_smc_clk_no (rst_primary_smc_clk_n),
 
     .smu_axi_in_req_i  (smu_axi_in_req),
     .smu_axi_in_resp_o (smu_axi_in_resp),
     .smu_axi_out_req_o (smu_axi_out_req),
-    .smu_axi_out_resp_i(smu_axi_out_resp),
+    .smu_axi_out_resp_i (smu_axi_out_resp),
 
-    .smc_shadow_regs_o(),
-    .lsio_interface_select_o(),
-    .gpio_pad_io(gpio_pad_io),
-    .rst_cool_n_from_pin_i(1'b1),
+    .smc_shadow_regs_o (),
+    .lsio_interface_select_o (),
+    .gpio_pad_io (gpio_pad_io),
+    .rst_cool_n_from_pin_i (1'b1),
 
-    .clk_telemetry_i(clk_ref_i),
-    .rst_telemetry_ni(rst_cold_ni),
-    .telemetry_atdata_i('0),
-    .telemetry_atid_i('0),
-    .telemetry_atready_o(),
-    .telemetry_atvalid_i('0),
-    .telemetry_afvalid_o(),
-    .telemetry_afready_i('0),
+    .clk_telemetry_i (clk_ref_i),
+    .rst_telemetry_ni (rst_cold_ni),
+    .telemetry_atdata_i ('0),
+    .telemetry_atid_i ('0),
+    .telemetry_atready_o (),
+    .telemetry_atvalid_i ('0),
+    .telemetry_afvalid_o (),
+    .telemetry_afready_i ('0),
 
-    .cluster_ded_o(),
-    .wdt_first_timeout_o(),
-    .wdt_second_timeout_o(),
+    .cluster_ded_o (),
+    .wdt_first_timeout_o (),
+    .wdt_second_timeout_o (),
 
-    .smc_global_base_o(),
-    .smc_region_size_o(),
-    .sep_global_base_o(),
-    .sep_region_size_o(),
+    .smc_global_base_o (),
+    .smc_region_size_o (),
+    .sep_global_base_o (),
+    .sep_region_size_o (),
 
-    .ext_interrupts_i('0),
+    .ext_interrupts_i ('0),
     .fuse_sense_done_o,
     .fuse_reset_n_delayed_o,
-    .skip_mem_repair_o(),
-    .ext_boot_seq_done_i(1'b1),
-    .temp_interrupt_i(1'b0),
-    .lc_state_o(lc_state),
-    .lc_sigint_err_o(),
-    .ras_bank_chip_o(),
-    .ras_bank_instance_o(),
-    .ndmreset_request_i('0),
-    .ndmreset_process_o(),
-    .ext_mailbox_interrupts_o(ext_mailbox_interrupts),
+    .skip_mem_repair_o (),
+    .ext_boot_seq_done_i (1'b1),
+    .temp_interrupt_i (1'b0),
+    .lc_state_o (lc_state),
+    .lc_sigint_err_o (),
+    .ras_bank_chip_o (),
+    .ras_bank_instance_o (),
+    .ndmreset_request_i ('0),
+    .ndmreset_process_o (),
+    .ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
-    .cfg_flr_pf_active_i(1'b0),
-    .isolate_req_o(),
-    .ss_reset_complete_i('1),
-    .ss_config_o(),
-    .ss_reset_ctrl_o(),
-    .sync_irq_o(),
+    .cfg_flr_pf_active_i (1'b0),
+    .isolate_req_o (),
+    .ss_reset_complete_i ('1),
+    .ss_config_o (),
+    .ss_reset_ctrl_o (),
+    .sync_irq_o (),
 
-    .disable_sram_auto_init_i(1'b0),
+    .disable_sram_auto_init_i (1'b0),
     .init_mem_done_o,
-    .chiplet_is_primary_i(1'b1),
-    .timer_count_o(),
+    .chiplet_is_primary_i (1'b1),
+    .timer_count_o (),
 
-    .test_en_i(1'b0),
-    .scan_rst_ni(1'b1),
-    .captured_straps_i('0),
+    .test_en_i (1'b0),
+    .scan_rst_ni (1'b1),
+    .captured_straps_i ('0),
 
     // Without an external BISR/MBIST agent the boot sequencer waits forever
     // if these stay low (CPU never fetches ROM).
-    .mem_repair_done_i(1'b1),
-    .mem_repair_success_i(1'b1),
-    .mem_repair_abort_i(1'b0),
-    .mbist_done_i(1'b1),
-    .mbist_pass_i(1'b1),
-    .mbist_abort_i(1'b0),
+    .mem_repair_done_i (1'b1),
+    .mem_repair_success_i (1'b1),
+    .mem_repair_abort_i (1'b0),
+    .mbist_done_i (1'b1),
+    .mbist_pass_i (1'b1),
+    .mbist_abort_i (1'b0),
 
-    .spi_irq_i(1'b0),
-    .sep_cpu_trace_o(sep_cpu_trace),
-    .sep_extintsrc_req_i('0),
-    .lcc_demote_state_1_o(),
-    .lcc_demote_state_2_o(),
+    .spi_irq_i (1'b0),
+    .sep_cpu_trace_o (sep_cpu_trace),
+    .sep_extintsrc_req_i ('0),
+    .lcc_demote_state_1_o (),
+    .lcc_demote_state_2_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
-    .sep_straps_i(sep_straps),
+    .sep_straps_i (sep_straps),
 
     .i3c_dat_mem_src_i (i3c_dat_src),
-    .i3c_dat_mem_sink_o(),
+    .i3c_dat_mem_sink_o (),
     .i3c_dct_mem_src_i (i3c_dct_src),
-    .i3c_dct_mem_sink_o(),
+    .i3c_dct_mem_sink_o (),
 
-    .ext_debug_bus_i('0),
-    .gpio_interrupt_o(),
-    .uart_interrupt_o(),
-    .sep_efuse_debug_bus_o(),
-    .smc_efuse_debug_bus_o(),
+    .ext_debug_bus_i ('0),
+    .gpio_interrupt_o (),
+    .uart_interrupt_o (),
+    .sep_efuse_debug_bus_o (),
+    .smc_efuse_debug_bus_o (),
 
     // SEP CPU lockstep control/status
-    .sep_lockstep_ctrl_i  (sep_lockstep_ctrl_i),
-    .sep_lockstep_status_o(sep_lockstep_status_o)
+    .sep_lockstep_ctrl_i (sep_lockstep_ctrl_i),
+    .sep_lockstep_status_o (sep_lockstep_status_o)
   );
 
 endmodule : smu_wrapper_uvm_top

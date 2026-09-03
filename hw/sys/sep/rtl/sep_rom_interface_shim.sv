@@ -11,16 +11,16 @@ module sep_rom_interface_shim
 #(
   parameter int unsigned ROM_ADDR_WIDTH = 10  // Default to 1K entries (10 bits)
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                        clk_i,
+  input  logic                        rst_ni,
 
   // Memory Interface (from memory_interface module)
-  input  sep_sram_req_t mem_req_i,
-  output sep_sram_rsp_t mem_rsp_o,
+  input  sep_sram_req_t               mem_req_i,
+  output sep_sram_rsp_t               mem_rsp_o,
 
   // Macro Interface (to ROM primitive - prim_rom)
-  output logic                          macro_req_o,
-  output logic [    ROM_ADDR_WIDTH-1:0] macro_addr_o,
+  output logic                        macro_req_o,
+  output logic [ROM_ADDR_WIDTH-1:0]   macro_addr_o,
   input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i
 );
 
@@ -37,7 +37,7 @@ module sep_rom_interface_shim
       write_req_q <= 1'b0;
     end else begin
       read_req_q  <= mem_req_i.req & ~mem_req_i.wenable;  // Track read requests
-      write_req_q <= mem_req_i.req & mem_req_i.wenable;  // Track writes (for response only)
+      write_req_q <= mem_req_i.req &  mem_req_i.wenable;   // Track writes (for response only)
     end
   end
 

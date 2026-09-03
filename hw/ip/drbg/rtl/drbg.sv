@@ -42,11 +42,11 @@ module drbg
   parameter type edn_axil_req_t = drbg_axil64_req_t,
   parameter type edn_axil_rsp_t = drbg_axil64_resp_t
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
-  input logic [31:0] entropy_stream_data_i,
-  input logic entropy_stream_vld_i,
+  input  logic [31:0] entropy_stream_data_i,
+  input  logic   entropy_stream_vld_i,
 
   output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_o,
   input  drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_i,
@@ -57,16 +57,16 @@ module drbg
 
   input  csrng_axil_req_t csrng_axil_req_i,
   output csrng_axil_rsp_t csrng_axil_rsp_o,
-  input  edn_axil_req_t   edn_axil_req_i,
+  input  edn_axil_req_t edn_axil_req_i,
   output edn_axil_rsp_t   edn_axil_rsp_o,
 
-  input prim_mubi_pkg::mubi8_t otp_en_csrng_sw_app_read_i,
-  input lc_ctrl_pkg::lc_tx_t   lc_hw_debug_en_i,
+  input  prim_mubi_pkg::mubi8_t otp_en_csrng_sw_app_read_i,
+  input  lc_ctrl_pkg::lc_tx_t   lc_hw_debug_en_i,
 
   input  prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i,
   output prim_alert_pkg::alert_tx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_tx_o,
-  input  prim_alert_pkg::alert_rx_t [  edn_reg_pkg::NumAlerts-1:0] edn_alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [  edn_reg_pkg::NumAlerts-1:0] edn_alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0] edn_alert_rx_i,
+  output prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_tx_o,
 
   output logic intr_cs_cmd_req_done_o,
   output logic intr_cs_entropy_req_o,
@@ -88,9 +88,9 @@ module drbg
   localparam int unsigned CSRNG_NUM_HW_APPS = csrng_reg_pkg::NumApps - 1;
   localparam int unsigned EDN_TOTAL_ENDPOINTS = EDN_ENDPOINT_COUNT + EDN_NATIVE_ENDPOINT_COUNT;
 
-  drbg_axil32_req_t csrng_axil32_req;
+  drbg_axil32_req_t  csrng_axil32_req;
   drbg_axil32_resp_t csrng_axil32_rsp;
-  drbg_axil32_req_t edn_axil32_req;
+  drbg_axil32_req_t  edn_axil32_req;
   drbg_axil32_resp_t edn_axil32_rsp;
 
   tlul_pkg::tl_h2d_t csrng_tl_h2d;
@@ -145,19 +145,19 @@ module drbg
   drbg_csrng_seed_adapter #(
     .SEED_FIFO_DEPTH(SEED_FIFO_DEPTH)
   ) u_csrng_seed_adapter (
-    .clk_i                  (clk_i),
-    .rst_ni                 (rst_ni),
-    .csrng_word_valid_i     (entropy_stream_vld_i),
-    .csrng_word_data_i      (entropy_stream_data_i),
-    .csrng_word_ready_o     (csrng_word_ready),
+    .clk_i                 (clk_i),
+    .rst_ni                (rst_ni),
+    .csrng_word_valid_i    (entropy_stream_vld_i),
+    .csrng_word_data_i     (entropy_stream_data_i),
+    .csrng_word_ready_o    (csrng_word_ready),
     .entropy_src_hw_if_req_i(csrng_entropy_req),
     .entropy_src_hw_if_rsp_o(csrng_entropy_rsp),
-    .seed_queue_valid_o     (seed_queue_valid),
-    .seed_queue_bits_o      (seed_queue_bits),
-    .seed_queue_fips_o      (seed_queue_fips),
-    .seed_push_o            (seed_push_pulse),
-    .packer_word_count_o    (seed_packer_word_count),
-    .seed_queue_depth_o     (seed_queue_depth)
+    .seed_queue_valid_o    (seed_queue_valid),
+    .seed_queue_bits_o     (seed_queue_bits),
+    .seed_queue_fips_o     (seed_queue_fips),
+    .seed_push_o           (seed_push_pulse),
+    .packer_word_count_o   (seed_packer_word_count),
+    .seed_queue_depth_o    (seed_queue_depth)
   );
 
   // The entropy source is a fire-and-forget producer with no ready signal. The
@@ -171,13 +171,13 @@ module drbg
     .EDN_ENDPOINT_COUNT (EDN_ENDPOINT_COUNT),
     .ENDPOINT_FIFO_DEPTH(ENDPOINT_FIFO_DEPTH)
   ) u_edn_axis_adapter (
-    .clk_i                (clk_i),
-    .rst_ni               (rst_ni),
-    .edn_req_o            (edn_axis_endpoint_req),
-    .edn_rsp_i            (edn_axis_endpoint_rsp),
-    .edn_axis_o           (edn_axis_o),
-    .edn_axis_i           (edn_axis_i),
-    .endpoint_fifo_full_o (endpoint_fifo_full),
+    .clk_i               (clk_i),
+    .rst_ni              (rst_ni),
+    .edn_req_o           (edn_axis_endpoint_req),
+    .edn_rsp_i           (edn_axis_endpoint_rsp),
+    .edn_axis_o          (edn_axis_o),
+    .edn_axis_i          (edn_axis_i),
+    .endpoint_fifo_full_o(endpoint_fifo_full),
     .endpoint_fifo_depth_o(endpoint_fifo_depth)
   );
 
@@ -190,8 +190,8 @@ module drbg
   // Map native endpoints to EDN indices [EDN_ENDPOINT_COUNT .. EDN_TOTAL_ENDPOINTS-1]
   if (EDN_NATIVE_ENDPOINT_COUNT > 0) begin : gen_native_edn
     for (genvar i = 0; i < EDN_NATIVE_ENDPOINT_COUNT; i++) begin : gen_native_edn_map
-      assign edn_all_req[EDN_ENDPOINT_COUNT+i] = edn_native_req_i[i];
-      assign edn_native_rsp_o[i] = edn_all_rsp[EDN_ENDPOINT_COUNT+i];
+      assign edn_all_req[EDN_ENDPOINT_COUNT + i] = edn_native_req_i[i];
+      assign edn_native_rsp_o[i] = edn_all_rsp[EDN_ENDPOINT_COUNT + i];
     end
   end else begin : gen_native_edn_tieoff
     assign edn_native_rsp_o[0] = edn_pkg::EDN_RSP_DEFAULT;
@@ -219,19 +219,19 @@ module drbg
   );
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH(DRBG_AXIL32_ADDR_WIDTH),
-    .AXI_DATA_WIDTH(DRBG_AXIL32_DATA_WIDTH),
-    .axi_lite_req_t(drbg_axil32_req_t),
-    .axi_lite_rsp_t(drbg_axil32_resp_t)
+    .AXI_ADDR_WIDTH (DRBG_AXIL32_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (DRBG_AXIL32_DATA_WIDTH),
+    .axi_lite_req_t (drbg_axil32_req_t),
+    .axi_lite_rsp_t (drbg_axil32_resp_t)
   ) u_csrng_axi_lite_to_tlul (
-    .clk_i         (clk_i),
-    .rst_ni        (rst_ni),
-    .axi_lite_req_i(csrng_axil32_req),
-    .axi_lite_rsp_o(csrng_axil32_rsp),
-    .tl_o          (csrng_tl_h2d),
-    .tl_i          (csrng_tl_d2h),
-    .err_o         (csrng_bus_err_o),
-    .err_clr_i     (csrng_bus_err_clr_i)
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+    .axi_lite_req_i (csrng_axil32_req),
+    .axi_lite_rsp_o (csrng_axil32_rsp),
+    .tl_o           (csrng_tl_h2d),
+    .tl_i           (csrng_tl_d2h),
+    .err_o          (csrng_bus_err_o),
+    .err_clr_i      (csrng_bus_err_clr_i)
   );
 
   drbg_axil64_lane_adapter #(
@@ -252,19 +252,19 @@ module drbg
   );
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH(DRBG_AXIL32_ADDR_WIDTH),
-    .AXI_DATA_WIDTH(DRBG_AXIL32_DATA_WIDTH),
-    .axi_lite_req_t(drbg_axil32_req_t),
-    .axi_lite_rsp_t(drbg_axil32_resp_t)
+    .AXI_ADDR_WIDTH (DRBG_AXIL32_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (DRBG_AXIL32_DATA_WIDTH),
+    .axi_lite_req_t (drbg_axil32_req_t),
+    .axi_lite_rsp_t (drbg_axil32_resp_t)
   ) u_edn_axi_lite_to_tlul (
-    .clk_i         (clk_i),
-    .rst_ni        (rst_ni),
-    .axi_lite_req_i(edn_axil32_req),
-    .axi_lite_rsp_o(edn_axil32_rsp),
-    .tl_o          (edn_tl_h2d),
-    .tl_i          (edn_tl_d2h),
-    .err_o         (edn_bus_err_o),
-    .err_clr_i     (edn_bus_err_clr_i)
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+    .axi_lite_req_i (edn_axil32_req),
+    .axi_lite_rsp_o (edn_axil32_rsp),
+    .tl_o           (edn_tl_h2d),
+    .tl_i           (edn_tl_d2h),
+    .err_o          (edn_bus_err_o),
+    .err_clr_i      (edn_bus_err_clr_i)
   );
 
   // =========================================================================
@@ -272,7 +272,7 @@ module drbg
   // =========================================================================
 
   assign csrng_hw_req[0] = edn_csrng_req;
-  assign edn_csrng_rsp   = csrng_hw_rsp[0];
+  assign edn_csrng_rsp = csrng_hw_rsp[0];
   if (CSRNG_NUM_HW_APPS > 1) begin : gen_unused_hw_apps
     for (genvar i = 1; i < CSRNG_NUM_HW_APPS; i++) begin : gen_tieoff
       assign csrng_hw_req[i] = csrng_pkg::CSRNG_REQ_DEFAULT;
@@ -280,22 +280,22 @@ module drbg
   end
 
   csrng u_csrng (
-    .clk_i                     (clk_i),
-    .rst_ni                    (rst_ni),
-    .tl_i                      (csrng_tl_h2d),
-    .tl_o                      (csrng_tl_d2h),
-    .otp_en_csrng_sw_app_read_i(otp_en_csrng_sw_app_read_i),
-    .lc_hw_debug_en_i          (lc_hw_debug_en_i),
-    .entropy_src_hw_if_o       (csrng_entropy_req),
-    .entropy_src_hw_if_i       (csrng_entropy_rsp),
-    .csrng_cmd_i               (csrng_hw_req),
-    .csrng_cmd_o               (csrng_hw_rsp),
-    .alert_rx_i                (csrng_alert_rx_i),
-    .alert_tx_o                (csrng_alert_tx_o),
-    .intr_cs_cmd_req_done_o    (intr_cs_cmd_req_done_o),
-    .intr_cs_entropy_req_o     (intr_cs_entropy_req_o),
-    .intr_cs_hw_inst_exc_o     (intr_cs_hw_inst_exc_o),
-    .intr_cs_fatal_err_o       (intr_cs_fatal_err_o)
+    .clk_i                       (clk_i),
+    .rst_ni                      (rst_ni),
+    .tl_i                        (csrng_tl_h2d),
+    .tl_o                        (csrng_tl_d2h),
+    .otp_en_csrng_sw_app_read_i  (otp_en_csrng_sw_app_read_i),
+    .lc_hw_debug_en_i            (lc_hw_debug_en_i),
+    .entropy_src_hw_if_o         (csrng_entropy_req),
+    .entropy_src_hw_if_i         (csrng_entropy_rsp),
+    .csrng_cmd_i                 (csrng_hw_req),
+    .csrng_cmd_o                 (csrng_hw_rsp),
+    .alert_rx_i                  (csrng_alert_rx_i),
+    .alert_tx_o                  (csrng_alert_tx_o),
+    .intr_cs_cmd_req_done_o      (intr_cs_cmd_req_done_o),
+    .intr_cs_entropy_req_o       (intr_cs_entropy_req_o),
+    .intr_cs_hw_inst_exc_o       (intr_cs_hw_inst_exc_o),
+    .intr_cs_fatal_err_o         (intr_cs_fatal_err_o)
   );
 
   edn #(

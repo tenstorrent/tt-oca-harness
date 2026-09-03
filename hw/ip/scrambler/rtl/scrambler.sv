@@ -25,19 +25,19 @@ module scrambler
   import scrambler_pkg::*;
 #(
   parameter int unsigned ADDR_WIDTH = 10,
-  parameter int unsigned DATA_WIDTH = 32,  // ONLY 32-bit SUPPORTED
+  parameter int unsigned DATA_WIDTH = 32, // ONLY 32-bit SUPPORTED
   parameter int unsigned BYTE_WISE  = 0
 ) (
-  input  logic [  ADDR_WIDTH-1:0] addr_i,
+  input  logic [ADDR_WIDTH-1:0]   addr_i,
   /* verilator lint_off UNUSEDSIGNAL */
   input  logic [DATA_WIDTH/8-1:0] byte_mask_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic [            31:0] scrambler_key_i,
-  output logic [  ADDR_WIDTH-1:0] scrambled_addr_o,
-  input  logic [  DATA_WIDTH-1:0] write_data_i,
-  output logic [  DATA_WIDTH-1:0] scrambled_write_data_o,
-  input  logic [  DATA_WIDTH-1:0] scrambled_read_data_i,
-  output logic [  DATA_WIDTH-1:0] read_data_o
+  input  logic [31:0]             scrambler_key_i,
+  output logic [ADDR_WIDTH-1:0]   scrambled_addr_o,
+  input  logic [DATA_WIDTH-1:0]   write_data_i,
+  output logic [DATA_WIDTH-1:0]   scrambled_write_data_o,
+  input  logic [DATA_WIDTH-1:0]   scrambled_read_data_i,
+  output logic [DATA_WIDTH-1:0]   read_data_o
 );
 
   logic [31:0] round_key;
@@ -78,16 +78,14 @@ module scrambler
 
   // Scramble
   assign after_key_xor = write_data_i ^ round_key;
-  assign after_sbox = {
-    sbox4(after_key_xor[31:28]),
-    sbox4(after_key_xor[27:24]),
-    sbox4(after_key_xor[23:20]),
-    sbox4(after_key_xor[19:16]),
-    sbox4(after_key_xor[15:12]),
-    sbox4(after_key_xor[11:8]),
-    sbox4(after_key_xor[7:4]),
-    sbox4(after_key_xor[3:0])
-  };
+  assign after_sbox = {sbox4(after_key_xor[31:28]),
+                         sbox4(after_key_xor[27:24]),
+                         sbox4(after_key_xor[23:20]),
+                         sbox4(after_key_xor[19:16]),
+                         sbox4(after_key_xor[15:12]),
+                         sbox4(after_key_xor[11:8]),
+                         sbox4(after_key_xor[7:4]),
+                         sbox4(after_key_xor[3:0])};
 
   if (BYTE_WISE == 0) begin : gen_scramble_word
     assign scrambled_write_data_o = perm32(after_sbox);
@@ -112,16 +110,14 @@ module scrambler
     };
   end
 
-  assign after_ibox = {
-    ibox4(after_iplayer[31:28]),
-    ibox4(after_iplayer[27:24]),
-    ibox4(after_iplayer[23:20]),
-    ibox4(after_iplayer[19:16]),
-    ibox4(after_iplayer[15:12]),
-    ibox4(after_iplayer[11:8]),
-    ibox4(after_iplayer[7:4]),
-    ibox4(after_iplayer[3:0])
-  };
+  assign after_ibox = {ibox4(after_iplayer[31:28]),
+                         ibox4(after_iplayer[27:24]),
+                         ibox4(after_iplayer[23:20]),
+                         ibox4(after_iplayer[19:16]),
+                         ibox4(after_iplayer[15:12]),
+                         ibox4(after_iplayer[11:8]),
+                         ibox4(after_iplayer[7:4]),
+                         ibox4(after_iplayer[3:0])};
 
   assign read_data_o = after_ibox ^ round_key;
 

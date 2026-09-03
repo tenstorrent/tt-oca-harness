@@ -22,35 +22,35 @@
 `timescale 1ns / 1ps
 
 module Decorrelator_Checker #(
-  parameter int N_LANES       = 12,  // Number of decorrelator lanes to check
-  parameter int MAX_DEPTH     = 29,  // Maximum decorrelator depth (DECOR_29 mode)
-  parameter int SAFETY_MARGIN = 2    // Extra samples for safety (beyond calculated minimum)
+  parameter int N_LANES = 12,      // Number of decorrelator lanes to check
+  parameter int MAX_DEPTH = 29,    // Maximum decorrelator depth (DECOR_29 mode)
+  parameter int SAFETY_MARGIN = 2  // Extra samples for safety (beyond calculated minimum)
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic rstn_i,
+  input  logic                     clk_i,
+  input  logic                     rstn_i,
 
   // Checker Control
-  input logic enable_i,  // Master enable switch (1=allow checking, 0=force disable)
-  input logic verbose_i, // Verbose mode (1=show matches, 0=only mismatches)
+  input  logic                     enable_i,      // Master enable switch (1=allow checking, 0=force disable)
+  input  logic                     verbose_i,     // Verbose mode (1=show matches, 0=only mismatches)
 
   // RTL Monitor (to detect APB programming complete)
-  input logic [7:0] rtl_clk_divider_i,  // RTL clock divider value (from DUT)
-                                        // Checker waits for != 0 before starting warmup
-  input logic [7:0] byte_mask_i,        // DECORRELATOR_MASK register value (from DUT)
-                                        // Applied to ref only (DUT already masked in hardware)
+  input  logic [7:0]               rtl_clk_divider_i,  // RTL clock divider value (from DUT)
+                                                       // Checker waits for != 0 before starting warmup
+  input  logic [7:0]               byte_mask_i,        // DECORRELATOR_MASK register value (from DUT)
+                                                       // Applied to ref only (DUT already masked in hardware)
 
   // DUT Decorrelator Outputs (per-lane, no valid signal)
-  input logic [N_LANES-1:0][7:0] dut_bytes_i,  // DUT byte outputs
+  input  logic [N_LANES-1:0][7:0]  dut_bytes_i,   // DUT byte outputs
 
   // Reference Model Outputs (per-lane with common valid)
-  input logic [N_LANES-1:0][7:0] ref_bytes_i,  // Reference model byte outputs
-  input logic                    ref_vld_i,    // Reference model valid (sync timing)
+  input  logic [N_LANES-1:0][7:0]  ref_bytes_i,   // Reference model byte outputs
+  input  logic                     ref_vld_i,     // Reference model valid (sync timing)
 
   // Status Outputs (for Python test checking)
-  output logic [31:0] check_count_o,     // Total number of checks performed
-  output logic [31:0] mismatch_count_o,  // Number of cycles with mismatches
-  output logic        warmup_done_o      // Warm-up complete, checking active
+  output logic [31:0]              check_count_o,     // Total number of checks performed
+  output logic [31:0]              mismatch_count_o,  // Number of cycles with mismatches
+  output logic                     warmup_done_o      // Warm-up complete, checking active
 );
 
   //--------------------------------------------------------------------------
@@ -58,16 +58,16 @@ module Decorrelator_Checker #(
   //--------------------------------------------------------------------------
 
   // Warm-up control
-  logic rtl_programmed;  // RTL clock divider has been programmed (rtl_clk_divider_i != 0)
-  logic [31:0] warmup_count;  // Count samples during warm-up
-  logic [31:0] warmup_target;  // Required samples for warmup (calculated from clk_divider)
-  logic warmup_done;  // Warm-up complete flag
-  logic checking_enabled;  // Internal enable (master enable AND warm-up done)
+  logic        rtl_programmed;     // RTL clock divider has been programmed (rtl_clk_divider_i != 0)
+  logic [31:0] warmup_count;       // Count samples during warm-up
+  logic [31:0] warmup_target;      // Required samples for warmup (calculated from clk_divider)
+  logic        warmup_done;        // Warm-up complete flag
+  logic        checking_enabled;   // Internal enable (master enable AND warm-up done)
 
   // Statistics counters
   logic [31:0] check_count;
   logic [31:0] mismatch_count;
-  integer lane_mismatch_count[N_LANES];
+  integer lane_mismatch_count [N_LANES];
 
   // Connect internal counters to output ports
   assign check_count_o = check_count;
@@ -108,7 +108,7 @@ module Decorrelator_Checker #(
         rtl_programmed <= 1'b1;
 
         // Calculate actual clock division (register value + 1)
-        actual_division  = int'(rtl_clk_divider_i) + 1;
+        actual_division = int'(rtl_clk_divider_i) + 1;
 
         // Calculate minimum samples needed: ceil(MAX_DEPTH / actual_division)
         // Formula: (MAX_DEPTH + actual_division - 1) / actual_division

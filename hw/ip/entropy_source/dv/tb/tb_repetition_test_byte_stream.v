@@ -113,7 +113,7 @@ module tb_repetition_test_byte_stream ();
     // Initialize signals
     rst_ni = 0;
     enable_i = 0;
-    repetition_limit_i = 8'd15;  // Default threshold
+    repetition_limit_i = 8'd15; // Default threshold
     inject_failure = 0;
     failure_bit = 0;
 
@@ -140,7 +140,7 @@ module tb_repetition_test_byte_stream ();
     //=== Test 2: Enable/Disable Functionality ===
     $display("\n=== Test 2: Enable/Disable Functionality ===");
     inject_failure = 1;
-    failure_bit = 1;  // Stuck-at-1
+    failure_bit = 1; // Stuck-at-1
 
     // Test with disabled
     enable_i = 0;
@@ -168,7 +168,7 @@ module tb_repetition_test_byte_stream ();
     //=== Test 3: Stuck-at-0 Detection ===
     $display("\n=== Test 3: Stuck-at-0 Detection ===");
     inject_failure = 1;
-    failure_bit = 0;  // Stuck-at-0
+    failure_bit = 0; // Stuck-at-0
     enable_i = 1;
 
     #(CLOCK_PERIOD * 100);
@@ -184,7 +184,7 @@ module tb_repetition_test_byte_stream ();
     //=== Test 4: Stuck-at-1 Detection ===
     $display("\n=== Test 4: Stuck-at-1 Detection ===");
     inject_failure = 1;
-    failure_bit = 1;  // Stuck-at-1
+    failure_bit = 1; // Stuck-at-1
     enable_i = 1;
 
     #(CLOCK_PERIOD * 100);
@@ -256,8 +256,8 @@ module tb_repetition_test_byte_stream ();
     #(CLOCK_PERIOD * 20);  // Build up some repetition count
 
     // Apply reset and check immediate state
-    rst_ni   = 0;
-    enable_i = 0;  // Disable during reset
+    rst_ni = 0;
+    enable_i = 0; // Disable during reset
     #(CLOCK_PERIOD * 5);
     rst_ni = 1;
     #(CLOCK_PERIOD * 2);  // Wait for reset to take effect
@@ -273,7 +273,7 @@ module tb_repetition_test_byte_stream ();
 
     // Re-enable for normal operation
     enable_i = 1;
-    inject_failure = 0;  // Turn off failure injection
+    inject_failure = 0; // Turn off failure injection
     #(CLOCK_PERIOD * 10);  // Allow normal operation to resume
 
     //=== Final Results ===

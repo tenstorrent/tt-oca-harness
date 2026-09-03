@@ -13,11 +13,11 @@
 
 module scrambler_rotator #(
   parameter int unsigned DATA_WIDTH = 9,
-  parameter int unsigned ROT_WIDTH  = $clog2(DATA_WIDTH)
+  parameter int unsigned ROT_WIDTH = $clog2(DATA_WIDTH)
 ) (
-  input  logic [DATA_WIDTH-1:0] data_i,
-  input  logic [ ROT_WIDTH-1:0] rotate_amt_i,
-  output logic [DATA_WIDTH-1:0] data_o
+  input  logic [DATA_WIDTH-1:0]     data_i,
+  input  logic [ROT_WIDTH-1:0]      rotate_amt_i,
+  output logic [DATA_WIDTH-1:0]     data_o
 );
   logic [ROT_WIDTH-1:0] rotate_amt;
 

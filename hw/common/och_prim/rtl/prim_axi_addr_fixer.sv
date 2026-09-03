@@ -9,9 +9,9 @@ module prim_axi_addr_fixer #(
   parameter int unsigned INPUT_ADDR_W  = 64,
   parameter int unsigned OUTPUT_ADDR_W = 64,
 
-  parameter type input_axi_req_t   = logic,
-  parameter type input_axi_resp_t  = logic,
-  parameter type output_axi_req_t  = logic,
+  parameter type input_axi_req_t = logic,
+  parameter type input_axi_resp_t = logic,
+  parameter type output_axi_req_t = logic,
   parameter type output_axi_resp_t = logic
 ) (
   // AXI Input Interface

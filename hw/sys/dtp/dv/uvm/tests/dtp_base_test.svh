@@ -124,10 +124,9 @@ class dtp_base_test extends uvm_test;
   endtask
 
   task run_looped_scenario();
-    int unsigned loops = loop_count(
-        specific_loops_plusarg(), group_loops_plusarg(), default_loops()
-    );
-    int unsigned seed = base_seed();
+    int unsigned loops = loop_count(specific_loops_plusarg(),
+                                        group_loops_plusarg(), default_loops());
+    int unsigned seed   = base_seed();
     int unsigned rcount = random_count();
     bring_up();
     for (int unsigned idx = 0; idx < loops; idx++) begin

@@ -30,20 +30,20 @@ module km_drbg_sampler
   parameter type axil_req_t  = km_axil_req_t,
   parameter type axil_resp_t = km_axil_resp_t
 ) (
-  input logic clk_i,
-  input logic cold_rst_ni,  // Cold reset: AASD
-  input logic warm_rst_ni,  // Warm reset: fully synchronous
+  input  logic   clk_i,
+  input  logic   cold_rst_ni,   // Cold reset: AASD
+  input  logic   warm_rst_ni,   // Warm reset: fully synchronous
 
   // AXI4-Lite Slave (from crossbar, base 0x0001_5000)
-  input  axil_req_t  axil_req_i,
+  input  axil_req_t axil_req_i,
   output axil_resp_t axil_resp_o,
 
   // DRBG AXI-Stream (KM is slave: TREADY out; TVALID, TDATA, TSTRB in)
-  input  km_drbg_axis_req_t  drbg_axis_req_i,
+  input  km_drbg_axis_req_t drbg_axis_req_i,
   output km_drbg_axis_resp_t drbg_axis_resp_o,
 
   // Aggregated error pulse to KMCSR (sets IRQ_STATUS.DRBG_ERR)
-  output logic drbg_error_o
+  output logic        drbg_error_o
 );
 
   `include "prim_assert.sv"
@@ -59,31 +59,31 @@ module km_drbg_sampler
   logic [2:0] reg_awprot;
   logic reg_wready, reg_wvalid;
   logic [31:0] reg_wdata;
-  logic [ 3:0] reg_wstrb;
+  logic [3:0] reg_wstrb;
   logic reg_bready, reg_bvalid;
   logic [1:0] reg_bresp;
   logic reg_arready, reg_arvalid;
   logic [ADDR_W-1:0] reg_araddr;
   logic [2:0] reg_arprot;
   logic reg_rready, reg_rvalid;
-  logic                  [31:0] reg_rdata;
-  logic                  [ 1:0] reg_rresp;
+  logic [31:0] reg_rdata;
+  logic [1:0] reg_rresp;
 
-  km_drbg_sampler__in_t         hwif_in;
-  km_drbg_sampler__out_t        hwif_out;
+  km_drbg_sampler__in_t  hwif_in;
+  km_drbg_sampler__out_t hwif_out;
 
   //--------------------------------------------------------------------------
   // Single in-flight read: slot for one response (DATA or reg block)
   //--------------------------------------------------------------------------
-  logic                         slot_valid;  // We have an outstanding read not yet responded
-  logic                         slot_is_data;  // Slot is for DATA read (we provide R)
-  logic                  [31:0] slot_rdata;
-  logic                  [ 1:0] slot_rresp;
-  logic                         slot_done;  // Response is ready to send
+  logic slot_valid;       // We have an outstanding read not yet responded
+  logic slot_is_data;     // Slot is for DATA read (we provide R)
+  logic [31:0] slot_rdata;
+  logic [1:0] slot_rresp;
+  logic slot_done;        // Response is ready to send
 
   // Only accept AR when no outstanding read
-  logic                         ar_accept;
-  logic                         is_data_read;
+  logic ar_accept;
+  logic is_data_read;
   assign is_data_read = (axil_req_i.ar.addr[ADDR_W-1:0] == KM_DRBG_SAMPLER_DATA_BASE_ADDR[ADDR_W-1:0]);
   assign ar_accept = axil_req_i.ar_valid && !slot_valid;
 
@@ -91,25 +91,25 @@ module km_drbg_sampler
   logic forward_ar;
   assign forward_ar = ar_accept && !is_data_read;
   assign reg_awvalid = axil_req_i.aw_valid;
-  assign reg_awaddr = axil_req_i.aw.addr[ADDR_W-1:0];
-  assign reg_awprot = axil_req_i.aw.prot;
-  assign reg_wvalid = axil_req_i.w_valid;
-  assign reg_wdata = axil_req_i.w.data;
-  assign reg_wstrb = axil_req_i.w.strb;
-  assign reg_bready = axil_req_i.b_ready;
+  assign reg_awaddr  = axil_req_i.aw.addr[ADDR_W-1:0];
+  assign reg_awprot  = axil_req_i.aw.prot;
+  assign reg_wvalid  = axil_req_i.w_valid;
+  assign reg_wdata   = axil_req_i.w.data;
+  assign reg_wstrb   = axil_req_i.w.strb;
+  assign reg_bready  = axil_req_i.b_ready;
   assign reg_arvalid = forward_ar;
-  assign reg_araddr = axil_req_i.ar.addr[ADDR_W-1:0];
-  assign reg_arprot = axil_req_i.ar.prot;
-  assign reg_rready = axil_req_i.r_ready;
+  assign reg_araddr  = axil_req_i.ar.addr[ADDR_W-1:0];
+  assign reg_arprot  = axil_req_i.ar.prot;
+  assign reg_rready  = axil_req_i.r_ready;
 
   assign axil_resp_o.aw_ready = reg_awready;
-  assign axil_resp_o.w_ready = reg_wready;
-  assign axil_resp_o.b.resp = reg_bresp;
-  assign axil_resp_o.b_valid = reg_bvalid;
+  assign axil_resp_o.w_ready  = reg_wready;
+  assign axil_resp_o.b.resp   = reg_bresp;
+  assign axil_resp_o.b_valid  = reg_bvalid;
   assign axil_resp_o.ar_ready = ar_accept;
-  assign axil_resp_o.r.data = slot_is_data ? slot_rdata : reg_rdata;
-  assign axil_resp_o.r.resp = slot_is_data ? slot_rresp : reg_rresp;
-  assign axil_resp_o.r_valid = slot_valid && (slot_is_data ? slot_done : reg_rvalid);
+  assign axil_resp_o.r.data   = slot_is_data ? slot_rdata : reg_rdata;
+  assign axil_resp_o.r.resp   = slot_is_data ? slot_rresp : reg_rresp;
+  assign axil_resp_o.r_valid  = slot_valid && (slot_is_data ? slot_done : reg_rvalid);
 
   logic r_consume;
   assign r_consume = axil_resp_o.r_valid && axil_req_i.r_ready;
@@ -140,12 +140,12 @@ module km_drbg_sampler
         slot_done <= 1'b0;
       end else if (r_consume) begin
         slot_valid <= 1'b0;
-        slot_done  <= 1'b0;
+        slot_done <= 1'b0;
       end
       if (slot_valid && slot_is_data && data_read_done) begin
         slot_rdata <= data_read_rdata;
         slot_rresp <= data_read_rresp;
-        slot_done  <= 1'b1;
+        slot_done <= 1'b1;
       end
     end
   end
@@ -164,15 +164,15 @@ module km_drbg_sampler
   } state_e;
   state_e state_q, state_d;
 
-  logic [31:0] word_reg;  // Assembled word (active DATA-read path)
-  logic [ 2:0] data_bytes_collected;  // 0..4 bytes packed so far (active path)
-  logic [15:0] timeout_cnt;  // Timeout counter (active read only)
-  logic [ 7:0] count_bad;
+  logic [31:0] word_reg;            // Assembled word (active DATA-read path)
+  logic [2:0]  data_bytes_collected; // 0..4 bytes packed so far (active path)
+  logic [15:0] timeout_cnt;        // Timeout counter (active read only)
+  logic [7:0] count_bad;
   logic [15:0] count_good;
-  logic        timeout_en;  // CFG.TIMEOUT != 0
-  logic        timeout_hit;
+  logic timeout_en;               // CFG.TIMEOUT != 0
+  logic timeout_hit;
 
-  assign timeout_en  = (hwif_out.CFG.timeout.value != 16'h0);
+  assign timeout_en = (hwif_out.CFG.timeout.value != 16'h0);
   // The timeout fires exactly when the active wait budget is
   // exhausted (counter reaches 0).  The counter is loaded with
   // CFG.TIMEOUT-1 outside the active states (see always_ff below) and
@@ -210,10 +210,10 @@ module km_drbg_sampler
   // DRBG handshake
   logic tvalid, tready;
   logic [31:0] tdata;
-  logic [ 3:0] tstrb;
+  logic [3:0] tstrb;
   assign tvalid = drbg_axis_req_i.tvalid;
-  assign tdata = drbg_axis_req_i.tdata;
-  assign tstrb = drbg_axis_req_i.tstrb;
+  assign tdata  = drbg_axis_req_i.tdata;
+  assign tstrb  = drbg_axis_req_i.tstrb;
   // TREADY: from DATA read FSM or from prefetch FSM (only one active at a time)
   assign drbg_axis_resp_o.tready = tready | prefetch_tready;
 
@@ -231,12 +231,12 @@ module km_drbg_sampler
                                      output logic [31:0] dest_word_out,
                                      output logic [2:0] dest_pos_out);
     logic [31:0] w;
-    logic [ 2:0] pos;
+    logic [2:0]  pos;
     w   = dest_word_in;
     pos = dest_pos_in;
     for (int j = 0; j < 4; j++) begin
       if (src_strb[j] && pos < 3'd4) begin
-        w[8*pos+:8] = src_data[8*j+:8];
+        w[8*pos +: 8] = src_data[8*j +: 8];
         pos = pos + 3'd1;
       end
     end
@@ -251,7 +251,7 @@ module km_drbg_sampler
   // combined TREADY output, then checking whether TVALID has fallen without
   // a handshake having occurred.
   //--------------------------------------------------------------------------
-  logic tvalid_q;  // TVALID registered: 1 cycle delayed
+  logic tvalid_q;       // TVALID registered: 1 cycle delayed
   logic drbg_tready_q;  // Combined TREADY output registered: 1 cycle delayed
 
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
@@ -275,9 +275,9 @@ module km_drbg_sampler
 
   // Compaction packer outputs (next-cycle values from the function)
   logic [31:0] data_word_next;
-  logic [ 2:0] data_bytes_next;
+  logic [2:0]  data_bytes_next;
   logic [31:0] prefetch_word_next;
-  logic [ 2:0] prefetch_bytes_next;
+  logic [2:0]  prefetch_bytes_next;
 
   // FSM and counters are control and are reset. word_reg / prefetch_word_acc are datapath
   // (hold DRBG data) and must NOT be reset.
@@ -441,8 +441,8 @@ module km_drbg_sampler
           prefetch_bytes_collected <= prefetch_bytes_next;
           if (prefetch_bytes_next == 3'd4) begin
             prefetch_data_reg <= prefetch_word_next;
-            prefetched_valid <= 1'b1;
-            prefetch_pending <= 1'b0;
+            prefetched_valid  <= 1'b1;
+            prefetch_pending  <= 1'b0;
             prefetch_bytes_collected <= 3'd0;
           end
         end else if (prefetch_state_q == StIdle && !prefetched_valid && !prefetch_pending) begin

@@ -19,49 +19,49 @@ module uart_core
 
   // Internal parameters
   localparam int unsigned BAUD_CNT_WIDTH = 16,
-  localparam type         baud_cnt_t     = logic [BAUD_CNT_WIDTH-1:0],
+  localparam type         baud_cnt_t = logic [BAUD_CNT_WIDTH-1:0],
 
   localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),
-  localparam type         rx_fifo_depth_t     = logic                     [RX_FIFO_DEPTH_WIDTH-1:0],
+  localparam type         rx_fifo_depth_t = logic [RX_FIFO_DEPTH_WIDTH-1:0],
 
   localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),
-  localparam type timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],
+  localparam type         timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],
 
   localparam int unsigned TRIGGER_LEVEL_WIDTH = $clog2(NUM_TRIGGER_LEVELS),
-  localparam type         trigger_level_t     = logic                      [TRIGGER_LEVEL_WIDTH-1:0]
+  localparam type         trigger_level_t = logic [TRIGGER_LEVEL_WIDTH-1:0]
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                clk_i,
+  input  logic                rst_ni,
 
   // Register Interface
   input  uart_16550_reg_out_t reg_out_i,
   output uart_16550_reg_in_t  reg_in_o,
 
   // UART Interface
-  input  logic rx_i,
-  output logic tx_o,
+  input  logic                rx_i,
+  output logic                tx_o,
 
   // Modem Interface
-  input logic cts_ni,
-  input logic dsr_ni,
-  input logic ri_ni,
-  input logic dcd_ni,
+  input  logic                cts_ni,
+  input  logic                dsr_ni,
+  input  logic                ri_ni,
+  input  logic                dcd_ni,
 
-  output logic rts_no,
-  output logic dtr_no,
-  output logic out1_no,
-  output logic out2_no,
+  output logic                rts_no,
+  output logic                dtr_no,
+  output logic                out1_no,
+  output logic                out2_no,
 
   // DMA Interface
-  output logic rxrdy_o,
-  output logic txrdy_o,
+  output logic                rxrdy_o,
+  output logic                txrdy_o,
 
   // Error Interface
-  output logic err_o,
+  output logic                err_o,
 
   // Interrupt Interface
-  output logic irq_o
+  output logic                irq_o
 );
 
   //////////////////////////////////
@@ -77,8 +77,8 @@ module uart_core
 
   logic [7:0] uart_rdata;
   logic tick_baud_x16, rx_tick_baud;
-  rx_fifo_depth_t rx_fifo_depth;
-  rx_fifo_depth_t rx_fifo_depth_prev_q;
+  rx_fifo_depth_t  rx_fifo_depth;
+  rx_fifo_depth_t  rx_fifo_depth_prev_q;
   timeout_cnt_t rx_timeout_count_d, rx_timeout_count_q, uart_rxto_val;
   logic rx_fifo_depth_changed, uart_rxto_en;
   logic tx_enable, rx_enable;
@@ -91,21 +91,21 @@ module uart_core
   logic tx_fifo_thr_wvalid;
   logic tx_fifo_thr_rready, tx_fifo_thr_rvalid;
   logic tx_fifo_thr_wready, tx_uart_idle;
-  logic       uart_tx_out;
-  logic       tx_out;
-  logic       tx_out_q;
-  logic [7:0] rx_fifo_rbr_wdata;
+  logic            uart_tx_out;
+  logic            tx_out;
+  logic            tx_out_q;
+  logic [7:0]      rx_fifo_rbr_wdata;
   logic rx_valid, rx_fifo_rbr_wvalid, rx_fifo_rbr_rvalid;
   logic rx_fifo_rbr_wready, rx_uart_idle;
-  logic rx_fifo_rbr_rready;
-  logic rx_sync;
-  logic rx_in;
+  logic            rx_fifo_rbr_rready;
+  logic            rx_sync;
+  logic            rx_in;
   logic frame_err, break_err, parity_err, rx_char_err;
-  logic allzero_err;
-  logic event_rx_overflow;
+  logic            allzero_err;
+  logic            event_rx_overflow;
   logic event_rx_frame_err, event_rx_timeout, event_rx_parity_err;
-  logic rx_watermark_d;
-  logic tx_uart_idle_q;
+  logic            rx_watermark_d;
+  logic            tx_uart_idle_q;
   logic fifo_thr_rbr_err, rx_fifo_rbr_err, tx_fifo_thr_err;
   logic fifo_error_intr_test, fifo_error_intr_en;
   logic reception_timeout_intr_test;
@@ -113,12 +113,12 @@ module uart_core
   logic transmitter_holding_register_empty_intr_test, transmitter_holding_register_empty_intr_en;
   logic receiver_line_status_intr_test, receiver_line_status_intr_en;
   logic modem_status_intr_test, modem_status_intr_en;
-  interrupt_reqs_t       intr_reqs;  // Interrupt requests going into the priority encoder
-  interrupt_id_e         intr_id;
-  logic                  iir_read;
-  dma_mode_e             dma_mode;
-  baud_cnt_t             baud_rate_divisor;
-  logic            [3:0] word_length;
+  interrupt_reqs_t intr_reqs; // Interrupt requests going into the priority encoder
+  interrupt_id_e   intr_id;
+  logic            iir_read;
+  dma_mode_e       dma_mode;
+  baud_cnt_t       baud_rate_divisor;
+  logic [3:0]      word_length;
   logic set_break, stick_parity, even_parity, parity_enable, extra_stop_bit;
 
 
@@ -192,25 +192,25 @@ module uart_core
   end
 
   prim_fifo_sync_parity #(
-    .Width            (8),
-    .Pass             (1'b0),
-    .Depth            (TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty(1'b1),
-    .NeverClears      (1'b0),
-    .Secure           (1'b1)            // Pointer and data error checking
+    .Width             (8),
+    .Pass              (1'b0),
+    .Depth             (TX_FIFO_DEPTH),
+    .OutputZeroIfEmpty (1'b1),
+    .NeverClears       (1'b0),
+    .Secure            (1'b1)  // Pointer and data error checking
   ) uart_txfifo (
     .clk_i,
     .rst_ni,
-    .clr_i   (uart_fifo_txrst),
-    .wvalid_i(tx_fifo_wvalid),
-    .wready_o(tx_fifo_wready),
-    .wdata_i (tx_fifo_wdata),
-    .rvalid_o(tx_fifo_rvalid),
-    .rready_i(tx_fifo_rready),
-    .rdata_o (tx_fifo_rdata),
-    .full_o  (  /* UNUSED */),
-    .depth_o (  /* UNUSED */),
-    .err_o   (tx_fifo_err)
+    .clr_i             (uart_fifo_txrst),
+    .wvalid_i          (tx_fifo_wvalid),
+    .wready_o          (tx_fifo_wready),
+    .wdata_i           (tx_fifo_wdata),
+    .rvalid_o          (tx_fifo_rvalid),
+    .rready_i          (tx_fifo_rready),
+    .rdata_o           (tx_fifo_rdata),
+    .full_o            (/* UNUSED */),
+    .depth_o           (/* UNUSED */),
+    .err_o             (tx_fifo_err)
   );
 
   // Transmitter Holding Register (THR)
@@ -255,21 +255,21 @@ module uart_core
   uart_tx uart_tx (
     .clk_i,
     .rst_ni,
-    .tx_enable_i     (tx_enable),
-    .tick_baud_x16_i (tick_baud_x16),
-    .parity_enable_i (parity_enable),
-    .word_length_i   (word_length),
-    .extra_stop_bit_i(extra_stop_bit),
-    .wr_i            (tx_fifo_thr_rready),
-    .wr_parity_i     (stick_parity ? ~even_parity : ~^tx_data ^ even_parity),
-    .wr_data_i       (tx_data),
-    .idle_o          (tx_uart_idle),
-    .tx_o            (uart_tx_out)
+    .tx_enable_i      (tx_enable),
+    .tick_baud_x16_i  (tick_baud_x16),
+    .parity_enable_i  (parity_enable),
+    .word_length_i    (word_length),
+    .extra_stop_bit_i (extra_stop_bit),
+    .wr_i             (tx_fifo_thr_rready),
+    .wr_parity_i      (stick_parity ? ~even_parity : ~^tx_data ^ even_parity),
+    .wr_data_i        (tx_data),
+    .idle_o           (tx_uart_idle),
+    .tx_o             (uart_tx_out)
   );
 
   assign tx_out = set_break ? 1'b0 : uart_tx_out;
 
-  assign tx_o   = line_loopback ? rx_i : tx_out_q;
+  assign tx_o = line_loopback ? rx_i : tx_out_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
@@ -288,13 +288,13 @@ module uart_core
 
   // Sync the incoming data
   prim_flop_2sync #(
-    .Width     (1),
-    .ResetValue(1'b1)
+    .Width      (1),
+    .ResetValue (1'b1)
   ) flop_2sync_rx (
     .clk_i,
     .rst_ni,
-    .d_i(rx_i),
-    .q_o(rx_sync)
+    .d_i        (rx_i),
+    .q_o        (rx_sync)
   );
 
   // Based on: en.wikipedia.org/wiki/Repetition_code mentions the use of a majority filter
@@ -312,25 +312,27 @@ module uart_core
   end
 
   assign rx_in_maj = count_ones({29'h0, rx_sync, rx_sync_q, rx_sync_q2}) >= 2'd2;
-  assign rx_in = sys_loopback ? tx_out : line_loopback ? 1'h1 : rx_in_maj;
+  assign rx_in = sys_loopback  ? tx_out :
+                   line_loopback ? 1'h1   :
+                   rx_in_maj;
 
   uart_rx uart_rx (
     .clk_i,
     .rst_ni,
-    .rx_enable_i     (rx_enable),
-    .tick_baud_x16_i (tick_baud_x16),
-    .parity_enable_i (parity_enable),
-    .parity_odd_i    (!even_parity),
-    .parity_force_i  (stick_parity),
-    .word_length_i   (word_length),
-    .extra_stop_bit_i(extra_stop_bit),
-    .tick_baud_o     (rx_tick_baud),
-    .rx_valid_o      (rx_valid),
-    .rx_data_o       (rx_fifo_rbr_wdata),
-    .idle_o          (rx_uart_idle),
-    .frame_err_o     (event_rx_frame_err),
-    .rx_i            (rx_in),
-    .rx_parity_err_o (event_rx_parity_err)
+    .rx_enable_i      (rx_enable),
+    .tick_baud_x16_i  (tick_baud_x16),
+    .parity_enable_i  (parity_enable),
+    .parity_odd_i     (!even_parity),
+    .parity_force_i   (stick_parity),
+    .word_length_i    (word_length),
+    .extra_stop_bit_i (extra_stop_bit),
+    .tick_baud_o      (rx_tick_baud),
+    .rx_valid_o       (rx_valid),
+    .rx_data_o        (rx_fifo_rbr_wdata),
+    .idle_o           (rx_uart_idle),
+    .frame_err_o      (event_rx_frame_err),
+    .rx_i             (rx_in),
+    .rx_parity_err_o  (event_rx_parity_err)
   );
 
   assign rx_fifo_rbr_wvalid = rx_valid;
@@ -350,41 +352,43 @@ module uart_core
   always_comb begin
     if (uart_fifo_en) begin
       // RX FIFO requests
-      rx_fifo_wvalid = rx_fifo_rbr_wvalid;
-      rx_fifo_wdata.break_err = allzero_err;
+      rx_fifo_wvalid            = rx_fifo_rbr_wvalid;
+      rx_fifo_wdata.break_err   = allzero_err;
       rx_fifo_wdata.framing_err = event_rx_frame_err;
-      rx_fifo_wdata.parity_err = event_rx_parity_err;
-      rx_fifo_wdata.character = rx_fifo_rbr_wdata;
-      rx_fifo_rready = rx_fifo_rbr_rready;
+      rx_fifo_wdata.parity_err  = event_rx_parity_err;
+      rx_fifo_wdata.character   = rx_fifo_rbr_wdata;
+      rx_fifo_rready            = rx_fifo_rbr_rready;
       // RX FIFO/RBR responses
       rx_fifo_rbr_wready = rx_fifo_wready;
       rx_fifo_rbr_rvalid = rx_fifo_rvalid;
-      uart_rdata = rx_fifo_rdata.character;
-      break_err = rx_fifo_rdata.break_err;
-      frame_err = rx_fifo_rdata.framing_err;
-      parity_err = rx_fifo_rdata.parity_err;
+      uart_rdata         = rx_fifo_rdata.character;
+      break_err          = rx_fifo_rdata.break_err;
+      frame_err          = rx_fifo_rdata.framing_err;
+      parity_err         = rx_fifo_rdata.parity_err;
       rx_char_err        = rx_fifo_rdata.break_err   ||
                                  rx_fifo_rdata.framing_err ||
                                  rx_fifo_rdata.parity_err;
-      rx_fifo_rbr_err = rx_fifo_err;
+      rx_fifo_rbr_err    = rx_fifo_err;
       // RBR requests
       rbr_wvalid = 1'b0;
-      rbr_wdata = rx_fifo_rbr_entry_t'(0);
+      rbr_wdata  = rx_fifo_rbr_entry_t'(0);
       rbr_rready = 1'b0;
     end else begin
       // RX FIFO requests
-      rx_fifo_wvalid        = 1'b0;
-      rx_fifo_wdata         = rx_fifo_rbr_entry_t'(0);
-      rx_fifo_rready        = 1'b0;
+      rx_fifo_wvalid = 1'b0;
+      rx_fifo_wdata  = rx_fifo_rbr_entry_t'(0);
+      rx_fifo_rready = 1'b0;
       // RX FIFO/RBR responses
-      rx_fifo_rbr_wready    = rbr_wready;
-      rx_fifo_rbr_rvalid    = rbr_rvalid;
-      uart_rdata            = rbr_rdata.character;
-      break_err             = rbr_rdata.break_err;
-      frame_err             = rbr_rdata.framing_err;
-      parity_err            = rbr_rdata.parity_err;
-      rx_char_err           = rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err;
-      rx_fifo_rbr_err       = rbr_err;
+      rx_fifo_rbr_wready = rbr_wready;
+      rx_fifo_rbr_rvalid = rbr_rvalid;
+      uart_rdata         = rbr_rdata.character;
+      break_err          = rbr_rdata.break_err;
+      frame_err          = rbr_rdata.framing_err;
+      parity_err         = rbr_rdata.parity_err;
+      rx_char_err        = rbr_rdata.break_err   ||
+                                 rbr_rdata.framing_err ||
+                                 rbr_rdata.parity_err;
+      rx_fifo_rbr_err    = rbr_err;
       // RBR requests
       rbr_wvalid            = rx_fifo_rbr_wvalid;
       rbr_wdata.break_err   = allzero_err;
@@ -396,25 +400,25 @@ module uart_core
   end
 
   prim_fifo_sync_parity #(
-    .Width            ($bits(rx_fifo_rbr_entry_t)),
-    .Pass             (1'b0),
-    .Depth            (RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty(1'b1),
-    .NeverClears      (1'b0),
-    .Secure           (1'b1)                         // Error checking
+    .Width             ($bits(rx_fifo_rbr_entry_t)),
+    .Pass              (1'b0),
+    .Depth             (RX_FIFO_DEPTH),
+    .OutputZeroIfEmpty (1'b1),
+    .NeverClears       (1'b0),
+    .Secure            (1'b1)  // Error checking
   ) uart_rxfifo (
     .clk_i,
     .rst_ni,
-    .clr_i   (uart_fifo_rxrst),
-    .wvalid_i(rx_fifo_wvalid),
-    .wready_o(rx_fifo_wready),
-    .wdata_i (rx_fifo_wdata),
-    .rvalid_o(rx_fifo_rvalid),
-    .rready_i(rx_fifo_rready),
-    .rdata_o (rx_fifo_rdata),
-    .full_o  (  /* UNUSED */),
-    .depth_o (rx_fifo_depth),
-    .err_o   (rx_fifo_err)
+    .clr_i             (uart_fifo_rxrst),
+    .wvalid_i          (rx_fifo_wvalid),
+    .wready_o          (rx_fifo_wready),
+    .wdata_i           (rx_fifo_wdata),
+    .rvalid_o          (rx_fifo_rvalid),
+    .rready_i          (rx_fifo_rready),
+    .rdata_o           (rx_fifo_rdata),
+    .full_o            (/* UNUSED */),
+    .depth_o           (rx_fifo_depth),
+    .err_o             (rx_fifo_err)
   );
 
   // Receiver Buffer Register (RBR)
@@ -560,7 +564,7 @@ module uart_core
       rxrdy_o = dma_mode_1_rxrdy;
       txrdy_o = dma_mode_1_txrdy;
     end else begin  // DMA mode 0
-      rxrdy_o = rx_fifo_rbr_rvalid;
+      rxrdy_o =  rx_fifo_rbr_rvalid;
       txrdy_o = !tx_fifo_thr_rvalid;
     end
   end
@@ -590,17 +594,18 @@ module uart_core
   assign rx_fifo_depth_changed = rx_fifo_depth != rx_fifo_depth_prev_q;
 
   assign rx_timeout_count_d =
-      // Don't count if timeout feature not enabled.
-      // Will never reach timeout val + lower power.
-      !uart_rxto_en ? timeout_cnt_t'(0) :
-      // Reset count if Reception Timeout Interrupt is set
-      event_rx_timeout ? timeout_cnt_t'(0) :
-      // Reset count upon change in fifo level: covers both read and receiving a new byte
-      rx_fifo_depth_changed ? timeout_cnt_t'(0) :
-      // Reset count if no bytes are pending
-      rx_fifo_depth == rx_fifo_depth_t'(0) ? timeout_cnt_t'(0) :
-      // Increment if at rx baud tick
-      rx_tick_baud ? rx_timeout_count_q + timeout_cnt_t'(1) : rx_timeout_count_q;
+            // Don't count if timeout feature not enabled.
+            // Will never reach timeout val + lower power.
+            !uart_rxto_en                        ? timeout_cnt_t'(0) :
+            // Reset count if Reception Timeout Interrupt is set
+            event_rx_timeout                     ? timeout_cnt_t'(0) :
+            // Reset count upon change in fifo level: covers both read and receiving a new byte
+            rx_fifo_depth_changed                ? timeout_cnt_t'(0) :
+            // Reset count if no bytes are pending
+            rx_fifo_depth == rx_fifo_depth_t'(0) ? timeout_cnt_t'(0) :
+            // Increment if at rx baud tick
+            rx_tick_baud                         ? rx_timeout_count_q + timeout_cnt_t'(1) :
+            rx_timeout_count_q;
 
   assign event_rx_timeout = uart_rxto_en && rx_timeout_count_q == uart_rxto_val;
 
@@ -709,13 +714,16 @@ module uart_core
   logic rts, dtr, out1, out2;  // Modem control bits
 
   // Read Buffer Register (RBR)
-  assign reg_in_o.main.RBR.rd_ack = reg_out_i.main.RBR.req && !reg_out_i.main.RBR.req_is_wr;
-  assign rx_fifo_rbr_rready = reg_out_i.main.RBR.req && !reg_out_i.main.RBR.req_is_wr;
-  assign reg_in_o.main.RBR.rd_data._reserved_31_8 = 24'h0;
-  assign reg_in_o.main.RBR.rd_data.DATA = uart_rdata;
+  assign reg_in_o.main.RBR.rd_ack                 =  reg_out_i.main.RBR.req &&
+                                                      !reg_out_i.main.RBR.req_is_wr;
+  assign rx_fifo_rbr_rready                       =  reg_out_i.main.RBR.req &&
+                                                      !reg_out_i.main.RBR.req_is_wr;
+  assign reg_in_o.main.RBR.rd_data._reserved_31_8 =  24'h0;
+  assign reg_in_o.main.RBR.rd_data.DATA           =  uart_rdata;
 
   // Transmitter Holding Register (THR)
-  assign reg_in_o.main_wo.THR.wr_ack = reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr;
+  assign reg_in_o.main_wo.THR.wr_ack =  reg_out_i.main_wo.THR.req &&
+                                          reg_out_i.main_wo.THR.req_is_wr;
   assign tx_fifo_thr_wvalid          =  reg_out_i.main_wo.THR.req &&
                                           reg_out_i.main_wo.THR.req_is_wr &&
                                          |reg_out_i.main_wo.THR.wr_biten[7:0];
@@ -723,30 +731,30 @@ module uart_core
                                           reg_out_i.main_wo.THR.wr_biten[7:0];
 
   // Interrupt Enable Register (IER)
-  assign received_data_ready_intr_en = reg_out_i.main.IER.ERBFI.value;
+  assign received_data_ready_intr_en                = reg_out_i.main.IER.ERBFI.value;
   assign transmitter_holding_register_empty_intr_en = reg_out_i.main.IER.ETBEI.value;
-  assign receiver_line_status_intr_en = reg_out_i.main.IER.ELSI.value;
-  assign modem_status_intr_en = reg_out_i.main.IER.EDSSI.value;
-  assign fifo_error_intr_en = reg_out_i.main.IER.EFEI.value;
+  assign receiver_line_status_intr_en               = reg_out_i.main.IER.ELSI.value;
+  assign modem_status_intr_en                       = reg_out_i.main.IER.EDSSI.value;
+  assign fifo_error_intr_en                         = reg_out_i.main.IER.EFEI.value;
 
   // Interrupt Identification Register (IIR)
   always_comb begin
     casez (intr_reqs)
-      6'b1?????: intr_id = FIFO_ERROR;  // Highest priority
+      6'b1?????: intr_id = FIFO_ERROR;                         // Highest priority
       6'b01????: intr_id = RECEIVER_LINE_STATUS;
       6'b001???: intr_id = RECEPTION_TIMEOUT;
       6'b0001??: intr_id = RECEIVED_DATA_READY;
       6'b00001?: intr_id = TRANSMITTER_HOLDING_REGISTER_EMPTY;
-      6'b000001: intr_id = MODEM_STATUS;  // Lowest priority
+      6'b000001: intr_id = MODEM_STATUS;                       // Lowest priority
       default:   intr_id = interrupt_id_e'(0);
     endcase
   end
 
-  assign reg_in_o.main.IIR.INTERRUPT_PENDING.next = ~irq_o;  // Active-low
+  assign reg_in_o.main.IIR.INTERRUPT_PENDING.next = ~irq_o; // Active-low
   assign reg_in_o.main.IIR.INTERRUPT_ID.next      = intr_id;
-  assign reg_in_o.main.IIR.FIFOS_ENABLED.next     = {2{uart_fifo_en}};  // 2'h3 - FIFOs enabled
+  assign reg_in_o.main.IIR.FIFOS_ENABLED.next     = {2{uart_fifo_en}}; // 2'h3 - FIFOs enabled
 
-  assign iir_read                                 = reg_out_i.main.IIR.INTERRUPT_PENDING.rd_swacc;
+  assign iir_read = reg_out_i.main.IIR.INTERRUPT_PENDING.rd_swacc;
 
   // FIFO Control Register (FCR)
   logic uart_fifo_en_q, fifo_en_changed;
@@ -781,13 +789,13 @@ module uart_core
 
   // Modem Control Register (MCR)
   // Modem interface control bits
-  assign rts = reg_out_i.main.MCR.RTS.value;
-  assign dtr = reg_out_i.main.MCR.DTR.value;
+  assign rts  = reg_out_i.main.MCR.RTS.value;
+  assign dtr  = reg_out_i.main.MCR.DTR.value;
   assign out1 = reg_out_i.main.MCR.OUT1.value;
   assign out2 = reg_out_i.main.MCR.OUT2.value;
 
   // Loopback control
-  assign sys_loopback = reg_out_i.main.MCR.LOOP.value;
+  assign sys_loopback  = reg_out_i.main.MCR.LOOP.value;
   assign line_loopback = reg_out_i.main.MCR.LINE_LOOPBACK.value;
 
   always_comb begin
@@ -815,14 +823,14 @@ module uart_core
 
   // Line Control Register (LCR)
   // Frame format configuration
-  assign word_length = get_word_length(reg_out_i.main.LCR.WLS.value);
-  assign extra_stop_bit = reg_out_i.main.LCR.STB.value;
-  assign parity_enable = reg_out_i.main.LCR.PEN.value;
-  assign even_parity = reg_out_i.main.LCR.EPS.value;
+  assign word_length    = get_word_length(reg_out_i.main.LCR.WLS.value);
+  assign extra_stop_bit =                 reg_out_i.main.LCR.STB.value;
+  assign parity_enable  =                 reg_out_i.main.LCR.PEN.value;
+  assign even_parity    =                 reg_out_i.main.LCR.EPS.value;
 
   // TX override
   assign stick_parity = reg_out_i.main.LCR.STICK_PARITY.value;
-  assign set_break = reg_out_i.main.LCR.SET_BREAK.value;
+  assign set_break    = reg_out_i.main.LCR.SET_BREAK.value;
 
   // Line Status Register (LSR)
   // RX data ready
@@ -833,7 +841,7 @@ module uart_core
   assign reg_in_o.main.LSR.PE.next = parity_err;
   assign reg_in_o.main.LSR.FE.next = frame_err;
   assign reg_in_o.main.LSR.BI.next = break_err;
-  assign reg_in_o.main.LSR.ERROR_IN_RCVR_FIFO.next = rx_char_err;  // OR of the 3 bits above
+  assign reg_in_o.main.LSR.ERROR_IN_RCVR_FIFO.next = rx_char_err; // OR of the 3 bits above
   assign intr_reqs.receiver_line_status =
         (reg_out_i.main.LSR.intr || receiver_line_status_intr_test) &&
         receiver_line_status_intr_en;
@@ -851,14 +859,14 @@ module uart_core
 
   // Modem status bits input synchronization. The bits can change asynchronously.
   prim_flop_2sync #(
-    .Width            (4),
-    .ResetValue       (4'hf),
-    .EnablePrimCdcRand(1'b1)
+    .Width             (4),
+    .ResetValue        (4'hf),
+    .EnablePrimCdcRand (1'b1)
   ) flop_2sync_modem_status (
     .clk_i,
     .rst_ni,
-    .d_i({cts_ni, dsr_ni, ri_ni, dcd_ni}),
-    .q_o({cts_n, dsr_n, ri_n, dcd_n})
+    .d_i               ({cts_ni, dsr_ni, ri_ni, dcd_ni}),
+    .q_o               ({cts_n,  dsr_n,  ri_n,  dcd_n})
   );
 
   // Modem status bits input mux
@@ -941,11 +949,11 @@ module uart_core
   assign rx_trigger_level_ms2b = reg_out_i.main.ECR.RCVR_TRIGGER_MS2B.value;
 
   // Interrupt Test Register (ITR)
-  assign receiver_line_status_intr_test = reg_out_i.main.ITR.TLSI.value;
-  assign reception_timeout_intr_test = reg_out_i.main.ITR.TRTI.value;
-  assign received_data_ready_intr_test = reg_out_i.main.ITR.TRBFI.value;
+  assign receiver_line_status_intr_test               = reg_out_i.main.ITR.TLSI.value;
+  assign reception_timeout_intr_test                  = reg_out_i.main.ITR.TRTI.value;
+  assign received_data_ready_intr_test                = reg_out_i.main.ITR.TRBFI.value;
   assign transmitter_holding_register_empty_intr_test = reg_out_i.main.ITR.TTBEI.value;
-  assign modem_status_intr_test = reg_out_i.main.ITR.TDSSI.value;
-  assign fifo_error_intr_test = reg_out_i.main.ITR.TFEI.value;
+  assign modem_status_intr_test                       = reg_out_i.main.ITR.TDSSI.value;
+  assign fifo_error_intr_test                         = reg_out_i.main.ITR.TFEI.value;
 
 endmodule

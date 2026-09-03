@@ -51,7 +51,7 @@ module tb_ring_osc_iverilog ();
 
   // Instantiate the DUT
   entropy_noise_source #(
-    .TOTAL_LENGTH (17),
+    .TOTAL_LENGTH(17),
     .TAPPED_LENGTH(13)
   ) u_entropy_noise_src (
     .clk_i,
@@ -111,7 +111,7 @@ module tb_ring_osc_iverilog ();
     $display("Time=%0t: Starting test", $time);
 
     // Initialize
-    rst_ni   = 0;
+    rst_ni = 0;
     enable_i = 0;
     detune_i = 0;
 
@@ -162,7 +162,7 @@ module tb_ring_osc_iverilog ();
     // End frequency measurement
     measurement_active = 0;  // Stop measuring
     end_time = $time;
-    measurement_period = (end_time - start_time) * 1e-9;  // Convert from ns to seconds
+    measurement_period = (end_time - start_time) * 1e-9; // Convert from ns to seconds
 
     $display("");
     $display("=== Frequency Analysis Results ===");

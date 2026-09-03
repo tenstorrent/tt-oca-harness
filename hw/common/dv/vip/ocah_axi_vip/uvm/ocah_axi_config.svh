@@ -16,33 +16,33 @@ class ocah_axi_config extends uvm_object;
   // Observation surface. The virtual interface uses ocah_axi_if's DEFAULT
   // (maximum) parameterization; the real bus geometry is set below and used
   // by the monitor to mask sampled values.
-  virtual ocah_axi_if       vif;
+  virtual ocah_axi_if vif;
 
-  ocah_axi_protocol_e       protocol                       = OCAH_AXI_PROTO_AXI4_LITE;
-  int unsigned              addr_width                     = 32;
-  int unsigned              data_width                     = 32;
-  int unsigned              id_width                       = 0;
+  ocah_axi_protocol_e protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+  int unsigned        addr_width = 32;
+  int unsigned        data_width = 32;
+  int unsigned        id_width   = 0;
 
   // Component gating (mirrors the SEP KM trio pattern structurally).
-  bit                       en_monitor                     = 1'b1;
-  bit                       en_ref_model                   = 1'b1;
-  bit                       en_scoreboard                  = 1'b1;
-  bit                       en_cov                         = 1'b0;
+  bit en_monitor    = 1'b1;
+  bit en_ref_model  = 1'b1;
+  bit en_scoreboard = 1'b1;
+  bit en_cov        = 1'b0;
 
   // Zero-check rejection is armed only by tests that expect AXI traffic so
   // non-AXI tests (e.g. dtp_sanity_test) stay green.
-  bit                       require_checks                 = 1'b0;
-  string                    required_ids     [$];
+  bit require_checks = 1'b0;
+  string required_ids[$];
 
   // Stable CHECKER_SUMMARY name for this instance.
-  string                    name_tag                       = "ocah_axi";
+  string name_tag = "ocah_axi";
 
   // Commercial-VIP integration hook (opaque; template parity with JTAG cfg).
-  uvm_object                vendor_cfg;
+  uvm_object vendor_cfg;
 
   // One-shot expected-response tables, keyed by beat-aligned address.
-  protected ocah_axi_resp_e m_expected_rd[bit     [63:0]];
-  protected ocah_axi_resp_e m_expected_wr[bit     [63:0]];
+  protected ocah_axi_resp_e m_expected_rd[bit [63:0]];
+  protected ocah_axi_resp_e m_expected_wr[bit [63:0]];
 
   // Stimulus-intent write records (FIFO, one entry per expected write):
   // the address, data, and strobes the TEST programmed, independent of the

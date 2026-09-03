@@ -27,7 +27,7 @@ module prim_clk_gater_hysteresis #(
   logic nz_hyst;
   logic busy_seen_d;
   logic busy_seen_q;
-  logic [HYST_WIDTH : 0] hyst_cnt_nxt;
+  logic [HYST_WIDTH  :0] hyst_cnt_nxt;
   logic [HYST_WIDTH-1:0] hyst_cnt_d;
   logic [HYST_WIDTH-1:0] hyst_cnt_q;
   logic run;
@@ -38,7 +38,7 @@ module prim_clk_gater_hysteresis #(
     load_hyst = kick_i | busy_i;
     nz_hyst = (|hyst_cnt_q);
 
-    dec_hyst = enable_i & ~busy_i & (busy_seen_q | ~sticky_kick_en) & nz_hyst;
+    dec_hyst  = enable_i & ~busy_i & (busy_seen_q | ~sticky_kick_en) & nz_hyst;
 
     hyst_cnt_nxt = hyst_cnt_q - dec_hyst;
     hyst_cnt_d = load_hyst ? hysteresis_i : hyst_cnt_nxt[HYST_WIDTH-1:0];

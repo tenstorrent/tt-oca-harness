@@ -27,52 +27,52 @@ module ocah_axi_vip_tb_top;
   /* verilator lint_off UNDRIVEN */
   /* verilator lint_off UNUSEDSIGNAL */
 
-  logic        clk;
-  logic        rst_n;
+  logic clk;
+  logic rst_n;
 
   // ------------------------------------------------------------------
   // s_axi: full-stack bundle (VIP master <-> VIP fault slave)
   // ------------------------------------------------------------------
-  logic [ 7:0] s_axi_awid;
+  logic [7:0]  s_axi_awid;
   logic [31:0] s_axi_awaddr;
-  logic [ 7:0] s_axi_awlen;
-  logic [ 2:0] s_axi_awsize;
-  logic [ 1:0] s_axi_awburst;
+  logic [7:0]  s_axi_awlen;
+  logic [2:0]  s_axi_awsize;
+  logic [1:0]  s_axi_awburst;
   logic        s_axi_awlock;
-  logic [ 3:0] s_axi_awcache;
-  logic [ 2:0] s_axi_awprot;
-  logic [ 3:0] s_axi_awqos;
-  logic [ 3:0] s_axi_awregion;
+  logic [3:0]  s_axi_awcache;
+  logic [2:0]  s_axi_awprot;
+  logic [3:0]  s_axi_awqos;
+  logic [3:0]  s_axi_awregion;
   logic        s_axi_awvalid;
   logic        s_axi_awready;
 
   logic [31:0] s_axi_wdata;
-  logic [ 3:0] s_axi_wstrb;
+  logic [3:0]  s_axi_wstrb;
   logic        s_axi_wlast;
   logic        s_axi_wvalid;
   logic        s_axi_wready;
 
-  logic [ 7:0] s_axi_bid;
-  logic [ 1:0] s_axi_bresp;
+  logic [7:0]  s_axi_bid;
+  logic [1:0]  s_axi_bresp;
   logic        s_axi_bvalid;
   logic        s_axi_bready;
 
-  logic [ 7:0] s_axi_arid;
+  logic [7:0]  s_axi_arid;
   logic [31:0] s_axi_araddr;
-  logic [ 7:0] s_axi_arlen;
-  logic [ 2:0] s_axi_arsize;
-  logic [ 1:0] s_axi_arburst;
+  logic [7:0]  s_axi_arlen;
+  logic [2:0]  s_axi_arsize;
+  logic [1:0]  s_axi_arburst;
   logic        s_axi_arlock;
-  logic [ 3:0] s_axi_arcache;
-  logic [ 2:0] s_axi_arprot;
-  logic [ 3:0] s_axi_arqos;
-  logic [ 3:0] s_axi_arregion;
+  logic [3:0]  s_axi_arcache;
+  logic [2:0]  s_axi_arprot;
+  logic [3:0]  s_axi_arqos;
+  logic [3:0]  s_axi_arregion;
   logic        s_axi_arvalid;
   logic        s_axi_arready;
 
-  logic [ 7:0] s_axi_rid;
+  logic [7:0]  s_axi_rid;
   logic [31:0] s_axi_rdata;
-  logic [ 1:0] s_axi_rresp;
+  logic [1:0]  s_axi_rresp;
   logic        s_axi_rlast;
   logic        s_axi_rvalid;
   logic        s_axi_rready;
@@ -88,46 +88,46 @@ module ocah_axi_vip_tb_top;
   // ------------------------------------------------------------------
   // t_axi: wire-level bundle (test-driven requests <-> VIP fault slave)
   // ------------------------------------------------------------------
-  logic [ 7:0] t_axi_awid;
+  logic [7:0]  t_axi_awid;
   logic [31:0] t_axi_awaddr;
-  logic [ 7:0] t_axi_awlen;
-  logic [ 2:0] t_axi_awsize;
-  logic [ 1:0] t_axi_awburst;
+  logic [7:0]  t_axi_awlen;
+  logic [2:0]  t_axi_awsize;
+  logic [1:0]  t_axi_awburst;
   logic        t_axi_awlock;
-  logic [ 3:0] t_axi_awcache;
-  logic [ 2:0] t_axi_awprot;
-  logic [ 3:0] t_axi_awqos;
-  logic [ 3:0] t_axi_awregion;
+  logic [3:0]  t_axi_awcache;
+  logic [2:0]  t_axi_awprot;
+  logic [3:0]  t_axi_awqos;
+  logic [3:0]  t_axi_awregion;
   logic        t_axi_awvalid;
   logic        t_axi_awready;
 
   logic [31:0] t_axi_wdata;
-  logic [ 3:0] t_axi_wstrb;
+  logic [3:0]  t_axi_wstrb;
   logic        t_axi_wlast;
   logic        t_axi_wvalid;
   logic        t_axi_wready;
 
-  logic [ 7:0] t_axi_bid;
-  logic [ 1:0] t_axi_bresp;
+  logic [7:0]  t_axi_bid;
+  logic [1:0]  t_axi_bresp;
   logic        t_axi_bvalid;
   logic        t_axi_bready;
 
-  logic [ 7:0] t_axi_arid;
+  logic [7:0]  t_axi_arid;
   logic [31:0] t_axi_araddr;
-  logic [ 7:0] t_axi_arlen;
-  logic [ 2:0] t_axi_arsize;
-  logic [ 1:0] t_axi_arburst;
+  logic [7:0]  t_axi_arlen;
+  logic [2:0]  t_axi_arsize;
+  logic [1:0]  t_axi_arburst;
   logic        t_axi_arlock;
-  logic [ 3:0] t_axi_arcache;
-  logic [ 2:0] t_axi_arprot;
-  logic [ 3:0] t_axi_arqos;
-  logic [ 3:0] t_axi_arregion;
+  logic [3:0]  t_axi_arcache;
+  logic [2:0]  t_axi_arprot;
+  logic [3:0]  t_axi_arqos;
+  logic [3:0]  t_axi_arregion;
   logic        t_axi_arvalid;
   logic        t_axi_arready;
 
-  logic [ 7:0] t_axi_rid;
+  logic [7:0]  t_axi_rid;
   logic [31:0] t_axi_rdata;
-  logic [ 1:0] t_axi_rresp;
+  logic [1:0]  t_axi_rresp;
   logic        t_axi_rlast;
   logic        t_axi_rvalid;
   logic        t_axi_rready;
@@ -136,26 +136,26 @@ module ocah_axi_vip_tb_top;
   // l_axi: AXI4-Lite bundle (VIP lite master <-> VIP lite RAM slave)
   // ------------------------------------------------------------------
   logic [31:0] l_axi_awaddr;
-  logic [ 2:0] l_axi_awprot;
+  logic [2:0]  l_axi_awprot;
   logic        l_axi_awvalid;
   logic        l_axi_awready;
 
   logic [31:0] l_axi_wdata;
-  logic [ 3:0] l_axi_wstrb;
+  logic [3:0]  l_axi_wstrb;
   logic        l_axi_wvalid;
   logic        l_axi_wready;
 
-  logic [ 1:0] l_axi_bresp;
+  logic [1:0]  l_axi_bresp;
   logic        l_axi_bvalid;
   logic        l_axi_bready;
 
   logic [31:0] l_axi_araddr;
-  logic [ 2:0] l_axi_arprot;
+  logic [2:0]  l_axi_arprot;
   logic        l_axi_arvalid;
   logic        l_axi_arready;
 
   logic [31:0] l_axi_rdata;
-  logic [ 1:0] l_axi_rresp;
+  logic [1:0]  l_axi_rresp;
   logic        l_axi_rvalid;
   logic        l_axi_rready;
 

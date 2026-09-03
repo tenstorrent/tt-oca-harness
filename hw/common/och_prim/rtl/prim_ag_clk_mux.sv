@@ -94,15 +94,15 @@ module prim_ag_clk_mux #(
 
   prim_clkgater clk0_gate (
     .i_clk(i_clk0),
-    .i_en (sel_sync_clk0),
-    .i_te (i_test_en),
+    .i_en(sel_sync_clk0),
+    .i_te(i_test_en),
     .o_clk(gated_clk0)
   );
 
   prim_clkgater clk1_gate (
     .i_clk(i_clk1),
-    .i_en (sel_sync_clk1),
-    .i_te (i_test_en),
+    .i_en(sel_sync_clk1),
+    .i_te(i_test_en),
     .o_clk(gated_clk1)
   );
 

@@ -247,7 +247,7 @@ module tb_repetition_test ();
       // Test 1: Disable should prevent failure detection
       enable_i = 0;
       inject_failure = 1;
-      failure_bit = 1;  // Stuck-at-1
+      failure_bit = 1; // Stuck-at-1
 
       $display("Sub-test 2a: Disabled with stuck-at-1 pattern");
       repeat (200) @(posedge clk_i);
@@ -342,7 +342,7 @@ module tb_repetition_test ();
 
       // Step 1: Trigger a failure
       inject_failure = 1;
-      failure_bit = 0;  // Stuck-at-0
+      failure_bit = 0; // Stuck-at-0
       repeat (10) @(posedge clk_i);
 
       if (status_o != 1'b1) begin
@@ -392,14 +392,14 @@ module tb_repetition_test ();
       total_tests_run = total_tests_run + 1;
 
       enable_i = 1;
-      repetition_limit_i = TEST_THRESHOLD_SAT;  // High threshold to test saturation
+      repetition_limit_i = TEST_THRESHOLD_SAT; // High threshold to test saturation
 
       $display("Testing counter saturation at 255");
       $display("Threshold: %0d (testing saturation protection)", repetition_limit_i);
 
       // Inject very long stuck-at pattern
       inject_failure = 1;
-      failure_bit = 1;  // Stuck-at-1
+      failure_bit = 1; // Stuck-at-1
 
       // Run for many cycles to test counter saturation - should trigger quickly
       repeat (20) @(posedge clk_i);
@@ -429,7 +429,7 @@ module tb_repetition_test ();
     begin
       $display("");
       $display("=== Phase 7: Threshold Boundary Test ===");
-      total_tests_run = total_tests_run + 2;  // Two sub-tests
+      total_tests_run = total_tests_run + 2; // Two sub-tests
 
       // Clear any sticky status from previous tests
       enable_i = 0;
@@ -447,7 +447,7 @@ module tb_repetition_test ();
       manual_control = 1;
 
       // Calculate pattern: run_length zeros followed by alternating pattern
-      words_needed   = run_length / 32;
+      words_needed = run_length / 32;
       remaining_bits = run_length % 32;
 
       // Send full words of all zeros (if any)
@@ -492,7 +492,7 @@ module tb_repetition_test ();
       $display("Sub-test 7b: Just above threshold (%0d consecutive ones)", run_length);
 
       // Calculate pattern for ones
-      words_needed   = run_length / 32;
+      words_needed = run_length / 32;
       remaining_bits = run_length % 32;
 
       // Send full words of all ones (if any)

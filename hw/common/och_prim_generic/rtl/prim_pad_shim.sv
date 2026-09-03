@@ -39,22 +39,22 @@ module prim_pad_shim #(
   assign pad_attr.drive_strength = {1'b0, gpio_ctrl_i.gpio_drive_strength};
   assign pad_attr.schmitt_en     = gpio_ctrl_i.gpio_glitch_filter_enable;
 
-  assign gpio_nandtree_out_o     = gpio_nandtree_in_i;
+  assign gpio_nandtree_out_o = gpio_nandtree_in_i;
 
   if (InputOnly) begin : gen_input
     prim_pad_wrapper #(
       .PadType(InputStd)
     ) u_pad (
-      .clk_scan_i(1'b0),
-      .scanmode_i(1'b0),
-      .pok_i     ('0),
-      .inout_io  (pad_io),
-      .in_o      (pad_in),
-      .in_raw_o  (pad_in_raw),
-      .ie_i      (pad2core_en_i),
-      .out_i     (1'b0),
-      .oe_i      (1'b0),
-      .attr_i    (pad_attr)
+      .clk_scan_i (1'b0),
+      .scanmode_i (1'b0),
+      .pok_i      ('0),
+      .inout_io   (pad_io),
+      .in_o       (pad_in),
+      .in_raw_o   (pad_in_raw),
+      .ie_i       (pad2core_en_i),
+      .out_i      (1'b0),
+      .oe_i       (1'b0),
+      .attr_i     (pad_attr)
     );
     // Disabled input reads as 0.
     assign pad2core_o = pad_in & pad2core_en_i;
@@ -62,16 +62,16 @@ module prim_pad_shim #(
     prim_pad_wrapper #(
       .PadType(BidirStd)
     ) u_pad (
-      .clk_scan_i(1'b0),
-      .scanmode_i(1'b0),
-      .pok_i     ('0),
-      .inout_io  (pad_io),
-      .in_o      (pad_in),
-      .in_raw_o  (pad_in_raw),
-      .ie_i      (pad2core_en_i),
-      .out_i     (core2pad_i),
-      .oe_i      (core2pad_en_i),
-      .attr_i    (pad_attr)
+      .clk_scan_i (1'b0),
+      .scanmode_i (1'b0),
+      .pok_i      ('0),
+      .inout_io   (pad_io),
+      .in_o       (pad_in),
+      .in_raw_o   (pad_in_raw),
+      .ie_i       (pad2core_en_i),
+      .out_i      (core2pad_i),
+      .oe_i       (core2pad_en_i),
+      .attr_i     (pad_attr)
     );
     // Disabled input reads as 0
     // instead of propagating prim_pad_wrapper's disabled-input Z/X value.

@@ -41,30 +41,30 @@ module km_mailbox
 
   // AXI-Lite interface types
   // KM types default to types from km_intf_pkg
-  parameter type km_axil_req_t   = km_intf_pkg::km_axil_req_t,
-  parameter type km_axil_resp_t  = km_intf_pkg::km_axil_resp_t,
+  parameter type km_axil_req_t  = km_intf_pkg::km_axil_req_t,
+  parameter type km_axil_resp_t = km_intf_pkg::km_axil_resp_t,
   // SEP types must be provided explicitly (not defined in km_intf_pkg)
   parameter type sep_axil_req_t  = logic,
   parameter type sep_axil_resp_t = logic
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic cold_rst_ni,  // Cold reset: AASD — resets FIFOs and SEP-facing interfaces
-  input logic warm_rst_ni,  // Warm reset: synchronous — resets KM-CPU-facing interfaces
-  input logic test_en_i,
+  input  logic clk_i,
+  input  logic cold_rst_ni,   // Cold reset: AASD — resets FIFOs and SEP-facing interfaces
+  input  logic warm_rst_ni,   // Warm reset: synchronous — resets KM-CPU-facing interfaces
+  input  logic test_en_i,
 
   // KM CPU AXI4-Lite Slave Interface (for outbound FIFO)
-  input  km_axil_req_t  km_axil_req_i,
+  input  km_axil_req_t km_axil_req_i,
   output km_axil_resp_t km_axil_resp_o,
 
   // SEP Host AXI4-Lite Slave Interface (for inbound FIFO)
-  input  sep_axil_req_t  sep_axil_req_i,
+  input  sep_axil_req_t sep_axil_req_i,
   output sep_axil_resp_t sep_axil_resp_o,
 
 
   // Interrupt Outputs
-  output logic mbox_irq_to_km_o,  // Inbound IRQ to KM CPU (level)
-  output logic mbox_irq_to_sep_o  // Outbound IRQ to SEP host (level)
+  output logic        mbox_irq_to_km_o,     // Inbound IRQ to KM CPU (level)
+  output logic        mbox_irq_to_sep_o     // Outbound IRQ to SEP host (level)
 );
 
   `include "prim_assert.sv"
@@ -100,7 +100,7 @@ module km_mailbox
     .OutputZeroIfEmpty(1'b1)
   ) u_inbound_fifo (
     .clk_i,
-    .rst_ni(cold_rst_ni),
+    .rst_ni  (cold_rst_ni),
     .clr_i(fifo_clr),
     .wvalid_i(inbound_wvalid),
     .wready_o(inbound_wready),
@@ -132,7 +132,7 @@ module km_mailbox
     .OutputZeroIfEmpty(1'b1)
   ) u_outbound_fifo (
     .clk_i,
-    .rst_ni(cold_rst_ni),
+    .rst_ni  (cold_rst_ni),
     .clr_i(fifo_clr),
     .wvalid_i(outbound_wvalid),
     .wready_o(outbound_wready),
@@ -164,14 +164,14 @@ module km_mailbox
   assign sep_ar_is_reg_block = !sep_ar_is_read_data;
 
   // SEP register block (for STATUS, IRQ_STATUS, IRQ_ENABLE)
-  km_mailbox_sep__in_t sep_hwif_in;
+  km_mailbox_sep__in_t  sep_hwif_in;
   km_mailbox_sep__out_t sep_hwif_out;
 
   // SEP-side CTRL register bits (for overflow/underflow response configuration)
   // Declared early so they can be used in SEP write/read state machines
-  logic inbound_overflow_resp_okay;  // SEP-side CTRL: inbound overflow response (0=SLVERR, 1=OKAY)
+  logic inbound_overflow_resp_okay;   // SEP-side CTRL: inbound overflow response (0=SLVERR, 1=OKAY)
   logic outbound_underflow_resp_okay; // SEP-side CTRL: outbound underflow response (0=SLVERR, 1=OKAY)
-  assign inbound_overflow_resp_okay   = sep_hwif_out.SEP_CTRL.inbound_overflow_resp.value;
+  assign inbound_overflow_resp_okay = sep_hwif_out.SEP_CTRL.inbound_overflow_resp.value;
   assign outbound_underflow_resp_okay = sep_hwif_out.SEP_CTRL.outbound_underflow_resp.value;
 
   //-------------------------------------------------------------------------
@@ -180,8 +180,8 @@ module km_mailbox
   // Proper AXI-Lite: accept AW and W independently, respond with B after both
 
   logic sep_fifo_aw_pending_q;  // AW handshake done, waiting for W
-  logic sep_fifo_b_valid_q;  // B response pending
-  logic sep_fifo_b_resp_q;  // B response: 0=OKAY, 1=SLVERR
+  logic sep_fifo_b_valid_q;     // B response pending
+  logic sep_fifo_b_resp_q;      // B response: 0=OKAY, 1=SLVERR
 
   // Handshake signals for FIFO write path
   logic sep_fifo_aw_handshake, sep_fifo_w_handshake;
@@ -219,33 +219,33 @@ module km_mailbox
 
   // FIFO write happens on W handshake when not full; [32]=separator, [31:0]=data
   assign inbound_wvalid = sep_fifo_w_handshake && !inbound_full;
-  assign inbound_wdata  = {sep_hwif_out.SEP_WRITE_SEPARATOR.set.value, sep_axil_req_i.w.data};
+  assign inbound_wdata = { sep_hwif_out.SEP_WRITE_SEPARATOR.set.value, sep_axil_req_i.w.data };
 
   //-------------------------------------------------------------------------
   // SEP Read Channel State Machine (for FIFO reads)
   //-------------------------------------------------------------------------
   // Proper AXI-Lite: accept AR, respond with R on next cycle
 
-  logic        sep_fifo_r_valid_q;  // R response pending
-  logic        sep_fifo_r_resp_q;  // R response: 0=OKAY, 1=SLVERR
+  logic sep_fifo_r_valid_q;     // R response pending
+  logic sep_fifo_r_resp_q;      // R response: 0=OKAY, 1=SLVERR
   logic [31:0] sep_fifo_r_data_q;  // R data captured from FIFO
 
   // AR handshake for FIFO read path
-  logic        sep_fifo_ar_handshake;
+  logic sep_fifo_ar_handshake;
   assign sep_fifo_ar_handshake = sep_axil_req_i.ar_valid && sep_ar_is_read_data && !sep_fifo_r_valid_q;
 
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
     if (!cold_rst_ni) begin
       sep_fifo_r_valid_q <= 1'b0;
-      sep_fifo_r_resp_q  <= 1'b0;
-      sep_fifo_r_data_q  <= 32'h0;
+      sep_fifo_r_resp_q <= 1'b0;
+      sep_fifo_r_data_q <= 32'h0;
     end else begin
       // AR handshake - capture FIFO data and generate R response
       if (sep_fifo_ar_handshake) begin
         sep_fifo_r_valid_q <= 1'b1;
         // Use config-controlled response: OKAY if configured, SLVERR if empty (default)
-        sep_fifo_r_resp_q  <= outbound_empty && !outbound_underflow_resp_okay;
-        sep_fifo_r_data_q  <= outbound_empty ? 32'h0 : outbound_rdata[31:0];
+        sep_fifo_r_resp_q <= outbound_empty && !outbound_underflow_resp_okay;
+        sep_fifo_r_data_q <= outbound_empty ? 32'h0 : outbound_rdata[31:0];
       end
 
       // R handshake - clear response
@@ -260,9 +260,9 @@ module km_mailbox
 
 
   // SEP-side overflow/underflow detection signals (defined after handshake signals)
-  logic sep_inbound_overflow_detected;  // SEP writes to full inbound FIFO
-  logic sep_outbound_underflow_detected;  // SEP reads from empty outbound FIFO
-  assign sep_inbound_overflow_detected   = sep_fifo_w_handshake && inbound_full;
+  logic sep_inbound_overflow_detected;   // SEP writes to full inbound FIFO
+  logic sep_outbound_underflow_detected; // SEP reads from empty outbound FIFO
+  assign sep_inbound_overflow_detected = sep_fifo_w_handshake && inbound_full;
   assign sep_outbound_underflow_detected = sep_fifo_ar_handshake && outbound_empty;
 
   //-------------------------------------------------------------------------
@@ -273,7 +273,7 @@ module km_mailbox
   logic [2:0] sep_reg_awprot;
   logic sep_reg_wready, sep_reg_wvalid;
   logic [31:0] sep_reg_wdata;
-  logic [ 3:0] sep_reg_wstrb;
+  logic [3:0] sep_reg_wstrb;
   logic sep_reg_bready, sep_reg_bvalid;
   logic [1:0] sep_reg_bresp;
   logic sep_reg_arready, sep_reg_arvalid;
@@ -281,46 +281,46 @@ module km_mailbox
   logic [2:0] sep_reg_arprot;
   logic sep_reg_rready, sep_reg_rvalid;
   logic [31:0] sep_reg_rdata;
-  logic [ 1:0] sep_reg_rresp;
+  logic [1:0] sep_reg_rresp;
 
   // Route to register block only for register addresses
   assign sep_reg_awvalid = sep_axil_req_i.aw_valid && sep_aw_is_reg_block;
   assign sep_reg_awaddr  = sep_axil_req_i.aw.addr[km_mailbox_sep_reg_pkg::KM_MAILBOX_SEP_REG_MIN_ADDR_WIDTH-1:0];
-  assign sep_reg_awprot = sep_axil_req_i.aw.prot;
-  assign sep_reg_wvalid = sep_axil_req_i.w_valid && sep_aw_is_reg_block;
-  assign sep_reg_wdata = sep_axil_req_i.w.data;
-  assign sep_reg_wstrb = sep_axil_req_i.w.strb;
-  assign sep_reg_bready = sep_axil_req_i.b_ready;
+  assign sep_reg_awprot  = sep_axil_req_i.aw.prot;
+  assign sep_reg_wvalid  = sep_axil_req_i.w_valid && sep_aw_is_reg_block;
+  assign sep_reg_wdata   = sep_axil_req_i.w.data;
+  assign sep_reg_wstrb   = sep_axil_req_i.w.strb;
+  assign sep_reg_bready  = sep_axil_req_i.b_ready;
   assign sep_reg_arvalid = sep_axil_req_i.ar_valid && sep_ar_is_reg_block;
   assign sep_reg_araddr  = sep_axil_req_i.ar.addr[km_mailbox_sep_reg_pkg::KM_MAILBOX_SEP_REG_MIN_ADDR_WIDTH-1:0];
-  assign sep_reg_arprot = sep_axil_req_i.ar.prot;
-  assign sep_reg_rready = sep_axil_req_i.r_ready;
+  assign sep_reg_arprot  = sep_axil_req_i.ar.prot;
+  assign sep_reg_rready  = sep_axil_req_i.r_ready;
 
   // Register block instantiation (SEP-facing: cold reset only)
   km_mailbox_sep_reg u_sep_regs (
-    .clk           (clk_i),
-    .arst_n        (cold_rst_ni),
-    .s_axil_awready(sep_reg_awready),
-    .s_axil_awvalid(sep_reg_awvalid),
-    .s_axil_awaddr (sep_reg_awaddr),
-    .s_axil_awprot (sep_reg_awprot),
-    .s_axil_wready (sep_reg_wready),
-    .s_axil_wvalid (sep_reg_wvalid),
-    .s_axil_wdata  (sep_reg_wdata),
-    .s_axil_wstrb  (sep_reg_wstrb),
-    .s_axil_bready (sep_reg_bready),
-    .s_axil_bvalid (sep_reg_bvalid),
-    .s_axil_bresp  (sep_reg_bresp),
-    .s_axil_arready(sep_reg_arready),
-    .s_axil_arvalid(sep_reg_arvalid),
-    .s_axil_araddr (sep_reg_araddr),
-    .s_axil_arprot (sep_reg_arprot),
-    .s_axil_rready (sep_reg_rready),
-    .s_axil_rvalid (sep_reg_rvalid),
-    .s_axil_rdata  (sep_reg_rdata),
-    .s_axil_rresp  (sep_reg_rresp),
-    .hwif_in       (sep_hwif_in),
-    .hwif_out      (sep_hwif_out)
+    .clk            (clk_i),
+    .arst_n         (cold_rst_ni),
+    .s_axil_awready (sep_reg_awready),
+    .s_axil_awvalid (sep_reg_awvalid),
+    .s_axil_awaddr  (sep_reg_awaddr),
+    .s_axil_awprot  (sep_reg_awprot),
+    .s_axil_wready  (sep_reg_wready),
+    .s_axil_wvalid  (sep_reg_wvalid),
+    .s_axil_wdata   (sep_reg_wdata),
+    .s_axil_wstrb   (sep_reg_wstrb),
+    .s_axil_bready  (sep_reg_bready),
+    .s_axil_bvalid  (sep_reg_bvalid),
+    .s_axil_bresp   (sep_reg_bresp),
+    .s_axil_arready (sep_reg_arready),
+    .s_axil_arvalid (sep_reg_arvalid),
+    .s_axil_araddr  (sep_reg_araddr),
+    .s_axil_arprot  (sep_reg_arprot),
+    .s_axil_rready  (sep_reg_rready),
+    .s_axil_rvalid  (sep_reg_rvalid),
+    .s_axil_rdata   (sep_reg_rdata),
+    .s_axil_rresp   (sep_reg_rresp),
+    .hwif_in        (sep_hwif_in),
+    .hwif_out       (sep_hwif_out)
   );
 
   //-------------------------------------------------------------------------
@@ -333,7 +333,8 @@ module km_mailbox
                                       sep_aw_is_write_data ? sep_fifo_aw_handshake : 1'b0;
 
   // Write data channel
-  assign sep_axil_resp_o.w_ready = sep_aw_is_reg_block ? sep_reg_wready : sep_fifo_w_handshake;
+  assign sep_axil_resp_o.w_ready = sep_aw_is_reg_block ? sep_reg_wready :
+                                     sep_fifo_w_handshake;
 
   // Write response channel
   assign sep_axil_resp_o.b_valid = sep_reg_bvalid || sep_fifo_b_valid_q;
@@ -379,39 +380,40 @@ module km_mailbox
   logic inbound_separator_q, outbound_separator_q;
 
   // KM register block (for STATUS, IRQ_STATUS, IRQ_ENABLE)
-  km_mailbox_km__in_t km_hwif_in;
+  km_mailbox_km__in_t  km_hwif_in;
   km_mailbox_km__out_t km_hwif_out;
 
   // KM-side CTRL register bits
-  logic outbound_overflow_resp_okay;  // KM-side CTRL: outbound overflow response (0=SLVERR, 1=OKAY)
-  logic inbound_underflow_resp_okay;  // KM-side CTRL: inbound underflow response (0=SLVERR, 1=OKAY)
+  logic outbound_overflow_resp_okay;   // KM-side CTRL: outbound overflow response (0=SLVERR, 1=OKAY)
+  logic inbound_underflow_resp_okay;   // KM-side CTRL: inbound underflow response (0=SLVERR, 1=OKAY)
   // Assignments moved after register block instantiation
 
   // Hardware inputs to register block
   assign km_hwif_in.KM_STATUS.inbound_empty.next = inbound_empty;
-  assign km_hwif_in.KM_STATUS.inbound_full.next = inbound_full;
+  assign km_hwif_in.KM_STATUS.inbound_full.next  = inbound_full;
   assign km_hwif_in.KM_STATUS.outbound_empty.next = outbound_empty;
-  assign km_hwif_in.KM_STATUS.outbound_full.next = outbound_full;
+  assign km_hwif_in.KM_STATUS.outbound_full.next  = outbound_full;
   // Zero-extend depth to 8 bits to prevent X propagation
-  assign km_hwif_in.KM_STATUS.inbound_depth.next = {{(8 - FIFO_DEPTH_W) {1'b0}}, inbound_depth};
-  assign km_hwif_in.KM_STATUS.outbound_depth.next = {{(8 - FIFO_DEPTH_W) {1'b0}}, outbound_depth};
-  assign km_hwif_in.KM_STATUS.inbound_separator.next = inbound_separator_q;
+  assign km_hwif_in.KM_STATUS.inbound_depth.next  = {{(8-FIFO_DEPTH_W){1'b0}}, inbound_depth};
+  assign km_hwif_in.KM_STATUS.outbound_depth.next = {{(8-FIFO_DEPTH_W){1'b0}}, outbound_depth};
+  assign km_hwif_in.KM_STATUS.inbound_separator.next  = inbound_separator_q;
   assign km_hwif_in.KM_STATUS.outbound_separator.next = outbound_separator_q;
   assign km_hwif_in.KM_WRITE_SEPARATOR.set.next =
         (outbound_wvalid && outbound_wready) ? 1'b0 : km_hwif_out.KM_WRITE_SEPARATOR.set.value;
-  assign km_hwif_in.KM_CTRL.flush.next = km_flush_active ? 1'b0 : km_hwif_out.KM_CTRL.flush.value;
+  assign km_hwif_in.KM_CTRL.flush.next =
+        km_flush_active ? 1'b0 : km_hwif_out.KM_CTRL.flush.value;
   assign km_hwif_in.KM_IRQ_STATUS.inbound_read_data_avail.next = !inbound_empty;
   assign km_hwif_in.KM_IRQ_STATUS.outbound_write_space_avail.next = !outbound_full;
 
   // SEP register block hardware inputs
   assign sep_hwif_in.SEP_STATUS.inbound_empty.next = inbound_empty;
-  assign sep_hwif_in.SEP_STATUS.inbound_full.next = inbound_full;
+  assign sep_hwif_in.SEP_STATUS.inbound_full.next  = inbound_full;
   assign sep_hwif_in.SEP_STATUS.outbound_empty.next = outbound_empty;
-  assign sep_hwif_in.SEP_STATUS.outbound_full.next = outbound_full;
+  assign sep_hwif_in.SEP_STATUS.outbound_full.next  = outbound_full;
   // Zero-extend depth to 8 bits to prevent X propagation
-  assign sep_hwif_in.SEP_STATUS.inbound_depth.next = {{(8 - FIFO_DEPTH_W) {1'b0}}, inbound_depth};
-  assign sep_hwif_in.SEP_STATUS.outbound_depth.next = {{(8 - FIFO_DEPTH_W) {1'b0}}, outbound_depth};
-  assign sep_hwif_in.SEP_STATUS.inbound_separator.next = inbound_separator_q;
+  assign sep_hwif_in.SEP_STATUS.inbound_depth.next  = {{(8-FIFO_DEPTH_W){1'b0}}, inbound_depth};
+  assign sep_hwif_in.SEP_STATUS.outbound_depth.next = {{(8-FIFO_DEPTH_W){1'b0}}, outbound_depth};
+  assign sep_hwif_in.SEP_STATUS.inbound_separator.next  = inbound_separator_q;
   assign sep_hwif_in.SEP_STATUS.outbound_separator.next = outbound_separator_q;
   assign sep_hwif_in.SEP_WRITE_SEPARATOR.set.next =
         (inbound_wvalid && inbound_wready) ? 1'b0 : sep_hwif_out.SEP_WRITE_SEPARATOR.set.value;
@@ -431,9 +433,9 @@ module km_mailbox
   // Proper AXI-Lite: accept AW and W independently, respond with B after both
 
   logic km_fifo_aw_pending_q;  // AW handshake done, waiting for W
-  logic km_fifo_w_pending_q;  // W handshake done, waiting for AW
-  logic km_fifo_b_valid_q;  // B response pending
-  logic km_fifo_b_resp_q;  // B response: 0=OKAY, 1=SLVERR
+  logic km_fifo_w_pending_q;   // W handshake done, waiting for AW
+  logic km_fifo_b_valid_q;     // B response pending
+  logic km_fifo_b_resp_q;      // B response: 0=OKAY, 1=SLVERR
 
   // Handshake signals for FIFO write path
   logic km_fifo_aw_handshake, km_fifo_w_handshake;
@@ -477,7 +479,7 @@ module km_mailbox
 
   // FIFO write happens on W handshake when not full; [32]=separator, [31:0]=data
   assign outbound_wvalid = km_fifo_w_handshake && !outbound_full;
-  assign outbound_wdata  = {km_hwif_out.KM_WRITE_SEPARATOR.set.value, km_axil_req_i.w.data};
+  assign outbound_wdata = { km_hwif_out.KM_WRITE_SEPARATOR.set.value, km_axil_req_i.w.data };
 
   // KM-side overflow detection signal
   logic km_outbound_overflow_detected;  // KM writes to full outbound FIFO
@@ -497,16 +499,16 @@ module km_mailbox
     KM_RD_POP,
     KM_RD_RESP
   } km_rd_state_e;
-  km_rd_state_e        km_rd_state_q;
+  km_rd_state_e km_rd_state_q;
 
-  logic                km_fifo_r_valid_q;  // R response valid
-  logic                km_fifo_r_resp_q;  // 0=OKAY, 1=SLVERR
-  logic         [31:0] km_fifo_r_data_q;  // R data captured from FIFO
+  logic        km_fifo_r_valid_q;       // R response valid
+  logic        km_fifo_r_resp_q;        // 0=OKAY, 1=SLVERR
+  logic [31:0] km_fifo_r_data_q;        // R data captured from FIFO
 
-  logic                km_fifo_ar_ready;  // Ready to accept AR for FIFO reads
-  logic                km_fifo_ar_handshake;  // AR handshake
-  logic                km_fifo_r_handshake;  // R handshake
-  logic                km_fifo_pop_handshake;  // FIFO pop handshake (rvalid && rready)
+  logic        km_fifo_ar_ready;        // Ready to accept AR for FIFO reads
+  logic        km_fifo_ar_handshake;    // AR handshake
+  logic        km_fifo_r_handshake;     // R handshake
+  logic        km_fifo_pop_handshake;   // FIFO pop handshake (rvalid && rready)
 
   assign km_fifo_ar_ready =
         km_ar_is_read_data && (km_rd_state_q == KM_RD_IDLE) && !km_fifo_r_valid_q;
@@ -627,7 +629,7 @@ module km_mailbox
   logic [2:0] km_reg_awprot;
   logic km_reg_wready, km_reg_wvalid;
   logic [31:0] km_reg_wdata;
-  logic [ 3:0] km_reg_wstrb;
+  logic [3:0] km_reg_wstrb;
   logic km_reg_bready, km_reg_bvalid;
   logic [1:0] km_reg_bresp;
   logic km_reg_arready, km_reg_arvalid;
@@ -635,49 +637,49 @@ module km_mailbox
   logic [2:0] km_reg_arprot;
   logic km_reg_rready, km_reg_rvalid;
   logic [31:0] km_reg_rdata;
-  logic [ 1:0] km_reg_rresp;
+  logic [1:0] km_reg_rresp;
 
   // Route to register block only for register addresses
   assign km_reg_awvalid = km_axil_req_i.aw_valid && km_aw_is_reg_block;
-  assign km_reg_awaddr = km_axil_req_i.aw.addr[KM_REG_ADDR_W-1:0];
-  assign km_reg_awprot = km_axil_req_i.aw.prot;
-  assign km_reg_wvalid = km_axil_req_i.w_valid && km_aw_is_reg_block;
-  assign km_reg_wdata = km_axil_req_i.w.data;
-  assign km_reg_wstrb = km_axil_req_i.w.strb;
-  assign km_reg_bready = km_axil_req_i.b_ready;
+  assign km_reg_awaddr  = km_axil_req_i.aw.addr[KM_REG_ADDR_W-1:0];
+  assign km_reg_awprot  = km_axil_req_i.aw.prot;
+  assign km_reg_wvalid  = km_axil_req_i.w_valid && km_aw_is_reg_block;
+  assign km_reg_wdata   = km_axil_req_i.w.data;
+  assign km_reg_wstrb   = km_axil_req_i.w.strb;
+  assign km_reg_bready  = km_axil_req_i.b_ready;
   assign km_reg_arvalid = km_axil_req_i.ar_valid && km_ar_is_reg_block;
-  assign km_reg_araddr = km_axil_req_i.ar.addr[KM_REG_ADDR_W-1:0];
-  assign km_reg_arprot = km_axil_req_i.ar.prot;
-  assign km_reg_rready = km_axil_req_i.r_ready;
+  assign km_reg_araddr  = km_axil_req_i.ar.addr[KM_REG_ADDR_W-1:0];
+  assign km_reg_arprot  = km_axil_req_i.ar.prot;
+  assign km_reg_rready  = km_axil_req_i.r_ready;
 
   // Drive warm reset into the KM-port regblock via hwif_in struct field
   assign km_hwif_in.WARM_RST_N = warm_rst_ni;
 
   // Register block instantiation (KM-CPU-facing: cold AASD + warm CPUIF reset via hwif_in)
   km_mailbox_km_reg u_km_regs (
-    .clk           (clk_i),
-    .arst_n        (cold_rst_ni),
-    .s_axil_awready(km_reg_awready),
-    .s_axil_awvalid(km_reg_awvalid),
-    .s_axil_awaddr (km_reg_awaddr),
-    .s_axil_awprot (km_reg_awprot),
-    .s_axil_wready (km_reg_wready),
-    .s_axil_wvalid (km_reg_wvalid),
-    .s_axil_wdata  (km_reg_wdata),
-    .s_axil_wstrb  (km_reg_wstrb),
-    .s_axil_bready (km_reg_bready),
-    .s_axil_bvalid (km_reg_bvalid),
-    .s_axil_bresp  (km_reg_bresp),
-    .s_axil_arready(km_reg_arready),
-    .s_axil_arvalid(km_reg_arvalid),
-    .s_axil_araddr (km_reg_araddr),
-    .s_axil_arprot (km_reg_arprot),
-    .s_axil_rready (km_reg_rready),
-    .s_axil_rvalid (km_reg_rvalid),
-    .s_axil_rdata  (km_reg_rdata),
-    .s_axil_rresp  (km_reg_rresp),
-    .hwif_in       (km_hwif_in),
-    .hwif_out      (km_hwif_out)
+    .clk            (clk_i),
+    .arst_n         (cold_rst_ni),
+    .s_axil_awready (km_reg_awready),
+    .s_axil_awvalid (km_reg_awvalid),
+    .s_axil_awaddr  (km_reg_awaddr),
+    .s_axil_awprot  (km_reg_awprot),
+    .s_axil_wready  (km_reg_wready),
+    .s_axil_wvalid  (km_reg_wvalid),
+    .s_axil_wdata   (km_reg_wdata),
+    .s_axil_wstrb   (km_reg_wstrb),
+    .s_axil_bready  (km_reg_bready),
+    .s_axil_bvalid  (km_reg_bvalid),
+    .s_axil_bresp   (km_reg_bresp),
+    .s_axil_arready (km_reg_arready),
+    .s_axil_arvalid (km_reg_arvalid),
+    .s_axil_araddr  (km_reg_araddr),
+    .s_axil_arprot  (km_reg_arprot),
+    .s_axil_rready  (km_reg_rready),
+    .s_axil_rvalid  (km_reg_rvalid),
+    .s_axil_rdata   (km_reg_rdata),
+    .s_axil_rresp   (km_reg_rresp),
+    .hwif_in        (km_hwif_in),
+    .hwif_out       (km_hwif_out)
   );
 
   // Assign KM-side CTRL register bits (after register block instantiation)
@@ -699,7 +701,8 @@ module km_mailbox
                                      km_aw_is_write_data ? km_fifo_aw_handshake : 1'b0;
 
   // Write data channel
-  assign km_axil_resp_o.w_ready = km_aw_is_reg_block ? km_reg_wready : km_fifo_w_handshake;
+  assign km_axil_resp_o.w_ready = km_aw_is_reg_block ? km_reg_wready :
+                                    km_fifo_w_handshake;
 
   // Write response channel
   assign km_axil_resp_o.b_valid = km_reg_bvalid || km_fifo_b_valid_q;

@@ -13,7 +13,7 @@ module tlul_rsp_intg_chk
   parameter bit EnableRspDataIntgCheck = 0
 ) (
   // TL-UL interface
-  input tl_d2h_t tl_i,
+  input  tl_d2h_t tl_i,
 
   // error output
   output logic err_o
@@ -36,7 +36,7 @@ module tlul_rsp_intg_chk
   if (EnableRspDataIntgCheck) begin : gen_rsp_data_intg_check
     tlul_data_integ_dec u_tlul_data_integ_dec (
       .data_intg_i({tl_i.d_user.data_intg, DataMaxWidth'(tl_i.d_data)}),
-      .data_err_o (rsp_data_err)
+      .data_err_o(rsp_data_err)
     );
   end else begin : gen_no_rsp_data_intg_check
     assign rsp_data_err = 1'b0;

@@ -8,16 +8,16 @@
 
 module prim_zero_counter #(
   /// The width of the input vector.
-  parameter  int unsigned WIDTH         = 2,
+  parameter int unsigned WIDTH = 2,
   /// COUNT_LEADING selection: 0 -> trailing zero, 1 -> leading zero
-  parameter  bit          COUNT_LEADING = 1'b0,
+  parameter bit          COUNT_LEADING  = 1'b0,
   /// Dependent parameter. Do **not** change!
   ///
   /// Width of the output signal with the zero count.
-  localparam int unsigned CNT_WIDTH     = WIDTH > 1 ? $clog2(WIDTH) : 1
+  localparam int unsigned CNT_WIDTH = WIDTH > 1 ? $clog2(WIDTH) : 1
 ) (
   /// Input vector to be counted.
-  input  logic [    WIDTH-1:0] i_in,
+  input  logic [WIDTH-1:0]     i_in,
   /// Count of the leading / trailing zeros.
   output logic [CNT_WIDTH-1:0] o_count,
   /// Counter is empty: Asserted if all bits in i_in are zero.
@@ -57,20 +57,20 @@ module prim_zero_counter #(
         for (genvar k = 0; k < 2 ** level; k++) begin : g_level
           // if two successive indices are still in the vector...
           if (unsigned'(k) * 2 < WIDTH - 1) begin : g_reduce
-            assign sel_nodes[2**level-1+k] = in_tmp[k*2] | in_tmp[k*2+1];
+            assign sel_nodes[2 ** level - 1 + k] = in_tmp[k * 2] | in_tmp[k * 2 + 1];
             assign index_nodes[2 ** level - 1 + k] = (in_tmp[k * 2] == 1'b1)
               ? index_lut[k * 2] :
                 index_lut[k * 2 + 1];
           end
           // if only the first index is still in the vector...
           if (unsigned'(k) * 2 == WIDTH - 1) begin : g_base
-            assign sel_nodes[2**level-1+k]   = in_tmp[k*2];
-            assign index_nodes[2**level-1+k] = index_lut[k*2];
+            assign sel_nodes[2 ** level - 1 + k] = in_tmp[k * 2];
+            assign index_nodes[2 ** level - 1 + k] = index_lut[k * 2];
           end
           // if index is out of range
           if (unsigned'(k) * 2 > WIDTH - 1) begin : g_out_of_range
-            assign sel_nodes[2**level-1+k]   = 1'b0;
-            assign index_nodes[2**level-1+k] = '0;
+            assign sel_nodes[2 ** level - 1 + k] = 1'b0;
+            assign index_nodes[2 ** level - 1 + k] = '0;
           end
         end
       end else begin : g_not_last_level

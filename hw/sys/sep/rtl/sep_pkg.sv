@@ -334,18 +334,18 @@ SYSTEM_CSR_DEMUX_PORTS
 
   // SRAM memory interface (axi_to_mem format)
   typedef struct packed {
-    logic                          req;
-    logic [SEP_MEM_ADDR_WIDTH-1:0] addr;
-    logic [SEP_MEM_DATA_WIDTH-1:0] wdata;
-    logic [SEP_MEM_STRB_WIDTH-1:0] strb;
-    axi_pkg::atop_t                atop;
-    logic                          wenable;
+    logic                           req;
+    logic [SEP_MEM_ADDR_WIDTH-1:0]  addr;
+    logic [SEP_MEM_DATA_WIDTH-1:0]  wdata;
+    logic [SEP_MEM_STRB_WIDTH-1:0]  strb;
+    axi_pkg::atop_t                 atop;
+    logic                           wenable;
   } sep_sram_req_t;
 
   typedef struct packed {
-    logic                          gnt;
-    logic                          rvalid;
-    logic [SEP_MEM_DATA_WIDTH-1:0] rdata;
+    logic                           gnt;
+    logic                           rvalid;
+    logic [SEP_MEM_DATA_WIDTH-1:0]  rdata;
   } sep_sram_rsp_t;
 
   // EL2 specific values (computed based on "pt" struct)
@@ -373,30 +373,30 @@ SYSTEM_CSR_DEMUX_PORTS
   // TCM (ICCM/DCCM) memory interface types
   // Request struct: from CPU to TCM macros (active-high signals from EL2 core)
   typedef struct packed {
-    logic clk;
+    logic                                                               clk;
 
     logic [pt.ICCM_NUM_BANKS-1:0]                                       iccm_clken;
     logic [pt.ICCM_NUM_BANKS-1:0]                                       iccm_wren_bank;
     logic [pt.ICCM_NUM_BANKS-1:0][pt.ICCM_BITS-1:pt.ICCM_BANK_INDEX_LO] iccm_addr_bank;
 
-    logic [pt.ICCM_NUM_BANKS-1:0][31:0]                  iccm_bank_wr_data;
-    logic [pt.ICCM_NUM_BANKS-1:0][pt.ICCM_ECC_WIDTH-1:0] iccm_bank_wr_ecc;
+    logic [pt.ICCM_NUM_BANKS-1:0][                                31:0] iccm_bank_wr_data;
+    logic [pt.ICCM_NUM_BANKS-1:0][               pt.ICCM_ECC_WIDTH-1:0] iccm_bank_wr_ecc;
 
     logic [pt.DCCM_NUM_BANKS-1:0]                                       dccm_clken;
     logic [pt.DCCM_NUM_BANKS-1:0]                                       dccm_wren_bank;
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_BITS-1:(pt.DCCM_BANK_BITS+2)] dccm_addr_bank;
 
-    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_DATA_WIDTH-1:0] dccm_wr_data_bank;
-    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_ECC_WIDTH-1:0]  dccm_wr_ecc_bank;
+    logic [pt.DCCM_NUM_BANKS-1:0][              pt.DCCM_DATA_WIDTH-1:0] dccm_wr_data_bank;
+    logic [pt.DCCM_NUM_BANKS-1:0][               pt.DCCM_ECC_WIDTH-1:0] dccm_wr_ecc_bank;
   } sep_cpu_tcm_req_t;
 
   // Response struct: from TCM macros back to CPU
   typedef struct packed {
-    logic [pt.ICCM_NUM_BANKS-1:0][31:0]                  iccm_bank_dout;
-    logic [pt.ICCM_NUM_BANKS-1:0][pt.ICCM_ECC_WIDTH-1:0] iccm_bank_ecc;
+    logic [pt.ICCM_NUM_BANKS-1:0][                                31:0] iccm_bank_dout;
+    logic [pt.ICCM_NUM_BANKS-1:0][               pt.ICCM_ECC_WIDTH-1:0] iccm_bank_ecc;
 
-    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_DATA_WIDTH-1:0] dccm_bank_dout;
-    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_ECC_WIDTH-1:0]  dccm_bank_ecc;
+    logic [pt.DCCM_NUM_BANKS-1:0][              pt.DCCM_DATA_WIDTH-1:0] dccm_bank_dout;
+    logic [pt.DCCM_NUM_BANKS-1:0][               pt.DCCM_ECC_WIDTH-1:0] dccm_bank_ecc;
   } sep_cpu_tcm_rsp_t;
 
   /////////////
@@ -504,7 +504,7 @@ SEP_ROM_MUX_NUM_PORTS
   typedef struct packed {logic bypass_mem_repair;} boot_stratps_t;
 
   typedef struct packed {
-    test_straps_t  test_straps;
+    test_straps_t test_straps;
     boot_stratps_t boot_straps;
   } sep_straps_t;
 
@@ -738,7 +738,7 @@ SEP_ROM_MUX_NUM_PORTS
 
   typedef struct packed {
     jtag_sep_reset_ctrl_ovrd_t ovrd;
-    jtag_sep_reset_ctrl_val_t  val;
+    jtag_sep_reset_ctrl_val_t val;
   } jtag_sep_reset_ctrl_t;
 
 endpackage

@@ -89,7 +89,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     dtp_stap_3dcr_model::gates(d, gates);
     for (int unsigned s = 0; s < DtpStapCount; s++) begin
       all_sib[s] = 1;
-      all_payloads[s] = '{1'b1, 1'b1, 1'b1};
+      all_payloads[s]   = '{1'b1, 1'b1, 1'b1};
       clear_payloads[s] = '{1'b0, 1'b0, 1'b0};
       watch.push_back({stap_prefix(s), "_tdo_oen"});
       watch.push_back({stap_prefix(s), "_tms"});
@@ -150,7 +150,8 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
   endtask
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-OBS", "CHK-SCAN-CHAIN"};
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN",
+                              "CHK-SCAN-OBS", "CHK-SCAN-CHAIN"};
     bit [ScanFieldCount-1:0] row_bits[$];
     string row_labels[$];
     string quiet[$], none[$];

@@ -9,7 +9,7 @@
 class ocah_jtag_master_agent extends uvm_agent;
   `uvm_component_utils(ocah_jtag_master_agent)
 
-  ocah_jtag_master_config    cfg;
+  ocah_jtag_master_config       cfg;
   ocah_jtag_master_driver    m_driver;
   ocah_jtag_master_sequencer m_sequencer;
   ocah_jtag_master_monitor   m_monitor;

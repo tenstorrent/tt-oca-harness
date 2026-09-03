@@ -29,7 +29,7 @@ class ocah_axi_master_env extends uvm_env;
   `uvm_component_utils(ocah_axi_master_env)
 
   ocah_axi_master_config cfg;
-  ocah_axi_master_agent m_agent;
+  ocah_axi_master_agent  m_agent;
 
   // Frozen surface.
   ocah_axi_master_sequencer m_sequencer;

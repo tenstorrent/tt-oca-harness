@@ -17,9 +17,9 @@
 /* verilator lint_off UNUSED */
 logic [31:0] debug_component_id;
 logic [31:0] debug_ctrl;
-logic debug_ctrl_reserved_0;  // Reserved bit 0, reads zero
-logic debug_ctrl_autotune_enable;  // CTRL.AUTOTUNE_ENABLE bit
-logic [9:0] debug_ctrl_downsample_rate;  // CTRL.DOWNSAMPLE_RATE field
+logic        debug_ctrl_reserved_0;      // Reserved bit 0, reads zero
+logic        debug_ctrl_autotune_enable; // CTRL.AUTOTUNE_ENABLE bit
+logic [9:0]  debug_ctrl_downsample_rate; // CTRL.DOWNSAMPLE_RATE field
 logic [31:0] debug_debug_ctrl;
 logic [31:0] debug_intr_status;
 logic [31:0] debug_intr_enable;
@@ -39,72 +39,72 @@ logic [31:0] debug_decorrelator_mask;
 
 // Additional debug signals for internal DUT state
 logic [11:0] debug_ring_osc_enable_wire;  // Actual enable signal from reg_out
-logic [7:0] debug_clk_divider[12];  // Clock dividers from all 12 decorrelator lanes
-logic [31:0] debug_entropy_stream_data;  // Entropy stream data output
-logic debug_entropy_stream_vld;  // Entropy stream valid output
+logic [7:0]  debug_clk_divider [12];      // Clock dividers from all 12 decorrelator lanes
+logic [31:0] debug_entropy_stream_data;   // Entropy stream data output
+logic        debug_entropy_stream_vld;    // Entropy stream valid output
 
 // Decorrelator reference model byte outputs per channel (separate signals for nWave)
-logic [7:0] debug_decorr_refmodel_bytes_0;
-logic [7:0] debug_decorr_refmodel_bytes_1;
-logic [7:0] debug_decorr_refmodel_bytes_2;
-logic [7:0] debug_decorr_refmodel_bytes_3;
-logic [7:0] debug_decorr_refmodel_bytes_4;
-logic [7:0] debug_decorr_refmodel_bytes_5;
-logic [7:0] debug_decorr_refmodel_bytes_6;
-logic [7:0] debug_decorr_refmodel_bytes_7;
-logic [7:0] debug_decorr_refmodel_bytes_8;
-logic [7:0] debug_decorr_refmodel_bytes_9;
-logic [7:0] debug_decorr_refmodel_bytes_10;
-logic [7:0] debug_decorr_refmodel_bytes_11;
+logic [7:0]  debug_decorr_refmodel_bytes_0;
+logic [7:0]  debug_decorr_refmodel_bytes_1;
+logic [7:0]  debug_decorr_refmodel_bytes_2;
+logic [7:0]  debug_decorr_refmodel_bytes_3;
+logic [7:0]  debug_decorr_refmodel_bytes_4;
+logic [7:0]  debug_decorr_refmodel_bytes_5;
+logic [7:0]  debug_decorr_refmodel_bytes_6;
+logic [7:0]  debug_decorr_refmodel_bytes_7;
+logic [7:0]  debug_decorr_refmodel_bytes_8;
+logic [7:0]  debug_decorr_refmodel_bytes_9;
+logic [7:0]  debug_decorr_refmodel_bytes_10;
+logic [7:0]  debug_decorr_refmodel_bytes_11;
 
 // Flatten COMPONENT_ID register (Read-Only, not in reg_out - hardwired)
 assign debug_component_id = 32'h0;  // Not accessible in reg_out interface
 
 // Flatten CTRL register
-assign debug_ctrl[0] = 1'b0;
+assign debug_ctrl[0]      = 1'b0;
 assign debug_ctrl[1] = dut.reg_out.CTRL.MODULE_ENABLE.value;
 assign debug_ctrl[3:2] = 2'h0;
-assign debug_ctrl[4] = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
+assign debug_ctrl[4]      = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
 assign debug_ctrl[7:5] = 3'h0;
 assign debug_ctrl[8] = dut.reg_out.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
 assign debug_ctrl[15:9] = 7'h0;
-assign debug_ctrl[25:16] = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
+assign debug_ctrl[25:16]  = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
 assign debug_ctrl[27:26] = 2'h0;
 assign debug_ctrl[28] = dut.reg_out.CTRL.SHA256_WHITENING_ENABLE.value;
 assign debug_ctrl[31:29] = 3'h0;
 
 // CTRL register individual fields (for easier Verdi visualization)
-assign debug_ctrl_reserved_0 = 1'b0;
+assign debug_ctrl_reserved_0      = 1'b0;
 assign debug_ctrl_autotune_enable = dut.reg_out.CTRL.AUTOTUNE_ENABLE.value;
 assign debug_ctrl_downsample_rate = dut.reg_out.CTRL.DOWNSAMPLE_RATE.value;
 
 // Flatten DEBUG_CTRL register
 assign debug_debug_ctrl[7:0] = dut.reg_out.DEBUG_CTRL.SELECT_SIGNAL.value;
-assign debug_debug_ctrl[10:8] = dut.reg_out.DEBUG_CTRL.SELECT_FREQ_DIV.value;
+assign debug_debug_ctrl[10:8]  = dut.reg_out.DEBUG_CTRL.SELECT_FREQ_DIV.value;
 assign debug_debug_ctrl[31:11] = 21'h0;
 
 // Flatten INTR_STATUS register (Write-One-to-Clear)
 // Note: PeakRDL generates only a combined .intr signal for level intr fields
-assign debug_intr_status[0] = dut.reg_out.INTR_STATUS.intr;
-assign debug_intr_status[31:1] = 31'h0;
+assign debug_intr_status[0]       = dut.reg_out.INTR_STATUS.intr;
+assign debug_intr_status[31:1]    = 31'h0;
 
 // Flatten INTR_ENABLE register (not in reg_out - hw=na, no hardware access)
 assign debug_intr_enable = 32'h0;  // Not accessible in reg_out interface
 
 // Flatten FIFO_STATUS register
-assign debug_fifo_status[6:0] = dut.reg_in.FIFO_STATUS.LEVEL.next;
-assign debug_fifo_status[7] = 1'h0;
-assign debug_fifo_status[12:8] = dut.reg_in.FIFO_STATUS.WPTR.next;
-assign debug_fifo_status[15:13] = 3'h0;
-assign debug_fifo_status[20:16] = dut.reg_in.FIFO_STATUS.RPTR.next;
-assign debug_fifo_status[31:21] = 11'h0;
+assign debug_fifo_status[6:0]     = dut.reg_in.FIFO_STATUS.LEVEL.next;
+assign debug_fifo_status[7]       = 1'h0;
+assign debug_fifo_status[12:8]    = dut.reg_in.FIFO_STATUS.WPTR.next;
+assign debug_fifo_status[15:13]   = 3'h0;
+assign debug_fifo_status[20:16]   = dut.reg_in.FIFO_STATUS.RPTR.next;
+assign debug_fifo_status[31:21]   = 11'h0;
 
 // Flatten FIFO_RDATA register
-assign debug_fifo_rdata[31:0] = dut.reg_in.FIFO_RDATA.rd_data;
+assign debug_fifo_rdata[31:0]     = dut.reg_in.FIFO_RDATA.rd_data;
 
 // Flatten HEALTH_TEST_CTRL register
-assign debug_health_test_ctrl[7:0] = dut.reg_out.HEALTH_TEST_CTRL.ENABLE.value;
-assign debug_health_test_ctrl[15:8] = dut.reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value;
+assign debug_health_test_ctrl[7:0]   = dut.reg_out.HEALTH_TEST_CTRL.ENABLE.value;
+assign debug_health_test_ctrl[15:8]  = dut.reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value;
 assign debug_health_test_ctrl[31:16] = 16'h0;
 
 // Flatten MARKOV_TEST_PROB_THRESHOLDS register
@@ -112,7 +112,7 @@ assign debug_markov_thresholds[15:0]  = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.
 assign debug_markov_thresholds[31:16] = dut.reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value;
 
 // Flatten HEALTH_TEST_STATUS register
-assign debug_health_test_status[7:0] = dut.reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next;
+assign debug_health_test_status[7:0]  = dut.reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next;
 assign debug_health_test_status[31:8] = 24'h0;
 
 // Flatten REPETITION_TEST_COUNT register
@@ -126,33 +126,33 @@ assign debug_apt_proportion_lo[15:0] = dut.reg_out.APT_PROPORTION_LO.LIMIT.value
 assign debug_apt_proportion_lo[31:16] = 16'h0;
 
 // Flatten RING_OSC_ENABLE register
-assign debug_ring_osc_enable[11:0] = dut.reg_out.RING_OSC_ENABLE.ENABLE.value;
+assign debug_ring_osc_enable[11:0]  = dut.reg_out.RING_OSC_ENABLE.ENABLE.value;
 assign debug_ring_osc_enable[23:12] = dut.reg_out.RING_OSC_ENABLE.SAMPLE_CLK_ENABLE.value;
 assign debug_ring_osc_enable[31:24] = 8'h0;
 
 // Flatten RING_OSC_TUNE register
-assign debug_ring_osc_tune[11:0] = dut.reg_out.RING_OSC_TUNE.DETUNE.value;
+assign debug_ring_osc_tune[11:0]  = dut.reg_out.RING_OSC_TUNE.DETUNE.value;
 assign debug_ring_osc_tune[23:12] = dut.reg_out.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.value;
 assign debug_ring_osc_tune[31:24] = 8'h0;
 
 // Flatten RING_OSC_CTRL register
-assign debug_ring_osc_ctrl[11:0] = dut.reg_out.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value;
+assign debug_ring_osc_ctrl[11:0]  = dut.reg_out.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value;
 assign debug_ring_osc_ctrl[31:12] = 20'h0;
 
 // Flatten DECORRELATOR_CTRL register
-assign debug_decorrelator_ctrl[11:0] = dut.reg_out.DECORRELATOR_CTRL.BYPASS.value;
+assign debug_decorrelator_ctrl[11:0]  = dut.reg_out.DECORRELATOR_CTRL.BYPASS.value;
 assign debug_decorrelator_ctrl[31:12] = dut.reg_out.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value;
 
 // Flatten DECORRELATOR_MASK register
-assign debug_decorrelator_mask[7:0] = dut.reg_out.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
-assign debug_decorrelator_mask[31:8] = 24'h0;
+assign debug_decorrelator_mask[7:0]   = dut.reg_out.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
+assign debug_decorrelator_mask[31:8]  = 24'h0;
 
 // Additional internal signals (post-register, actual wire to design)
 assign debug_ring_osc_enable_wire = dut.reg_out.RING_OSC_ENABLE.ENABLE.value;
 
 // Entropy stream outputs (top-level DUT outputs)
 assign debug_entropy_stream_data = entropy_stream_data;
-assign debug_entropy_stream_vld = entropy_stream_vld;
+assign debug_entropy_stream_vld  = entropy_stream_vld;
 
 // Clock dividers from all decorrelator lanes (for synchronization verification)
 genvar debug_gi;
@@ -258,7 +258,7 @@ generate
 
       // Determine effective depth based on mode
       unique case (mode)
-        3'd1:    depth_eff = 6'd7;  // DECOR_7
+        3'd1: depth_eff = 6'd7;      // DECOR_7
         default: depth_eff = 6'd29;  // DECOR_29, LFSR modes
       endcase
 
@@ -269,32 +269,32 @@ generate
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: feedback from sr[29-depth_eff]
             case (debug_gi)
-              0:  debug_decor_fb_0 = debug_decor_sr_0[29-depth_eff];
-              1:  debug_decor_fb_1 = debug_decor_sr_1[29-depth_eff];
-              2:  debug_decor_fb_2 = debug_decor_sr_2[29-depth_eff];
-              3:  debug_decor_fb_3 = debug_decor_sr_3[29-depth_eff];
-              4:  debug_decor_fb_4 = debug_decor_sr_4[29-depth_eff];
-              5:  debug_decor_fb_5 = debug_decor_sr_5[29-depth_eff];
-              6:  debug_decor_fb_6 = debug_decor_sr_6[29-depth_eff];
-              7:  debug_decor_fb_7 = debug_decor_sr_7[29-depth_eff];
-              8:  debug_decor_fb_8 = debug_decor_sr_8[29-depth_eff];
-              9:  debug_decor_fb_9 = debug_decor_sr_9[29-depth_eff];
+              0:  debug_decor_fb_0  = debug_decor_sr_0[29-depth_eff];
+              1:  debug_decor_fb_1  = debug_decor_sr_1[29-depth_eff];
+              2:  debug_decor_fb_2  = debug_decor_sr_2[29-depth_eff];
+              3:  debug_decor_fb_3  = debug_decor_sr_3[29-depth_eff];
+              4:  debug_decor_fb_4  = debug_decor_sr_4[29-depth_eff];
+              5:  debug_decor_fb_5  = debug_decor_sr_5[29-depth_eff];
+              6:  debug_decor_fb_6  = debug_decor_sr_6[29-depth_eff];
+              7:  debug_decor_fb_7  = debug_decor_sr_7[29-depth_eff];
+              8:  debug_decor_fb_8  = debug_decor_sr_8[29-depth_eff];
+              9:  debug_decor_fb_9  = debug_decor_sr_9[29-depth_eff];
               10: debug_decor_fb_10 = debug_decor_sr_10[29-depth_eff];
               11: debug_decor_fb_11 = debug_decor_sr_11[29-depth_eff];
             endcase
           end else begin
             // SHIFT_LEFT: feedback from sr[depth_eff-1]
             case (debug_gi)
-              0:  debug_decor_fb_0 = debug_decor_sr_0[depth_eff-1];
-              1:  debug_decor_fb_1 = debug_decor_sr_1[depth_eff-1];
-              2:  debug_decor_fb_2 = debug_decor_sr_2[depth_eff-1];
-              3:  debug_decor_fb_3 = debug_decor_sr_3[depth_eff-1];
-              4:  debug_decor_fb_4 = debug_decor_sr_4[depth_eff-1];
-              5:  debug_decor_fb_5 = debug_decor_sr_5[depth_eff-1];
-              6:  debug_decor_fb_6 = debug_decor_sr_6[depth_eff-1];
-              7:  debug_decor_fb_7 = debug_decor_sr_7[depth_eff-1];
-              8:  debug_decor_fb_8 = debug_decor_sr_8[depth_eff-1];
-              9:  debug_decor_fb_9 = debug_decor_sr_9[depth_eff-1];
+              0:  debug_decor_fb_0  = debug_decor_sr_0[depth_eff-1];
+              1:  debug_decor_fb_1  = debug_decor_sr_1[depth_eff-1];
+              2:  debug_decor_fb_2  = debug_decor_sr_2[depth_eff-1];
+              3:  debug_decor_fb_3  = debug_decor_sr_3[depth_eff-1];
+              4:  debug_decor_fb_4  = debug_decor_sr_4[depth_eff-1];
+              5:  debug_decor_fb_5  = debug_decor_sr_5[depth_eff-1];
+              6:  debug_decor_fb_6  = debug_decor_sr_6[depth_eff-1];
+              7:  debug_decor_fb_7  = debug_decor_sr_7[depth_eff-1];
+              8:  debug_decor_fb_8  = debug_decor_sr_8[depth_eff-1];
+              9:  debug_decor_fb_9  = debug_decor_sr_9[depth_eff-1];
               10: debug_decor_fb_10 = debug_decor_sr_10[depth_eff-1];
               11: debug_decor_fb_11 = debug_decor_sr_11[depth_eff-1];
             endcase
@@ -302,16 +302,16 @@ generate
         end
         3'd2: begin  // BYPASS: no feedback
           case (debug_gi)
-            0:  debug_decor_fb_0 = 1'b0;
-            1:  debug_decor_fb_1 = 1'b0;
-            2:  debug_decor_fb_2 = 1'b0;
-            3:  debug_decor_fb_3 = 1'b0;
-            4:  debug_decor_fb_4 = 1'b0;
-            5:  debug_decor_fb_5 = 1'b0;
-            6:  debug_decor_fb_6 = 1'b0;
-            7:  debug_decor_fb_7 = 1'b0;
-            8:  debug_decor_fb_8 = 1'b0;
-            9:  debug_decor_fb_9 = 1'b0;
+            0:  debug_decor_fb_0  = 1'b0;
+            1:  debug_decor_fb_1  = 1'b0;
+            2:  debug_decor_fb_2  = 1'b0;
+            3:  debug_decor_fb_3  = 1'b0;
+            4:  debug_decor_fb_4  = 1'b0;
+            5:  debug_decor_fb_5  = 1'b0;
+            6:  debug_decor_fb_6  = 1'b0;
+            7:  debug_decor_fb_7  = 1'b0;
+            8:  debug_decor_fb_8  = 1'b0;
+            9:  debug_decor_fb_9  = 1'b0;
             10: debug_decor_fb_10 = 1'b0;
             11: debug_decor_fb_11 = 1'b0;
           endcase
@@ -320,32 +320,32 @@ generate
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: fb = sr[28] ^ sr[1]
             case (debug_gi)
-              0:  debug_decor_fb_0 = debug_decor_sr_0[28] ^ debug_decor_sr_0[1];
-              1:  debug_decor_fb_1 = debug_decor_sr_1[28] ^ debug_decor_sr_1[1];
-              2:  debug_decor_fb_2 = debug_decor_sr_2[28] ^ debug_decor_sr_2[1];
-              3:  debug_decor_fb_3 = debug_decor_sr_3[28] ^ debug_decor_sr_3[1];
-              4:  debug_decor_fb_4 = debug_decor_sr_4[28] ^ debug_decor_sr_4[1];
-              5:  debug_decor_fb_5 = debug_decor_sr_5[28] ^ debug_decor_sr_5[1];
-              6:  debug_decor_fb_6 = debug_decor_sr_6[28] ^ debug_decor_sr_6[1];
-              7:  debug_decor_fb_7 = debug_decor_sr_7[28] ^ debug_decor_sr_7[1];
-              8:  debug_decor_fb_8 = debug_decor_sr_8[28] ^ debug_decor_sr_8[1];
-              9:  debug_decor_fb_9 = debug_decor_sr_9[28] ^ debug_decor_sr_9[1];
+              0:  debug_decor_fb_0  = debug_decor_sr_0[28]  ^ debug_decor_sr_0[1];
+              1:  debug_decor_fb_1  = debug_decor_sr_1[28]  ^ debug_decor_sr_1[1];
+              2:  debug_decor_fb_2  = debug_decor_sr_2[28]  ^ debug_decor_sr_2[1];
+              3:  debug_decor_fb_3  = debug_decor_sr_3[28]  ^ debug_decor_sr_3[1];
+              4:  debug_decor_fb_4  = debug_decor_sr_4[28]  ^ debug_decor_sr_4[1];
+              5:  debug_decor_fb_5  = debug_decor_sr_5[28]  ^ debug_decor_sr_5[1];
+              6:  debug_decor_fb_6  = debug_decor_sr_6[28]  ^ debug_decor_sr_6[1];
+              7:  debug_decor_fb_7  = debug_decor_sr_7[28]  ^ debug_decor_sr_7[1];
+              8:  debug_decor_fb_8  = debug_decor_sr_8[28]  ^ debug_decor_sr_8[1];
+              9:  debug_decor_fb_9  = debug_decor_sr_9[28]  ^ debug_decor_sr_9[1];
               10: debug_decor_fb_10 = debug_decor_sr_10[28] ^ debug_decor_sr_10[1];
               11: debug_decor_fb_11 = debug_decor_sr_11[28] ^ debug_decor_sr_11[1];
             endcase
           end else begin
             // SHIFT_LEFT: fb = sr[0] ^ sr[27]
             case (debug_gi)
-              0:  debug_decor_fb_0 = debug_decor_sr_0[0] ^ debug_decor_sr_0[27];
-              1:  debug_decor_fb_1 = debug_decor_sr_1[0] ^ debug_decor_sr_1[27];
-              2:  debug_decor_fb_2 = debug_decor_sr_2[0] ^ debug_decor_sr_2[27];
-              3:  debug_decor_fb_3 = debug_decor_sr_3[0] ^ debug_decor_sr_3[27];
-              4:  debug_decor_fb_4 = debug_decor_sr_4[0] ^ debug_decor_sr_4[27];
-              5:  debug_decor_fb_5 = debug_decor_sr_5[0] ^ debug_decor_sr_5[27];
-              6:  debug_decor_fb_6 = debug_decor_sr_6[0] ^ debug_decor_sr_6[27];
-              7:  debug_decor_fb_7 = debug_decor_sr_7[0] ^ debug_decor_sr_7[27];
-              8:  debug_decor_fb_8 = debug_decor_sr_8[0] ^ debug_decor_sr_8[27];
-              9:  debug_decor_fb_9 = debug_decor_sr_9[0] ^ debug_decor_sr_9[27];
+              0:  debug_decor_fb_0  = debug_decor_sr_0[0]  ^ debug_decor_sr_0[27];
+              1:  debug_decor_fb_1  = debug_decor_sr_1[0]  ^ debug_decor_sr_1[27];
+              2:  debug_decor_fb_2  = debug_decor_sr_2[0]  ^ debug_decor_sr_2[27];
+              3:  debug_decor_fb_3  = debug_decor_sr_3[0]  ^ debug_decor_sr_3[27];
+              4:  debug_decor_fb_4  = debug_decor_sr_4[0]  ^ debug_decor_sr_4[27];
+              5:  debug_decor_fb_5  = debug_decor_sr_5[0]  ^ debug_decor_sr_5[27];
+              6:  debug_decor_fb_6  = debug_decor_sr_6[0]  ^ debug_decor_sr_6[27];
+              7:  debug_decor_fb_7  = debug_decor_sr_7[0]  ^ debug_decor_sr_7[27];
+              8:  debug_decor_fb_8  = debug_decor_sr_8[0]  ^ debug_decor_sr_8[27];
+              9:  debug_decor_fb_9  = debug_decor_sr_9[0]  ^ debug_decor_sr_9[27];
               10: debug_decor_fb_10 = debug_decor_sr_10[0] ^ debug_decor_sr_10[27];
               11: debug_decor_fb_11 = debug_decor_sr_11[0] ^ debug_decor_sr_11[27];
             endcase
@@ -355,32 +355,32 @@ generate
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: fb = sr[6] ^ sr[5]
             case (debug_gi)
-              0:  debug_decor_fb_0 = debug_decor_sr_0[6] ^ debug_decor_sr_0[5];
-              1:  debug_decor_fb_1 = debug_decor_sr_1[6] ^ debug_decor_sr_1[5];
-              2:  debug_decor_fb_2 = debug_decor_sr_2[6] ^ debug_decor_sr_2[5];
-              3:  debug_decor_fb_3 = debug_decor_sr_3[6] ^ debug_decor_sr_3[5];
-              4:  debug_decor_fb_4 = debug_decor_sr_4[6] ^ debug_decor_sr_4[5];
-              5:  debug_decor_fb_5 = debug_decor_sr_5[6] ^ debug_decor_sr_5[5];
-              6:  debug_decor_fb_6 = debug_decor_sr_6[6] ^ debug_decor_sr_6[5];
-              7:  debug_decor_fb_7 = debug_decor_sr_7[6] ^ debug_decor_sr_7[5];
-              8:  debug_decor_fb_8 = debug_decor_sr_8[6] ^ debug_decor_sr_8[5];
-              9:  debug_decor_fb_9 = debug_decor_sr_9[6] ^ debug_decor_sr_9[5];
+              0:  debug_decor_fb_0  = debug_decor_sr_0[6]  ^ debug_decor_sr_0[5];
+              1:  debug_decor_fb_1  = debug_decor_sr_1[6]  ^ debug_decor_sr_1[5];
+              2:  debug_decor_fb_2  = debug_decor_sr_2[6]  ^ debug_decor_sr_2[5];
+              3:  debug_decor_fb_3  = debug_decor_sr_3[6]  ^ debug_decor_sr_3[5];
+              4:  debug_decor_fb_4  = debug_decor_sr_4[6]  ^ debug_decor_sr_4[5];
+              5:  debug_decor_fb_5  = debug_decor_sr_5[6]  ^ debug_decor_sr_5[5];
+              6:  debug_decor_fb_6  = debug_decor_sr_6[6]  ^ debug_decor_sr_6[5];
+              7:  debug_decor_fb_7  = debug_decor_sr_7[6]  ^ debug_decor_sr_7[5];
+              8:  debug_decor_fb_8  = debug_decor_sr_8[6]  ^ debug_decor_sr_8[5];
+              9:  debug_decor_fb_9  = debug_decor_sr_9[6]  ^ debug_decor_sr_9[5];
               10: debug_decor_fb_10 = debug_decor_sr_10[6] ^ debug_decor_sr_10[5];
               11: debug_decor_fb_11 = debug_decor_sr_11[6] ^ debug_decor_sr_11[5];
             endcase
           end else begin
             // SHIFT_LEFT: fb = sr[0] ^ sr[1]
             case (debug_gi)
-              0:  debug_decor_fb_0 = debug_decor_sr_0[0] ^ debug_decor_sr_0[1];
-              1:  debug_decor_fb_1 = debug_decor_sr_1[0] ^ debug_decor_sr_1[1];
-              2:  debug_decor_fb_2 = debug_decor_sr_2[0] ^ debug_decor_sr_2[1];
-              3:  debug_decor_fb_3 = debug_decor_sr_3[0] ^ debug_decor_sr_3[1];
-              4:  debug_decor_fb_4 = debug_decor_sr_4[0] ^ debug_decor_sr_4[1];
-              5:  debug_decor_fb_5 = debug_decor_sr_5[0] ^ debug_decor_sr_5[1];
-              6:  debug_decor_fb_6 = debug_decor_sr_6[0] ^ debug_decor_sr_6[1];
-              7:  debug_decor_fb_7 = debug_decor_sr_7[0] ^ debug_decor_sr_7[1];
-              8:  debug_decor_fb_8 = debug_decor_sr_8[0] ^ debug_decor_sr_8[1];
-              9:  debug_decor_fb_9 = debug_decor_sr_9[0] ^ debug_decor_sr_9[1];
+              0:  debug_decor_fb_0  = debug_decor_sr_0[0]  ^ debug_decor_sr_0[1];
+              1:  debug_decor_fb_1  = debug_decor_sr_1[0]  ^ debug_decor_sr_1[1];
+              2:  debug_decor_fb_2  = debug_decor_sr_2[0]  ^ debug_decor_sr_2[1];
+              3:  debug_decor_fb_3  = debug_decor_sr_3[0]  ^ debug_decor_sr_3[1];
+              4:  debug_decor_fb_4  = debug_decor_sr_4[0]  ^ debug_decor_sr_4[1];
+              5:  debug_decor_fb_5  = debug_decor_sr_5[0]  ^ debug_decor_sr_5[1];
+              6:  debug_decor_fb_6  = debug_decor_sr_6[0]  ^ debug_decor_sr_6[1];
+              7:  debug_decor_fb_7  = debug_decor_sr_7[0]  ^ debug_decor_sr_7[1];
+              8:  debug_decor_fb_8  = debug_decor_sr_8[0]  ^ debug_decor_sr_8[1];
+              9:  debug_decor_fb_9  = debug_decor_sr_9[0]  ^ debug_decor_sr_9[1];
               10: debug_decor_fb_10 = debug_decor_sr_10[0] ^ debug_decor_sr_10[1];
               11: debug_decor_fb_11 = debug_decor_sr_11[0] ^ debug_decor_sr_11[1];
             endcase
@@ -388,16 +388,16 @@ generate
         end
         default: begin  // Invalid mode - set feedback to 0
           case (debug_gi)
-            0:  debug_decor_fb_0 = 1'b0;
-            1:  debug_decor_fb_1 = 1'b0;
-            2:  debug_decor_fb_2 = 1'b0;
-            3:  debug_decor_fb_3 = 1'b0;
-            4:  debug_decor_fb_4 = 1'b0;
-            5:  debug_decor_fb_5 = 1'b0;
-            6:  debug_decor_fb_6 = 1'b0;
-            7:  debug_decor_fb_7 = 1'b0;
-            8:  debug_decor_fb_8 = 1'b0;
-            9:  debug_decor_fb_9 = 1'b0;
+            0:  debug_decor_fb_0  = 1'b0;
+            1:  debug_decor_fb_1  = 1'b0;
+            2:  debug_decor_fb_2  = 1'b0;
+            3:  debug_decor_fb_3  = 1'b0;
+            4:  debug_decor_fb_4  = 1'b0;
+            5:  debug_decor_fb_5  = 1'b0;
+            6:  debug_decor_fb_6  = 1'b0;
+            7:  debug_decor_fb_7  = 1'b0;
+            8:  debug_decor_fb_8  = 1'b0;
+            9:  debug_decor_fb_9  = 1'b0;
             10: debug_decor_fb_10 = 1'b0;
             11: debug_decor_fb_11 = 1'b0;
           endcase

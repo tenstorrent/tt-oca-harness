@@ -32,24 +32,24 @@ module km_kpv_eraser #(
   parameter int unsigned WORDS_PER_SLOT = 16,
   parameter int unsigned DATA_WIDTH     = 32
 ) (
-  input logic clk_i,
-  input logic cold_rst_ni, // Cold reset (AASD); seeds LFSR all-ones
+  input  logic                 clk_i,
+  input  logic                 cold_rst_ni,   // Cold reset (AASD); seeds LFSR all-ones
 
   // Per-slot erase requests (CTRL[i].erase.value)
-  input logic [NUM_SLOTS-1:0] erase_req_i,
+  input  logic [NUM_SLOTS-1:0] erase_req_i,
 
   // Register-file write stream (logical address; parent applies scrambler)
-  output logic                              wr_en_o,
-  output logic [     $clog2(NUM_SLOTS)-1:0] wr_slot_o,
+  output logic                          wr_en_o,
+  output logic [$clog2(NUM_SLOTS)-1:0]  wr_slot_o,
   output logic [$clog2(WORDS_PER_SLOT)-1:0] wr_word_o,
-  output logic [            DATA_WIDTH-1:0] wr_data_o,
+  output logic [DATA_WIDTH-1:0]         wr_data_o,
 
   // One-cycle pulse per slot when its erase completes (last word written)
-  output logic [NUM_SLOTS-1:0] erase_done_o,
+  output logic [NUM_SLOTS-1:0]      erase_done_o,
 
   // High while an erase is in progress (parent gives this priority on the
   // shared scrambler / regfile write port)
-  output logic busy_o
+  output logic                      busy_o
 );
 
   localparam int unsigned SLOT_W = $clog2(NUM_SLOTS);
@@ -64,18 +64,18 @@ module km_kpv_eraser #(
   logic                  lfsr_en;
 
   prim_lfsr #(
-    .LfsrType   ("GAL_XOR"),
-    .LfsrDw     (DATA_WIDTH),
-    .StateOutDw (DATA_WIDTH),
-    .DefaultSeed({DATA_WIDTH{1'b1}})
+    .LfsrType    ("GAL_XOR"),
+    .LfsrDw      (DATA_WIDTH),
+    .StateOutDw  (DATA_WIDTH),
+    .DefaultSeed ({DATA_WIDTH{1'b1}})
   ) u_lfsr (
-    .clk_i    (clk_i),
-    .rst_ni   (cold_rst_ni),
-    .seed_en_i(1'b0),
-    .seed_i   ('0),
-    .lfsr_en_i(lfsr_en),
-    .entropy_i('0),
-    .state_o  (rnd_word)
+    .clk_i     (clk_i),
+    .rst_ni    (cold_rst_ni),
+    .seed_en_i (1'b0),
+    .seed_i    ('0),
+    .lfsr_en_i (lfsr_en),
+    .entropy_i ('0),
+    .state_o   (rnd_word)
   );
 
   // =========================================================================

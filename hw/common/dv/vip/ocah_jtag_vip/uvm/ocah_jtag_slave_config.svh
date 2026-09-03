@@ -18,28 +18,28 @@ typedef struct {
 class ocah_jtag_slave_config extends uvm_object;
   `uvm_object_utils(ocah_jtag_slave_config)
 
-  virtual ocah_jtag_if           vif;
+  virtual ocah_jtag_if vif;
 
-  uvm_active_passive_enum        is_active                    = UVM_ACTIVE;
-  bit                            en_monitor                   = 1;
+  uvm_active_passive_enum is_active = UVM_ACTIVE;
+  bit en_monitor = 1;
 
-  int unsigned                   ir_width                     = 5;
+  int unsigned ir_width = 5;
   // IEEE 1149.1: the two IR LSBs capture 01; extra capture bits above them
   // may carry design-specific status.
-  bit                     [63:0] ir_capture                   = 'h1;
+  bit [63:0]   ir_capture = 'h1;
 
-  bit                            has_idcode                   = 1;
-  bit                     [31:0] idcode                       = 32'h0000_0001;
-  bit                     [63:0] idcode_opcode                = 'h1;
+  bit          has_idcode = 1;
+  bit [31:0]   idcode = 32'h0000_0001;
+  bit [63:0]   idcode_opcode = 'h1;
 
-  bit                            drive_tdo_oen                = 1;
+  bit          drive_tdo_oen = 1;
 
   // Data-register map keyed by IR opcode (<= 64-bit registers; BYPASS and
   // unknown opcodes are implicit). IDCODE capture comes from `idcode`.
-  string                         reg_name[bit        [63:0]];
-  int unsigned                   reg_width[bit       [63:0]];
-  bit                            reg_writable[bit    [63:0]];
-  bit                     [63:0] reg_reset_value[bit [63:0]];
+  string       reg_name[bit [63:0]];
+  int unsigned reg_width[bit [63:0]];
+  bit          reg_writable[bit [63:0]];
+  bit [63:0]   reg_reset_value[bit [63:0]];
 
   function new(string name = "ocah_jtag_slave_config");
     super.new(name);

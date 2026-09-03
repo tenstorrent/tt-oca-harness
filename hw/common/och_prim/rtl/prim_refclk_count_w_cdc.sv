@@ -77,26 +77,26 @@ module prim_refclk_count_w_cdc #(
   localparam int unsigned CntFifoDepth = 1;
   localparam int unsigned CntFifoDepthW = $clog2(CntFifoDepth + 1);
 
-  logic                     cnt_fifo_wready;
-  logic [CntFifoDepthW-1:0] cnt_fifo_wdepth;
-  logic [CntFifoDepthW-1:0] cnt_fifo_rdepth;
+  logic                       cnt_fifo_wready;
+  logic [CntFifoDepthW-1:0]   cnt_fifo_wdepth;
+  logic [CntFifoDepthW-1:0]   cnt_fifo_rdepth;
 
   prim_fifo_async #(
     .Width(REF_COUNT_WIDTH),
     .Depth(CntFifoDepth),
     .OutputZeroIfEmpty(0)
   ) cnt_update_async_fifo (
-    .clk_wr_i (i_out_clk),
-    .rst_wr_ni(prstb_synced_write),  // async reset, should be okay to use same reset
-    .wvalid_i (i_cnt_update),
-    .wready_o (cnt_fifo_wready),
-    .wdata_i  (i_cnt_update_value),
-    .wdepth_o (cnt_fifo_wdepth),
+    .clk_wr_i(i_out_clk),
+    .rst_wr_ni(prstb_synced_write), // async reset, should be okay to use same reset
+    .wvalid_i(i_cnt_update),
+    .wready_o(cnt_fifo_wready),
+    .wdata_i(i_cnt_update_value),
+    .wdepth_o(cnt_fifo_wdepth),
 
     .clk_rd_i(i_refclk),
     .rst_rd_ni(prstb_synced_rd),
     .rvalid_o(cnt_update_value_valid),
-    .rready_i(1'b1),  // always ready
+    .rready_i(1'b1), // always ready
     .rdata_o(cnt_update_value_sync),
     .rdepth_o(cnt_fifo_rdepth)
   );

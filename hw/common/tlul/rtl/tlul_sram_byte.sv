@@ -17,19 +17,19 @@
 module tlul_sram_byte
   import tlul_pkg::*;
 #(
-  parameter bit EnableIntg     = 0,  // Enable integrity handling at byte level,
+  parameter bit EnableIntg     = 0, // Enable integrity handling at byte level,
   parameter int Outstanding    = 1,
-  parameter bit EnableReadback = 0   // Enable readback checks on all transactions must have
-                                     // EnableIntg == 1 to enable
+  parameter bit EnableReadback = 0  // Enable readback checks on all transactions must have
+                                    // EnableIntg == 1 to enable
 ) (
   input clk_i,
   input rst_ni,
 
-  input  tl_h2d_t tl_i,
+  input tl_h2d_t tl_i,
   output tl_d2h_t tl_o,
 
   output tl_h2d_t tl_sram_o,
-  input  tl_d2h_t tl_sram_i,
+  input tl_d2h_t tl_sram_i,
 
   // if incoming transaction already has an error, do not
   // attempt to handle the byte-write access.  Instead treat as
@@ -79,17 +79,17 @@ module tlul_sram_byte
   //
   localparam int StateWidth = 8;
   typedef enum logic [StateWidth-1:0] {
-    StPassThru            = 8'b01111110,
-    StWaitRd              = 8'b00000010,
-    StWriteCmd            = 8'b11110001,
-    StWrReadBackInit      = 8'b10011001,
-    StWrReadBack          = 8'b00001111,
-    StWrReadBackDWait     = 8'b00110000,
-    StRdReadBack          = 8'b10101100,
-    StRdReadBackDWait     = 8'b11000000,
-    StByteWrReadBackInit  = 8'b01010111,
-    StByteWrReadBack      = 8'b11100111,
-    StByteWrReadBackDWait = 8'b11111111
+    StPassThru              = 8'b01111110,
+    StWaitRd                = 8'b00000010,
+    StWriteCmd              = 8'b11110001,
+    StWrReadBackInit        = 8'b10011001,
+    StWrReadBack            = 8'b00001111,
+    StWrReadBackDWait       = 8'b00110000,
+    StRdReadBack            = 8'b10101100,
+    StRdReadBackDWait       = 8'b11000000,
+    StByteWrReadBackInit    = 8'b01010111,
+    StByteWrReadBack        = 8'b11100111,
+    StByteWrReadBackDWait   = 8'b11111111
   } state_e;
 
   if (EnableIntg) begin : gen_integ_handling
@@ -115,8 +115,8 @@ module tlul_sram_byte
     // transaction qualifying signals
     logic a_ack;  // upstream a channel acknowledgement
     logic d_ack;  // upstream d channel acknowledgement
-    logic sram_a_ack;  // downstream a channel acknowledgement
-    logic sram_d_ack;  // downstream d channel acknowledgement
+    logic sram_a_ack; // downstream a channel acknowledgement
+    logic sram_d_ack; // downstream d channel acknowledgement
     logic wr_txn;
     logic byte_wr_txn;
     logic byte_req_ack;
@@ -127,13 +127,13 @@ module tlul_sram_byte
 
     // prim fifo for capturing info
     typedef struct packed {
-      logic [2:0]                 a_param;
-      logic [top_pkg::TL_SZW-1:0] a_size;
-      logic [top_pkg::TL_AIW-1:0] a_source;
-      logic [top_pkg::TL_AW-1:0]  a_address;
-      logic [top_pkg::TL_DBW-1:0] a_mask;
-      logic [top_pkg::TL_DW-1:0]  a_data;
-      tl_a_user_t                 a_user;
+      logic                  [2:0]  a_param;
+      logic  [top_pkg::TL_SZW-1:0]  a_size;
+      logic  [top_pkg::TL_AIW-1:0]  a_source;
+      logic   [top_pkg::TL_AW-1:0]  a_address;
+      logic  [top_pkg::TL_DBW-1:0]  a_mask;
+      logic   [top_pkg::TL_DW-1:0]  a_data;
+      tl_a_user_t                   a_user;
     } tl_txn_data_t;
 
     tl_txn_data_t held_data;
@@ -255,8 +255,8 @@ module tlul_sram_byte
       alert_o = 1'b0;
       rdback_check_d = rdback_check_q;
       rdback_en_d = rdback_en_q;
-      rdback_data_exp_d = rdback_data_exp_q;
-      rdback_data_exp_intg_d = rdback_data_exp_intg_q;
+      rdback_data_exp_d  = rdback_data_exp_q;
+      rdback_data_exp_intg_d  = rdback_data_exp_intg_q;
 
       unique case (state_q)
         StPassThru: begin
@@ -297,7 +297,7 @@ module tlul_sram_byte
         // belongs to the partial read unless it flushes all prior transactions. Hence, we wait
         // here until exactly one outstanding transaction remains (that one is the partial read).
         StWaitRd: begin
-          rd_phase   = 1'b1;
+          rd_phase = 1'b1;
           stall_host = 1'b1;
           if (pending_txn_cnt == PendingTxnCntW'(1)) begin
             rd_wait = 1'b1;
@@ -309,12 +309,12 @@ module tlul_sram_byte
 
         StWriteCmd: begin
           stall_host = 1'b1;
-          wr_phase   = 1'b1;
+          wr_phase = 1'b1;
 
           if (sram_a_ack) begin
             state_d = mubi4_test_true_loose(rdback_en_q) ? StByteWrReadBackInit : StPassThru;
-            rdback_check_d = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
-            rdback_data_exp_d = tl_sram_o.a_data;
+            rdback_check_d         = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
+            rdback_data_exp_d      = tl_sram_o.a_data;
             rdback_data_exp_intg_d = tl_sram_o.a_user.data_intg;
           end
         end
@@ -333,7 +333,7 @@ module tlul_sram_byte
           // Need to ensure there's no other transactions in flight before we do the readback (the
           // initial write we're doing the readback for should be the only one active).
           if (pending_txn_cnt == PendingTxnCntW'(1)) begin
-            wait_phase             = 1'b1;
+            wait_phase  = 1'b1;
             // Data we're checking against the readback is captured from the write transaction that
             // was sent.
             rdback_check_d         = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
@@ -373,7 +373,7 @@ module tlul_sram_byte
           end
 
           // Wait until we get write response.
-          wait_phase = 1'b1;
+          wait_phase  = 1'b1;
 
           stall_host = 1'b1;
 
@@ -398,7 +398,7 @@ module tlul_sram_byte
 
           // Wait for one cycle with sending readback request to SRAM to avoid reading from
           // holding register.
-          wait_phase = 1'b1;
+          wait_phase  = 1'b1;
 
           if (d_ack) begin
             // Got an immediate TL-UL write response. Wait for one cycle until the holding
@@ -437,7 +437,7 @@ module tlul_sram_byte
           stall_host = 1'b1;
 
           // Wait for one cycle with sending readback request to SRAM.
-          wait_phase = 1'b1;
+          wait_phase  = 1'b1;
 
           if (d_ack) begin
             // Got the TL-UL write response. Wait for one cycle until the holding
@@ -506,14 +506,14 @@ module tlul_sram_byte
     localparam int TxnDataWidth = $bits(tl_txn_data_t);
 
     assign txn_data = '{
-            a_param: tl_i.a_param,
-            a_size: tl_i.a_size,
-            a_source: tl_i.a_source,
-            a_address: tl_i.a_address,
-            a_mask: tl_i.a_mask,
-            a_data: tl_i.a_data,
-            a_user: tl_i.a_user
-        };
+      a_param: tl_i.a_param,
+      a_size: tl_i.a_size,
+      a_source: tl_i.a_source,
+      a_address: tl_i.a_address,
+      a_mask: tl_i.a_mask,
+      a_data: tl_i.a_data,
+      a_user: tl_i.a_user
+    };
 
 
     assign txn_data_wr = hold_tx_data | byte_req_ack;
@@ -589,23 +589,24 @@ module tlul_sram_byte
 
       // Write transactions for RMW or reads when in readback mode.
       if (wr_phase | rdback_phase | rdback_phase_wrreadback) begin
-        tl_sram_o.a_valid = 1'b1;
+        tl_sram_o.a_valid   = 1'b1;
         // During a read-modify write, always access the entire word.
-        tl_sram_o.a_opcode = wr_phase ? PutFullData : Get;
+        tl_sram_o.a_opcode  = wr_phase ? PutFullData : Get;
         // In either read-modify write or SRAM readback mode, use the mask, size and address
         // of the original request.
         tl_sram_o.a_size =
             (wr_phase | rdback_phase_wrreadback) ? top_pkg::TL_SZW'(AccessSize) : held_data.a_size;
-        tl_sram_o.a_mask = (wr_phase | rdback_phase_wrreadback) ? '{default: '1} : held_data.a_mask;
+        tl_sram_o.a_mask =
+            (wr_phase | rdback_phase_wrreadback) ? '{default: '1}               : held_data.a_mask;
         // override with held / combined data.
         // need to use word aligned addresses here.
         tl_sram_o.a_address = held_data.a_address;
         tl_sram_o.a_address[AccessSize-1:0] =
             (wr_phase | rdback_phase_wrreadback) ? '0 : held_data.a_address[AccessSize-1:0];
-        tl_sram_o.a_source = held_data.a_source;
-        tl_sram_o.a_param = held_data.a_param;
-        tl_sram_o.a_data = wr_phase ? combined_data : '0;
-        tl_sram_o.a_user = wr_phase ? combined_user : '0;
+        tl_sram_o.a_source  = held_data.a_source;
+        tl_sram_o.a_param   = held_data.a_param;
+        tl_sram_o.a_data    = wr_phase ? combined_data : '0;
+        tl_sram_o.a_user    = wr_phase ? combined_user : '0;
         // Read transactions for RMW.
       end else if (rd_phase) begin
         // need to use word aligned addresses here.
@@ -614,11 +615,11 @@ module tlul_sram_byte
         if (!error_i || stall_host) begin
           // Since we are performing a read-modify-write operation,
           // we always access the entire word.
-          tl_sram_o.a_size   = top_pkg::TL_SZW'(AccessSize);
-          tl_sram_o.a_mask   = '{default: '1};
+          tl_sram_o.a_size    = top_pkg::TL_SZW'(AccessSize);
+          tl_sram_o.a_mask    = '{default: '1};
           // use incoming valid as long as we are not stalling the host
-          tl_sram_o.a_valid  = tl_i.a_valid & ~stall_host;
-          tl_sram_o.a_opcode = Get;
+          tl_sram_o.a_valid   = tl_i.a_valid & ~stall_host;
+          tl_sram_o.a_opcode  = Get;
         end
       end else if (wait_phase) begin
         // Delay the readback request to avoid that we are reading the holding
@@ -668,7 +669,7 @@ module tlul_sram_byte
       // the size returned by tl_sram_i does not always correspond to the actual
       // transaction size in cases where a read modify write operation is
       // performed. Hence, we always return the registered size here.
-      tl_o.d_size = a_size;
+      tl_o.d_size  = a_size;
     end  // always_comb
 
     // unused info from tl_sram_i
@@ -725,7 +726,7 @@ module tlul_sram_byte
   // Signals only used for SVA.
   logic unused_write_pending, unused_wr_collision;
   assign unused_write_pending = write_pending_i;
-  assign unused_wr_collision  = wr_collision_i;
+  assign unused_wr_collision = wr_collision_i;
 
   // EnableReadback requires that EnableIntg is on.
   // EnableIntg can be used without EnableReadback.

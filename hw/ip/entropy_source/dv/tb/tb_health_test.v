@@ -57,7 +57,7 @@ module tb_health_test ();
 
   // Failure injection control
   reg inject_failure = 0;
-  reg [1:0] test_select = 0;  // 0=none, 1=repetition, 2=APT, 3=Markov
+  reg [1:0] test_select = 0; // 0=none, 1=repetition, 2=APT, 3=Markov
   reg [3:0] failure_pattern = 0;
 
   // Instantiate the DUT
@@ -180,10 +180,10 @@ module tb_health_test ();
       2'd3: begin  // Markov test failure
         if (inject_failure) begin
           case (failure_pattern[1:0])
-            2'b00: entropy_i = 32'h55555555;  // Alternating pattern (01010101...)
-            2'b01: entropy_i = 32'hFFFF0000;  // Correlated pattern (blocks)
-            2'b10: entropy_i = 32'h00000000;  // Stuck-at-0
-            2'b11: entropy_i = 32'hFFFFFFFF;  // Stuck-at-1
+            2'b00: entropy_i = 32'h55555555; // Alternating pattern (01010101...)
+            2'b01: entropy_i = 32'hFFFF0000; // Correlated pattern (blocks)
+            2'b10: entropy_i = 32'h00000000; // Stuck-at-0
+            2'b11: entropy_i = 32'hFFFFFFFF; // Stuck-at-1
           endcase
         end else begin
           entropy_i = prng_data;  // Normal pseudorandom data
@@ -275,8 +275,8 @@ module tb_health_test ();
       // Test 1: All disabled
       enable_i = 3'b000;
       inject_failure = 1;
-      test_select = 2'd1;  // Try repetition failure
-      failure_pattern = 4'd0;  // Stuck-at-0
+      test_select = 2'd1; // Try repetition failure
+      failure_pattern = 4'd0; // Stuck-at-0
       repeat (50) @(posedge clk_i);
 
       if (status_o == 8'h00) begin
@@ -335,8 +335,8 @@ module tb_health_test ();
 
       // Test failure detection
       inject_failure = 1;
-      test_select = 2'd1;  // Repetition failure
-      failure_pattern = 4'd0;  // Stuck-at-0
+      test_select = 2'd1; // Repetition failure
+      failure_pattern = 4'd0; // Stuck-at-0
       repeat (20) @(posedge clk_i);
 
       if (status_o[0] == 1'b1) begin
@@ -387,8 +387,8 @@ module tb_health_test ();
       @(negedge clk_i);
       clear_apt_fail_seen = 1'b0;
       inject_failure = 1;
-      test_select = 2'd2;  // APT failure
-      failure_pattern = 4'd0;  // Bias toward 0
+      test_select = 2'd2; // APT failure
+      failure_pattern = 4'd0; // Bias toward 0
       repeat (400) @(posedge clk_i);
 
       if (apt_fail_lo_seen && !apt_fail_hi_seen) begin
@@ -409,7 +409,7 @@ module tb_health_test ();
       enable_i = 3'b010;
       inject_failure = 1;
       test_select = 2'd2;
-      failure_pattern = 4'd1;  // All 1s pattern
+      failure_pattern = 4'd1; // All 1s pattern
       proportion_limit_1bit_i = 16'd100;
       proportion_limit_lo_i = 16'd28;
       repeat (200) @(posedge clk_i);
@@ -463,11 +463,11 @@ module tb_health_test ();
 
       // Set up failure injection BEFORE re-enabling so no PRNG data accumulates
       inject_failure = 1;
-      test_select = 2'd3;  // Markov failure
-      failure_pattern = 4'b0000;  // Alternating pattern
+      test_select = 2'd3; // Markov failure
+      failure_pattern = 4'b0000; // Alternating pattern
 
       // Now re-enable with alternating pattern already flowing
-      enable_i = 3'b100;  // Re-enable only Markov test
+      enable_i = 3'b100; // Re-enable only Markov test
       repeat (300) @(posedge clk_i);
 
       // For alternating pattern: expect 0→1 and 1→0 transitions to exceed threshold
@@ -530,8 +530,8 @@ module tb_health_test ();
 
       // Test simultaneous failures (shouldn't happen in practice, but test robustness)
       inject_failure = 1;
-      test_select = 2'd1;  // This will trigger repetition test
-      failure_pattern = 4'd1;  // Stuck-at-1
+      test_select = 2'd1; // This will trigger repetition test
+      failure_pattern = 4'd1; // Stuck-at-1
       repeat (30) @(posedge clk_i);
 
       if (status_o[0] == 1'b1) begin
@@ -629,7 +629,7 @@ module tb_health_test ();
       case (test_select)
         2'd1: $display("Time=%0t: Repetition counter: %d", $time, ctr_repetition_o);
         2'd3: $display("Time=%0t: Markov counters - max:%d min:%d", $time, count_01_o, count_10_o);
-        default: ;  // No display for other cases to avoid clutter
+        default: ; // No display for other cases to avoid clutter
       endcase
     end
     cycle_count <= cycle_count + 1;

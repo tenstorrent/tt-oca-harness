@@ -38,7 +38,7 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
 
   task body();
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"};
-    string port_names[3] = '{"smc", "sep", "ext"};
+    string       port_names[3]   = '{"smc", "sep", "ext"};
     int unsigned port_indices[3] = '{int'(ICR_SMC), int'(ICR_SEP), int'(ICR_EXT)};
     bit [63:0] default_value = bit_mask(IcResetLen);
     bit [63:0] observed, held_pattern;
@@ -55,9 +55,9 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     foreach (port_names[p]) begin
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/3: JTAG override for %s", p + 1, port_names[p]), UVM_LOW)
-      reset_enable = '1;
+      reset_enable  = '1;
       reset_control = '1;
-      reset_enable[port_indices[p]] = 1'b0;
+      reset_enable[port_indices[p]]  = 1'b0;
       reset_control[port_indices[p]] = 1'b0;
       write_ic_reset(1'b1, reset_enable, reset_control, held_pattern);
       wait_sys_cycles();

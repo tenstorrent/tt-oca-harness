@@ -24,16 +24,16 @@
 class ocah_jtag_master_env extends uvm_env;
   `uvm_component_utils(ocah_jtag_master_env)
 
-  ocah_jtag_master_config              cfg;
-  ocah_jtag_master_agent               m_agent;
+  ocah_jtag_master_config       cfg;
+  ocah_jtag_master_agent     m_agent;
 
   // Optional functional-coverage subscriber (cfg.en_cov; commercial-sim
   // flows only). Its scan_export stays available for a DUT env that owns a
   // scan builder.
-  ocah_jtag_cov                        m_cov;
+  ocah_jtag_cov       m_cov;
 
   // Frozen surface.
-  ocah_jtag_master_sequencer           m_sequencer;
+  ocah_jtag_master_sequencer m_sequencer;
   uvm_analysis_port #(ocah_jtag_event) event_ap;
 
   function new(string name = "ocah_jtag_master_env", uvm_component parent = null);

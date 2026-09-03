@@ -19,34 +19,34 @@ module zeroer #(
   parameter int unsigned CTRL_USER_WIDTH = 12,
 
   // Width params for master-side internal logic
-  parameter int unsigned AXI_ADDR_WIDTH = 56,
-  parameter int unsigned AXI_DATA_WIDTH = 64,
-  parameter int unsigned AXI_USER_WIDTH = 12,
-  parameter int unsigned MST_ID_WIDTH   = 3,
+  parameter int unsigned AXI_ADDR_WIDTH  = 56,
+  parameter int unsigned AXI_DATA_WIDTH  = 64,
+  parameter int unsigned AXI_USER_WIDTH  = 12,
+  parameter int unsigned MST_ID_WIDTH    = 3,
 
   parameter int unsigned CG_HYSTERESIS_W = 6
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        test_en_i,
 
-  input logic                       cg_enable_i,
-  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
+  input  logic        cg_enable_i,
+  input  logic [CG_HYSTERESIS_W-1:0]   cg_hysteresis_i,
 
-  output logic zeroer_busy_o,
-  output logic zeroer_intp_o,
+  output logic        zeroer_busy_o,
+  output logic        zeroer_intp_o,
 
   // AXI Register Interface
-  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,
-  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,
+  input   zeroer_ctrl_req_t                   zeroer_ctrl_axi_req_i,
+  output  zeroer_ctrl_resp_t                  zeroer_ctrl_axi_resp_o,
 
   // Zeroer Output Interface
-  output mst_req_t  mst_axi_req_o,
-  input  mst_resp_t mst_axi_resp_i,
+  output  mst_req_t                           mst_axi_req_o,
+  input   mst_resp_t                          mst_axi_resp_i,
 
   // Clock gater activity indicators
-  output logic zeroer_clk_active_o,
-  output logic zeroer_bus_active_o
+  output  logic                               zeroer_clk_active_o,
+  output  logic                               zeroer_bus_active_o
 );
 
   `include "ocah_assert.svh"
@@ -85,9 +85,9 @@ module zeroer #(
     .FallThrough(0),
     .FullBW(0),
 
-    .full_req_t (zeroer_ctrl_req_t),
+    .full_req_t(zeroer_ctrl_req_t),
     .full_resp_t(zeroer_ctrl_resp_t),
-    .lite_req_t (zeroer_ctrl_axil_req_t),
+    .lite_req_t(zeroer_ctrl_axil_req_t),
     .lite_resp_t(zeroer_ctrl_axil_resp_t)
 
   ) ctrl_axi_to_axilite (
@@ -142,32 +142,32 @@ module zeroer #(
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
   ) zeroer_cg (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i    (clk_i),
+    .rst_ni    (rst_ni),
 
     .snoop_aw_valid_i(zeroer_ctrl_axil_req.aw_valid),
     .snoop_aw_ready_i(zeroer_ctrl_axil_resp.aw_ready),
-    .snoop_w_valid_i(zeroer_ctrl_axil_req.w_valid),
-    .snoop_b_valid_i(zeroer_ctrl_axil_resp.b_valid),
-    .snoop_b_ready_i(zeroer_ctrl_axil_req.b_ready),
+    .snoop_w_valid_i (zeroer_ctrl_axil_req.w_valid),
+    .snoop_b_valid_i (zeroer_ctrl_axil_resp.b_valid),
+    .snoop_b_ready_i (zeroer_ctrl_axil_req.b_ready),
     .snoop_ar_valid_i(zeroer_ctrl_axil_req.ar_valid),
     .snoop_ar_ready_i(zeroer_ctrl_axil_resp.ar_ready),
-    .snoop_r_valid_i(zeroer_ctrl_axil_resp.r_valid),
-    .snoop_r_ready_i(zeroer_ctrl_axil_req.r_ready),
-    .snoop_r_last_i(1'b1),  // every beat is "last" in AXI-L
+    .snoop_r_valid_i (zeroer_ctrl_axil_resp.r_valid),
+    .snoop_r_ready_i (zeroer_ctrl_axil_req.r_ready),
+    .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i(disable_cg),  // continuously kick to keep clock awake when not gating
+    .kick_i    (disable_cg), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i(test_en_i),
-    .hysteresis_i (cg_hysteresis_i),
-    .clk_active_o (zeroer_clk_active_o),
+    .test_clk_en_i  (test_en_i),
+    .hysteresis_i  (cg_hysteresis_i),
+    .clk_active_o  (zeroer_clk_active_o),
     .gated_clk_o  (reg_clk),
-    .bus_active_o (zeroer_bus_active_o)
+    .bus_active_o  (zeroer_bus_active_o)
   );
 
   // ----------
 
-  zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t  hwif_in;
+  zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t hwif_in;
   zeroer_ctrl_reg_pkg::zeroer_ctrl__out_t hwif_out;
 
   zeroer_ctrl_reg zeroer_reg (
@@ -176,25 +176,25 @@ module zeroer #(
 
     .s_axil_awready(zeroer_ctrl_axil_resp.aw_ready),
     .s_axil_awvalid(zeroer_ctrl_axil_req.aw_valid),
-    .s_axil_awaddr (zeroer_ctrl_axil_req.aw.addr),
-    .s_axil_awprot (zeroer_ctrl_axil_req.aw.prot),
-    .s_axil_wready (zeroer_ctrl_axil_resp.w_ready),
-    .s_axil_wvalid (zeroer_ctrl_axil_req.w_valid),
-    .s_axil_wdata  (zeroer_ctrl_axil_req.w.data),
-    .s_axil_wstrb  (zeroer_ctrl_axil_req.w.strb),
-    .s_axil_bready (zeroer_ctrl_axil_req.b_ready),
-    .s_axil_bvalid (zeroer_ctrl_axil_resp.b_valid),
-    .s_axil_bresp  (zeroer_ctrl_axil_resp.b.resp),
+    .s_axil_awaddr(zeroer_ctrl_axil_req.aw.addr),
+    .s_axil_awprot(zeroer_ctrl_axil_req.aw.prot),
+    .s_axil_wready(zeroer_ctrl_axil_resp.w_ready),
+    .s_axil_wvalid(zeroer_ctrl_axil_req.w_valid),
+    .s_axil_wdata(zeroer_ctrl_axil_req.w.data),
+    .s_axil_wstrb(zeroer_ctrl_axil_req.w.strb),
+    .s_axil_bready(zeroer_ctrl_axil_req.b_ready),
+    .s_axil_bvalid(zeroer_ctrl_axil_resp.b_valid),
+    .s_axil_bresp(zeroer_ctrl_axil_resp.b.resp),
     .s_axil_arready(zeroer_ctrl_axil_resp.ar_ready),
     .s_axil_arvalid(zeroer_ctrl_axil_req.ar_valid),
-    .s_axil_araddr (zeroer_ctrl_axil_req.ar.addr),
-    .s_axil_arprot (zeroer_ctrl_axil_req.ar.prot),
-    .s_axil_rready (zeroer_ctrl_axil_req.r_ready),
-    .s_axil_rvalid (zeroer_ctrl_axil_resp.r_valid),
-    .s_axil_rdata  (zeroer_ctrl_axil_resp.r.data),
-    .s_axil_rresp  (zeroer_ctrl_axil_resp.r.resp),
+    .s_axil_araddr(zeroer_ctrl_axil_req.ar.addr),
+    .s_axil_arprot(zeroer_ctrl_axil_req.ar.prot),
+    .s_axil_rready(zeroer_ctrl_axil_req.r_ready),
+    .s_axil_rvalid(zeroer_ctrl_axil_resp.r_valid),
+    .s_axil_rdata(zeroer_ctrl_axil_resp.r.data),
+    .s_axil_rresp(zeroer_ctrl_axil_resp.r.resp),
 
-    .hwif_in (hwif_in),
+    .hwif_in(hwif_in),
     .hwif_out(hwif_out)
   );
 
@@ -204,9 +204,7 @@ module zeroer #(
   assign size = hwif_out.SIZE.SIZE.value;
   assign int_en = hwif_out.CTRL_STATUS.INT_EN.value;
 
-  assign status_swacc = {
-    hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc
-  };
+  assign status_swacc = {hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc};
 
   // ----------
 
@@ -217,21 +215,21 @@ module zeroer #(
   axi_strb_t cur_last_transfer_strb, nxt_last_transfer_strb;
   axi_pkg::len_t cur_beats_to_transfer, nxt_beats_to_transfer;
 
-  axi_pkg::len_t                    burst_len;
-  axi_data_t                        last_transfer_size;
-  axi_data_t                        total_transfer_size;
-  logic          [AXI_DATA_WIDTH:0] total_transfer_size_overflow;
-  axi_strb_t                        last_strb;
+  axi_pkg::len_t                 burst_len;
+  axi_data_t                     last_transfer_size;
+  axi_data_t                     total_transfer_size;
+  logic [AXI_DATA_WIDTH:0]       total_transfer_size_overflow;
+  axi_strb_t                     last_strb;
 
-  logic                             mst_awvalid;
-  axi_addr_t                        mst_awaddr;
-  axi_pkg::len_t                    mst_awlen;
+  logic          mst_awvalid;
+  axi_addr_t     mst_awaddr;
+  axi_pkg::len_t mst_awlen;
 
-  logic                             mst_wvalid;
-  axi_strb_t                        mst_wstrb;
-  logic                             mst_wlast;
+  logic          mst_wvalid;
+  axi_strb_t     mst_wstrb;
+  logic          mst_wlast;
 
-  logic                             mst_bready;
+  logic          mst_bready;
 
   always_comb begin
     nxt_state = cur_state;

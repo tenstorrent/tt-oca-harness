@@ -51,7 +51,7 @@ module tb_entropy_fifo ();
   integer fail_count = 0;
   integer i, j;
   reg [DATA_WIDTH-1:0] expected_data;
-  reg [DATA_WIDTH-1:0] write_history[0:DEPTH*3-1];
+  reg [DATA_WIDTH-1:0] write_history [0:DEPTH*3-1];
   integer write_count = 0;
   integer read_count = 0;
   reg [PTR_WIDTH-1:0] initial_wptr;
@@ -109,7 +109,7 @@ module tb_entropy_fifo ();
       #1;
       wdata_i = data;
       push_i = 1;
-      write_history[write_count%(DEPTH*3)] = data;
+      write_history[write_count % (DEPTH*3)] = data;
       write_count = write_count + 1;
       @(posedge clk_i);
       #1;
@@ -124,7 +124,7 @@ module tb_entropy_fifo ();
       @(posedge clk_i);
       #1;
       // Capture data BEFORE asserting pop (data is already at rdata_o)
-      data  = rdata_o;
+      data = rdata_o;
       pop_i = 1;
       @(posedge clk_i);
       #1;
@@ -218,7 +218,7 @@ module tb_entropy_fifo ();
     $display("\nTest 4: Overflow Detection");
     @(posedge clk_i);
     #1;
-    push_i  = 1;
+    push_i = 1;
     wdata_i = 32'hFFFFFFFF;
     @(posedge clk_i);
     #1;
@@ -287,7 +287,7 @@ module tb_entropy_fifo ();
     @(posedge clk_i);
     #1;
     push_i = 0;
-    pop_i  = 0;
+    pop_i = 0;
 
     wait_cycles(1);
     report_test(14, "Simultaneous push/pop maintains level", level_o == 1);
@@ -429,7 +429,7 @@ module tb_entropy_fifo ();
     for (i = 0; i < 32; i = i + 1) begin
       @(posedge clk_i);
       #1;
-      push_i  = 1;
+      push_i = 1;
       wdata_i = 32'hC0000000 | i;
     end
     @(posedge clk_i);
@@ -502,14 +502,14 @@ module tb_entropy_fifo ();
     for (i = 0; i < 50; i = i + 1) begin
       @(posedge clk_i);
       #1;
-      push_i  = 1;
-      pop_i   = 1;
+      push_i = 1;
+      pop_i = 1;
       wdata_i = 32'h70000000 | (10 + i);
       @(posedge clk_i);
       #1;
     end
     push_i = 0;
-    pop_i  = 0;
+    pop_i = 0;
 
     wait_cycles(1);
     report_test(30, "Max throughput maintains level", level_o == 10);

@@ -33,36 +33,36 @@ module km_sram_interface
   parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS
 ) (
   // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic   clk_i,
+  input  logic   rst_ni,
 
   // PicoRV32 native memory interface (input from CPU)
-  input  logic        mem_valid_i,  // Memory request valid
-  output logic        mem_ready_o,  // Memory ready (data available)
-  input  logic [31:0] mem_addr_i,   // Byte address
-  input  logic [31:0] mem_wdata_i,  // Write data
-  input  logic [ 3:0] mem_wstrb_i,  // Write strobe (non-zero = write)
-  input  logic [ 3:0] mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU)
-  output logic [31:0] mem_rdata_o,  // Read data
+  input  logic   mem_valid_i,      // Memory request valid
+  output logic        mem_ready_o,      // Memory ready (data available)
+  input  logic [31:0] mem_addr_i,       // Byte address
+  input  logic [31:0] mem_wdata_i,      // Write data
+  input  logic [3:0] mem_wstrb_i,      // Write strobe (non-zero = write)
+  input  logic [3:0] mem_rstrb_i,      // Read strobe (byte lanes consumed by CPU)
+  output logic [31:0] mem_rdata_o,      // Read data
 
   // PicoRV32 look-ahead interface (for prefetching)
-  input logic mem_la_read_i,  // Look-ahead read signal (1 cycle before mem_valid)
-  input logic [31:0] mem_la_addr_i,  // Look-ahead address
-  input logic [3:0] mem_la_rstrb_i,  // Look-ahead read strobe
+  input  logic   mem_la_read_i,    // Look-ahead read signal (1 cycle before mem_valid)
+  input  logic [31:0] mem_la_addr_i,    // Look-ahead address
+  input  logic [3:0] mem_la_rstrb_i,   // Look-ahead read strobe
 
   // SRAM memory interface (exposed at subsystem boundary)
   output km_sram_mem_req_t sram_mem_req_o,
   input  km_sram_mem_rsp_t sram_mem_rsp_i,
 
   // Scrambler control (from KMCSR)
-  input logic [31:0] scrambler_key_i,  // Scrambler key
-  input logic scrambler_en_i,  // Scrambler enable
+  input  logic [31:0] scrambler_key_i,  // Scrambler key
+  input  logic   scrambler_en_i,   // Scrambler enable
 
   // SRAM write-lock (from KMCSR): bit[i]=1 locks region i
-  input logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,
+  input  logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,
 
   // Parity error output (to KMCSR)
-  output logic parity_error_o,  // Parity error detected (pulse)
+  output logic        parity_error_o,   // Parity error detected (pulse)
 
   // Write-lock violation (to KMCSR): one-hot indicates which region had attempted write while locked
   output logic [SRAM_NUM_LOCK_REGIONS-1:0] write_lock_violation_region_o  // Pulse: one-hot for violated region
@@ -124,26 +124,26 @@ module km_sram_interface
   // This is critical for pipelined memory when the CPU may de-assert mem_valid
   // before all responses arrive (e.g., second word of unaligned instruction)
   // Support pipelined sequential reads: can accept new request in same cycle as response
-  logic        read_pending_q;
-  logic [ 1:0] req_squelch_q;
-  logic        req_enable;
+  logic read_pending_q;
+  logic [1:0] req_squelch_q;
+  logic       req_enable;
 
   // Determine if we should issue a new read request
   // - On look-ahead read (prefetch for next cycle)
   // - On regular read (when mem_valid is asserted)
   // Don't issue new request if one is already pending
   // EXCEPT: allow new request in same cycle as response (pipelined operation)
-  logic        issue_la_read;
+  logic issue_la_read;
   assign issue_la_read = mem_la_read_i && (!read_pending_q || sram_mem_rsp_i.rvalid);
   assign req_enable = req_squelch_q[1];
 
   // Track SRAM read handshakes/responses in shared pending bookkeeping.
-  logic                       read_accept;
-  logic                       read_complete;
+  logic read_accept;
+  logic read_complete;
   logic [SRAM_ADDR_WIDTH-1:0] req_addr_for_scrambler;
   logic [SRAM_ADDR_WIDTH-1:0] read_pending_addr_q;
-  logic [                3:0] req_rstrb_for_scrambler;
-  logic [                3:0] read_pending_rstrb_q;
+  logic [3:0]                 req_rstrb_for_scrambler;
+  logic [3:0]                 read_pending_rstrb_q;
   assign read_accept = sram_mem_req_o.req && !sram_mem_req_o.we && sram_mem_rsp_i.gnt;
   assign read_complete = sram_mem_rsp_i.rvalid;
   // Writes must always use the current data-access address. Look-ahead is only
@@ -155,7 +155,7 @@ module km_sram_interface
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       read_pending_q <= 1'b0;
-      req_squelch_q  <= '0;
+      req_squelch_q <= '0;
     end else begin
       // If complete and accept happen together:
       // - pending=1: prior read completed and a new read accepted -> keep pending=1
@@ -197,7 +197,7 @@ module km_sram_interface
   scrambler_8192x32 #(
     .ADDR_WIDTH(SRAM_ADDR_WIDTH),
     .DATA_WIDTH(32),
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_req_scrambler (
     .addr_i                (req_addr_for_scrambler),
     .byte_mask_i           ('0),
@@ -212,7 +212,7 @@ module km_sram_interface
   scrambler_8192x32 #(
     .ADDR_WIDTH(SRAM_ADDR_WIDTH),
     .DATA_WIDTH(32),
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_rsp_descrambler (
     .addr_i                (read_pending_addr_q),
     .byte_mask_i           ('0),
@@ -290,12 +290,12 @@ module km_sram_interface
                           issue_la_read ||
                           (is_read_request && (!read_pending_q || sram_mem_rsp_i.rvalid));
 
-  assign sram_mem_req_o.req = req_enable && issue_request;
-  assign sram_mem_req_o.we = is_write_request && !write_to_locked_region;
-  assign sram_mem_req_o.be = mem_wstrb_i;
+  assign sram_mem_req_o.req     = req_enable && issue_request;
+  assign sram_mem_req_o.we      = is_write_request && !write_to_locked_region;
+  assign sram_mem_req_o.be      = mem_wstrb_i;
   // Address: use scrambled if enabled, select between look-ahead and regular access.
-  assign sram_mem_req_o.addr = scrambler_en_i ? scrambled_addr : req_addr_for_scrambler;
-  assign sram_mem_req_o.wdata = scrambler_en_i ? scrambled_write_data : mem_wdata_i;
+  assign sram_mem_req_o.addr   = scrambler_en_i ? scrambled_addr : req_addr_for_scrambler;
+  assign sram_mem_req_o.wdata  = scrambler_en_i ? scrambled_write_data : mem_wdata_i;
   assign sram_mem_req_o.wparity = gen_parity(mem_wdata_i);
 
   ////////////////////////////////////////////////////////////////////////////
@@ -323,9 +323,9 @@ module km_sram_interface
   ////////////////////////////////////////////////////////////////////////////
 
   // Check parity on the byte lanes actually consumed by the CPU on this read response.
-  assign parity_error_o = read_complete ? check_parity(
-      cpu_rdata_final, sram_mem_rsp_i.rparity, read_pending_rstrb_q
-  ) : 1'b0;
+  assign parity_error_o = read_complete ?
+                            check_parity(cpu_rdata_final, sram_mem_rsp_i.rparity,
+                                         read_pending_rstrb_q) : 1'b0;
 
   ////////////////////////////////////////////////////////////////////////////
   // Assertions

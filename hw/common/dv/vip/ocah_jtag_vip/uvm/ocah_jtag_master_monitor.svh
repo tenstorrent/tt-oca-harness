@@ -56,13 +56,13 @@ class ocah_jtag_master_monitor extends uvm_monitor;
     forever begin
       ocah_jtag_event ev;
       @(posedge cfg.vif.tck);
-      ev        = ocah_jtag_event::type_id::create("ev");
-      ev.kind   = OCAH_JTAG_EV_STEP;
-      ev.tms    = cfg.vif.tms;
-      ev.tdi    = cfg.vif.tdi;
-      ev.tdo    = cfg.vif.tdo;
-      ev.trst_n = cfg.vif.trst_n;
-      ev.index  = m_step_index++;
+      ev = ocah_jtag_event::type_id::create("ev");
+      ev.kind      = OCAH_JTAG_EV_STEP;
+      ev.tms       = cfg.vif.tms;
+      ev.tdi       = cfg.vif.tdi;
+      ev.tdo       = cfg.vif.tdo;
+      ev.trst_n    = cfg.vif.trst_n;
+      ev.index     = m_step_index++;
       @(negedge cfg.vif.tck);
       ev.timestamp = $time;
       `uvm_info(get_type_name(), ev.convert2string(), UVM_HIGH)
@@ -75,7 +75,7 @@ class ocah_jtag_master_monitor extends uvm_monitor;
     forever begin
       ocah_jtag_event ev;
       @(cfg.vif.trst_n);
-      ev               = ocah_jtag_event::type_id::create("ev");
+      ev = ocah_jtag_event::type_id::create("ev");
       ev.kind          = OCAH_JTAG_EV_TRST;
       ev.trst_asserted = (cfg.vif.trst_n === 1'b0);
       ev.trst_n        = cfg.vif.trst_n;

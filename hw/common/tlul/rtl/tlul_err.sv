@@ -47,9 +47,9 @@ module tlul_err
                         | (tl_i.a_opcode == Get);
 
   // a channel configuration check
-  logic addr_sz_chk;  // address and size alignment check
-  logic mask_chk;  // inactive lane a_mask check
-  logic fulldata_chk;  // PutFullData should have size match to mask
+  logic addr_sz_chk;    // address and size alignment check
+  logic mask_chk;       // inactive lane a_mask check
+  logic fulldata_chk;   // PutFullData should have size match to mask
 
   localparam bit [MW-1:0] MaskOne = 1;
   logic [MW-1:0] mask;
@@ -59,7 +59,7 @@ module tlul_err
   always_comb begin
     addr_sz_chk  = 1'b0;
     mask_chk     = 1'b0;
-    fulldata_chk = 1'b0;  // Only valid when opcode is PutFullData
+    fulldata_chk = 1'b0; // Only valid when opcode is PutFullData
 
     if (tl_i.a_valid) begin
       unique case (tl_i.a_size)
@@ -70,10 +70,11 @@ module tlul_err
         end
 
         'h1: begin  // 2 Byte
-          addr_sz_chk = ~tl_i.a_address[0];
+          addr_sz_chk  = ~tl_i.a_address[0];
           // check inactive lanes if lower 2B, check a_mask[3:2], if uppwer 2B, a_mask[1:0]
-          mask_chk = (tl_i.a_address[1]) ? ~|(tl_i.a_mask & 4'b0011) : ~|(tl_i.a_mask & 4'b1100);
-          fulldata_chk = (tl_i.a_address[1]) ? &tl_i.a_mask[3:2] : &tl_i.a_mask[1:0];
+          mask_chk     = (tl_i.a_address[1]) ? ~|(tl_i.a_mask & 4'b0011)
+                       : ~|(tl_i.a_mask & 4'b1100);
+          fulldata_chk = (tl_i.a_address[1]) ? &tl_i.a_mask[3:2] : &tl_i.a_mask[1:0] ;
         end
 
         'h2: begin  // 4 Byte

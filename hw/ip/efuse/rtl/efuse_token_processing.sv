@@ -11,43 +11,41 @@ module efuse_token_processing #(
   parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
 
   parameter int unsigned LC_STATE_WIDTH = 4,
-  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2 * LC_STATE_WIDTH)'({
-    {LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}
-  }),
+  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),
 
-  parameter type efuse_apb_req_t  = logic,
+  parameter type efuse_apb_req_t = logic,
   parameter type efuse_apb_resp_t = logic,
 
   parameter type efuse_map_t = logic
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                     clk_i,
+  input  logic                     rst_ni,
 
-  input logic test_en_i,
+  input  logic                     test_en_i,
 
-  input logic fuse_sense_done_i,
+  input  logic                     fuse_sense_done_i,
 
-  input  efuse_apb_req_t  apb_req_i,
-  output efuse_apb_resp_t apb_resp_o,
+  input  efuse_apb_req_t           apb_req_i,
+  output efuse_apb_resp_t          apb_resp_o,
 
-  output logic [5:0] rma_sip_token_match_q_o,
-  output logic [5:0] rma_chiplet_token_match_q_o,
+  output logic[5:0]                rma_sip_token_match_q_o,
+  output logic[5:0]                rma_chiplet_token_match_q_o,
 
-  output logic [7:0][31:0] sec_disable_token_o,
+  output logic [7:0][31:0]         sec_disable_token_o,
 
-  output logic security_disable_o,
+  output logic                     security_disable_o,
 
-  output logic token_match_fault_o,
+  output logic                     token_match_fault_o,
 
-  input  efuse_map_t shadow_regs_i,
-  output efuse_map_t shadow_regs_o
+  input  efuse_map_t               shadow_regs_i,
+  output efuse_map_t               shadow_regs_o
 );
 
   ///////////////////////////////////////////////
   // Efuse MMR CSR - SEP Only
   ///////////////////////////////////////////////
 
-  efuse_mmr_reg_pkg::efuse_mmr__in_t  mmr_hwif_in;
+  efuse_mmr_reg_pkg::efuse_mmr__in_t mmr_hwif_in;
   efuse_mmr_reg_pkg::efuse_mmr__out_t mmr_hwif_out;
   logic rma_sip_token_go, rma_chiplet_token_go, secure_disable_token_go;
   logic [5:0] rma_sip_token_match, rma_chiplet_token_match, sec_disable_token_match;
@@ -86,23 +84,23 @@ module efuse_token_processing #(
 
   // Note: the APB read back path does not flop read only registers
   efuse_mmr_reg u_efuse_mmr_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk           (clk_i),
+    .arst_n        (rst_ni),
 
-    .s_apb_psel   (apb_req_i.psel),
-    .s_apb_penable(apb_req_i.penable),
-    .s_apb_pwrite (apb_req_i.pwrite),
-    .s_apb_pprot  (apb_req_i.pprot),
-    .s_apb_paddr  (apb_req_i.paddr[6:0]),
-    .s_apb_pwdata (apb_req_i.pwdata),
-    .s_apb_pstrb  (apb_req_i.pstrb),
-    .s_apb_pready (apb_resp_o.pready),
-    .s_apb_prdata (apb_resp_o.prdata),
-    .s_apb_pslverr(apb_resp_o.pslverr),
+    .s_apb_psel    (apb_req_i.psel),
+    .s_apb_penable (apb_req_i.penable),
+    .s_apb_pwrite  (apb_req_i.pwrite),
+    .s_apb_pprot   (apb_req_i.pprot),
+    .s_apb_paddr   (apb_req_i.paddr[6:0]),
+    .s_apb_pwdata  (apb_req_i.pwdata),
+    .s_apb_pstrb   (apb_req_i.pstrb),
+    .s_apb_pready  (apb_resp_o.pready),
+    .s_apb_prdata  (apb_resp_o.prdata),
+    .s_apb_pslverr (apb_resp_o.pslverr),
 
     // SEC Disable Tokens, RMA Chiplet Tokens, RMA SiP Tokens
-    .hwif_in (mmr_hwif_in),
-    .hwif_out(mmr_hwif_out)
+    .hwif_in       (mmr_hwif_in),
+    .hwif_out      (mmr_hwif_out)
   );
 
   assign mmr_hwif_in.RMA_SIP_TOKEN_MATCH.token_match_status.next = rma_sip_token_match_q_n0_scan;
@@ -148,7 +146,8 @@ module efuse_token_processing #(
     assign mmr_hwif_in.RMA_SIP_TOKEN_I[i].rd_ack =
             mmr_hwif_out.RMA_SIP_TOKEN_I[i].req &&
             !mmr_hwif_out.RMA_SIP_TOKEN_I[i].req_is_wr;
-    assign mmr_hwif_in.RMA_SIP_TOKEN_I[i].rd_data.token = sip_rma_token_raw_n0_scan[i];
+    assign mmr_hwif_in.RMA_SIP_TOKEN_I[i].rd_data.token =
+            sip_rma_token_raw_n0_scan[i];
 
     assign mmr_hwif_in.RMA_CHIPLET_TOKEN_I[i].wr_ack =
             mmr_hwif_out.RMA_CHIPLET_TOKEN_I[i].req &&
@@ -156,7 +155,8 @@ module efuse_token_processing #(
     assign mmr_hwif_in.RMA_CHIPLET_TOKEN_I[i].rd_ack =
             mmr_hwif_out.RMA_CHIPLET_TOKEN_I[i].req &&
             !mmr_hwif_out.RMA_CHIPLET_TOKEN_I[i].req_is_wr;
-    assign mmr_hwif_in.RMA_CHIPLET_TOKEN_I[i].rd_data.token = chiplet_rma_token_raw_n0_scan[i];
+    assign mmr_hwif_in.RMA_CHIPLET_TOKEN_I[i].rd_data.token =
+            chiplet_rma_token_raw_n0_scan[i];
 
     assign mmr_hwif_in.SEC_DISABLE_TOKEN_I[i].wr_ack =
             mmr_hwif_out.SEC_DISABLE_TOKEN_I[i].req &&
@@ -164,7 +164,8 @@ module efuse_token_processing #(
     assign mmr_hwif_in.SEC_DISABLE_TOKEN_I[i].rd_ack =
             mmr_hwif_out.SEC_DISABLE_TOKEN_I[i].req &&
             !mmr_hwif_out.SEC_DISABLE_TOKEN_I[i].req_is_wr;
-    assign mmr_hwif_in.SEC_DISABLE_TOKEN_I[i].rd_data.token = sec_disable_token_raw_n0_scan[i];
+    assign mmr_hwif_in.SEC_DISABLE_TOKEN_I[i].rd_data.token =
+            sec_disable_token_raw_n0_scan[i];
   end
 
   assign rma_sip_token_go = mmr_hwif_out.TOKEN_EOP.rma_sip_token_go.value;
@@ -174,33 +175,33 @@ module efuse_token_processing #(
   /////////////////////////////// SHA256 HASHING ENGINES ///////////////////////////////
   // A single `*_go` pulse from the CSR triggers the hashing engine.
   efuse_token_digest_sha256 u_sha256_rma_sip_token (
-    .clk_i              (clk_i),
-    .rst_ni             (rst_ni),
-    .test_en_i          (test_en_i),
-    .start_i            (rma_sip_token_go),
-    .token_i            (sip_rma_token),
-    .digest_vld_sticky_o(rma_sip_token_digest_vld_sticky_raw),
-    .sha_digest_sticky_o(rma_sip_token_sha256_digest)
+    .clk_i               (clk_i),
+    .rst_ni              (rst_ni),
+    .test_en_i           (test_en_i),
+    .start_i             (rma_sip_token_go),
+    .token_i             (sip_rma_token),
+    .digest_vld_sticky_o (rma_sip_token_digest_vld_sticky_raw),
+    .sha_digest_sticky_o (rma_sip_token_sha256_digest)
   );
 
   efuse_token_digest_sha256 u_sha256_rma_chiplet_token (
-    .clk_i              (clk_i),
-    .rst_ni             (rst_ni),
-    .test_en_i          (test_en_i),
-    .start_i            (rma_chiplet_token_go),
-    .token_i            (chiplet_rma_token),
-    .digest_vld_sticky_o(rma_chiplet_token_digest_vld_sticky_raw),
-    .sha_digest_sticky_o(rma_chiplet_token_sha256_digest)
+    .clk_i               (clk_i),
+    .rst_ni              (rst_ni),
+    .test_en_i           (test_en_i),
+    .start_i             (rma_chiplet_token_go),
+    .token_i             (chiplet_rma_token),
+    .digest_vld_sticky_o (rma_chiplet_token_digest_vld_sticky_raw),
+    .sha_digest_sticky_o (rma_chiplet_token_sha256_digest)
   );
 
   efuse_token_digest_sha256 u_sha256_sec_disable_token (
-    .clk_i              (clk_i),
-    .rst_ni             (rst_ni),
-    .test_en_i          (test_en_i),
-    .start_i            (secure_disable_token_go),
-    .token_i            (sec_disable_token),
-    .digest_vld_sticky_o(sec_disable_token_digest_vld_sticky_raw),
-    .sha_digest_sticky_o(sec_disable_token_sha256_digest_sticky)
+    .clk_i               (clk_i),
+    .rst_ni              (rst_ni),
+    .test_en_i           (test_en_i),
+    .start_i             (secure_disable_token_go),
+    .token_i             (sec_disable_token),
+    .digest_vld_sticky_o (sec_disable_token_digest_vld_sticky_raw),
+    .sha_digest_sticky_o (sec_disable_token_sha256_digest_sticky)
   );
 
   /////////////////////////////// TRIPLE-REDUNDANT MATCHING LOGIC ///////////////////////////////
@@ -285,13 +286,13 @@ module efuse_token_processing #(
   prim_rev_cell sep_sec_disable (
     .LO(low[7:0]),
     .HI(high[7:0]),
-    .IN({low[7], low[6], low[5], low[4], low[3], low[2], low[1], high[0]}),
+    .IN({low[7],low[6], low[5], low[4], low[3], low[2], low[1], high[0]}),
     .OUT(tt_rev_d_out[7:0]),
     .SRC_LOW(1'b0),
     .SRC_HIGH(1'b1)
   );
 
-  assign final_sec_disable  = tt_rev_d_out[0] && (sec_disable_token_match == TOKEN_MATCH_CODE);
+  assign final_sec_disable = tt_rev_d_out[0] && (sec_disable_token_match == TOKEN_MATCH_CODE);
   assign security_disable_o = final_sec_disable;
 
   always_comb begin

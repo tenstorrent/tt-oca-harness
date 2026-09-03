@@ -43,52 +43,52 @@ module ocah_axi_sva #(
   parameter int unsigned ID_WIDTH        = 4,
   parameter int unsigned MAX_OUTSTANDING = 8
 ) (
-  input wire logic aclk,
-  input wire logic aresetn,
-  input wire logic en_i,
+  input wire logic                    aclk,
+  input wire logic                    aresetn,
+  input wire logic                    en_i,
 
   // Write address channel.
-  input wire logic [  ID_WIDTH-1:0] awid,
-  input wire logic [ADDR_WIDTH-1:0] awaddr,
-  input wire logic [           7:0] awlen,
-  input wire logic [           2:0] awsize,
-  input wire logic [           1:0] awburst,
-  input wire logic                  awlock,
-  input wire logic [           2:0] awprot,
-  input wire logic                  awvalid,
-  input wire logic                  awready,
+  input wire logic [ID_WIDTH-1:0]     awid,
+  input wire logic [ADDR_WIDTH-1:0]   awaddr,
+  input wire logic [7:0]              awlen,
+  input wire logic [2:0]              awsize,
+  input wire logic [1:0]              awburst,
+  input wire logic                    awlock,
+  input wire logic [2:0]              awprot,
+  input wire logic                    awvalid,
+  input wire logic                    awready,
 
   // Write data channel.
-  input wire logic [  DATA_WIDTH-1:0] wdata,
+  input wire logic [DATA_WIDTH-1:0]   wdata,
   input wire logic [DATA_WIDTH/8-1:0] wstrb,
   input wire logic                    wlast,
   input wire logic                    wvalid,
   input wire logic                    wready,
 
   // Write response channel.
-  input wire logic [ID_WIDTH-1:0] bid,
-  input wire logic [         1:0] bresp,
-  input wire logic                bvalid,
-  input wire logic                bready,
+  input wire logic [ID_WIDTH-1:0]     bid,
+  input wire logic [1:0]              bresp,
+  input wire logic                    bvalid,
+  input wire logic                    bready,
 
   // Read address channel.
-  input wire logic [  ID_WIDTH-1:0] arid,
-  input wire logic [ADDR_WIDTH-1:0] araddr,
-  input wire logic [           7:0] arlen,
-  input wire logic [           2:0] arsize,
-  input wire logic [           1:0] arburst,
-  input wire logic                  arlock,
-  input wire logic [           2:0] arprot,
-  input wire logic                  arvalid,
-  input wire logic                  arready,
+  input wire logic [ID_WIDTH-1:0]     arid,
+  input wire logic [ADDR_WIDTH-1:0]   araddr,
+  input wire logic [7:0]              arlen,
+  input wire logic [2:0]              arsize,
+  input wire logic [1:0]              arburst,
+  input wire logic                    arlock,
+  input wire logic [2:0]              arprot,
+  input wire logic                    arvalid,
+  input wire logic                    arready,
 
   // Read data channel.
-  input wire logic [  ID_WIDTH-1:0] rid,
-  input wire logic [DATA_WIDTH-1:0] rdata,
-  input wire logic [           1:0] rresp,
-  input wire logic                  rlast,
-  input wire logic                  rvalid,
-  input wire logic                  rready
+  input wire logic [ID_WIDTH-1:0]     rid,
+  input wire logic [DATA_WIDTH-1:0]   rdata,
+  input wire logic [1:0]              rresp,
+  input wire logic                    rlast,
+  input wire logic                    rvalid,
+  input wire logic                    rready
 );
 
   localparam int unsigned StrbWidth = DATA_WIDTH / 8;
@@ -250,9 +250,9 @@ module ocah_axi_sva #(
         logic                lock;
       } wr_done_t;
 
-      aw_info_t    aw_q                     [$];  // accepted AWs awaiting write data
-      wr_done_t    wr_done_q                [$];  // data-complete writes awaiting B
-      int unsigned early_wburst_len_q       [$];  // W bursts completed before their AW
+      aw_info_t   aw_q[$];          // accepted AWs awaiting write data
+      wr_done_t   wr_done_q[$];     // data-complete writes awaiting B
+      int unsigned early_wburst_len_q[$];  // W bursts completed before their AW
       int unsigned w_beat_idx = 0;
       bit          w_burst_checkable = 1'b0;
       // Working variables for the procedural checks below (declared at
@@ -275,18 +275,18 @@ module ocah_axi_sva #(
       function automatic logic [StrbWidth-1:0] active_lanes(
           input logic [ADDR_WIDTH-1:0] addr, input logic [2:0] size, input logic [1:0] burst,
           input int unsigned beat_idx);
-        logic        [ADDR_WIDTH-1:0] aligned;
-        logic        [ADDR_WIDTH-1:0] beat_addr;
-        int unsigned                  num_bytes;
-        int unsigned                  lane_lo;
-        int unsigned                  lane_base;
-        logic        [ StrbWidth-1:0] mask;
+        logic [ADDR_WIDTH-1:0] aligned;
+        logic [ADDR_WIDTH-1:0] beat_addr;
+        int unsigned           num_bytes;
+        int unsigned           lane_lo;
+        int unsigned           lane_base;
+        logic [StrbWidth-1:0]  mask;
         num_bytes = 1 << size;
         aligned   = (addr >> size) << size;
         if (burst == BurstWrap) return '1;
         if (burst == BurstFixed || beat_idx == 0) beat_addr = addr;
         else beat_addr = aligned + ADDR_WIDTH'(beat_idx * num_bytes);
-        lane_lo = int'(beat_addr % StrbWidth);
+        lane_lo   = int'(beat_addr % StrbWidth);
         lane_base = int'(((beat_addr >> size) << size) % StrbWidth);
         mask = '0;
         for (int unsigned lane = 0; lane < StrbWidth; lane++) begin
@@ -405,7 +405,7 @@ module ocah_axi_sva #(
       // Response-ordering counters (same same-cycle ordering note as AXI4).
       int unsigned lite_wr_addr_cnt = 0;
       int unsigned lite_wr_data_cnt = 0;
-      int unsigned lite_rd_cnt = 0;
+      int unsigned lite_rd_cnt      = 0;
 
       always @(posedge aclk) begin
         if (aresetn !== 1'b1) begin

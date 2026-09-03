@@ -8,15 +8,15 @@
  */
 
 module km_crc_engine (
-  input  logic        clk_i,
-  input  logic        rst_ni,
-  input  logic        start_i,
-  input  logic [ 1:0] mode_i,
-  input  logic [31:0] state_i,
-  input  logic [31:0] data_i,
-  output logic        busy_o,
-  output logic        done_o,
-  output logic [31:0] result_o
+  input logic        clk_i,
+  input logic        rst_ni,
+  input logic        start_i,
+  input logic [1:0]  mode_i,
+  input logic [31:0] state_i,
+  input logic [31:0] data_i,
+  output logic            busy_o,
+  output logic            done_o,
+  output logic [31:0]     result_o
 );
 
   `include "prim_assert.sv"
@@ -31,8 +31,8 @@ module km_crc_engine (
   localparam logic [31:0] CRC8_ROHC_POLY = 32'h0000_00E0;
   localparam logic [31:0] CRC8_STATE_MASK = 32'h0000_00FF;
 
-  logic [ 1:0] mode_q;
-  logic [ 2:0] bytes_remaining_q;
+  logic [1:0]  mode_q;
+  logic [2:0]  bytes_remaining_q;
   logic [31:0] state_q;
   logic [31:0] data_q;
 
@@ -42,32 +42,37 @@ module km_crc_engine (
 
   function automatic logic mode_legal(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD, CRC_MODE_32C_BYTE, CRC_MODE_8_ROHC: mode_legal = 1'b1;
-      default:                                               mode_legal = 1'b0;
+      CRC_MODE_32C_WORD,
+            CRC_MODE_32C_BYTE,
+            CRC_MODE_8_ROHC: mode_legal = 1'b1;
+      default:         mode_legal = 1'b0;
     endcase
   endfunction
 
   function automatic logic [2:0] mode_byte_count(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD:                  mode_byte_count = 3'd4;
-      CRC_MODE_32C_BYTE, CRC_MODE_8_ROHC: mode_byte_count = 3'd1;
-      default:                            mode_byte_count = 3'd0;
+      CRC_MODE_32C_WORD: mode_byte_count = 3'd4;
+      CRC_MODE_32C_BYTE,
+            CRC_MODE_8_ROHC:   mode_byte_count = 3'd1;
+      default:           mode_byte_count = 3'd0;
     endcase
   endfunction
 
   function automatic logic [31:0] mode_poly(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD, CRC_MODE_32C_BYTE: mode_poly = CRC32C_POLY;
-      CRC_MODE_8_ROHC:                      mode_poly = CRC8_ROHC_POLY;
-      default:                              mode_poly = CRC32C_POLY;
+      CRC_MODE_32C_WORD,
+            CRC_MODE_32C_BYTE: mode_poly = CRC32C_POLY;
+      CRC_MODE_8_ROHC:   mode_poly = CRC8_ROHC_POLY;
+      default:           mode_poly = CRC32C_POLY;
     endcase
   endfunction
 
   function automatic logic [31:0] mode_mask(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD, CRC_MODE_32C_BYTE: mode_mask = CRC32C_STATE_MASK;
-      CRC_MODE_8_ROHC:                      mode_mask = CRC8_STATE_MASK;
-      default:                              mode_mask = CRC32C_STATE_MASK;
+      CRC_MODE_32C_WORD,
+            CRC_MODE_32C_BYTE: mode_mask = CRC32C_STATE_MASK;
+      CRC_MODE_8_ROHC:   mode_mask = CRC8_STATE_MASK;
+      default:           mode_mask = CRC32C_STATE_MASK;
     endcase
   endfunction
 

@@ -33,15 +33,15 @@ module Entropy_Compressor_RefModel #(
   parameter int N_LANES = 12  // Number of input byte lanes (must be 12)
 ) (
   // Input: 12 bytes from decorrelator model (packed array to match decorrelator output)
-  input logic [N_LANES-1:0][7:0] bytes_i,
-  input logic                    vld_i,    // Input valid
+  input  logic [N_LANES-1:0][7:0] bytes_i,
+  input  logic                vld_i,           // Input valid
 
   // Configuration Interface
-  compressor_cfg_if.slave cfg,
+  compressor_cfg_if.slave     cfg,
 
   // Output: Compressed 32-bit word (combinational)
-  output logic [31:0] word_o,
-  output logic        vld_o    // Output valid (combinational)
+  output logic [31:0]         word_o,
+  output logic                vld_o            // Output valid (combinational)
 );
 
   //--------------------------------------------------------------------------
@@ -58,10 +58,10 @@ module Entropy_Compressor_RefModel #(
   //--------------------------------------------------------------------------
 
   // Masked input bytes (apply lane mask)
-  logic [7:0] masked_bytes[N_LANES];
+  logic [7:0] masked_bytes [N_LANES];
 
   // BIW extractor outputs (4 groups)
-  logic [7:0] biw_byte[4];
+  logic [7:0] biw_byte [4];
 
   //--------------------------------------------------------------------------
   // Lane Masking
@@ -88,28 +88,28 @@ module Entropy_Compressor_RefModel #(
       // Normal BIW mode: y = (a * b) + c in GF(2^8)
       // Group 0: lanes [0, 4, 8]
       biw_byte[0] = gf256_muladd(
-        masked_bytes[0],  // a: lane 0
-        masked_bytes[4],  // b: lane 4
-        masked_bytes[8]  // c: lane 8
-      );
+                masked_bytes[0],      // a: lane 0
+                masked_bytes[4],      // b: lane 4
+                masked_bytes[8]       // c: lane 8
+            );
       // Group 1: lanes [1, 5, 9]
       biw_byte[1] = gf256_muladd(
-        masked_bytes[1],  // a: lane 1
-        masked_bytes[5],  // b: lane 5
-        masked_bytes[9]  // c: lane 9
-      );
+                masked_bytes[1],      // a: lane 1
+                masked_bytes[5],      // b: lane 5
+                masked_bytes[9]       // c: lane 9
+            );
       // Group 2: lanes [2, 6, 10]
       biw_byte[2] = gf256_muladd(
-        masked_bytes[2],  // a: lane 2
-        masked_bytes[6],  // b: lane 6
-        masked_bytes[10]  // c: lane 10
-      );
+                masked_bytes[2],      // a: lane 2
+                masked_bytes[6],      // b: lane 6
+                masked_bytes[10]      // c: lane 10
+            );
       // Group 3: lanes [3, 7, 11]
       biw_byte[3] = gf256_muladd(
-        masked_bytes[3],  // a: lane 3
-        masked_bytes[7],  // b: lane 7
-        masked_bytes[11]  // c: lane 11
-      );
+                masked_bytes[3],      // a: lane 3
+                masked_bytes[7],      // b: lane 7
+                masked_bytes[11]      // c: lane 11
+            );
     end else if (cfg.bypass) begin
       // Bypass mode: simple pass-through (for debug)
       for (int i = 0; i < 4; i++) begin
@@ -133,7 +133,7 @@ module Entropy_Compressor_RefModel #(
   assign word_o = {biw_byte[0], biw_byte[1], biw_byte[2], biw_byte[3]};
 
   // Valid output follows input valid (with enable check) - combinational
-  assign vld_o  = vld_i && cfg.enable;
+  assign vld_o = vld_i && cfg.enable;
 
   //--------------------------------------------------------------------------
   // Notes

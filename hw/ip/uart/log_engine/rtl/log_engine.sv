@@ -13,12 +13,12 @@ module log_engine
   parameter int unsigned FIFO_DEPTH = 4
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                 clk_i,
+  input  logic                 rst_ni,
 
   // AXI4-Lite Register Interface
-  input  csr_axil_req_t  csr_axil_req_i,
-  output csr_axil_resp_t csr_axil_resp_o,
+  input  csr_axil_req_t        csr_axil_req_i,
+  output csr_axil_resp_t       csr_axil_resp_o,
 
   // AXI4-Lite Log Fetch Interface
   output log_fetch_axil_req_t  log_fetch_axil_req_o,
@@ -29,10 +29,10 @@ module log_engine
   input  log_write_axil_resp_t log_write_axil_resp_i,
 
   // DMA Interface
-  input logic uart_tx_ready_i,
+  input  logic                 uart_tx_ready_i,
 
   // Interrupt Interface
-  output logic irq_o
+  output logic                 irq_o
 );
 
   `include "prim_assert.sv"
@@ -46,8 +46,8 @@ module log_engine
   log_region_size_t log_region_size;
   log_fetch_addr_t  log_region_addr;
   log_write_addr_t  log_write_addr;
-  log_len_t         log_lens        [NUM_LOG_ENTRIES];  // Used unpacked array to fit structure of
-                                                        // arbiter_tree.data_i
+  log_len_t         log_lens       [NUM_LOG_ENTRIES]; // Used unpacked array to fit structure of
+                                                      // arbiter_tree.data_i
 
   // Current log entry
   log_len_t         log_len;
@@ -59,14 +59,14 @@ module log_engine
   // RDATA FIFO
   logic rdata_fifo_wr_ready, rdata_fifo_wr_valid;
   logic rdata_fifo_rd_ready, rdata_fifo_rd_valid;
-  log_word_t                       rdata_fifo_rd_data;
+  log_word_t        rdata_fifo_rd_data;
 
 
   //////////////////////
   // Arbitation Logic //
   //////////////////////
 
-  logic      [NUM_LOG_ENTRIES-1:0] log_reqs;
+  logic [NUM_LOG_ENTRIES-1:0] log_reqs;
 
   always_comb begin
     for (int i = 0; i < NUM_LOG_ENTRIES; i++) begin
@@ -77,20 +77,20 @@ module log_engine
   logic [NUM_LOG_ENTRIES-1:0] arb_gnt;
 
   prim_arbiter_tree #(
-    .N         (NUM_LOG_ENTRIES),
-    .DW        (LOG_LEN_WIDTH),
-    .EnDataPort(1'b1)
+    .N          (NUM_LOG_ENTRIES),
+    .DW         (LOG_LEN_WIDTH),
+    .EnDataPort (1'b1)
   ) arbiter_tree (
     .clk_i,
     .rst_ni,
-    .req_chk_i(1'b1),
-    .req_i    (log_reqs),
-    .data_i   (log_lens),
-    .gnt_o    (arb_gnt),
-    .idx_o    (log_index),
-    .valid_o  (log_pending),
-    .data_o   (log_len),
-    .ready_i  (log_write_done)
+    .req_chk_i  (1'b1),
+    .req_i      (log_reqs),
+    .data_i     (log_lens),
+    .gnt_o      (arb_gnt),
+    .idx_o      (log_index),
+    .valid_o    (log_pending),
+    .data_o     (log_len),
+    .ready_i    (log_write_done)
   );
 
   // Tie off unused signal to satisfy lint
@@ -106,68 +106,68 @@ module log_engine
   log_fetch_data_t      log_fetch_mem_wr_data;
   log_fetch_strb_t      log_fetch_mem_wr_byte_en;
 
-  logic                 log_fetch_mem_grant;  // ARREADY
+  logic                 log_fetch_mem_grant;      // ARREADY
   log_fetch_data_t      log_fetch_mem_rd_data;
-  logic                 log_fetch_mem_resp_valid;  // RVALID
+  logic                 log_fetch_mem_resp_valid; // RVALID
 
   log_fetch_axil_req_t  log_fetch_axil_req;
   log_fetch_axil_resp_t log_fetch_axil_resp;
 
   assign log_fetch_axil_req_o = log_fetch_axil_req;
-  assign log_fetch_axil_resp  = log_fetch_axil_resp_i;
+  assign log_fetch_axil_resp = log_fetch_axil_resp_i;
 
   // add flop stage to cut timing after large combinational path in arb tree
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      log_fetch_mem_req_q  <= 1'b0;
+      log_fetch_mem_req_q <= 1'b0;
       log_fetch_mem_addr_q <= '0;
     end else begin
-      log_fetch_mem_req_q  <= log_fetch_mem_req;
+      log_fetch_mem_req_q <= log_fetch_mem_req;
       log_fetch_mem_addr_q <= log_fetch_mem_addr;
     end
   end
 
   axi_lite_from_mem #(
-    .MemAddrWidth(LOG_FETCH_ADDR_WIDTH),
-    .AxiAddrWidth(LOG_FETCH_ADDR_WIDTH),
-    .DataWidth   (LOG_FETCH_DATA_WIDTH),
-    .MaxRequests (1),
-    .AxiProt     (3'h2),                  // {data access, non-secure, unprivileged}
-    .axi_req_t   (log_fetch_axil_req_t),
-    .axi_rsp_t   (log_fetch_axil_resp_t)
+    .MemAddrWidth    (LOG_FETCH_ADDR_WIDTH),
+    .AxiAddrWidth    (LOG_FETCH_ADDR_WIDTH),
+    .DataWidth       (LOG_FETCH_DATA_WIDTH),
+    .MaxRequests     (1),
+    .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
+    .axi_req_t       (log_fetch_axil_req_t),
+    .axi_rsp_t       (log_fetch_axil_resp_t)
   ) axil_lite_from_log_fetch_fsm (
     .clk_i,
     .rst_ni,
 
-    .mem_req_i  (log_fetch_mem_req_q),
-    .mem_addr_i (log_fetch_mem_addr_q),
-    .mem_we_i   (log_fetch_mem_wr_en),
-    .mem_wdata_i(log_fetch_mem_wr_data),
-    .mem_be_i   (log_fetch_mem_wr_byte_en),
-    .mem_gnt_o  (log_fetch_mem_grant),
+    .mem_req_i       (log_fetch_mem_req_q),
+    .mem_addr_i      (log_fetch_mem_addr_q),
+    .mem_we_i        (log_fetch_mem_wr_en),
+    .mem_wdata_i     (log_fetch_mem_wr_data),
+    .mem_be_i        (log_fetch_mem_wr_byte_en),
+    .mem_gnt_o       (log_fetch_mem_grant),
 
-    .mem_rsp_valid_o(log_fetch_mem_resp_valid),
-    .mem_rsp_rdata_o(log_fetch_mem_rd_data),
-    .mem_rsp_error_o(log_fetch_err),
+    .mem_rsp_valid_o (log_fetch_mem_resp_valid),
+    .mem_rsp_rdata_o (log_fetch_mem_rd_data),
+    .mem_rsp_error_o (log_fetch_err),
 
-    .axi_req_o(log_fetch_axil_req),
-    .axi_rsp_i(log_fetch_axil_resp)
+    .axi_req_o       (log_fetch_axil_req),
+    .axi_rsp_i       (log_fetch_axil_resp)
   );
 
-  log_len_t        max_log_len;
-  log_fetch_addr_t log_word_addr;
+  log_len_t               max_log_len;
+  log_fetch_addr_t        log_word_addr;
 
   logic log_fetch_done_status, log_fetch_done_status_next;
   log_words_fetched_cnt_t log_words_fetched_cnt, log_words_fetched_cnt_next;
   log_fetch_fsm_state_t log_fetch_fsm_state, log_fetch_fsm_state_next;
 
   always_comb begin
-    log_fetch_mem_req          = 1'b0;
-    log_fetch_mem_wr_en        = 1'b0;  // No writes
-    log_fetch_mem_addr         = log_word_addr;
-    log_fetch_mem_wr_data      = log_fetch_data_t'(0);  // No writes
-    log_fetch_mem_wr_byte_en   = log_fetch_strb_t'(0);  // No writes
-    rdata_fifo_wr_valid        = 1'b0;
+    log_fetch_mem_req        = 1'b0;
+    log_fetch_mem_wr_en      = 1'b0;                 // No writes
+    log_fetch_mem_addr       = log_word_addr;
+    log_fetch_mem_wr_data    = log_fetch_data_t'(0); // No writes
+    log_fetch_mem_wr_byte_en = log_fetch_strb_t'(0); // No writes
+    rdata_fifo_wr_valid = 1'b0;
 
     log_fetch_done_status_next = log_fetch_done_status;
     log_words_fetched_cnt_next = log_words_fetched_cnt;
@@ -214,7 +214,8 @@ module log_engine
               log_words_fetched_cnt_next = log_words_fetched_cnt_t'(0);
               log_fetch_fsm_state_next   = ST_LOG_FETCH_IDLE;
             end else begin
-              log_words_fetched_cnt_next = log_words_fetched_cnt + log_words_fetched_cnt_t'(1);
+              log_words_fetched_cnt_next = log_words_fetched_cnt +
+                                                         log_words_fetched_cnt_t'(1);
               log_fetch_fsm_state_next   = ST_LOG_FETCH_REQ;
             end
           end else begin
@@ -234,7 +235,7 @@ module log_engine
     end
   end
 
-  assign max_log_len = log_len_t'(log_region_size / NUM_LOG_ENTRIES);
+  assign max_log_len   = log_len_t'(log_region_size / NUM_LOG_ENTRIES);
   assign log_word_addr = log_fetch_addr_t'(log_region_addr + max_log_len * log_index +
                                              log_words_fetched_cnt * LOG_WORD_SIZE);
 
@@ -256,25 +257,25 @@ module log_engine
   ////////////////
 
   prim_fifo_sync #(
-    .Width            (LOG_FETCH_DATA_WIDTH),
-    .Pass             (1'b1),
-    .Depth            (FIFO_DEPTH),
-    .OutputZeroIfEmpty(1'b1),
-    .NeverClears      (1'b0),
-    .Secure           (1'b0)
+    .Width             (LOG_FETCH_DATA_WIDTH),
+    .Pass              (1'b1),
+    .Depth             (FIFO_DEPTH),
+    .OutputZeroIfEmpty (1'b1),
+    .NeverClears       (1'b0),
+    .Secure            (1'b0)
   ) rdata_fifo (
     .clk_i,
     .rst_ni,
-    .clr_i   (!log_engine_en),
-    .wvalid_i(rdata_fifo_wr_valid),
-    .wready_o(rdata_fifo_wr_ready),
-    .wdata_i (log_fetch_mem_rd_data),
-    .rvalid_o(rdata_fifo_rd_valid),
-    .rready_i(rdata_fifo_rd_ready),
-    .rdata_o (rdata_fifo_rd_data),
-    .full_o  (  /* UNUSED */),
-    .depth_o (  /* UNUSED */),
-    .err_o   (  /* UNUSED */)
+    .clr_i             (!log_engine_en),
+    .wvalid_i          (rdata_fifo_wr_valid),
+    .wready_o          (rdata_fifo_wr_ready),
+    .wdata_i           (log_fetch_mem_rd_data),
+    .rvalid_o          (rdata_fifo_rd_valid),
+    .rready_i          (rdata_fifo_rd_ready),
+    .rdata_o           (rdata_fifo_rd_data),
+    .full_o            (/* UNUSED */),
+    .depth_o           (/* UNUSED */),
+    .err_o             (/* UNUSED */)
   );
 
 
@@ -283,45 +284,45 @@ module log_engine
   /////////////////////
 
   logic log_write_mem_req, log_write_mem_wr_en;
-  log_write_addr_t      log_write_mem_addr;
-  log_write_data_t      log_write_mem_wr_data;
-  log_write_strb_t      log_write_mem_wr_byte_en;
+  log_write_addr_t log_write_mem_addr;
+  log_write_data_t log_write_mem_wr_data;
+  log_write_strb_t log_write_mem_wr_byte_en;
 
-  logic                 log_write_mem_grant;  // ARREADY
-  log_write_data_t      log_write_mem_rd_data;
-  logic                 log_write_mem_resp_valid;  // RVALID
+  logic            log_write_mem_grant;      // ARREADY
+  log_write_data_t log_write_mem_rd_data;
+  logic            log_write_mem_resp_valid; // RVALID
 
   log_write_axil_req_t  log_write_axil_req;
   log_write_axil_resp_t log_write_axil_resp;
 
   assign log_write_axil_req_o = log_write_axil_req;
-  assign log_write_axil_resp  = log_write_axil_resp_i;
+  assign log_write_axil_resp = log_write_axil_resp_i;
 
   axi_lite_from_mem #(
-    .MemAddrWidth(LOG_WRITE_ADDR_WIDTH),
-    .AxiAddrWidth(LOG_WRITE_ADDR_WIDTH),
-    .DataWidth   (LOG_WRITE_DATA_WIDTH),
-    .MaxRequests (1),
-    .AxiProt     (3'h2),                  // {data access, non-secure, unprivileged}
-    .axi_req_t   (log_write_axil_req_t),
-    .axi_rsp_t   (log_write_axil_resp_t)
+    .MemAddrWidth    (LOG_WRITE_ADDR_WIDTH),
+    .AxiAddrWidth    (LOG_WRITE_ADDR_WIDTH),
+    .DataWidth       (LOG_WRITE_DATA_WIDTH),
+    .MaxRequests     (1),
+    .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
+    .axi_req_t       (log_write_axil_req_t),
+    .axi_rsp_t       (log_write_axil_resp_t)
   ) axi_lite_from_log_write_fsm (
     .clk_i,
     .rst_ni,
 
-    .mem_req_i  (log_write_mem_req),
-    .mem_addr_i (log_write_mem_addr),
-    .mem_we_i   (log_write_mem_wr_en),
-    .mem_wdata_i(log_write_mem_wr_data),
-    .mem_be_i   (log_write_mem_wr_byte_en),
-    .mem_gnt_o  (log_write_mem_grant),
+    .mem_req_i       (log_write_mem_req),
+    .mem_addr_i      (log_write_mem_addr),
+    .mem_we_i        (log_write_mem_wr_en),
+    .mem_wdata_i     (log_write_mem_wr_data),
+    .mem_be_i        (log_write_mem_wr_byte_en),
+    .mem_gnt_o       (log_write_mem_grant),
 
-    .mem_rsp_valid_o(log_write_mem_resp_valid),
-    .mem_rsp_rdata_o(log_write_mem_rd_data),
-    .mem_rsp_error_o(log_write_err),
+    .mem_rsp_valid_o (log_write_mem_resp_valid),
+    .mem_rsp_rdata_o (log_write_mem_rd_data),
+    .mem_rsp_error_o (log_write_err),
 
-    .axi_req_o(log_write_axil_req),
-    .axi_rsp_i(log_write_axil_resp)
+    .axi_req_o       (log_write_axil_req),
+    .axi_rsp_i       (log_write_axil_resp)
   );
 
   log_word_byte_ptr_t byte_ptr;
@@ -331,20 +332,20 @@ module log_engine
 
   always_comb begin
     // Log write request
-    log_write_mem_req          = 1'b0;
-    log_write_mem_wr_en        = 1'b0;
-    log_write_mem_addr         = log_write_addr;
-    log_write_mem_wr_data      = log_write_data_t'(rdata_fifo_rd_data[byte_ptr]);
-    log_write_mem_wr_byte_en   = log_write_strb_t'('1);
+    log_write_mem_req        = 1'b0;
+    log_write_mem_wr_en      = 1'b0;
+    log_write_mem_addr       = log_write_addr;
+    log_write_mem_wr_data    = log_write_data_t'(rdata_fifo_rd_data[byte_ptr]);
+    log_write_mem_wr_byte_en = log_write_strb_t'('1);
     // RDATA FIFO control
-    rdata_fifo_rd_ready        = 1'b0;
+    rdata_fifo_rd_ready = 1'b0;
     // Status
-    log_write_done             = 1'b0;
+    log_write_done = 1'b0;
 
     // Counters
     log_bytes_written_cnt_next = log_bytes_written_cnt;
     // FSM State
-    log_write_fsm_state_next   = log_write_fsm_state;
+    log_write_fsm_state_next = log_write_fsm_state;
 
     if (log_engine_en) begin
       unique case (log_write_fsm_state)
@@ -372,16 +373,18 @@ module log_engine
         ST_LOG_WRITE_WAIT: begin
           if (log_write_mem_resp_valid) begin
             if (log_bytes_written_cnt == log_len - log_len_t'(1)) begin  // Write done
-              rdata_fifo_rd_ready        = 1'b1;  // Read the last byte
-              log_write_done             = 1'b1;
+              rdata_fifo_rd_ready = 1'b1; // Read the last byte
+              log_write_done      = 1'b1;
 
               log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);
               log_write_fsm_state_next   = ST_LOG_WRITE_IDLE;
             end else begin  // Log write not done
-              rdata_fifo_rd_ready = byte_ptr == log_word_byte_ptr_t'(LOG_WORD_SIZE - 1);
+              rdata_fifo_rd_ready =
+                                byte_ptr == log_word_byte_ptr_t'(LOG_WORD_SIZE - 1);
 
-              log_bytes_written_cnt_next = log_bytes_written_cnt + log_bytes_written_cnt_t'(1);
-              log_write_fsm_state_next = ST_LOG_WRITE_REQ;
+              log_bytes_written_cnt_next = log_bytes_written_cnt +
+                                                         log_bytes_written_cnt_t'(1);
+              log_write_fsm_state_next   = ST_LOG_WRITE_REQ;
             end
           end else begin
             log_write_fsm_state_next = ST_LOG_WRITE_WAIT;
@@ -419,31 +422,31 @@ module log_engine
   log_engine_reg_pkg::log_engine__out_t reg_out;
 
   log_engine_reg log_engine_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-    .s_axil_awready(csr_axil_resp_o.aw_ready),
-    .s_axil_awvalid(csr_axil_req_i.aw_valid),
-    .s_axil_awaddr (csr_axil_req_i.aw.addr),
-    .s_axil_awprot (csr_axil_req_i.aw.prot),
-    .s_axil_wready (csr_axil_resp_o.w_ready),
-    .s_axil_wvalid (csr_axil_req_i.w_valid),
-    .s_axil_wdata  (csr_axil_req_i.w.data),
-    .s_axil_wstrb  (csr_axil_req_i.w.strb),
-    .s_axil_bready (csr_axil_req_i.b_ready),
-    .s_axil_bvalid (csr_axil_resp_o.b_valid),
-    .s_axil_bresp  (csr_axil_resp_o.b.resp),
-    .s_axil_arready(csr_axil_resp_o.ar_ready),
-    .s_axil_arvalid(csr_axil_req_i.ar_valid),
-    .s_axil_araddr (csr_axil_req_i.ar.addr),
-    .s_axil_arprot (csr_axil_req_i.ar.prot),
-    .s_axil_rready (csr_axil_req_i.r_ready),
-    .s_axil_rvalid (csr_axil_resp_o.r_valid),
-    .s_axil_rdata  (csr_axil_resp_o.r.data),
-    .s_axil_rresp  (csr_axil_resp_o.r.resp),
+    .s_axil_awready (csr_axil_resp_o.aw_ready),
+    .s_axil_awvalid (csr_axil_req_i.aw_valid),
+    .s_axil_awaddr  (csr_axil_req_i.aw.addr),
+    .s_axil_awprot  (csr_axil_req_i.aw.prot),
+    .s_axil_wready  (csr_axil_resp_o.w_ready),
+    .s_axil_wvalid  (csr_axil_req_i.w_valid),
+    .s_axil_wdata   (csr_axil_req_i.w.data),
+    .s_axil_wstrb   (csr_axil_req_i.w.strb),
+    .s_axil_bready  (csr_axil_req_i.b_ready),
+    .s_axil_bvalid  (csr_axil_resp_o.b_valid),
+    .s_axil_bresp   (csr_axil_resp_o.b.resp),
+    .s_axil_arready (csr_axil_resp_o.ar_ready),
+    .s_axil_arvalid (csr_axil_req_i.ar_valid),
+    .s_axil_araddr  (csr_axil_req_i.ar.addr),
+    .s_axil_arprot  (csr_axil_req_i.ar.prot),
+    .s_axil_rready  (csr_axil_req_i.r_ready),
+    .s_axil_rvalid  (csr_axil_resp_o.r_valid),
+    .s_axil_rdata   (csr_axil_resp_o.r.data),
+    .s_axil_rresp   (csr_axil_resp_o.r.resp),
 
-    .hwif_in (reg_in),
-    .hwif_out(reg_out)
+    .hwif_in        (reg_in),
+    .hwif_out       (reg_out)
   );
 
   // CTRL Register
@@ -453,10 +456,8 @@ module log_engine
   assign log_region_size = reg_out.LOG_REGION_SIZE.LOG_REGION_SIZE.value;
 
   // LOG_REGION_ADDR Register
-  assign log_region_addr = {
-    reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value,
-    reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value
-  };
+  assign log_region_addr = {reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value,
+                              reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value};
 
   // LOG_WRITE_ADDR Register
   assign log_write_addr = reg_out.LOG_WRITE_ADDR.LOG_WRITE_ADDR.value;

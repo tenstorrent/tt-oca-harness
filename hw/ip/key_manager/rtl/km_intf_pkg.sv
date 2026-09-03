@@ -67,34 +67,34 @@ package km_intf_pkg;
 
   /** @brief ROM memory request (CPU -> ROM hard macro). */
   typedef struct packed {
-    logic                             req;   // Request valid
-    logic [KM_ROM_MEM_ADDR_WIDTH-1:0] addr;  // Word address
+    logic                             req;           // Request valid
+    logic [KM_ROM_MEM_ADDR_WIDTH-1:0] addr;        // Word address
   } km_rom_mem_req_t;
 
   /** @brief ROM memory response (ROM hard macro -> CPU). */
   typedef struct packed {
-    logic                         gnt;     // Grant/ready
-    logic                         rvalid;  // Read data valid
-    logic [KM_MEM_DATA_WIDTH-1:0] rdata;   // Read data
-    logic [KM_MEM_STRB_WIDTH-1:0] parity;  // Byte parity bits
+    logic                           gnt;           // Grant/ready
+    logic                           rvalid;        // Read data valid
+    logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data
+    logic [KM_MEM_STRB_WIDTH-1:0]   parity;        // Byte parity bits
   } km_rom_mem_rsp_t;
 
   /** @brief SRAM memory request (CPU -> SRAM hard macro). */
   typedef struct packed {
-    logic                              req;      // Request valid
-    logic                              we;       // Write enable
-    logic [KM_MEM_STRB_WIDTH-1:0]      be;       // Byte enables
-    logic [KM_SRAM_MEM_ADDR_WIDTH-1:0] addr;     // Word address
-    logic [KM_MEM_DATA_WIDTH-1:0]      wdata;    // Write data
-    logic [KM_MEM_STRB_WIDTH-1:0]      wparity;  // Write parity bits
+    logic                              req;           // Request valid
+    logic                              we;            // Write enable
+    logic [KM_MEM_STRB_WIDTH-1:0]      be;            // Byte enables
+    logic [KM_SRAM_MEM_ADDR_WIDTH-1:0] addr;          // Word address
+    logic [KM_MEM_DATA_WIDTH-1:0]      wdata;         // Write data
+    logic [KM_MEM_STRB_WIDTH-1:0]      wparity;       // Write parity bits
   } km_sram_mem_req_t;
 
   /** @brief SRAM memory response (SRAM hard macro -> CPU). */
   typedef struct packed {
-    logic                         gnt;      // Grant/ready
-    logic                         rvalid;   // Read data valid
-    logic [KM_MEM_DATA_WIDTH-1:0] rdata;    // Read data
-    logic [KM_MEM_STRB_WIDTH-1:0] rparity;  // Read parity bits
+    logic                           gnt;           // Grant/ready
+    logic                           rvalid;        // Read data valid
+    logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data
+    logic [KM_MEM_STRB_WIDTH-1:0]   rparity;       // Read parity bits
   } km_sram_mem_rsp_t;
 
   //=========================================================================
@@ -103,8 +103,8 @@ package km_intf_pkg;
 
   /** @brief Packed IRQ event flags for the Key Manager subsystem. */
   typedef struct packed {
-    logic rom_parity_err;   // ROM parity error event
-    logic sram_parity_err;  // SRAM parity error event
+    logic rom_parity_err;       // ROM parity error event
+    logic sram_parity_err;      // SRAM parity error event
   } km_irq_events_t;
 
   /**
@@ -270,16 +270,16 @@ package km_intf_pkg;
      *          Layout: [511:256] = complement (~value), [255:0] = value.
      */
   typedef struct packed {
-    logic [7:0]   life_cycle;        // 4-bit value differentially encoded into 8-bit
-    logic [1:0]   demotion_state_1;  // 1-bit value differentially encoded into 2-bit
-    logic [1:0]   demotion_state_2;  // 1-bit value differentially encoded into 2-bit
-    logic [511:0] chiplet_uid;       // 256-bit UID, dual-rail: {~uid, uid}
-    logic [511:0] class_key;         // 256-bit class key, dual-rail: {~key, key}
-    logic [511:0] sip_uid;           // 256-bit SIP UID, dual-rail: {~uid, uid}
-    logic [511:0] sys_uid;           // 256-bit system UID, dual-rail: {~uid, uid}
-    logic [511:0] sep_chiplet_id;    // 256-bit chiplet public ID, dual-rail: {~id, id}
-    logic [511:0] sep_sip_id;        // 256-bit SiP public ID, dual-rail: {~id, id}
-    logic [511:0] sep_sys_id;        // 256-bit system public ID, dual-rail: {~id, id}
+    logic [7:0]   life_cycle;           // 4-bit value differentially encoded into 8-bit
+    logic [1:0]   demotion_state_1;     // 1-bit value differentially encoded into 2-bit
+    logic [1:0]   demotion_state_2;     // 1-bit value differentially encoded into 2-bit
+    logic [511:0] chiplet_uid;          // 256-bit UID, dual-rail: {~uid, uid}
+    logic [511:0] class_key;            // 256-bit class key, dual-rail: {~key, key}
+    logic [511:0] sip_uid;              // 256-bit SIP UID, dual-rail: {~uid, uid}
+    logic [511:0] sys_uid;              // 256-bit system UID, dual-rail: {~uid, uid}
+    logic [511:0] sep_chiplet_id;       // 256-bit chiplet public ID, dual-rail: {~id, id}
+    logic [511:0] sep_sip_id;           // 256-bit SiP public ID, dual-rail: {~id, id}
+    logic [511:0] sep_sys_id;           // 256-bit system public ID, dual-rail: {~id, id}
   } km_otp_data_t;
 
 endpackage : km_intf_pkg

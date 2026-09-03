@@ -12,17 +12,17 @@
 
 
 module ctp_pulse_stretcher (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic        clk_i,
+  input  logic        rst_ni,
 
   // Pulse input (synchronous to clk_i)
-  input logic pulse_i,
+  input  logic        pulse_i,
 
   // Stretch multiplier (number of cycles to stretch)
-  input logic [15:0] stretch_mult_i,
+  input  logic [15:0] stretch_mult_i,
 
   // Stretched pulse output (registered)
-  output logic stretched_pulse_o
+  output logic        stretched_pulse_o
 );
 
   logic [15:0] counter_q, counter_d;

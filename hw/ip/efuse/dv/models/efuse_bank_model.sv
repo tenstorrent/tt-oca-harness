@@ -13,12 +13,12 @@ module efuse_bank_model #(
   parameter type efuse_apb_resp_t = logic
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input logic                   clk_i,
+  input logic                   rst_ni,
 
   // APB Register Interface
-  input  efuse_apb_req_t  apb_req_i,
-  output efuse_apb_resp_t apb_resp_o,
+  input  efuse_apb_req_t   apb_req_i,
+  output efuse_apb_resp_t  apb_resp_o,
 
   output efuse_bank_reg_pkg::efuse_bank__out_t hwif_out
 );
@@ -38,25 +38,25 @@ module efuse_bank_model #(
   // the failure is only visible via the shim's PROGRAM_READ_BACK compare.
   //
   // Both the count and PRNG state reset to their configured values on every rst_ni.
-  logic               prog_fail_act;
+  logic prog_fail_act;
 
   // Config, sampled once from plusargs.
-  int unsigned        prog_fail_count_cfg;
-  int unsigned        prog_fail_percent;
-  int unsigned        prog_fail_seed;
+  int unsigned prog_fail_count_cfg;
+  int unsigned prog_fail_percent;
+  int unsigned prog_fail_seed;
 
   // Working state, re-armed from config on every reset.
-  int unsigned        prog_fail_count_q;
-  logic        [31:0] prog_fail_lfsr_q;
+  int unsigned prog_fail_count_q;
+  logic [31:0] prog_fail_lfsr_q;
 
-  logic               wr_setup;
-  logic               prog_fail_now;
-  logic        [31:0] prog_fail_lfsr_next;
+  logic        wr_setup;
+  logic        prog_fail_now;
+  logic [31:0] prog_fail_lfsr_next;
 
   initial begin
     string pfx;
     logic  seed_given;
-    pfx                 = IsSmcInstance ? "smc_" : "sep_";
+    pfx = IsSmcInstance ? "smc_" : "sep_";
     prog_fail_count_cfg = 0;
     prog_fail_percent   = 0;
     prog_fail_seed      = 32'h1bad_f00d;
@@ -136,7 +136,7 @@ module efuse_bank_model #(
   // +smc_efuse_hex / +sep_efuse_hex (default out/sep_efuse.hex).
   initial begin
     string img;
-    logic [31:0] otp_preload_mem[1024];
+    logic [31:0] otp_preload_mem [1024];
     for (int unsigned i = 0; i < 1024; i++) otp_preload_mem[i] = '0;
     if (IsSmcInstance) begin
       if ($value$plusargs("smc_efuse_hex=%s", img)) begin

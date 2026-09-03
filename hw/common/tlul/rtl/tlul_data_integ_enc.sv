@@ -11,7 +11,7 @@ module tlul_data_integ_enc
   import tlul_pkg::*;
 (
   // TL-UL interface
-  input        [              DataMaxWidth-1:0] data_i,
+  input        [DataMaxWidth-1:0]               data_i,
   output logic [DataMaxWidth+DataIntgWidth-1:0] data_intg_o
 );
 

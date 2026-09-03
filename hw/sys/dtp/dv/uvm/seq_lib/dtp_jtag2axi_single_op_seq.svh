@@ -49,7 +49,7 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_test_seq;
     j2a_target_t t = target();
     j2a_status_e status;
     bit [63:0] rdata;
-    bit [7:0] full_strb = 8'((1 << (1 << t.default_size)) - 1);
+    bit [7:0]  full_strb = 8'((1 << (1 << t.default_size)) - 1);
     bit [63:0] err_wr_addr = 64'h0000_9000;
     bit [63:0] err_rd_addr = 64'h0000_9100;
     int unsigned gate_before_aw, gate_before_w, gate_before_ar;

@@ -30,10 +30,10 @@ module prim_sync2 #(
   prim_flop_2sync #(
     .Width(WIDTH)
   ) u_sync2 (
-    .clk_i (i_clk),
-    .rst_ni(1'b1),
-    .d_i   (i_d),
-    .q_o   (o_q)
+    .clk_i  (i_clk),
+    .rst_ni (1'b1),
+    .d_i    (i_d),
+    .q_o    (o_q)
   );
 
 endmodule

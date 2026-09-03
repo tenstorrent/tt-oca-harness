@@ -51,8 +51,8 @@ interface ocah_jtag_cov_if (
     cp_cause: coverpoint via_trst {bins tms_walk = {0}; bins trst = {1};}
   endgroup
 
-  cg_step  step_cg = new();
-  cg_scan  scan_cg = new();
+  cg_step  step_cg  = new();
+  cg_scan  scan_cg  = new();
   cg_reset reset_cg = new();
 
   function automatic void sample_step(input int unsigned prev_state, input bit tms,

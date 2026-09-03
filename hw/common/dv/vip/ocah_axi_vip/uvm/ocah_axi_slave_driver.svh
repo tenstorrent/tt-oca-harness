@@ -197,9 +197,9 @@ class ocah_axi_slave_driver extends uvm_component;
   protected task write_pump();
     bit [63:0] addr, start_addr;
     bit [15:0] id, bid_out, corrupt_mask;
-    bit [7:0] len;
-    bit [2:0] size;
-    bit [1:0] burst;
+    bit [7:0]       len;
+    bit [2:0]       size;
+    bit [1:0]       burst;
     ocah_axi_resp_e resp, beat_resp;
     bit armed;
     int unsigned beats, lanes;
@@ -214,16 +214,17 @@ class ocah_axi_slave_driver extends uvm_component;
       // Address phase.
       accept_aw();
       if (!cfg.vif.aresetn) continue;
-      id = cfg.vif.mon_cb.awid;
-      size = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 3'($clog2(cfg.beat_bytes())) :
-          cfg.vif.mon_cb.awsize;
-      len = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 8'h0 : cfg.vif.mon_cb.awlen;
+      id    = cfg.vif.mon_cb.awid;
+      size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                    ? 3'($clog2(cfg.beat_bytes())) : cfg.vif.mon_cb.awsize;
+      len   = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                    ? 8'h0 : cfg.vif.mon_cb.awlen;
       burst = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
                     ? 2'(OCAH_AXI_BURST_INCR) : cfg.vif.mon_cb.awburst;
       start_addr = cfg.vif.mon_cb.awaddr;
-      addr = (start_addr >> size) << size;
+      addr  = (start_addr >> size) << size;
       beats = int'(len) + 1;
-      resp = OCAH_AXI_RESP_OKAY;
+      resp  = OCAH_AXI_RESP_OKAY;
       // Data phase.
       for (int unsigned beat = 0; beat < beats; beat++) begin
         accept_w();
@@ -271,10 +272,10 @@ class ocah_axi_slave_driver extends uvm_component;
   protected task read_pump();
     bit [63:0] addr, start_addr;
     bit [15:0] id, rid_out, corrupt_mask;
-    bit          [7:0] len;
-    bit          [2:0] size;
-    bit          [1:0] burst;
-    int unsigned       beats;
+    bit [7:0]       len;
+    bit [2:0]       size;
+    bit [1:0]       burst;
+    int unsigned    beats;
     forever begin
       @(cfg.vif.mon_cb);
       if (!cfg.vif.aresetn) begin
@@ -285,14 +286,15 @@ class ocah_axi_slave_driver extends uvm_component;
       // Address phase.
       accept_ar();
       if (!cfg.vif.aresetn) continue;
-      id = cfg.vif.mon_cb.arid;
-      size = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 3'($clog2(cfg.beat_bytes())) :
-          cfg.vif.mon_cb.arsize;
-      len = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 8'h0 : cfg.vif.mon_cb.arlen;
+      id    = cfg.vif.mon_cb.arid;
+      size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                    ? 3'($clog2(cfg.beat_bytes())) : cfg.vif.mon_cb.arsize;
+      len   = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                    ? 8'h0 : cfg.vif.mon_cb.arlen;
       burst = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
                     ? 2'(OCAH_AXI_BURST_INCR) : cfg.vif.mon_cb.arburst;
       start_addr = cfg.vif.mon_cb.araddr;
-      addr = (start_addr >> size) << size;
+      addr  = (start_addr >> size) << size;
       beats = int'(len) + 1;
       // One-shot armed RID corruption applies to every beat of this one
       // transaction (data path and RRESP stay untouched).
@@ -320,9 +322,9 @@ class ocah_axi_slave_driver extends uvm_component;
   endtask
 
   protected function void load_read_beat(bit [63:0] addr, bit [15:0] id, bit last);
-    ocah_axi_resp_e        resp;
-    bit                    armed;
-    bit             [63:0] data;
+    ocah_axi_resp_e resp;
+    bit             armed;
+    bit [63:0]      data;
     resp = cfg.consume_injected(addr, OCAH_AXI_DIR_READ, armed);
     data = '0;
     if (!armed) begin

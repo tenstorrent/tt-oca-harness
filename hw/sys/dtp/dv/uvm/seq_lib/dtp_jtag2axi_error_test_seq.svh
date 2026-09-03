@@ -386,17 +386,18 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     seed_scenario_rng();
     enable_all_debug();
     case (scenario)
-      "error_single_write": run_error_single_write(t);
-      "error_single_read": run_error_single_read(t);
-      "error_series_no_incr_write": run_error_series_write(t, 1'b0, 1'b0);
-      "error_series_no_incr_read": run_error_series_read(t, 1'b0, 1'b0);
-      "error_series_incr_write": run_error_series_write(t, 1'b1, 1'b0);
-      "error_series_incr_read": run_error_series_read(t, 1'b1, 1'b0);
+      "error_single_write":                 run_error_single_write(t);
+      "error_single_read":                  run_error_single_read(t);
+      "error_series_no_incr_write":         run_error_series_write(t, 1'b0, 1'b0);
+      "error_series_no_incr_read":          run_error_series_read(t, 1'b0, 1'b0);
+      "error_series_incr_write":            run_error_series_write(t, 1'b1, 1'b0);
+      "error_series_incr_read":             run_error_series_read(t, 1'b1, 1'b0);
       "error_series_incr_write_with_status": run_error_series_write(t, 1'b1, 1'b1);
       "error_series_incr_read_with_status": run_error_series_read(t, 1'b1, 1'b1);
-      "error_security_gating": run_error_security_gating(t);
+      "error_security_gating":              run_error_security_gating(t);
       default:
-      `uvm_fatal(get_type_name(), $sformatf("unknown JTAG2AXI error scenario %s", scenario))
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "unknown JTAG2AXI error scenario %s", scenario))
     endcase
     // Scenario-level non-vacuity: real operations ran and no armed
     // expectation is left pending going into the check_phase drain.

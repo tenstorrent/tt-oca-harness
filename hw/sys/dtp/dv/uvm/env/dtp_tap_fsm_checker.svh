@@ -30,8 +30,8 @@ class dtp_tap_fsm_checker extends uvm_subscriber #(ocah_jtag_event);
   bit require_activity = 1'b1;
 
   protected ocah_jtag_tap_state_e m_model = OCAH_JTAG_TEST_LOGIC_RESET;
-  protected bit m_state_seen[16];
-  protected bit m_edge_seen[16][2];
+  protected bit m_state_seen [16];
+  protected bit m_edge_seen  [16][2];
   protected int unsigned m_cycles;
   protected int unsigned m_mismatches;
 

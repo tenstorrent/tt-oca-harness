@@ -17,22 +17,22 @@ interface compressor_cfg_if;
   //--------------------------------------------------------------------------
 
   // Primary Controls
-  logic        enable;  // Enable compressor (1=active, 0=disabled)
-                        // Default: 1 (enabled)
+  logic        enable;           // Enable compressor (1=active, 0=disabled)
+                                 // Default: 1 (enabled)
 
-  logic        bypass;  // Bypass mode:
-                        // 0 = Normal BIW compression
-                        // 1 = Simple concatenation (debug only)
-                        // Default: 0 (normal mode)
+  logic        bypass;           // Bypass mode:
+                                 // 0 = Normal BIW compression
+                                 // 1 = Simple concatenation (debug only)
+                                 // Default: 0 (normal mode)
 
-  logic [11:0] lane_mask;  // Per-lane enable mask
-                           // Bit[i] = 1: lane i active
-                           // Bit[i] = 0: lane i forced to 0x00
-                           // Default: 0xFFF (all lanes active)
+  logic [11:0] lane_mask;        // Per-lane enable mask
+                                 // Bit[i] = 1: lane i active
+                                 // Bit[i] = 0: lane i forced to 0x00
+                                 // Default: 0xFFF (all lanes active)
 
   // Checker Controls
-  logic        checker_enable;  // Enable output checker (1=enabled, 0=disabled)
-                                // Default: 1 (enabled)
+  logic        checker_enable;   // Enable output checker (1=enabled, 0=disabled)
+                                 // Default: 1 (enabled)
   logic        checker_verbose;  // Show MATCH messages (1=verbose, 0=errors only)
                                  // Default: 0 (errors only)
 
@@ -74,11 +74,11 @@ interface compressor_cfg_if;
   //       via compressor_init() function in test_base.py
   // These are minimal fallbacks only to prevent X propagation
   initial begin
-    enable          = 1'b1;  // Enabled (safe default)
-    bypass          = 1'b0;  // Normal mode
-    lane_mask       = 12'hFFF;  // All lanes active
-    checker_enable  = 1'b1;  // Checker enabled
-    checker_verbose = 1'b0;  // Errors only (not verbose)
+    enable          = 1'b1;      // Enabled (safe default)
+    bypass          = 1'b0;      // Normal mode
+    lane_mask       = 12'hFFF;   // All lanes active
+    checker_enable  = 1'b1;      // Checker enabled
+    checker_verbose = 1'b0;      // Errors only (not verbose)
   end
 
   //--------------------------------------------------------------------------

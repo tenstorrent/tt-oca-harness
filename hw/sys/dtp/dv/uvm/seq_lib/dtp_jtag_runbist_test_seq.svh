@@ -15,12 +15,12 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_cmd_lib_seq;
   endfunction
 
   task body();
-    bit    [63:0] patterns           [$];
-    bit    [ 7:0] results            [$];
-    bit           seen_results       [bit [7:0]];
-    bit    [63:0] observed;
-    bit           any_nonzero = 1'b0;
-    string        results_s = "";
+    bit [63:0] patterns[$];
+    bit [7:0]  results[$];
+    bit        seen_results[bit [7:0]];
+    bit [63:0] observed;
+    bit        any_nonzero = 1'b0;
+    string     results_s = "";
 
     seed_scenario_rng();
     attach_family_checker({

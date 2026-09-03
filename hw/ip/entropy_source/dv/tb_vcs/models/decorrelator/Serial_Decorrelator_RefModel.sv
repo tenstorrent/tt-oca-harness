@@ -50,31 +50,31 @@
 //==============================================================================
 
 module Serial_Decorrelator_RefModel #(
-  parameter int N     = 16,
-  parameter int DEPTH = 29   // default decorrelator depth
+  parameter int N              = 16,
+  parameter int DEPTH          = 29    // default decorrelator depth
 ) (
-  input logic clk_i,
-  input logic rstn_i,
+  input  logic                 clk_i,
+  input  logic                 rstn_i,
   // Input stream
-  input logic [N-1:0] bit_i,  // per-lane input bit each cycle
-  input logic [N-1:0] vld_i,  // per-lane valid; tie to '1 if not used
+  input  logic [N-1:0]         bit_i,     // per-lane input bit each cycle
+  input  logic [N-1:0]         vld_i,     // per-lane valid; tie to '1 if not used
   // Configuration
-  input logic [2:0] mode_i,  // 0: DECOR_29 (default), 1: DECOR_7, 2: BYPASS, 3: LFSR_29, 4: LFSR_7
+  input  logic [2:0]           mode_i,            // 0: DECOR_29 (default), 1: DECOR_7, 2: BYPASS, 3: LFSR_29, 4: LFSR_7
   input  logic                 shift_dir_i,       // 0: shift right (in[28]→out[7:0]), 1: shift left (in[0]→out[28:21])
-  input logic [N-1:0] bypass_mask_i,  // Per-lane bypass control: 1=bypass, 0=use mode_i
+  input  logic [N-1:0]         bypass_mask_i,     // Per-lane bypass control: 1=bypass, 0=use mode_i
   // RTL clock divider probe (for synchronization with actual RTL timing)
   input  logic [7:0]           rtl_clk_divider_i, // Connect to DUT's clk_divider (samples when == SAMPLE_PERIOD-1)
   // Outputs
-  output logic sample_vld_o,
-  output logic [N-1:0][7:0] bytes_o  // per-lane 8-bit sample, captured per effective sample period
+  output logic                 sample_vld_o,
+  output logic [N-1:0][7:0]    bytes_o            // per-lane 8-bit sample, captured per effective sample period
 );
   // Shift registers: sr[i][DEPTH-1] is the newest bit; sr[i][0] is the oldest bit
-  logic [DEPTH-1:0] sr                                         [N];
+  logic [DEPTH-1:0] sr [N];
 
   // Effective configuration
-  logic [      5:0] depth_eff;  // valid when in DECOR modes
-  logic [      2:0] mode_q;
-  logic             shift_dir_q;  // registered shift direction
+  logic [5:0]        depth_eff;         // valid when in DECOR modes
+  logic [2:0]        mode_q;
+  logic              shift_dir_q;        // registered shift direction
 
   // Sample pulse generation (synchronized with RTL clk_divider for ALL modes)
   // RTL outputs when clk_divider == SAMPLE_PERIOD-1 (e.g., 63 for ÷64, 7 for ÷8)
@@ -94,7 +94,7 @@ module Serial_Decorrelator_RefModel #(
   end
   always_comb begin
     unique case (mode_q)
-      3'd1:    depth_eff = 6'd7;  // DECOR_7
+      3'd1: depth_eff = 6'd7;      // DECOR_7
       default: depth_eff = DEPTH[5:0];
     endcase
   end

@@ -14,16 +14,11 @@ class dtp_jtag_ac_extest_pulse_test_seq extends dtp_jtag_cmd_lib_seq;
   endfunction
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR",
-                          "CHK-IR-DECODE",
-                          "CHK-BSR-LOOPBACK",
-                          "CHK-SCAN-COUNT",
-                          "CHK-SCAN-IR-LEN",
-                          "CHK-SCAN-DR-LEN",
-                          "CHK-NONVAC"};
-    bit [63:0] walking_patterns[$] = {
-      64'h01, 64'h02, 64'h04, 64'h08, 64'h10, 64'h20, 64'h40, 64'h80
-    };
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK",
+                              "CHK-SCAN-COUNT", "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN",
+                              "CHK-NONVAC"};
+    bit [63:0] walking_patterns[$] = {64'h01, 64'h02, 64'h04, 64'h08,
+                                          64'h10, 64'h20, 64'h40, 64'h80};
     bit [63:0] edge_patterns[$] = {64'hAA, 64'h55, 64'hFF, 64'h00};
     seed_scenario_rng();
     attach_family_checker(required);

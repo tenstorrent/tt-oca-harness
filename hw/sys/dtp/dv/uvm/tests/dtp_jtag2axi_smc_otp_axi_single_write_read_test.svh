@@ -32,7 +32,7 @@ class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
   task run_phase(uvm_phase phase);
     dtp_jtag2axi_single_op_seq seq;
     phase.raise_objection(this, "dtp_jtag2axi_smc_otp_axi_single_write_read_test running");
-    seq               = dtp_jtag2axi_single_op_seq::type_id::create("seq");
+    seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
     seq.tb_vif        = m_env.tb_vif;
     seq.target_name   = "smc_otp";
     seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;

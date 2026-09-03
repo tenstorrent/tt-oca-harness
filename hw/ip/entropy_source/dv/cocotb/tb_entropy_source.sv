@@ -8,27 +8,27 @@
 
 module tb_entropy_source (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                          clk_i,
+  input  logic                          rst_ni,
 
   // APB4 Register Interface
-  input  entropy_source_pkg::reg_addr_t       paddr_i,
-  input  logic                          [2:0] pprot_i,
-  input  logic                                psel_i,
-  input  logic                                penable_i,
-  input  logic                                pwrite_i,
-  input  entropy_source_pkg::reg_data_t       pwdata_i,
-  input  entropy_source_pkg::reg_strb_t       pstrb_i,
-  output logic                                pready_o,
-  output entropy_source_pkg::reg_data_t       prdata_o,
-  output logic                                pslverr_o,
+  input  entropy_source_pkg::reg_addr_t paddr_i,
+  input  logic [2:0]                    pprot_i,
+  input  logic                          psel_i,
+  input  logic                          penable_i,
+  input  logic                          pwrite_i,
+  input  entropy_source_pkg::reg_data_t pwdata_i,
+  input  entropy_source_pkg::reg_strb_t pstrb_i,
+  output logic                          pready_o,
+  output entropy_source_pkg::reg_data_t prdata_o,
+  output logic                          pslverr_o,
 
-  output logic signal_monitor_o,
-  input  logic rosc_sample_clk_i,
+  output logic                          signal_monitor_o,
+  input  logic                          rosc_sample_clk_i,
 
-  output logic [31:0] entropy_stream_data_o,
-  output logic        entropy_stream_vld_o,
-  output logic        irq_o
+  output logic [31:0]                   entropy_stream_data_o,
+  output logic                          entropy_stream_vld_o,
+  output logic                          irq_o
 );
 
   entropy_source entropy_source (

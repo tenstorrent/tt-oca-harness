@@ -25,18 +25,18 @@ package efuse_pkg;
   typedef enum logic [$clog2(
 NUM_END_POINTS_DECODE
 )-1:0] {
-    INTERFACE_SEL = 1'd0,
-    SHIM_SEL      = 1'd1
+    INTERFACE_SEL         = 1'd0,
+    SHIM_SEL              = 1'd1
   } efuse_req_decode_select_e;
 
   localparam int unsigned NUM_END_POINTS_REG = 4;
   typedef enum logic [$clog2(
 NUM_END_POINTS_REG
 )-1:0] {
-    SHADOW_REG_MAP    = 2'd0,
-    EFUSE_CSR_REG_MAP = 2'd1,
-    EFUSE_MMR_REG_MAP = 2'd2,
-    ERR_DECODE        = 2'd3
+    SHADOW_REG_MAP              = 2'd0,
+    EFUSE_CSR_REG_MAP           = 2'd1,
+    EFUSE_MMR_REG_MAP           = 2'd2,
+    ERR_DECODE                  = 2'd3
   } efuse_reg_map_e;
 
   //////////////////////////////
@@ -53,13 +53,13 @@ NUM_END_POINTS_REG
   localparam int unsigned LC_STATE_RAW_WIDTH = 4;
 
   typedef enum logic [LC_STATE_RAW_WIDTH-1:0] {
-    LC_TEST_DEV   = 4'b0000,
-    LC_PROD       = 4'b0001,
-    LC_RMA_SIP_0  = 4'b0010,
-    LC_RMA_SIP_1  = 4'b0011,
-    LC_RMA_CHIP_0 = 4'b0110,
-    LC_RMA_CHIP_1 = 4'b0111,
-    LC_PROD_END   = 4'b1000
+    LC_TEST_DEV    = 4'b0000,
+    LC_PROD        = 4'b0001,
+    LC_RMA_SIP_0   = 4'b0010,
+    LC_RMA_SIP_1   = 4'b0011,
+    LC_RMA_CHIP_0  = 4'b0110,
+    LC_RMA_CHIP_1  = 4'b0111,
+    LC_PROD_END    = 4'b1000
   } lc_state_raw_e;
 
   // Returns 1 iff s is a valid LC_STATE encoding per OCAH spec (0x0, 0x1, 0x2, 0x3, 0x6, 0x7, 0x8).
@@ -94,8 +94,11 @@ NUM_END_POINTS_REG
     shadow_word_range_t range_cfg;
     int unsigned word_count;
     range_cfg.valid = 1'b1;
-    range_cfg.first_word = register_offset_bytes / (shadow_word_width_bits / 8);
-    word_count = (register_width_bits + shadow_word_width_bits - 1) / shadow_word_width_bits;
+    range_cfg.first_word =
+            register_offset_bytes / (shadow_word_width_bits / 8);
+    word_count =
+            (register_width_bits + shadow_word_width_bits - 1) /
+            shadow_word_width_bits;
     range_cfg.last_word = range_cfg.first_word + word_count - 1;
     return range_cfg;
   endfunction

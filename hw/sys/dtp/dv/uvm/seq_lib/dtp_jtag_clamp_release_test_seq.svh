@@ -15,10 +15,8 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_cmd_lib_seq;
   endfunction
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR",
-                          "CHK-IR-DECODE",
-                          "CHK-BSR-LOOPBACK",
-                          "CHK-TMP-PERSIST"};
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK",
+                              "CHK-TMP-PERSIST"};
     bit [63:0] patterns[$];
     bit persistence, bypass_escape;
     seed_scenario_rng();

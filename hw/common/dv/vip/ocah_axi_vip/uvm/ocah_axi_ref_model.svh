@@ -50,7 +50,8 @@ class ocah_axi_ref_model extends uvm_subscriber #(ocah_axi_item);
   // Word address of each beat (FIXED re-addresses; INCR advances by 2**size;
   // WRAP wraps at the transfer boundary), aligned to the bus beat.
   protected function void beat_addresses(input ocah_axi_item t, ref bit [63:0] addrs[$]);
-    int unsigned num_bytes = (t.protocol == OCAH_AXI_PROTO_AXI4) ? (1 << t.size) : cfg.beat_bytes();
+    int unsigned num_bytes = (t.protocol == OCAH_AXI_PROTO_AXI4)
+                                 ? (1 << t.size) : cfg.beat_bytes();
     bit [63:0] aligned = (t.address / num_bytes) * num_bytes;
     bit [63:0] transfer = num_bytes * t.beat_count();
     bit [63:0] lower_wrap = (transfer > 0) ? (t.address / transfer) * transfer : aligned;
@@ -83,7 +84,10 @@ class ocah_axi_ref_model extends uvm_subscriber #(ocah_axi_item);
     beat_addresses(t, addrs);
     foreach (addrs[i]) begin
       bit armed;
-      ocah_axi_resp_e resp = cfg.consume_expected_resp(addrs[i], t.direction, armed);
+      ocah_axi_resp_e resp = cfg.consume_expected_resp(
+                addrs[i],
+                t.direction,
+                armed);
       if (!armed) resp = OCAH_AXI_RESP_OKAY;
       beat_resps.push_back(resp);
       any_armed |= armed;

@@ -15,10 +15,10 @@
  */
 
 module entropy_rosc_tune_fsm (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic health_error_i,
-  output logic tune_state_o
+  input       logic clk_i,
+  input       logic rst_ni,
+  input       logic health_error_i,
+  output      logic tune_state_o
 );
 
   /////////////

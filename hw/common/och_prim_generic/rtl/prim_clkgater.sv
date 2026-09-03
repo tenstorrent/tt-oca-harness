@@ -6,9 +6,9 @@
 //
 //--------------------------------------------------
 module prim_clkgater (
-  input  i_clk,
-  input  i_en  /*verilator clock_enable*/,
-  input  i_te,
+  input i_clk,
+  input i_en /*verilator clock_enable*/,
+  input i_te,
   output o_clk
 );
 

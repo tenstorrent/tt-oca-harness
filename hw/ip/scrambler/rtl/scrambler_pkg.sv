@@ -480,7 +480,7 @@ package scrambler_pkg;
     logic [5:0] ark;
     logic [5:0] sb;
     ark = addr ^ key;
-    sb  = {sbox3(ark[5:3]), sbox3(ark[2:0])};
+    sb = {sbox3(ark[5:3]), sbox3(ark[2:0])};
     return perm6(sb);
   endfunction
 
@@ -488,7 +488,7 @@ package scrambler_pkg;
     logic [6:0] ark;
     logic [6:0] sb;
     ark = addr ^ key;
-    sb  = {sbox4(ark[6:3]), sbox3(ark[2:0])};
+    sb = {sbox4(ark[6:3]), sbox3(ark[2:0])};
     return perm7(sb);
   endfunction
 
@@ -496,7 +496,7 @@ package scrambler_pkg;
     logic [7:0] ark;
     logic [7:0] sb;
     ark = addr ^ key;
-    sb  = {sbox4(ark[7:4]), sbox4(ark[3:0])};
+    sb = {sbox4(ark[7:4]), sbox4(ark[3:0])};
     return perm8(sb);
   endfunction
 
@@ -504,7 +504,7 @@ package scrambler_pkg;
     logic [8:0] ark;
     logic [8:0] sb;
     ark = addr ^ key;
-    sb  = {sbox3(ark[8:6]), sbox3(ark[5:3]), sbox3(ark[2:0])};
+    sb = {sbox3(ark[8:6]), sbox3(ark[5:3]), sbox3(ark[2:0])};
     return perm9(sb);
   endfunction
 
@@ -512,7 +512,7 @@ package scrambler_pkg;
     logic [9:0] ark;
     logic [9:0] sb;
     ark = addr ^ key;
-    sb  = {sbox4(ark[9:6]), sbox3(ark[5:3]), sbox3(ark[2:0])};
+    sb = {sbox4(ark[9:6]), sbox3(ark[5:3]), sbox3(ark[2:0])};
     return perm10(sb);
   endfunction
 
@@ -520,7 +520,7 @@ package scrambler_pkg;
     logic [10:0] ark;
     logic [10:0] sb;
     ark = addr ^ key;
-    sb  = {sbox3(ark[10:8]), sbox4(ark[7:4]), sbox4(ark[3:0])};
+    sb = {sbox3(ark[10:8]), sbox4(ark[7:4]), sbox4(ark[3:0])};
     return perm11(sb);
   endfunction
 
@@ -528,7 +528,7 @@ package scrambler_pkg;
     logic [11:0] ark;
     logic [11:0] sb;
     ark = addr ^ key;
-    sb  = {sbox4(ark[11:8]), sbox4(ark[7:4]), sbox4(ark[3:0])};
+    sb = {sbox4(ark[11:8]), sbox4(ark[7:4]), sbox4(ark[3:0])};
     return perm12(sb);
   endfunction
 
@@ -536,7 +536,7 @@ package scrambler_pkg;
     logic [12:0] ark;
     logic [12:0] sb;
     ark = addr ^ key;
-    sb  = {sbox4(ark[12:9]), sbox3(ark[8:6]), sbox3(ark[5:3]), sbox3(ark[2:0])};
+    sb = {sbox4(ark[12:9]), sbox3(ark[8:6]), sbox3(ark[5:3]), sbox3(ark[2:0])};
     return perm13(sb);
   endfunction
 

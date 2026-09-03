@@ -46,16 +46,16 @@ module km_kpv
   parameter type axil_req_t  = km_axil_req_t,
   parameter type axil_resp_t = km_axil_resp_t
 ) (
-  input logic clk_i,
-  input logic cold_rst_ni,  // Cold reset: AASD — resets entire KPV
-  input logic warm_rst_ni,  // Warm reset: synchronous — resets KM-port CPUIF + lock bits
+  input  logic clk_i,
+  input  logic cold_rst_ni,   // Cold reset: AASD — resets entire KPV
+  input  logic warm_rst_ni,   // Warm reset: synchronous — resets KM-port CPUIF + lock bits
 
   // KM port (from crossbar, base 0x0001_2000)
   input  axil_req_t  km_axil_req_i,
-  output axil_resp_t km_axil_resp_o,
+  output axil_resp_t      km_axil_resp_o,
 
   // Wipe: pulse high for one cycle to zero entire KPV next cycle
-  input logic wipe_pulse_i
+  input  logic        wipe_pulse_i
 );
 
   `include "prim_assert.sv"
@@ -91,7 +91,7 @@ module km_kpv
   logic [2:0] km_reg_awprot;
   logic km_reg_wready, km_reg_wvalid;
   logic [31:0] km_reg_wdata;
-  logic [ 3:0] km_reg_wstrb;
+  logic [3:0] km_reg_wstrb;
   logic km_reg_bready, km_reg_bvalid;
   logic [1:0] km_reg_bresp;
   logic km_reg_arready, km_reg_arvalid;
@@ -99,7 +99,7 @@ module km_kpv
   logic [2:0] km_reg_arprot;
   logic km_reg_rready, km_reg_rvalid;
   logic [31:0] km_reg_rdata;
-  logic [ 1:0] km_reg_rresp;
+  logic [1:0] km_reg_rresp;
 
   assign km_reg_awvalid = km_axil_req_i.aw_valid;
   assign km_reg_awaddr  = km_axil_req_i.aw.addr[ADDR_W-1:0];
@@ -123,29 +123,29 @@ module km_kpv
   assign kpv_hwif_in.WARM_RST_N = warm_rst_ni;
 
   km_kpv_reg u_km_kpv_reg (
-    .clk           (clk_i),
-    .arst_n        (cold_rst_ni),
-    .s_axil_awready(km_reg_awready),
-    .s_axil_awvalid(km_reg_awvalid),
-    .s_axil_awaddr (km_reg_awaddr),
-    .s_axil_awprot (km_reg_awprot),
-    .s_axil_wready (km_reg_wready),
-    .s_axil_wvalid (km_reg_wvalid),
-    .s_axil_wdata  (km_reg_wdata),
-    .s_axil_wstrb  (km_reg_wstrb),
-    .s_axil_bready (km_reg_bready),
-    .s_axil_bvalid (km_reg_bvalid),
-    .s_axil_bresp  (km_reg_bresp),
-    .s_axil_arready(km_reg_arready),
-    .s_axil_arvalid(km_reg_arvalid),
-    .s_axil_araddr (km_reg_araddr),
-    .s_axil_arprot (km_reg_arprot),
-    .s_axil_rready (km_reg_rready),
-    .s_axil_rvalid (km_reg_rvalid),
-    .s_axil_rdata  (km_reg_rdata),
-    .s_axil_rresp  (km_reg_rresp),
-    .hwif_in       (kpv_hwif_in),
-    .hwif_out      (kpv_hwif_out)
+    .clk            (clk_i),
+    .arst_n         (cold_rst_ni),
+    .s_axil_awready (km_reg_awready),
+    .s_axil_awvalid (km_reg_awvalid),
+    .s_axil_awaddr  (km_reg_awaddr),
+    .s_axil_awprot  (km_reg_awprot),
+    .s_axil_wready  (km_reg_wready),
+    .s_axil_wvalid  (km_reg_wvalid),
+    .s_axil_wdata   (km_reg_wdata),
+    .s_axil_wstrb   (km_reg_wstrb),
+    .s_axil_bready  (km_reg_bready),
+    .s_axil_bvalid  (km_reg_bvalid),
+    .s_axil_bresp   (km_reg_bresp),
+    .s_axil_arready (km_reg_arready),
+    .s_axil_arvalid (km_reg_arvalid),
+    .s_axil_araddr  (km_reg_araddr),
+    .s_axil_arprot  (km_reg_arprot),
+    .s_axil_rready  (km_reg_rready),
+    .s_axil_rvalid  (km_reg_rvalid),
+    .s_axil_rdata   (km_reg_rdata),
+    .s_axil_rresp   (km_reg_rresp),
+    .hwif_in        (kpv_hwif_in),
+    .hwif_out       (kpv_hwif_out)
   );
 
   //==========================================================================
@@ -160,9 +160,9 @@ module km_kpv
   //==========================================================================
   logic [NUM_SLOTS-1:0] erase_req;
   logic                 erase_wr_en;
-  logic [   SLOT_W-1:0] erase_slot;
-  logic [   WORD_W-1:0] erase_word;
-  logic [   DATA_W-1:0] erase_wr_data;
+  logic [SLOT_W-1:0]    erase_slot;
+  logic [WORD_W-1:0]    erase_word;
+  logic [DATA_W-1:0]    erase_wr_data;
   logic [NUM_SLOTS-1:0] erase_done;
   logic                 erase_busy;
 
@@ -181,15 +181,15 @@ module km_kpv
     .WORDS_PER_SLOT(WORDS_PER_SLOT),
     .DATA_WIDTH    (DATA_W)
   ) u_eraser (
-    .clk_i       (clk_i),
-    .cold_rst_ni (cold_rst_ni),
-    .erase_req_i (erase_req),
-    .wr_en_o     (erase_wr_en),
-    .wr_slot_o   (erase_slot),
-    .wr_word_o   (erase_word),
-    .wr_data_o   (erase_wr_data),
-    .erase_done_o(erase_done),
-    .busy_o      (erase_busy)
+    .clk_i        (clk_i),
+    .cold_rst_ni  (cold_rst_ni),
+    .erase_req_i  (erase_req),
+    .wr_en_o      (erase_wr_en),
+    .wr_slot_o    (erase_slot),
+    .wr_word_o    (erase_word),
+    .wr_data_o    (erase_wr_data),
+    .erase_done_o (erase_done),
+    .busy_o       (erase_busy)
   );
 
   //==========================================================================
@@ -227,17 +227,22 @@ module km_kpv
       kpv_hwif_in.CTRL[i].lock_write.hwset = slot_sealed[i] & ~wipe_pulse_i;
       // Retirement: completing an erase on a sealed slot read-locks it so
       // the destroyed contents cannot be read back.
-      kpv_hwif_in.CTRL[i].lock_use.hwset   = erase_done[i] & slot_sealed[i] & ~wipe_pulse_i;
+      kpv_hwif_in.CTRL[i].lock_use.hwset   = erase_done[i] & slot_sealed[i] &
+                                                   ~wipe_pulse_i;
       // Erasing an unsealed slot frees it: the whole CTRL register clears.
       // A wipe frees every slot, sealed or not.
-      kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i | (erase_done[i] & ~slot_sealed[i]);
-      kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i | (erase_done[i] & ~slot_sealed[i]);
+      kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i |
+                                                   (erase_done[i] & ~slot_sealed[i]);
+      kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i |
+                                                   (erase_done[i] & ~slot_sealed[i]);
       kpv_hwif_in.CTRL[i].seal.hwclr       = wipe_pulse_i;
       kpv_hwif_in.CTRL[i].erase.hwclr      = wipe_pulse_i | erase_done[i];
     end
     // Scrambler key/ctrl lock
-    kpv_hwif_in.KPV_SCRAMBLER_KEY.key.swwel = kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value;
-    kpv_hwif_in.KPV_SCRAMBLER_CTRL.enable.swwel = kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value;
+    kpv_hwif_in.KPV_SCRAMBLER_KEY.key.swwel =
+            kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value;
+    kpv_hwif_in.KPV_SCRAMBLER_CTRL.enable.swwel =
+            kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value;
     // Scrambler key: when locked, zero CSR so SW reads 0; else hold value.
     // Wipe also clears via hwclr.
     kpv_hwif_in.KPV_SCRAMBLER_KEY.key.hwclr = wipe_pulse_i;
@@ -246,7 +251,7 @@ module km_kpv
             kpv_hwif_out.KPV_SCRAMBLER_KEY.key.value;
     // Scrambler ctrl: wipe clears enable and lock via hwclr
     kpv_hwif_in.KPV_SCRAMBLER_CTRL.enable.hwclr = wipe_pulse_i;
-    kpv_hwif_in.KPV_SCRAMBLER_CTRL.lock.hwclr = wipe_pulse_i;
+    kpv_hwif_in.KPV_SCRAMBLER_CTRL.lock.hwclr   = wipe_pulse_i;
   end
 
   //==========================================================================
@@ -288,7 +293,8 @@ module km_kpv
   assign km_ext_lock_write =
         kpv_hwif_out.CTRL[km_ext_slot].lock_write.value |
         slot_sealed[km_ext_slot];
-  assign km_ext_lock_use = kpv_hwif_out.CTRL[km_ext_slot].lock_use.value;
+  assign km_ext_lock_use =
+        kpv_hwif_out.CTRL[km_ext_slot].lock_use.value;
 
   // --- KM scrambler (write path: scramble; read path: descramble) ---
   // Inputs are muxed: while the eraser is busy it borrows the scrambler to
@@ -302,7 +308,8 @@ module km_kpv
   logic [DATA_W-1:0]    km_scrambler_read_out;
   logic [DATA_W-1:0]    rf_rd_data;
 
-  assign km_scrambler_addr = erase_busy ? {erase_slot, erase_word} : {km_ext_slot, km_ext_word};
+  assign km_scrambler_addr = erase_busy ? {erase_slot, erase_word}
+                                          : {km_ext_slot, km_ext_word};
   assign km_scrambler_in_data = erase_busy ? erase_wr_data : km_ext_wr_data;
 
   scrambler_1024x32 #(
@@ -346,7 +353,7 @@ module km_kpv
   //==========================================================================
   logic                 rf_wr_a_en;
   logic [RF_ADDR_W-1:0] rf_wr_a_addr;
-  logic [   DATA_W-1:0] rf_wr_a_data;
+  logic [DATA_W-1:0]    rf_wr_a_data;
   logic [RF_ADDR_W-1:0] rf_rd_addr;
 
   // Write port: eraser (priority while busy) or KM external write
@@ -359,7 +366,8 @@ module km_kpv
         (erase_busy ? erase_wr_data : km_ext_wr_data);
 
   // KM read port: physical addr when scrambled, else logical
-  assign rf_rd_addr = kpv_scrambler_enable ? km_scrambler_phys_addr : {km_ext_slot, km_ext_word};
+  assign rf_rd_addr = kpv_scrambler_enable ?
+        km_scrambler_phys_addr : {km_ext_slot, km_ext_word};
 
   // The eraser borrows the shared scrambler and regfile write port while
   // busy (it has priority), so a concurrent KM external key-data write would
@@ -374,13 +382,13 @@ module km_kpv
     .WORDS_PER_SLOT(WORDS_PER_SLOT),
     .DATA_WIDTH    (DATA_W)
   ) u_key_regfile (
-    .clk_i      (clk_i),
-    .wipe_i     (wipe_pulse_i),
-    .wr_a_en_i  (rf_wr_a_en),
-    .wr_a_addr_i(rf_wr_a_addr),
-    .wr_a_data_i(rf_wr_a_data),
-    .rd_addr_i  (rf_rd_addr),
-    .rd_data_o  (rf_rd_data)
+    .clk_i           (clk_i),
+    .wipe_i          (wipe_pulse_i),
+    .wr_a_en_i       (rf_wr_a_en),
+    .wr_a_addr_i     (rf_wr_a_addr),
+    .wr_a_data_i     (rf_wr_a_data),
+    .rd_addr_i       (rf_rd_addr),
+    .rd_data_o       (rf_rd_data)
   );
 
   //==========================================================================
@@ -395,16 +403,17 @@ module km_kpv
   logic km_wr_violation, km_rd_violation;
   logic [ADDR_W-1:0] km_addr_accept;
 
-  assign km_addr_accept = km_reg_awvalid ? km_reg_awaddr : km_reg_araddr;
-  assign km_is_key = (km_addr_accept < ADDR_W'(KM_KPV_CTRL_BASE_ADDR(0)));
-  assign km_is_ctrl = (km_addr_accept >= ADDR_W'(KM_KPV_CTRL_BASE_ADDR(
-      0
-  ))) && (km_addr_accept <= ADDR_W'(KM_KPV_CTRL_BASE_ADDR(
-      NUM_SLOTS - 1
-  )));
+  assign km_addr_accept =
+        km_reg_awvalid ? km_reg_awaddr : km_reg_araddr;
+  assign km_is_key =
+        (km_addr_accept < ADDR_W'(KM_KPV_CTRL_BASE_ADDR(0)));
+  assign km_is_ctrl =
+        (km_addr_accept >= ADDR_W'(KM_KPV_CTRL_BASE_ADDR(0))) &&
+        (km_addr_accept <= ADDR_W'(KM_KPV_CTRL_BASE_ADDR(NUM_SLOTS-1)));
   // Key entries are 0x40 apart, so the slot sits above the 6 word/byte bits;
   // CTRL registers are one word apart, so it sits directly above bit 1.
-  assign km_slot = km_is_key ? km_addr_accept[SLOT_W+5:6] : km_addr_accept[SLOT_W+1:2];
+  assign km_slot =
+        km_is_key ? km_addr_accept[SLOT_W+5:6] : km_addr_accept[SLOT_W+1:2];
 
   always_comb begin
     // Key data writes to write-locked slots are protocol violations.
@@ -412,14 +421,15 @@ module km_kpv
     // lock_write; other fields retain their existing field-level behavior.
     km_wr_violation = km_is_key &
             (kpv_hwif_out.CTRL[km_slot].lock_write.value | slot_sealed[km_slot]);
-    km_rd_violation = km_is_key & kpv_hwif_out.CTRL[km_slot].lock_use.value;
+    km_rd_violation = km_is_key &
+            kpv_hwif_out.CTRL[km_slot].lock_use.value;
   end
 
   /** @brief KM-port response override metadata (tracks SLVERR for lock violations). */
   typedef struct packed {
-    logic is_wr;
-    logic wr_violation;
-    logic rd_violation;
+    logic       is_wr;
+    logic       wr_violation;
+    logic       rd_violation;
   } km_resp_override_t;
 
   km_resp_override_t km_fifo[2];
@@ -427,8 +437,12 @@ module km_kpv
   logic km_fifo_push, km_fifo_pop;
   km_resp_override_t km_override;
 
-  assign km_fifo_push = (km_reg_awready && km_reg_awvalid) || (km_reg_arready && km_reg_arvalid);
-  assign km_fifo_pop  = (km_reg_bvalid && km_reg_bready) || (km_reg_rvalid && km_reg_rready);
+  assign km_fifo_push =
+        (km_reg_awready && km_reg_awvalid) ||
+        (km_reg_arready && km_reg_arvalid);
+  assign km_fifo_pop =
+        (km_reg_bvalid && km_reg_bready) ||
+        (km_reg_rvalid && km_reg_rready);
 
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
     if (!cold_rst_ni) begin
@@ -463,13 +477,13 @@ module km_kpv
 
   // KM response output
   assign km_axil_resp_o.aw_ready = km_reg_awready;
-  assign km_axil_resp_o.w_ready = km_reg_wready;
-  assign km_axil_resp_o.b_valid = km_reg_bvalid;
+  assign km_axil_resp_o.w_ready  = km_reg_wready;
+  assign km_axil_resp_o.b_valid  = km_reg_bvalid;
   assign km_axil_resp_o.b.resp =
         (km_override.is_wr && km_override.wr_violation) ?
         2'b10 : km_reg_bresp;
   assign km_axil_resp_o.ar_ready = km_reg_arready;
-  assign km_axil_resp_o.r_valid = km_reg_rvalid;
+  assign km_axil_resp_o.r_valid  = km_reg_rvalid;
 
   // Key reads: CSR returns external rd_data (already handles
   // lock_use->0).  Non-key reads: CSR returns

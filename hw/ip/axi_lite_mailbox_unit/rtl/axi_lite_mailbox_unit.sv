@@ -11,12 +11,12 @@ module axi_lite_mailbox_unit #(
   parameter int unsigned ADDR_WIDTH = 32,
   parameter int unsigned DATA_WIDTH = 64,
   // AXI-Lite type parameters
-  parameter type aw_chan_t = logic,
-  parameter type w_chan_t = logic,
-  parameter type b_chan_t = logic,
-  parameter type ar_chan_t = logic,
-  parameter type r_chan_t = logic,
-  parameter type axi_req_t = logic,
+  parameter type aw_chan_t  = logic,
+  parameter type w_chan_t   = logic,
+  parameter type b_chan_t   = logic,
+  parameter type ar_chan_t  = logic,
+  parameter type r_chan_t   = logic,
+  parameter type axi_req_t  = logic,
   parameter type axi_resp_t = logic,
   // Derived parameters
   localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8,
@@ -26,7 +26,7 @@ module axi_lite_mailbox_unit #(
   input logic rst_ni,
   input logic test_en_i,
 
-  input  axi_req_t  mailbox_axi_req_i,
+  input  axi_req_t mailbox_axi_req_i,
   output axi_resp_t mailbox_axi_resp_o,
 
   output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
@@ -62,10 +62,10 @@ module axi_lite_mailbox_unit #(
 
   axi_lite_demux #(
     .aw_chan_t(aw_chan_t),
-    .w_chan_t(w_chan_t),
-    .b_chan_t(b_chan_t),
+    .w_chan_t (w_chan_t),
+    .b_chan_t (b_chan_t),
     .ar_chan_t(ar_chan_t),
-    .r_chan_t(r_chan_t),
+    .r_chan_t (r_chan_t),
     .axi_req_t(axi_req_t),
     .axi_resp_t(axi_resp_t),
     .NoMstPorts(2 * NUM_MAILBOXES),
@@ -77,7 +77,7 @@ module axi_lite_mailbox_unit #(
     .SpillAr(1'b0),
     .SpillR(1'b0)
   ) mailbox_demux (
-    .clk_i (clk_i),
+    .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
 
@@ -86,7 +86,7 @@ module axi_lite_mailbox_unit #(
     .slv_ar_select_i(slv_ar_select),
     .slv_resp_o(mailbox_axi_resp_internal),
 
-    .mst_reqs_o (mst_reqs),
+    .mst_reqs_o(mst_reqs),
     .mst_resps_i(mst_resps)
   );
 

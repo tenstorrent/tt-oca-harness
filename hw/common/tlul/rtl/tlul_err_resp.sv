@@ -19,15 +19,15 @@ module tlul_err_resp #(
   import tlul_pkg::*;
   import prim_mubi_pkg::*;
 
-  tl_a_op_e                                       err_opcode;
-  logic              [$bits(tl_h_i.a_source)-1:0] err_source;
-  logic              [  $bits(tl_h_i.a_size)-1:0] err_size;
-  logic                                           err_rsp_pending;
-  mubi4_t                                         err_instr_type;
-  tlul_pkg::tl_d2h_t                              tl_h_o_int;
+  tl_a_op_e                          err_opcode;
+  logic [$bits(tl_h_i.a_source)-1:0] err_source;
+  logic [$bits(tl_h_i.a_size)-1:0]   err_size;
+  logic                              err_rsp_pending;
+  mubi4_t                            err_instr_type;
+  tlul_pkg::tl_d2h_t                 tl_h_o_int;
 
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen (1),
+    .EnableRspIntgGen(1),
     .EnableDataIntgGen(1)
   ) u_intg_gen (
     .tl_i(tl_h_o_int),
@@ -52,8 +52,8 @@ module tlul_err_resp #(
     end
   end
 
-  assign tl_h_o_int.a_ready = ~err_rsp_pending;
-  assign tl_h_o_int.d_valid = err_rsp_pending;
+  assign tl_h_o_int.a_ready  = ~err_rsp_pending;
+  assign tl_h_o_int.d_valid  = err_rsp_pending;
   if (ReturnBlankResp) begin : gen_zero_resp
     assign tl_h_o_int.d_data = '0;
   end else begin : gen_err_resp

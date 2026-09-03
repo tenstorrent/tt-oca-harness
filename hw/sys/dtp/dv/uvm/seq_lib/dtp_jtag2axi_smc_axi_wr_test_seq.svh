@@ -119,12 +119,12 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // -- series_write_incr: incrementing series data sweep -------------------
   task run_series_write_incr(j2a_target_t t);
-    int unsigned        size = 3;
-    int unsigned        stride = size_bytes(size);
-    int unsigned        beats = (random_count < 2) ? 2 : ((random_count > 6) ? 6 : random_count);
-    bit          [63:0] base = random_target_aligned_addr(t, size) & ~64'h3F;
-    bit                 series_reset;
-    bit          [63:0] addr_after;
+    int unsigned size   = 3;
+    int unsigned stride = size_bytes(size);
+    int unsigned beats  = (random_count < 2) ? 2 : ((random_count > 6) ? 6 : random_count);
+    bit [63:0]   base   = random_target_aligned_addr(t, size) & ~64'h3F;
+    bit          series_reset;
+    bit [63:0]   addr_after;
     int unsigned pl_depth, size_rd;
     int unsigned before_aw, before_w, before_ar;
     int unsigned wb0;
@@ -167,12 +167,12 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // -- series_write_incr_narrow: 32-bit INCR at beat offset +4 -------------
   task run_series_write_incr_narrow(j2a_target_t t);
-    int unsigned        size = 2;
-    int unsigned        stride = size_bytes(size);
-    int unsigned        beats = (random_count < 2) ? 2 : ((random_count > 6) ? 6 : random_count);
-    bit          [63:0] base = (random_target_aligned_addr(t, 3) & ~64'h3F) + 64'd4;
-    bit                 series_reset;
-    bit          [63:0] addr_after;
+    int unsigned size   = 2;
+    int unsigned stride = size_bytes(size);
+    int unsigned beats  = (random_count < 2) ? 2 : ((random_count > 6) ? 6 : random_count);
+    bit [63:0]   base   = (random_target_aligned_addr(t, 3) & ~64'h3F) + 64'd4;
+    bit          series_reset;
+    bit [63:0]   addr_after;
     int unsigned pl_depth, size_rd;
     int unsigned before_aw, before_w, before_ar;
     int unsigned wb0;
@@ -220,12 +220,12 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // -- series_write_no_incr: fixed-address series stream -------------------
   task run_series_write_no_incr(j2a_target_t t);
-    int unsigned        size = 3;
-    int unsigned        beats = (random_count < 2) ? 2 : ((random_count > 6) ? 6 : random_count);
-    bit          [63:0] addr = random_target_aligned_addr(t, size);
-    bit          [63:0] last_data = '0;
-    bit                 series_reset;
-    bit          [63:0] addr_after;
+    int unsigned size  = 3;
+    int unsigned beats = (random_count < 2) ? 2 : ((random_count > 6) ? 6 : random_count);
+    bit [63:0]   addr  = random_target_aligned_addr(t, size);
+    bit [63:0]   last_data = '0;
+    bit          series_reset;
+    bit [63:0]   addr_after;
     int unsigned pl_depth, size_rd;
     int unsigned before_aw, before_w, before_ar;
     int unsigned wb0;
@@ -269,13 +269,13 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // -- series_write_incr_with_error: WITH_ERROR_STATUS write mode ----------
   task run_series_write_incr_with_error(j2a_target_t t);
-    int unsigned size = 3;
+    int unsigned size   = 3;
     int unsigned stride = size_bytes(size);
-    bit increments[4] = '{1'b1, 1'b0, 1'b1, 1'b1};
-    bit [63:0] base = random_target_aligned_addr(t, size) & ~64'h3F;
-    bit [63:0] expected_addr = base;
-    bit series_reset;
-    bit [63:0] addr_after;
+    bit          increments[4] = '{1'b1, 1'b0, 1'b1, 1'b1};
+    bit [63:0]   base = random_target_aligned_addr(t, size) & ~64'h3F;
+    bit [63:0]   expected_addr = base;
+    bit          series_reset;
+    bit [63:0]   addr_after;
     int unsigned pl_depth, size_rd;
     int unsigned before_aw, before_w, before_ar;
     int unsigned wb0;
@@ -325,9 +325,9 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
     `uvm_info(get_type_name(), "SMC_AXI_SINGLE_OP Randomized Writes", UVM_LOW)
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       int unsigned size = $urandom_range(3);
-      bit [63:0] addr = random_target_aligned_addr(t, size);
-      bit [63:0] data = {$urandom(), $urandom()} & data_mask(size);
-      bit [7:0] wstrb = 8'($urandom_range(int'(full_wstrb(size)), 1));
+      bit [63:0] addr   = random_target_aligned_addr(t, size);
+      bit [63:0] data   = {$urandom(), $urandom()} & data_mask(size);
+      bit [7:0]  wstrb  = 8'($urandom_range(int'(full_wstrb(size)), 1));
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: random write addr=0x%08h size=%0d data=0x%0h wstrb=0x%02h",
                 idx,
@@ -368,7 +368,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
     // is repeatable, not a one-shot POR effect.
     for (int unsigned idx = 1; idx <= 2; idx++) begin
       bit [63:0] gate_addr = addr + (idx * 64'h8);
-      bit [63:0] sentinel = 64'h5EA1_0000_0000_0000 | 64'(idx);
+      bit [63:0] sentinel  = 64'h5EA1_0000_0000_0000 | 64'(idx);
       bit [63:0] observed;
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/2: gate SMC fabric write with smc_jtag2axi", idx), UVM_LOW)
@@ -471,16 +471,17 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
     step(1'b0);  // TLR -> RTI: IR/DR scans require Run-Test/Idle
     check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after TLR->RTI step");
     case (scenario)
-      "single_write": run_single_write(t);
-      "single_write_data_verify": run_single_write_data_verify(t);
-      "series_write_incr": run_series_write_incr(t);
-      "series_write_incr_narrow": run_series_write_incr_narrow(t);
-      "series_write_no_incr": run_series_write_no_incr(t);
+      "single_write":                 run_single_write(t);
+      "single_write_data_verify":     run_single_write_data_verify(t);
+      "series_write_incr":            run_series_write_incr(t);
+      "series_write_incr_narrow":     run_series_write_incr_narrow(t);
+      "series_write_no_incr":         run_series_write_no_incr(t);
       "series_write_incr_with_error": run_series_write_incr_with_error(t);
-      "random_ops": run_random_ops(t);
-      "write_security_gating": run_write_security_gating(t);
+      "random_ops":                   run_random_ops(t);
+      "write_security_gating":        run_write_security_gating(t);
       default:
-      `uvm_fatal(get_type_name(), $sformatf("unknown write-side JTAG2AXI scenario %s", scenario))
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "unknown write-side JTAG2AXI scenario %s", scenario))
     endcase
     enable_all_debug();
     // Scenario-level stream minimum (cocotb CHK-AXI-STREAM-MIN parity).

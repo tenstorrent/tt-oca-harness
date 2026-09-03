@@ -50,8 +50,8 @@ module tb_key_manager;
   logic test_en = 1'b0;
 
   // Parity error injection signals (for testing)
-  logic rom_parity_err_inject = 1'b0;
-  logic sram_parity_err_inject = 1'b0;
+  logic        rom_parity_err_inject = 1'b0;
+  logic        sram_parity_err_inject = 1'b0;
 
   // ROM memory array (size from interface package)
   localparam int unsigned ROM_SIZE_WORDS = km_intf_pkg::ROM_SIZE_BYTES / 4;
@@ -91,30 +91,30 @@ module tb_key_manager;
   //=========================================================================
 
   // ROM/SRAM memory interfaces (from top-level module)
-  km_rom_mem_req_t km_rom_mem_req;
-  km_rom_mem_rsp_t km_rom_mem_rsp;
+  km_rom_mem_req_t  km_rom_mem_req;
+  km_rom_mem_rsp_t  km_rom_mem_rsp;
   km_sram_mem_req_t km_sram_mem_req;
   km_sram_mem_rsp_t km_sram_mem_rsp;
 
   // External crypto engine ports (stubs)
-  km_axil_req_t otbn_req;
+  km_axil_req_t  otbn_req;
   km_axil_resp_t otbn_resp;
-  km_axil_req_t aes_req;
+  km_axil_req_t  aes_req;
   km_axil_resp_t aes_resp;
-  km_axil_req_t kmac_req;
+  km_axil_req_t  kmac_req;
   km_axil_resp_t kmac_resp;
-  km_axil_req_t hmac_req;
+  km_axil_req_t  hmac_req;
   km_axil_resp_t hmac_resp;
 
   // OTP/eFuse AXI-Lite port (crossbar master 8, driven via efuse_req_o/resp_i).
   // key_manager.sv remaps KM-local 0x0001_1xxx -> 0x1093_0xxx before driving
   // this bus, so the responder decodes 0x1093_0xxx.
-  km_axil_req_t efuse_req;
+  km_axil_req_t  efuse_req;
   km_axil_resp_t efuse_resp;
 
   // Adams Bridge sideload window (crossbar master 9, ABR_BASE_ADDR 0x0001_Cxxx).
   // Connected to the abr_wrapper_key reg block instantiated below.
-  km_axil_req_t abr_req;
+  km_axil_req_t  abr_req;
   km_axil_resp_t abr_resp;
 
   // ML-KEM shared-key IRQ: sustained level (KEY_VALID & IRQ_ENABLE).
@@ -122,11 +122,11 @@ module tb_key_manager;
 
   // TB-side signals for modeling Adams Bridge writing a shared key into the reg block.
   // cocotb drives tb_abr_sk_load_data[i] and tb_abr_sk_load_valid to inject a key.
-  logic [31:0] tb_abr_sk_load_data[8];  // Shared key words from TB model
-  logic tb_abr_sk_load_valid;  // Pulse: set KEY_CTRL.KEY_VALID via hwset
+  logic [31:0] tb_abr_sk_load_data [8];  // Shared key words from TB model
+  logic        tb_abr_sk_load_valid;      // Pulse: set KEY_CTRL.KEY_VALID via hwset
 
   // SEP mailbox interface (for cocotb access)
-  km_axil_req_t mbox_sep_req;
+  km_axil_req_t  mbox_sep_req;
   km_axil_resp_t mbox_sep_resp;
 
   // Mailbox IRQ to SEP (exposed for cocotb)
@@ -137,21 +137,21 @@ module tb_key_manager;
   logic recoverable_err;
 
   // DRBG AXI-Stream (flattened for cocotb; tie off when not driven)
-  logic drbg_tvalid = 1'b0;
+  logic        drbg_tvalid = 1'b0;
   logic [31:0] drbg_tdata = 32'h0;
-  logic [3:0] drbg_tstrb = 4'h0;
-  logic drbg_tready;
-  km_drbg_axis_req_t drbg_axis_req;
+  logic [3:0]  drbg_tstrb = 4'h0;
+  logic        drbg_tready;
+  km_drbg_axis_req_t  drbg_axis_req;
   km_drbg_axis_resp_t drbg_axis_resp;
   assign drbg_axis_req.tvalid = drbg_tvalid;
-  assign drbg_axis_req.tdata = drbg_tdata;
-  assign drbg_axis_req.tstrb = drbg_tstrb;
+  assign drbg_axis_req.tdata  = drbg_tdata;
+  assign drbg_axis_req.tstrb  = drbg_tstrb;
   assign drbg_tready = drbg_axis_resp.tready;
   // OTP data interface (for test_otp_data; cocotb can drive)
   km_otp_data_t otp_data = '0;
 
   // Wipe state (for test_wipe_state; cocotb pulses to trigger KPV zero and WIPE_STATE IRQ)
-  logic         wipe_state = 1'b0;
+  logic          wipe_state = 1'b0;
 
   key_manager #(
     .ROM_SIZE_BYTES(km_intf_pkg::ROM_SIZE_BYTES),
@@ -159,48 +159,48 @@ module tb_key_manager;
     .MAILBOX_DEPTH(16),
     .LATCHED_MEM_RDATA(1'b1)  // Testbench ROM/SRAM models hold rdata after read completion
   ) u_key_manager (
-    .clk_i(clk),
-    .cold_rst_ni(cold_rst_n),  // Cold reset: deasserted by cocotb reset_dut()
-    .warm_rst_ni(warm_rst_n),  // Warm reset: pulsed by cocotb TB_CMD_KM_WARM_RESET
+    .clk_i              (clk),
+    .cold_rst_ni         (cold_rst_n),  // Cold reset: deasserted by cocotb reset_dut()
+    .warm_rst_ni         (warm_rst_n),  // Warm reset: pulsed by cocotb TB_CMD_KM_WARM_RESET
     // Mailbox SEP interface (for cocotb testing)
-    .mbox_sep_req_i(mbox_sep_req),
-    .mbox_sep_resp_o(mbox_sep_resp),
-    .mbox_irq_to_sep_o(mbox_irq_to_sep),
+    .mbox_sep_req_i     (mbox_sep_req),
+    .mbox_sep_resp_o    (mbox_sep_resp),
+    .mbox_irq_to_sep_o  (mbox_irq_to_sep),
     // Error condition outputs (for monitoring; cocotb can probe)
-    .unrecoverable_err_o(unrecoverable_err),
-    .recoverable_err_o(recoverable_err),
+    .unrecoverable_err_o (unrecoverable_err),
+    .recoverable_err_o  (recoverable_err),
     // External crypto engine ports (stubs)
-    .otbn_req_o(otbn_req),
-    .otbn_resp_i(otbn_resp),
-    .aes_req_o(aes_req),
-    .aes_resp_i(aes_resp),
-    .kmac_req_o(kmac_req),
-    .kmac_resp_i(kmac_resp),
-    .hmac_req_o(hmac_req),
-    .hmac_resp_i(hmac_resp),
+    .otbn_req_o         (otbn_req),
+    .otbn_resp_i        (otbn_resp),
+    .aes_req_o          (aes_req),
+    .aes_resp_i         (aes_resp),
+    .kmac_req_o         (kmac_req),
+    .kmac_resp_i        (kmac_resp),
+    .hmac_req_o         (hmac_req),
+    .hmac_resp_i        (hmac_resp),
     // OTP/eFuse AXI-Lite port (wired to behavioral responder below)
-    .efuse_req_o(efuse_req),
-    .efuse_resp_i(efuse_resp),
+    .efuse_req_o        (efuse_req),
+    .efuse_resp_i       (efuse_resp),
     // Adams Bridge sideload window (wired to abr_wrapper_key reg block below)
-    .abr_req_o(abr_req),
-    .abr_resp_i(abr_resp),
+    .abr_req_o              (abr_req),
+    .abr_resp_i             (abr_resp),
     .abr_mlkem_sharedkey_irq_i(abr_mlkem_sharedkey_irq),
     // ROM/SRAM memory interfaces (to memory models)
-    .rom_mem_req_o(km_rom_mem_req),
-    .rom_mem_rsp_i(km_rom_mem_rsp),
-    .sram_mem_req_o(km_sram_mem_req),
-    .sram_mem_rsp_i(km_sram_mem_rsp),
+    .rom_mem_req_o      (km_rom_mem_req),
+    .rom_mem_rsp_i      (km_rom_mem_rsp),
+    .sram_mem_req_o     (km_sram_mem_req),
+    .sram_mem_rsp_i     (km_sram_mem_rsp),
     // DRBG AXI-Stream (tie-off; cocotb can drive for DRBG tests)
-    .drbg_axis_req_i(drbg_axis_req),
-    .drbg_axis_resp_o(drbg_axis_resp),
+    .drbg_axis_req_i    (drbg_axis_req),
+    .drbg_axis_resp_o   (drbg_axis_resp),
     // OTP data (read-through; cocotb drives for test_otp_data)
-    .otp_data_i(otp_data),
+    .otp_data_i        (otp_data),
     // Wipe state (cocotb pulses for test_wipe_state)
-    .wipe_state_i(wipe_state),
+    .wipe_state_i      (wipe_state),
     // Test mode (DFT enable)
-    .test_en_i(test_en),
+    .test_en_i           (test_en),
     // Scan chain (tied off - not controlled by testbench)
-    .scan_rst_ni(1'b1)  // Scan reset disabled (active-low: 1 = normal operation)
+    .scan_rst_ni         (1'b1)             // Scan reset disabled (active-low: 1 = normal operation)
   );
 
   //=========================================================================
@@ -215,19 +215,19 @@ module tb_key_manager;
   // can read back the write-only key shares via TB_CMD_KEY_SHARE_READ.
 
   hmac_wrapper_key_reg_pkg::hmac_wrapper_key__out_t hmac_hwif_out;
-  aes_wrapper_key_reg_pkg::aes_wrapper_key__out_t aes_hwif_out;
+  aes_wrapper_key_reg_pkg::aes_wrapper_key__out_t   aes_hwif_out;
   kmac_wrapper_key_reg_pkg::kmac_wrapper_key__out_t kmac_hwif_out;
   otbn_wrapper_key_reg_pkg::otbn_wrapper_key__out_t otbn_hwif_out;
 
   // Flat arrays for cocotb readback (engine order: 0=HMAC, 1=KMAC, 2=AES, 3=OTBN)
-  wire [31:0] hmac_share0[8];
-  wire [31:0] hmac_share1[8];
-  wire [31:0] aes_share0[8];
-  wire [31:0] aes_share1[8];
-  wire [31:0] kmac_share0[8];
-  wire [31:0] kmac_share1[8];
-  wire [31:0] otbn_share0[12];
-  wire [31:0] otbn_share1[12];
+  wire [31:0] hmac_share0 [8];
+  wire [31:0] hmac_share1 [8];
+  wire [31:0] aes_share0  [8];
+  wire [31:0] aes_share1  [8];
+  wire [31:0] kmac_share0 [8];
+  wire [31:0] kmac_share1 [8];
+  wire [31:0] otbn_share0 [12];
+  wire [31:0] otbn_share1 [12];
 
   for (genvar gi = 0; gi < 8; gi++) begin : gen_key_shares_8
     assign hmac_share0[gi] = hmac_hwif_out.KEY_SHARE0[gi].data.value;
@@ -243,103 +243,103 @@ module tb_key_manager;
   end
 
   hmac_wrapper_key_reg u_hmac_key_reg (
-    .clk           (clk),
-    .arst_n        (cold_rst_n),
-    .s_axil_awvalid(hmac_req.aw_valid),
-    .s_axil_awready(hmac_resp.aw_ready),
-    .s_axil_awaddr (hmac_req.aw.addr[HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (hmac_req.aw.prot),
-    .s_axil_wvalid (hmac_req.w_valid),
-    .s_axil_wready (hmac_resp.w_ready),
-    .s_axil_wdata  (hmac_req.w.data),
-    .s_axil_wstrb  (hmac_req.w.strb),
-    .s_axil_bvalid (hmac_resp.b_valid),
-    .s_axil_bready (hmac_req.b_ready),
-    .s_axil_bresp  (hmac_resp.b.resp),
-    .s_axil_arvalid(hmac_req.ar_valid),
-    .s_axil_arready(hmac_resp.ar_ready),
-    .s_axil_araddr (hmac_req.ar.addr[HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (hmac_req.ar.prot),
-    .s_axil_rvalid (hmac_resp.r_valid),
-    .s_axil_rready (hmac_req.r_ready),
-    .s_axil_rdata  (hmac_resp.r.data),
-    .s_axil_rresp  (hmac_resp.r.resp),
-    .hwif_out      (hmac_hwif_out)
+    .clk            (clk),
+    .arst_n         (cold_rst_n),
+    .s_axil_awvalid (hmac_req.aw_valid),
+    .s_axil_awready (hmac_resp.aw_ready),
+    .s_axil_awaddr  (hmac_req.aw.addr[HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (hmac_req.aw.prot),
+    .s_axil_wvalid  (hmac_req.w_valid),
+    .s_axil_wready  (hmac_resp.w_ready),
+    .s_axil_wdata   (hmac_req.w.data),
+    .s_axil_wstrb   (hmac_req.w.strb),
+    .s_axil_bvalid  (hmac_resp.b_valid),
+    .s_axil_bready  (hmac_req.b_ready),
+    .s_axil_bresp   (hmac_resp.b.resp),
+    .s_axil_arvalid (hmac_req.ar_valid),
+    .s_axil_arready (hmac_resp.ar_ready),
+    .s_axil_araddr  (hmac_req.ar.addr[HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (hmac_req.ar.prot),
+    .s_axil_rvalid  (hmac_resp.r_valid),
+    .s_axil_rready  (hmac_req.r_ready),
+    .s_axil_rdata   (hmac_resp.r.data),
+    .s_axil_rresp   (hmac_resp.r.resp),
+    .hwif_out       (hmac_hwif_out)
   );
 
   aes_wrapper_key_reg u_aes_key_reg (
-    .clk           (clk),
-    .arst_n        (cold_rst_n),
-    .s_axil_awvalid(aes_req.aw_valid),
-    .s_axil_awready(aes_resp.aw_ready),
-    .s_axil_awaddr (aes_req.aw.addr[AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (aes_req.aw.prot),
-    .s_axil_wvalid (aes_req.w_valid),
-    .s_axil_wready (aes_resp.w_ready),
-    .s_axil_wdata  (aes_req.w.data),
-    .s_axil_wstrb  (aes_req.w.strb),
-    .s_axil_bvalid (aes_resp.b_valid),
-    .s_axil_bready (aes_req.b_ready),
-    .s_axil_bresp  (aes_resp.b.resp),
-    .s_axil_arvalid(aes_req.ar_valid),
-    .s_axil_arready(aes_resp.ar_ready),
-    .s_axil_araddr (aes_req.ar.addr[AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (aes_req.ar.prot),
-    .s_axil_rvalid (aes_resp.r_valid),
-    .s_axil_rready (aes_req.r_ready),
-    .s_axil_rdata  (aes_resp.r.data),
-    .s_axil_rresp  (aes_resp.r.resp),
-    .hwif_out      (aes_hwif_out)
+    .clk            (clk),
+    .arst_n         (cold_rst_n),
+    .s_axil_awvalid (aes_req.aw_valid),
+    .s_axil_awready (aes_resp.aw_ready),
+    .s_axil_awaddr  (aes_req.aw.addr[AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (aes_req.aw.prot),
+    .s_axil_wvalid  (aes_req.w_valid),
+    .s_axil_wready  (aes_resp.w_ready),
+    .s_axil_wdata   (aes_req.w.data),
+    .s_axil_wstrb   (aes_req.w.strb),
+    .s_axil_bvalid  (aes_resp.b_valid),
+    .s_axil_bready  (aes_req.b_ready),
+    .s_axil_bresp   (aes_resp.b.resp),
+    .s_axil_arvalid (aes_req.ar_valid),
+    .s_axil_arready (aes_resp.ar_ready),
+    .s_axil_araddr  (aes_req.ar.addr[AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (aes_req.ar.prot),
+    .s_axil_rvalid  (aes_resp.r_valid),
+    .s_axil_rready  (aes_req.r_ready),
+    .s_axil_rdata   (aes_resp.r.data),
+    .s_axil_rresp   (aes_resp.r.resp),
+    .hwif_out       (aes_hwif_out)
   );
 
   kmac_wrapper_key_reg u_kmac_key_reg (
-    .clk           (clk),
-    .arst_n        (cold_rst_n),
-    .s_axil_awvalid(kmac_req.aw_valid),
-    .s_axil_awready(kmac_resp.aw_ready),
-    .s_axil_awaddr (kmac_req.aw.addr[KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (kmac_req.aw.prot),
-    .s_axil_wvalid (kmac_req.w_valid),
-    .s_axil_wready (kmac_resp.w_ready),
-    .s_axil_wdata  (kmac_req.w.data),
-    .s_axil_wstrb  (kmac_req.w.strb),
-    .s_axil_bvalid (kmac_resp.b_valid),
-    .s_axil_bready (kmac_req.b_ready),
-    .s_axil_bresp  (kmac_resp.b.resp),
-    .s_axil_arvalid(kmac_req.ar_valid),
-    .s_axil_arready(kmac_resp.ar_ready),
-    .s_axil_araddr (kmac_req.ar.addr[KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (kmac_req.ar.prot),
-    .s_axil_rvalid (kmac_resp.r_valid),
-    .s_axil_rready (kmac_req.r_ready),
-    .s_axil_rdata  (kmac_resp.r.data),
-    .s_axil_rresp  (kmac_resp.r.resp),
-    .hwif_out      (kmac_hwif_out)
+    .clk            (clk),
+    .arst_n         (cold_rst_n),
+    .s_axil_awvalid (kmac_req.aw_valid),
+    .s_axil_awready (kmac_resp.aw_ready),
+    .s_axil_awaddr  (kmac_req.aw.addr[KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (kmac_req.aw.prot),
+    .s_axil_wvalid  (kmac_req.w_valid),
+    .s_axil_wready  (kmac_resp.w_ready),
+    .s_axil_wdata   (kmac_req.w.data),
+    .s_axil_wstrb   (kmac_req.w.strb),
+    .s_axil_bvalid  (kmac_resp.b_valid),
+    .s_axil_bready  (kmac_req.b_ready),
+    .s_axil_bresp   (kmac_resp.b.resp),
+    .s_axil_arvalid (kmac_req.ar_valid),
+    .s_axil_arready (kmac_resp.ar_ready),
+    .s_axil_araddr  (kmac_req.ar.addr[KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (kmac_req.ar.prot),
+    .s_axil_rvalid  (kmac_resp.r_valid),
+    .s_axil_rready  (kmac_req.r_ready),
+    .s_axil_rdata   (kmac_resp.r.data),
+    .s_axil_rresp   (kmac_resp.r.resp),
+    .hwif_out       (kmac_hwif_out)
   );
 
   otbn_wrapper_key_reg u_otbn_key_reg (
-    .clk           (clk),
-    .arst_n        (cold_rst_n),
-    .s_axil_awvalid(otbn_req.aw_valid),
-    .s_axil_awready(otbn_resp.aw_ready),
-    .s_axil_awaddr (otbn_req.aw.addr[OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (otbn_req.aw.prot),
-    .s_axil_wvalid (otbn_req.w_valid),
-    .s_axil_wready (otbn_resp.w_ready),
-    .s_axil_wdata  (otbn_req.w.data),
-    .s_axil_wstrb  (otbn_req.w.strb),
-    .s_axil_bvalid (otbn_resp.b_valid),
-    .s_axil_bready (otbn_req.b_ready),
-    .s_axil_bresp  (otbn_resp.b.resp),
-    .s_axil_arvalid(otbn_req.ar_valid),
-    .s_axil_arready(otbn_resp.ar_ready),
-    .s_axil_araddr (otbn_req.ar.addr[OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (otbn_req.ar.prot),
-    .s_axil_rvalid (otbn_resp.r_valid),
-    .s_axil_rready (otbn_req.r_ready),
-    .s_axil_rdata  (otbn_resp.r.data),
-    .s_axil_rresp  (otbn_resp.r.resp),
-    .hwif_out      (otbn_hwif_out)
+    .clk            (clk),
+    .arst_n         (cold_rst_n),
+    .s_axil_awvalid (otbn_req.aw_valid),
+    .s_axil_awready (otbn_resp.aw_ready),
+    .s_axil_awaddr  (otbn_req.aw.addr[OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (otbn_req.aw.prot),
+    .s_axil_wvalid  (otbn_req.w_valid),
+    .s_axil_wready  (otbn_resp.w_ready),
+    .s_axil_wdata   (otbn_req.w.data),
+    .s_axil_wstrb   (otbn_req.w.strb),
+    .s_axil_bvalid  (otbn_resp.b_valid),
+    .s_axil_bready  (otbn_req.b_ready),
+    .s_axil_bresp   (otbn_resp.b.resp),
+    .s_axil_arvalid (otbn_req.ar_valid),
+    .s_axil_arready (otbn_resp.ar_ready),
+    .s_axil_araddr  (otbn_req.ar.addr[OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (otbn_req.ar.prot),
+    .s_axil_rvalid  (otbn_resp.r_valid),
+    .s_axil_rready  (otbn_req.r_ready),
+    .s_axil_rdata   (otbn_resp.r.data),
+    .s_axil_rresp   (otbn_resp.r.resp),
+    .hwif_out       (otbn_hwif_out)
   );
 
   //=========================================================================
@@ -356,19 +356,19 @@ module tb_key_manager;
   //   The same load event hwsets the sticky IRQ_STATUS.key_valid bit; the
   //   reg block clears it on a firmware W1C write.
 
-  abr_wrapper_key_reg_pkg::abr_wrapper_key__in_t abr_hwif_in;
+  abr_wrapper_key_reg_pkg::abr_wrapper_key__in_t  abr_hwif_in;
   abr_wrapper_key_reg_pkg::abr_wrapper_key__out_t abr_hwif_out;
 
   // Flat seed share arrays for cocotb readback (sub-block order:
   //   4=MLDSA_SEED, 5=MLKEM_SEED_D, 6=MLKEM_SEED_Z, 7=MLKEM_MSG)
-  wire [31:0] mldsa_seed_share0[8];
-  wire [31:0] mldsa_seed_share1[8];
-  wire [31:0] mlkem_seed_d_share0[8];
-  wire [31:0] mlkem_seed_d_share1[8];
-  wire [31:0] mlkem_seed_z_share0[8];
-  wire [31:0] mlkem_seed_z_share1[8];
-  wire [31:0] mlkem_msg_share0[8];
-  wire [31:0] mlkem_msg_share1[8];
+  wire [31:0] mldsa_seed_share0 [8];
+  wire [31:0] mldsa_seed_share1 [8];
+  wire [31:0] mlkem_seed_d_share0 [8];
+  wire [31:0] mlkem_seed_d_share1 [8];
+  wire [31:0] mlkem_seed_z_share0 [8];
+  wire [31:0] mlkem_seed_z_share1 [8];
+  wire [31:0] mlkem_msg_share0 [8];
+  wire [31:0] mlkem_msg_share1 [8];
 
   for (genvar gi = 0; gi < 8; gi++) begin : gen_abr_seed_shares
     assign mldsa_seed_share0[gi]   = abr_hwif_out.MLDSA_SEED.KEY_SHARE0[gi].data.value;
@@ -386,17 +386,17 @@ module tb_key_manager;
         abr_hwif_out.MLKEM_SHARED_KEY.IRQ_ENABLE.key_valid_en.value;
 
   always_comb begin
-    abr_hwif_in = '{default: '0};
+    abr_hwif_in = '{default:'0};
 
     // The sticky IRQ_STATUS bit is set by hardware (hwset) on the same
     // key-ready event that loads the key; the reg block clears it on W1C.
-    abr_hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next = 1'b0;
+    abr_hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next  = 1'b0;
     abr_hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.hwset = tb_abr_sk_load_valid;
 
     // TB-modeled AB write: load shared-key words and set KEY_VALID.
     for (int i = 0; i < 8; i++) begin
       abr_hwif_in.MLKEM_SHARED_KEY.KEY[i].data.next = tb_abr_sk_load_data[i];
-      abr_hwif_in.MLKEM_SHARED_KEY.KEY[i].data.we = tb_abr_sk_load_valid;
+      abr_hwif_in.MLKEM_SHARED_KEY.KEY[i].data.we   = tb_abr_sk_load_valid;
       // hwclr: hardware clears word to 0 when KEY_VALID drops (KEY_CTRL = 0).
       abr_hwif_in.MLKEM_SHARED_KEY.KEY[i].data.hwclr =
                 ~abr_hwif_out.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.value;
@@ -411,29 +411,29 @@ module tb_key_manager;
   end
 
   abr_wrapper_key_reg u_abr_key_reg (
-    .clk           (clk),
-    .arst_n        (cold_rst_n),
-    .s_axil_awvalid(abr_req.aw_valid),
-    .s_axil_awready(abr_resp.aw_ready),
-    .s_axil_awaddr (abr_req.aw.addr[ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (abr_req.aw.prot),
-    .s_axil_wvalid (abr_req.w_valid),
-    .s_axil_wready (abr_resp.w_ready),
-    .s_axil_wdata  (abr_req.w.data),
-    .s_axil_wstrb  (abr_req.w.strb),
-    .s_axil_bvalid (abr_resp.b_valid),
-    .s_axil_bready (abr_req.b_ready),
-    .s_axil_bresp  (abr_resp.b.resp),
-    .s_axil_arvalid(abr_req.ar_valid),
-    .s_axil_arready(abr_resp.ar_ready),
-    .s_axil_araddr (abr_req.ar.addr[ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (abr_req.ar.prot),
-    .s_axil_rvalid (abr_resp.r_valid),
-    .s_axil_rready (abr_req.r_ready),
-    .s_axil_rdata  (abr_resp.r.data),
-    .s_axil_rresp  (abr_resp.r.resp),
-    .hwif_in       (abr_hwif_in),
-    .hwif_out      (abr_hwif_out)
+    .clk            (clk),
+    .arst_n         (cold_rst_n),
+    .s_axil_awvalid (abr_req.aw_valid),
+    .s_axil_awready (abr_resp.aw_ready),
+    .s_axil_awaddr  (abr_req.aw.addr[ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (abr_req.aw.prot),
+    .s_axil_wvalid  (abr_req.w_valid),
+    .s_axil_wready  (abr_resp.w_ready),
+    .s_axil_wdata   (abr_req.w.data),
+    .s_axil_wstrb   (abr_req.w.strb),
+    .s_axil_bvalid  (abr_resp.b_valid),
+    .s_axil_bready  (abr_req.b_ready),
+    .s_axil_bresp   (abr_resp.b.resp),
+    .s_axil_arvalid (abr_req.ar_valid),
+    .s_axil_arready (abr_resp.ar_ready),
+    .s_axil_araddr  (abr_req.ar.addr[ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (abr_req.ar.prot),
+    .s_axil_rvalid  (abr_resp.r_valid),
+    .s_axil_rready  (abr_req.r_ready),
+    .s_axil_rdata   (abr_resp.r.data),
+    .s_axil_rresp   (abr_resp.r.resp),
+    .hwif_in        (abr_hwif_in),
+    .hwif_out       (abr_hwif_out)
   );
 
   //=========================================================================
@@ -459,22 +459,22 @@ module tb_key_manager;
   localparam logic [31:0] EFUSE_RESP_END = u_key_manager.OTP_EFUSE_REMAP_BASE + 32'h0FFF;
   localparam int unsigned EFUSE_MEM_WORDS = 1024;  // 4 KB / 4 B (covers MAP+CTRL+MMR)
 
-  logic [31:0] efuse_mem                                            [EFUSE_MEM_WORDS];
+  logic [31:0] efuse_mem [EFUSE_MEM_WORDS];
 
   // AXI-Lite write channel — AW and W may arrive independently (AXI-Lite spec).
   // Track each in separate buffers and produce B only after both are captured.
-  logic        efuse_aw_pend;  // AW latched, waiting for matching W
+  logic        efuse_aw_pend;   // AW latched, waiting for matching W
   logic [31:0] efuse_aw_addr;
-  logic        efuse_w_pend;  // W latched, waiting for matching AW
+  logic        efuse_w_pend;    // W latched, waiting for matching AW
   logic [31:0] efuse_w_data;
-  logic        efuse_b_pend;  // B response outstanding
-  logic [ 1:0] efuse_b_resp;
+  logic        efuse_b_pend;    // B response outstanding
+  logic [1:0]  efuse_b_resp;
 
   // Combinatorial signals used inside the always_ff write block
-  logic        efuse_aw_fire;  // AW handshake this cycle
-  logic        efuse_w_fire;  // W  handshake this cycle
-  logic [31:0] efuse_waddr_nxt;  // resolved write address
-  logic [31:0] efuse_wdata_nxt;  // resolved write data
+  logic        efuse_aw_fire;   // AW handshake this cycle
+  logic        efuse_w_fire;    // W  handshake this cycle
+  logic [31:0] efuse_waddr_nxt; // resolved write address
+  logic [31:0] efuse_wdata_nxt; // resolved write data
 
   assign efuse_aw_fire   = efuse_req.aw_valid & !efuse_aw_pend & !efuse_b_pend;
   assign efuse_w_fire    = efuse_req.w_valid  & !efuse_w_pend  & !efuse_b_pend;
@@ -504,7 +504,7 @@ module tb_key_manager;
       if ((efuse_aw_pend | efuse_aw_fire) && (efuse_w_pend | efuse_w_fire)) begin
         if (efuse_waddr_nxt >= EFUSE_RESP_BASE && efuse_waddr_nxt <= EFUSE_RESP_END) begin
           efuse_mem[efuse_waddr_nxt[11:2]] <= efuse_wdata_nxt;
-          efuse_b_resp <= 2'b00;  // OKAY
+          efuse_b_resp <= 2'b00; // OKAY
         end else begin
           efuse_b_resp <= 2'b10;  // SLVERR
         end
@@ -522,7 +522,7 @@ module tb_key_manager;
   // Read channel: latch AR address, return data one cycle later
   logic        efuse_r_pend;
   logic [31:0] efuse_r_data;
-  logic [ 1:0] efuse_r_resp;
+  logic [1:0]  efuse_r_resp;
 
   always_ff @(posedge clk or negedge cold_rst_n) begin
     if (!cold_rst_n) begin
@@ -534,10 +534,10 @@ module tb_key_manager;
         efuse_r_pend <= 1'b1;
         if (efuse_req.ar.addr >= EFUSE_RESP_BASE && efuse_req.ar.addr <= EFUSE_RESP_END) begin
           efuse_r_data <= efuse_mem[efuse_req.ar.addr[11:2]];
-          efuse_r_resp <= 2'b00;  // OKAY
+          efuse_r_resp <= 2'b00; // OKAY
         end else begin
           efuse_r_data <= 32'hDEAD_C0DE;
-          efuse_r_resp <= 2'b10;  // SLVERR
+          efuse_r_resp <= 2'b10; // SLVERR
         end
       end
       if (efuse_r_pend && efuse_req.r_ready) begin
@@ -549,7 +549,7 @@ module tb_key_manager;
   // Drive AXI-Lite response channels from registered state
   always_comb begin
     efuse_resp.aw_ready = !efuse_aw_pend && !efuse_b_pend;
-    efuse_resp.w_ready  = !efuse_w_pend && !efuse_b_pend;
+    efuse_resp.w_ready  = !efuse_w_pend  && !efuse_b_pend;
     efuse_resp.b_valid  = efuse_b_pend;
     efuse_resp.b.resp   = efuse_b_resp;
     efuse_resp.ar_ready = !efuse_r_pend;
@@ -567,9 +567,9 @@ module tb_key_manager;
   // Probe virtual ROM memory bus signals from CPU wrapper
   wire        vrom_mem_valid = u_key_manager.u_cpu.vrom_mem_valid;
   wire        vrom_mem_instr = u_key_manager.u_cpu.vrom_mem_instr;
-  wire [31:0] vrom_mem_addr = u_key_manager.u_cpu.vrom_mem_addr;
+  wire [31:0] vrom_mem_addr  = u_key_manager.u_cpu.vrom_mem_addr;
   wire [31:0] vrom_mem_wdata = u_key_manager.u_cpu.vrom_mem_wdata;
-  wire [ 3:0] vrom_mem_wstrb = u_key_manager.u_cpu.vrom_mem_wstrb;
+  wire [3:0]  vrom_mem_wstrb = u_key_manager.u_cpu.vrom_mem_wstrb;
   wire        vrom_mem_la_read = u_key_manager.u_cpu.vrom_mem_la_read;
   wire [31:0] vrom_mem_la_addr = u_key_manager.u_cpu.vrom_mem_la_addr;
 
@@ -588,12 +588,12 @@ module tb_key_manager;
   //=========================================================================
 
   // ROM memory interface signals (for behavioral model)
-  logic rom_mem_req;
+  logic        rom_mem_req;
   logic [km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH-1:0] rom_mem_addr;
-  logic rom_mem_gnt;
-  logic rom_mem_rvalid;
+  logic        rom_mem_gnt;
+  logic        rom_mem_rvalid;
   logic [31:0] rom_mem_rdata;
-  logic [3:0] rom_mem_parity_injected;  // Parity with error injection for testing
+  logic [3:0]  rom_mem_parity_injected;  // Parity with error injection for testing
 
   // Connect top-level ROM interface struct to individual signals for memory model
   assign rom_mem_req = km_rom_mem_req.req;
@@ -608,21 +608,21 @@ module tb_key_manager;
   //=========================================================================
 
   // SRAM memory interface signals (for behavioral model)
-  logic sram_mem_req;
-  logic sram_mem_we;
-  logic [3:0] sram_mem_be;
+  logic        sram_mem_req;
+  logic        sram_mem_we;
+  logic [3:0]  sram_mem_be;
   logic [km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH-1:0] sram_mem_addr;
   logic [31:0] sram_mem_wdata;
-  logic sram_mem_gnt;
-  logic sram_mem_rvalid;
+  logic        sram_mem_gnt;
+  logic        sram_mem_rvalid;
   logic [31:0] sram_mem_rdata;
-  logic [3:0] sram_mem_wparity;
-  logic [3:0] sram_mem_rparity_injected;  // Parity with error injection for testing
+  logic [3:0]  sram_mem_wparity;
+  logic [3:0]  sram_mem_rparity_injected;  // Parity with error injection for testing
 
   // SRAM memory array (size from interface package)
   localparam int unsigned SRAM_SIZE_WORDS = km_intf_pkg::SRAM_SIZE_BYTES / 4;
-  logic [31:0] sram_mem[0:SRAM_SIZE_WORDS-1];
-  logic [3:0] sram_parity[0:SRAM_SIZE_WORDS-1];  // Parity storage
+  logic [31:0] sram_mem [0:SRAM_SIZE_WORDS-1];
+  logic [3:0]  sram_parity [0:SRAM_SIZE_WORDS-1];  // Parity storage
 
   //=========================================================================
   // SRAM Connection (to top-level key_manager module)
@@ -649,45 +649,45 @@ module tb_key_manager;
   // Flattened SEP AXI-Lite signals for cocotb access
   logic        sep_awvalid = 1'b0;
   logic [31:0] sep_awaddr = 32'h0;
-  logic [ 2:0] sep_awprot = 3'h0;
+  logic [2:0]  sep_awprot = 3'h0;
   logic        sep_awready;
   logic        sep_wvalid = 1'b0;
   logic [31:0] sep_wdata = 32'h0;
-  logic [ 3:0] sep_wstrb = 4'h0;
+  logic [3:0]  sep_wstrb = 4'h0;
   logic        sep_wready;
   logic        sep_bready = 1'b0;
   logic        sep_bvalid;
-  logic [ 1:0] sep_bresp;
+  logic [1:0]  sep_bresp;
   logic        sep_arvalid = 1'b0;
   logic [31:0] sep_araddr = 32'h0;
-  logic [ 2:0] sep_arprot = 3'h0;
+  logic [2:0]  sep_arprot = 3'h0;
   logic        sep_arready;
   logic        sep_rready = 1'b0;
   logic        sep_rvalid;
   logic [31:0] sep_rdata;
-  logic [ 1:0] sep_rresp;
+  logic [1:0]  sep_rresp;
 
   // Connect flattened signals (driven by cocotb) to structs
   // Note: key_manager uses km_axil types for SEP interface (same as KM interface)
   assign mbox_sep_req.aw_valid = sep_awvalid;
-  assign mbox_sep_req.aw.addr = sep_awaddr;
-  assign mbox_sep_req.aw.prot = sep_awprot;
+  assign mbox_sep_req.aw.addr  = sep_awaddr;
+  assign mbox_sep_req.aw.prot  = sep_awprot;
   assign sep_awready = mbox_sep_resp.aw_ready;
-  assign mbox_sep_req.w_valid = sep_wvalid;
-  assign mbox_sep_req.w.data = sep_wdata;
-  assign mbox_sep_req.w.strb = sep_wstrb;
-  assign sep_wready = mbox_sep_resp.w_ready;
-  assign mbox_sep_req.b_ready = sep_bready;
-  assign sep_bvalid = mbox_sep_resp.b_valid;
-  assign sep_bresp = mbox_sep_resp.b.resp;
+  assign mbox_sep_req.w_valid  = sep_wvalid;
+  assign mbox_sep_req.w.data   = sep_wdata;
+  assign mbox_sep_req.w.strb   = sep_wstrb;
+  assign sep_wready  = mbox_sep_resp.w_ready;
+  assign mbox_sep_req.b_ready  = sep_bready;
+  assign sep_bvalid  = mbox_sep_resp.b_valid;
+  assign sep_bresp   = mbox_sep_resp.b.resp;
   assign mbox_sep_req.ar_valid = sep_arvalid;
-  assign mbox_sep_req.ar.addr = sep_araddr;
-  assign mbox_sep_req.ar.prot = sep_arprot;
+  assign mbox_sep_req.ar.addr  = sep_araddr;
+  assign mbox_sep_req.ar.prot  = sep_arprot;
   assign sep_arready = mbox_sep_resp.ar_ready;
-  assign mbox_sep_req.r_ready = sep_rready;
-  assign sep_rvalid = mbox_sep_resp.r_valid;
-  assign sep_rdata = mbox_sep_resp.r.data;
-  assign sep_rresp = mbox_sep_resp.r.resp;
+  assign mbox_sep_req.r_ready  = sep_rready;
+  assign sep_rvalid  = mbox_sep_resp.r_valid;
+  assign sep_rdata   = mbox_sep_resp.r.data;
+  assign sep_rresp   = mbox_sep_resp.r.resp;
 
   //=========================================================================
   // Behavioral ROM Model (connected to ROM interface)
@@ -705,7 +705,7 @@ module tb_key_manager;
   // Cycle 3: Return data 2 (rvalid=1)
   logic rom_read_pending;
   logic [31:0] rom_rsp_data;
-  logic [3:0] rom_rsp_parity;
+  logic [3:0]  rom_rsp_parity;
   always_ff @(posedge clk or negedge cold_rst_n) begin
     if (!cold_rst_n) begin
       rom_read_pending <= 1'b0;
@@ -736,7 +736,7 @@ module tb_key_manager;
   // When request is issued in cycle N, rvalid is true in cycle N+1
   // If new request arrives in cycle N+1, rvalid stays true for cycle N+2
   assign rom_mem_rvalid = rom_read_pending;
-  assign rom_mem_rdata  = rom_rsp_data;
+  assign rom_mem_rdata = rom_rsp_data;
 
   // Generate parity for ROM data (odd parity per byte)
   function automatic logic [3:0] gen_parity(logic [31:0] data);
@@ -807,9 +807,9 @@ module tb_key_manager;
   // the new request. Otherwise sram_read_addr would be updated at the clock edge and
   // the combinational response could reflect the new address (wrong word, hence wrong
   // parity and possible "inverted" appearance).
-  logic        sram_read_pending;
+  logic sram_read_pending;
   logic [31:0] sram_rsp_data;
-  logic [ 3:0] sram_rsp_parity;
+  logic [3:0]  sram_rsp_parity;
   logic        sram_read_accept;
   assign sram_read_accept = sram_mem_req && sram_mem_gnt && !sram_mem_we;
   always_ff @(posedge clk or negedge cold_rst_n) begin
@@ -846,7 +846,8 @@ module tb_key_manager;
   logic [15:0] vrom_word_addr;
   logic [15:0] vrom_la_word_addr;
   localparam logic [31:0] VROM_BASE = km_intf_pkg::VROM_BASE_ADDR;
-  assign vrom_word_addr = (vrom_mem_addr >= VROM_BASE) ? ((vrom_mem_addr - VROM_BASE) >> 2) : 16'h0;
+  assign vrom_word_addr = (vrom_mem_addr >= VROM_BASE) ?
+                            ((vrom_mem_addr - VROM_BASE) >> 2) : 16'h0;
   assign vrom_la_word_addr = (vrom_mem_la_addr >= VROM_BASE) ?
                                ((vrom_mem_la_addr - VROM_BASE) >> 2) : 16'h0;
 
@@ -885,7 +886,7 @@ module tb_key_manager;
         // Use look-ahead address for prefetch (arrives 1 cycle before mem_valid)
         // This allows data to be ready when mem_valid is asserted
         vrom_read_addr <= vrom_mem_la_read ? vrom_la_word_addr : vrom_word_addr;
-        vrom_rsp_data  <= vrom_mem[vrom_mem_la_read?vrom_la_word_addr : vrom_word_addr];
+        vrom_rsp_data <= vrom_mem[vrom_mem_la_read ? vrom_la_word_addr : vrom_word_addr];
 `ifdef VROM_DEBUG
         $display("[KM TB VROM] @%0t: REQ addr=0x%08X (word=0x%04X) la=%0d", $time,
                  vrom_mem_la_read ? vrom_mem_la_addr : vrom_mem_addr,
@@ -1020,16 +1021,16 @@ module tb_key_manager;
   // - u_key_manager.u_kmcsr.vuart_tx_data_o  : TX byte data
 
   // Alias signals for easier access (probed from design hierarchy)
-  wire vuart_tx_valid = u_key_manager.u_kmcsr.vuart_tx_valid_o;
-  wire [7:0] vuart_tx_data = u_key_manager.u_kmcsr.vuart_tx_data_o;
+  wire       vuart_tx_valid = u_key_manager.u_kmcsr.vuart_tx_valid_o;
+  wire [7:0] vuart_tx_data  = u_key_manager.u_kmcsr.vuart_tx_data_o;
 
   // TX output buffer for cocotb access
-  logic [7:0] vuart_tx_buffer[0:4095];  // 4KB circular buffer
+  logic [7:0] vuart_tx_buffer [0:4095];  // 4KB circular buffer
   int unsigned vuart_tx_wr_ptr = 0;
   int unsigned vuart_tx_count = 0;
 
   // String accumulator for line-based output
-  logic [7:0] vuart_line_buffer[0:255];  // 256-char line buffer as byte array
+  logic [7:0] vuart_line_buffer [0:255];  // 256-char line buffer as byte array
   int unsigned vuart_line_pos = 0;
 
   always @(posedge clk) begin

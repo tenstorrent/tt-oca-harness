@@ -106,16 +106,16 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
   localparam time SysClkPeriod = 10ns;
 
   // Selected by the test before start(); dispatch_scenario() switches on it.
-  string                  scenario      = "";
+  string scenario = "";
 
   // Plumbed by the test from dtp_env before start(sequencer).
-  virtual dtp_tb_if       tb_vif;
+  virtual dtp_tb_if tb_vif;
 
   // Looped-scenario contract (dtp_base_test runner parity): per-pass seed,
   // random volume, and pass index.
-  int unsigned            scenario_seed = 0;
-  int unsigned            random_count  = 5;
-  int unsigned            loop_index    = 0;
+  int unsigned scenario_seed = 0;
+  int unsigned random_count  = 5;
+  int unsigned loop_index    = 0;
 
   // Per-pass evidence and routing model.
   ocah_checker            m_check;
@@ -163,25 +163,21 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
     string route_ids[$] = {ChkCsr, ChkSignal, ChkRouteModel, ChkIsolation};
     ids.delete();
     case (scenario)
-      "reg_stall":                                 ids = {ChkCsr, ChkQuiet, ChkAxil};
-      "axi_channel_skew":                          ids = {ChkCsr, ChkAxil};
-      "axi_channel_skew_demux_aw_lock_release":    ids = {ChkAxil};
-      "axi_channel_skew_read_decode_backpressure": ids = {ChkAxil};
-      "ctp_csr_sweep":                             ids = {ChkCsr};
-      "ctm_csr_sweep":                             ids = {ChkCsr};
-      "ctm_all_source_select":                     ids = {ChkCsr};
-      "wire_or":                                   ids = {ChkCsr, ChkSignal, ChkStretch};
-      "p2p":                                       ids = {ChkCsr, ChkSignal};
-      "random":                                    ids = {ChkCsr, ChkSignal};
-      "reset": begin
-        ids = route_ids;
-        ids.push_back(ChkQuiet);
-      end
-      "ctm_reset_wire_or_mode", "ctm_reset_p2p_mode", "ctm_reset_all_modes": begin
-        ids = route_ids;
-        ids.push_back(ChkQuiet);
-      end
-      default:                                     ids = route_ids;
+      "reg_stall":            ids = {ChkCsr, ChkQuiet, ChkAxil};
+      "axi_channel_skew":     ids = {ChkCsr, ChkAxil};
+      "axi_channel_skew_demux_aw_lock_release":     ids = {ChkAxil};
+      "axi_channel_skew_read_decode_backpressure":  ids = {ChkAxil};
+      "ctp_csr_sweep":        ids = {ChkCsr};
+      "ctm_csr_sweep":        ids = {ChkCsr};
+      "ctm_all_source_select": ids = {ChkCsr};
+      "wire_or":              ids = {ChkCsr, ChkSignal, ChkStretch};
+      "p2p":                  ids = {ChkCsr, ChkSignal};
+      "random":               ids = {ChkCsr, ChkSignal};
+      "reset":                begin ids = route_ids; ids.push_back(ChkQuiet); end
+      "ctm_reset_wire_or_mode",
+            "ctm_reset_p2p_mode",
+            "ctm_reset_all_modes":  begin ids = route_ids; ids.push_back(ChkQuiet); end
+      default:                ids = route_ids;
     endcase
   endfunction
 
@@ -504,10 +500,9 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
   // Quiet window: the request/acknowledge observables must show zero
   // activity for the window (CHK-XTRIG-QUIET).
   task check_quiet(string label, int unsigned cycles = 4);
-    string names[$] = {"xtrig_ctm_src_req",
-                       "xtrig_ctm_dst_ack",
-                       "xtrig_ctp_req_out_dout_en",
-                       "xtrig_ctp_ack_out_dout_en"};
+    string names[$] = {"xtrig_ctm_src_req", "xtrig_ctm_dst_ack",
+                           "xtrig_ctp_req_out_dout_en",
+                           "xtrig_ctp_ack_out_dout_en"};
     bit [31:0] activity[string];
     foreach (names[i]) activity[names[i]] = '0;
     for (int unsigned c = 0; c < cycles; c++) begin
@@ -635,10 +630,15 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
   static function void port_pool(string port_class, ref int unsigned pool[$]);
     pool.delete();
     case (port_class)
-      "ctp": for (int unsigned i = 0; i < XtrigNumCtp; i++) pool.push_back(i);
+      "ctp":
+                for (int unsigned i = 0; i < XtrigNumCtp; i++)
+                    pool.push_back(i);
       "internal":
-      for (int unsigned i = 0; i < XtrigNumIntCt; i++) pool.push_back(internal_ct_port(i));
-      default: for (int unsigned i = 0; i < XtrigNumCtmPorts; i++) pool.push_back(i);
+                for (int unsigned i = 0; i < XtrigNumIntCt; i++)
+                    pool.push_back(internal_ct_port(i));
+      default:
+                for (int unsigned i = 0; i < XtrigNumCtmPorts; i++)
+                    pool.push_back(i);
     endcase
   endfunction
 

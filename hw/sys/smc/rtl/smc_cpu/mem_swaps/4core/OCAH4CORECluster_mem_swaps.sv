@@ -4,15 +4,15 @@
 module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
 ) (
-  input  [  7:0] RW0_addr,
+  input  [7:0]   RW0_addr,
   input          RW0_clk,
   input  [143:0] RW0_wdata,
   output [143:0] RW0_rdata,
   input          RW0_en,
   input          RW0_wmode,
-  input  [  1:0] RW0_wmask,
+  input  [1:0]   RW0_wmask,
 
-  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -23,9 +23,9 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i  (RW0_en),
+    .req_i(RW0_en),
     .write_i(RW0_wmode),
-    .addr_i (RW0_addr),
+    .addr_i(RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{72{RW0_wmask[1]}}, {72{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -39,15 +39,15 @@ endmodule
 module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
   parameter int MEM_CFG_WIDTH = 11
 ) (
-  input  [  4:0] RW0_addr,
+  input  [4:0]   RW0_addr,
   input          RW0_clk,
   input  [107:0] RW0_wdata,
   output [107:0] RW0_rdata,
   input          RW0_en,
   input          RW0_wmode,
-  input  [  1:0] RW0_wmask,
+  input  [1:0]   RW0_wmask,
 
-  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -58,9 +58,9 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i  (RW0_en),
+    .req_i(RW0_en),
     .write_i(RW0_wmode),
-    .addr_i (RW0_addr),
+    .addr_i(RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{54{RW0_wmask[1]}}, {54{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -74,15 +74,15 @@ endmodule
 module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
   parameter int MEM_CFG_WIDTH = 11
 ) (
-  input  [ 4:0] RW0_addr,
-  input         RW0_clk,
-  input  [93:0] RW0_wdata,
-  output [93:0] RW0_rdata,
-  input         RW0_en,
-  input         RW0_wmode,
-  input  [ 1:0] RW0_wmask,
+  input  [4:0]   RW0_addr,
+  input          RW0_clk,
+  input  [93:0]  RW0_wdata,
+  output [93:0]  RW0_rdata,
+  input          RW0_en,
+  input          RW0_wmode,
+  input  [1:0]   RW0_wmask,
 
-  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -93,9 +93,9 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i  (RW0_en),
+    .req_i(RW0_en),
     .write_i(RW0_wmode),
-    .addr_i (RW0_addr),
+    .addr_i(RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{47{RW0_wmask[1]}}, {47{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -109,15 +109,15 @@ endmodule
 module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
 ) (
-  input  [ 7:0] RW0_addr,
+  input  [7:0]  RW0_addr,
   input         RW0_clk,
   input  [65:0] RW0_wdata,
   output [65:0] RW0_rdata,
   input         RW0_en,
   input         RW0_wmode,
-  input  [ 1:0] RW0_wmask,
+  input  [1:0]  RW0_wmask,
 
-  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -128,9 +128,9 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i  (RW0_en),
+    .req_i(RW0_en),
     .write_i(RW0_wmode),
-    .addr_i (RW0_addr),
+    .addr_i(RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({{33{RW0_wmask[1]}}, {33{RW0_wmask[0]}}}),
     .rdata_o(RW0_rdata),
@@ -151,7 +151,7 @@ module OCAH4CORECluster_mem_0_ext #(
   input         RW0_en,
   input         RW0_wmode,
 
-  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_ram_1p #(
@@ -162,9 +162,9 @@ module OCAH4CORECluster_mem_0_ext #(
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
-    .req_i  (RW0_en),
+    .req_i(RW0_en),
     .write_i(RW0_wmode),
-    .addr_i (RW0_addr),
+    .addr_i(RW0_addr),
     .wdata_i(RW0_wdata),
     .wmask_i({72{1'b1}}),  // No wmask input, enable all bits
     .rdata_o(RW0_rdata),
@@ -183,7 +183,7 @@ module OCAH4CORECluster_rom_ext #(
   input         R0_en,
   output [63:0] R0_rdata,
 
-  input [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
 );
 
   prim_rom #(

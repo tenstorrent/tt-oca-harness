@@ -16,7 +16,7 @@ module efuse_interface_controller #(
   parameter type data_t = logic,
   parameter type strb_t = logic,
 
-  parameter type efuse_axil_req_t  = logic,
+  parameter type efuse_axil_req_t = logic,
   parameter type efuse_axil_resp_t = logic,
 
   parameter type efuse_axil_aw_chan_t = logic,
@@ -71,66 +71,66 @@ module efuse_interface_controller #(
 
   parameter type efuse_map_t = logic
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                     clk_i,
+  input  logic                     rst_ni,
 
   // AXI4-Lite Register Interface
 
-  input  efuse_axil_req_t  axil_req_i,
-  output efuse_axil_resp_t axil_resp_o,
+  input  efuse_axil_req_t       axil_req_i,
+  output efuse_axil_resp_t      axil_resp_o,
 
-  input  efuse_axil_req_t  axil_jtag_req_i,
-  output efuse_axil_resp_t axil_jtag_resp_o,
+  input  efuse_axil_req_t       axil_jtag_req_i,
+  output efuse_axil_resp_t      axil_jtag_resp_o,
 
   // SHIM CSR Interface AXI4-Lite
-  output efuse_axil_req_t  fuse_bank_ctrl_req_o,
-  input  efuse_axil_resp_t fuse_bank_ctrl_resp_i,
+  output efuse_axil_req_t       fuse_bank_ctrl_req_o,
+  input  efuse_axil_resp_t      fuse_bank_ctrl_resp_i,
 
   // Fuse Command Interface - custom interface for SHIM state machine
   output fuse_command_req_t                     fuse_command_req_o,  // {address, program data, access_length_words, command, valid}
-  input fuse_command_resp_t fuse_command_resp_i,  // {read data, command status, valid}
+  input  fuse_command_resp_t                    fuse_command_resp_i, // {read data, command status, valid}
 
   // Additional control signals
-  input logic                                secure_tm_i,
-  input logic                                test_en_i,
-  input logic                                scan_rst_ni,
-  input logic                                security_disable_i,
-  input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,
+  input  logic                                  secure_tm_i,
+  input  logic                                  test_en_i,
+  input  logic                                  scan_rst_ni,
+  input  logic                                  security_disable_i,
+  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,
 
   // outputs
-  output logic       reset_n_o,
-  output logic       fuse_sense_done_o,
-  output logic       security_disable_o,
-  output efuse_map_t shadow_regs_o,
+  output logic                                  reset_n_o,
+  output logic                                  fuse_sense_done_o,
+  output logic                                  security_disable_o,
+  output efuse_map_t                            shadow_regs_o,
 
   // External boot-sequence gate (memory repair / shadow reg override done)
-  input logic ext_boot_seq_done_i,
+  input  logic                                  ext_boot_seq_done_i,
 
   // PROD_DBG isolation: block LC_STATE transitions when DEMOTE is active
-  input logic prod_dbg_active_i,
+  input  logic                                  prod_dbg_active_i,
 
   // Debug signals
-  output logic is_write_locked_shadow_regs_o,
-  output logic is_read_locked_shadow_regs_o,
-  output logic is_program_locked_o,
-  output logic is_read_locked_o,
-  output logic is_write_setup_only_o,
-  output logic is_lc_state_access_o,
-  output logic is_read_timeout_debug_o,
-  output logic is_program_timeout_debug_o,
-  output logic is_efuse_req_err_o,
-  output logic is_secure_tm_blocked_o,
+  output logic                                  is_write_locked_shadow_regs_o,
+  output logic                                  is_read_locked_shadow_regs_o,
+  output logic                                  is_program_locked_o,
+  output logic                                  is_read_locked_o,
+  output logic                                  is_write_setup_only_o,
+  output logic                                  is_lc_state_access_o,
+  output logic                                  is_read_timeout_debug_o,
+  output logic                                  is_program_timeout_debug_o,
+  output logic                                  is_efuse_req_err_o,
+  output logic                                  is_secure_tm_blocked_o,
 
-  output logic [5:0] is_rma_sip_token_match_debug,
-  output logic [5:0] is_rma_chiplet_token_match_debug,
+  output logic [5:0]                            is_rma_sip_token_match_debug,
+  output logic [5:0]                            is_rma_chiplet_token_match_debug,
 
-  output logic [7:0][31:0] sec_disable_token_o,
+  output logic [7:0][31:0]                      sec_disable_token_o,
 
   // Locked Field Access Interrupt
-  output logic locked_field_access_interrupt_o,
+  output logic                                  locked_field_access_interrupt_o,
 
   // Token Comparator Redundancy Fault Interrupt
-  output logic token_match_fault_o
+  output logic                                  token_match_fault_o
 );
 
   `include "prim_assert.sv"
@@ -156,26 +156,26 @@ module efuse_interface_controller #(
   assign reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i;
 
   prim_rst_sync u_reset_n_sync (
-    .clk_i(clk_i),
-    .d_i  (reset_n),
-    .q_o  (reset_n_o),
+    .clk_i                  (clk_i),
+    .d_i                    (reset_n),
+    .q_o                    (reset_n_o),
 
-    .scan_rst_ni(scan_rst_ni),
-    .scanmode_i (prim_mubi_pkg::mubi4_bool_to_mubi(test_en_i))
+    .scan_rst_ni            (scan_rst_ni),
+    .scanmode_i             (prim_mubi_pkg::mubi4_bool_to_mubi(test_en_i))
   );
 
   // Demux signals for APB
-  efuse_apb_req_t apb_mux_req;
+  efuse_apb_req_t  apb_mux_req;
   efuse_apb_resp_t apb_mux_resp;
 
-  efuse_apb_req_t [efuse_pkg::NUM_END_POINTS_REG-1:0] apb_endpoint_reqs;
+  efuse_apb_req_t  [efuse_pkg::NUM_END_POINTS_REG-1:0] apb_endpoint_reqs;
   efuse_apb_resp_t [efuse_pkg::NUM_END_POINTS_REG-1:0] apb_endpoint_resps;
 
   // AXI-Lite interface signals
-  efuse_axil_req_t axil_xbar_mst_req;
+  efuse_axil_req_t  axil_xbar_mst_req;
   efuse_axil_resp_t axil_xbar_mst_resp;
 
-  efuse_axil_req_t axil_jtag_req;
+  efuse_axil_req_t  axil_jtag_req;
   efuse_axil_resp_t axil_jtag_resp;
 
 
@@ -192,27 +192,27 @@ module efuse_interface_controller #(
   efuse_axil_resp_t axil_mux_resp;
 
   axi_lite_mux #(
-    .aw_chan_t  (efuse_axil_aw_chan_t),
-    .w_chan_t   (efuse_axil_w_chan_t),
-    .b_chan_t   (efuse_axil_b_chan_t),
-    .ar_chan_t  (efuse_axil_ar_chan_t),
-    .r_chan_t   (efuse_axil_r_chan_t),
-    .axi_req_t  (efuse_axil_req_t),
-    .axi_resp_t (efuse_axil_resp_t),
-    .NoSlvPorts (2),
-    .MaxTrans   (2),
-    .FallThrough(1'b1),
-    .SpillAw    (1'b1),
-    .SpillW     (1'b1),
-    .SpillB     (1'b1),
-    .SpillAr    (1'b1),
-    .SpillR     (1'b1)
+    .aw_chan_t    (efuse_axil_aw_chan_t),
+    .w_chan_t     (efuse_axil_w_chan_t),
+    .b_chan_t     (efuse_axil_b_chan_t),
+    .ar_chan_t    (efuse_axil_ar_chan_t),
+    .r_chan_t     (efuse_axil_r_chan_t),
+    .axi_req_t    (efuse_axil_req_t),
+    .axi_resp_t   (efuse_axil_resp_t),
+    .NoSlvPorts   (2),
+    .MaxTrans     (2),
+    .FallThrough  (1'b1),
+    .SpillAw      (1'b1),
+    .SpillW       (1'b1),
+    .SpillB       (1'b1),
+    .SpillAr      (1'b1),
+    .SpillR       (1'b1)
   ) u_axi_lite_mux (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),
-    .slv_reqs_i ({axil_jtag_req, axil_xbar_mst_req}),
-    .slv_resps_o({axil_jtag_resp, axil_xbar_mst_resp}),
+    .slv_reqs_i  ({axil_jtag_req, axil_xbar_mst_req}),
+    .slv_resps_o ({axil_jtag_resp, axil_xbar_mst_resp}),
     .mst_req_o  (axil_mux_req),
     .mst_resp_i (axil_mux_resp)
   );
@@ -278,7 +278,7 @@ module efuse_interface_controller #(
     .SpillAr(1'b0),
     .SpillR(1'b0)
   ) u_axi_lite_demux_shim_or_interface_request (
-    .clk_i (clk_i),
+    .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
 
@@ -287,7 +287,7 @@ module efuse_interface_controller #(
     .slv_ar_select_i(efuse_req_decode_select_ar),
     .slv_resp_o(axil_mux_resp),
 
-    .mst_reqs_o (axil_mux_req_routed),
+    .mst_reqs_o(axil_mux_req_routed),
     .mst_resps_i(axil_mux_resp_routed)
   );
 
@@ -311,41 +311,41 @@ module efuse_interface_controller #(
     .ADDR_START(32'h0000_0000),
     .ADDR_END(32'hFFFF_FFFF)  // Full address range
   ) u_prim_axi_lite_to_apb_single (
-    .i_clk    (clk_i),
-    .i_reset_n(rst_ni),
+    .i_clk                (clk_i),
+    .i_reset_n            (rst_ni),
 
     // AXI-Lite input signals
-    .i_axi_lite_awvalid(axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw_valid),
-    .i_axi_lite_awaddr (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.addr),
-    .i_axi_lite_awprot (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.prot),
-    .o_axi_lite_awready(axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].aw_ready),
-    .i_axi_lite_wvalid (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w_valid),
-    .i_axi_lite_wdata  (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.data),
-    .i_axi_lite_wstrb  (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.strb),
-    .o_axi_lite_wready (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].w_ready),
-    .o_axi_lite_bvalid (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b_valid),
-    .o_axi_lite_bresp  (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b.resp),
-    .i_axi_lite_bready (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].b_ready),
-    .i_axi_lite_arvalid(axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar_valid),
-    .i_axi_lite_araddr (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.addr),
-    .i_axi_lite_arprot (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.prot),
-    .o_axi_lite_arready(axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].ar_ready),
-    .o_axi_lite_rvalid (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r_valid),
-    .o_axi_lite_rdata  (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.data),
-    .o_axi_lite_rresp  (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.resp),
-    .i_axi_lite_rready (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].r_ready),
+    .i_axi_lite_awvalid   (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw_valid),
+    .i_axi_lite_awaddr    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.addr),
+    .i_axi_lite_awprot    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.prot),
+    .o_axi_lite_awready   (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].aw_ready),
+    .i_axi_lite_wvalid    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w_valid),
+    .i_axi_lite_wdata     (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.data),
+    .i_axi_lite_wstrb     (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.strb),
+    .o_axi_lite_wready    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].w_ready),
+    .o_axi_lite_bvalid    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b_valid),
+    .o_axi_lite_bresp     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b.resp),
+    .i_axi_lite_bready    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].b_ready),
+    .i_axi_lite_arvalid   (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar_valid),
+    .i_axi_lite_araddr    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.addr),
+    .i_axi_lite_arprot    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.prot),
+    .o_axi_lite_arready   (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].ar_ready),
+    .o_axi_lite_rvalid    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r_valid),
+    .o_axi_lite_rdata     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.data),
+    .o_axi_lite_rresp     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.resp),
+    .i_axi_lite_rready    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].r_ready),
 
     // APB output signals
-    .o_psel   (apb_mux_req.psel),
-    .o_penable(apb_mux_req.penable),
-    .o_pwrite (apb_mux_req.pwrite),
-    .o_paddr  (apb_mux_req.paddr),
-    .o_pwdata (apb_mux_req.pwdata),
-    .o_pstrb  (apb_mux_req.pstrb),
-    .o_pprot  (apb_mux_req.pprot),
-    .i_pready (apb_mux_resp.pready),
-    .i_pslverr(apb_mux_resp.pslverr),
-    .i_prdata (apb_mux_resp.prdata)
+    .o_psel               (apb_mux_req.psel),
+    .o_penable            (apb_mux_req.penable),
+    .o_pwrite             (apb_mux_req.pwrite),
+    .o_paddr              (apb_mux_req.paddr),
+    .o_pwdata             (apb_mux_req.pwdata),
+    .o_pstrb              (apb_mux_req.pstrb),
+    .o_pprot              (apb_mux_req.pprot),
+    .i_pready             (apb_mux_resp.pready),
+    .i_pslverr            (apb_mux_resp.pslverr),
+    .i_prdata             (apb_mux_resp.prdata)
   );
 
 
@@ -386,19 +386,19 @@ module efuse_interface_controller #(
 
   // APB demultiplexer for routing to shadow registers, CSR, and (if SEP) MMR
   apb_demux #(
-    .NoMstPorts(efuse_pkg::NUM_END_POINTS_REG),
-    .req_t     (efuse_apb_req_t),
-    .resp_t    (efuse_apb_resp_t)
+    .NoMstPorts (efuse_pkg::NUM_END_POINTS_REG),
+    .req_t      (efuse_apb_req_t),
+    .resp_t     (efuse_apb_resp_t)
   ) u_apb_demux (
-    .slv_req_i (apb_mux_req),
-    .slv_resp_o(apb_mux_resp),
-    .mst_req_o (apb_endpoint_reqs),
-    .mst_resp_i(apb_endpoint_resps),
-    .select_i  (efuse_reg_select)
+    .slv_req_i  (apb_mux_req),
+    .slv_resp_o (apb_mux_resp),
+    .mst_req_o  (apb_endpoint_reqs),
+    .mst_resp_i (apb_endpoint_resps),
+    .select_i   (efuse_reg_select)
   );
 
-  assign apb_endpoint_resps[efuse_pkg::ERR_DECODE].pready  = 1'b1;
-  assign apb_endpoint_resps[efuse_pkg::ERR_DECODE].prdata  = data_t'('hbadcab1e);
+  assign apb_endpoint_resps[efuse_pkg::ERR_DECODE].pready = 1'b1;
+  assign apb_endpoint_resps[efuse_pkg::ERR_DECODE].prdata = data_t'('hbadcab1e);
   assign apb_endpoint_resps[efuse_pkg::ERR_DECODE].pslverr = 1'b1;
 
   ///////////////////////////////////////////////
@@ -411,17 +411,17 @@ module efuse_interface_controller #(
     if (HAS_LC_STATE) begin : gen_mmr_reg
 
       efuse_token_processing #(
-        .SEP_SEC_DISABLE_TOKEN(SEP_SEC_DISABLE_TOKEN),
-        .LC_STATE_WIDTH       (LC_STATE_WIDTH),
-        .TOKEN_MATCH_CODE     (TOKEN_MATCH_CODE),
-        .efuse_apb_req_t      (efuse_apb_req_t),
-        .efuse_apb_resp_t     (efuse_apb_resp_t),
-        .efuse_map_t          (efuse_map_t)
+        .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
+        .LC_STATE_WIDTH        (LC_STATE_WIDTH),
+        .TOKEN_MATCH_CODE      (TOKEN_MATCH_CODE),
+        .efuse_apb_req_t       (efuse_apb_req_t),
+        .efuse_apb_resp_t      (efuse_apb_resp_t),
+        .efuse_map_t           (efuse_map_t)
       ) u_efuse_token_processing (
-        .clk_i            (clk_i),
-        .rst_ni           (rst_ni),
-        .test_en_i        (test_en_i),
-        .fuse_sense_done_i(fuse_sense_done),
+        .clk_i                      (clk_i),
+        .rst_ni                     (rst_ni),
+        .test_en_i                  (test_en_i),
+        .fuse_sense_done_i          (fuse_sense_done),
 
         .apb_req_i                  (apb_endpoint_reqs[efuse_pkg::EFUSE_MMR_REG_MAP]),
         .apb_resp_o                 (apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP]),
@@ -429,12 +429,12 @@ module efuse_interface_controller #(
         .rma_chiplet_token_match_q_o(rma_chiplet_token_match),
         .sec_disable_token_o        (sec_disable_token_o),
 
-        .security_disable_o(security_disable_o),
+        .security_disable_o         (security_disable_o),
 
-        .token_match_fault_o(token_match_fault_o),
+        .token_match_fault_o        (token_match_fault_o),
 
-        .shadow_regs_i(shadow_regs),
-        .shadow_regs_o(shadow_regs_o)
+        .shadow_regs_i              (shadow_regs),
+        .shadow_regs_o              (shadow_regs_o)
       );
 
 
@@ -460,26 +460,26 @@ module efuse_interface_controller #(
   // Efuse Interface CSR
   ///////////////////////////////////////////////
 
-  efuse_interface_ctrl_reg_pkg::efuse_interface_ctrl__in_t  fuse_interface_ctrl_hwif_in;
+  efuse_interface_ctrl_reg_pkg::efuse_interface_ctrl__in_t fuse_interface_ctrl_hwif_in;
   efuse_interface_ctrl_reg_pkg::efuse_interface_ctrl__out_t fuse_interface_ctrl_hwif_out;
 
   efuse_interface_ctrl_reg u_efuse_interface_ctrl_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk        (clk_i),
+    .arst_n     (rst_ni),
 
-    .s_apb_psel   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].psel),
-    .s_apb_penable(apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].penable),
-    .s_apb_pwrite (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pwrite),
-    .s_apb_pprot  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pprot),
-    .s_apb_paddr  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].paddr[4:0]),
-    .s_apb_pwdata (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pwdata),
-    .s_apb_pstrb  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pstrb),
-    .s_apb_pready (apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].pready),
-    .s_apb_prdata (apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].prdata),
-    .s_apb_pslverr(apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].pslverr),
+    .s_apb_psel    (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].psel),
+    .s_apb_penable (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].penable),
+    .s_apb_pwrite  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pwrite),
+    .s_apb_pprot   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pprot),
+    .s_apb_paddr   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].paddr[4:0]),
+    .s_apb_pwdata  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pwdata),
+    .s_apb_pstrb   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pstrb),
+    .s_apb_pready  (apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].pready),
+    .s_apb_prdata  (apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].prdata),
+    .s_apb_pslverr (apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].pslverr),
 
-    .hwif_in (fuse_interface_ctrl_hwif_in),
-    .hwif_out(fuse_interface_ctrl_hwif_out)
+    .hwif_in  (fuse_interface_ctrl_hwif_in),
+    .hwif_out (fuse_interface_ctrl_hwif_out)
   );
 
   // Error from request being blocked
@@ -513,21 +513,21 @@ module efuse_interface_controller #(
   ///////////////////////////////////////////////
 
   // Guard signal
-  logic               secure_tm_blocked;
+  logic secure_tm_blocked;
 
   // CSR signals for interface control
   // Program has priority over read
-  logic               reg_interface_program_enable;
-  logic               reg_interface_program_go;
-  efuse_addr_t        reg_interface_program_addr;
-  logic               reg_interface_program_data;
-  logic               reg_interface_program_read_back_enable;
+  logic reg_interface_program_enable;
+  logic reg_interface_program_go;
+  efuse_addr_t reg_interface_program_addr;
+  logic reg_interface_program_data;
+  logic reg_interface_program_read_back_enable;
 
   // Full-width CSR address and out-of-bounds flag. The cast to efuse_addr_t
   // truncates upper bits; without this comparator the OOB check would run on
   // an already-aliased address and never fire.
-  logic        [15:0] reg_interface_program_addr_csr;
-  logic               reg_interface_program_addr_oob;
+  logic [15:0] reg_interface_program_addr_csr;
+  logic        reg_interface_program_addr_oob;
 
   assign reg_interface_program_enable = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.program_enable.value && ~efuse_req_err;
   assign reg_interface_program_go = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_go.value;
@@ -556,36 +556,36 @@ module efuse_interface_controller #(
     .fuse_command_req_t(fuse_command_req_t),
     .fuse_command_resp_t(fuse_command_resp_t)
   ) u_efuse_program_interface (
-    .clk_i    (clk_i),
-    .rst_ni   (reset_n_o),
-    .test_en_i(test_en_i),
+    .clk_i                        (clk_i),
+    .rst_ni                       (reset_n_o),
+    .test_en_i                    (test_en_i),
 
-    .program_enable_i          (reg_interface_program_enable),
-    .is_programing_o           (efuse_is_programing),
-    .program_target_addr_o     (efuse_program_target_addr),
-    .program_addr_i            (reg_interface_program_addr),
-    .program_data_in_i         (reg_interface_program_data),
-    .program_go_i              (reg_interface_program_go),
-    .program_read_back_enable_i(reg_interface_program_read_back_enable),
+    .program_enable_i             (reg_interface_program_enable),
+    .is_programing_o              (efuse_is_programing),
+    .program_target_addr_o        (efuse_program_target_addr),
+    .program_addr_i               (reg_interface_program_addr),
+    .program_data_in_i            (reg_interface_program_data),
+    .program_go_i                 (reg_interface_program_go),
+    .program_read_back_enable_i   (reg_interface_program_read_back_enable),
 
-    .program_busy_o            (efuse_program_busy),
-    .program_done_o            (efuse_program_done),
-    .program_error_o           (efuse_program_status),
-    .program_read_back_data_o  (efuse_program_read_back_data),
-    .program_addr_oob_i        (reg_interface_program_addr_oob),
-    .program_addr_error_o      (program_addr_error),
-    .program_addr_error_clear_i(program_addr_error_clear),
+    .program_busy_o               (efuse_program_busy),
+    .program_done_o               (efuse_program_done),
+    .program_error_o              (efuse_program_status),
+    .program_read_back_data_o     (efuse_program_read_back_data),
+    .program_addr_oob_i           (reg_interface_program_addr_oob),
+    .program_addr_error_o         (program_addr_error),
+    .program_addr_error_clear_i   (program_addr_error_clear),
 
-    .efuse_req_err_i    (efuse_req_err),
-    .secure_tm_blocked_i(secure_tm_blocked),
+    .efuse_req_err_i               (efuse_req_err),
+    .secure_tm_blocked_i           (secure_tm_blocked),
 
-    .program_req_timeout_en_i    (program_req_timeout_enable),
-    .program_req_timeout_cycles_i(program_req_timeout_cycles),
+    .program_req_timeout_en_i      (program_req_timeout_enable),
+    .program_req_timeout_cycles_i  (program_req_timeout_cycles),
 
-    .fuse_command_req_o (fuse_command_req_interface_ctrl_w),
-    .fuse_command_resp_i(fuse_command_resp_interface_ctrl_w),
+    .fuse_command_req_o           (fuse_command_req_interface_ctrl_w),
+    .fuse_command_resp_i          (fuse_command_resp_interface_ctrl_w),
 
-    .is_program_timeout_debug_o(is_program_timeout_debug_o)
+    .is_program_timeout_debug_o   (is_program_timeout_debug_o)
   );
 
   // Program response status to CSR
@@ -600,16 +600,16 @@ module efuse_interface_controller #(
   // Efuse Read Interface
   ///////////////////////////////////////////////
 
-  fuse_command_req_t         fuse_command_req_interface_ctrl_r;
-  fuse_command_resp_t        fuse_command_resp_interface_ctrl_r;
+  fuse_command_req_t fuse_command_req_interface_ctrl_r;
+  fuse_command_resp_t fuse_command_resp_interface_ctrl_r;
 
-  logic                      reg_interface_read_enable;
-  efuse_addr_t               reg_interface_read_addr;
-  logic                      reg_interface_read_go;
+  logic reg_interface_read_enable;
+  efuse_addr_t reg_interface_read_addr;
+  logic reg_interface_read_go;
 
   // Full-width CSR address and out-of-bounds flag
-  logic               [15:0] reg_interface_read_addr_csr;
-  logic                      reg_interface_read_addr_oob;
+  logic [15:0] reg_interface_read_addr_csr;
+  logic        reg_interface_read_addr_oob;
 
   assign reg_interface_read_enable = fuse_interface_ctrl_hwif_out.EFUSE_READ_CTRL.read_enable.value && ~efuse_req_err;
   assign reg_interface_read_addr_csr = fuse_interface_ctrl_hwif_out.EFUSE_READ_CTRL.efuse_addr.value;
@@ -617,12 +617,12 @@ module efuse_interface_controller #(
   assign reg_interface_read_addr_oob = ({16'h0, reg_interface_read_addr_csr} >= SHADOW_REG_BITS);
   assign reg_interface_read_go = fuse_interface_ctrl_hwif_out.EFUSE_READ_CTRL.efuse_read_go.value;
 
-  logic        efuse_read_busy;
-  logic        efuse_read_done;
-  logic        efuse_read_status;
-  efuse_data_t efuse_read_back_data;
-  logic        efuse_is_reading;
-  efuse_addr_t efuse_read_target_addr;
+  logic               efuse_read_busy;
+  logic               efuse_read_done;
+  logic               efuse_read_status;
+  efuse_data_t        efuse_read_back_data;
+  logic               efuse_is_reading;
+  efuse_addr_t        efuse_read_target_addr;
 
   efuse_read_interface #(
     .efuse_addr_t(efuse_addr_t),
@@ -630,33 +630,33 @@ module efuse_interface_controller #(
     .fuse_command_resp_t(fuse_command_resp_t),
     .efuse_data_t(efuse_data_t)
   ) u_efuse_read_interface (
-    .clk_i    (clk_i),
-    .rst_ni   (reset_n_o),
-    .test_en_i(test_en_i),
+    .clk_i               (clk_i),
+    .rst_ni              (reset_n_o),
+    .test_en_i           (test_en_i),
 
-    .read_enable_i          (reg_interface_read_enable),
-    .is_reading_o           (efuse_is_reading),
-    .read_target_addr_o     (efuse_read_target_addr),
-    .read_addr_i            (reg_interface_read_addr),
-    .read_go_i              (reg_interface_read_go),
-    .read_busy_o            (efuse_read_busy),
-    .read_done_o            (efuse_read_done),
-    .read_error_o           (efuse_read_status),
-    .read_back_data_o       (efuse_read_back_data),
-    .read_addr_oob_i        (reg_interface_read_addr_oob),
-    .read_addr_error_o      (read_addr_error),
-    .read_addr_error_clear_i(read_addr_error_clear),
+    .read_enable_i              (reg_interface_read_enable),
+    .is_reading_o               (efuse_is_reading),
+    .read_target_addr_o         (efuse_read_target_addr),
+    .read_addr_i                (reg_interface_read_addr),
+    .read_go_i                  (reg_interface_read_go),
+    .read_busy_o                (efuse_read_busy),
+    .read_done_o                (efuse_read_done),
+    .read_error_o               (efuse_read_status),
+    .read_back_data_o           (efuse_read_back_data),
+    .read_addr_oob_i            (reg_interface_read_addr_oob),
+    .read_addr_error_o          (read_addr_error),
+    .read_addr_error_clear_i    (read_addr_error_clear),
 
-    .efuse_req_err_i    (efuse_req_err),
-    .secure_tm_blocked_i(secure_tm_blocked),
+    .efuse_req_err_i            (efuse_req_err),
+    .secure_tm_blocked_i        (secure_tm_blocked),
 
-    .read_req_timeout_en_i    (read_req_timeout_enable),
-    .read_req_timeout_cycles_i(read_req_timeout_cycles),
+    .read_req_timeout_en_i      (read_req_timeout_enable),
+    .read_req_timeout_cycles_i  (read_req_timeout_cycles),
 
-    .fuse_command_req_o (fuse_command_req_interface_ctrl_r),
-    .fuse_command_resp_i(fuse_command_resp_interface_ctrl_r),
+    .fuse_command_req_o  (fuse_command_req_interface_ctrl_r),
+    .fuse_command_resp_i (fuse_command_resp_interface_ctrl_r),
 
-    .is_read_timeout_debug_o(is_read_timeout_debug_o)
+    .is_read_timeout_debug_o (is_read_timeout_debug_o)
   );
 
   // Read response status to CSR
@@ -670,29 +670,29 @@ module efuse_interface_controller #(
   // Efuse Shadow Registers
   ////////////////////////////////////////////////////////////////////////////
 
-  fuse_command_req_t  fuse_command_req_shadow_regs;
+  fuse_command_req_t fuse_command_req_shadow_regs;
   fuse_command_resp_t fuse_command_resp_shadow_regs;
 
   efuse_shadow_regs #(
     .FUSE_MAP_REG_MAP_BASE_ADDR(EFUSE_MAP_REG_MAP_BASE_ADDR),
 
-    .SHADOW_REG_BITS      (SHADOW_REG_BITS),
-    .SHADOW_REG_BYTES     (SHADOW_REG_BYTES),
+    .SHADOW_REG_BITS     (SHADOW_REG_BITS),
+    .SHADOW_REG_BYTES    (SHADOW_REG_BYTES),
     .SHADOW_REG_WORD_WIDTH(EFUSE_MACRO_WORD_WIDTH),
-    .EFUSE_FIELDS         (EFUSE_FIELDS),
-    .REG_ADDR_WIDTH       (EFUSE_MAP_REG_MAP_WIDTH),
+    .EFUSE_FIELDS        (EFUSE_FIELDS),
+    .REG_ADDR_WIDTH      (EFUSE_MAP_REG_MAP_WIDTH),
 
     .HAS_LC_STATE        (HAS_LC_STATE),
     .CLASS1_SHADOW_RANGES(CLASS1_SHADOW_RANGES),
     .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
     .LC_STATE_WIDTH      (LC_STATE_WIDTH),
 
-    .TOKEN_MATCH_CODE(TOKEN_MATCH_CODE),
+    .TOKEN_MATCH_CODE    (TOKEN_MATCH_CODE),
 
-    .addr_t          (addr_t),
-    .data_t          (data_t),
-    .efuse_apb_req_t (efuse_apb_req_t),
-    .efuse_apb_resp_t(efuse_apb_resp_t),
+    .addr_t              (addr_t),
+    .data_t              (data_t),
+    .efuse_apb_req_t     (efuse_apb_req_t),
+    .efuse_apb_resp_t    (efuse_apb_resp_t),
 
     .efuse_addr_t        (efuse_addr_t),
     .efuse_data_t        (efuse_data_t),
@@ -700,58 +700,58 @@ module efuse_interface_controller #(
     .fuse_command_req_t  (fuse_command_req_t),
     .fuse_command_resp_t (fuse_command_resp_t),
 
-    .efuse_map_t(efuse_map_t)
+    .efuse_map_t         (efuse_map_t)
 
   ) u_efuse_shadow_regs (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
 
-    .test_en_i         (test_en_i),
-    .security_disable_i(security_disable_i),
+    .test_en_i            (test_en_i),
+    .security_disable_i   (security_disable_i),
 
-    .secure_tm_i(secure_tm_i),
+    .secure_tm_i          (secure_tm_i),
 
-    .efuse_field_map_i(efuse_field_map_i),
+    .efuse_field_map_i    (efuse_field_map_i),
 
     // APB interface - shadow registers
     .apb_req_paddr_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].paddr[EFUSE_MAP_REG_MAP_WIDTH-1:0]),
-    .apb_req_pprot_i(apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pprot),
-    .apb_req_psel_i(apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].psel),
-    .apb_req_penable_i(apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].penable),
-    .apb_req_pwrite_i(apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pwrite),
-    .apb_req_pwdata_i(apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pwdata),
-    .apb_req_pstrb_i(apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pstrb),
+    .apb_req_pprot_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pprot),
+    .apb_req_psel_i          (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].psel),
+    .apb_req_penable_i       (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].penable),
+    .apb_req_pwrite_i        (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pwrite),
+    .apb_req_pwdata_i        (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pwdata),
+    .apb_req_pstrb_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pstrb),
 
-    .apb_resp_o(apb_endpoint_resps[efuse_pkg::SHADOW_REG_MAP]),
+    .apb_resp_o              (apb_endpoint_resps[efuse_pkg::SHADOW_REG_MAP]),
 
-    .fuse_sense_done_o(fuse_sense_done),
-    .shadow_efuse_o   (shadow_regs),
+    .fuse_sense_done_o       (fuse_sense_done),
+    .shadow_efuse_o          (shadow_regs),
 
     // RMA Token Match
-    .rma_chiplet_token_match_i(rma_chiplet_token_match),
-    .rma_sip_token_match_i    (rma_sip_token_match),
+    .rma_chiplet_token_match_i (rma_chiplet_token_match),
+    .rma_sip_token_match_i     (rma_sip_token_match),
 
-    .prod_dbg_active_i(prod_dbg_active_i),
+    .prod_dbg_active_i         (prod_dbg_active_i),
 
     // Fuse Command Request/Response to populate shadow registers during fuse sensing
-    .fuse_command_req (fuse_command_req_shadow_regs),
-    .fuse_command_resp(fuse_command_resp_shadow_regs),
+    .fuse_command_req     (fuse_command_req_shadow_regs),
+    .fuse_command_resp    (fuse_command_resp_shadow_regs),
 
     // Debug ports
-    .is_write_locked_o    (is_write_locked_shadow_regs_o),
-    .is_write_setup_only_o(is_write_setup_only_o),
-    .is_lc_state_access_o (is_lc_state_access_o),
-    .is_read_locked_o     (is_read_locked_shadow_regs_o),
+    .is_write_locked_o        (is_write_locked_shadow_regs_o),
+    .is_write_setup_only_o   (is_write_setup_only_o),
+    .is_lc_state_access_o    (is_lc_state_access_o),
+    .is_read_locked_o        (is_read_locked_shadow_regs_o),
 
-    .locked_field_access_interrupt_o(locked_field_access_interrupt_o)
+    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
   );
 
   ////////////////////////////////////////////////////////////////////////////
   // Demux between shadow register request, read CSR request, and write CSR request
   ////////////////////////////////////////////////////////////////////////////
 
-  fuse_command_req_t  fuse_command_req_pre_filter;
-  fuse_command_resp_t fuse_command_resp_post_filter;
+  fuse_command_req_t                     fuse_command_req_pre_filter;
+  fuse_command_resp_t                    fuse_command_resp_post_filter;
 
   always_comb begin : efuse_command_request_mux
 
@@ -761,7 +761,7 @@ module efuse_interface_controller #(
 
     // Fuse sensing into the shadow registers must be done first - will start automatic upon cold reset de-assertion
     priority if ((!fuse_sense_done) && (!security_disable_i)) begin : auto_sense_mode
-      fuse_command_req_pre_filter   = fuse_command_req_shadow_regs;
+      fuse_command_req_pre_filter = fuse_command_req_shadow_regs;
       fuse_command_resp_shadow_regs = fuse_command_resp_post_filter;
     end else if (reg_interface_program_enable) begin : program_mode
       fuse_command_req_pre_filter = fuse_command_req_interface_ctrl_w;
@@ -790,19 +790,19 @@ module efuse_interface_controller #(
     .efuse_addr_t(efuse_addr_t),
     .efuse_data_t(efuse_data_t)
   ) u_efuse_guard (
-    .clk_i      (clk_i),
-    .reset_n_i  (rst_ni),
-    .secure_tm_i(secure_tm_i),
+    .clk_i                     (clk_i),
+    .reset_n_i                 (rst_ni),
+    .secure_tm_i               (secure_tm_i),
 
-    .efuse_field_map_i(efuse_field_map_i),
+    .efuse_field_map_i         (efuse_field_map_i),
 
-    .rma_sip_token_match_i    (rma_sip_token_match),
-    .rma_chiplet_token_match_i(rma_chiplet_token_match),
+    .rma_sip_token_match_i     (rma_sip_token_match),
+    .rma_chiplet_token_match_i (rma_chiplet_token_match),
 
     // Request has been blocked - error signal from the guard to the efuse_interface_ctrl_reg
-    .efuse_err_o  (efuse_req_err),
+    .efuse_err_o               (efuse_req_err),
     // A signal from the efuse_interface_ctrl_reg to clear the error
-    .error_clear_i(efuse_err_clear),
+    .error_clear_i             (efuse_err_clear),
 
     // Fuse command request generated by the controller, needs to be filtered by the guard
     .fuse_command_req_i         (fuse_command_req_pre_filter),
@@ -812,15 +812,15 @@ module efuse_interface_controller #(
     .fuse_command_resp_i         (fuse_command_resp_i),
     .fuse_command_resp_filtered_o(fuse_command_resp_post_filter),
 
-    .shadow_regs_i        (shadow_regs),
-    .is_programing_i      (efuse_is_programing),
-    .program_target_addr_i(efuse_program_target_addr),
-    .is_reading_i         (efuse_is_reading),
-    .read_target_addr_i   (efuse_read_target_addr),
+    .shadow_regs_i             (shadow_regs),
+    .is_programing_i           (efuse_is_programing),
+    .program_target_addr_i     (efuse_program_target_addr),
+    .is_reading_i              (efuse_is_reading),
+    .read_target_addr_i        (efuse_read_target_addr),
 
-    .is_program_locked_o(is_program_locked_o),
-    .is_read_locked_o   (is_read_locked_o),
-    .secure_tm_blocked_o(secure_tm_blocked)
+    .is_program_locked_o       (is_program_locked_o),
+    .is_read_locked_o          (is_read_locked_o),
+    .secure_tm_blocked_o       (secure_tm_blocked)
   );
 
   assign is_efuse_req_err_o = efuse_req_err;

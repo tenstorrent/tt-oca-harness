@@ -26,38 +26,38 @@ module axi_cg_snoop #(
   parameter int unsigned DenyDelay = 1,
   parameter int unsigned HystWidth = 6
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                    clk_i,
+  input  logic                    rst_ni,
 
   // AXI Write Address Channel Snoop
-  input logic snoop_aw_valid_i,
-  input logic snoop_aw_ready_i,
+  input  logic                    snoop_aw_valid_i,
+  input  logic                    snoop_aw_ready_i,
 
   // AXI Write Data Channel Snoop
-  input logic snoop_w_valid_i,
+  input  logic                    snoop_w_valid_i,
 
   // AXI Write Response Channel Snoop
-  input logic snoop_b_valid_i,
-  input logic snoop_b_ready_i,
+  input  logic                    snoop_b_valid_i,
+  input  logic                    snoop_b_ready_i,
 
   // AXI Read Address Channel Snoop
-  input logic snoop_ar_valid_i,
-  input logic snoop_ar_ready_i,
+  input  logic                    snoop_ar_valid_i,
+  input  logic                    snoop_ar_ready_i,
 
   // AXI Read Data Channel Snoop
-  input logic snoop_r_valid_i,
-  input logic snoop_r_ready_i,
-  input logic snoop_r_last_i,
+  input  logic                    snoop_r_valid_i,
+  input  logic                    snoop_r_ready_i,
+  input  logic                    snoop_r_last_i,
 
   // Clock Gating Interface
-  input  logic                 kick_i,
-  input  logic                 test_clk_en_i,
-  input  logic [HystWidth-1:0] hysteresis_i,
-  output logic                 clk_active_o,
-  output logic                 gated_clk_o,
+  input  logic                    kick_i,
+  input  logic                    test_clk_en_i,
+  input  logic [HystWidth-1:0]    hysteresis_i,
+  output logic                    clk_active_o,
+  output logic                    gated_clk_o,
 
   // Activity Indicator Output
-  output logic bus_active_o
+  output logic                    bus_active_o
 );
 
   `include "prim_assert.sv"
@@ -90,37 +90,37 @@ module axi_cg_snoop #(
   prim_axi_snoop #(
     .OutstandingTx(OutstandingTx)
   ) u_axi_snoop (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i               (clk_i),
+    .rst_ni              (rst_ni),
 
     // AXI Write Address Channel Snoop
-    .snoop_aw_valid_i(snoop_aw_valid_i),
-    .snoop_aw_ready_i(snoop_aw_ready_i),
+    .snoop_aw_valid_i    (snoop_aw_valid_i),
+    .snoop_aw_ready_i    (snoop_aw_ready_i),
 
     // AXI Write Data Channel Snoop
-    .snoop_w_valid_i(snoop_w_valid_i),
+    .snoop_w_valid_i     (snoop_w_valid_i),
 
     // AXI Write Response Channel Snoop
-    .snoop_b_valid_i(snoop_b_valid_i),
-    .snoop_b_ready_i(snoop_b_ready_i),
+    .snoop_b_valid_i     (snoop_b_valid_i),
+    .snoop_b_ready_i     (snoop_b_ready_i),
 
     // AXI Read Address Channel Snoop
-    .snoop_ar_valid_i(snoop_ar_valid_i),
-    .snoop_ar_ready_i(snoop_ar_ready_i),
+    .snoop_ar_valid_i    (snoop_ar_valid_i),
+    .snoop_ar_ready_i    (snoop_ar_ready_i),
 
     // AXI Read Data Channel Snoop
-    .snoop_r_valid_i(snoop_r_valid_i),
-    .snoop_r_ready_i(snoop_r_ready_i),
-    .snoop_r_last_i (snoop_r_last_i),
+    .snoop_r_valid_i     (snoop_r_valid_i),
+    .snoop_r_ready_i     (snoop_r_ready_i),
+    .snoop_r_last_i      (snoop_r_last_i),
 
     // Activity Output (connected internally)
-    .bus_active_o(bus_active_internal),
+    .bus_active_o        (bus_active_internal),
 
     // Completion / outstanding-count probes: unused here (consumed by
     // axi_hang_detector). Left explicitly unconnected.
-    .complete_aw_o(  /* UNUSED */),
-    .complete_ar_o(  /* UNUSED */),
-    .req_count_q_o(  /* UNUSED */)
+    .complete_aw_o       (/* UNUSED */),
+    .complete_ar_o       (/* UNUSED */),
+    .req_count_q_o       (/* UNUSED */)
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -130,16 +130,16 @@ module axi_cg_snoop #(
   prim_cg_req #(
     .DenyDelay(DenyDelay)
   ) u_cg_req (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i        (clk_i),
+    .rst_ni       (rst_ni),
 
     // Activity input (from AXI snoop module)
-    .qactive_i(bus_active_internal),
+    .qactive_i    (bus_active_internal),
 
     // Power Management Interface
-    .qaccept_ni(clk_active_o),
-    .qdeny_i   (1'b0),          // never deny
-    .qreq_no   (qreq_n)
+    .qaccept_ni   (clk_active_o),
+    .qdeny_i      (1'b0), // never deny
+    .qreq_no      (qreq_n)
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -152,21 +152,21 @@ module axi_cg_snoop #(
   prim_clk_gater_hysteresis #(
     .HYST_WIDTH(HystWidth)
   ) u_clk_gater (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
 
     // Activity and control signals
-    .busy_i       (bus_active_internal),
-    .enable_i     (cg_enable_internal),
-    .kick_i       (kick_i),
-    .test_clk_en_i(test_clk_en_i),
+    .busy_i          (bus_active_internal),
+    .enable_i        (cg_enable_internal),
+    .kick_i          (kick_i),
+    .test_clk_en_i   (test_clk_en_i),
 
     // Hysteresis configuration
-    .hysteresis_i(hysteresis_i),
+    .hysteresis_i    (hysteresis_i),
 
     // Clock outputs
-    .clk_active_o(clk_active_o),
-    .gated_clk_o (gated_clk_o)
+    .clk_active_o    (clk_active_o),
+    .gated_clk_o     (gated_clk_o)
   );
 
   ////////////////////////////////////////////////////////////////////////////////

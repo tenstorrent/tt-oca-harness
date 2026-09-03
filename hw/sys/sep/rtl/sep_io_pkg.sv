@@ -26,25 +26,25 @@ package sep_io_pkg;
 
   typedef struct packed {
     // Clock (directly active)
-    logic sck;
-    logic sck_oe;
+    logic       sck;
+    logic       sck_oe;
 
     // Chip Select (directly active-low)
-    logic cs_n;
-    logic cs_oe;
+    logic       cs_n;
+    logic       cs_oe;
 
     // Data (directly active signals) - 4 lanes (Quad SPI)
     logic [3:0] sd;
     logic [3:0] sd_oe;
 
     // Interrupt
-    logic irq;
+    logic       irq;
 
     // Busy
-    logic busy;
+    logic       busy;
 
     // DMA trigger
-    logic lsio_trigger;
+    logic        lsio_trigger;
   } sep_io_spi_req_t;
 
   typedef struct packed {

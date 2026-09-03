@@ -34,10 +34,10 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
   // The UVM harness system clock is fixed at 100 MHz (tb_top).
   localparam time SysClkPeriod = 10ns;
 
-  dtp_stap_3dcr_model    stap_model;
+  dtp_stap_3dcr_model stap_model;
 
   // Window-monitor state (one window at a time, mirroring cocotb usage).
-  protected string       m_win_signals        [$];
+  protected string       m_win_signals[$];
   protected int unsigned m_win_counts[string];
   protected int unsigned m_win_edges;
   protected process      m_win_proc;
@@ -139,7 +139,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
     if (m_win_proc == null) `uvm_fatal(get_type_name(), "scan window monitor was never started")
     m_win_proc.kill();
     m_win_proc = null;
-    edges = m_win_edges;
+    edges  = m_win_edges;
     counts = m_win_counts;
     foreach (counts[name])
       `uvm_info(get_type_name(), $sformatf("scan window %s=%0d/%0d", name, counts[name], edges),
@@ -310,9 +310,9 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
   // tms_hold=1 stored parks its tms high and never drives tdo_oen.
   function void check_stap_forwarding(int unsigned edges, int unsigned counts[string],
                                       int unsigned stap, bit forwarding, string context_s);
-    string       prefix = stap_prefix(stap);
+    string prefix = stap_prefix(stap);
     int unsigned tdo_oen = counts[{prefix, "_tdo_oen"}];
-    int unsigned tms = counts[{prefix, "_tms"}];
+    int unsigned tms     = counts[{prefix, "_tms"}];
     if (forwarding) begin
       family_check("CHK-SCAN-WIN", {prefix, "_tdo_oen forwarding"}, 64'(tdo_oen > 0), 64'd1,
                    $sformatf("%s count=%0d/%0d", context_s, tdo_oen, edges));

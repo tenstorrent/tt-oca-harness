@@ -15,24 +15,24 @@
 `timescale 1ns / 1ps
 
 module Compressor_Checker (
-  input logic clk_i,
-  input logic rstn_i,
+  input  logic        clk_i,
+  input  logic        rstn_i,
 
   // Control
-  input logic enable_i,  // Master enable
-  input logic verbose_i, // Show MATCH messages
+  input  logic        enable_i,           // Master enable
+  input  logic        verbose_i,          // Show MATCH messages
 
   // DUT inputs (from entropy_source)
-  input logic [31:0] dut_word_i,  // DUT compressed word
-  input logic [31:0] dut_vld_i,   // DUT valid (32-bit vector, check bit [0])
+  input  logic [31:0] dut_word_i,         // DUT compressed word
+  input  logic [31:0] dut_vld_i,          // DUT valid (32-bit vector, check bit [0])
 
   // Reference model inputs
-  input logic [31:0] ref_word_i,  // Reference compressed word
-  input logic        ref_vld_i,   // Reference valid
+  input  logic [31:0] ref_word_i,         // Reference compressed word
+  input  logic        ref_vld_i,          // Reference valid
 
   // Statistics outputs
-  output integer check_count_o,    // Total checks performed
-  output integer mismatch_count_o  // Number of mismatches detected
+  output integer      check_count_o,      // Total checks performed
+  output integer      mismatch_count_o    // Number of mismatches detected
 );
 
   //--------------------------------------------------------------------------
@@ -43,7 +43,7 @@ module Compressor_Checker (
   integer mismatch_count;
 
   // Extract DUT valid signal (bit 0 of the 32-bit vector)
-  logic   dut_vld;
+  logic dut_vld;
   assign dut_vld = dut_vld_i[0];
 
   //--------------------------------------------------------------------------

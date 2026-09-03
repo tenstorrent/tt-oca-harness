@@ -41,16 +41,16 @@ package top_racl_pkg;
 
   // RACL policy containing a read and write permission
   typedef struct packed {
-    racl_role_vec_t write_perm;  // Write permission (upper bits)
-    racl_role_vec_t read_perm;   // Read permission (lower bits)
+    racl_role_vec_t write_perm;    // Write permission (upper bits)
+    racl_role_vec_t read_perm;     // Read permission (lower bits)
   } racl_policy_t;
 
   // RACL range used to protect a range of addresses with a RACL policy (e.g., for sram).
   typedef struct packed {
-    logic [top_pkg::TL_AW-1:0] base;        // Start address of range
-    logic [top_pkg::TL_AW-1:0] limit;       // End address of range (inclusive)
-    racl_policy_sel_t          policy_sel;  // Policy selector
-    logic                      enable;      // 0: Range is disabled, 1: Range is enabled
+    logic [top_pkg::TL_AW-1:0] base;       // Start address of range
+    logic [top_pkg::TL_AW-1:0] limit;      // End address of range (inclusive)
+    racl_policy_sel_t          policy_sel; // Policy selector
+    logic                      enable;     // 0: Range is disabled, 1: Range is enabled
   } racl_range_t;
 
   // RACL policy vector for distributing RACL policies from the RACL widget to the subscribing IP
@@ -70,11 +70,11 @@ package top_racl_pkg;
 
   // RACL information logged in case of a denial
   typedef struct packed {
-    logic                      valid;            // Error information is valid
-    logic                      overflow;         // Error overflow, More than 1 RACL error at a time
+    logic                      valid;        // Error information is valid
+    logic                      overflow;     // Error overflow, More than 1 RACL error at a time
     racl_role_t                racl_role;
     ctn_uid_t                  ctn_uid;
-    logic                      read_access;      // 0: Write access, 1: Read access
+    logic                      read_access;  // 0: Write access, 1: Read access
     logic [top_pkg::TL_AW-1:0] request_address;
   } racl_error_log_t;
 

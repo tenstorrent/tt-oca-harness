@@ -23,56 +23,56 @@ module ocah_axi_ram_responder #(
   parameter int unsigned ID_WIDTH   = 2,
   parameter int unsigned MEM_BYTES  = 65536  // power of two
 ) (
-  input wire logic clk_i,
-  input wire logic rst_ni,
+  input  wire logic                    clk_i,
+  input  wire logic                    rst_ni,
 
   // Write address channel.
-  input  wire logic [  ID_WIDTH-1:0] awid,
-  input  wire logic [ADDR_WIDTH-1:0] awaddr,
-  input  wire logic [           7:0] awlen,
-  input  wire logic [           2:0] awsize,
-  input  wire logic [           1:0] awburst,
-  input  wire logic [           2:0] awprot,
-  input  wire logic                  awvalid,
-  output logic                       awready,
+  input  wire logic [ID_WIDTH-1:0]     awid,
+  input  wire logic [ADDR_WIDTH-1:0]   awaddr,
+  input  wire logic [7:0]              awlen,
+  input  wire logic [2:0]              awsize,
+  input  wire logic [1:0]              awburst,
+  input  wire logic [2:0]              awprot,
+  input  wire logic                    awvalid,
+  output logic                         awready,
 
   // Write data channel.
-  input  wire logic [  DATA_WIDTH-1:0] wdata,
+  input  wire logic [DATA_WIDTH-1:0]   wdata,
   input  wire logic [DATA_WIDTH/8-1:0] wstrb,
   input  wire logic                    wlast,
   input  wire logic                    wvalid,
   output logic                         wready,
 
   // Write response channel.
-  output logic      [ID_WIDTH-1:0] bid,
-  output logic      [         1:0] bresp,
-  output logic                     bvalid,
-  input  wire logic                bready,
+  output logic [ID_WIDTH-1:0]          bid,
+  output logic [1:0]                   bresp,
+  output logic                         bvalid,
+  input  wire logic                    bready,
 
   // Read address channel.
-  input  wire logic [  ID_WIDTH-1:0] arid,
-  input  wire logic [ADDR_WIDTH-1:0] araddr,
-  input  wire logic [           7:0] arlen,
-  input  wire logic [           2:0] arsize,
-  input  wire logic [           1:0] arburst,
-  input  wire logic [           2:0] arprot,
-  input  wire logic                  arvalid,
-  output logic                       arready,
+  input  wire logic [ID_WIDTH-1:0]     arid,
+  input  wire logic [ADDR_WIDTH-1:0]   araddr,
+  input  wire logic [7:0]              arlen,
+  input  wire logic [2:0]              arsize,
+  input  wire logic [1:0]              arburst,
+  input  wire logic [2:0]              arprot,
+  input  wire logic                    arvalid,
+  output logic                         arready,
 
   // Read data channel.
-  output logic      [  ID_WIDTH-1:0] rid,
-  output logic      [DATA_WIDTH-1:0] rdata,
-  output logic      [           1:0] rresp,
-  output logic                       rlast,
-  output logic                       rvalid,
-  input  wire logic                  rready,
+  output logic [ID_WIDTH-1:0]          rid,
+  output logic [DATA_WIDTH-1:0]        rdata,
+  output logic [1:0]                   rresp,
+  output logic                         rlast,
+  output logic                         rvalid,
+  input  wire logic                    rready,
 
   // Error-injection controls (driven from a TB interface).
-  input wire logic                  err_arm_i,
-  input wire logic [ADDR_WIDTH-1:0] err_addr_i,
-  input wire logic [           1:0] err_resp_i,
-  input wire logic                  err_on_read_i,
-  input wire logic                  err_on_write_i
+  input  wire logic                    err_arm_i,
+  input  wire logic [ADDR_WIDTH-1:0]   err_addr_i,
+  input  wire logic [1:0]              err_resp_i,
+  input  wire logic                    err_on_read_i,
+  input  wire logic                    err_on_write_i
 );
 
   localparam int unsigned StrbWidth = DATA_WIDTH / 8;
@@ -113,13 +113,13 @@ module ocah_axi_ram_responder #(
   // ------------------------------------------------------------------
   // Write path: one outstanding burst.
   // ------------------------------------------------------------------
-  logic                wr_active;
-  logic [ID_WIDTH-1:0] wr_id_q;
+  logic                  wr_active;
+  logic [ID_WIDTH-1:0]   wr_id_q;
   logic [ADDR_WIDTH-1:0] wr_addr_q, wr_start_q;
-  logic [7:0] wr_len_q;
-  logic [2:0] wr_size_q;
-  logic [1:0] wr_burst_q;
-  logic [1:0] wr_resp_q;
+  logic [7:0]            wr_len_q;
+  logic [2:0]            wr_size_q;
+  logic [1:0]            wr_burst_q;
+  logic [1:0]            wr_resp_q;
 
   assign awready = rst_ni && !wr_active && !bvalid;
   assign wready  = rst_ni && wr_active;
@@ -128,17 +128,17 @@ module ocah_axi_ram_responder #(
   // and always_ff forbids a variable written by any other process.
   always @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      wr_active  <= 1'b0;
-      bvalid     <= 1'b0;
-      bid        <= '0;
-      bresp      <= RespOkay;
-      wr_id_q    <= '0;
-      wr_addr_q  <= '0;
+      wr_active <= 1'b0;
+      bvalid    <= 1'b0;
+      bid       <= '0;
+      bresp     <= RespOkay;
+      wr_id_q   <= '0;
+      wr_addr_q <= '0;
       wr_start_q <= '0;
-      wr_len_q   <= '0;
-      wr_size_q  <= '0;
+      wr_len_q  <= '0;
+      wr_size_q <= '0;
       wr_burst_q <= '0;
-      wr_resp_q  <= RespOkay;
+      wr_resp_q <= RespOkay;
     end else begin
       if (awvalid && awready) begin
         wr_id_q    <= awid;
@@ -160,10 +160,9 @@ module ocah_axi_ram_responder #(
         end
         wr_addr_q <= next_beat_addr(wr_addr_q, wr_start_q, wr_size_q, wr_len_q, wr_burst_q);
         if (wlast) begin
-          bid <= wr_id_q;
-          bresp <= (err_match(
-              wr_addr_q, err_on_write_i
-          ) && err_resp_i > wr_resp_q) ? err_resp_i : wr_resp_q;
+          bid    <= wr_id_q;
+          bresp  <= (err_match(wr_addr_q, err_on_write_i) && err_resp_i > wr_resp_q)
+                              ? err_resp_i : wr_resp_q;
           bvalid <= 1'b1;
           wr_active <= 1'b0;
         end
@@ -175,12 +174,12 @@ module ocah_axi_ram_responder #(
   // ------------------------------------------------------------------
   // Read path: one outstanding burst, one beat per cycle when accepted.
   // ------------------------------------------------------------------
-  logic                rd_active;
-  logic [ID_WIDTH-1:0] rd_id_q;
+  logic                  rd_active;
+  logic [ID_WIDTH-1:0]   rd_id_q;
   logic [ADDR_WIDTH-1:0] rd_addr_q, rd_start_q;
   logic [7:0] rd_len_q, rd_beat_q;
-  logic [2:0] rd_size_q;
-  logic [1:0] rd_burst_q;
+  logic [2:0]            rd_size_q;
+  logic [1:0]            rd_burst_q;
 
   assign arready = rst_ni && !rd_active && !rvalid;
 
@@ -199,18 +198,18 @@ module ocah_axi_ram_responder #(
   // task tools cannot prove is called only from this process (IEEE 9.2.2.4).
   always @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      rd_active  <= 1'b0;
-      rvalid     <= 1'b0;
-      rid        <= '0;
-      rdata      <= '0;
-      rresp      <= RespOkay;
-      rlast      <= 1'b0;
-      rd_id_q    <= '0;
-      rd_addr_q  <= '0;
+      rd_active <= 1'b0;
+      rvalid    <= 1'b0;
+      rid       <= '0;
+      rdata     <= '0;
+      rresp     <= RespOkay;
+      rlast     <= 1'b0;
+      rd_id_q   <= '0;
+      rd_addr_q <= '0;
       rd_start_q <= '0;
-      rd_len_q   <= '0;
-      rd_beat_q  <= '0;
-      rd_size_q  <= '0;
+      rd_len_q  <= '0;
+      rd_beat_q <= '0;
+      rd_size_q <= '0;
       rd_burst_q <= '0;
     end else begin
       if (arvalid && arready) begin
@@ -224,7 +223,8 @@ module ocah_axi_ram_responder #(
         rid        <= arid;
         rlast      <= (arlen == '0);
         load_read_beat((araddr >> arsize) << arsize);
-        rd_addr_q <= next_beat_addr((araddr >> arsize) << arsize, araddr, arsize, arlen, arburst);
+        rd_addr_q <= next_beat_addr((araddr >> arsize) << arsize, araddr,
+                                            arsize, arlen, arburst);
         rvalid <= 1'b1;
       end
       if (rvalid && rready) begin

@@ -15,20 +15,20 @@ module ctn_clock_stop_ctrl #(
   parameter int unsigned NUM_CLK_STOP_REQ = 1  // Number of clock stop request inputs
 ) (
   // Global Interface
-  input wire logic clk_i,
-  input wire logic rst_ni,
+  input  wire logic                          clk_i,
+  input  wire logic                          rst_ni,
 
   // Clock stop request inputs (from CLAs or other devices, ck_feedthru domain)
-  input wire logic [NUM_CLK_STOP_REQ-1:0] clk_stop_req_i,
+  input  wire logic [NUM_CLK_STOP_REQ-1:0]   clk_stop_req_i,
 
   // JTAG DEBUG_CONTROL direct clock stop (JTAG_TCK domain, quasi-static)
-  input wire logic jtag_clock_stop_i,
+  input  wire logic                          jtag_clock_stop_i,
 
   // Clock stop output (registered, clk_i domain)
-  output logic stop_clks_o,
+  output logic                          stop_clks_o,
 
   // CLA clock stop status output (for JTAG status reporting, combinational)
-  output logic cla_clock_stop_o
+  output logic                          cla_clock_stop_o
 );
 
   // CLA clock stop status for JTAG readback (CLA requests only, no sync needed —
@@ -51,10 +51,10 @@ module ctn_clock_stop_ctrl #(
   prim_flop_2sync #(
     .Width(1)
   ) u_clk_stop_sync (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
-    .d_i   (clk_stop_req_async),
-    .q_o   (clk_stop_req_synced)
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
+    .d_i    (clk_stop_req_async),
+    .q_o    (clk_stop_req_synced)
   );
 
   // Register the synchronized request with an explicit reset so stop_clks_o

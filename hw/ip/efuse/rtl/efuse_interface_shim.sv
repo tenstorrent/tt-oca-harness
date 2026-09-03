@@ -26,24 +26,24 @@ module efuse_interface_shim
   localparam int unsigned COUNTER_WIDTH = 32
 ) (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input logic                      clk_i,
+  input logic                      rst_ni,
 
   // AXI4-Lite Register Interface - CSR for Fuse Bank Control
-  input  efuse_axil_req_t  fuse_bank_ctrl_req_i,
-  output efuse_axil_resp_t fuse_bank_ctrl_resp_o,
+  input  efuse_axil_req_t          fuse_bank_ctrl_req_i,
+  output efuse_axil_resp_t         fuse_bank_ctrl_resp_o,
 
   // Fuse Command Interface - custom interface for SHIM state machine
-  input  fuse_command_req_t  fuse_command_req_i,
-  output fuse_command_resp_t fuse_command_resp_o,
+  input  fuse_command_req_t        fuse_command_req_i,
+  output fuse_command_resp_t       fuse_command_resp_o,
 
   // Fuse Bank Interface - interface with Macro
   // This example bank uses an APB interface, this will be foundry specific
-  output efuse_apb_req_t  efuse_model_otp_req_o,
-  input  efuse_apb_resp_t efuse_model_otp_resp_i,
+  output efuse_apb_req_t           efuse_model_otp_req_o,
+  input  efuse_apb_resp_t          efuse_model_otp_resp_i,
 
   // Debug bus
-  output logic [15:0] debug_bus_o
+  output logic [15:0]              debug_bus_o
 );
 
   localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
@@ -66,30 +66,30 @@ module efuse_interface_shim
   efuse_shim_ctrl_reg_pkg::efuse_shim_ctrl__out_t fuse_bank_ctrl_hwif_out;
 
   efuse_shim_ctrl_reg u_efuse_shim_ctrl_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk    (clk_i),
+    .arst_n (rst_ni),
 
-    .s_axil_awready(fuse_bank_ctrl_resp_o.aw_ready),
-    .s_axil_awvalid(fuse_bank_ctrl_req_i.aw_valid),
+    .s_axil_awready (fuse_bank_ctrl_resp_o.aw_ready),
+    .s_axil_awvalid (fuse_bank_ctrl_req_i.aw_valid),
     .s_axil_awaddr (fuse_bank_ctrl_req_i.aw.addr[2:0]),
     .s_axil_awprot (fuse_bank_ctrl_req_i.aw.prot),
     .s_axil_wready (fuse_bank_ctrl_resp_o.w_ready),
     .s_axil_wvalid (fuse_bank_ctrl_req_i.w_valid),
-    .s_axil_wdata  (fuse_bank_ctrl_req_i.w.data),
-    .s_axil_wstrb  (fuse_bank_ctrl_req_i.w.strb),
+    .s_axil_wdata (fuse_bank_ctrl_req_i.w.data),
+    .s_axil_wstrb (fuse_bank_ctrl_req_i.w.strb),
     .s_axil_bready (fuse_bank_ctrl_req_i.b_ready),
     .s_axil_bvalid (fuse_bank_ctrl_resp_o.b_valid),
-    .s_axil_bresp  (fuse_bank_ctrl_resp_o.b.resp),
-    .s_axil_arready(fuse_bank_ctrl_resp_o.ar_ready),
-    .s_axil_arvalid(fuse_bank_ctrl_req_i.ar_valid),
+    .s_axil_bresp (fuse_bank_ctrl_resp_o.b.resp),
+    .s_axil_arready (fuse_bank_ctrl_resp_o.ar_ready),
+    .s_axil_arvalid (fuse_bank_ctrl_req_i.ar_valid),
     .s_axil_araddr (fuse_bank_ctrl_req_i.ar.addr[2:0]),
     .s_axil_arprot (fuse_bank_ctrl_req_i.ar.prot),
     .s_axil_rready (fuse_bank_ctrl_req_i.r_ready),
     .s_axil_rvalid (fuse_bank_ctrl_resp_o.r_valid),
-    .s_axil_rdata  (fuse_bank_ctrl_resp_o.r.data),
-    .s_axil_rresp  (fuse_bank_ctrl_resp_o.r.resp),
+    .s_axil_rdata (fuse_bank_ctrl_resp_o.r.data),
+    .s_axil_rresp (fuse_bank_ctrl_resp_o.r.resp),
 
-    .hwif_out(fuse_bank_ctrl_hwif_out)
+    .hwif_out      (fuse_bank_ctrl_hwif_out)
   );
 
   ////////////////////////////////////////
@@ -110,21 +110,21 @@ module efuse_interface_shim
   // Counter for fuse bank init cycles
   prim_count #(
     .Width(COUNTER_WIDTH),
-    .ResetValue(COUNTER_WIDTH'(32)),  // 0x20 = 32
+    .ResetValue(COUNTER_WIDTH'(32)), // 0x20 = 32
     .EnableAlertTriggerSVA(1'b0)
   ) prim_count_r (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .clr_i(1'b0),
-    .set_i(fuse_bank_init_cycles_count_set_en_r),  // This sets the primary counter to set_cnt_i
-    .set_cnt_i(fuse_bank_init_cycles_r),
-    .incr_en_i(1'b0),
-    .decr_en_i(1'b1),  // Decrement Always
-    .step_i(COUNTER_WIDTH'(1)),  // Step size
+    .clk_i                (clk_i),
+    .rst_ni               (rst_ni),
+    .clr_i                (1'b0),
+    .set_i                (fuse_bank_init_cycles_count_set_en_r),    // This sets the primary counter to set_cnt_i
+    .set_cnt_i            (fuse_bank_init_cycles_r),
+    .incr_en_i            (1'b0),
+    .decr_en_i            (1'b1),                                     // Decrement Always
+    .step_i               (COUNTER_WIDTH'(1)),                                     // Step size
     .commit_i             (fuse_bank_init_cycles_count_commit_en_r),  // Counter changes only take effect when `commit_i` is set
-    .cnt_o(fuse_bank_init_cycles_count_r),
-    .cnt_after_commit_o(),
-    .err_o(fuse_bank_init_cycles_counter_err_r)
+    .cnt_o                (fuse_bank_init_cycles_count_r),
+    .cnt_after_commit_o   (),
+    .err_o                (fuse_bank_init_cycles_counter_err_r)
   );
 
   assign fuse_bank_init_cycles_counter_is_zero_r = ~|fuse_bank_init_cycles_count_r;
@@ -170,7 +170,7 @@ module efuse_interface_shim
       StReadIdle: begin
         if (fuse_command_req_i.valid && fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_READ) begin
           outstanding_accesses_read_d = fuse_command_req_i.access_length_words;
-          fuse_bank_init_cycles_count_set_en_r = 1'b0;  // Allow counter to start counting
+          fuse_bank_init_cycles_count_set_en_r = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_r = 1'b1;
 
           fuse_bank_address_read_d = fuse_command_req_i.address >> 3; // >> 3 because we are reading by bytes for this model
@@ -185,8 +185,8 @@ module efuse_interface_shim
         if (fuse_bank_init_cycles_counter_is_zero_r) begin
           efuse_read_state_d = StReadSetup;
 
-          fuse_bank_init_cycles_count_set_en_r = 1'b1;  // Set counter back to the initial value
-          fuse_bank_init_cycles_count_commit_en_r = 1'b1;  // Commit the counter change
+          fuse_bank_init_cycles_count_set_en_r = 1'b1;    // Set counter back to the initial value
+          fuse_bank_init_cycles_count_commit_en_r = 1'b1; // Commit the counter change
         end
       end
       StReadSetup: begin
@@ -203,7 +203,7 @@ module efuse_interface_shim
       end
       StReadAccess: begin
         apb_fuse_bank_req_read.psel = 1'b1;
-        apb_fuse_bank_req_read.penable = 1'b1;  // penable goes high after psel goes high
+        apb_fuse_bank_req_read.penable = 1'b1; // penable goes high after psel goes high
         apb_fuse_bank_req_read.pwrite = 1'b0;
         apb_fuse_bank_req_read.paddr = fuse_bank_address_read_q;
         apb_fuse_bank_req_read.pwdata = '0;
@@ -281,21 +281,21 @@ module efuse_interface_shim
   // Counter for fuse bank init cycles
   prim_count #(
     .Width(COUNTER_WIDTH),
-    .ResetValue(COUNTER_WIDTH'(32)),  // 0x20 = 32
+    .ResetValue(COUNTER_WIDTH'(32)), // 0x20 = 32
     .EnableAlertTriggerSVA(1'b0)
   ) prim_count_w (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .clr_i(1'b0),
-    .set_i(fuse_bank_init_cycles_count_set_en_w),  // This sets the primary counter to set_cnt_i
-    .set_cnt_i(fuse_bank_init_cycles_w),
-    .incr_en_i(1'b0),
-    .decr_en_i(1'b1),  // Decrement Always
-    .step_i(COUNTER_WIDTH'(1)),  // Step size
+    .clk_i                (clk_i),
+    .rst_ni               (rst_ni),
+    .clr_i                (1'b0),
+    .set_i                (fuse_bank_init_cycles_count_set_en_w),    // This sets the primary counter to set_cnt_i
+    .set_cnt_i            (fuse_bank_init_cycles_w),
+    .incr_en_i            (1'b0),
+    .decr_en_i            (1'b1),                                    // Decrement Always
+    .step_i               (COUNTER_WIDTH'(1)),                       // Step size
     .commit_i             (fuse_bank_init_cycles_count_commit_en_w), // Counter changes only take effect when `commit_i` is set
-    .cnt_o(fuse_bank_init_cycles_count_w),
-    .cnt_after_commit_o(),
-    .err_o(fuse_bank_init_cycles_counter_err_w)
+    .cnt_o                (fuse_bank_init_cycles_count_w),
+    .cnt_after_commit_o   (),
+    .err_o                (fuse_bank_init_cycles_counter_err_w)
   );
 
   assign fuse_bank_init_cycles_counter_is_zero_w = ~|fuse_bank_init_cycles_count_w;
@@ -349,7 +349,7 @@ module efuse_interface_shim
 
       StWriteIdle: begin
         if (fuse_command_req_i.valid && (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK)) begin
-          fuse_bank_init_cycles_count_set_en_w = 1'b0;  // Allow counter to start counting
+          fuse_bank_init_cycles_count_set_en_w = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_w = 1'b1;
           efuse_write_state_d = StWriteInit;
         end
@@ -361,8 +361,8 @@ module efuse_interface_shim
         if (fuse_bank_init_cycles_counter_is_zero_w) begin
           efuse_write_state_d = StWriteSetup;
 
-          fuse_bank_init_cycles_count_set_en_w = 1'b1;  // Set counter back to the initial value
-          fuse_bank_init_cycles_count_commit_en_w = 1'b1;  // Commit the counter change
+          fuse_bank_init_cycles_count_set_en_w = 1'b1;    // Set counter back to the initial value
+          fuse_bank_init_cycles_count_commit_en_w = 1'b1; // Commit the counter change
         end
       end
       StWriteSetup: begin
@@ -379,7 +379,7 @@ module efuse_interface_shim
       end
       StWriteAccess: begin
         apb_fuse_bank_req_write.psel = 1'b1;
-        apb_fuse_bank_req_write.penable = 1'b1;  // penable goes high after psel goes high
+        apb_fuse_bank_req_write.penable = 1'b1; // penable goes high after psel goes high
         apb_fuse_bank_req_write.pwrite = 1'b1;
         apb_fuse_bank_req_write.paddr = efuse_addr_byte_address;
         apb_fuse_bank_req_write.pwdata = efuse_write_word;
@@ -430,7 +430,7 @@ module efuse_interface_shim
       end
       StWriteReadBackAccess: begin
         apb_fuse_bank_req_write_readback.psel = 1'b1;
-        apb_fuse_bank_req_write_readback.penable = 1'b1;  // penable goes high after psel goes high
+        apb_fuse_bank_req_write_readback.penable = 1'b1; // penable goes high after psel goes high
         apb_fuse_bank_req_write_readback.pwrite = 1'b0;
         apb_fuse_bank_req_write_readback.paddr = efuse_addr_byte_address;
         apb_fuse_bank_req_write_readback.pwdata = '0;

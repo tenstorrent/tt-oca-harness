@@ -49,9 +49,9 @@ module sep_local_axi_xbar
   import axi_pkg::*;
   import sep_local_axi_xbar_pkg::*;
 (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_i,
+  input  logic clk_i,
+  input  logic rst_ni,
+  input  logic test_i,
 
   // ===========================================================================
   // Initiator Ports
@@ -280,17 +280,17 @@ module sep_local_axi_xbar
     .mst_resp_t   (xbar_mst_resp_t),
     .rule_t       (addr_rule_t)
   ) u_axi_xbar (
-    .clk_i                (clk_i),
-    .rst_ni               (rst_ni),
-    .test_i               (test_i),
-    .sel_hash_i           (2'b0),
-    .slv_ports_req_i      (xbar_slv_req),
-    .slv_ports_resp_o     (xbar_slv_resp),
-    .mst_ports_req_o      (xbar_mst_req),
-    .mst_ports_resp_i     (xbar_mst_resp),
-    .addr_map_i           (AddrMap),
-    .en_default_mst_port_i('0),
-    .default_mst_port_i   ('0)
+    .clk_i                 (clk_i),
+    .rst_ni                (rst_ni),
+    .test_i                (test_i),
+    .sel_hash_i            (2'b0),
+    .slv_ports_req_i       (xbar_slv_req),
+    .slv_ports_resp_o      (xbar_slv_resp),
+    .mst_ports_req_o       (xbar_mst_req),
+    .mst_ports_resp_i      (xbar_mst_resp),
+    .addr_map_i            (AddrMap),
+    .en_default_mst_port_i ('0),
+    .default_mst_port_i    ('0)
   );
 
   // ===========================================================================

@@ -22,12 +22,12 @@ module sep_wrapper
   parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
-  input logic clk_i,
-  input logic clk_wdt_i,
-  input logic clk_ref_i,
-  input logic rst_ni,
-  input logic dbg_rstb_i,
-  input logic wdt_rst_ni,
+  input  logic clk_i,
+  input  logic clk_wdt_i,
+  input  logic clk_ref_i,
+  input  logic rst_ni,
+  input  logic dbg_rstb_i,
+  input  logic wdt_rst_ni,
 
   output logic wdt_timer_rst_req_o,
 
@@ -38,22 +38,22 @@ module sep_wrapper
   output logic jtag_tdo,
   output logic jtag_tdoEn,
 
-  input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
+  input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
 
   input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
-  input logic mpc_debug_halt_req,
-  input logic mpc_debug_run_req,
-  input logic mpc_reset_run_req,
+  input  logic mpc_debug_halt_req,
+  input  logic mpc_debug_run_req,
+  input  logic mpc_reset_run_req,
 
-  input logic i_cpu_halt_req,
-  input logic i_cpu_run_req,
+  input  logic i_cpu_halt_req,
+  input  logic i_cpu_run_req,
 
-  input logic test_en_i,
-  input logic scan_rst_ni,
+  input  logic test_en_i,
+  input  logic scan_rst_ni,
 
-  input logic ext_boot_seq_done_i,
+  input  logic ext_boot_seq_done_i,
 
   input  logic        dmi_core_enable,
   input  logic        dmi_uncore_enable,
@@ -73,8 +73,8 @@ module sep_wrapper
   input logic [31:1] rst_vec,
   input logic [31:1] jtag_id,
 
-  input logic                                  timer_int,
-  input logic                                  soft_int,
+  input logic                      timer_int,
+  input logic                      soft_int,
   input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
 
   output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,
@@ -94,7 +94,7 @@ module sep_wrapper
   output sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  input logic spi_irq_i,
+  input  logic spi_irq_i,
 
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
@@ -108,8 +108,8 @@ module sep_wrapper
 
   input sep_pkg::sep_straps_t sep_straps_i,
 
-  input logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_global_base_addr_i,
-  input logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_region_size_i,
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_global_base_addr_i,
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_region_size_i,
 
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_addr_o,
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,
@@ -179,54 +179,54 @@ module sep_wrapper
   /////////////////////
 
   sep #(
-    .KM_LATCHED_MEM_RDATA (KM_LATCHED_MEM_RDATA),
-    .EXT_TRNG_NUM_AXIS    (EXT_TRNG_NUM_AXIS),
-    .SEP_SEC_DISABLE_TOKEN(SEP_SEC_DISABLE_TOKEN)
+    .KM_LATCHED_MEM_RDATA  (KM_LATCHED_MEM_RDATA),
+    .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
+    .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN)
   ) u_sep (
     .*,
 
 
-    .wdt_timer_rst_req_o(wdt_timer_rst_req),
+    .wdt_timer_rst_req_o (wdt_timer_rst_req),
 
 
-    .sep_cpu_tcm_req_o(sep_cpu_tcm_req),
-    .sep_cpu_tcm_rsp_i(sep_cpu_tcm_rsp),
+    .sep_cpu_tcm_req_o (sep_cpu_tcm_req),
+    .sep_cpu_tcm_rsp_i (sep_cpu_tcm_rsp),
 
-    .sep_sram_req(sep_sram_req),
-    .sep_sram_rsp(sep_sram_rsp),
+    .sep_sram_req (sep_sram_req),
+    .sep_sram_rsp (sep_sram_rsp),
 
-    .sep_boot_rom_req(sep_boot_rom_req),
-    .sep_boot_rom_rsp(sep_boot_rom_rsp),
+    .sep_boot_rom_req (sep_boot_rom_req),
+    .sep_boot_rom_rsp (sep_boot_rom_rsp),
 
-    .sep_crypto_pka_imem_sram_req(sep_crypto_pka_imem_sram_req),
-    .sep_crypto_pka_imem_sram_rsp(sep_crypto_pka_imem_sram_rsp),
-    .sep_crypto_pka_dmem_sram_req(sep_crypto_pka_dmem_sram_req),
-    .sep_crypto_pka_dmem_sram_rsp(sep_crypto_pka_dmem_sram_rsp),
+    .sep_crypto_pka_imem_sram_req (sep_crypto_pka_imem_sram_req),
+    .sep_crypto_pka_imem_sram_rsp (sep_crypto_pka_imem_sram_rsp),
+    .sep_crypto_pka_dmem_sram_req (sep_crypto_pka_dmem_sram_req),
+    .sep_crypto_pka_dmem_sram_rsp (sep_crypto_pka_dmem_sram_rsp),
 
-    .abr_mem_req(abr_mem_req),
-    .abr_mem_rsp(abr_mem_rsp),
+    .abr_mem_req (abr_mem_req),
+    .abr_mem_rsp (abr_mem_rsp),
 
-    .ext_trng_axil_req_o (ext_trng_axil_req),
-    .ext_trng_axil_resp_i(ext_trng_axil_resp),
+    .ext_trng_axil_req_o  (ext_trng_axil_req),
+    .ext_trng_axil_resp_i (ext_trng_axil_resp),
 
-    .ext_trng_axis_req_i(ext_trng_axis_req),
-    .ext_trng_axis_rsp_o(ext_trng_axis_rsp),
+    .ext_trng_axis_req_i (ext_trng_axis_req),
+    .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i  (ext_trng_irq),
-    .ext_trng_alarm_i(ext_trng_alarm),
+    .ext_trng_irq_i   (ext_trng_irq),
+    .ext_trng_alarm_i (ext_trng_alarm),
 
     .km_rom_mem_req_o (km_rom_mem_req),
     .km_rom_mem_rsp_i (km_rom_mem_rsp),
-    .km_sram_mem_req_o(km_sram_mem_req),
-    .km_sram_mem_rsp_i(km_sram_mem_rsp),
+    .km_sram_mem_req_o (km_sram_mem_req),
+    .km_sram_mem_rsp_i (km_sram_mem_rsp),
 
-    .efuse_bank_ctrl_req_o    (efuse_bank_ctrl_req),
-    .efuse_bank_ctrl_resp_i   (efuse_bank_ctrl_resp),
-    .efuse_shim_command_req_o (efuse_shim_command_req),
-    .efuse_shim_command_resp_i(efuse_shim_command_resp),
+    .efuse_bank_ctrl_req_o     (efuse_bank_ctrl_req),
+    .efuse_bank_ctrl_resp_i    (efuse_bank_ctrl_resp),
+    .efuse_shim_command_req_o  (efuse_shim_command_req),
+    .efuse_shim_command_resp_i (efuse_shim_command_resp),
 
-    .sep_external_axi_req_o (axi_extension_axi_req),
-    .sep_external_axi_resp_i(axi_extension_axi_resp)
+    .sep_external_axi_req_o   (axi_extension_axi_req),
+    .sep_external_axi_resp_i  (axi_extension_axi_resp)
   );
 
   /////////////////////////
@@ -236,52 +236,52 @@ module sep_wrapper
   sep_ip_integration #(
     .EXT_TRNG_NUM_AXIS(EXT_TRNG_NUM_AXIS)
   ) u_sep_ip_integration (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
 
 
-    .test_en_i(test_en_i),
+    .test_en_i (test_en_i),
 
-    .sep_sram_req(sep_sram_req),
-    .sep_sram_rsp(sep_sram_rsp),
+    .sep_sram_req (sep_sram_req),
+    .sep_sram_rsp (sep_sram_rsp),
 
-    .sep_boot_rom_req(sep_boot_rom_req),
-    .sep_boot_rom_rsp(sep_boot_rom_rsp),
+    .sep_boot_rom_req (sep_boot_rom_req),
+    .sep_boot_rom_rsp (sep_boot_rom_rsp),
 
-    .sep_cpu_tcm_req_i(sep_cpu_tcm_req),
-    .sep_cpu_tcm_rsp_o(sep_cpu_tcm_rsp),
+    .sep_cpu_tcm_req_i (sep_cpu_tcm_req),
+    .sep_cpu_tcm_rsp_o (sep_cpu_tcm_rsp),
 
-    .sep_crypto_pka_imem_sram_req(sep_crypto_pka_imem_sram_req),
-    .sep_crypto_pka_imem_sram_rsp(sep_crypto_pka_imem_sram_rsp),
-    .sep_crypto_pka_dmem_sram_req(sep_crypto_pka_dmem_sram_req),
-    .sep_crypto_pka_dmem_sram_rsp(sep_crypto_pka_dmem_sram_rsp),
+    .sep_crypto_pka_imem_sram_req (sep_crypto_pka_imem_sram_req),
+    .sep_crypto_pka_imem_sram_rsp (sep_crypto_pka_imem_sram_rsp),
+    .sep_crypto_pka_dmem_sram_req (sep_crypto_pka_dmem_sram_req),
+    .sep_crypto_pka_dmem_sram_rsp (sep_crypto_pka_dmem_sram_rsp),
 
-    .abr_mem_req_i(abr_mem_req),
-    .abr_mem_rsp_o(abr_mem_rsp),
+    .abr_mem_req_i (abr_mem_req),
+    .abr_mem_rsp_o (abr_mem_rsp),
 
     .km_rom_mem_req_i (km_rom_mem_req),
     .km_rom_mem_rsp_o (km_rom_mem_rsp),
-    .km_sram_mem_req_i(km_sram_mem_req),
-    .km_sram_mem_rsp_o(km_sram_mem_rsp),
+    .km_sram_mem_req_i (km_sram_mem_req),
+    .km_sram_mem_rsp_o (km_sram_mem_rsp),
 
-    .efuse_bank_ctrl_req_i    (efuse_bank_ctrl_req),
-    .efuse_bank_ctrl_resp_o   (efuse_bank_ctrl_resp),
-    .efuse_shim_command_req_i (efuse_shim_command_req),
-    .efuse_shim_command_resp_o(efuse_shim_command_resp),
+    .efuse_bank_ctrl_req_i     (efuse_bank_ctrl_req),
+    .efuse_bank_ctrl_resp_o    (efuse_bank_ctrl_resp),
+    .efuse_shim_command_req_i  (efuse_shim_command_req),
+    .efuse_shim_command_resp_o (efuse_shim_command_resp),
 
-    .ext_trng_axil_req_i (ext_trng_axil_req),
-    .ext_trng_axil_resp_o(ext_trng_axil_resp),
+    .ext_trng_axil_req_i  (ext_trng_axil_req),
+    .ext_trng_axil_resp_o (ext_trng_axil_resp),
 
-    .ext_trng_axis_req_o(ext_trng_axis_req),
-    .ext_trng_axis_rsp_i(ext_trng_axis_rsp),
+    .ext_trng_axis_req_o (ext_trng_axis_req),
+    .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o  (ext_trng_irq),
-    .ext_trng_alarm_o(ext_trng_alarm),
+    .ext_trng_irq_o   (ext_trng_irq),
+    .ext_trng_alarm_o (ext_trng_alarm),
 
-    .axi_extension_axi_req_i (axi_extension_axi_req),
-    .axi_extension_axi_resp_o(axi_extension_axi_resp),
+    .axi_extension_axi_req_i  (axi_extension_axi_req),
+    .axi_extension_axi_resp_o (axi_extension_axi_resp),
 
-    .efuse_debug_bus_o(efuse_debug_bus_o)
+    .efuse_debug_bus_o (efuse_debug_bus_o)
   );
 
 endmodule

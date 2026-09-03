@@ -64,11 +64,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // Per-target handle bundles, index-aligned with targets[] in the
   // cocotb ROBUST_TARGETS order (smc_axi, smc_otp, sep_otp); plumbed by
   // the test. Class handles cannot live inside j2a_target_t.
-  j2a_target_t            targets          [NumTargets];
-  ocah_axi_config         target_cfgs      [NumTargets];
-  ocah_axi_checker        target_evidence  [NumTargets];
+  j2a_target_t            targets[NumTargets];
+  ocah_axi_config         target_cfgs[NumTargets];
+  ocah_axi_checker        target_evidence[NumTargets];
   ocah_axi_ref_model      target_ref_models[NumTargets];
-  ocah_axi_slave_sequence target_slaves    [NumTargets];
+  ocah_axi_slave_sequence target_slaves[NumTargets];
 
   function new(string name = "dtp_jtag2axi_robustness_test_seq");
     super.new(name);
@@ -159,8 +159,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     j2a_status_e op_status;
     int unsigned aw0, w0, ar0;
     int unsigned size = t.default_size;
-    bit [63:0] addr = robust_addr(t, operation_count + 1);
-    bit [63:0] data = (64'h1020_3040_5060_7080 ^ addr) & data_mask(size);
+    bit [63:0]   addr = robust_addr(t, operation_count + 1);
+    bit [63:0]   data = (64'h1020_3040_5060_7080 ^ addr) & data_mask(size);
     configure_target_backpressure(t, channels, stall_cycles);
     sample_activity(t, aw0, w0, ar0);
     write_target_single_and_check(t, addr, data, op_status, size, full_wstrb(size), context_s);
@@ -175,8 +175,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     j2a_status_e op_status;
     int unsigned aw0, w0, ar0;
     int unsigned size = t.default_size;
-    bit [63:0] addr = robust_addr(t, operation_count + 1);
-    bit [63:0] data = (64'hABCD_EF01_2345_6789 ^ addr) & data_mask(size);
+    bit [63:0]   addr = robust_addr(t, operation_count + 1);
+    bit [63:0]   data = (64'hABCD_EF01_2345_6789 ^ addr) & data_mask(size);
     write_target_mem_int(t, addr, data, size);
     configure_target_backpressure(t, channels, stall_cycles);
     sample_activity(t, aw0, w0, ar0);
@@ -250,9 +250,9 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                                  int unsigned addr_offset);
     for (int unsigned i = 0; i < NumTargets; i++) begin
       j2a_target_t t = select_target(i);
-      int unsigned size = t.default_size;
-      bit [63:0] addr = robust_addr(t, i + 1 + addr_offset);
-      bit [63:0] data = rand_data(t) & data_mask(size);
+      int unsigned size  = t.default_size;
+      bit [63:0]   addr  = robust_addr(t, i + 1 + addr_offset);
+      bit [63:0]   data  = rand_data(t) & data_mask(size);
       // Seeded per-pass payload and CDC timing.
       int unsigned stall = $urandom_range(stall_hi, stall_lo);
       `uvm_info(get_type_name(), $sformatf(
@@ -298,7 +298,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       j2a_target_t t = select_target(i);
       j2a_status_e op_status;
       int unsigned size = t.default_size;
-      bit [63:0] addr = robust_addr(t, i + 25);
+      bit [63:0]   addr = robust_addr(t, i + 25);
       arm_target_error(t, addr, OCAH_AXI_RESP_DECERR, 1'b0, 1'b1);
       write_target_single_expect_status(t, addr, 64'($urandom) ^ 64'(i + 1), J2A_DECERR, op_status,
                                         size, full_wstrb(size), $sformatf("decerr_write.%s", t.name
@@ -314,9 +314,9 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     for (int unsigned i = 0; i < NumTargets; i++) begin
       j2a_target_t t = select_target(i);
       j2a_status_e op_status;
-      bit [63:0] rdata;
+      bit [63:0]   rdata;
       int unsigned size = t.default_size;
-      bit [63:0] addr = robust_addr(t, i + 33);
+      bit [63:0]   addr = robust_addr(t, i + 33);
       arm_target_error(t, addr, OCAH_AXI_RESP_DECERR, 1'b1, 1'b0);
       read_target_single_expect_status(t, addr, J2A_DECERR, op_status, rdata, size, $sformatf(
                                        "decerr_read.%s", t.name));
@@ -331,11 +331,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     for (int unsigned i = 0; i < NumTargets; i++) begin
       j2a_target_t t = select_target(i);
       j2a_status_e op_status;
-      bit [63:0] rdata;
+      bit [63:0]   rdata;
       int unsigned size = t.default_size;
-      bit [63:0] good_addr = robust_addr(t, i + 41);
-      bit [63:0] bad_addr = good_addr + 64'h100;
-      bit [63:0] good_data = rand_data(t);
+      bit [63:0]   good_addr = robust_addr(t, i + 41);
+      bit [63:0]   bad_addr  = good_addr + 64'h100;
+      bit [63:0]   good_data = rand_data(t);
       write_target_single_and_check(t, good_addr, good_data, op_status, size, full_wstrb(size),
                                     $sformatf("mixed.good_write.%s", t.name));
       // Read-only DECERR arming at the unmapped slot: injection and
@@ -352,11 +352,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
 
   protected task run_series_corner_all_bridges();
     for (int unsigned i = 0; i < NumTargets; i++) begin
-      j2a_target_t        t = select_target(i);
-      int unsigned        size = t.default_size;
-      bit          [63:0] base = SeriesBase + (i + 1) * 64'h100;
-      bit                 sreset;
-      bit          [63:0] addr_after;
+      j2a_target_t t = select_target(i);
+      int unsigned size = t.default_size;
+      bit [63:0]   base = SeriesBase + (i + 1) * 64'h100;
+      bit          sreset;
+      bit [63:0]   addr_after;
       int unsigned pl_depth, size_rd;
       j2a_status_e sstatus;
       `uvm_info(get_type_name(), $sformatf(
@@ -437,18 +437,20 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     enable_all_debug();
     reset_to_rti();
     case (scenario)
-      "backpressure_aw_before_w": run_backpressure_aw_before_w();
-      "backpressure_long_stall": run_backpressure_long_stall();
-      "backpressure_abort_at_data_w": run_reset_abort("abort_w", "w", 16, 24, 4, 3, 64'h1111, 0);
+      "backpressure_aw_before_w":   run_backpressure_aw_before_w();
+      "backpressure_long_stall":    run_backpressure_long_stall();
+      "backpressure_abort_at_data_w":
+                run_reset_abort("abort_w", "w", 16, 24, 4, 3, 64'h1111, 0);
       "cdc_clear_abort_narrow_reset_mid_xaction":
-      run_reset_abort("narrow_reset", "aw", 8, 16, 3, 1, 64'h2222, 8);
+                run_reset_abort("narrow_reset", "aw", 8, 16, 3, 1, 64'h2222, 8);
       "cdc_clear_abort_back_to_back_reset": run_back_to_back_reset();
-      "decode_error_decerr_write": run_decode_error_decerr_write();
-      "decode_error_decerr_read": run_decode_error_decerr_read();
-      "decode_error_mixed": run_decode_error_mixed();
-      "series_corner_all_bridges": run_series_corner_all_bridges();
+      "decode_error_decerr_write":  run_decode_error_decerr_write();
+      "decode_error_decerr_read":   run_decode_error_decerr_read();
+      "decode_error_mixed":         run_decode_error_mixed();
+      "series_corner_all_bridges":  run_series_corner_all_bridges();
       default:
-      `uvm_fatal(get_type_name(), $sformatf("unknown JTAG2AXI robustness scenario %s", scenario))
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "unknown JTAG2AXI robustness scenario %s", scenario))
     endcase
     emit_robustness_nonvacuity(scenario);
     for (int unsigned i = 0; i < NumTargets; i++) begin

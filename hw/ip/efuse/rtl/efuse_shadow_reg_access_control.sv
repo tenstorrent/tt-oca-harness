@@ -11,7 +11,7 @@ module efuse_shadow_reg_access_control #(
   parameter int unsigned EFUSE_FIELDS = 1,
   parameter bit HAS_LC_STATE = 1'b0,
 
-  parameter type efuse_apb_req_t  = logic,
+  parameter type efuse_apb_req_t = logic,
   parameter type efuse_apb_resp_t = logic,
 
   parameter type efuse_addr_t = logic,
@@ -23,41 +23,41 @@ module efuse_shadow_reg_access_control #(
   // sentinel idx '1 (all-ones) and is excluded from hw-lock checks.
   localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                                  clk_i,
+  input  logic                                  rst_ni,
 
-  input logic secure_tm_i,
+  input  logic                                  secure_tm_i,
 
   // Efuse Field Map Configuration
-  input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,
+  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,
 
   // APB Register Interface
-  input logic [EFUSE_ADDR_WIDTH-1:0] apb_req_paddr_i,
-  input logic [                 2:0] apb_req_pprot_i,
-  input logic                        apb_req_psel_i,
-  input logic                        apb_req_penable_i,
-  input logic                        apb_req_pwrite_i,
-  input logic [                31:0] apb_req_pwdata_i,
-  input logic [                 3:0] apb_req_pstrb_i,
+  input  logic [EFUSE_ADDR_WIDTH-1:0]           apb_req_paddr_i,
+  input  logic [2:0]                            apb_req_pprot_i,
+  input  logic                                  apb_req_psel_i,
+  input  logic                                  apb_req_penable_i,
+  input  logic                                  apb_req_pwrite_i,
+  input  logic [31:0]                           apb_req_pwdata_i,
+  input  logic [3:0]                            apb_req_pstrb_i,
 
-  output efuse_apb_resp_t apb_resp_o,
+  output efuse_apb_resp_t                       apb_resp_o,
 
   // APB Interface to/from Access Control
-  output efuse_apb_req_t  apb_req_from_ac_o,
-  input  efuse_apb_resp_t apb_resp_from_ac_i,
+  output efuse_apb_req_t                        apb_req_from_ac_o,
+  input  efuse_apb_resp_t                       apb_resp_from_ac_i,
 
   // Access Control Status Outputs
-  output logic write_locked_o,
-  output logic write_setup_only_o,
-  output logic lc_state_access_o,
-  output logic read_locked_o,
+  output logic                                  write_locked_o,
+  output logic                                  write_setup_only_o,
+  output logic                                  lc_state_access_o,
+  output logic                                  read_locked_o,
 
   // Hardware lock vector: 2 bits per real field slot (write-lock at 2n, read-lock at 2n+1).
   // Extracted from the LOCK shadow register by the parent efuse_shadow_regs module.
-  input logic [LOCK_VECTOR_BITS-1:0] locks_i,
+  input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,
 
   // Locked Field Access Interrupt
-  output logic locked_field_access_interrupt_o
+  output logic                                  locked_field_access_interrupt_o
 );
 
   `include "prim_assert.sv"
@@ -73,18 +73,18 @@ module efuse_shadow_reg_access_control #(
   ////////////////////////////////////////////////////////////////////////////
 
   // Access control status
-  logic                                            is_write_locked;
-  logic                                            is_read_locked;
-  logic                                            is_lc_state_access;
+  logic                                     is_write_locked;
+  logic                                     is_read_locked;
+  logic                                     is_lc_state_access;
 
   // Field lookup results
   logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] field_index;
-  logic [                                     3:0] sw_lock_bits;
+  logic [3:0]                               sw_lock_bits;
 
   // Final combined status
-  logic                                            final_write_lock_status;
-  logic                                            final_read_lock_status;
-  logic                                            final_write_setup_only_status;
+  logic                                     final_write_lock_status;
+  logic                                     final_read_lock_status;
+  logic                                     final_write_setup_only_status;
 
   ////////////////////////////////////////////////////////////////////////////
   // Combinational Logic
@@ -92,17 +92,17 @@ module efuse_shadow_reg_access_control #(
 
   // Field index and lock bit lookup
   always_comb begin
-    field_index  = find_efuse_field_index(efuse_addr_t'(apb_req_paddr_i));
+    field_index = find_efuse_field_index(efuse_addr_t'(apb_req_paddr_i));
     sw_lock_bits = find_efuse_sw_lock(efuse_addr_t'(apb_req_paddr_i));
 
     if (HAS_LC_STATE) begin
       // For LC_STATE field (index 0), write/read locks are handled by parent module
       is_write_locked = (field_index == '0) ? 1'b0 : write_locked(field_index);
-      is_read_locked  = (field_index == '0) ? 1'b0 : read_locked(field_index);
+      is_read_locked = (field_index == '0) ? 1'b0 : read_locked(field_index);
     end else begin
       // Standard lock checking for non-LC_STATE configurations
       is_write_locked = write_locked(field_index);
-      is_read_locked  = read_locked(field_index);
+      is_read_locked = read_locked(field_index);
     end
   end
 
@@ -153,8 +153,8 @@ module efuse_shadow_reg_access_control #(
       end  // trying to read from a read locked field
       else if (!apb_req_pwrite_i && final_read_lock_status) begin
         apb_resp_o.pslverr = 1'b0;
-        apb_resp_o.pready = 1'b1;
-        apb_resp_o.prdata = efuse_data_t'(32'hbadcab1e);
+        apb_resp_o.pready  = 1'b1;
+        apb_resp_o.prdata  = efuse_data_t'(32'hbadcab1e);
         locked_field_access_interrupt_o = 1'b1;
       end  // normal access
       else begin

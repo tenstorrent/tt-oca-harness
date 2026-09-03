@@ -25,44 +25,44 @@
 module tb_markov_windowing;
 
   // Clock and reset
-  reg            clk;
-  reg            rstn;
+  reg clk;
+  reg rstn;
 
   // DUT signals
-  reg     [31:0] entropy;
-  reg            entropy_valid;
-  reg            enable;
-  reg     [ 7:0] prob_01_threshold;
-  reg     [ 7:0] prob_10_threshold;
-  reg     [ 7:0] prob_00_threshold;
-  reg     [ 7:0] prob_11_threshold;
+  reg [31:0] entropy;
+  reg        entropy_valid;
+  reg        enable;
+  reg [7:0]  prob_01_threshold;
+  reg [7:0]  prob_10_threshold;
+  reg [7:0]  prob_00_threshold;
+  reg [7:0]  prob_11_threshold;
 
-  wire    [15:0] count_01;
-  wire    [15:0] count_10;
-  wire    [15:0] count_00;
-  wire    [15:0] count_11;
-  wire    [ 7:0] prob_01;
-  wire    [ 7:0] prob_10;
-  wire    [ 7:0] prob_00;
-  wire    [ 7:0] prob_11;
-  wire    [ 3:0] status;
+  wire [15:0] count_01;
+  wire [15:0] count_10;
+  wire [15:0] count_00;
+  wire [15:0] count_11;
+  wire [7:0]  prob_01;
+  wire [7:0]  prob_10;
+  wire [7:0]  prob_00;
+  wire [7:0]  prob_11;
+  wire [3:0]  status;
 
   // Test monitoring
-  integer        test_errors;
-  integer        cycle_count;
-  integer        scaling_events;
-  reg     [15:0] prev_count_01;
-  reg     [31:0] total_samples;
-  integer        initial_scaling_events;
-  integer        final_scaling_events;
-  integer        new_scalings;
+  integer test_errors;
+  integer cycle_count;
+  integer scaling_events;
+  reg [15:0] prev_count_01;
+  reg [31:0] total_samples;
+  integer initial_scaling_events;
+  integer final_scaling_events;
+  integer new_scalings;
 
   // Additional test variables for overflow tests
-  integer        max_count_observed;
-  integer        samples_sent;
-  integer        initial_errors;
-  integer        prev_total_transitions;
-  integer        wraparound_detected;
+  integer max_count_observed;
+  integer samples_sent;
+  integer initial_errors;
+  integer prev_total_transitions;
+  integer wraparound_detected;
   integer max_count_01, max_count_10, max_count_00, max_count_11;
   integer max_total;
   integer scaling_count_start;
@@ -116,7 +116,7 @@ module tb_markov_windowing;
                  prob_11);
       end
       prev_count_01 = count_01;
-      cycle_count   = cycle_count + 1;
+      cycle_count = cycle_count + 1;
     end
   end
 
@@ -390,7 +390,7 @@ module tb_markov_windowing;
       generate_biased_11_pattern();
       @(posedge clk);
       total_samples = total_samples + 1;
-      samples_sent  = samples_sent + 1;
+      samples_sent = samples_sent + 1;
 
       // Track maximum counter value seen
       if (count_11 > max_count_observed) begin
@@ -571,7 +571,7 @@ module tb_markov_windowing;
     #500;
 
     scaling_count_end = scaling_events;
-    scalings_in_test  = scaling_count_end - scaling_count_start;
+    scalings_in_test = scaling_count_end - scaling_count_start;
 
     $display("\nWindowing effectiveness:");
     $display("  Samples processed: %0d", samples_in_test);

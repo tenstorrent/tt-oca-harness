@@ -10,8 +10,8 @@ interface i3c_coverage_if (
   // I3C bus (shared, open-drain modeled in the TB)
   input logic        scl,
   input logic        sda,
-  input logic        sel_od_pp,  // 0 = Open-Drain, 1 = Push-Pull
-  input logic [ 1:0] irq,
+  input logic        sel_od_pp,     // 0 = Open-Drain, 1 = Push-Pull
+  input logic [1:0]  irq,
   // AXI-Lite write channel (command / data ports)
   input logic        awvalid,
   input logic        awready,
@@ -40,16 +40,16 @@ interface i3c_coverage_if (
   logic [31:0] last_araddr;
 
   // Decoded command-descriptor fields (from cmd_lo / first COMMAND_PORT write)
-  logic [ 2:0] cmd_attr;
-  logic [ 7:0] cmd_ccc;
+  logic [2:0]  cmd_attr;
+  logic [7:0]  cmd_ccc;
   logic        cmd_cp;
   logic        cmd_rnw;
   logic        cmd_toc;
-  logic        cmd_sample;  // pulse when a command lo-word is captured
+  logic        cmd_sample;    // pulse when a command lo-word is captured
 
   // Decoded response-descriptor fields
-  logic [ 1:0] resp_err;
-  logic        resp_sample;  // pulse when a response word is read
+  logic [1:0]  resp_err;
+  logic        resp_sample;   // pulse when a response word is read
 
   // Bus protocol events
   logic        sda_q;

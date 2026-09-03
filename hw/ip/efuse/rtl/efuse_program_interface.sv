@@ -15,42 +15,42 @@ module efuse_program_interface #(
   parameter type fuse_command_req_t = logic,
   parameter type fuse_command_resp_t = logic
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic                clk_i,
+  input  logic                rst_ni,
+  input  logic                test_en_i,
 
-  input  logic        program_enable_i,
-  output logic        is_programing_o,
-  output efuse_addr_t program_target_addr_o,
+  input  logic                program_enable_i,
+  output logic                is_programing_o,
+  output efuse_addr_t         program_target_addr_o,
 
-  input efuse_addr_t program_addr_i,
-  input logic        program_data_in_i,
-  input logic        program_go_i,
-  input logic        program_read_back_enable_i,
+  input  efuse_addr_t         program_addr_i,
+  input  logic                program_data_in_i,
+  input  logic                program_go_i,
+  input  logic                program_read_back_enable_i,
 
-  output logic        program_busy_o,
-  output logic        program_done_o,
-  output logic        program_error_o,
-  output efuse_data_t program_read_back_data_o,
+  output logic                program_busy_o,
+  output logic                program_done_o,
+  output logic                program_error_o,
+  output efuse_data_t         program_read_back_data_o,
 
   // Address validation: oob computed in controller against full-width
   // CSR field (the cast to efuse_addr_t that produces program_addr_i
   // truncates upper bits, so the bounds check must live upstream).
-  input  logic program_addr_oob_i,
-  output logic program_addr_error_o,
-  input  logic program_addr_error_clear_i,
+  input  logic                program_addr_oob_i,
+  output logic                program_addr_error_o,
+  input  logic                program_addr_error_clear_i,
 
-  input logic efuse_req_err_i,
-  input logic secure_tm_blocked_i,
+  input  logic                efuse_req_err_i,
+  input  logic                secure_tm_blocked_i,
 
-  input logic        program_req_timeout_en_i,
-  input logic [27:0] program_req_timeout_cycles_i,
+  input  logic                program_req_timeout_en_i,
+  input  logic [27:0]         program_req_timeout_cycles_i,
 
-  output fuse_command_req_t  fuse_command_req_o,
-  input  fuse_command_resp_t fuse_command_resp_i,
+  output fuse_command_req_t   fuse_command_req_o,
+  input  fuse_command_resp_t  fuse_command_resp_i,
 
   // Debug signals
-  output logic is_program_timeout_debug_o
+  output logic                is_program_timeout_debug_o
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
@@ -111,18 +111,18 @@ module efuse_program_interface #(
     unique case (program_state_q)
       ST_PROGRAM_IDLE: begin
         if (program_go_i) begin
-          program_done_d  = 1'b0;
+          program_done_d = 1'b0;
           timeout_count_d = 'd0;
           if (!program_enable_i) begin
             program_state_d = ST_PROGRAM_IDLE;
-            program_busy_d  = 1'b0;
-            program_done_d  = 1'b1;
-            program_err_d   = 1'b1;
+            program_busy_d = 1'b0;
+            program_done_d = 1'b1;
+            program_err_d = 1'b1;
           end else if (program_data_in_i == 1'b0) begin
             program_state_d = ST_PROGRAM_IDLE;
-            program_busy_d  = 1'b0;
-            program_done_d  = 1'b1;
-            program_err_d   = 1'b1;
+            program_busy_d = 1'b0;
+            program_done_d = 1'b1;
+            program_err_d = 1'b1;
           end else if (program_addr_oob_i) begin
             program_state_d = ST_PROGRAM_IDLE;
             program_busy_d = 1'b0;
@@ -166,7 +166,7 @@ module efuse_program_interface #(
 
           program_done_d = 1'b0;
           program_busy_d = 1'b1;
-          program_err_d  = 1'b0;
+          program_err_d =  1'b0;
 
           if (program_req_timeout_en_i && timeout_count_d >= program_req_timeout_cycles_i) begin
             program_done_d = 1'b1;

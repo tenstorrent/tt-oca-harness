@@ -7,11 +7,11 @@
 //-----------------------------------------------------------------------------
 
 module efuse_guard #(
-  parameter int unsigned EFUSE_FIELDS        = 1,
-  parameter int unsigned EFUSE_ADDR_WIDTH    = 12,
-  parameter type         efuse_map_t         = logic,
-  parameter type         fuse_command_req_t  = logic,
-  parameter type         fuse_command_resp_t = logic,
+  parameter int unsigned EFUSE_FIELDS     = 1,
+  parameter int unsigned EFUSE_ADDR_WIDTH = 12,
+  parameter type         efuse_map_t      = logic,
+  parameter type         fuse_command_req_t      = logic,
+  parameter type         fuse_command_resp_t      = logic,
 
   parameter bit HAS_LC_STATE = 1'b0,
   parameter int unsigned LC_STATE_BIT_POSITION = 0,
@@ -35,10 +35,10 @@ module efuse_guard #(
   output logic efuse_err_o,
   input  logic error_clear_i,
 
-  input  fuse_command_req_t fuse_command_req_i,
+  input fuse_command_req_t fuse_command_req_i,
   output fuse_command_req_t fuse_command_req_filtered_o,
 
-  input  fuse_command_resp_t fuse_command_resp_i,
+  input fuse_command_resp_t fuse_command_resp_i,
   output fuse_command_resp_t fuse_command_resp_filtered_o,
 
   input efuse_map_t shadow_regs_i,
@@ -61,10 +61,8 @@ module efuse_guard #(
 
   // If read or write is from programming interface or read interface
   always_comb begin
-    pro_read_intf_rd_index = find_efuse_field_index(read_target_addr_i >> 3)
-        ;  // need to shift since address is a bit address and the shadow registers are byte address
-    pro_read_intf_wr_index = find_efuse_field_index(program_target_addr_i >> 3)
-        ;  // need to shift since address is a bit address and the shadow registers are byte address
+    pro_read_intf_rd_index = find_efuse_field_index(read_target_addr_i >> 3);     // need to shift since address is a bit address and the shadow registers are byte address
+    pro_read_intf_wr_index = find_efuse_field_index(program_target_addr_i >> 3);  // need to shift since address is a bit address and the shadow registers are byte address
 
     pro_read_intf_rm_lc_state_write_lock = 1'b0; // In SEP, LC_STATE has write/read lock but even if their lock is set, it should not block the pro_read_interface
     pro_read_intf_rm_lc_state_read_lock = 1'b0;
@@ -80,16 +78,12 @@ module efuse_guard #(
     end
     if (HAS_LC_STATE) begin
       // SEP
-      pro_read_intf_rm_lc_state_write_lock = (pro_read_intf_wr_index == 8'd0 )? 1'b0 : entry_write_locked(
-          pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock = (pro_read_intf_rd_index == 8'd0 )? 1'b0 : entry_read_locked(
-          pro_read_intf_rd_index, shadow_regs_i);
+      pro_read_intf_rm_lc_state_write_lock = (pro_read_intf_wr_index == 8'd0 )? 1'b0 : entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
+      pro_read_intf_rm_lc_state_read_lock = (pro_read_intf_rd_index == 8'd0 )? 1'b0 : entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
     end else begin
       // SMC
-      pro_read_intf_rm_lc_state_write_lock =
-          entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock =
-          entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
+      pro_read_intf_rm_lc_state_write_lock = entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
+      pro_read_intf_rm_lc_state_read_lock = entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
     end
 
     is_program_locked = pro_read_intf_rm_lc_state_write_lock || pro_read_intf_lock_lc_state_write;
@@ -108,22 +102,22 @@ module efuse_guard #(
 
   always_comb begin
     fuse_command_req_filtered_o = fuse_command_req_i;
-    error_capture = 1'b0;
+    error_capture  = 1'b0;
     secure_tm_blocked = 1'b0;
-    fuse_command_resp_filtered_o = fuse_command_resp_i;
+    fuse_command_resp_filtered_o   = fuse_command_resp_i;
     if (secure_tm_i) begin
       fuse_command_req_filtered_o = EmptyReq;
       error_capture  = 1'b0;  // secure_tm is on, but it is not an error_capture, error_capture is for read/write blocked
       secure_tm_blocked = 1'b1;
       fuse_command_resp_filtered_o   = FUSE_COMMAND_RESP_DEFAULT; // all output of the efuse is connected to 0;
     end else if (is_programing_i && is_program_locked) begin
-      error_capture = 1'b1;
+      error_capture  = 1'b1;
       fuse_command_req_filtered_o = EmptyReq;
-      fuse_command_resp_filtered_o = FUSE_COMMAND_RESP_DEFAULT;
+      fuse_command_resp_filtered_o   = FUSE_COMMAND_RESP_DEFAULT;
     end else if (is_reading_i && is_read_locked) begin
-      error_capture = 1'b1;
+      error_capture  = 1'b1;
       fuse_command_req_filtered_o = EmptyReq;
-      fuse_command_resp_filtered_o = FUSE_COMMAND_RESP_DEFAULT;
+      fuse_command_resp_filtered_o   = FUSE_COMMAND_RESP_DEFAULT;
     end
   end
 

@@ -22,11 +22,11 @@
 class ocah_checker extends uvm_object;
   `uvm_object_utils(ocah_checker)
 
-  string        name_tag                = "ocah";
-  int unsigned  check_count;
-  int unsigned  pass_count;
-  int unsigned  fail_count;
-  string        required_ids       [$];
+  string       name_tag = "ocah";
+  int unsigned check_count;
+  int unsigned pass_count;
+  int unsigned fail_count;
+  string       required_ids[$];
   protected bit m_seen_ids[string];
   protected bit m_finalized;
 
@@ -53,14 +53,10 @@ class ocah_checker extends uvm_object;
                  "invalid checker ID %s; expected CHK-[A-Z0-9][A-Z0-9_-]*", check_id))
     check_count++;
     m_seen_ids[check_id] = 1'b1;
-    message = $sformatf(
-        "%s %s expected=%s observed=%s context=%s",
-        check_id,
-        passed ? "PASS" : "FAIL",
-        expected_s,
-        observed_s,
-        context_s.len() ? context_s : "-"
-    );
+    message = $sformatf("%s %s expected=%s observed=%s context=%s",
+                            check_id, passed ? "PASS" : "FAIL",
+                            expected_s, observed_s,
+                            context_s.len() ? context_s : "-");
     if (passed) begin
       pass_count++;
       `uvm_info(name_tag, message, UVM_LOW)

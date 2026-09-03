@@ -19,35 +19,35 @@ module jtag_stap_tb;
   localparam time CLOCK_PERIOD = 10ns;  // 100MHz
 
   // Signals - only tck needs C++ access for clock generation
-  logic            tck  /*verilator public*/;
-  logic            tms;
-  logic            trst_n;
-  logic            rst_n;
+  logic                            tck /*verilator public*/;
+  logic                            tms;
+  logic                            trst_n;
+  logic                            rst_n;
 
   // Client scan chain interface
-  jtag_scan_ctrl_t client_scan_ctrl;
-  logic            client_scan_in;
-  logic            client_scan_out;
+  jtag_scan_ctrl_t                 client_scan_ctrl;
+  logic                            client_scan_in;
+  logic                            client_scan_out;
 
   // Client TAP control interface
-  jtag_tap_ctrl_t  client_tap_ctrl;
+  jtag_tap_ctrl_t                  client_tap_ctrl;
 
   // Host TAP control interface (outputs)
-  jtag_tap_ctrl_t  host_tap_ctrl;
-  logic            host_tdo_oen;
-  logic            host_tdo;
+  jtag_tap_ctrl_t                  host_tap_ctrl;
+  logic                            host_tdo_oen;
+  logic                            host_tdo;
 
   // Host TDI input
-  logic            host_tdi;
-  logic            security_disable;
+  logic                            host_tdi;
+  logic                            security_disable;
 
   // Test state variables
-  int              test_count = 0;
-  int              error_count = 0;
-  logic            test_select = 1'b0;
-  logic            test_shift_en = 1'b0;
-  logic            test_capture_en = 1'b0;
-  logic            test_update_en = 1'b0;
+  int test_count = 0;
+  int error_count = 0;
+  logic test_select = 1'b0;
+  logic test_shift_en = 1'b0;
+  logic test_capture_en = 1'b0;
+  logic test_update_en = 1'b0;
 
   // Create client_scan_ctrl from individual signals
   assign client_scan_ctrl.tck = tck;
@@ -71,10 +71,10 @@ module jtag_stap_tb;
     .SCAN_OUT_LOCKUP(SCAN_OUT_LOCKUP)
   ) dut (
     .client_scan_ctrl_i(client_scan_ctrl),
-    .client_scan_in_i  (client_scan_in),
-    .client_scan_out_o (client_scan_out),
+    .client_scan_in_i(client_scan_in),
+    .client_scan_out_o(client_scan_out),
 
-    .client_tap_ctrl_i (client_tap_ctrl),
+    .client_tap_ctrl_i(client_tap_ctrl),
     .security_disable_i(security_disable),
 
     .host_tap_ctrl_o(host_tap_ctrl),
@@ -119,7 +119,7 @@ module jtag_stap_tb;
     advance_clock(3);
 
     // Deassert resets
-    rst_n  = 1'b1;
+    rst_n = 1'b1;
     trst_n = 1'b1;
 
     // Wait for stabilization
@@ -147,11 +147,11 @@ module jtag_stap_tb;
     advance_clock(1);
 
     // Update SIB to enable it
-    test_shift_en  = 1'b0;
+    test_shift_en = 1'b0;
     test_update_en = 1'b1;
     advance_clock(1);
     test_update_en = 1'b0;
-    test_shift_en  = 1'b1;
+    test_shift_en = 1'b1;
 
     // Scan in SIB disable (0) followed by 3DCR value [tms_hold, stap_sel, config_hold]
     client_scan_in = 1'b0;  // Disable SIB after this operation
@@ -164,7 +164,7 @@ module jtag_stap_tb;
     advance_clock(1);
 
     // Update both SIB and 3DCR
-    test_shift_en  = 1'b0;
+    test_shift_en = 1'b0;
     test_update_en = 1'b1;
     advance_clock(1);
     test_update_en = 1'b0;
@@ -185,16 +185,16 @@ module jtag_stap_tb;
     advance_clock(1);
 
     // Update SIB to enable it
-    test_shift_en  = 1'b0;
+    test_shift_en = 1'b0;
     test_update_en = 1'b1;
     advance_clock(1);
-    test_update_en  = 1'b0;
+    test_update_en = 1'b0;
     test_capture_en = 1'b1;
     advance_clock(1);
 
     // Capture both SIB and 3DCR value
     test_capture_en = 1'b0;
-    test_shift_en   = 1'b1;
+    test_shift_en = 1'b1;
 
     // Scan out SIB + 3DCR value (4 bits total: 1 SIB + 3 3DCR)
     // Scan back what we read to preserve the register values
@@ -223,7 +223,7 @@ module jtag_stap_tb;
     advance_clock(1);
 
     // Update to disable SIB with preserved 3DCR value
-    test_shift_en  = 1'b0;
+    test_shift_en = 1'b0;
     test_update_en = 1'b1;
     advance_clock(1);
     test_update_en = 1'b0;
@@ -273,7 +273,7 @@ module jtag_stap_tb;
     $display("INFO: Scanning random data pattern: 0x%04h", random_data);
 
     // Select the scan chain and enable scan mode
-    test_select   = 1'b1;
+    test_select = 1'b1;
     test_shift_en = 1'b1;
 
     // Scan in the data and capture output
@@ -290,7 +290,7 @@ module jtag_stap_tb;
 
     // Disable scan mode and deselect chain
     test_shift_en = 1'b0;
-    test_select   = 1'b0;
+    test_select = 1'b0;
 
     // Verify each bit of the scan chain output
     for (i = 0; i < 16; i++) begin
@@ -320,12 +320,12 @@ module jtag_stap_tb;
 
     // Step 3 & 4: Drive random data on both paths simultaneously
     client_random_data = $urandom & 16'hFFFF;
-    host_random_data   = $urandom & 16'hFFFF;
+    host_random_data = $urandom & 16'hFFFF;
     $display("INFO: Client scan data: 0x%04h, Host TDI data: 0x%04h", client_random_data,
              host_random_data);
 
     // Enable scan mode
-    test_select   = 1'b1;
+    test_select = 1'b1;
     test_shift_en = 1'b1;
 
     // Scan data through both paths simultaneously
@@ -344,7 +344,7 @@ module jtag_stap_tb;
 
     // Disable scan mode
     test_shift_en = 1'b0;
-    test_select   = 1'b0;
+    test_select = 1'b0;
 
     // Verify client_scan_in -> host_tdo path
     $display("INFO: Verifying client scan input to host TDO path");
@@ -552,7 +552,7 @@ module jtag_stap_tb;
     check_signal(host_tap_ctrl.tms, 1'b1, "host_tms", "Security Disable release");
     check_signal(host_tdo_oen, 1'b1, "host_tdo_oen", "Security Disable release");
     test_shift_en = 1'b0;
-    test_select   = 1'b0;
+    test_select = 1'b0;
   endtask
 
   // Test initialization phase
@@ -560,13 +560,13 @@ module jtag_stap_tb;
     $display("=== JTAG STAP Interface Test ===");
 
     // Initialize signals
-    tck              = 0;
-    tms              = 1;  // Start in Test-Logic-Reset
-    trst_n           = 0;  // Hold in reset initially
-    rst_n            = 0;  // Hold scan reset
+    tck = 0;
+    tms = 1;        // Start in Test-Logic-Reset
+    trst_n = 0;     // Hold in reset initially
+    rst_n = 0;      // Hold scan reset
 
-    client_scan_in   = 0;
-    host_tdi         = 0;
+    client_scan_in = 0;
+    host_tdi = 0;
     security_disable = 0;
   endtask
 
@@ -577,7 +577,7 @@ module jtag_stap_tb;
 
     // Release resets
     trst_n = 1;
-    rst_n  = 1;
+    rst_n = 1;
 
     // Wait for reset to propagate
     advance_clock(3);

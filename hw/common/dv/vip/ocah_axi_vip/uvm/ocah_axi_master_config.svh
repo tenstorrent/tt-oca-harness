@@ -15,28 +15,28 @@ class ocah_axi_master_config extends uvm_object;
   // procedurally and samples the responder-driven signals through mon_cb;
   // the TB routes the responder-driven direction in (see the selftest
   // harness adoption in dv/tb/tb_top.sv).
-  virtual ocah_axi_if     vif;
+  virtual ocah_axi_if vif;
 
-  ocah_axi_protocol_e     protocol       = OCAH_AXI_PROTO_AXI4;
-  int unsigned            addr_width     = 32;
-  int unsigned            data_width     = 32;
-  int unsigned            id_width       = 0;
+  ocah_axi_protocol_e protocol   = OCAH_AXI_PROTO_AXI4;
+  int unsigned        addr_width = 32;
+  int unsigned        data_width = 32;
+  int unsigned        id_width   = 0;
 
-  uvm_active_passive_enum is_active      = UVM_ACTIVE;
+  uvm_active_passive_enum is_active = UVM_ACTIVE;
 
   // Handshake watchdog: mon_cb cycles each wait (AW/W/B/AR/R) may take
   // before the driver gives up and completes the item with timed_out set
   // (the sequence layer decides whether a timeout is an error, mirroring
   // the cocotb allow_timeout contract). 0 disables the watchdog.
-  int unsigned            timeout_cycles = 1000;
+  int unsigned timeout_cycles = 1000;
 
   // Stable name for log messages.
-  string                  name_tag       = "ocah_axi_master";
+  string name_tag = "ocah_axi_master";
 
   // Commercial-VIP integration hook (opaque; template parity with the JTAG
   // master cfg): an env subclass may carry its vendor system configuration
   // here. The OCAH implementation ignores it.
-  uvm_object              vendor_cfg;
+  uvm_object vendor_cfg;
 
   function new(string name = "ocah_axi_master_config");
     super.new(name);

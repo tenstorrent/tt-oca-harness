@@ -36,18 +36,18 @@ module km_reset_conditioner
   parameter int unsigned MIN_RESET_CYCLES = 10
 ) (
   // Clock
-  input logic clk_i,
+  input  logic clk_i,
 
   // Reset inputs
-  input logic   cold_rst_ni,  // Async cold reset (active-low, from external system)
-  input logic   soft_rst_ni,  // Soft reset (active-low, from KMCSR; sync to clk_i)
-  input logic   warm_rst_ni,  // Warm reset pulse (active-low, from integrator; sync to clk_i)
-  input logic   scan_rst_ni,  // Scan reset (active-low, for DFT)
-  input mubi4_t scanmode_i,   // Scan mode (MuBi4True enables scan override)
+  input  logic   cold_rst_ni,   // Async cold reset (active-low, from external system)
+  input  logic   soft_rst_ni,   // Soft reset (active-low, from KMCSR; sync to clk_i)
+  input  logic   warm_rst_ni,   // Warm reset pulse (active-low, from integrator; sync to clk_i)
+  input  logic   scan_rst_ni,   // Scan reset (active-low, for DFT)
+  input  mubi4_t scanmode_i,    // Scan mode (MuBi4True enables scan override)
 
   // Reset outputs
-  output logic rst_cold_aasd_no,  // Cold reset: async-assert / sync-deassert (AASD)
-  output logic rst_warm_sync_no   // Warm reset: fully synchronous
+  output logic        rst_cold_aasd_no,  // Cold reset: async-assert / sync-deassert (AASD)
+  output logic        rst_warm_sync_no   // Warm reset: fully synchronous
 );
 
   `include "prim_assert.sv"
@@ -67,11 +67,11 @@ module km_reset_conditioner
     .ActiveHigh(1'b0),
     .SkipScan  (1'b0)
   ) u_cold_rst_sync (
-    .clk_i      (clk_i),
-    .d_i        (cold_rst_ni),
-    .q_o        (rst_cold_aasd_no),
-    .scan_rst_ni(scan_rst_ni),
-    .scanmode_i (scanmode_i)
+    .clk_i       (clk_i),
+    .d_i         (cold_rst_ni),
+    .q_o         (rst_cold_aasd_no),
+    .scan_rst_ni (scan_rst_ni),
+    .scanmode_i  (scanmode_i)
   );
 
   //=========================================================================
@@ -130,10 +130,10 @@ module km_reset_conditioner
   assign warm_rst_n = ~warm_hold_active_q;
 
   prim_rst_mux2_hf_n u_warm_rst_scan_mux (
-    .rst0_ni(warm_rst_n),
-    .rst1_ni(scan_rst_ni),
-    .sel_i  (mubi4_test_true_strict(scanmode_i)),
-    .rst_no (rst_warm_sync_no)
+    .rst0_ni (warm_rst_n),
+    .rst1_ni (scan_rst_ni),
+    .sel_i   (mubi4_test_true_strict(scanmode_i)),
+    .rst_no  (rst_warm_sync_no)
   );
 
   //=========================================================================

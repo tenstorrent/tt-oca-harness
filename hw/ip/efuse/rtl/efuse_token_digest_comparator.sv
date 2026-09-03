@@ -24,11 +24,11 @@ module efuse_token_digest_comparator #(
   localparam int unsigned L1Width    = L0Width / 4,
   localparam int unsigned L2Width    = L1Width / 4
 ) (
-  input logic [TokenWidth-1:0] token_digest_i,
-  input logic [TokenWidth-1:0] token_expected_i,
+  input  logic [TokenWidth-1:0] token_digest_i,
+  input  logic [TokenWidth-1:0] token_expected_i,
 
-  output logic match_p_o,  // 1 = equal
-  output logic match_n_o   // 1 = not equal
+  output logic                  match_p_o,  // 1 = equal
+  output logic                  match_n_o   // 1 = not equal
 );
 
   //-------------------------------------------------------------------------
@@ -55,10 +55,10 @@ module efuse_token_digest_comparator #(
   // If all the bits are a 1, then the output will be a 0, this is indicative of a match
   for (genvar g = 0; g < L0Width; g++) begin : gen_eq_l0
     prim_nand4 u_nand_l0_d0nt_touch (
-      .in0_i(bit_eq[4*g+0]),
-      .in1_i(bit_eq[4*g+1]),
-      .in2_i(bit_eq[4*g+2]),
-      .in3_i(bit_eq[4*g+3]),
+      .in0_i(bit_eq[4*g + 0]),
+      .in1_i(bit_eq[4*g + 1]),
+      .in2_i(bit_eq[4*g + 2]),
+      .in3_i(bit_eq[4*g + 3]),
       .out_o(eq_l0[g])
     );
   end
@@ -67,10 +67,10 @@ module efuse_token_digest_comparator #(
   // If all the input bits are a 0, then the output will be a 1, this is indicative of a match
   for (genvar g = 0; g < L1Width; g++) begin : gen_eq_l1
     prim_nor4 u_nor_l1_d0nt_touch (
-      .in0_i(eq_l0[4*g+0]),
-      .in1_i(eq_l0[4*g+1]),
-      .in2_i(eq_l0[4*g+2]),
-      .in3_i(eq_l0[4*g+3]),
+      .in0_i(eq_l0[4*g + 0]),
+      .in1_i(eq_l0[4*g + 1]),
+      .in2_i(eq_l0[4*g + 2]),
+      .in3_i(eq_l0[4*g + 3]),
       .out_o(eq_l1[g])
     );
   end
@@ -79,10 +79,10 @@ module efuse_token_digest_comparator #(
   // If all the input bits are a 1, then the output will be a 0, this is indicative of a match
   for (genvar g = 0; g < L2Width; g++) begin : gen_eq_l2
     prim_nand4 u_nand_l2_d0nt_touch (
-      .in0_i(eq_l1[4*g+0]),
-      .in1_i(eq_l1[4*g+1]),
-      .in2_i(eq_l1[4*g+2]),
-      .in3_i(eq_l1[4*g+3]),
+      .in0_i(eq_l1[4*g + 0]),
+      .in1_i(eq_l1[4*g + 1]),
+      .in2_i(eq_l1[4*g + 2]),
+      .in3_i(eq_l1[4*g + 3]),
       .out_o(eq_l2[g])
     );
   end
@@ -117,30 +117,30 @@ module efuse_token_digest_comparator #(
 
   for (genvar g = 0; g < L0Width; g++) begin : gen_neq_l0
     prim_or4 u_or_l0_d0nt_touch (
-      .in0_i(bit_neq[4*g+0]),
-      .in1_i(bit_neq[4*g+1]),
-      .in2_i(bit_neq[4*g+2]),
-      .in3_i(bit_neq[4*g+3]),
+      .in0_i(bit_neq[4*g + 0]),
+      .in1_i(bit_neq[4*g + 1]),
+      .in2_i(bit_neq[4*g + 2]),
+      .in3_i(bit_neq[4*g + 3]),
       .out_o(neq_l0[g])
     );
   end
 
   for (genvar g = 0; g < L1Width; g++) begin : gen_neq_l1
     prim_or4 u_or_l1_d0nt_touch (
-      .in0_i(neq_l0[4*g+0]),
-      .in1_i(neq_l0[4*g+1]),
-      .in2_i(neq_l0[4*g+2]),
-      .in3_i(neq_l0[4*g+3]),
+      .in0_i(neq_l0[4*g + 0]),
+      .in1_i(neq_l0[4*g + 1]),
+      .in2_i(neq_l0[4*g + 2]),
+      .in3_i(neq_l0[4*g + 3]),
       .out_o(neq_l1[g])
     );
   end
 
   for (genvar g = 0; g < L2Width; g++) begin : gen_neq_l2
     prim_or4 u_or_l2_d0nt_touch (
-      .in0_i(neq_l1[4*g+0]),
-      .in1_i(neq_l1[4*g+1]),
-      .in2_i(neq_l1[4*g+2]),
-      .in3_i(neq_l1[4*g+3]),
+      .in0_i(neq_l1[4*g + 0]),
+      .in1_i(neq_l1[4*g + 1]),
+      .in2_i(neq_l1[4*g + 2]),
+      .in3_i(neq_l1[4*g + 3]),
       .out_o(neq_l2[g])
     );
   end

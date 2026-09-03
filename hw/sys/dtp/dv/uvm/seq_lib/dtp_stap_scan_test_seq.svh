@@ -40,9 +40,9 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   protected function sep_lifecycle_ctrl_pkg::dbg_disable_t stap_gate_mask(int unsigned stap);
     sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0;
     case (stap)
-      int'(ST_IO):  d.stap_io = 1'b1;
-      int'(ST_SMC): d.stap_smc = 1'b1;
-      int'(ST_SEP): d.stap_sep = 1'b1;
+      int'(ST_IO):  d.stap_io    = 1'b1;
+      int'(ST_SMC): d.stap_smc   = 1'b1;
+      int'(ST_SEP): d.stap_sep   = 1'b1;
       default:      d.stap_extra = 1'b1;
     endcase
     return d;
@@ -158,7 +158,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     string host_controls[$];
     string active[$], none[$];
     bit [63:0] unused;
-    bit [ 1:0] gated_attempt;
+    bit [1:0] gated_attempt;
     host_controls.push_back("jtag_stap_host_select");
     host_controls.push_back("jtag_stap_host_shift_en");
     host_controls.push_back("jtag_stap_host_capture_en");
@@ -285,11 +285,17 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     seed_scenario_rng();
     case (scenario)
       "stap_sel_ds", "stap_sel_smc", "stap_sel_sep", "stap_sel_extra":
-      required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"};
-      "ext_stap_scan": required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
-      "config_hold": required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-OBS"};
-      "tms_hold": required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
-      default: `uvm_fatal(get_type_name(), $sformatf("unknown STAP scenario %s", scenario))
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN",
+                             "CHK-SCAN-CHAIN"};
+      "ext_stap_scan":
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
+      "config_hold":
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-OBS"};
+      "tms_hold":
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
+      default:
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "unknown STAP scenario %s", scenario))
     endcase
     // Scenario-owned Shift-x exits: skip the scan-count cross-check.
     attach_family_checker(required, 1'b0);
@@ -303,7 +309,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       "ext_stap_scan":  run_ext_stap_scan();
       "config_hold":    run_config_hold();
       "tms_hold":       run_tms_hold();
-      default:          ;
+      default: ;
     endcase
     enable_all_debug();
     write_ptap_3dcr(1'b0, 1'b0, "cleanup");

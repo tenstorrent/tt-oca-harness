@@ -31,16 +31,16 @@ interface ocah_axi_if #(
   localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8;
 
   // Write address channel.
-  logic [  ID_WIDTH-1:0] awid;
+  logic [ID_WIDTH-1:0]   awid;
   logic [ADDR_WIDTH-1:0] awaddr;
-  logic [           7:0] awlen;
-  logic [           2:0] awsize;
-  logic [           1:0] awburst;
+  logic [7:0]            awlen;
+  logic [2:0]            awsize;
+  logic [1:0]            awburst;
   logic                  awlock;
-  logic [           3:0] awcache;
-  logic [           2:0] awprot;
-  logic [           3:0] awqos;
-  logic [           3:0] awregion;
+  logic [3:0]            awcache;
+  logic [2:0]            awprot;
+  logic [3:0]            awqos;
+  logic [3:0]            awregion;
   logic [USER_WIDTH-1:0] awuser;
   logic                  awvalid;
   logic                  awready;
@@ -54,31 +54,31 @@ interface ocah_axi_if #(
   logic                  wready;
 
   // Write response channel.
-  logic [  ID_WIDTH-1:0] bid;
-  logic [           1:0] bresp;
+  logic [ID_WIDTH-1:0]   bid;
+  logic [1:0]            bresp;
   logic [USER_WIDTH-1:0] buser;
   logic                  bvalid;
   logic                  bready;
 
   // Read address channel.
-  logic [  ID_WIDTH-1:0] arid;
+  logic [ID_WIDTH-1:0]   arid;
   logic [ADDR_WIDTH-1:0] araddr;
-  logic [           7:0] arlen;
-  logic [           2:0] arsize;
-  logic [           1:0] arburst;
+  logic [7:0]            arlen;
+  logic [2:0]            arsize;
+  logic [1:0]            arburst;
   logic                  arlock;
-  logic [           3:0] arcache;
-  logic [           2:0] arprot;
-  logic [           3:0] arqos;
-  logic [           3:0] arregion;
+  logic [3:0]            arcache;
+  logic [2:0]            arprot;
+  logic [3:0]            arqos;
+  logic [3:0]            arregion;
   logic [USER_WIDTH-1:0] aruser;
   logic                  arvalid;
   logic                  arready;
 
   // Read data channel.
-  logic [  ID_WIDTH-1:0] rid;
+  logic [ID_WIDTH-1:0]   rid;
   logic [DATA_WIDTH-1:0] rdata;
-  logic [           1:0] rresp;
+  logic [1:0]            rresp;
   logic                  rlast;
   logic [USER_WIDTH-1:0] ruser;
   logic                  rvalid;

@@ -35,7 +35,7 @@ class dtp_sanity_test extends dtp_base_test;
   task run_phase(uvm_phase phase);
     dtp_sanity_test_seq seq;
     phase.raise_objection(this, "dtp_sanity_test running");
-    seq              = dtp_sanity_test_seq::type_id::create("seq");
+    seq = dtp_sanity_test_seq::type_id::create("seq");
     seq.tb_vif       = m_env.tb_vif;
     seq.evidence     = m_env.m_jtag_checker;
     seq.scan_builder = m_env.m_scan_builder;

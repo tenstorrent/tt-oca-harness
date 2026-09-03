@@ -20,8 +20,8 @@
 `include "axi/typedef.svh"
 
 module sep_crypto_otbn_wrapper (
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // 64-bit AXI slave side from crypto AXI crossbar (structs)
   input  sep_pkg::sep_32_64_6_12_axi_req_t  otbn_axi_req_i,
@@ -94,22 +94,22 @@ module sep_crypto_otbn_wrapper (
   otbn_axi32_resp_t otbn_axi32_resp;
 
   axi_dw_converter #(
-    .AxiMaxReads        (8),
-    .AxiSlvPortDataWidth(sep_pkg::SEP_CRYPTO_AXI_DATA_WIDTH),
-    .AxiMstPortDataWidth(OTBN_AXI32_DATA_WIDTH),
-    .AxiAddrWidth       (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
-    .AxiIdWidth         (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
-    .aw_chan_t          (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-    .mst_w_chan_t       (otbn_axi32_w_chan_t),
-    .slv_w_chan_t       (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-    .b_chan_t           (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-    .ar_chan_t          (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-    .mst_r_chan_t       (otbn_axi32_r_chan_t),
-    .slv_r_chan_t       (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-    .axi_mst_req_t      (otbn_axi32_req_t),
-    .axi_mst_resp_t     (otbn_axi32_resp_t),
-    .axi_slv_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
-    .axi_slv_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t)
+    .AxiMaxReads         (8),
+    .AxiSlvPortDataWidth (sep_pkg::SEP_CRYPTO_AXI_DATA_WIDTH),
+    .AxiMstPortDataWidth (OTBN_AXI32_DATA_WIDTH),
+    .AxiAddrWidth        (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
+    .AxiIdWidth          (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
+    .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+    .mst_w_chan_t        (otbn_axi32_w_chan_t),
+    .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+    .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+    .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+    .mst_r_chan_t        (otbn_axi32_r_chan_t),
+    .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+    .axi_mst_req_t       (otbn_axi32_req_t),
+    .axi_mst_resp_t      (otbn_axi32_resp_t),
+    .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
   ) u_otbn_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
@@ -127,24 +127,24 @@ module sep_crypto_otbn_wrapper (
   sep_pkg::sep_32_32_axil_resp_t otbn_axil_resp;
 
   axi_to_axi_lite #(
-    .AxiAddrWidth   (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-    .AxiDataWidth   (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-    .AxiIdWidth     (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-    .AxiUserWidth   (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns(4),
-    .AxiMaxReadTxns (4),
-    .full_req_t     (otbn_axi32_req_t),
-    .full_resp_t    (otbn_axi32_resp_t),
-    .lite_req_t     (sep_pkg::sep_32_32_axil_req_t),
-    .lite_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+    .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
+    .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
+    .AxiMaxWriteTxns (4),
+    .AxiMaxReadTxns  (4),
+    .full_req_t      (otbn_axi32_req_t),
+    .full_resp_t     (otbn_axi32_resp_t),
+    .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
+    .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
   ) u_otbn_axi_to_axi_lite (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .test_i    (1'b0),
-    .slv_req_i (otbn_axi32_req),
-    .slv_resp_o(otbn_axi32_resp),
-    .mst_req_o (otbn_axil_req),
-    .mst_resp_i(otbn_axil_resp)
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_i      (1'b0),
+    .slv_req_i   (otbn_axi32_req),
+    .slv_resp_o  (otbn_axi32_resp),
+    .mst_req_o   (otbn_axil_req),
+    .mst_resp_i  (otbn_axil_resp)
   );
 
   // ========================================================================
@@ -155,21 +155,21 @@ module sep_crypto_otbn_wrapper (
   tlul_pkg::tl_d2h_t tl_resp;
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH(sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-    .AXI_DATA_WIDTH(sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-    .AXI_ID_WIDTH  (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-    .AXI_USER_WIDTH(sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .axi_lite_req_t(sep_pkg::sep_32_32_axil_req_t),
-    .axi_lite_rsp_t(sep_pkg::sep_32_32_axil_resp_t)
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AXI_ID_WIDTH   (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
+    .AXI_USER_WIDTH (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
+    .axi_lite_req_t (sep_pkg::sep_32_32_axil_req_t),
+    .axi_lite_rsp_t (sep_pkg::sep_32_32_axil_resp_t)
   ) u_axi_lite_to_tlul (
     .clk_i,
     .rst_ni,
-    .axi_lite_req_i(otbn_axil_req),
-    .axi_lite_rsp_o(otbn_axil_resp),
-    .tl_o          (tl_req),
-    .tl_i          (tl_resp),
-    .err_o         (bus_err_o),
-    .err_clr_i     (bus_err_clr_i)
+    .axi_lite_req_i (otbn_axil_req),
+    .axi_lite_rsp_o (otbn_axil_resp),
+    .tl_o           (tl_req),
+    .tl_i           (tl_resp),
+    .err_o          (bus_err_o),
+    .err_clr_i      (bus_err_clr_i)
   );
 
   // ========================================================================
@@ -187,41 +187,41 @@ module sep_crypto_otbn_wrapper (
   assign otbn_keymgr_key.valid = key_csr_hwif_out.KEY_CTRL.key_valid.value;
 
   for (genvar i = 0; i < 12; i++) begin : gen_key_share_map
-    assign otbn_keymgr_key.key[0][i*32+:32] = key_csr_hwif_out.KEY_SHARE0[i].data.value;
-    assign otbn_keymgr_key.key[1][i*32+:32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
+    assign otbn_keymgr_key.key[0][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE0[i].data.value;
+    assign otbn_keymgr_key.key[1][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
   end
 
   localparam int unsigned OTBN_KEY_CSR_ADDR_WIDTH = otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
 
   otbn_wrapper_key_reg u_otbn_wrapper_key_reg (
-    .clk   (clk_i),
-    .arst_n(rst_ni),
+    .clk       (clk_i),
+    .arst_n    (rst_ni),
 
-    .s_axil_awvalid(otbn_key_axil_req_i.aw_valid),
-    .s_axil_awaddr (otbn_key_axil_req_i.aw.addr[OTBN_KEY_CSR_ADDR_WIDTH-1:0]),
-    .s_axil_awprot (otbn_key_axil_req_i.aw.prot),
-    .s_axil_awready(otbn_key_axil_resp_o.aw_ready),
+    .s_axil_awvalid (otbn_key_axil_req_i.aw_valid),
+    .s_axil_awaddr  (otbn_key_axil_req_i.aw.addr[OTBN_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (otbn_key_axil_req_i.aw.prot),
+    .s_axil_awready (otbn_key_axil_resp_o.aw_ready),
 
-    .s_axil_wvalid(otbn_key_axil_req_i.w_valid),
-    .s_axil_wdata (otbn_key_axil_req_i.w.data),
-    .s_axil_wstrb (otbn_key_axil_req_i.w.strb),
-    .s_axil_wready(otbn_key_axil_resp_o.w_ready),
+    .s_axil_wvalid  (otbn_key_axil_req_i.w_valid),
+    .s_axil_wdata   (otbn_key_axil_req_i.w.data),
+    .s_axil_wstrb   (otbn_key_axil_req_i.w.strb),
+    .s_axil_wready  (otbn_key_axil_resp_o.w_ready),
 
-    .s_axil_bready(otbn_key_axil_req_i.b_ready),
-    .s_axil_bvalid(otbn_key_axil_resp_o.b_valid),
-    .s_axil_bresp (otbn_key_axil_resp_o.b.resp),
+    .s_axil_bready  (otbn_key_axil_req_i.b_ready),
+    .s_axil_bvalid  (otbn_key_axil_resp_o.b_valid),
+    .s_axil_bresp   (otbn_key_axil_resp_o.b.resp),
 
-    .s_axil_arvalid(otbn_key_axil_req_i.ar_valid),
-    .s_axil_araddr (otbn_key_axil_req_i.ar.addr[OTBN_KEY_CSR_ADDR_WIDTH-1:0]),
-    .s_axil_arprot (otbn_key_axil_req_i.ar.prot),
-    .s_axil_arready(otbn_key_axil_resp_o.ar_ready),
+    .s_axil_arvalid (otbn_key_axil_req_i.ar_valid),
+    .s_axil_araddr  (otbn_key_axil_req_i.ar.addr[OTBN_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (otbn_key_axil_req_i.ar.prot),
+    .s_axil_arready (otbn_key_axil_resp_o.ar_ready),
 
-    .s_axil_rready(otbn_key_axil_req_i.r_ready),
-    .s_axil_rvalid(otbn_key_axil_resp_o.r_valid),
-    .s_axil_rdata (otbn_key_axil_resp_o.r.data),
-    .s_axil_rresp (otbn_key_axil_resp_o.r.resp),
+    .s_axil_rready  (otbn_key_axil_req_i.r_ready),
+    .s_axil_rvalid  (otbn_key_axil_resp_o.r_valid),
+    .s_axil_rdata   (otbn_key_axil_resp_o.r.data),
+    .s_axil_rresp   (otbn_key_axil_resp_o.r.resp),
 
-    .hwif_out(key_csr_hwif_out)
+    .hwif_out (key_csr_hwif_out)
   );
 
   // ========================================================================
@@ -262,21 +262,21 @@ module sep_crypto_otbn_wrapper (
   // ========================================================================
 
   otbn #(
-    .Stub       (1'b0),
-    .FeatStubMai(1'b1),
-    .RegFile    (otbn_pkg::RegFileFF)
+    .Stub        (1'b0),
+    .FeatStubMai (1'b1),
+    .RegFile     (otbn_pkg::RegFileFF)
   ) u_otbn (
     .clk_i,
     .rst_ni,
 
-    .tl_i(tl_req),
-    .tl_o(tl_resp),
+    .tl_i (tl_req),
+    .tl_o (tl_resp),
 
-    .idle_o     (  /* unused */),
-    .intr_done_o(intr_done_o),
+    .idle_o          (/* unused */),
+    .intr_done_o     (intr_done_o),
 
-    .alert_rx_i(otbn_alert_rx),
-    .alert_tx_o(otbn_alert_tx),
+    .alert_rx_i      (otbn_alert_rx),
+    .alert_tx_o      (otbn_alert_tx),
 
     .lc_escalate_en_i(lc_ctrl_pkg::Off),
     .lc_rma_req_i    (lc_ctrl_pkg::Off),
@@ -284,27 +284,27 @@ module sep_crypto_otbn_wrapper (
 
     .ram_cfg_imem_i    ('0),
     .ram_cfg_dmem_i    ('0),
-    .ram_cfg_rsp_imem_o(  /* unused */),
-    .ram_cfg_rsp_dmem_o(  /* unused */),
+    .ram_cfg_rsp_imem_o(/* unused */),
+    .ram_cfg_rsp_dmem_o(/* unused */),
 
-    .imem_sram_req_o(imem_sram_req_o),
-    .imem_sram_rsp_i(imem_sram_rsp_i),
-    .dmem_sram_req_o(dmem_sram_req_o),
-    .dmem_sram_rsp_i(dmem_sram_rsp_i),
+    .imem_sram_req_o (imem_sram_req_o),
+    .imem_sram_rsp_i (imem_sram_rsp_i),
+    .dmem_sram_req_o (dmem_sram_req_o),
+    .dmem_sram_rsp_i (dmem_sram_rsp_i),
 
-    .clk_edn_i (clk_i),
-    .rst_edn_ni(rst_ni),
-    .edn_rnd_o (edn_rnd_req_o),
-    .edn_rnd_i (edn_rnd_rsp_i),
-    .edn_urnd_o(edn_urnd_req_o),
-    .edn_urnd_i(edn_urnd_rsp_i),
+    .clk_edn_i  (clk_i),
+    .rst_edn_ni (rst_ni),
+    .edn_rnd_o  (edn_rnd_req_o),
+    .edn_rnd_i  (edn_rnd_rsp_i),
+    .edn_urnd_o (edn_urnd_req_o),
+    .edn_urnd_i (edn_urnd_rsp_i),
 
     .clk_otp_i     (clk_i),
     .rst_otp_ni    (rst_ni),
     .otbn_otp_key_o(otbn_otp_key_req),
     .otbn_otp_key_i(otbn_otp_key_rsp),
 
-    .keymgr_key_i(otbn_keymgr_key)
+    .keymgr_key_i  (otbn_keymgr_key)
   );
 
 endmodule

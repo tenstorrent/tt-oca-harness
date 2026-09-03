@@ -107,7 +107,7 @@ NUM_REG_MAPS
     logic [3:0] frame_length;
     logic [7:0] rx_data;
     frame_length = get_frame_length(RX, word_length, extra_stop_bit, parity_en);
-    rx_data = 8'(rx_frame >> 12 - frame_length + 1);  // Plus 1 to shift out start bit
+    rx_data  = 8'(rx_frame >> 12 - frame_length + 1); // Plus 1 to shift out start bit
     rx_data &= 8'hff >> 8 - word_length;
     return rx_data;
   endfunction
@@ -125,12 +125,12 @@ NUM_REG_MAPS
   ///////////////////////////
 
   typedef enum logic [2:0] {
-    FIFO_ERROR                         = 3'b111,  // Highest priority
+    FIFO_ERROR                         = 3'b111, // Highest priority
     RECEIVER_LINE_STATUS               = 3'b011,
     RECEPTION_TIMEOUT                  = 3'b110,
     RECEIVED_DATA_READY                = 3'b010,
     TRANSMITTER_HOLDING_REGISTER_EMPTY = 3'b001,
-    MODEM_STATUS                       = 3'b000   // Lowest priority
+    MODEM_STATUS                       = 3'b000  // Lowest priority
   } interrupt_id_e;
 
   typedef struct packed {

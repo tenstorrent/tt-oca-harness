@@ -43,59 +43,59 @@ module tb_i3ccore;
   //--------------------------------------------------------------------------
 
   // Write Address Channel
-  logic                   [       31:0] axi_awaddr;
-  logic                   [        2:0] axi_awprot;
-  logic                                 axi_awvalid;
-  logic                                 axi_awready;
+  logic [31:0] axi_awaddr;
+  logic [2:0]  axi_awprot;
+  logic        axi_awvalid;
+  logic        axi_awready;
 
   // Write Data Channel
-  logic                   [       31:0] axi_wdata;
-  logic                   [        3:0] axi_wstrb;
-  logic                                 axi_wvalid;
-  logic                                 axi_wready;
+  logic [31:0] axi_wdata;
+  logic [3:0]  axi_wstrb;
+  logic        axi_wvalid;
+  logic        axi_wready;
 
   // Write Response Channel
-  logic                   [        1:0] axi_bresp;
-  logic                                 axi_bvalid;
-  logic                                 axi_bready;
+  logic [1:0]  axi_bresp;
+  logic        axi_bvalid;
+  logic        axi_bready;
 
   // Read Address Channel
-  logic                   [       31:0] axi_araddr;
-  logic                   [        2:0] axi_arprot;
-  logic                                 axi_arvalid;
-  logic                                 axi_arready;
+  logic [31:0] axi_araddr;
+  logic [2:0]  axi_arprot;
+  logic        axi_arvalid;
+  logic        axi_arready;
 
   // Read Data Channel
-  logic                   [       31:0] axi_rdata;
-  logic                   [        1:0] axi_rresp;
-  logic                                 axi_rvalid;
-  logic                                 axi_rready;
+  logic [31:0] axi_rdata;
+  logic [1:0]  axi_rresp;
+  logic        axi_rvalid;
+  logic        axi_rready;
 
   //--------------------------------------------------------------------------
   // I3C bus signals - directly connected (no struct unpacking needed)
   //--------------------------------------------------------------------------
-  logic                   [NUM_I3C-1:0] scl_i;
-  logic                   [NUM_I3C-1:0] sda_i;
-  logic                   [NUM_I3C-1:0] scl_o;
-  logic                   [NUM_I3C-1:0] sda_o;
-  logic                   [NUM_I3C-1:0] scl_oe;
-  logic                   [NUM_I3C-1:0] sda_oe;
-  logic                   [NUM_I3C-1:0] sel_od_pp;
+  logic [NUM_I3C-1:0] scl_i;
+  logic [NUM_I3C-1:0] sda_i;
+  logic [NUM_I3C-1:0] scl_o;
+  logic [NUM_I3C-1:0] sda_o;
+  logic [NUM_I3C-1:0] scl_oe;
+  logic [NUM_I3C-1:0] sda_oe;
+  logic [NUM_I3C-1:0] sel_od_pp;
 
   // Combined bus signals for open-drain modeling
   // The bus value is the AND of all drivers (open-drain with pull-up)
-  logic                   [NUM_I3C-1:0] scl_bus;
-  logic                   [NUM_I3C-1:0] sda_bus;
+  logic [NUM_I3C-1:0] scl_bus;
+  logic [NUM_I3C-1:0] sda_bus;
 
   //--------------------------------------------------------------------------
   // Interrupt and recovery signals
   //--------------------------------------------------------------------------
-  logic                   [NUM_I3C-1:0] irq;
-  logic                   [NUM_I3C-1:0] recovery_payload_available;
-  logic                   [NUM_I3C-1:0] recovery_image_activated;
-  logic                   [NUM_I3C-1:0] peripheral_reset;
-  logic                   [NUM_I3C-1:0] peripheral_reset_done;
-  logic                   [NUM_I3C-1:0] escalated_reset;
+  logic [NUM_I3C-1:0] irq;
+  logic [NUM_I3C-1:0] recovery_payload_available;
+  logic [NUM_I3C-1:0] recovery_image_activated;
+  logic [NUM_I3C-1:0] peripheral_reset;
+  logic [NUM_I3C-1:0] peripheral_reset_done;
+  logic [NUM_I3C-1:0] escalated_reset;
 
   //--------------------------------------------------------------------------
   // DAT/DCT external memory interface
@@ -163,37 +163,37 @@ module tb_i3ccore;
     // decode and fall through to instance 0, clobbering the controller.
     .INSTANCE_SPACING(32'h1000)
   ) u_dut (
-    .clk_i (clk),
+    .clk_i(clk),
     .rst_ni(rst_n),
 
     // AXI-Lite Write Address Channel
     .awvalid_i(axi_awvalid),
     .awready_o(axi_awready),
-    .awaddr_i (axi_awaddr),
-    .awprot_i (axi_awprot),
+    .awaddr_i(axi_awaddr),
+    .awprot_i(axi_awprot),
 
     // AXI-Lite Write Data Channel
     .wvalid_i(axi_wvalid),
     .wready_o(axi_wready),
-    .wdata_i (axi_wdata),
-    .wstrb_i (axi_wstrb),
+    .wdata_i(axi_wdata),
+    .wstrb_i(axi_wstrb),
 
     // AXI-Lite Write Response Channel
     .bvalid_o(axi_bvalid),
     .bready_i(axi_bready),
-    .bresp_o (axi_bresp),
+    .bresp_o(axi_bresp),
 
     // AXI-Lite Read Address Channel
     .arvalid_i(axi_arvalid),
     .arready_o(axi_arready),
-    .araddr_i (axi_araddr),
-    .arprot_i (axi_arprot),
+    .araddr_i(axi_araddr),
+    .arprot_i(axi_arprot),
 
     // AXI-Lite Read Data Channel
     .rvalid_o(axi_rvalid),
     .rready_i(axi_rready),
-    .rdata_o (axi_rdata),
-    .rresp_o (axi_rresp),
+    .rdata_o(axi_rdata),
+    .rresp_o(axi_rresp),
 
     // I3C bus signals
     .scl_i(scl_i),
@@ -229,12 +229,12 @@ module tb_i3ccore;
   //--------------------------------------------------------------------------
 `ifdef I3C_BEHAV_DAT_MEM
   for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
-    logic [ 63:0] dat_arr[0:(1<<i3c_pkg::DatAw)-1];
-    logic [127:0] dct_arr[0:(1<<i3c_pkg::DctAw)-1];
+    logic [63:0]  dat_arr [0:(1<<i3c_pkg::DatAw)-1];
+    logic [127:0] dct_arr [0:(1<<i3c_pkg::DctAw)-1];
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) begin
         for (int k = 0; k < (1 << i3c_pkg::DatAw); k++) dat_arr[k] <= '0;
-        dat_mem_src[gi].rdata  <= '0;
+        dat_mem_src[gi].rdata <= '0;
         dat_mem_src[gi].rvalid <= 1'b0;
         dat_mem_src[gi].rerror <= '0;
       end else begin
@@ -253,7 +253,7 @@ module tb_i3ccore;
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) begin
         for (int k = 0; k < (1 << i3c_pkg::DctAw); k++) dct_arr[k] <= '0;
-        dct_mem_src[gi].rdata  <= '0;
+        dct_mem_src[gi].rdata <= '0;
         dct_mem_src[gi].rvalid <= 1'b0;
         dct_mem_src[gi].rerror <= '0;
       end else begin
@@ -274,9 +274,9 @@ module tb_i3ccore;
   for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
     // DAT memory (64-bit wide)
     prim_ram_1p_adv_i3ccore #(
-      .Depth               (I3CCSR_pkg::dat_depth + 1),
-      .Width               (64),
-      .DataBitsPerMask     (32),
+      .Depth              (I3CCSR_pkg::dat_depth + 1),
+      .Width              (64),
+      .DataBitsPerMask    (32),
       .EnableOutputPipeline(1)
     ) i3c_dat_memory (
       .clk_i   (clk),
@@ -294,9 +294,9 @@ module tb_i3ccore;
 
     // DCT memory (128-bit wide)
     prim_ram_1p_adv_i3ccore #(
-      .Depth               (I3CCSR_pkg::dct_depth + 1),
-      .Width               (128),
-      .DataBitsPerMask     (32),
+      .Depth              (I3CCSR_pkg::dct_depth + 1),
+      .Width              (128),
+      .DataBitsPerMask    (32),
       .EnableOutputPipeline(1)
     ) i3c_dct_memory (
       .clk_i   (clk),

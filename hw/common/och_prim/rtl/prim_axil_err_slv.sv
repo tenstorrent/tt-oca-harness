@@ -11,8 +11,8 @@ module prim_axil_err_slv #(
   parameter int unsigned AXI_DATA_WIDTH = 32,
   parameter int unsigned AXI_ADDR_WIDTH = 32,
 
-  parameter type axil_req_t  = logic,  // AXI4-Lite request type
-  parameter type axil_resp_t = logic,  // AXI4-Lite response type
+  parameter type         axil_req_t  = logic, // AXI4-Lite request type
+  parameter type         axil_resp_t  = logic, // AXI4-Lite response type
 
   // Derived parameters
   localparam int unsigned AXI_STRB_WIDTH = (AXI_DATA_WIDTH / 8),
@@ -21,12 +21,12 @@ module prim_axil_err_slv #(
   localparam type strb_t = logic [AXI_STRB_WIDTH-1:0]
 ) (
   // Clock and Reset (always first, active-low async reset)
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic        clk_i,
+  input  logic        rst_ni,
 
   // AXI-Lite slave interface (struct-based)
-  input  axil_req_t  axil_req_i,
-  output axil_resp_t axil_resp_o
+  input  axil_req_t   axil_req_i,
+  output axil_resp_t  axil_resp_o
 );
 
   `include "prim_assert.sv"
@@ -73,36 +73,36 @@ module prim_axil_err_slv #(
 
   // Convert AXI-Lite to AXI4 and instantiate error slave
   axi_lite_to_axi #(
-    .AxiDataWidth(AXI_DATA_WIDTH),
-    .req_lite_t  (axil_req_t),
-    .resp_lite_t (axil_resp_t),
-    .axi_req_t   (axi_req_t),
-    .axi_resp_t  (axi_resp_t)
+    .AxiDataWidth (AXI_DATA_WIDTH),
+    .req_lite_t   (axil_req_t),
+    .resp_lite_t  (axil_resp_t),
+    .axi_req_t    (axi_req_t),
+    .axi_resp_t   (axi_resp_t)
   ) u_axil_to_axi (
-    .slv_req_lite_i (axil_req_i),
-    .slv_resp_lite_o(axil_resp_o),
-    .slv_aw_cache_i (axi_pkg::cache_t'(0)),
-    .slv_ar_cache_i (axi_pkg::cache_t'(0)),
-    .mst_req_o      (axi_req),
-    .mst_resp_i     (axi_resp)
+    .slv_req_lite_i  (axil_req_i),
+    .slv_resp_lite_o (axil_resp_o),
+    .slv_aw_cache_i  (axi_pkg::cache_t'(0)),
+    .slv_ar_cache_i  (axi_pkg::cache_t'(0)),
+    .mst_req_o       (axi_req),
+    .mst_resp_i      (axi_resp)
   );
 
   // AXI4 error slave - responds with DECERR to all transactions
   axi_err_slv #(
-    .AxiIdWidth(1),
-    .axi_req_t (axi_req_t),
-    .axi_resp_t(axi_resp_t),
-    .Resp      (axi_pkg::RESP_DECERR),
-    .RespWidth (AXI_DATA_WIDTH),
-    .RespData  ('hBADCAB1E),
-    .ATOPs     (1'b0),
-    .MaxTrans  (1)
+    .AxiIdWidth (1),
+    .axi_req_t  (axi_req_t),
+    .axi_resp_t (axi_resp_t),
+    .Resp       (axi_pkg::RESP_DECERR),
+    .RespWidth  (AXI_DATA_WIDTH),
+    .RespData   ('hBADCAB1E),
+    .ATOPs      (1'b0),
+    .MaxTrans   (1)
   ) u_axi_err_slv (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .test_i    (1'b0),
-    .slv_req_i (axi_req),
-    .slv_resp_o(axi_resp)
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (1'b0),
+    .slv_req_i  (axi_req),
+    .slv_resp_o (axi_resp)
   );
 
 endmodule : prim_axil_err_slv

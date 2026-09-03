@@ -238,7 +238,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     int unsigned size = 3;
     int unsigned beats = series_beats();
     bit [63:0] addr, addr_after, data, obs, expected;
-    bit [63:0] values_q     [$];
+    bit [63:0] values_q[$];
     bit        series_reset;
     int unsigned pl_depth, size_rd;
     int unsigned aw0, w0, ar0;
@@ -304,7 +304,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     int unsigned size = 3;
     int unsigned stride = size_bytes(size);
     bit incs[4] = '{1'b1, 1'b0, 1'b1, 1'b1};
-    bit [63:0] expected_by_addr[bit [63:0]];
+    bit [63:0] expected_by_addr [bit [63:0]];
     bit [63:0] base_addr, addr, addr_after, data, raw_data, unused_rdata;
     bit status_bit, unused_bit, series_reset;
     int unsigned pl_depth, size_rd;
@@ -524,15 +524,16 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     operation_count = 0;
     enable_all_debug();
     case (scenario)
-      "series_write_read_incr": run_series_write_read_incr();
-      "series_write_read_incr_narrow": run_series_write_read_incr_narrow();
-      "series_write_read_no_incr": run_series_write_read_no_incr();
-      "series_write_read_incr_with_error": run_series_write_read_incr_with_error();
-      "read_random_ops": run_read_random_ops();
-      "read_security_gating": run_read_security_gating(1'b0);
+      "series_write_read_incr":               run_series_write_read_incr();
+      "series_write_read_incr_narrow":        run_series_write_read_incr_narrow();
+      "series_write_read_no_incr":            run_series_write_read_no_incr();
+      "series_write_read_incr_with_error":    run_series_write_read_incr_with_error();
+      "read_random_ops":                      run_read_random_ops();
+      "read_security_gating":                 run_read_security_gating(1'b0);
       "read_security_gating_no_axi_activity": run_read_security_gating(1'b1);
       default:
-      `uvm_fatal(get_type_name(), $sformatf("unknown read-side JTAG2AXI scenario %s", scenario))
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "unknown read-side JTAG2AXI scenario %s", scenario))
     endcase
     enable_all_debug();
     `uvm_info(get_type_name(),

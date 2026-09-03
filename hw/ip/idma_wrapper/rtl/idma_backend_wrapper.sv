@@ -16,11 +16,11 @@ module idma_backend_wrapper #(
 
   parameter bit EN_R_AW_COUPLING = 1,  // recommended
 
-  parameter bit BYPASS_DMA_MST_FLOPS = 1'b0,
+  parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,
 
   parameter int unsigned TFLenWidth = 32,
 
-  parameter type idma_req_t  = logic,
+  parameter type idma_req_t = logic,
   parameter type idma_resp_t = logic,
 
   // AXI master interface types
@@ -34,16 +34,16 @@ module idma_backend_wrapper #(
   parameter int unsigned MST_ID_WIDTH         = 3,
   parameter int unsigned BACKEND_INT_ID_WIDTH = 2
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input  logic clk_i,
+  input  logic rst_ni,
+  input  logic test_en_i,
 
   output logic dma_backend_busy_o,
 
   // iDMA request/response interface
-  input  idma_req_t [NUM_MST_INTERFACES-1:0] req_i,
-  input  logic      [NUM_MST_INTERFACES-1:0] req_valid_i,
-  output logic      [NUM_MST_INTERFACES-1:0] req_ready_o,
+  input  idma_req_t  [NUM_MST_INTERFACES-1:0] req_i,
+  input  logic       [NUM_MST_INTERFACES-1:0] req_valid_i,
+  output logic       [NUM_MST_INTERFACES-1:0] req_ready_o,
 
   output idma_resp_t [NUM_MST_INTERFACES-1:0] resp_o,
   output logic       [NUM_MST_INTERFACES-1:0] resp_valid_o,
@@ -117,7 +117,7 @@ module idma_backend_wrapper #(
           .rst_ni    (rst_ni),
           .flush_i   (1'b0),
           .testmode_i(test_en_i),
-          .usage_o   (  /*NOT CONNECTED*/),
+          .usage_o   (/*NOT CONNECTED*/),
 
           .data_i (req_i[i]),
           .valid_i(req_valid_i[i]),
@@ -169,7 +169,7 @@ module idma_backend_wrapper #(
 
         .idma_eh_req_i ('0),                  // No error handling
         .eh_req_valid_i(1'b1),
-        .eh_req_ready_o(  /*NOT CONNECTED*/),
+        .eh_req_ready_o(/*NOT CONNECTED*/),
 
         .axi_read_req_o(int_axi_read_req[i]),
         .axi_read_rsp_i(int_axi_read_resp[i]),
@@ -177,7 +177,7 @@ module idma_backend_wrapper #(
         .axi_write_req_o(int_axi_write_req[i]),
         .axi_write_rsp_i(int_axi_write_resp[i]),
 
-        .busy_o(be_busy[i])
+        .busy_o        (be_busy[i])
       );
 
       // combine read/write channels into one channel
@@ -185,7 +185,7 @@ module idma_backend_wrapper #(
         .SlvAxiIDWidth(BACKEND_INT_ID_WIDTH),
         .slv_aw_chan_t(int_axi_aw_chan_t),
         .mst_aw_chan_t(mst_axi_aw_chan_t),
-        .w_chan_t(mst_axi_w_chan_t),  // both int and mst are the same
+        .w_chan_t(mst_axi_w_chan_t), // both int and mst are the same
         .slv_b_chan_t(int_axi_b_chan_t),
         .mst_b_chan_t(mst_axi_b_chan_t),
         .slv_ar_chan_t(int_axi_ar_chan_t),
@@ -199,7 +199,7 @@ module idma_backend_wrapper #(
         .NoSlvPorts(2),
         .MaxWTrans(DMA_MST_MAX_TXNS),
         .FallThrough(1'b0),
-        .SpillAw(1'b0),  // already have cut stage after
+        .SpillAw(1'b0), // already have cut stage after
         .SpillW(1'b0),
         .SpillB(1'b0),
         .SpillAr(1'b0),

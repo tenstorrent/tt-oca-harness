@@ -19,8 +19,8 @@ module OCAH4CORECluster_mems #(
   output chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_rsp[chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
   input  chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_req[chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
   output chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_rsp[chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
-  input chipyard_4core_mem_pkg::rom_req_t rom_req,
-  output chipyard_4core_mem_pkg::rom_rsp_t rom_rsp,
+  input  chipyard_4core_mem_pkg::rom_req_t            rom_req,
+  output chipyard_4core_mem_pkg::rom_rsp_t            rom_rsp,
 
   input logic [MEM_CFG_WIDTH-1:0] scratch_ram_cfg_i[chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
   input logic [MEM_CFG_WIDTH-1:0] icache_tag_cfg_i[chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],

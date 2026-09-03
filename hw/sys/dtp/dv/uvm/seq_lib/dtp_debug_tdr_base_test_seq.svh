@@ -202,7 +202,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_cmd_lib_seq;
   // must never change the readback.
   task check_caps_read_only_patterns(input bit [IrWidth-1:0] instr, input int unsigned width,
                                      input bit [63:0] expected, input string label);
-    bit [63:0] patterns [$];
+    bit [63:0] patterns[$];
     bit [63:0] observed;
     patterns = {
       64'h0,

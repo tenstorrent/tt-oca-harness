@@ -9,55 +9,55 @@
 
 module sep_local_axi_xbar_wrapper (
   // Global Interface
-  input logic clk_i,
-  input logic rst_ni,
+  input  logic                                clk_i,
+  input  logic                                rst_ni,
 
   // AXI4 Slaves (Initiators into xbar) - 3-bit ID masters
-  input  sep_pkg::sep_32_64_3_12_axi_req_t  ifu_sram_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t ifu_sram_axi_resp_o,
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     ifu_sram_axi_req_i,
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    ifu_sram_axi_resp_o,
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t  lsu_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t lsu_axi_resp_o,
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     lsu_axi_req_i,
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    lsu_axi_resp_o,
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t  dbg_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t dbg_axi_resp_o,
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     dbg_axi_req_i,
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    dbg_axi_resp_o,
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t  dma_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t dma_axi_resp_o,
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     dma_axi_req_i,
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    dma_axi_resp_o,
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t  ext_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t ext_axi_resp_o,
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     ext_axi_req_i,
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    ext_axi_resp_o,
 
   // AXI4 Masters (Targets from xbar) - 6-bit ID slaves
-  output sep_pkg::sep_32_64_6_12_axi_req_t  cpu_tcm_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t cpu_tcm_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     cpu_tcm_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    cpu_tcm_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  dma_csr_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     dma_csr_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    dma_csr_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sram_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sram_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sram_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sram_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_crypto_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_crypto_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_crypto_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_crypto_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_io_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_io_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  entropy_fifo_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t entropy_fifo_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     entropy_fifo_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    entropy_fifo_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_system_peripherals_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_system_peripherals_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_system_peripherals_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_system_peripherals_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_wdt_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_wdt_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_wdt_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_wdt_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_reset_ctrl_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_reset_ctrl_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp_i
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i
 );
 
   // =========================================================================
@@ -65,37 +65,37 @@ module sep_local_axi_xbar_wrapper (
   // =========================================================================
 
   // Initiator ports (inputs to xbar) - 3-bit ID
-  sep_local_axi_xbar_pkg::axi64_req_t ifu_sram_req;
+  sep_local_axi_xbar_pkg::axi64_req_t  ifu_sram_req;
   sep_local_axi_xbar_pkg::axi64_resp_t ifu_sram_resp;
-  sep_local_axi_xbar_pkg::axi64_req_t lsu_req;
+  sep_local_axi_xbar_pkg::axi64_req_t  lsu_req;
   sep_local_axi_xbar_pkg::axi64_resp_t lsu_resp;
-  sep_local_axi_xbar_pkg::axi64_req_t dbg_req;
+  sep_local_axi_xbar_pkg::axi64_req_t  dbg_req;
   sep_local_axi_xbar_pkg::axi64_resp_t dbg_resp;
-  sep_local_axi_xbar_pkg::axi64_req_t dma_req;
+  sep_local_axi_xbar_pkg::axi64_req_t  dma_req;
   sep_local_axi_xbar_pkg::axi64_resp_t dma_resp;
-  sep_local_axi_xbar_pkg::axi64_req_t ext_req;
+  sep_local_axi_xbar_pkg::axi64_req_t  ext_req;
   sep_local_axi_xbar_pkg::axi64_resp_t ext_resp;
 
   // Target ports (outputs from xbar) - 6-bit ID
-  sep_local_axi_xbar_pkg::axi_out_req_t cpu_tcm_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  cpu_tcm_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t cpu_tcm_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sram_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sram_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sram_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t dma_csr_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  dma_csr_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t dma_csr_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sep_wdt_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sep_wdt_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_wdt_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sep_reset_ctrl_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sep_reset_ctrl_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_reset_ctrl_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sep_crypto_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sep_crypto_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_crypto_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sep_system_peripherals_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sep_system_peripherals_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_system_peripherals_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sep_io_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sep_io_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_io_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t entropy_fifo_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  entropy_fifo_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t entropy_fifo_resp;
-  sep_local_axi_xbar_pkg::axi_out_req_t sep_external_req;
+  sep_local_axi_xbar_pkg::axi_out_req_t  sep_external_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_external_resp;
   // =========================================================================
   // Input port assignments (sep_pkg -> xbar_pkg)
@@ -171,43 +171,43 @@ module sep_local_axi_xbar_wrapper (
   // Instantiate the generated crossbar
   // =========================================================================
   sep_local_axi_xbar u_sep_local_axi_xbar (
-    .clk_i (clk_i),
-    .rst_ni(rst_ni),
-    .test_i(1'b0),
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
+    .test_i (1'b0),
 
     // Initiator ports
-    .ifu_sram_req_i (ifu_sram_req),
-    .ifu_sram_resp_o(ifu_sram_resp),
-    .lsu_req_i      (lsu_req),
-    .lsu_resp_o     (lsu_resp),
-    .dbg_req_i      (dbg_req),
-    .dbg_resp_o     (dbg_resp),
-    .dma_req_i      (dma_req),
-    .dma_resp_o     (dma_resp),
-    .ext_req_i      (ext_req),
-    .ext_resp_o     (ext_resp),
+    .ifu_sram_req_i  (ifu_sram_req),
+    .ifu_sram_resp_o (ifu_sram_resp),
+    .lsu_req_i       (lsu_req),
+    .lsu_resp_o      (lsu_resp),
+    .dbg_req_i       (dbg_req),
+    .dbg_resp_o      (dbg_resp),
+    .dma_req_i       (dma_req),
+    .dma_resp_o      (dma_resp),
+    .ext_req_i       (ext_req),
+    .ext_resp_o      (ext_resp),
 
     // Target ports
-    .cpu_tcm_req_o                (cpu_tcm_req),
-    .cpu_tcm_resp_i               (cpu_tcm_resp),
-    .sram_req_o                   (sram_req),
-    .sram_resp_i                  (sram_resp),
-    .dma_csr_req_o                (dma_csr_req),
-    .dma_csr_resp_i               (dma_csr_resp),
-    .sep_wdt_req_o                (sep_wdt_req),
-    .sep_wdt_resp_i               (sep_wdt_resp),
-    .sep_reset_ctrl_req_o         (sep_reset_ctrl_req),
-    .sep_reset_ctrl_resp_i        (sep_reset_ctrl_resp),
-    .sep_crypto_req_o             (sep_crypto_req),
-    .sep_crypto_resp_i            (sep_crypto_resp),
-    .sep_system_peripherals_req_o (sep_system_peripherals_req),
-    .sep_system_peripherals_resp_i(sep_system_peripherals_resp),
-    .sep_io_req_o                 (sep_io_req),
-    .sep_io_resp_i                (sep_io_resp),
-    .entropy_fifo_req_o           (entropy_fifo_req),
-    .entropy_fifo_resp_i          (entropy_fifo_resp),
-    .sep_external_req_o           (sep_external_req),
-    .sep_external_resp_i          (sep_external_resp)
+    .cpu_tcm_req_o                       (cpu_tcm_req),
+    .cpu_tcm_resp_i                      (cpu_tcm_resp),
+    .sram_req_o                          (sram_req),
+    .sram_resp_i                         (sram_resp),
+    .dma_csr_req_o                       (dma_csr_req),
+    .dma_csr_resp_i                      (dma_csr_resp),
+    .sep_wdt_req_o                       (sep_wdt_req),
+    .sep_wdt_resp_i                      (sep_wdt_resp),
+    .sep_reset_ctrl_req_o                (sep_reset_ctrl_req),
+    .sep_reset_ctrl_resp_i               (sep_reset_ctrl_resp),
+    .sep_crypto_req_o                    (sep_crypto_req),
+    .sep_crypto_resp_i                   (sep_crypto_resp),
+    .sep_system_peripherals_req_o        (sep_system_peripherals_req),
+    .sep_system_peripherals_resp_i       (sep_system_peripherals_resp),
+    .sep_io_req_o                        (sep_io_req),
+    .sep_io_resp_i                       (sep_io_resp),
+    .entropy_fifo_req_o                  (entropy_fifo_req),
+    .entropy_fifo_resp_i                 (entropy_fifo_resp),
+    .sep_external_req_o                 (sep_external_req),
+    .sep_external_resp_i                (sep_external_resp)
   );
 
   // =========================================================================

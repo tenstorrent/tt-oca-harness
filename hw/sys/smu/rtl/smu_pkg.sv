@@ -11,10 +11,8 @@ package smu_pkg;
   localparam int unsigned AXI_ADDR_WIDTH = 56;
 
   localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_BASE = 56'h4000_0000;
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_SIZE =
-      56'h4000_0000;  // 1GB region for SEP-to-SMC accesses
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_ALIAS_BASE =
-      56'h0000_0000;  // Alias to start of SMC address space
+  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_SIZE       = 56'h4000_0000; // 1GB region for SEP-to-SMC accesses
+  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_ALIAS_BASE = 56'h0000_0000; // Alias to start of SMC address space
 
   typedef struct packed {
     // SMC CPU configuration (use smc_pkg::SMC_4CORE or smc_pkg::SMC_1CORE)

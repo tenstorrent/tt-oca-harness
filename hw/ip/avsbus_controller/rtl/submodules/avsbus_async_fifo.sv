@@ -81,7 +81,7 @@ module avsbus_async_fifo #(
   assign o_wr_full = (rd_ptr_bin_wr_clk[PointerWidth-1] != wr_ptr_bin[PointerWidth-1]) &  (rd_ptr_bin_wr_clk[PointerWidth-2:0] == wr_ptr_bin[PointerWidth-2:0]);
 
   assign wr_ptr_wrapped = rd_ptr_bin_wr_clk[PointerWidth-1] & ~wr_ptr_bin[PointerWidth-1];
-  assign full_slots = (PointerWidth + 1)'({wr_ptr_wrapped, wr_ptr_bin} - {1'b0, rd_ptr_bin_wr_clk});
+  assign full_slots = (PointerWidth+1)'({wr_ptr_wrapped, wr_ptr_bin} - {1'b0, rd_ptr_bin_wr_clk});
   assign o_full_slots = full_slots[PointerWidth-1:0];
   assign o_vacant_slots = DEPTH - full_slots[PointerWidth-1:0];
 

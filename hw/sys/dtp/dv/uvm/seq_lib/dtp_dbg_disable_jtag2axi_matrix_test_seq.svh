@@ -141,7 +141,8 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
         wait_sys_cycles(8);
         foreach (sentinels[i]) begin
           j2a_target_t t = select_target(i);
-          bit [63:0] observed = read_target_mem_int(t, sentinel_addrs[i], t.default_size);
+          bit [63:0] observed =
+                        read_target_mem_int(t, sentinel_addrs[i], t.default_size);
           if (observed !== sentinels[i])
             `uvm_error("jtag2axi_data_chk", $sformatf(
                        "%s.%s.sentinel_post_release: memory 0x%0h != sentinel 0x%0h",

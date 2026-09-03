@@ -28,21 +28,21 @@ class ocah_jtag_item extends uvm_sequence_item;
   `uvm_object_utils(ocah_jtag_item)
 
   rand ocah_jtag_op_e op = OCAH_JTAG_RAW_TMS;
-  rand int unsigned width;  // scan bit count (1..64); unused for raw/reset
-  rand bit [63:0] wdata;  // scan write pattern, LSB-first
+  rand int unsigned  width;        // scan bit count (1..64); unused for raw/reset
+  rand bit [63:0]    wdata;        // scan write pattern, LSB-first
 
-  bit tms_bits[];  // raw op: per-step TMS (defines step count)
-  bit tdi_bits[];  // raw op: per-step TDI (padded with 0 if shorter)
+  bit tms_bits[];                  // raw op: per-step TMS (defines step count)
+  bit tdi_bits[];                  // raw op: per-step TDI (padded with 0 if shorter)
 
   // Wide-scan extension: when wbits is non-empty, IR/DR scans shift
   // wbits.size() bits LSB-first (no 64-bit limit; e.g. the 72/132-bit
   // DTP JTAG2AXI TDRs) and width/wdata/tdo are ignored for that item.
-  bit wbits[];  // wide scan write pattern, LSB-first
-  bit rbits[];  // wide scan observed TDO (driver-filled)
+  bit wbits[];                     // wide scan write pattern, LSB-first
+  bit rbits[];                     // wide scan observed TDO (driver-filled)
 
   // Responses (driver-filled).
-  bit [63:0] tdo;  // scan ops: observed TDO, LSB-first
-  bit tdo_bits[];  // raw op: per-step observed TDO
+  bit [63:0] tdo;                  // scan ops: observed TDO, LSB-first
+  bit tdo_bits[];                  // raw op: per-step observed TDO
 
   constraint c_width {
     (wbits.size() == 0) ->
@@ -57,12 +57,16 @@ class ocah_jtag_item extends uvm_sequence_item;
     case (op)
       OCAH_JTAG_TAP_RESET: return "TAP_RESET";
       OCAH_JTAG_IR_SCAN:
-      if (wbits.size() > 0) return $sformatf("IR_SCAN  wide width=%0d", wbits.size());
-      else return $sformatf("IR_SCAN  width=%0d wdata=0x%0h tdo=0x%0h", width, wdata, tdo);
+                if (wbits.size() > 0)
+                    return $sformatf("IR_SCAN  wide width=%0d", wbits.size());
+                else
+                    return $sformatf("IR_SCAN  width=%0d wdata=0x%0h tdo=0x%0h", width, wdata, tdo);
       OCAH_JTAG_DR_SCAN:
-      if (wbits.size() > 0) return $sformatf("DR_SCAN  wide width=%0d", wbits.size());
-      else return $sformatf("DR_SCAN  width=%0d wdata=0x%016h tdo=0x%016h", width, wdata, tdo);
-      default: return $sformatf("RAW_TMS  steps=%0d", tms_bits.size());
+                if (wbits.size() > 0)
+                    return $sformatf("DR_SCAN  wide width=%0d", wbits.size());
+                else
+                    return $sformatf("DR_SCAN  width=%0d wdata=0x%016h tdo=0x%016h", width, wdata, tdo);
+      default:             return $sformatf("RAW_TMS  steps=%0d", tms_bits.size());
     endcase
   endfunction
 
