@@ -435,7 +435,7 @@ module efuse_interface_controller #(
       );
 
 
-    end else begin : stub_mmr_apb_target
+    end else begin : gen_stub_mmr_apb_target
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].pready = 1'b1;
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].prdata = data_t'('hbadcab1e);
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].pslverr = 1'b1;

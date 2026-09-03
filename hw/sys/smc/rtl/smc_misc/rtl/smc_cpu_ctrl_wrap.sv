@@ -279,7 +279,7 @@ module smc_cpu_ctrl_wrap #(
 
   assign hwif_in.TEST_CTRL.data.next = test_ctrl;
 
-  for (genvar i = 0; i < NUM_PC_REGS; i++) begin
+  for (genvar i = 0; i < NUM_PC_REGS; i++) begin : gen_wb_pc
     assign hwif_in.WB_PC_CORE0[i].pc.next = int_wb_reg_pc_sr[0][i];
     assign hwif_in.WB_PC_CORE1[i].pc.next = int_wb_reg_pc_sr[1][i];
     assign hwif_in.WB_PC_CORE2[i].pc.next = int_wb_reg_pc_sr[2][i];
@@ -335,7 +335,7 @@ module smc_cpu_ctrl_wrap #(
 
   generate
     for (genvar i = 0; i < MaxCPUCores; i++) begin : gen_pulse
-      if (i < NumCPUCores) begin : pulse_core_resets
+      if (i < NumCPUCores) begin : gen_pulse_core_resets
         prim_pulse_signal #(
           .COUNT_WIDTH(16),
           .IS_ACTIVE_HIGH(0)
@@ -351,7 +351,7 @@ module smc_cpu_ctrl_wrap #(
           .o_pulse_out(core_reset_pulse_out[i]),
           .o_pulse_done(core_reset_pulse_done[i])
         );
-      end else begin : tie_off_core_reset_and_done
+      end else begin : gen_tie_off_core_reset_and_done
         assign core_reset_pulse_out[i] = 1'b0;
         assign core_reset_pulse_done[i] = 1'b1;
       end

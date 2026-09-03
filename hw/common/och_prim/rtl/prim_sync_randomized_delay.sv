@@ -91,7 +91,7 @@ module prim_sync_randomized_delay #(
   end
 
   if (RANDOM_DELAY_MUX_OVR != 0) begin : gen_random_mux_sel_ovr
-    for (i = 0; i < WIDTH; i = i + 1) begin
+    for (i = 0; i < WIDTH; i = i + 1) begin : gen_mux_sel_ovr
       assign mux_sel[2*i+:2] = RANDOM_DELAY_MUX_OVR;
     end
   end else if (RANDOM_DELAY_GRAY_CODE == 1) begin : gen_random_mux_sel_gray
@@ -102,7 +102,7 @@ module prim_sync_randomized_delay #(
       end
     end
   end else begin : gen_random_mux_sel
-    for (i = 0; i < WIDTH; i = i + 1) begin
+    for (i = 0; i < WIDTH; i = i + 1) begin : gen_mux_sel_random
       always @(i_d[i]) begin
         mux_sel[2*i+:2] = $urandom;
       end
@@ -121,7 +121,7 @@ module prim_sync_randomized_delay #(
         else d_q1 <= i_d;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         assign d_mux[i] = mux_sel[2*i] ? d_q1[i] : i_d[i];
       end
     end else if (RANDOM_DELAY_TYPE == 2) begin : gen_type_2_delay
@@ -141,7 +141,7 @@ module prim_sync_randomized_delay #(
         else d_q3 <= d_q2;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         always_comb begin
           unique case (mux_sel[2*i+:2])
             2'b00: d_mux[i] = i_d[i];
@@ -168,7 +168,7 @@ module prim_sync_randomized_delay #(
         else d_q3 <= d_q2;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         always_comb begin
           unique case (mux_sel[2*i+:2])
             2'b00: d_mux[i] = i_d[i];
@@ -185,7 +185,7 @@ module prim_sync_randomized_delay #(
         else d_q1 <= i_d;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         always_comb begin
           d_mux[i] = mux_sel[2*i] ? d_q1[i] : i_d[i];
         end

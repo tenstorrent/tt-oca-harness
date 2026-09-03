@@ -87,7 +87,7 @@ module smc_dfd_wrap #(
   // DBM Level 3 //
   ////////////////
 
-  for (genvar i = 1; i <= 8; i++) begin : DBM_L3
+  for (genvar i = 1; i <= 8; i++) begin : gen_dbm_l3
 
     localparam int unsigned MUX_ID = 6 + i;
 
@@ -111,7 +111,7 @@ module smc_dfd_wrap #(
   // DBM Level 2 //
   /////////////////
 
-  for (genvar i = 1; i <= 4; i++) begin : DBM_L2
+  for (genvar i = 1; i <= 4; i++) begin : gen_dbm_l2
 
     localparam int unsigned MUX_ID = 2 + i;
 
