@@ -151,13 +151,13 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  # DV SHORTCUT, tagged dv_shortcut above. OTBN parks in UrndRefresh until EDN
-  # grants entropy, and the boot flow does not enable the entropy chain (the
-  # ROM has no CSRNG/EDN code), so without this the RSA verify never starts and
-  # the test sits at RSA_VERIFY_START until timeout. This forces the OTBN EDN
-  # grants only -- the entropy_source/CSRNG/EDN path is NOT exercised here, and
-  # the RSA assertions are untouched, so a pass still means the signature really
-  # verified.
+  # DV SHORTCUT, tagged dv_shortcut above. Ring oscillators do not self-oscillate
+  # under Verilator, so this forces each decorrelator's noise_i to give the ESRC a
+  # live noise stream. Everything above the noise source -- the startup health
+  # tests, CSRNG, EDN and the command handshakes -- is brought up for real by the
+  # ROM itself, and the RSA assertions are untouched, so a pass still means the
+  # signature really verified. This replaces the old +sep_crypto_edn_force grant,
+  # which bypassed the whole chain.
   "+esrc_noise_force",
 ]
 
