@@ -843,7 +843,9 @@ module smu #(
         // ==================================================================
 
         sep #(
-            .KM_LATCHED_MEM_RDATA  (Cfg.SEP_KM_LATCHED_MEM_RDATA),
+            .KM_LATCHED_MEM_RDATA   (Cfg.SEP_KM_LATCHED_MEM_RDATA),
+            .ABR_MASKING_EN         (Cfg.SEP_ABR_MASKING_EN),
+            .ABR_SRAM_LATENCY       (Cfg.SEP_ABR_SRAM_LATENCY),
             .SEP_SEC_DISABLE_TOKEN  (SEP_SEC_DISABLE_TOKEN),
             .EXT_TRNG_NUM_AXIS      (EXT_TRNG_NUM_AXIS),
             .EFUSE_SHIM_SIZE        (SEP_EFUSE_SHIM_SIZE)

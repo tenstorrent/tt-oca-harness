@@ -276,10 +276,13 @@ block is not compiled. This leaves the vendored core unmodified while giving ABR
 the same kind of key path as every other accelerator, one mastered by the Key
 Manager.
 
-The 13-channel working SRAM is brought out of the wrapper as packed
-`abr_mem_req_t` / `abr_mem_rsp_t` structs and instantiated in
-`sep_ip_integration`, following the OTBN convention of keeping technology macros
-at the integration level.
+The working SRAM is brought out of the wrapper as packed
+`abr_mem_req_t` / `abr_mem_rsp_t` structs. Word-write channels are `we` / `re` /
+address / data; `sig_z` and `pk` also carry one-bit-per-byte `wstrobe`.
+`SEP_ABR_SRAM_LATENCY` is the macros' native registered-read latency (default 1).
+`SEP_ABR_MASKING_EN` (default 1) selects Adams Bridge 2-share DOM: thirteen 1R1W
+macros versus nine, plus a second NTT. That choice changes ABR internal behavior
+(sequencing, SCA, memory topology), not merely throughput.
 
 ABR has no alert channel -- it is the only crypto accelerator that reports faults
 solely by interrupt, contributing PIC sources 35 (error) and 36 (notification)

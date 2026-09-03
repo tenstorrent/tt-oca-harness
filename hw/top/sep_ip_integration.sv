@@ -23,7 +23,8 @@ module sep_ip_integration
     import sep_efuse_pkg::*;
     import km_intf_pkg::*;
 #(
-    parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT
+    parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
+    parameter bit          ABR_MASKING_EN    = 1'b1
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -374,14 +375,15 @@ module sep_ip_integration
     // Adams Bridge Memory Macros  //
     /////////////////////////////////
     // The ABR crypto engine (abr_top) lives in sep_crypto_abr_wrapper, under
-    // sep_crypto. Its 13-channel SRAM interface is threaded here as
-    // packed req/rsp structs (abr_mem_req_i / abr_mem_rsp_o, OTBN convention); this
-    // is the home for the technology macros. Each channel gets its own
-    // sep_abr_mem_1r1w / sep_abr_mem_1r1w_be instance driven straight off the
-    // request struct, reset from rst_ni. These macros hold no state across a reset --
-    // rst_ni only clears their output pipeline flops -- so they do not need abr_top's
-    // own (SEP-gated) reset; rst_ni releases earlier and stays released, and abr_top
-    // ignores stale pipeline data because it resets too.
+    // sep_crypto. Its SRAM interface is threaded here as packed req/rsp structs
+    // (abr_mem_req_i / abr_mem_rsp_o, OTBN convention); this is the home for the
+    // technology macros. Every channel instantiates prim_ram_1r1w. Word-write
+    // channels tie the write mask all-ones. sig_z and pk expand wstrobe onto
+    // that mask (prim_ram_1r1w has no byte-write port). Reset comes from rst_ni.
+    //
+    // ABR_MASKING_EN must match the value given to sep_crypto_abr_wrapper / abr_top:
+    // when set, four extra coefficient banks hold the second DOM share; when
+    // clear those arrays are omitted and their rdata reads back 0.
     //
     // The `ifdef SEP_ABR_EN` below is the memory-side counterpart of the guard around
     // u_sep_crypto_abr_wrapper_s3c_scan in sep_crypto.sv: when Adams Bridge is compiled
@@ -394,11 +396,6 @@ module sep_ip_integration
     // define ahead of the source list, so every flow that pulls in the `sep` target takes
     // this branch and builds the SRAMs.
 `ifdef SEP_ABR_EN
-    // Single-sourced with the abr_top instantiation in sep_crypto_abr_wrapper
-    // (sep_crypto.sv passes the same package parameters to that wrapper).
-    localparam bit          ABR_MEM_MASKING_EN   = sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN;
-    localparam int unsigned ABR_MEM_SRAM_LATENCY = sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY;
-
     // This file is compiled after the vendor packages, so depths can be taken from
     // them directly; sep_crypto_pkg is compiled ahead of them and has to mirror the
     // widths instead. The checks below pin the two together so a vendor geometry bump
@@ -442,146 +439,191 @@ module sep_ip_integration
     end
 
     // w1_mem: 4-bit decomposed-w1 bits, own narrow addr/data fields.
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
-        .Depth       (ABR_W1_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
+        .Depth           (ABR_W1_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_w1_mem (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.w1_we),
-        .waddr_i (abr_mem_req_i.w1_waddr),
-        .wdata_i (abr_mem_req_i.w1_wdata),
-        .re_i    (abr_mem_req_i.w1_re),
-        .raddr_i (abr_mem_req_i.w1_raddr),
-        .rdata_o (abr_mem_rsp_o.w1_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.w1_we),
+        .a_addr_i  (abr_mem_req_i.w1_waddr),
+        .a_wdata_i (abr_mem_req_i.w1_wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.w1_re),
+        .b_addr_i  (abr_mem_req_i.w1_raddr),
+        .b_rdata_o (abr_mem_rsp_o.w1_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
     // Unmasked 96-bit coefficient banks. These four ride in the shared
     // abr_mem_ch_req_t, so INST0/INST1 take the low ABR_INST*_ADDR_W address bits
     // (the wrapper zero-extends them into the struct) while INST2, the widest,
     // uses the whole field.
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST0_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth           (ABR_INST0_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_mem_inst0_bank0 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst0_bank0.we),
-        .waddr_i (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
-        .re_i    (abr_mem_req_i.mem_inst0_bank0.re),
-        .raddr_i (abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.mem_inst0_bank0.we),
+        .a_addr_i  (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
+        .a_wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.mem_inst0_bank0.re),
+        .b_addr_i  (abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
+        .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank0_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST0_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth           (ABR_INST0_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_mem_inst0_bank1 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst0_bank1.we),
-        .waddr_i (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
-        .re_i    (abr_mem_req_i.mem_inst0_bank1.re),
-        .raddr_i (abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.mem_inst0_bank1.we),
+        .a_addr_i  (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
+        .a_wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.mem_inst0_bank1.re),
+        .b_addr_i  (abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
+        .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank1_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST1_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth           (ABR_INST1_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_mem_inst1 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst1.we),
-        .waddr_i (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst1.wdata),
-        .re_i    (abr_mem_req_i.mem_inst1.re),
-        .raddr_i (abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst1_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.mem_inst1.we),
+        .a_addr_i  (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
+        .a_wdata_i (abr_mem_req_i.mem_inst1.wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.mem_inst1.re),
+        .b_addr_i  (abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
+        .b_rdata_o (abr_mem_rsp_o.mem_inst1_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST2_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth           (ABR_INST2_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_mem_inst2 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst2.we),
-        .waddr_i (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst2.wdata),
-        .re_i    (abr_mem_req_i.mem_inst2.re),
-        .raddr_i (abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst2_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.mem_inst2.we),
+        .a_addr_i  (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
+        .a_wdata_i (abr_mem_req_i.mem_inst2.wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.mem_inst2.re),
+        .b_addr_i  (abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
+        .b_rdata_o (abr_mem_rsp_o.mem_inst2_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
     // Masked (second DOM share) twins of the four coefficient banks. They only exist
     // when abr_top is built with masking; otherwise their read data reads back zero.
-    if (ABR_MEM_MASKING_EN) begin : g_abr_masked_mem
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST0_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    if (ABR_MASKING_EN) begin : g_abr_masked_mem
+        prim_ram_1r1w #(
+            .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth           (ABR_INST0_DEPTH),
+            .DataBitsPerMask (1)
         ) u_abr_mem_inst0_bank0_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst0_bank0_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst0_bank0_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_masked_rdata)
+            .clk_a_i   (abr_mem_req_i.clk),
+            .clk_b_i   (abr_mem_req_i.clk),
+            .rst_a_ni  (rst_ni),
+            .rst_b_ni  (rst_ni),
+            .a_req_i   (abr_mem_req_i.mem_inst0_bank0_masked.we),
+            .a_addr_i  (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+            .a_wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
+            .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+            .b_req_i   (abr_mem_req_i.mem_inst0_bank0_masked.re),
+            .b_addr_i  (abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+            .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank0_masked_rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
         );
 
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST0_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        prim_ram_1r1w #(
+            .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth           (ABR_INST0_DEPTH),
+            .DataBitsPerMask (1)
         ) u_abr_mem_inst0_bank1_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst0_bank1_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst0_bank1_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_masked_rdata)
+            .clk_a_i   (abr_mem_req_i.clk),
+            .clk_b_i   (abr_mem_req_i.clk),
+            .rst_a_ni  (rst_ni),
+            .rst_b_ni  (rst_ni),
+            .a_req_i   (abr_mem_req_i.mem_inst0_bank1_masked.we),
+            .a_addr_i  (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+            .a_wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
+            .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+            .b_req_i   (abr_mem_req_i.mem_inst0_bank1_masked.re),
+            .b_addr_i  (abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+            .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank1_masked_rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
         );
 
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST1_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        prim_ram_1r1w #(
+            .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth           (ABR_INST1_DEPTH),
+            .DataBitsPerMask (1)
         ) u_abr_mem_inst1_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst1_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst1_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst1_masked_rdata)
+            .clk_a_i   (abr_mem_req_i.clk),
+            .clk_b_i   (abr_mem_req_i.clk),
+            .rst_a_ni  (rst_ni),
+            .rst_b_ni  (rst_ni),
+            .a_req_i   (abr_mem_req_i.mem_inst1_masked.we),
+            .a_addr_i  (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
+            .a_wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
+            .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+            .b_req_i   (abr_mem_req_i.mem_inst1_masked.re),
+            .b_addr_i  (abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
+            .b_rdata_o (abr_mem_rsp_o.mem_inst1_masked_rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
         );
 
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST2_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        prim_ram_1r1w #(
+            .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth           (ABR_INST2_DEPTH),
+            .DataBitsPerMask (1)
         ) u_abr_mem_inst2_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst2_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst2_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst2_masked_rdata)
+            .clk_a_i   (abr_mem_req_i.clk),
+            .clk_b_i   (abr_mem_req_i.clk),
+            .rst_a_ni  (rst_ni),
+            .rst_b_ni  (rst_ni),
+            .a_req_i   (abr_mem_req_i.mem_inst2_masked.we),
+            .a_addr_i  (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
+            .a_wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
+            .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+            .b_req_i   (abr_mem_req_i.mem_inst2_masked.re),
+            .b_addr_i  (abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
+            .b_rdata_o (abr_mem_rsp_o.mem_inst2_masked_rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
         );
     end else begin : g_abr_no_masked_mem
         assign abr_mem_rsp_o.mem_inst0_bank0_masked_rdata = '0;
@@ -592,84 +634,112 @@ module sep_ip_integration
 
     // Secret-key memory, split into two 32-bit banks (even dwords in bank0, odd in
     // bank1).
-    //
-    // Write range checking is off on these two. abr_ctrl decodes the MLDSA_PRIVKEY_IN
-    // memory window as `api_sk_waddr inside {[31:PRIVKEY_NUM_DWORDS-1]}` and then
-    // subtracts 32, so dword 31 -- which is a register dword, and which the matching
-    // read decode correctly excludes by starting at 32 -- underflows to bank1 address
-    // 1023, past the 596-entry array. The array discards the write and every ABR test
-    // passes, but the write-side check would fire on every private-key load until the
-    // vendor window is fixed.
-    sep_abr_mem_1r1w #(
-        .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
-        .Depth             (ABR_SK_DEPTH),
-        .ReadLatency       (ABR_MEM_SRAM_LATENCY),
-        .EnWriteRangeCheck (1'b0)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+        .Depth           (ABR_SK_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_sk_mem_bank0 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.sk_bank0_we),
-        .waddr_i (abr_mem_req_i.sk_bank0_waddr),
-        .wdata_i (abr_mem_req_i.sk_bank0_wdata),
-        .re_i    (abr_mem_req_i.sk_bank0_re),
-        .raddr_i (abr_mem_req_i.sk_bank0_raddr),
-        .rdata_o (abr_mem_rsp_o.sk_bank0_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.sk_bank0_we),
+        .a_addr_i  (abr_mem_req_i.sk_bank0_waddr),
+        .a_wdata_i (abr_mem_req_i.sk_bank0_wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.sk_bank0_re),
+        .b_addr_i  (abr_mem_req_i.sk_bank0_raddr),
+        .b_rdata_o (abr_mem_rsp_o.sk_bank0_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w #(
-        .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
-        .Depth             (ABR_SK_DEPTH),
-        .ReadLatency       (ABR_MEM_SRAM_LATENCY),
-        .EnWriteRangeCheck (1'b0)
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+        .Depth           (ABR_SK_DEPTH),
+        .DataBitsPerMask (1)
     ) u_abr_sk_mem_bank1 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.sk_bank1_we),
-        .waddr_i (abr_mem_req_i.sk_bank1_waddr),
-        .wdata_i (abr_mem_req_i.sk_bank1_wdata),
-        .re_i    (abr_mem_req_i.sk_bank1_re),
-        .raddr_i (abr_mem_req_i.sk_bank1_raddr),
-        .rdata_o (abr_mem_rsp_o.sk_bank1_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.sk_bank1_we),
+        .a_addr_i  (abr_mem_req_i.sk_bank1_waddr),
+        .a_wdata_i (abr_mem_req_i.sk_bank1_wdata),
+        .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W{1'b1}}),
+        .b_req_i   (abr_mem_req_i.sk_bank1_re),
+        .b_addr_i  (abr_mem_req_i.sk_bank1_raddr),
+        .b_rdata_o (abr_mem_rsp_o.sk_bank1_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
-    // Signature-z and public-key memories: wide rows written a dword at a time,
-    // hence the byte-enabled variant.
-    sep_abr_mem_1r1w_be #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
-        .Depth       (ABR_SIGZ_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    // Signature-z and public-key memories: wide rows written a dword at a time.
+    // wstrobe is ABR's one-bit-per-byte enable; prim_ram_1r1w has no byte-write
+    // port, so each strobe is expanded across its byte. Adopters with byte-write
+    // macros connect wstrobe directly.
+    if (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W !=
+            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W ||
+        sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W !=
+            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W) begin : g_abr_wstrobe_width_check
+        $error("ABR sig_z / pk data widths must be 8 bits per wstrobe bit");
+    end
+
+    logic [sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0] abr_sig_z_wmask;
+    for (genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W; b++) begin : g_abr_sig_z_wmask
+        assign abr_sig_z_wmask[b*8 +: 8] = {8{abr_mem_req_i.sig_z_wstrobe[b]}};
+    end
+
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
+        .Depth           (ABR_SIGZ_DEPTH),
+        .DataBitsPerMask (8)
     ) u_abr_sig_z_mem (
-        .clk_i     (abr_mem_req_i.clk),
-        .rst_ni    (rst_ni),
-        .we_i      (abr_mem_req_i.sig_z_we),
-        .waddr_i   (abr_mem_req_i.sig_z_waddr),
-        .wdata_i   (abr_mem_req_i.sig_z_wdata),
-        .wstrobe_i (abr_mem_req_i.sig_z_wstrobe),
-        .re_i      (abr_mem_req_i.sig_z_re),
-        .raddr_i   (abr_mem_req_i.sig_z_raddr),
-        .rdata_o   (abr_mem_rsp_o.sig_z_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.sig_z_we),
+        .a_addr_i  (abr_mem_req_i.sig_z_waddr),
+        .a_wdata_i (abr_mem_req_i.sig_z_wdata),
+        .a_wmask_i (abr_sig_z_wmask),
+        .b_req_i   (abr_mem_req_i.sig_z_re),
+        .b_addr_i  (abr_mem_req_i.sig_z_raddr),
+        .b_rdata_o (abr_mem_rsp_o.sig_z_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w_be #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
-        .Depth       (ABR_PK_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    logic [sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W-1:0] abr_pk_wmask;
+    for (genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W; b++) begin : g_abr_pk_wmask
+        assign abr_pk_wmask[b*8 +: 8] = {8{abr_mem_req_i.pk_mem.wstrobe[b]}};
+    end
+
+    prim_ram_1r1w #(
+        .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
+        .Depth           (ABR_PK_DEPTH),
+        .DataBitsPerMask (8)
     ) u_abr_pk_mem (
-        .clk_i     (abr_mem_req_i.clk),
-        .rst_ni    (rst_ni),
-        .we_i      (abr_mem_req_i.pk_mem.we),
-        .waddr_i   (abr_mem_req_i.pk_mem.waddr),
-        .wdata_i   (abr_mem_req_i.pk_mem.wdata),
-        .wstrobe_i (abr_mem_req_i.pk_mem.wstrobe),
-        .re_i      (abr_mem_req_i.pk_mem.re),
-        .raddr_i   (abr_mem_req_i.pk_mem.raddr),
-        .rdata_o   (abr_mem_rsp_o.pk_rdata)
+        .clk_a_i   (abr_mem_req_i.clk),
+        .clk_b_i   (abr_mem_req_i.clk),
+        .rst_a_ni  (rst_ni),
+        .rst_b_ni  (rst_ni),
+        .a_req_i   (abr_mem_req_i.pk_mem.we),
+        .a_addr_i  (abr_mem_req_i.pk_mem.waddr),
+        .a_wdata_i (abr_mem_req_i.pk_mem.wdata),
+        .a_wmask_i (abr_pk_wmask),
+        .b_req_i   (abr_mem_req_i.pk_mem.re),
+        .b_addr_i  (abr_mem_req_i.pk_mem.raddr),
+        .b_rdata_o (abr_mem_rsp_o.pk_rdata),
+        .cfg_i     ('0),
+        .cfg_rsp_o ()
     );
 `else
     // Adams Bridge compiled out (see above: not reached in any flow today). Hold the
     // response quiescent so smu.sv's mandatory port is never left floating.
     assign abr_mem_rsp_o = '0;
 `endif  // SEP_ABR_EN
+
 
     ///////////////
     // SPI Logic //

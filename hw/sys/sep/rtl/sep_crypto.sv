@@ -8,6 +8,8 @@
 
 module sep_crypto #(
     parameter bit LATCHED_MEM_RDATA = 1'b1,
+    parameter bit MASKING_EN = 1'b1,
+    parameter int unsigned SRAM_LATENCY = 1,
     parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
     // During synthesis, to be replaced with the actual token digest embedded in the netlist
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
@@ -523,11 +525,9 @@ module sep_crypto #(
     end
 `endif
 
-    // Same package parameters feed the ABR SRAM instances in sep_ip_integration;
-    // abr_top and its memories must be configured identically.
     sep_crypto_abr_wrapper #(
-        .MASKING_EN   (sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN),
-        .SRAM_LATENCY (sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY)
+        .MASKING_EN   (MASKING_EN),
+        .SRAM_LATENCY (SRAM_LATENCY)
     ) u_sep_crypto_abr_wrapper_s3c_scan (
         .clk_i                 (clk_i),
         .rst_ni                (sep_reset_ni),

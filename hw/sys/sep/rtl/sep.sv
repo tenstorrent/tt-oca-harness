@@ -8,6 +8,8 @@
 module sep
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
+    parameter bit ABR_MASKING_EN = 1'b1,
+    parameter int unsigned ABR_SRAM_LATENCY = 1,
     parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
     // Size for the vendor eFuse shim CSR block
     parameter int unsigned EFUSE_SHIM_SIZE = 'h4,
@@ -789,6 +791,8 @@ module sep
 
     sep_crypto #(
         .LATCHED_MEM_RDATA (KM_LATCHED_MEM_RDATA),
+        .MASKING_EN        (ABR_MASKING_EN),
+        .SRAM_LATENCY      (ABR_SRAM_LATENCY),
         .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
         .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN)
     ) sep_crypto (

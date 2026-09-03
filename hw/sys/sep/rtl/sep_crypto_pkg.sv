@@ -202,13 +202,9 @@ package sep_crypto_pkg;
     //   PK_MEM        : DEPTH=64   -> ADDR_W=6 ; DATA_W=320; WSTROBE_W=40
     //////////
 
-    // Adams Bridge build configuration. Single source for BOTH the abr_top instance
-    // (sep_crypto.sv -> sep_crypto_abr_wrapper) and the per-channel SRAM instances
-    // outside sep. The engine and its memories must agree: MASKING_EN
-    // decides whether the four masked coefficient banks physically exist, and
-    // SRAM_LATENCY is the read latency abr_top's controller schedules against.
-    parameter bit          SEP_CRYPTO_ABR_MASKING_EN    = 1'b1;  // 2-share DOM masking
-    parameter int unsigned SEP_CRYPTO_ABR_SRAM_LATENCY  = 1;     // SRAM read latency (cycles)
+    // Adams Bridge SRAM configuration
+    parameter bit          SEP_CRYPTO_ABR_MASKING_EN    = 1'b1;
+    parameter int unsigned SEP_CRYPTO_ABR_SRAM_LATENCY  = 1;
 
     parameter int unsigned SEP_CRYPTO_ABR_MEM_DATA_W    = 96;
     parameter int unsigned SEP_CRYPTO_ABR_W1_ADDR_W     = 9;

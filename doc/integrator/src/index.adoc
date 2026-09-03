@@ -819,6 +819,17 @@ public key accelerator instruction and data memories respectively.
 `km_rom_mem` and `km_sram_mem` connect to the Key Manager's dedicated ROM and
 SRAM macros.
 
+`abr_mem` connects the Adams Bridge working SRAM. On an idle cycle (`re` low),
+ABR expects the channel's read data to return 0 the following cycle.
+`SEP_ABR_SRAM_LATENCY` must equal the macros' native registered-read latency
+(default 1). Word-write channels are full-word `we` / `re` / address / data.
+`sig_z` and `pk` carry one-bit-per-byte `wstrobe`; map those to the macros'
+byte-write enables. `SEP_ABR_MASKING_EN` (default 1) selects 2-share DOM:
+thirteen 1R1W macros versus nine, plus a second NTT. This changes ABR internal
+behavior (sequencing, SCA, memory topology), not merely throughput. Give the
+same value to SEP and to the SRAM instances. When it is 0, do not instantiate
+the four masked coefficient banks; their response fields read as 0.
+
 ==== Cryptographic Subsystem Connections
 
 The SEP includes an internal entropy source that requires a ring-oscillator
@@ -1068,6 +1079,8 @@ parameter with its default value.
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
 |`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
 |`SMC_WR_PL_DEPTH` |`2'h3` |SMC fabric write pipeline depth
+|`SEP_ABR_SRAM_LATENCY` |`1` |ABR 1R1W registered-read latency, in clocks
+|`SEP_ABR_MASKING_EN` |`1` |Adams Bridge 2-share DOM masking
 |===
 
 SEP-related DTP configuration is not exposed as an SMU config-struct field.
