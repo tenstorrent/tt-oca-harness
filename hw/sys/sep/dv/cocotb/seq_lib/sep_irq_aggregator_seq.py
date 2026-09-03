@@ -11,7 +11,7 @@ sep_internal_interrupts_probe_o mirror (the OSS analog of the reference suite's 
 Also issues one in-window unmapped 32-bit read through the Secure DMA adapter
 and one through each of the HMAC, KMAC and OTBN adapters. Those complete
 SLVERR and latch DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive
-aggregator bits [39] and [41]. A dead-space beat past an adapter window is
+aggregator bits [40] and [42]. A dead-space beat past an adapter window is
 DECERR and never sets err_o, so the probes stay inside each routed extent.
 AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
 beat there is past the rule and DECERRs.
@@ -44,10 +44,10 @@ INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
 
-# sep.sv sep_internal_interrupts: [39] DMA register-path, [41] periph OR.
-IRQ_DMA_REG_PATH = 39
-IRQ_DMA_HOST_PATH = 40
-IRQ_PERIPH_OR = 41
+# sep.sv sep_internal_interrupts: [40] DMA register-path, [42] periph OR.
+IRQ_DMA_REG_PATH = 40
+IRQ_DMA_HOST_PATH = 41
+IRQ_PERIPH_OR = 42
 
 DMA_STATUS_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_STATUS")
 DMA_CLEAR_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_CLEAR")

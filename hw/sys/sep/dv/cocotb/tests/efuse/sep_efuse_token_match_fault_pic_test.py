@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PIC source 39 claim + mask for the token-comparator redundancy fault.
+"""PIC source 40 claim + mask for the token-comparator redundancy fault.
 
-cpu mode. Firmware arms PIC source 39 and presents a SEC_DISABLE token.
+cpu mode. Firmware arms PIC source 40 and presents a SEC_DISABLE token.
 The host injects a collapse on that comparator after READY (tb port; no
 LSU conflict). Firmware proves the ISR claim id, the SEC_DISABLE sticky
-bit, and that masking meie[39] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
+bit, and that masking meie[40] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
 there is no W1C.
 
 +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
@@ -38,13 +38,13 @@ _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 _BANNER = "SEP token-match fault PIC test"
-_READY = 0xE9050039
+_READY = 0xE9050040
 _READY_POLL = 200_000
 
 
 @pyuvm.test()
 class sep_efuse_token_match_fault_pic_test(sep_base_test):
-    """Boot EL2; inject SEC_DISABLE collapse; firmware claims and masks PIC 39."""
+    """Boot EL2; inject SEC_DISABLE collapse; firmware claims and masks PIC 40."""
 
     build_env = False
 
@@ -86,4 +86,4 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         ):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
-        self.logger.info("CHK-PIC-39 PASS: claim id 39, SEC_DISABLE sticky, mask stopped re-entry")
+        self.logger.info("CHK-PIC-40 PASS: claim id 40, SEC_DISABLE sticky, mask stopped re-entry")

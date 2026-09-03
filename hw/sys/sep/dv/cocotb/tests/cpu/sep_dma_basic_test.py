@@ -26,7 +26,7 @@ expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
 raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
 (DMA-issued command under dma_host_intg_inject_i -> exclusive host_path_err
-+ aggregator [40], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
++ aggregator [41], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
 -> exclusive host_path_err with the pin low, CLEAR, recovery). The
 scoreboard also checks the banner + ICCM execution.
 
@@ -62,8 +62,8 @@ _BANNER = "SEP DMA basic test"
 
 _PARAM_MAGIC = 0xDA0A11C0
 _BUSY_LEN = 0x100
-_IRQ_DMA_REG_PATH = 39
-_IRQ_DMA_HOST_PATH = 40
+_IRQ_DMA_REG_PATH = 40
+_IRQ_DMA_HOST_PATH = 41
 _PIC_POLL = 200_000
 
 
@@ -139,7 +139,7 @@ class sep_dma_basic_test(sep_base_test):
         """Drive ``dma_host_intg_inject_i`` for the integrity copy.
 
         Pin high from CHK-HOSTINTG-ARM until CHK-HOSTINTG-RELEASE.
-        Aggregator bit 40 must be 1 and exclusive of bit 39 while the pin
+        Aggregator bit 41 must be 1 and exclusive of bit 40 while the pin
         is high, and 0 after CLEAR.
         """
         dut = cocotb.top
@@ -156,26 +156,26 @@ class sep_dma_basic_test(sep_base_test):
         dut.dma_host_intg_inject_i.value = 1
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=1")
 
-        # Bit 40 asserts only on a DMA-issued a_valid. RELEASE with the bit
+        # Bit 41 asserts only on a DMA-issued a_valid. RELEASE with the bit
         # still low means the injected command did not set host_path_err.
         for _ in range(_MAX_RUN_CYCLES):
             await RisingEdge(dut.clk_i)
             vec = self.rd(dut.sep_internal_interrupts_probe_o)
             if (vec >> _IRQ_DMA_HOST_PATH) & 1:
                 assert ((vec >> _IRQ_DMA_REG_PATH) & 1) == 0, (
-                    f"register-path [39] set on host-path inject (vec=0x{vec:x})"
+                    f"register-path [40] set on host-path inject (vec=0x{vec:x})"
                 )
                 self.logger.info(
-                    "CHK-HOSTINTG-PIC PASS: sep_internal_interrupts[40]=1 exclusive (vec=0x%x)",
+                    "CHK-HOSTINTG-PIC PASS: sep_internal_interrupts[41]=1 exclusive (vec=0x%x)",
                     vec,
                 )
                 break
             if self.sb.fw_done or "CHK-HOSTINTG-RELEASE" in self.sb.console_text():
                 raise AssertionError(
-                    "sep_internal_interrupts[40] stayed 0 through the injected DMA command"
+                    "sep_internal_interrupts[41] stayed 0 through the injected DMA command"
                 )
         else:
-            raise AssertionError("sep_internal_interrupts[40] stayed 0 after host-path inject")
+            raise AssertionError("sep_internal_interrupts[41] stayed 0 after host-path inject")
 
         for _ in range(_MAX_RUN_CYCLES):
             if "CHK-HOSTINTG-RELEASE" in self.sb.console_text():
@@ -194,10 +194,10 @@ class sep_dma_basic_test(sep_base_test):
             vec = self.rd(dut.sep_internal_interrupts_probe_o)
             if ((vec >> _IRQ_DMA_HOST_PATH) & 1) == 0:
                 self.logger.info(
-                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[40]=0 after DMA_BUS_ERR_CLEAR"
+                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41]=0 after DMA_BUS_ERR_CLEAR"
                 )
                 return
-        raise AssertionError("sep_internal_interrupts[40] stuck after DMA_BUS_ERR_CLEAR")
+        raise AssertionError("sep_internal_interrupts[41] stuck after DMA_BUS_ERR_CLEAR")
 
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own

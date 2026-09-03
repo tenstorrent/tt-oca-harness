@@ -179,6 +179,18 @@ class dtp_jtag_base_test_seq extends ocah_jtag_master_sequence;
         check_last_scan_length(1'b1, IrWidth, $sformatf("ir=0x%02h", instr));
     endtask
 
+    // IR scan of any width from Run-Test/Idle (LSB-first), returning the
+    // captured TDO. The PTAP forwards its scan controls to the STAP chain on
+    // IR scans too, so a network-wide instruction scan (PTAP IR followed by
+    // the STAP chain and any spliced downstream TAP IRs) is longer than the
+    // PTAP's own IR; load_ir() stays the plain 6-bit load.
+    virtual task ir_scan_raw(input bit [63:0] value, input int unsigned width,
+                             output bit [63:0] captured);
+        ir_scan(value, width, captured);
+        check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after raw IR scan");
+        check_last_scan_length(1'b1, width, $sformatf("raw ir width=%0d", width));
+    endtask
+
     // DR scan from Run-Test/Idle (LSB-first), returning observed TDO.
     virtual task shift_dr(input bit [63:0] pattern, input int unsigned width,
                           output bit [63:0] observed);
