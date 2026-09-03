@@ -541,3 +541,10 @@
     overflow-wrap: break-word;
     word-break: break-word;
 }
+
+/* Fixed-width tables are implemented using a colgroup in the table body, but
+   the problem of code overrunning remains - though limited to the `code` items */
+.tableblock:has(colgroup) code {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
