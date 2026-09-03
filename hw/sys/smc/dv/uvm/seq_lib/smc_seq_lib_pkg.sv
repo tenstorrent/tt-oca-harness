@@ -35,7 +35,8 @@ package smc_seq_lib_pkg;
     `include "smc_axi_csr_write_seq.svh"
     `include "smc_axi_csr_read_seq.svh"
 
-    // Scenario layer.
+    // Scenario layer: the base virtual sequence, then the scenarios.
     `include "smc_base_test_seq.svh"
+    `include "smc_register_sanity_test_seq.svh"
 
 endpackage : smc_seq_lib_pkg

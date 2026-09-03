@@ -603,8 +603,14 @@ sequences add named `CHK-*` evidence through the shared `ocah_checker`
 (`CHECKER_SUMMARY name=smc_csr`), finalized per pass with required IDs.
 
 Logical item names stay framework-neutral and match the VPLAN scenarios, and
-the UVM class name equals the scenario name, so `--items <name>` selects the
-same scenario in either realization. Every looped UVM test runs at least 16
+the UVM class name equals the scenario name (testlist
+`name = "smc_register_sanity_test"`,
+`module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }`),
+so `--items <name>` selects the same scenario in either realization. The
+first bound scenario is `smc_register_sanity_test` (TC_SMC_P0_006): SEP_IN
+idle-read, directed and seeded-random write/readback, and restore of
+`SCRATCH_COLD[0..1]` and `SCRATCH_COLD_WARM[0]` after the warm-domain
+release, with the non-vacuity count of real CSR accesses as evidence. Every looped UVM test runs at least 16
 scenario passes (`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed`
 + pass index, with the loop knobs `+SMC_<TEST>_LOOPS`, `+SMC_<GROUP>_LOOPS`,
 `+SMC_TEST_LOOPS`, and `+SMC_RANDOM_COUNT` resolved specific-first. `UVM TEST
@@ -643,6 +649,13 @@ python3 $PY --dut smc --items all --tag smoke --stage sim
 python3 $PY --dut smc --items all --tag smoke --tool vcs --cov
 python3 $PY --dut smc --items all --stage sim --regress
 python3 $PY --dut smc --items all
+
+# SV-UVM realization (VCS; see <<sv-uvm-realization>>)
+python3 $PY --dut smc --framework uvm --build-only
+python3 $PY --dut smc --framework uvm --items smc_register_sanity_test --seed 1
+python3 $PY --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 $PY --dut smc --framework uvm --items smc_register_sanity_test \
+  --plusarg +SMC_CSR_SCOREBOARD_NEGATIVE   # must FAIL
 ----
 
 [[full-smoke]]
