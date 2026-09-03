@@ -2,7 +2,15 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
  * Generated from sep_smu_debug_bus.tcm.sym before compiling SMC DFD-arm FW.
- * Do not hand-edit PCs; regenerate after the SEP image is rebuilt.
+ * Do not hand-edit PCs; regenerate after the SEP image is rebuilt with
+ *   make ocah-lint-fw-symbol-pins-update
+ *
+ * The #error guards below catch a zero PC, a trace16 collision and a LOW16
+ * that no longer matches its PC. They cannot catch a rebuilt image that moved
+ * a PC to another plausible address: every guard still passes while the CLA
+ * matches the wrong instruction and the test goes green on wrong evidence.
+ * Only the built .sym can catch that, so `make ocah-lint-fw-symbol-pins`
+ * compares these values against it.
  */
 #ifndef SEP_DEBUG_BUS_SYMBOLS_H
 #define SEP_DEBUG_BUS_SYMBOLS_H
@@ -21,6 +29,12 @@
 
 #if DBG017_MARKER_PC == 0 || DBG017_WAIT_PC == 0
 #error sep_debug_bus_symbols.h not generated from SEP ELF/.sym
+#endif
+#if DBG017_WAIT_LOW16 != (DBG017_WAIT_PC & 0xFFFFu)
+#error DBG017_WAIT_LOW16 does not match DBG017_WAIT_PC
+#endif
+#if DBG017_MARKER_LOW16 != (DBG017_MARKER_PC & 0xFFFFu)
+#error DBG017_MARKER_LOW16 does not match DBG017_MARKER_PC
 #endif
 #if DBG017_MARKER_TRACE16 == DBG017_WAIT_TRACE16
 #error marker and wait trace16 collide
