@@ -47,7 +47,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -79,7 +79,7 @@
 | 0x207004 | CORE3_SEIP_CLAIM_COMPLETE | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PRIORITY[337] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -89,7 +89,7 @@ For interrupts with the same priority, the tie is broken by interrupt ID; interr
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PENDING[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -97,7 +97,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE0_MEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -105,7 +105,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE1_MEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -113,7 +113,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE2_MEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -121,7 +121,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE3_MEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -129,7 +129,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE0_SEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -137,7 +137,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE1_SEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -145,7 +145,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE2_SEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -153,7 +153,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE3_SEIP_ENABLE[11] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -161,7 +161,7 @@ Interrupts start counting at 1.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE0_MEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -170,7 +170,7 @@ Interrupts start counting at 1.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE0_MEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -179,7 +179,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE1_MEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -188,7 +188,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE1_MEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -197,7 +197,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE2_MEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -206,7 +206,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE2_MEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -215,7 +215,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE3_MEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -224,7 +224,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE3_MEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -233,7 +233,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE0_SEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -242,7 +242,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE0_SEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -251,7 +251,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE1_SEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -260,7 +260,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE1_SEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -269,7 +269,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE2_SEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -278,7 +278,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE2_SEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -287,7 +287,7 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE3_SEIP_THRESHOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -296,7 +296,7 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE3_SEIP_CLAIM_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
