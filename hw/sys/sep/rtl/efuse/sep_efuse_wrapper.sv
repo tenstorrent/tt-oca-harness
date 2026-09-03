@@ -61,9 +61,6 @@ module sep_efuse_wrapper
 	// Efuse intermediate reset
 	output logic 							   sep_intermediate_reset_no,
 
-	// PROD_DBG isolation: block LC_STATE transitions when DEMOTE is active
-	input  logic                               prod_dbg_active_i,
-
 	// Debug signals
 	output logic [9:0]                         sep_efuse_debug_o,
 	output logic [5:0]                         sep_efuse_token_match_sip_debug_o,
@@ -148,8 +145,8 @@ module sep_efuse_wrapper
         .AxiDataWidth   (SEP_EFUSE_AXI32_DATA_WIDTH),
         .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
         .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
-        .AxiMaxWriteTxns(16), // TODO
-        .AxiMaxReadTxns (16), // TODO
+        .AxiMaxWriteTxns(16),
+        .AxiMaxReadTxns (16),
         .FullBW         (1'b0), // ID Queue in Full BW mode in axi_burst_splitter
         .FallThrough    (1'b0), // FIFOs in Fall through mode in ID reflect
         .SpillAw        (1'b0), // Spill register control
@@ -220,11 +217,11 @@ module sep_efuse_wrapper
         .sigint_o(lc_sigint_err)
     );
 
+	// Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only access the MMR registers.
 	assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
     assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
 
-	// Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only read/write RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.
-	// A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP. 
+	// A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP.
     assign lc_restricted_state = lc_sigint_err ||
                                  (lc_state_local_raw == 4'b0001) ||                               // PROD STATE
                                  (lc_state_local_raw[sep_pkg::LC_STATE_BIT_WIDTH-1:1] == 3'b001); // RMA_SIP STATE
@@ -330,14 +327,14 @@ module sep_efuse_wrapper
 
 		.SEP_SEC_DISABLE_TOKEN      (SEP_SEC_DISABLE_TOKEN),
 
-		.EFUSE_MAP_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR),
-		.EFUSE_MAP_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE),
+		.EFUSE_MAP_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)),
+		.EFUSE_MAP_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE)),
 
-		.EFUSE_MMR_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR),
-		.EFUSE_MMR_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE),
+		.EFUSE_MMR_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR)),
+		.EFUSE_MMR_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE)),
 
-		.EFUSE_CTRL_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-		.EFUSE_CTRL_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE),
+		.EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
+		.EFUSE_CTRL_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
 		.SHADOW_REG_BITS            (sep_efuse_pkg::SHADOW_REG_BITS),
 		.EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),
@@ -385,8 +382,6 @@ module sep_efuse_wrapper
 		.shadow_regs_o              (shadow_regs_o),
 
 		.ext_boot_seq_done_i		(ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
-
-		.prod_dbg_active_i          (prod_dbg_active_i),
 
 		// Debug signals
 		.is_write_locked_shadow_regs_o(sep_efuse_debug_o[0]),

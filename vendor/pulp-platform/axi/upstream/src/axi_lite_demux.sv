@@ -459,11 +459,18 @@ module axi_lite_demux #(
                                                        |=> slv_ar_valid) else
       $fatal(1, "ar_valid was deasserted, when ar_ready = 0 in last cycle.");
     aw_stable: assert property( @(posedge clk_i) (slv_aw_valid && !slv_aw_ready)
-                               |=> $stable(slv_aw_chan)) else
-      $fatal(1, "slv_aw_chan_select unstable with valid set.");
+                               |=> $stable(slv_aw_chan.aw)) else
+      $fatal(1, "slv_aw_chan unstable with valid set.");
     ar_stable: assert property( @(posedge clk_i) (slv_ar_valid && !slv_ar_ready)
-                               |=> $stable(slv_ar_chan)) else
-      $fatal(1, "slv_aw_chan_select unstable with valid set.");
+                               |=> $stable(slv_ar_chan.ar)) else
+      $fatal(1, "slv_ar_chan unstable with valid set.");
+    aw_select_stable: assert property( @(posedge clk_i) ((|mst_aw_valids) && !slv_aw_ready)
+                               |=> $stable(slv_aw_chan.select)) else
+      $fatal(1, "slv_aw_select unstable with the AW presented at a master port.");
+    ar_select_stable: assert property( @(posedge clk_i)
+                               (slv_ar_valid && !r_fifo_full && !slv_ar_ready)
+                               |=> $stable(slv_ar_chan.select)) else
+      $fatal(1, "slv_ar_select unstable with the AR presented at a master port.");
     `endif
     `endif
     // pragma translate_on

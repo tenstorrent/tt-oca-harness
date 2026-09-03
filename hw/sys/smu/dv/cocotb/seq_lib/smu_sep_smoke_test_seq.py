@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_sep_smoke_test (SMU_ALL_007 rev 11).
+"""Sequence for smu_sep_smoke_test (SMU_ALL_007).
 
 DV-CARD:          SMU_ALL_007   ANCHOR: smu_sep_smoke_test
-DV-CARD-REVISION: 11   RECORD-SHA256: 01ce931b85a69a79d77782cf37f77dbe6361b59123bff20c856825e861ab6b71
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 11   ENV: cocotb
 
 Allocated (narrowed Option B; SEP=0 bare tb_top):
   SMC-RST-PRIMARY-EXPORT.S1 / S2
@@ -26,7 +24,7 @@ SRC_ACK_PATS = (0x01, 0x80, 0x3C)
 
 
 class smu_sep_smoke_test_seq:
-    """SMU_ALL_007 r11: primary-reset export + CTM pulse-sync / reserved [1:0]."""
+    """SMU_ALL_007: primary-reset export + CTM pulse-sync / reserved [1:0]."""
 
     BOUND_CYCLES = 2000
     BOUND_REF = 2000
@@ -73,17 +71,13 @@ class smu_sep_smoke_test_seq:
             await RisingEdge(clk)
             last = self._sample(signal, name)
             if last == expect:
-                self._timeout_paths.append(
-                    f"{label}: bound={bound} ok last=0x{last:x}"
-                )
+                self._timeout_paths.append(f"{label}: bound={bound} ok last=0x{last:x}")
                 return last
         self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED last="
-            f"{'None' if last is None else f'0x{last:x}'}"
+            f"{label}: bound={bound} EXPIRED last={'None' if last is None else f'0x{last:x}'}"
         )
         raise AssertionError(
-            f"TIMEOUT {label}: bound={bound} last_state={last} "
-            f"expect={expect} name={name}"
+            f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect} name={name}"
         )
 
     async def _functional_cold_pulse(self) -> None:
@@ -129,17 +123,11 @@ class smu_sep_smoke_test_seq:
         dut.xtrig_ctm_dst_req.value = 0
         dut.xtrig_ctm_src_ack.value = 0
         dut.jtag_trst.value = 1
-        base_ref = self._sample(
-            dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no"
-        )
-        base_smc = self._sample(
-            dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no"
-        )
+        base_ref = self._sample(dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no")
+        base_smc = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
         base_ack = self._sample(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack")
         if base_ref != 1 or base_smc != 1:
-            raise AssertionError(
-                f"baseline primary not released: ref={base_ref} smc={base_smc}"
-            )
+            raise AssertionError(f"baseline primary not released: ref={base_ref} smc={base_smc}")
         if base_ack != 0:
             raise AssertionError(f"baseline xtrig_ctm_dst_ack={base_ack}")
         self._log(
@@ -176,16 +164,10 @@ class smu_sep_smoke_test_seq:
             label="s2_primary_smc_assert",
             name="rst_primary_smc_clk_no",
         )
-        obs_ref = self._sample(
-            dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no"
-        )
-        obs_smc = self._sample(
-            dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no"
-        )
+        obs_ref = self._sample(dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no")
+        obs_smc = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
         if obs_ref != 0 or obs_smc != 0:
-            raise AssertionError(
-                f"RST-PRIMARY.S1 fail: ref={obs_ref} smc={obs_smc} expect both 0"
-            )
+            raise AssertionError(f"RST-PRIMARY.S1 fail: ref={obs_ref} smc={obs_smc} expect both 0")
         await self._release_cold()
         await self._wait_eq(
             dut.rst_primary_smc_clk_no,
@@ -224,14 +206,11 @@ class smu_sep_smoke_test_seq:
         stall_val = pack_debug_control(boot_stall_ovrd=1, boot_stall=1)
         await jtag.write("DEBUG_CONTROL", stall_val)
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
-        ovrd_pre = self._sample(
-            dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd"
-        )
+        ovrd_pre = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         stall_pre = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         if ovrd_pre != 1 or stall_pre != 1:
             raise AssertionError(
-                f"RST-PRIMARY.S2 TDR preload fail: ovrd={ovrd_pre} "
-                f"stall={stall_pre}"
+                f"RST-PRIMARY.S2 TDR preload fail: ovrd={ovrd_pre} stall={stall_pre}"
             )
         # Functional cold asserts rst_primary; TRST stays 1 (not POR).
         await self._functional_cold_pulse()
@@ -251,15 +230,11 @@ class smu_sep_smoke_test_seq:
             label="s3_primary_smc_assert",
             name="rst_primary_smc_clk_no",
         )
-        ovrd_mid = self._sample(
-            dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd"
-        )
+        ovrd_mid = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         stall_mid = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         trst_mid = self._sample(dut.jtag_trst, "jtag_trst")
         if trst_mid != 1:
-            raise AssertionError(
-                f"RST-PRIMARY.S2 TRST must stay high (not POR): trst={trst_mid}"
-            )
+            raise AssertionError(f"RST-PRIMARY.S2 TRST must stay high (not POR): trst={trst_mid}")
         if ovrd_mid != 1 or stall_mid != 1:
             raise AssertionError(
                 f"RST-PRIMARY.S2 TDR cleared by rst_primary alone: "
@@ -275,9 +250,7 @@ class smu_sep_smoke_test_seq:
             label="s3_primary_release",
             name="rst_primary_smc_clk_no",
         )
-        ovrd_post = self._sample(
-            dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd"
-        )
+        ovrd_post = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         stall_post = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         if ovrd_post != 1 or stall_post != 1:
             raise AssertionError(
@@ -308,9 +281,7 @@ class smu_sep_smoke_test_seq:
             "ACTION/RESPONSE/EFFECT DTP-XTRIG-CTM.S2: pulse-sync mode "
             "leaves ack ports unused as specified",
         )
-        self._log(
-            "COVERAGE DTP-XTRIG-CTM.S2 cells: mode=pulse_sync,ack_unused=1"
-        )
+        self._log("COVERAGE DTP-XTRIG-CTM.S2 cells: mode=pulse_sync,ack_unused=1")
         dut.xtrig_ctm_dst_req.value = 0
         dut.xtrig_ctm_src_ack.value = 0
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
@@ -321,9 +292,7 @@ class smu_sep_smoke_test_seq:
         mode_val = self._sample(mode_sig, "DTP_XTRIG_INT_CT_MODE")
         mode_lo = mode_val & 0x3
         if mode_lo != 0:
-            raise AssertionError(
-                f"CTM.S2 mode[1:0]={mode_lo} expect 0 (pulse-sync)"
-            )
+            raise AssertionError(f"CTM.S2 mode[1:0]={mode_lo} expect 0 (pulse-sync)")
 
         ack_samples: list[int] = []
         for pat in DEST_PATS:
@@ -334,8 +303,7 @@ class smu_sep_smoke_test_seq:
             ack_samples.append(ack)
             if ack != 0:
                 raise AssertionError(
-                    f"CTM.S2 ack used under pulse-sync: pat={pat:#x} "
-                    f"dst_ack={ack:#x}"
+                    f"CTM.S2 ack used under pulse-sync: pat={pat:#x} dst_ack={ack:#x}"
                 )
         dut.xtrig_ctm_dst_req.value = 0
         await ClockCycles(dut.clk_smu_i, 2)
@@ -360,12 +328,9 @@ class smu_sep_smoke_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S5",
-            "ACTION/RESPONSE/EFFECT DTP-XTRIG-CTM.S3: bits [1:0] remain "
-            "reserved for SMC",
+            "ACTION/RESPONSE/EFFECT DTP-XTRIG-CTM.S3: bits [1:0] remain reserved for SMC",
         )
-        self._log(
-            "COVERAGE DTP-XTRIG-CTM.S3 cells: bits=1:0,owner=smc"
-        )
+        self._log("COVERAGE DTP-XTRIG-CTM.S3 cells: bits=1:0,owner=smc")
         dtp_dst_req = dut.u_dut.dtp_xtrig_ctm_dst_req
         dtp_src_ack = dut.u_dut.dtp_xtrig_ctm_src_ack
 
@@ -393,21 +358,18 @@ class smu_sep_smoke_test_seq:
             ack = self._sample(dtp_src_ack, "dtp_xtrig_ctm_src_ack")
             if ((ack >> 2) & 0xFF) != pat:
                 raise AssertionError(
-                    f"CTM.S3 src_ack remap fail: pat={pat:#x} "
-                    f"dtp[9:2]={(ack >> 2) & 0xFF:#x}"
+                    f"CTM.S3 src_ack remap fail: pat={pat:#x} dtp[9:2]={(ack >> 2) & 0xFF:#x}"
                 )
             if (ack & 0x3) != 0:
                 raise AssertionError(
-                    f"CTM.S3 src_ack[1:0] not hardwire 0: pat={pat:#x} "
-                    f"lo={ack & 0x3}"
+                    f"CTM.S3 src_ack[1:0] not hardwire 0: pat={pat:#x} lo={ack & 0x3}"
                 )
         dut.xtrig_ctm_src_ack.value = 0
         await ClockCycles(dut.clk_smu_i, 2)
         lo_dst = self._sample(dtp_dst_req, "dtp_xtrig_ctm_dst_req") & 0x3
         lo_ack = self._sample(dtp_src_ack, "dtp_xtrig_ctm_src_ack") & 0x3
         detail_ctm3 = (
-            f"bits=1:0 owner=smc lo_dst={lo_dst} lo_ack_hardwire={lo_ack} "
-            f"cells=bits=1:0,owner=smc"
+            f"bits=1:0 owner=smc lo_dst={lo_dst} lo_ack_hardwire={lo_ack} cells=bits=1:0,owner=smc"
         )
         self._log(f"CHK-DTP-XTRIG-CTM-S3: PASS ({detail_ctm3})")
         sb.expect_eq(
@@ -422,8 +384,7 @@ class smu_sep_smoke_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S6",
-            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry "
-            "+ last observed state",
+            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last observed state",
         )
         for line in self._timeout_paths:
             self._log(f"TIMEOUT_PATH {line}")
@@ -435,9 +396,7 @@ class smu_sep_smoke_test_seq:
             )
         expired = [p for p in self._timeout_paths if "EXPIRED" in p]
         if expired:
-            raise AssertionError(
-                f"CHK-TIMEOUT-PATHS unexpected EXPIRED: {expired}"
-            )
+            raise AssertionError(f"CHK-TIMEOUT-PATHS unexpected EXPIRED: {expired}")
         detail_to = (
             f"finite_bound_paths={n_paths} "
             f"expect={self.EXPECTED_TIMEOUT_PATHS} expiry_fail_path=armed"
@@ -451,21 +410,16 @@ class smu_sep_smoke_test_seq:
         )
 
         self._step_ts["PASS"] = time.monotonic()
-        self._log(
-            "SMU_ALL_007 sequence complete (PASS term recorded for NONVAC fence)"
-        )
+        self._log("SMU_ALL_007 sequence complete (PASS term recorded for NONVAC fence)")
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]
         for step_id in order:
             if step_id not in self._step_ts:
                 raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
         for a, b in zip(order, order[1:]):
             if self._step_ts[a] >= self._step_ts[b]:
-                raise AssertionError(
-                    f"CHK-NONVAC order fail: {a} not before {b}"
-                )
+                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
         deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
-            for a, b in zip(order, order[1:])
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
         positive_deltas = sum(1 for d in deltas_ns if d > 0)
         expect_deltas = len(order) - 1
@@ -474,9 +428,7 @@ class smu_sep_smoke_test_seq:
                 f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
                 f"expect={expect_deltas} deltas_ns={deltas_ns}"
             )
-        self._log(
-            "CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<PASS all hold"
-        )
+        self._log("CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<PASS all hold")
         sb.expect_eq(
             "CHK-NONVAC positive step-delta count",
             positive_deltas,

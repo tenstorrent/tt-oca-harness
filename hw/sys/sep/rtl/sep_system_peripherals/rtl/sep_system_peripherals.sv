@@ -65,7 +65,16 @@ module sep_system_peripherals
         output logic [2:0]                                                      ext_trng_src_sel_o,
 
         // Key Manager emergency wipe control (from sep_cpu_ctrl)
-        output logic                                                            km_wipe_state_o
+        output logic                                                            km_wipe_state_o,
+
+        // Secure DMA bridge fault status/clear (from sep_cpu_ctrl)
+        input  logic                                                            dma_reg_bus_err_i,
+        input  logic                                                            dma_host_intg_err_i,
+        output logic                                                            dma_err_clr_o,
+
+        // Peripheral register-bridge fault status/clear (from sep_cpu_ctrl)
+        input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0]                         periph_bus_err_i,
+        output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0]                         periph_bus_err_clr_o
     );
 
     /////////////////////////
@@ -118,7 +127,6 @@ module sep_system_peripherals
     logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_addr;
     logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size;
     logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smu_global_base_addr;
-    logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smu_local_base_addr;
     logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smu_region_size;
 
     ///////////////////////////////////////////////////////
@@ -214,7 +222,7 @@ module sep_system_peripherals
         .axi_req_t   (sep_pkg::sep_system_peripherals_internal_axi_req_t),
         .axi_resp_t  (sep_pkg::sep_system_peripherals_internal_axi_resp_t),
         .NoMstPorts  (sep_pkg::ADDRESS_REMAP_DEMUX_PORTS),
-        .MaxTrans    (16), // TODO: Add max trans parameter to sep_pkg
+        .MaxTrans    (16),
         .AxiLookBits (3),
         .UniqueIds   (1'b0),
         .SelHashIds  (1'b0),
@@ -348,7 +356,7 @@ module sep_system_peripherals
         .AxiAddrWidth                (sep_pkg::SEP_SYSTEM_PERIPHERALS_OUTBOUND_AXI_ADDR_WIDTH),
         .AxiIdWidth                  (sep_pkg::SEP_SYSTEM_PERIPHERALS_OUTBOUND_AXI_ID_WIDTH),
         .AxiDataWidth                (sep_pkg::SEP_SYSTEM_PERIPHERALS_OUTBOUND_AXI_DATA_WIDTH),
-        .MaxTrans                    (16), // TODO: Add max trans parameter to sep_pkg
+        .MaxTrans                    (16),
         .ErrSlvMaxTrans              (32),
         .FlopReqEn                   (1'b1),
         .FlopRespEn                  (1'b1),
@@ -396,7 +404,7 @@ module sep_system_peripherals
         .AxiAddrWidth                (sep_pkg::SEP_SYSTEM_PERIPHERALS_INTERNAL_AXI_ADDR_WIDTH),
         .AxiIdWidth                  (sep_pkg::SEP_SYSTEM_PERIPHERALS_INTERNAL_AXI_ID_WIDTH),
         .AxiDataWidth                (sep_pkg::SEP_SYSTEM_PERIPHERALS_INTERNAL_AXI_DATA_WIDTH),
-        .MaxTrans                    (16), // TODO: Add max trans parameter to sep_pkg
+        .MaxTrans                    (16),
         .ErrSlvMaxTrans              (32),
         .FlopReqEn                   (1'b1),
         .FlopRespEn                  (1'b0),
@@ -464,7 +472,7 @@ module sep_system_peripherals
     axi_lite_mailbox_unit #(
         .NUM_MAILBOXES               (sep_pkg::NUM_MAILBOXES),
         .MAILBOX_DEPTH               (sep_pkg::MAILBOX_DEPTH),
-        .MAX_TRANS                   (16), // TODO: Add max trans parameter to sep_pkg
+        .MAX_TRANS                   (16),
         .MAILBOX_BASE_ADDR           (och_sep_top_addrmap_pkg::OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
         .MAILBOX_SIZE                (sep_pkg::MAILBOX_SIZE),
 
@@ -527,7 +535,12 @@ module sep_system_peripherals
         .nmi_vec_o                                 (nmi_vec_o),
 
         .ext_trng_src_sel_o                        (ext_trng_src_sel_o),
-        .km_wipe_state_o                           (km_wipe_state_o)
+        .km_wipe_state_o                           (km_wipe_state_o),
+        .dma_reg_bus_err_i                         (dma_reg_bus_err_i),
+        .dma_host_intg_err_i                       (dma_host_intg_err_i),
+        .dma_err_clr_o                             (dma_err_clr_o),
+        .periph_bus_err_i                          (periph_bus_err_i),
+        .periph_bus_err_clr_o                      (periph_bus_err_clr_o)
     );
 
     ////////////////////
@@ -586,8 +599,8 @@ module sep_system_peripherals
         .output_axi_req_t(sep_pkg::sep_system_peripherals_inbound_to_sep_axi_req_t),
         .output_axi_resp_t(sep_pkg::sep_system_peripherals_inbound_to_sep_axi_resp_t),
 
-        .MAX_INFLIGHT_IDS(4), // TODO: Make this a param
-        .MAX_TXNS_PER_ID(4)   // TODO: Make this a param
+        .MAX_INFLIGHT_IDS(4),
+        .MAX_TXNS_PER_ID(4)
     ) u_inbound_to_sep_id_remap (
         .clk_i(clk_i),
         .rst_ni(rst_ni),

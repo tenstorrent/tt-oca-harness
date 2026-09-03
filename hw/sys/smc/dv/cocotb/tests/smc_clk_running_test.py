@@ -2,16 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_001 ANCHOR: smc_clk_running_test
-DV-CARD-REVISION: 1 RECORD-SHA256: c9a8f2011802914da1e11a25c66a37abbfcfed17058830392c07cfd14228c33c
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_clk_running_test_seq import smc_clk_running_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

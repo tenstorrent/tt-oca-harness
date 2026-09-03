@@ -42,10 +42,11 @@ args = ["+km_rom_hex=km_rom_coexist.parhex"]
 # no_cpu mode (host drives the bus over AXI); +esrc_noise_force makes the ring
 # oscillators alive under Verilator. REAL fuse-sense (no +skip_fuse_sense): the KM
 # firmware reads OTP/lifecycle at boot and faults on an all-zero shadow, so the test
-# stages a valid PROD OTP image and senses it. The rom_main.rom.parhex artifact is
-# built from tracked source (make -C cocotb/tests/km_fw rom_main).
+# stages a valid PROD OTP image and senses it. c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_otbn_sideload_kat_test"
 module = "km.sep_km_otbn_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "otbn", "subsystem", "entropy"]
@@ -57,16 +58,16 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # KM -> AES sideload consume-proof KAT (reference suite AES leaf): real DRBG entropy
 # boots the real KM firmware (rom_main). The host loads a KNOWN 256b key via
 # CMD_KEY_LOAD and CMD_KEY_TRANSFERs it to the OpenTitan AES core, then runs
-# ECB-256 encryptions and proves AES consumed the exact key: ct_side equals an
-# independent AES-256-ECB golden (env/sep_aes_golden.py, self-tested vs FIPS-197)
-# AND the SW-key reference encryption, and differs from a dummy-key encryption.
-# Frontdoor (no backdoor) and stronger than the value-agnostic reference-suite cross-check.
+# ECB-256 encryptions and proves AES consumed the exact key: dummy, sideload,
+# and SW-key ciphertexts are each checked against an independent AES-256-ECB
+# golden (env/sep_aes_golden.py, self-tested vs FIPS-197). Frontdoor (no backdoor).
 # no_cpu mode; +esrc_noise_force makes the ring oscillators alive under Verilator.
 # REAL fuse-sense (no +skip_fuse_sense): the KM firmware reads OTP/lifecycle at
-# boot, so the test stages a valid PROD OTP image and senses it. rom_main.rom.parhex
-# is built from tracked source (make -C cocotb/tests/km_fw rom_main).
+# boot, so the test stages a valid PROD OTP image and senses it. c_compile builds
+# rom_main.rom.parhex (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_aes_sideload_kat_test"
 module = "km.sep_km_aes_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "aes", "subsystem", "entropy"]
@@ -78,15 +79,17 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # KM -> HMAC sideload consume-proof KAT (reference suite): real DRBG entropy boots the
 # real KM firmware (rom_main). The host loads a KNOWN 256b key via CMD_KEY_LOAD and
 # CMD_KEY_TRANSFERs it to the OpenTitan HMAC engine, then runs keyed HMAC-SHA256
-# over a fixed message and proves HMAC consumed the exact key: the digest equals an
-# independent HMAC-SHA256 golden (env/sep_hmac_golden.py, stdlib hmac/hashlib, RFC
-# 4231 self-tested) of the known key under the RTL-pinned convention, and differs
-# from the dummy-key golden. Frontdoor (no backdoor); HMAC has no CFG sideload bit,
-# so the digest-vs-golden compare IS the consume-proof (as in the reference suite). no_cpu;
+# over a fixed message and proves HMAC consumed the exact key: the digest equals
+# an independent HMAC-SHA256 golden (env/sep_hmac_golden.py, stdlib hmac/hashlib,
+# RFC 4231 self-tested) of the known key under the RTL-pinned convention.
+# Frontdoor (no backdoor); HMAC has no CFG sideload bit, so the digest-vs-golden
+# compare is the consume-proof. no_cpu;
 # +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
-# (KM rom_main reads OTP at boot). rom_main.rom.parhex from tracked source.
+# (KM rom_main reads OTP at boot). c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_hmac_sideload_kat_test"
 module = "km.sep_km_hmac_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "hmac", "subsystem", "entropy"]
@@ -103,12 +106,27 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # dummy-key digest. No KMAC golden (as in the reference suite, no KMAC DPI). KMAC pulls real EDN
 # masking entropy during the keyed ops (proven via the CHK5_kmac sink). Frontdoor;
 # no_cpu; +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
-# (KM rom_main reads OTP at boot). rom_main.rom.parhex from tracked source.
+# (KM rom_main reads OTP at boot). c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_kmac_sideload_kat_test"
 module = "km.sep_km_kmac_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "kmac", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM key/policy vault: slot extent and SRAM write-lock. RANDCFG: slot and
+# lock region from the run seed. Dedicated KM ROM (not rom_main); seal
+# stays on the parked command-set vehicle. no_cpu; +skip_fuse_sense.
+name = "sep_km_key_policy_vault_test"
+module = "km.sep_km_key_policy_vault_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "kpv", "sram_lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]

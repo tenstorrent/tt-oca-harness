@@ -10,7 +10,6 @@ testlists/deferred.toml.
 from __future__ import annotations
 
 import pyuvm
-
 from smu_base_test import smu_base_test
 
 

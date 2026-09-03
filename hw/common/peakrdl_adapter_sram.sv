@@ -18,7 +18,6 @@
 // - No transaction splitting across multiple SRAM accesses
 // - ram_gnt_i is hardwired from ram_req_o (valid for OTBN instance but may not be valid for other instances)
 //
-// TODO:
 // - woffset FIFO integrity
 
 `include "prim_assert.sv"
@@ -156,9 +155,6 @@ module peakrdl_adapter_sram
   // =========================================================================
 
   // Read request FIFO: Store woffset for read operations only
-  // logic read_req_ack;
-  // assign read_req_ack = peakrdl_req_i & ~peakrdl_req_is_wr_i & read_req_fifo_wready;
-  // assign read_req_fifo_wvalid = read_req_ack;  // Push only for valid reads that can be accepted
   assign read_req_fifo_wvalid = peakrdl_req_i & ram_gnt_i & ~peakrdl_req_is_wr_i & read_req_fifo_wready;  // Push only for valid reads that can be accepted
   assign read_req_fifo_wdata = '{
     woffset: woffset
@@ -420,19 +416,7 @@ module peakrdl_adapter_sram
 
   // Write acknowledgment and error: timing depends on ECC pipeline
   // Always acknowledge write requests for protocol compliance, even if rejected due to partial writes
-  // if (EnableEccPipeline && EnableECC) begin : gen_wr_ack_pipeline
-  //   logic peakrdl_wr_ack_q;
-  //   always_ff @(posedge clk_i or negedge rst_ni) begin
-  //     if (!rst_ni) begin
-  //       peakrdl_wr_ack_q <= 1'b0;
-  //     end else begin
-  //       peakrdl_wr_ack_q <= peakrdl_req_i & peakrdl_req_is_wr_i;  // Acknowledge all write requests
-  //     end
-  //   end
-  //   assign peakrdl_wr_ack_o = peakrdl_wr_ack_q;
-  // end else begin : gen_no_wr_ack_pipeline
-    assign peakrdl_wr_ack_o = peakrdl_req_i & peakrdl_req_is_wr_i;  // Acknowledge all write requests immediately
-  // end
+  assign peakrdl_wr_ack_o = peakrdl_req_i & peakrdl_req_is_wr_i;  // Acknowledge all write requests immediately
 
   // Write error signal - pipeline when ECC pipeline is enabled
   if (EnableEccPipeline && EnableECC) begin : gen_wr_err_pipeline
@@ -463,7 +447,6 @@ module peakrdl_adapter_sram
   assign unused_rerror = ecc_read_error[0];  // Correctable ECC errors not used
 
   // Simple FIFO-based design: 1 FIFO to track woffset for reads
-  // FIXME: These assertions were autogen'd, they might be wrong
 
   // Basic parameter validation
   `OCAH_OT_ASSERT_INIT(SramDwHasByteGranularity_A, SramDw % 8 == 0)

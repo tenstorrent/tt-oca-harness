@@ -52,7 +52,6 @@ module sep
 
         input  logic ext_boot_seq_done_i,
 
-        // TODO: Do we need this?
         // DMI port for uncore
         input  logic        dmi_core_enable,
         input  logic        dmi_uncore_enable,
@@ -65,17 +64,17 @@ module sep
 
         output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
+        // CPU lockstep control/status (inert unless the core is built with
+        // RV_LOCKSTEP_ENABLE)
+        input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+        output sep_pkg::sep_lockstep_status_t lockstep_status_o,
+
         input logic [31:1] jtag_id,
 
         // Interrupt inputs
         input logic                      timer_int,
         input logic                      soft_int,
         input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
-
-        // TODO: Are these supposed to go into sep_safety?
-        // input logic wipe_i,
-        // output logic [7:0] error_o,
-        // output logic irq_o,
 
         // Memory macro interfaces
         output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -251,15 +250,6 @@ module sep
     logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
     logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_write_filter_hit_debug,  inbound_read_filter_hit_debug;
 
-  `ifdef RV_LOCKSTEP_ENABLE
-    logic cpu_disable_corruption_detection;
-    logic cpu_lockstep_err_injection_en;
-    logic cpu_corruption_detected;
-
-    // FIXME: We dont need these for now
-    assign cpu_disable_corruption_detection = '0;
-    assign cpu_lockstep_err_injection_en = '0;
-  `endif
 
     // Bridge structs for AXI4 wrappers (slaves)
     sep_pkg::sep_32_64_3_12_axi_req_t  smn_inbound_to_sep_axi_req;
@@ -328,6 +318,14 @@ module sep
     logic intr_dma_chunk_done;
     logic intr_dma_error;
     logic dma_alert;
+    logic dma_reg_bus_err;
+    logic dma_host_intg_err;
+    logic dma_err_clr;
+
+    // Peripheral register-bridge faults, one bit per block (sep_pkg::periph_bus_err_e
+    // gives the bit order, shared with PERIPH_BUS_ERR_STATUS/_CLEAR).
+    logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err;
+    logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr;
     logic wdt_alert;
 
     // Crypto subsystem interrupt signals (from sep_crypto)
@@ -355,6 +353,7 @@ module sep
     edn_pkg::edn_rsp_t entropy_pool_edn_rsp;
     logic entropy_pool_low;
     logic entropy_pool_fill_stall;
+    logic trng_entropy_clear;
 
     logic [31:1] nmi_vec;
 
@@ -378,9 +377,12 @@ module sep
     logic sep_reset_n; // Efuse sensing done signal (after JTAG override)
     logic sep_cpu_reset_n; // This is the reset signal for the CPU
     logic wdt_timer_rst_req; // This is the reset signal for the WDT timer (actitve high)
-    sep_pkg::sep_sw_rst_t sep_sw_rst_no; // Software-controllable resets from sep_reset_ctrl
     logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
     logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
+    // Isolation handshake and sequenced resets between sep_reset_ctrl and sep_crypto
+    sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req;
+    sep_pkg::sep_crypto_isolate_t sep_crypto_isolated;
+    sep_pkg::sep_sw_rst_t         sep_crypto_gated_rst_n;
 
     //////////////////
     // AXI Crossbar //
@@ -449,7 +451,7 @@ module sep
     // Added demux to reroute eFuse shim traffic from xbar external to efuse_wrapper
 
     localparam logic [31:0] EFUSE_SHIM_BASE =
-        och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR;
+        32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
 
     localparam int unsigned NUM_EXT_DEMUX_PORTS = 2;
     typedef enum logic [$clog2(NUM_EXT_DEMUX_PORTS)-1:0] {
@@ -558,6 +560,15 @@ module sep
         sep_internal_interrupts[36]     = entropy_pool_low;
         sep_internal_interrupts[37]     = entropy_pool_fill_stall;
         sep_internal_interrupts[38]     = token_match_fault;
+        // Secure DMA bridge faults. Level-sensitive: both sources are latched in the DMA
+        // wrapper and held until firmware writes DMA_BUS_ERR_CLEAR. An edge-triggered
+        // gateway would miss them after a WDT CPU reset, which resets the CPU but not the
+        // DMA, leaving the source already high before the gateway is armed.
+        sep_internal_interrupts[39]     = dma_reg_bus_err;
+        sep_internal_interrupts[40]     = dma_host_intg_err;
+        // Peripheral register-bridge faults share one source; firmware reads
+        // PERIPH_BUS_ERR_STATUS to find which block faulted.
+        sep_internal_interrupts[41]     = |periph_bus_err;
     end
 
     assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
@@ -626,24 +637,18 @@ module sep
 
         .sep_cpu_trace                  (sep_cpu_trace),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .iccm_ecc_single_error          (cpu_iccm_ecc_single_error),
         .iccm_ecc_double_error          (cpu_iccm_ecc_double_error),
         .dccm_ecc_single_error          (cpu_dccm_ecc_single_error),
         .dccm_ecc_double_error          (cpu_dccm_ecc_double_error),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .dec_tlu_perfcnt0               (cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
         .dec_tlu_perfcnt1               (cpu_dec_tlu_perfcnt1),
         .dec_tlu_perfcnt2               (cpu_dec_tlu_perfcnt2),
         .dec_tlu_perfcnt3               (cpu_dec_tlu_perfcnt3),
 
-      // FIXME: Forward this to safety island somehow or SEP-level CSRs
-      `ifdef RV_LOCKSTEP_ENABLE
-        .disable_corruption_detection_i (cpu_disable_corruption_detection),
-        .lockstep_err_injection_en_i    (cpu_lockstep_err_injection_en),
-        .corruption_detected_o          (cpu_corruption_detected),
-      `endif
+        .lockstep_ctrl_i                (lockstep_ctrl_i),
+        .lockstep_status_o              (lockstep_status_o),
 
         // TCM interface ports (pass-through to sep_wrapper)
         .sep_cpu_tcm_req_o              (sep_cpu_tcm_req_o),
@@ -688,7 +693,7 @@ module sep
         .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
         .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
-        .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
+        .MEM_BASE_ADDR    (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)),
         .NUM_BANKS        (1)
     ) u_sram_memory_interface (
         .clk_i                (clk_i),
@@ -759,7 +764,7 @@ module sep
         .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
         .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
-        .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR),
+        .MEM_BASE_ADDR    (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)),
         .NUM_BANKS        (1)
     ) u_boot_rom_memory_interface (
         .clk_i                (clk_i),
@@ -809,6 +814,7 @@ module sep
         // Native EDN endpoint routed to the fabric-level entropy-pool FIFO
         .entropy_pool_edn_req_i                 (entropy_pool_edn_req),
         .entropy_pool_edn_rsp_o                 (entropy_pool_edn_rsp),
+        .trng_entropy_clear_o                   (trng_entropy_clear),
 
         // External TRNG AXI-Lite passthrough
         .ext_trng_axil_req_o                    (ext_trng_axil_req_o),
@@ -847,11 +853,9 @@ module sep
         .km_unrecoverable_err_o                 (km_unrecoverable_err),
         .km_recoverable_err_o                   (km_recoverable_err),
 
-        .km_sw_rst_ni                           (sep_sw_rst_no.km),
-        .otbn_sw_rst_ni                         (sep_sw_rst_no.otbn),
-        .aes_sw_rst_ni                          (sep_sw_rst_no.aes),
-        .hmac_sw_rst_ni                         (sep_sw_rst_no.hmac),
-        .kmac_sw_rst_ni                         (sep_sw_rst_no.kmac),
+        .isolate_req_i                          (sep_crypto_isolate_req),
+        .isolated_o                             (sep_crypto_isolated),
+        .gated_rst_ni                           (sep_crypto_gated_rst_n),
 
         .lcc_demote_state_1_o                   (lcc_demote_state_1_o),
         .lcc_demote_state_2_o                   (lcc_demote_state_2_o),
@@ -892,7 +896,20 @@ module sep
 
         .locked_field_access_interrupt_o        (locked_field_access_interrupt),
 
-        .token_match_fault_o                    (token_match_fault)
+        .token_match_fault_o                    (token_match_fault),
+
+        .aes_bus_err_o                          (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_AES]),
+        .hmac_bus_err_o                         (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_HMAC]),
+        .kmac_bus_err_o                         (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_KMAC]),
+        .otbn_bus_err_o                         (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_OTBN]),
+        .csrng_bus_err_o                        (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_CSRNG]),
+        .edn_bus_err_o                          (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_EDN]),
+        .aes_bus_err_clr_i                      (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_AES]),
+        .hmac_bus_err_clr_i                     (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_HMAC]),
+        .kmac_bus_err_clr_i                     (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_KMAC]),
+        .otbn_bus_err_clr_i                     (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_OTBN]),
+        .csrng_bus_err_clr_i                    (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_CSRNG]),
+        .edn_bus_err_clr_i                      (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_EDN])
     );
 
     ///////////////
@@ -924,6 +941,7 @@ module sep
     sep_entropy_fifo u_entropy_fifo (
         .clk_i                    (clk_i),
         .rst_ni                   (rst_ni),
+        .entropy_clear_i          (trng_entropy_clear),
 
         .test_en_i                (test_en_i),
 
@@ -1002,7 +1020,14 @@ module sep
         .sep_region_size_o                (sep_region_size),
 
         .ext_trng_src_sel_o               (ext_trng_src_sel),
-        .km_wipe_state_o                  (km_wipe_state)
+        .km_wipe_state_o                  (km_wipe_state),
+
+        .dma_reg_bus_err_i                (dma_reg_bus_err),
+        .dma_host_intg_err_i              (dma_host_intg_err),
+        .dma_err_clr_o                    (dma_err_clr),
+
+        .periph_bus_err_i                 (periph_bus_err),
+        .periph_bus_err_clr_o             (periph_bus_err_clr)
     );
 
     /////////
@@ -1020,7 +1045,9 @@ module sep
         .intr_wdog_timer_bark_o  (intr_wdog_timer_bark),
         .wdt_timer_rst_req_o     (wdt_timer_rst_req),
         .wdt_alert_o             (wdt_alert),
-        .wdt_debug_sleep_mode_i  (wdt_debug_sleep_mode)
+        .wdt_debug_sleep_mode_i  (wdt_debug_sleep_mode),
+        .bus_err_o               (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_WDT]),
+        .bus_err_clr_i           (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_WDT])
     );
 
     //////////////////////
@@ -1029,6 +1056,7 @@ module sep
 
     sep_reset_ctrl u_sep_reset_ctrl (
         .clk_i                      (clk_i),
+        .rst_ni                     (rst_ni),
         .wdt_rst_ni                 (wdt_rst_ni),
         .jtag_sep_reset_ctrl_i      (jtag_sep_reset_ctrl_i),
         .sep_intermediate_reset_ni  (sep_intermediate_reset_n),
@@ -1038,56 +1066,14 @@ module sep
         .test_en_i                  (test_en_i),
         .scan_rst_ni                (scan_rst_ni),
         .sep_cpu_reset_no           (sep_cpu_reset_n),
-        .sep_sw_rst_no              (sep_sw_rst_no)
+        .sep_crypto_isolate_req_o   (sep_crypto_isolate_req),
+        .sep_crypto_isolated_i      (sep_crypto_isolated),
+        .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n)
     );
-
-    // TODO: AXI slave in + AXI master out (to CPU subsystem, indirectly connected to everything) + local CSRs
-    // TODO: Does this need to be wrapped in a ifdef or parameter?
-    // if (EN_SEP_SAFETY) begin: GEN_SEP_SAFETY
-
-    //     sep_safety safety (
-
-    //         .clk_i,
-    //         .rst_ni,
-
-    //         // TODO: AXI master in
-    //         // TODO: AXI master out
-
-    //         // TODO: external safety/error interface
-    //         // input logic wipe_i,
-    //         // output logic [7:0] error_o,
-    //         // output logic irq_o,
-
-    //         .cpu_iccm_ecc_single_error_i(cpu_iccm_ecc_single_error),
-    //         .cpu_iccm_ecc_double_error_i(cpu_iccm_ecc_double_error),
-    //         .cpu_dccm_ecc_single_error_i(cpu_dccm_ecc_single_error),
-    //         .cpu_dccm_ecc_double_error_i(cpu_dccm_ecc_double_error),
-    //         // TODO: Similar signals for the scratchpad RAM?
-
-    //         `ifdef RV_LOCKSTEP_ENABLE
-    //         .cpu_disable_corruption_detection_o(cpu_disable_corruption_detection),
-    //         .cpu_lockstep_err_injection_en_o(cpu_lockstep_err_injection_en),
-    //         .cpu_corruption_detected_i(corruption_detected),
-    //         `endif
-
-    //         // TODO: Do we need more of these?
-    //         .cpu_dec_tlu_perfcnt0(cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    //         .cpu_dec_tlu_perfcnt1(cpu_dec_tlu_perfcnt1),
-    //         .cpu_dec_tlu_perfcnt2(cpu_dec_tlu_perfcnt2),
-    //         .cpu_dec_tlu_perfcnt3(cpu_dec_tlu_perfcnt3)
-
-    //     );
-
-    // end else begin: NO_GEN_EN_SEP_SAFETY
-    //     ;
-    // end
 
     ////////////////
     // Secure DMA //
     ////////////////
-
-    // TODO: Tie in unused signals or remove from wrapper
-    // TODO: Check over these parameters
 
     secure_dma_pkg::lsio_trigger_t lsio_trigger;
     assign lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger;
@@ -1095,7 +1081,7 @@ module sep
     assign lsio_trigger[$bits(lsio_trigger)-1:1] = '0;
 
     sep_dma_wrap #(
-        .SECURE_DMA_REG_MAP_BASE_ADDR (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
+        .SECURE_DMA_REG_MAP_BASE_ADDR (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR)),
         .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
         .AlertSkewCycles        (1'b0),
         .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)
@@ -1115,6 +1101,9 @@ module sep
         .intr_dma_chunk_done_o  (intr_dma_chunk_done),
         .intr_dma_error_o       (intr_dma_error),
         .dma_alert_o            (dma_alert),
+        .dma_reg_bus_err_o      (dma_reg_bus_err),
+        .dma_host_intg_err_o    (dma_host_intg_err),
+        .dma_err_clr_i          (dma_err_clr),
         .reg_req_i              (dma_csr_req),
         .reg_resp_o             (dma_csr_rsp),
         .dma_req_o              (dma_axi_req),

@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib._one_shot import _OneShot
 from seq_lib.smc_multi_reset_csr_persistence_test_seq import (
     smc_multi_reset_csr_persistence_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

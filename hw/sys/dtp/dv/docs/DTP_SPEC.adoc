@@ -197,10 +197,7 @@ handshake routing, and clock-stop aggregation. The CTM is a 26x26
 combinatorial AND-OR crossbar with registered outputs (default `NUM_CTP=16` +
 `NUM_INT_CT=10`). Clock-stop aggregation forms the registered `stop_clks_o`
 halt as `registered(jtag_clock_stop OR |xtrig_clk_stop_req_i)`, while the
-DEBUG_CONTROL `cla_clock_stop` readback reflects only the CLA requests. In
-the OCAH open-source Verilator path, generated CTP/CTM CSR blocks are
-stubbed; functional cross-trigger tests require either commercial simulation
-or a Verilator-compatible CSR implementation.
+DEBUG_CONTROL `cla_clock_stop` readback reflects only the CLA requests.
 
 === Operating Modes
 

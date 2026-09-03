@@ -3,10 +3,12 @@
 //
 // Configuration for one active ocah_axi_vip slave (memory-backed responder).
 //
-// Owns the responder-side one-shot error-injection tables (the SV-UVM
-// analogue of the cocotb OcahFaultMixin): a beat-aligned address armed for a
-// direction answers the programmed non-OKAY response ONCE, skips the memory
-// update (writes), and returns zero data (reads). This table makes the
+// Owns the responder-side one-shot fault controls (the SV-UVM analogue of
+// the cocotb OcahFaultMixin): error-injection tables — a beat-aligned
+// address armed for a direction answers the programmed non-OKAY response
+// ONCE, skips the memory update (writes), and returns zero data (reads) —
+// plus per-direction one-shot response-ID corruption and per-channel
+// bounded READY backpressure. This table makes the
 // responder MISBEHAVE on purpose; the separate passive ocah_axi_config
 // arm_expected_resp table is what classifies the observed non-OKAY as
 // EXPECTED for the scoreboard — tests arm both through their sequence layer.
@@ -29,10 +31,14 @@ class ocah_axi_slave_config extends uvm_object;
     // Backing memory footprint in bytes (power of two; addresses wrap).
     int unsigned mem_bytes = 65536;
 
-    // Bounded READY backpressure: when nonzero, READY idles low for this many
-    // accepted-clock cycles before each assertion window (never a permanent
-    // stall — mirrors the cocotb bounded pause generator).
-    int unsigned ready_stall_cycles = 0;
+    // Bounded READY backpressure, per master-driven channel (the SV-UVM
+    // mirror of the cocotb bounded pause generator): when nonzero, the
+    // responder repeats a low-for-N / high-for-one READY pattern on that
+    // channel, so every handshake completes within N+1 cycles of VALID —
+    // never a permanent stall.
+    int unsigned aw_stall_cycles = 0;
+    int unsigned w_stall_cycles  = 0;
+    int unsigned ar_stall_cycles = 0;
 
     // Stable name for log messages.
     string name_tag = "ocah_axi_slave";
@@ -41,12 +47,24 @@ class ocah_axi_slave_config extends uvm_object;
     protected ocah_axi_resp_e m_inject_rd[bit [63:0]];
     protected ocah_axi_resp_e m_inject_wr[bit [63:0]];
 
+    // One-shot response-ID corruption masks per direction (the SV-UVM mirror
+    // of the cocotb fault slave's inject_id_corruption): the next selected
+    // transaction answers request_id ^ mask (ID-width truncated) instead of
+    // echoing the request ID. 0 = disarmed (a zero mask is rejected — it
+    // would be an echo).
+    protected bit [15:0] m_id_corrupt_rd;
+    protected bit [15:0] m_id_corrupt_wr;
+
     function new(string name = "ocah_axi_slave_config");
         super.new(name);
     endfunction
 
     function int unsigned beat_bytes();
         return data_width / 8;
+    endfunction
+
+    function bit [15:0] mask_id(bit [15:0] value);
+        return (id_width == 0) ? '0 : (value & ((16'd1 << id_width) - 1));
     endfunction
 
     // Beat-align, then wrap into the memory footprint (mem_bytes is a power
@@ -72,9 +90,74 @@ class ocah_axi_slave_config extends uvm_object;
             name_tag, addr, aligned, resp.name(), for_read, for_write), UVM_LOW)
     endfunction
 
+    // Arm one-shot response-ID corruption (BID/RID answered as
+    // request_id ^ mask, truncated to id_width; data path and response code
+    // untouched). One-shot per selected direction; clear_errors() disarms.
+    function void inject_id_corruption(
+        bit [15:0] mask,
+        bit        for_read  = 1'b1,
+        bit        for_write = 1'b1
+    );
+        if (mask == '0)
+            `uvm_fatal(get_type_name(), "inject_id_corruption mask must be non-zero")
+        if (for_read)
+            m_id_corrupt_rd = mask;
+        if (for_write)
+            m_id_corrupt_wr = mask;
+        `uvm_info(get_type_name(), $sformatf(
+            "%s: injecting response-ID corruption mask=0x%0h read=%0d write=%0d",
+            name_tag, mask, for_read, for_write), UVM_LOW)
+    endfunction
+
+    // Consume the one-shot ID corruption for one direction, if armed.
+    function bit consume_id_corruption(ocah_axi_dir_e dir, output bit [15:0] mask);
+        mask = '0;
+        if (dir == OCAH_AXI_DIR_READ && m_id_corrupt_rd != '0) begin
+            mask = m_id_corrupt_rd;
+            m_id_corrupt_rd = '0;
+            return 1'b1;
+        end
+        if (dir == OCAH_AXI_DIR_WRITE && m_id_corrupt_wr != '0) begin
+            mask = m_id_corrupt_wr;
+            m_id_corrupt_wr = '0;
+            return 1'b1;
+        end
+        return 1'b0;
+    endfunction
+
     function void clear_errors();
         m_inject_rd.delete();
         m_inject_wr.delete();
+        m_id_corrupt_rd = '0;
+        m_id_corrupt_wr = '0;
+    endfunction
+
+    // Enable the bounded READY-stall pattern on the selected channels
+    // (basename parity with the cocotb enable_backpressure API; valid
+    // channel names are "aw", "w", "ar" — READY-carrying on the responder).
+    function void enable_backpressure(string channels[$], int unsigned stall_cycles);
+        foreach (channels[i]) begin
+            case (channels[i])
+                "aw": aw_stall_cycles = stall_cycles;
+                "w":  w_stall_cycles  = stall_cycles;
+                "ar": ar_stall_cycles = stall_cycles;
+                default:
+                    `uvm_fatal(get_type_name(), $sformatf(
+                        "%s: unknown backpressure channel '%s' (expected aw/w/ar)",
+                        name_tag, channels[i]))
+            endcase
+        end
+        `uvm_info(get_type_name(), $sformatf(
+            "%s: enabled backpressure channels=%p stall=%0d",
+            name_tag, channels, stall_cycles), UVM_LOW)
+    endfunction
+
+    function void disable_backpressure();
+        aw_stall_cycles = 0;
+        w_stall_cycles  = 0;
+        ar_stall_cycles = 0;
+        `uvm_info(get_type_name(), $sformatf(
+            "%s: disabled backpressure", name_tag), UVM_LOW)
     endfunction
 
     function int unsigned pending_errors();

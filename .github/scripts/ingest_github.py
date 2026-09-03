@@ -23,6 +23,14 @@ EXTERNAL_CODE = re.compile(r"^(TRC|JPP|OBR)-([A-Za-z0-9]+)(?:\s*:\s*|\s+)(.*)$",
 ISSUE_TYPE_PREFIX = re.compile(r"^\[(Bug|Task|Feature)\]:\s*")
 TAXONOMY_PREFIX = re.compile(r"^\[[A-Z]+/")
 HEADING = re.compile(r"^### ([^\n]+)\n+([^\n#]+)", re.MULTILINE)
+BRACKET_PREFIX = re.compile(r"^\[([A-Z]+)/([A-Z]+)(?:-([A-Z]+))?\]")
+REVIEW_REQUEST_MARKER = "<!-- github-auto-review-request -->"
+PR_REVIEW_COMMENT = (
+    "@{login} — you've been automatically requested to review this pull "
+    "request because GitHub suggested you based on the files it touches.\n\n"
+    "If someone else is a better fit, please feel free to reassign.\n\n"
+    f"{REVIEW_REQUEST_MARKER}"
+)
 
 TAXONOMY_FIELDS = (
     "Workstream",
@@ -85,12 +93,17 @@ def _taxonomy_from_simple_yaml(path: Path) -> dict:
             continue
         if in_fields and line and not line.startswith(" "):
             break
-        if in_fields and line.startswith("    ") and not line.startswith("      ") and line.endswith(":"):
+        if (
+            in_fields
+            and line.startswith("    ")
+            and not line.startswith("      ")
+            and line.endswith(":")
+        ):
             current = line.strip()[:-1]
             fields[current] = []
             continue
         if in_fields and current and line.startswith("      - "):
-            fields[current].append(line[len("      - "):].strip())
+            fields[current].append(line[len("      - ") :].strip())
     return {"project": {"fields": fields}}
 
 
@@ -114,6 +127,18 @@ def title_with_prefix(title: str, workstream: str, subsystem: str, component: st
     return f"{prefix} {raw}".strip()
 
 
+def wsc_from_title(title: str, fields: dict) -> tuple[str | None, str | None, str | None]:
+    """Extract (workstream, subsystem, component) from a [WS/SS] or [WS/SS-CC] title prefix."""
+    m = BRACKET_PREFIX.match(title.strip())
+    if not m:
+        return None, None, None
+    ws, ss, cc = m.group(1), m.group(2), m.group(3)
+    if ws not in fields.get("Workstream", []) or ss not in fields.get("Subsystem", []):
+        return None, None, None
+    component = cc if cc and cc in fields.get("Component", []) else "General"
+    return ws, ss, component
+
+
 def gh_json(args: list[str], token: str | None = None) -> object:
     env = os.environ.copy()
     if token:
@@ -128,7 +153,15 @@ def field_catalog(token: str) -> tuple[str, dict[str, dict]]:
         token,
     )
     fields = gh_json(
-        ["project", "field-list", str(PROJECT_NUMBER), "--owner", PROJECT_OWNER, "--format", "json"],
+        [
+            "project",
+            "field-list",
+            str(PROJECT_NUMBER),
+            "--owner",
+            PROJECT_OWNER,
+            "--format",
+            "json",
+        ],
         token,
     )
     catalog: dict[str, dict] = {}
@@ -252,7 +285,15 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
         raise SystemExit("GITHUB_TOKEN is required")
 
     issue = gh_json(
-        ["issue", "view", str(number), "--repo", repo_full, "--json", "title,body,url,labels"],
+        [
+            "issue",
+            "view",
+            str(number),
+            "--repo",
+            repo_full,
+            "--json",
+            "title,body,url,labels,author,assignees,milestone",
+        ],
         issue_token,
     )
     fields = taxonomy["project"]["fields"]
@@ -266,8 +307,16 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
     subsystem = values.get("Subsystem")
     component = values.get("Component")
     if not workstream or not subsystem or not component:
-        print("no complete Workstream/Subsystem/Component on the form; skipping")
-        return
+        workstream, subsystem, component = wsc_from_title(issue["title"], fields)
+        if not workstream:
+            print("no complete Workstream/Subsystem/Component; skipping")
+            return
+        values["Workstream"] = workstream
+        values["Subsystem"] = subsystem
+        values["Component"] = component
+
+    author_login = (issue.get("author") or {}).get("login", "")
+    is_protected = author_login in taxonomy.get("protection", {}).get("authors", [])
 
     if project_token:
         try:
@@ -325,6 +374,34 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
         )
         print("title", new_title)
 
+    if not is_protected and not assignee_logins(issue):
+        _assign_issue_mechanical(number, repo_full, issue)
+
+    target_release = values.get("Target release")
+    tr_map = taxonomy.get("release", {}).get("target_release_to_milestone", {})
+    if (
+        target_release in tr_map
+        and not (issue.get("milestone") or {}).get("number")
+        and not is_protected
+    ):
+        milestone_title = tr_map[target_release]
+        try:
+            run(
+                [
+                    "gh",
+                    "issue",
+                    "edit",
+                    str(number),
+                    "--repo",
+                    repo_full,
+                    "--milestone",
+                    milestone_title,
+                ]
+            )
+            print("milestone", milestone_title)
+        except subprocess.CalledProcessError as exc:
+            print("milestone set failed:", exc.stderr, file=sys.stderr)
+
 
 ASSIGN_MARKER = "<!-- github-auto-assign -->"
 PR_ASSIGN_COMMENT = (
@@ -354,7 +431,7 @@ def assignee_logins(pr: dict) -> set[str]:
     return {person.get("login") for person in (pr.get("assignees") or []) if person.get("login")}
 
 
-def has_assign_marker(repo_full: str, number: int) -> bool:
+def _comments_contain(repo_full: str, number: int, marker: str) -> bool:
     try:
         text = run(
             [
@@ -368,7 +445,11 @@ def has_assign_marker(repo_full: str, number: int) -> bool:
         )
     except subprocess.CalledProcessError:
         return False
-    return ASSIGN_MARKER in (text or "")
+    return marker in (text or "")
+
+
+def has_assign_marker(repo_full: str, number: int) -> bool:
+    return _comments_contain(repo_full, number, ASSIGN_MARKER)
 
 
 def login_is_assignable(repo_full: str, login: str) -> bool:
@@ -386,6 +467,163 @@ def unsubscribe_best_effort(node_id: str | None) -> None:
         run(["gh", "api", "graphql", "-f", f"query={UNSUBSCRIBE}", "-F", f"id={node_id}"])
     except subprocess.CalledProcessError as exc:
         print("unsubscribe skipped:", exc.stderr, file=sys.stderr)
+
+
+def _parent_issue_assignee(repo_full: str, number: int) -> str | None:
+    owner, repo = repo_full.split("/", 1)
+    query = (
+        "query($owner:String!,$name:String!,$number:Int!){"
+        "repository(owner:$owner,name:$name){"
+        "issue(number:$number){"
+        "trackedInIssues(first:1){nodes{assignees(first:1){nodes{login}}}}}}}"
+    )
+    try:
+        payload = gh_json(
+            [
+                "api",
+                "graphql",
+                "-f",
+                f"query={query}",
+                "-F",
+                f"owner={owner}",
+                "-F",
+                f"name={repo}",
+                "-F",
+                f"number={number}",
+            ]
+        )
+        nodes = (
+            payload.get("data", {})
+            .get("repository", {})
+            .get("issue", {})
+            .get("trackedInIssues", {})
+            .get("nodes")
+            or []
+        )
+        for parent in nodes:
+            for assignee in parent.get("assignees", {}).get("nodes") or []:
+                login = assignee.get("login")
+                if login and not login.endswith("[bot]"):
+                    return login
+    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        pass
+    return None
+
+
+def _assign_issue_mechanical(number: int, repo_full: str, issue: dict) -> None:
+    """Mechanical first-match assignment for issues (A2)."""
+    if _comments_contain(repo_full, number, ASSIGN_MARKER):
+        return
+    author_login = (issue.get("author") or {}).get("login", "")
+    body = issue.get("body") or ""
+    mentions = {
+        m
+        for m in re.findall(r"@([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)", body)
+        if m != author_login and not m.endswith("[bot]")
+    }
+    login = reason = None
+    if len(mentions) == 1:
+        candidate = next(iter(mentions))
+        if login_is_assignable(repo_full, candidate):
+            login, reason = candidate, "you were mentioned in the issue body"
+    if not login:
+        parent = _parent_issue_assignee(repo_full, number)
+        if parent and parent != author_login and login_is_assignable(repo_full, parent):
+            login, reason = parent, "you are assigned to the parent issue"
+    if not login:
+        return
+    try:
+        run(["gh", "issue", "edit", str(number), "--repo", repo_full, "--add-assignee", login])
+    except subprocess.CalledProcessError as exc:
+        print("issue assign failed:", exc.stderr, file=sys.stderr)
+        return
+    check = gh_json(["issue", "view", str(number), "--repo", repo_full, "--json", "assignees"])
+    if login not in assignee_logins(check):
+        return
+    comment = (
+        f"@{login} — you've been automatically assigned to this issue "
+        f"because {reason}.\n\n"
+        "If someone else is a better fit, please feel free to reassign.\n\n"
+        f"{ASSIGN_MARKER}"
+    )
+    run(["gh", "issue", "comment", str(number), "--repo", repo_full, "--body", comment])
+    print("issue assigned", login)
+
+
+def request_pr_reviewer(number: int) -> None:
+    repo_full = os.environ.get("GITHUB_REPOSITORY", REPO)
+    owner, repo = repo_full.split("/", 1)
+    query = (
+        "query($owner:String!,$name:String!,$number:Int!){"
+        "repository(owner:$owner,name:$name){"
+        "pullRequest(number:$number){"
+        "isDraft author{login}"
+        "reviewRequests(first:10){nodes{requestedReviewer{...on User{login}}}}"
+        "reviews(first:10){nodes{author{login}}}"
+        "suggestedReviewers{isAuthor reviewer{login}}}}}"
+    )
+    pr_data = gh_json(
+        [
+            "api",
+            "graphql",
+            "-f",
+            f"query={query}",
+            "-F",
+            f"owner={owner}",
+            "-F",
+            f"name={repo}",
+            "-F",
+            f"number={number}",
+        ]
+    )
+    pr = pr_data.get("data", {}).get("repository", {}).get("pullRequest") or {}
+    if pr.get("isDraft"):
+        print("skip reviewer: PR is draft")
+        return
+    existing = {
+        (n.get("requestedReviewer") or {}).get("login")
+        for n in (pr.get("reviewRequests", {}).get("nodes") or [])
+    } | {(n.get("author") or {}).get("login") for n in (pr.get("reviews", {}).get("nodes") or [])}
+    if existing - {None}:
+        print("skip reviewer: reviewer already requested or reviewed")
+        return
+    if _comments_contain(repo_full, number, REVIEW_REQUEST_MARKER):
+        print("skip reviewer: review-request comment already present")
+        return
+    author_login = (pr.get("author") or {}).get("login", "")
+    login = next(
+        (
+            s["reviewer"]["login"]
+            for s in (pr.get("suggestedReviewers") or [])
+            if not s.get("isAuthor")
+            and (s.get("reviewer") or {}).get("login")
+            and not s["reviewer"]["login"].endswith("[bot]")
+            and s["reviewer"]["login"] != author_login
+            and login_is_assignable(repo_full, s["reviewer"]["login"])
+        ),
+        None,
+    )
+    if not login:
+        print("no usable suggested reviewer")
+        return
+    try:
+        run(["gh", "pr", "edit", str(number), "--repo", repo_full, "--add-reviewer", login])
+    except subprocess.CalledProcessError as exc:
+        print("reviewer request failed:", exc.stderr, file=sys.stderr)
+        return
+    run(
+        [
+            "gh",
+            "pr",
+            "comment",
+            str(number),
+            "--repo",
+            repo_full,
+            "--body",
+            PR_REVIEW_COMMENT.format(login=login),
+        ]
+    )
+    print("reviewer requested", login)
 
 
 def assign_pr_author(number: int) -> None:
@@ -533,10 +771,13 @@ Future
     taxonomy = load_taxonomy(github_dir() / "issue-taxonomy.yml")
     assert "AOU" in taxonomy["project"]["fields"]["Subsystem"]
     assert_templates_match_taxonomy(taxonomy)
+    fields = taxonomy["project"]["fields"]
+    assert wsc_from_title("[DV/SEP-TRNG] Title", fields) == ("DV", "SEP", "TRNG")
+    assert wsc_from_title("[ROM/SMC] Title", fields) == ("ROM", "SMC", "General")
+    assert wsc_from_title("[INVALID/SEP] Title", fields) == (None, None, None)
+    assert wsc_from_title("freeform title", fields) == (None, None, None)
     assert (
-        title_with_prefix(
-            "[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General"
-        )
+        title_with_prefix("[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General")
         == "[RTL/OCAH] Use upstream versions of lc_*_pkg's"
     )
     assert (
@@ -550,6 +791,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--issue", type=int)
     parser.add_argument("--pr-assign", type=int)
+    parser.add_argument("--pr-review", type=int)
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument(
         "--taxonomy",
@@ -563,8 +805,10 @@ def main() -> None:
         ingest_issue(args.issue, load_taxonomy(args.taxonomy))
     elif args.pr_assign:
         assign_pr_author(args.pr_assign)
+    elif args.pr_review:
+        request_pr_reviewer(args.pr_review)
     else:
-        raise SystemExit("pass --issue, --pr-assign, or --self-test")
+        raise SystemExit("pass --issue, --pr-assign, --pr-review, or --self-test")
 
 
 if __name__ == "__main__":

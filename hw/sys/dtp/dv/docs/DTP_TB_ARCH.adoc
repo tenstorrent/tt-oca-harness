@@ -14,7 +14,7 @@
 |Project |OCAH
 |Framework |PyUVM on cocotb (primary); SystemVerilog UVM smoke layer (`--framework uvm`, VCS)
 |Primary simulator |Verilator
-|Commercial simulator use |Coverage and CSR paths that Verilator cannot elaborate today; SV-UVM smoke flow (VCS)
+|Commercial simulator use |SV covergroup, assertion, and code coverage collection; SV-UVM smoke flow (VCS)
 |===
 
 The OCAH open-source DTP testbench follows the canonical `hw/sys/<system>/dv/` layout under
@@ -38,7 +38,7 @@ changes do not affect sequences or scoreboards.
 |Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagMasterDriver` |Unified OCAH BFM |Active JTAG transaction driver and TAP helper
 |SMC fabric AXI4 manager |`ocah_axi_vip` `OcahAxiSlaveAgent` |Unified OCAH BFM |AXI memory responder with scoreboard backdoor access
 |SMC/SEP OTP AXI-Lite managers |`ocah_axi_vip` AXI-Lite wrapper |Unified OCAH BFM |AXI-Lite responder model for OTP bridge scenarios
-|XTRIG AXI-Lite CSR subordinate |`DtpFlatAxiLiteMaster` |DUT-local adapter |Current flattened-fixture driver; required generic behavior should converge into `ocah_axi_vip`
+|XTRIG AXI-Lite CSR subordinate |`ocah_axi_vip` AXI-Lite master |Unified OCAH BFM |Shared AXI-Lite master over the flattened `+xtrig_axil_*+` port; channel-skew, RREADY-hold, and partial-strobe operations come from its sequence API
 |BSR/STAP scan loopbacks |Minimal OCAH-local scan model |OCAH-local simple model |Compact scan loopback and observable model
 |iJTAG SIB networks |OCAH-local IEEE 1687 model |OCAH-local model |IEEE 1687 scan-network transaction model
 |CTP/CTM cross-trigger protocols |OCAH-local BFMs |OCAH-local BFM |CTP/CTM protocol BFMs; debug TDR clock-stop requests may be driven directly in the TB
@@ -57,7 +57,6 @@ topology, lifecycle rules, signal binding, or testbench fixtures:
 |`DtpIjtagSibModel` |Three DTP SIBs, per-SIB debug-disable gates, looped instruments |Hard-coded DTP scan topology and security policy |Topology/instrument-neutral IEEE 1687 transactions plus a second consumer
 |`DtpStap3dcrModel` |Composed TAP_3DCR chain state (PTAP 3DCR, per-STAP SIB and 3DCR), scan composition, capture prediction, per-STAP debug-disable update blocking |Downstream STAPs are wire loopbacks and the hierarchy is DTP-specific |A parameterized IEEE 1838/STAP model validated against a real downstream topology
 |`DtpXtrigBfm` / `DtpCtmRefModel` |DTP CTP wire-OR/P2P pins, CTM masks, CSR layout |Assumes DTP port counts, flattened signal names, and OCH routing policy |Parameterize binding/counts and demonstrate independent reuse; domain-local ownership may precede shared VIP promotion
-|`DtpFlatAxiLiteMaster` |XTRIG CSR access over this TB's flattened signals |Duplicates a standard protocol already owned by `ocah_axi_vip` |Migrate required behavior to the shared AXI-Lite wrapper; never promote as a second AXI VIP
 |`DtpBypassSuiteCfg` / `DtpBypassRefModel` |BYPASS opcode, pattern, capture, and one-bit-delay prediction |Encodes the DTP BYPASS scenario and evidence context |Consider protocol-level promotion only after an independent JTAG consumer needs the same model
 |DTP TDR maps/packers |DTP instruction/register semantics layered over `ocah_jtag_vip` |Register layout and polling policy are DUT semantics, not JTAG protocol |Share only with a domain consumer that uses the same DTP register contract
 |===
@@ -172,9 +171,9 @@ between packed RTL structs and cocotb-friendly scalar/vector ports.
 |SMC fabric AXI4 |Flattens `+axi_smc_dbg_*+` structs into `+m_axi_*+` for `OcahAxiSlaveAgent.from_prefix(dut, "m_axi")`
 |Debug disables |Exposes one `+dbg_disable_<field>+` scalar input per `sep_lifecycle_ctrl_pkg::dbg_disable_t` field, packed unchanged into `dbg_disable_i`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly
 |BSR/STAP/iJTAG |Looped back or tied idle for scenarios that do not actively use these paths
-|SMC/SEP OTP AXI-Lite |Tied idle until OCAH AXI-Lite responder agents are added
+|SMC/SEP OTP AXI-Lite |Flattens both AXI-Lite manager ports; `OcahAxiLiteSlaveAgent.from_prefix` RAM responders (`"smc_otp_axil"`, `"sep_otp_axil"`) answer them
 |DEBUG_CONTROL and IC_RESET |Flattens boot-stall, clock-stop, and IC_RESET struct outputs into cocotb-visible scalar signals
-|XTRIG CSR/CTP/CTM |CSR blocks tied idle or stubbed for Verilator; `xtrig_clk_stop_req` is directly driven for DEBUG_CONTROL clock-stop tests
+|XTRIG CSR/CTP/CTM |Exposes the flattened `+xtrig_axil_*+` CSR port for the env's AXI-Lite master BFM (the generated CSR blocks elaborate under Verilator); `xtrig_clk_stop_req` is directly driven for DEBUG_CONTROL clock-stop tests
 |Clocks/resets |cocotb drives `clk_i`, `rst_n_i`, and `pwr_on_rst_ni`; JTAG driver owns TCK/TRST sequencing
 |===
 
@@ -201,9 +200,20 @@ backdoor view used by the scoreboard.
 
 ==== `DtpScoreboard`
 
-The scoreboard subscribes to completed JTAG items. It verifies IDCODE bit 0,
-checks JTAG2AXI write data against the OCAH AXI RAM backdoor, and checks read data
-against preloaded memory contents. `check_phase` requires zero errors.
+The scoreboard subscribes to completed JTAG items. It verifies IDCODE reads
+against the full expected DTP IDCODE value, checks JTAG2AXI write data against
+the OCAH AXI RAM backdoor, and checks read data against preloaded memory
+contents. `check_phase` requires zero errors and reports per-category check
+counts alongside the observed-item total, so a run whose JTAG traffic produced
+no scoreboard-checkable operations is visible in the log.
+
+Beyond this always-on subscriber, every cocotb JTAG2AXI test enables the
+shared `ocah_axi_vip` scoreboard (`use_axi_scoreboard = True` with required
+evidence IDs and per-stream minimum compared-transaction counts), and every
+XTRIG/CTM sequence finalizes a named-evidence `OcahChecker` (CTM reference
+model route comparison, CSR readbacks, quiet windows, stretch measurements) —
+in both cases a zero-check pass or a missing required evidence ID fails the
+test at finalization.
 
 ==== Sequence Library
 
@@ -309,13 +319,17 @@ in their testlist `module` binding map; those without a `uvm` entry error at
 selection unless `--skip-unimplemented` is passed.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
-shared between both frameworks. `+define+DTP_UVM_TB` (set by the
-`[frameworks.uvm]` overlay) switches its shape — without it the module exposes the cocotb pin
+shared between both frameworks. The bare `+define+UVM` (set by the native
+profile's `[frameworks.uvm]` overlay for every UVM DUT; cocotb is the
+default framework, so no define
+means the cocotb shape) switches its shape — without it the module exposes the cocotb pin
 port list; with it the ports become internal TB signals and an in-module
 harness adds the clock, interface instances, quiescent tie-offs, and
 `run_test()`. Preprocessor defines used by DTP compiles, including
-`DTP_UVM_TB`, are listed in `hw/sys/dtp/doc/defines.adoc`. The class library mirrors the cocotb directory conventions
-under `uvm/`:
+`UVM`, are listed in `hw/sys/dtp/doc/defines.adoc`. The class library mirrors the cocotb conventions
+under `uvm/` — identical basenames and class names, one class per file
+(concrete test sequences end in `_test_seq`, reusable helpers in `_seq`,
+tests in `_test`):
 
 [arabic]
 . `hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv` — shared
@@ -326,23 +340,28 @@ under `uvm/`:
   IEEE 1149.1 TAP model); the driver owns the pin-level TCK bit-bang, the
   passive monitor publishes per-TCK `STEP` and async `TRST` events, and
   `ocah_jtag_master_env` is the commercial-overridable unit DUT envs instantiate
-. `uvm/seq_lib/dtp_seq_lib_pkg.sv` — `dtp_jtag_base_seq` issues
-  `ocah_jtag_item`s (TAP reset, IR/DR scans, raw TMS walks) on the agent's
-  sequencer and keeps the DTP-local reset sequencing, scan-path checks, and
-  the BYPASS latency check; scenario sequences (`dtp_sanity_seq`) extend it;
-  partially reusable
-. `uvm/env/dtp_env_pkg.sv` — `dtp_uvm_env` builds the JTAG agent and
+. `uvm/seq_lib/dtp_seq_lib_pkg.sv` — one sequence class per file:
+  `dtp_jtag_base_test_seq` issues `ocah_jtag_item`s (TAP reset, IR/DR scans,
+  raw TMS walks) on the agent's sequencer and keeps the DTP-local reset
+  sequencing, scan-path checks, and the BYPASS latency check; scenario
+  sequences (`dtp_sanity_test_seq`) extend it; partially reusable
+. `uvm/env/dtp_env_pkg.sv` — `dtp_env` builds the JTAG agent and
   `dtp_tap_fsm_checker` (a monitor-event subscriber holding the IEEE 1149.1
   reference model: per-cycle legality always on, state/edge closure asserted
   by closure-obligated scenarios); fully reusable
-. `uvm/tests/dtp_tests.sv` — non-reusable thin test classes
-  (`dtp_uvm_base_test`, `dtp_uvm_sanity_test`), `include`d by `tb_top.sv`
-  under `ifdef DTP_UVM_TB` (+UVM_TESTNAME selects the class); the sanity
-  test starts its sequence on the agent sequencer and then invokes
+. `uvm/tests/` — non-reusable thin test classes, one per file named exactly
+  like the scenario (`dtp_base_test`, `dtp_sanity_test`);
+  `uvm/tests/dtp_tests.sv` is the include manifest `include`d by `tb_top.sv`
+  under `ifdef UVM` (+UVM_TESTNAME selects the class); the sanity test
+  starts its sequence on the agent sequencer and then invokes
   `check_fsm_closure()`
 
-Compile order is explicit and load-bearing: interfaces first, then
-`ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
+Compile order is explicit and load-bearing: the shared VIP layers come from
+the VIP-owned manifests (`ocah_jtag_vip/uvm/sources.toml`,
+`ocah_axi_vip/uvm/sources.toml`, listed in
+`[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
+sources — interface and collateral first, each VIP's UVM package last), then
+`dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
 ==== JTAG2AXI Checker Layer
 
@@ -350,39 +369,41 @@ The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
 
 * `tb/tb_top.sv` (UVM block) replaces the historical never-responding OTP
   tie-off and the undriven `m_axi_*` response inputs with error-injectable
-  responders: the shared `ocah_axi_vip` UVM slave agent answers
-  `smc_otp_axil` (reactive `ocah_axi_slave_driver` over a dedicated
-  `ocah_axi_if` instance, injection programmed via
-  `ocah_axi_slave_sequence`), and the behavioral `ocah_axi_ram_responder`
-  module answers `m_axi`. It instantiates `ocah_axi_if` monitor adapters and
-  the clean-room `ocah_axi_sva` SVA on both ports, and mirrors the
-  request-activity pulse counters into `dtp_tb_if`. The `sep_otp_axil` port
-  keeps its tie-off (documented stretch).
+  responders: shared `ocah_axi_vip` UVM slave agents answer both
+  `smc_otp_axil` and `m_axi` (reactive `ocah_axi_slave_driver` over a
+  dedicated `ocah_axi_if` instance per port; injection and backdoor memory
+  programmed via each agent's `ocah_axi_slave_sequence`). It instantiates
+  `ocah_axi_if` monitor adapters and the clean-room `ocah_axi_sva` SVA on
+  both ports, and mirrors the request-activity pulse counters into
+  `dtp_tb_if`. The `sep_otp_axil` port keeps its tie-off (documented
+  stretch).
 * `tb/dtp_tb_if.sv` carries the test-drivable
   `sep_lifecycle_ctrl_pkg::dbg_disable_t` (init `'1` = fail-closed, matching
   the DUT synchronizers' reset value, so the sanity test's behavior is
-  unchanged), responder error controls, the SVA `axi_sva_en` knob, and
-  counter mirrors.
-* `dtp_uvm_env` builds one passive `ocah_axi_env` (monitor -> reference model
+  unchanged), the decoded-IR and `jtag_bsr_*` scan-control observable
+  mirrors, the SVA `axi_sva_en`/`jtag_sva_en` knobs, and counter mirrors.
+* `dtp_env` builds one passive `ocah_axi_env` (monitor -> reference model
   -> scoreboard with `CHK-*`/`CHECKER_SUMMARY` evidence) per observed port;
   zero-check rejection (`cfg.require_checks`) is armed only by AXI tests so
-  `dtp_uvm_sanity_test` is unaffected.
-* `uvm/seq_lib/dtp_jtag2axi_base_seq.svh` mirrors the cocotb helper layer:
+  `dtp_sanity_test` is unaffected.
+* `uvm/seq_lib/dtp_jtag2axi_base_test_seq.svh` mirrors the cocotb helper layer:
   SINGLE_OP DR packing (LSB-first `OP|SIZE|WSTRB|DATA|ADDR`, 72b OTP / 132b
   SMC via the JTAG VIP wide-scan `wbits`/`rbits` path), busy polling,
   typed `dbg_disable_t` sequencing (four toggling TCK cycles as the settle
   margin over the DUT's 2-stage TCK-domain synchronizers), and
-  `arm_target_error()` which drives the responder error ports AND
-  `ocah_axi_config.arm_expected_resp()` in one place — the injected non-OKAY
-  is therefore EXPECTED for the scoreboard.
+  `arm_target_error()` which programs the slave agent's one-shot injection
+  AND `ocah_axi_config.arm_expected_resp()` in one place — the injected
+  non-OKAY is therefore EXPECTED for the scoreboard.
 * `dtp_jtag2axi_single_op_seq` runs randomized write/readback, armed
   SLVERR/DECERR, recovery, and a security-gating no-activity case
-  (`CHK-AXI-GATE-*` from the pulse-counter mirrors);
-  `dtp_uvm_jtag2axi_smc_otp_test` and `dtp_uvm_jtag2axi_smc_axi_test` set the
+  (`CHK-AXI-GATE-*` from the pulse-counter mirrors); the two JTAG2AXI
+  single-write-read test classes set the
   required evidence IDs (`CHK-AXI-RESP/RDATA/ERR-INJ/GATE-*`).
 
-Logical item names stay framework-neutral and match the VPLAN scenarios
-(testlist `name = "dtp_sanity_test"`, `module = "dtp_uvm_sanity_test"`), so
+Logical item names stay framework-neutral and match the VPLAN scenarios, and
+the UVM class name equals the scenario name (testlist
+`name = "dtp_sanity_test"`,
+`module = { cocotb = "dtp_sanity_test", uvm = "dtp_sanity_test" }`), so
 `--items dtp_sanity_test` selects the same scenario in either flow. The SV-UVM
 sanity test implements the VPLAN 0.1 checkers: a deterministic 32-edge TAP FSM
 closure walk checked against an IEEE 1149.1 reference model, BYPASS (6-bit IR

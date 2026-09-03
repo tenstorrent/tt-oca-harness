@@ -74,6 +74,9 @@ class TestEntry:
     bindings: dict[str, str] = field(default_factory=dict)
     # Per-framework runtime overrides from `[tests.overrides.<fw>]` (seed/timeout_sec/args).
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # The testlist file that declared this entry, so cross-reference errors (for example an
+    # unknown run mode) name the file to edit rather than the include root.
+    source: Path | None = None
 
 
 @dataclass

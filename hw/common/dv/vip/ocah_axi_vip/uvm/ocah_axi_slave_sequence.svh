@@ -90,6 +90,18 @@ class ocah_axi_slave_sequence extends uvm_object;
         responder.cfg.inject_error(addr, resp, for_read, for_write);
     endfunction
 
+    // Arm one-shot response-ID corruption: the next selected transaction
+    // answers BID/RID = request_id ^ mask (ID-width truncated; data path and
+    // response code untouched). clear_errors() disarms.
+    function void inject_id_corruption(
+        bit [15:0] mask,
+        bit        for_read  = 1'b1,
+        bit        for_write = 1'b1
+    );
+        check_bound();
+        responder.cfg.inject_id_corruption(mask, for_read, for_write);
+    endfunction
+
     function void clear_errors();
         check_bound();
         responder.cfg.clear_errors();
@@ -98,6 +110,22 @@ class ocah_axi_slave_sequence extends uvm_object;
     function int unsigned pending_errors();
         check_bound();
         return responder.cfg.pending_errors();
+    endfunction
+
+    // ------------------------------------------------------------------
+    // Bounded READY backpressure (cocotb enable_backpressure parity):
+    // READY low for stall_cycles then high for one cycle, repeating, on
+    // each selected channel ("aw"/"w"/"ar") until disabled.
+    // ------------------------------------------------------------------
+
+    function void enable_backpressure(string channels[$], int unsigned stall_cycles);
+        check_bound();
+        responder.cfg.enable_backpressure(channels, stall_cycles);
+    endfunction
+
+    function void disable_backpressure();
+        check_bound();
+        responder.cfg.disable_backpressure();
     endfunction
 
     // ------------------------------------------------------------------

@@ -40,12 +40,10 @@ Checkers:
 
 from __future__ import annotations
 
-import random
-
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_hmac_golden import hmac_or_sha_words
+from env.sep_seeded_rng import SepSeededRng
+from sep_base_test import sep_base_test
 from seq_lib.sep_hmac_seq import SepHmac, SepHmacCfg
 
 # Legal keyed cells: sha_bits -> allowed key_bits. SHA-256 excludes Key_1024
@@ -60,8 +58,16 @@ SHA_VARIANTS = [256, 384, 512]
 
 # Fixed known key/msg for the one-time SW-key convention resolution (8 distinct
 # words so word-order reversal yields a distinct key).
-_CONV_KEY = [0xDEADBEEF, 0x00112233, 0x44556677, 0x8899AABB,
-             0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98]
+_CONV_KEY = [
+    0xDEADBEEF,
+    0x00112233,
+    0x44556677,
+    0x8899AABB,
+    0xCCDDEEFF,
+    0x01234567,
+    0x89ABCDEF,
+    0xFEDCBA98,
+]
 _CONV_MSG = [0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F]
 
 
@@ -73,36 +79,39 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.hmac = SepHmac(self)
         seed = self.random_seed()
-        self.rng = random.Random(seed)
+        self.rng = SepSeededRng(seed)
         self.logger.info("HMAC SHA-variant breadth HMAC SHA-variant breadth: seed=%d", seed)
 
         # CHK-CONV: pin the SW-key register byte convention once (bring-up).
         conv = await self._check_key_convention()
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. The former guard compared
-        # `walked` against a product of file-scope constants -- it asserted its
-        # own arithmetic. Distinct results additionally show the cells really did
-        # program different configurations.
+        # output, not on the loop's own trip count. Comparing `walked` only to a
+        # product of file-scope constants asserts the test's own arithmetic.
+        # Distinct results additionally show the cells programmed different
+        # configurations.
         results: dict[str, tuple[int, ...]] = {}
         for sha_bits in SHA_VARIANTS:
             for key_bits in KEYED_MATRIX[sha_bits]:
                 results[f"hmac{sha_bits}-k{key_bits}"] = await self._run_cell(
-                    sha_bits, True, key_bits, conv)
-            results[f"sha{sha_bits}"] = await self._run_cell(
-                sha_bits, False, None, conv)
+                    sha_bits, True, key_bits, conv
+                )
+            results[f"sha{sha_bits}"] = await self._run_cell(sha_bits, False, None, conv)
 
         walked = len(results)
         expected = sum(len(v) for v in KEYED_MATRIX.values()) + len(SHA_VARIANTS)
         assert walked == expected, f"walked {walked} cells != {expected} required"
         assert len(set(results.values())) == expected, (
             "HMAC cells produced duplicate digests, so they did not all run distinct "
-            "configurations: "
-            + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
+            "configurations: " + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results))
+        )
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "({SHA256,384,512} x keyed[all legal key-len] + plain-SHA) in one "
-            "invocation (seed=%d); key+message randomized per cell", walked, seed)
+            "invocation (seed=%d); key+message randomized per cell",
+            walked,
+            seed,
+        )
 
     def _rand_words(self, n: int) -> list[int]:
         return [self.rng.getrandbits(32) for _ in range(n)]
@@ -135,40 +144,64 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         reversed convention would have matched, because that distinguishes a key
         word-order regression from a general digest fault.
         """
-        cfg = SepHmacCfg(sha_bits=256, hmac_en=True, key_bits=256,
-                         key_words=list(_CONV_KEY), msg_words=list(_CONV_MSG))
+        cfg = SepHmacCfg(
+            sha_bits=256,
+            hmac_en=True,
+            key_bits=256,
+            key_words=list(_CONV_KEY),
+            msg_words=list(_CONV_MSG),
+        )
         await self.hmac.configure(cfg.cfg_word())
         await self.hmac.write_key(_CONV_KEY)
         digest = await self.hmac.run_mac(list(_CONV_MSG), sha_bits=256)
 
-        expected = hmac_or_sha_words(hmac_en=True, sha_bits=256,
-                                     key_words=list(_CONV_KEY),
-                                     msg_words=list(_CONV_MSG), **self._SW_KEY_CONV)
+        expected = hmac_or_sha_words(
+            hmac_en=True,
+            sha_bits=256,
+            key_words=list(_CONV_KEY),
+            msg_words=list(_CONV_MSG),
+            **self._SW_KEY_CONV,
+        )
         if digest != expected:
             reversed_conv = dict(self._SW_KEY_CONV, key_word_rev=True)
-            also = hmac_or_sha_words(hmac_en=True, sha_bits=256,
-                                     key_words=list(_CONV_KEY),
-                                     msg_words=list(_CONV_MSG), **reversed_conv)
-            hint = (" -- the REVERSED word order matches, so this is a key word-order "
-                    "regression in the SW KEY CSR path (hmac.sv update_secret_key)"
-                    if digest == also else
-                    " -- neither word order matches, so this is not a word-order issue")
+            also = hmac_or_sha_words(
+                hmac_en=True,
+                sha_bits=256,
+                key_words=list(_CONV_KEY),
+                msg_words=list(_CONV_MSG),
+                **reversed_conv,
+            )
+            hint = (
+                " -- the REVERSED word order matches, so this is a key word-order "
+                "regression in the SW KEY CSR path (hmac.sv update_secret_key)"
+                if digest == also
+                else " -- neither word order matches, so this is not a word-order issue"
+            )
             raise AssertionError(
                 f"CHK-CONV: engine digest does not honour the specified SW-key convention "
                 f"{self._SW_KEY_CONV}{hint}\n"
                 f"  engine  ={[hex(w) for w in digest]}\n"
-                f"  expected={[hex(w) for w in expected]}")
+                f"  expected={[hex(w) for w in expected]}"
+            )
         self.logger.info(
             "CHK-CONV PASS: engine honours the specified SW-key convention "
-            "(key_word_rev=False, KEY_0 is the most-significant word)")
+            "(key_word_rev=False, KEY_0 is the most-significant word)"
+        )
         return dict(self._SW_KEY_CONV)
 
-    async def _run_cell(self, sha_bits: int, hmac_en: bool,
-                        key_bits: int | None, conv: dict) -> None:
-        msg = self._rand_words(self.rng.randint(1, 16))
+    async def _run_cell(
+        self, sha_bits: int, hmac_en: bool, key_bits: int | None, conv: dict
+    ) -> tuple[int, ...]:
+        msg = self._rand_words(self.rng.randrange(1, 17))
         key = self._rand_words(key_bits // 32) if hmac_en else []
-        cfg = SepHmacCfg(sha_bits=sha_bits, hmac_en=hmac_en, key_bits=key_bits,
-                         key_words=key, msg_words=msg, **conv)
+        cfg = SepHmacCfg(
+            sha_bits=sha_bits,
+            hmac_en=hmac_en,
+            key_bits=key_bits,
+            key_words=key,
+            msg_words=msg,
+            **conv,
+        )
         mode = f"HMAC-SHA{sha_bits}/Key_{key_bits}" if hmac_en else f"SHA{sha_bits}"
 
         await self.hmac.configure(cfg.cfg_word())
@@ -179,7 +212,8 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         golden = hmac_or_sha_words(**cfg.golden_kwargs())
         assert digest == golden, (
             f"{mode} DIGEST != golden:\n  digest={[hex(w) for w in digest]}\n"
-            f"  golden={[hex(w) for w in golden]}")
+            f"  golden={[hex(w) for w in golden]}"
+        )
 
         # No golden-vs-golden guards here. With the DUT result already pinned
         # bit-exact against the golden above, any further comparison between that
@@ -188,6 +222,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         # the golden's import-time KAT block, not in a per-cell DUT check.
 
         await self.hmac.check_status_clean(mode)  # CHK-ERR
-        self.logger.info("CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, "
-                         "non-vacuous (msg=%d words)", mode, len(msg))
+        self.logger.info(
+            "CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, non-vacuous (msg=%d words)",
+            mode,
+            len(msg),
+        )
         return tuple(digest)

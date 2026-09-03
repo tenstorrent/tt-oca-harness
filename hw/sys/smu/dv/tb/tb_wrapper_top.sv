@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // OSS smu_wrapper harness for the native cocotb/PyUVM flow (issue #3357).
-// Instantiates hw/top/smu_wrapper.sv (logical ports) and attaches
-// smc_cpu_mem_integration on the passthrough CPU memory ports — same OSS
-// composition pattern as smc_wrapper / sep_wrapper.
+// Instantiates hw/top/smu_wrapper.sv (logical ports); the CPU memory macros
+// come with smc_ip_integration inside it — same OSS composition pattern as
+// smc_wrapper / sep_wrapper.
 
 `timescale 1ps/1fs
 
@@ -147,28 +147,10 @@ module smu_wrapper_uvm_top (
     // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
     logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
+    // CPU memory macros are inside smc_ip_integration now, so the ROM request
+    // is observed hierarchically instead of on a wrapper passthrough port.
     chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
-    chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
-    chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req
-        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
-    chipyard_4core_mem_pkg::scratch_ram_rsp_t    scratch_ram_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_icache_tag_req_t  l1_icache_tag_intf_req
-        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_icache_data_req_t l1_icache_data_intf_req
-        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_icache_data_rsp_t l1_icache_data_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_dcache_tag_req_t  l1_dcache_tag_intf_req
-        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_intf_req
-        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
-    chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+    assign rom_intf_req = u_dut.u_smc_ip_integration.rom_intf_req;
 
     wire [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io;
     logic [31:0] ext_mailbox_interrupts;
@@ -178,12 +160,6 @@ module smu_wrapper_uvm_top (
     logic        sep_reset_n;
     sep_pkg::sep_cpu_trace_t sep_cpu_trace;
     sep_pkg::sep_straps_t    sep_straps;
-
-    dfd_trace_mem_pkg::SinkMemPktIn_s
-        [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    dfd_trace_mem_pkg::SinkMemPktOut_s
-        [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
-    assign trc_resp = '0;
 
     i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
     i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
@@ -513,35 +489,15 @@ module smu_wrapper_uvm_top (
     end
 
     // CPU ROM/scratch/L1$ macros (same module smc_wrapper embeds).
-    smc_cpu_mem_integration u_smc_cpu_mem (
-        .clk_i   (clk_smu_i),
-        .rst_ni  (rst_cold_ni),
-        .rom_req_i (rom_intf_req),
-        .rom_rsp_o (rom_intf_rsp),
-        .scratch_ram_req_i (scratch_ram_intf_req),
-        .scratch_ram_rsp_o (scratch_ram_intf_rsp),
-        .l1_icache_tag_req_i (l1_icache_tag_intf_req),
-        .l1_icache_tag_rsp_o (l1_icache_tag_intf_rsp),
-        .l1_icache_data_req_i (l1_icache_data_intf_req),
-        .l1_icache_data_rsp_o (l1_icache_data_intf_rsp),
-        .l1_dcache_tag_req_i (l1_dcache_tag_intf_req),
-        .l1_dcache_tag_rsp_o (l1_dcache_tag_intf_rsp),
-        .l1_dcache_data_req_i (l1_dcache_data_intf_req),
-        .l1_dcache_data_rsp_o (l1_dcache_data_intf_rsp),
-        .rom_read_count_o (),
-        .scratch_ram_read_count_o (),
-        .scratch_ram_write_count_o (),
-        .dcache_data_write_count_o (),
-        .fw_mailbox_o (),
-        .fw_mailbox_valid_o (),
-        .ecc_inject_sbe_i (1'b0),
-        .ecc_inject_dbe_i (1'b0),
-        .scratch0_inject_fire_o ()
-    );
 
     // ------------------------------------------------------------------
     // DUT: hw/top/smu_wrapper (logical ports)
     // ------------------------------------------------------------------
+    // TB-owned SEP lockstep stimulus/observation. Initialised: an undriven
+    // sep_lockstep_ctrl_i would reach the SEP core as X under RV_LOCKSTEP_ENABLE.
+    sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
+    sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
+
     smu_wrapper #(
         .Cfg (SMU_CFG),
         .SEP (SEP_ENABLED[0])
@@ -668,25 +624,10 @@ module smu_wrapper_uvm_top (
         .ss_reset_ctrl_o (),
         .sync_irq_o (),
 
-        .rom_intf_req_o (rom_intf_req),
-        .rom_intf_rsp_i (rom_intf_rsp),
-        .scratch_ram_intf_req_o (scratch_ram_intf_req),
-        .scratch_ram_intf_rsp_i (scratch_ram_intf_rsp),
-        .l1_icache_tag_intf_req_o (l1_icache_tag_intf_req),
-        .l1_icache_tag_intf_rsp_i (l1_icache_tag_intf_rsp),
-        .l1_icache_data_intf_req_o (l1_icache_data_intf_req),
-        .l1_icache_data_intf_rsp_i (l1_icache_data_intf_rsp),
-        .l1_dcache_tag_intf_req_o (l1_dcache_tag_intf_req),
-        .l1_dcache_tag_intf_rsp_i (l1_dcache_tag_intf_rsp),
-        .l1_dcache_data_intf_req_o (l1_dcache_data_intf_req),
-        .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp),
-
         .disable_sram_auto_init_i (1'b0),
         .init_mem_done_o,
         .chiplet_is_primary_i (1'b1),
         .timer_count_o (),
-        .trace_mem_req_o (trc_req),
-        .trace_mem_resp_i (trc_resp),
 
         .test_en_i (1'b0),
         .scan_rst_ni (1'b1),
@@ -719,7 +660,11 @@ module smu_wrapper_uvm_top (
         .gpio_interrupt_o (),
         .uart_interrupt_o (),
         .sep_efuse_debug_bus_o (),
-        .smc_efuse_debug_bus_o ()
+        .smc_efuse_debug_bus_o (),
+
+        // SEP CPU lockstep control/status
+        .sep_lockstep_ctrl_i (sep_lockstep_ctrl_i),
+        .sep_lockstep_status_o (sep_lockstep_status_o)
     );
 
 endmodule : smu_wrapper_uvm_top

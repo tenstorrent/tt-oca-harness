@@ -249,17 +249,56 @@ module smc_reset_unit (
 	// JTAG Reset Control //
 	////////////////////////
 
-	// jtag_reset_ctrl_i constains both an override bit and a reset value, both are on TCKCLK
+	// jtag_reset_ctrl_i contains both an override bit and a reset value, both are on TCKCLK
 
-	assign fuse_reset_n = jtag_reset_ctrl_i.ovrd.fuse_reset_n_ovrd ? jtag_reset_ctrl_i.val.fuse_reset_n_val : fuse_reset_ni;
+	prim_rst_mux2_hf_n u_fuse_reset_ovrd_mux (
+		.rst0_ni (fuse_reset_ni),
+		.rst1_ni (jtag_reset_ctrl_i.val.fuse_reset_n_val),
+		.sel_i   (jtag_reset_ctrl_i.ovrd.fuse_reset_n_ovrd),
+		.rst_no  (fuse_reset_n)
+	);
 
-	assign rst_cold_int_n = jtag_reset_ctrl_i.ovrd.cold_reset_n_ovrd ? jtag_reset_ctrl_i.val.cold_reset_n_val : rst_cold_ni;
-	assign rst_cool_from_flr_int_n = jtag_reset_ctrl_i.ovrd.cool_reset_n_ovrd ? jtag_reset_ctrl_i.val.cool_reset_n_val : rst_cool_from_flr_n;
-	assign rst_warm_int_n = jtag_reset_ctrl_i.ovrd.warm_reset_n_ovrd ? jtag_reset_ctrl_i.val.warm_reset_n_val : rst_warm_n;
+	prim_rst_mux2_hf_n u_cold_reset_ovrd_mux (
+		.rst0_ni (rst_cold_ni),
+		.rst1_ni (jtag_reset_ctrl_i.val.cold_reset_n_val),
+		.sel_i   (jtag_reset_ctrl_i.ovrd.cold_reset_n_ovrd),
+		.rst_no  (rst_cold_int_n)
+	);
+
+	prim_rst_mux2_hf_n u_cool_reset_ovrd_mux (
+		.rst0_ni (rst_cool_from_flr_n),
+		.rst1_ni (jtag_reset_ctrl_i.val.cool_reset_n_val),
+		.sel_i   (jtag_reset_ctrl_i.ovrd.cool_reset_n_ovrd),
+		.rst_no  (rst_cool_from_flr_int_n)
+	);
+
+	prim_rst_mux2_hf_n u_warm_reset_ovrd_mux (
+		.rst0_ni (rst_warm_n),
+		.rst1_ni (jtag_reset_ctrl_i.val.warm_reset_n_val),
+		.sel_i   (jtag_reset_ctrl_i.ovrd.warm_reset_n_ovrd),
+		.rst_no  (rst_warm_int_n)
+	);
 
 	for (genvar i = 0; i < 32; i = i + 1) begin : gen_ss_jtag_ovrd
-		assign ss_reset_ctrl_o[i].cold_reset_n         = jtag_reset_ctrl_i.ovrd.ss_cold_reset_n_ovrd[i] ? jtag_reset_ctrl_i.val.ss_cold_reset_n_val[i] : ss_reset_ctrl_intermediate[i].cold_reset_n;
-		assign ss_reset_ctrl_o[i].warm_reset_n         = jtag_reset_ctrl_i.ovrd.ss_warm_reset_n_ovrd[i] ? jtag_reset_ctrl_i.val.ss_warm_reset_n_val[i] : ss_reset_ctrl_intermediate[i].warm_reset_n;
+		logic ss_cold_reset_n;
+		logic ss_warm_reset_n;
+
+		prim_rst_mux2_hf_n u_ss_cold_reset_ovrd_mux (
+			.rst0_ni (ss_reset_ctrl_intermediate[i].cold_reset_n),
+			.rst1_ni (jtag_reset_ctrl_i.val.ss_cold_reset_n_val[i]),
+			.sel_i   (jtag_reset_ctrl_i.ovrd.ss_cold_reset_n_ovrd[i]),
+			.rst_no  (ss_cold_reset_n)
+		);
+
+		prim_rst_mux2_hf_n u_ss_warm_reset_ovrd_mux (
+			.rst0_ni (ss_reset_ctrl_intermediate[i].warm_reset_n),
+			.rst1_ni (jtag_reset_ctrl_i.val.ss_warm_reset_n_val[i]),
+			.sel_i   (jtag_reset_ctrl_i.ovrd.ss_warm_reset_n_ovrd[i]),
+			.rst_no  (ss_warm_reset_n)
+		);
+
+		assign ss_reset_ctrl_o[i].cold_reset_n         = ss_cold_reset_n;
+		assign ss_reset_ctrl_o[i].warm_reset_n         = ss_warm_reset_n;
 		assign ss_reset_ctrl_o[i].config_state_hold    = ss_reset_ctrl_intermediate[i].config_state_hold;
 		assign ss_reset_ctrl_o[i].critical_signal_hold = ss_reset_ctrl_intermediate[i].critical_signal_hold;
 		assign ss_reset_ctrl_o[i].sram_hold            = ss_reset_ctrl_intermediate[i].sram_hold;

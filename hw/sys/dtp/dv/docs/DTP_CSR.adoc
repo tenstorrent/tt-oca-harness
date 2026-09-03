@@ -44,7 +44,7 @@ opcode and shifted through the DR scan chain in IEEE 1149.1 TAP states.
 |IR Opcode |Name |Width |Access |Description
 
 |`0x00` |BYPASS |1 |RW scan |Mandatory 1-bit bypass
-|`0x01` |IDCODE |32 |RO scan |Device ID read in smoke test
+|`0x01` |IDCODE |32 |R scan |Device ID read in smoke test
 |`0x02` |RUNBIST |BIST-dependent |Mixed |Built-in self-test path
 |`0x03` |SAMPLE_PRELOAD |BSR-dependent |Mixed |Boundary scan capture/preload
 |`0x04` |EXTEST |BSR-dependent |Mixed |Boundary scan external test
@@ -60,21 +60,21 @@ opcode and shifted through the DR scan chain in IEEE 1149.1 TAP states.
 |`0x0E` |TAP_3DCR |2 plus STAP chain |RW scan |IEEE 1838 3D configuration
 |`0x10`-`0x17` |_Reserved for RISC-V_ |— |— |Reserved encodings (behave as BYPASS)
 |`0x18` |DEBUG_CONTROL |5 |Mixed |Clock stop and boot stall
-|`0x19` |JTAG_CAPS |60 |RO scan |DTP capability reporting
+|`0x19` |JTAG_CAPS |60 |R scan |DTP capability reporting
 |`0x1A` |SELECT_IJTAG |Variable |RW scan |iJTAG SIB selection
-|`0x1B` |SMC_OTP_JTAG2AXI_CAPS |14 |RO scan |SMC OTP bridge caps
+|`0x1B` |SMC_OTP_JTAG2AXI_CAPS |14 |R scan |SMC OTP bridge caps
 |`0x1C` |SMC_OTP_AXI_SINGLE_OP |Variable |RW scan |SMC OTP single operation
 |`0x1D` |SMC_OTP_AXI_SERIES_CTRL |Variable |RW scan |SMC OTP series control
 |`0x1E` |SMC_OTP_AXI_SERIES_DATA_INCR |Variable |RW scan |SMC OTP series auto-increment
 |`0x1F` |SMC_OTP_AXI_SERIES_DATA_NO_INCR |Variable |RW scan |SMC OTP series no-increment
 |`0x20` |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |RW scan |SMC OTP series with error bit
-|`0x21` |SEP_OTP_JTAG2AXI_CAPS |14 |RO scan |SEP OTP bridge caps
+|`0x21` |SEP_OTP_JTAG2AXI_CAPS |14 |R scan |SEP OTP bridge caps
 |`0x22` |SEP_OTP_AXI_SINGLE_OP |Variable |RW scan |SEP OTP single operation
 |`0x23` |SEP_OTP_AXI_SERIES_CTRL |Variable |RW scan |SEP OTP series control
 |`0x24` |SEP_OTP_AXI_SERIES_DATA_INCR |Variable |RW scan |SEP OTP series auto-increment
 |`0x25` |SEP_OTP_AXI_SERIES_DATA_NO_INCR |Variable |RW scan |SEP OTP series no-increment
 |`0x26` |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |RW scan |SEP OTP series with error bit
-|`0x27` |SMC_JTAG2AXI_CAPS |14 |RO scan |SMC fabric bridge caps
+|`0x27` |SMC_JTAG2AXI_CAPS |14 |R scan |SMC fabric bridge caps
 |`0x28` |SMC_AXI_SINGLE_OP |132 |RW scan |SMC fabric single read/write
 |`0x29` |SMC_AXI_SERIES_CTRL |Variable |RW scan |SMC fabric series control
 |`0x2A` |SMC_AXI_SERIES_DATA_INCR |Variable |RW scan |SMC fabric series auto-increment
@@ -94,10 +94,10 @@ All instruction encodings not explicitly listed above (including the
 |===
 |Bits |Field |Access |Description
 
-|`[31:28]` |`SI_REV` |RO |Silicon revision parameter
-|`[27:12]` |`PART_NUM` |RO |Chiplet part number parameter
-|`[11:1]` |`MFR_ID` |RO |JEDEC manufacturer ID parameter
-|`[0]` |`MARKER` |RO |Always `1`
+|`[31:28]` |`SI_REV` |R |Silicon revision parameter
+|`[27:12]` |`PART_NUM` |R |Chiplet part number parameter
+|`[11:1]` |`MFR_ID` |R |JEDEC manufacturer ID parameter
+|`[0]` |`MARKER` |R |Always `1`
 |===
 
 The open-source `dtp_jtag_idcode_test` verifies IDCODE readout through the
@@ -111,7 +111,7 @@ TMP_STATUS (IR=`0x0C`) is a 2-bit mixed-access TDR used by the TMP controller.
 |===
 |Bits |Field |Access |Reset |Description
 
-|`[1]` |`PERSISTENCE` |RO |`0` |TMP FSM Persistence-On status
+|`[1]` |`PERSISTENCE` |R |`0` |TMP FSM Persistence-On status
 |`[0]` |`BYPASS_ESCAPE` |RW |`0` |Arm bit that lets a subsequent BYPASS selection exit TMP persistence
 |===
 
@@ -126,7 +126,7 @@ values.
 |===
 |Bits |Field |Access |Reset |Description
 
-|`[4]` |`CLA_CLOCK_STOP` |RO |`0` |Readback of CLA clock-stop request
+|`[4]` |`CLA_CLOCK_STOP` |R |`0` |Readback of CLA clock-stop request
 |`[3]` |`JTAG_CLOCK_STOP` |RW |`0` |JTAG-driven clock stop request
 |`[2]` |`CLA_CLOCK_STOP_EN` |RW |`0` |Exported CLA clock stop enable
 |`[1]` |`BOOT_STALL_OVRD` |RW |`0` |Enables JTAG boot-stall override
@@ -257,15 +257,16 @@ error status is sticky until cleared via `*_AXI_SERIES_CTRL.reset`.
 === Part B: Cross Trigger Port CSRs
 
 Each CTP instance has a 32-bit AXI-Lite register bank. These registers are
-defined by SystemRDL. In the OCAH open-source Verilator flow, functional CSR
-scenarios require the generated CSR blocks rather than stubs.
+defined by SystemRDL; the generated blocks
+(`hw/ip/cross_trigger/*/regs/gen/sv`) elaborate in every supported
+simulator, Verilator included.
 
 [cols="1,1,1,1,3"]
 |===
 |Offset |Register |Access |Reset |Description
 
 |`0x000` |`CONFIG` |RW |`0x0000_0000` |Mode, invert, and reset control
-|`0x004` |`STATUS` |RO |`0x0000_0000` |Busy and live req/ack state
+|`0x004` |`STATUS` |R |`0x0000_0000` |Busy and live req/ack state
 |`0x008` |`STRETCH_MULT` |RW |`0x0000_0000` |Wire-OR pulse stretch multiplier
 |===
 
@@ -286,11 +287,11 @@ scenarios require the generated CSR blocks rather than stubs.
 |===
 |Bits |Field |Access |Description
 
-|`[7]` |`ACK_OUT` |RO |Current CT_Ack_out
-|`[6]` |`REQ_IN` |RO |Synchronized CT_Req_in
-|`[5]` |`ACK_IN` |RO |Synchronized CT_Ack_in
-|`[4]` |`REQ_OUT` |RO |Current CT_Req_out
-|`[0]` |`BUSY` |RO |Pulse or handshake in progress
+|`[7]` |`ACK_OUT` |R |Current CT_Ack_out
+|`[6]` |`REQ_IN` |R |Synchronized CT_Req_in
+|`[5]` |`ACK_IN` |R |Synchronized CT_Ack_in
+|`[4]` |`REQ_OUT` |R |Current CT_Req_out
+|`[0]` |`BUSY` |R |Pulse or handshake in progress
 |===
 
 === Part C: Cross Trigger Matrix CSRs
@@ -332,7 +333,6 @@ CTPs + 10 internal CTs). Each output port `i` is driven by a
 |Debug-disable gating |Verify a gated bridge's TDR stays selected while its requests are suppressed: no AXI traffic, no memory mutation, and no delayed replay after the disable is released
 |CTP setup |Program mode and stretch before injecting trigger events
 |CTM setup |Program routing masks before enabling source stimulus
-|CSR stubs |Drop Verilator stubs or use a Verilator-safe CSR implementation before sampling XTRIG CSR functional coverage
 |===
 
 === Access Type Legend
@@ -342,6 +342,6 @@ CTPs + 10 internal CTs). Each output port `i` is driven by a
 |Symbol |Meaning
 
 |RW |Read/write
-|RO |Read only
+|R |Read only
 |Mixed |Read/write behavior depends on field or TAP state
 |===

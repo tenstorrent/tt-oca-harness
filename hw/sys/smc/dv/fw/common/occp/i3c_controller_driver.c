@@ -51,11 +51,11 @@ static inline uint32_t hr(uint8_t id, uint64_t abs0) {
 }
 
 /* instance-0 absolute register addresses (from smc_top_regs.h) */
-/* instance-0 register addresses. The per-register OCA_I3C_WRAP_0_* symbols are not
+/* instance-0 register addresses. Per-register OCA_I3C_WRAP_* symbols are not
  * generated in this tree (only the wrapper base is), so these are offsets from that
  * base, matching hw/sys/smc/bootrom/prod/drivers/src/i3c_hci_driver.c. Every offset
  * below was cross-checked against the reference's generated absolute addresses. */
-#define I3C0_CSR_BASE SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR
+#define I3C0_CSR_BASE SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR(0)
 #define R_WRAP_BASE (I3C0_CSR_BASE + 0x000u) /* wrapper reset/enable lives at +0x0 */
 #define R_HC_CONTROL (I3C0_CSR_BASE + 0x004u)
 #define R_RESET_CONTROL (I3C0_CSR_BASE + 0x010u)

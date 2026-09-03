@@ -95,7 +95,7 @@ module smc_internal_regs
 
 		// DFD signals
 		output logic                                                                           cla_interrupt_o,
-		output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						   cla_ext_action_custom_o,
+		output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						   cla_ext_action_custom_o,
 
 		output smc_pkg::xtrigger_t                     							               xtrigger_ss_o,
 		input  wire smc_pkg::xtrigger_t                							               xtrigger_ss_i,
@@ -108,8 +108,8 @@ module smc_internal_regs
 		output logic [7:0]                                                                     debug_marker_o,
 
 		// Trace Sink Memory Interface
-		output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
-		input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
+		output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
+		input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
 
 		// Test mode
 		input  logic                                                                           test_en_i,
@@ -151,9 +151,9 @@ module smc_internal_regs
 	localparam int unsigned AXIL_OUTSTANDING_TX = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
 
 	// DFD config from the DFT/DFD CSR block
-	logic [dfd_cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
+	logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
 	smc_pkg::dfd_enable_t                   dfd_enables;
-	dfd_tt_dbm_pkg::DbgMuxSelCsr_s          dbg_mux_sel_csr;
+	tt_dbm_pkg::DbgMuxSelMmr_s          dbg_mux_sel_csr;
 
 	/////////////////
 	// SMC Mailbox //
@@ -182,7 +182,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_mailbox_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_mailbox_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_mailbox_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -249,7 +249,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_outbound_filter_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_ob_filter_reg_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_ob_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -419,7 +419,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_inbound_filter_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_ib_filter_reg_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_ib_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -447,7 +447,7 @@ module smc_internal_regs
 		.SpillAr     (1'b1),
 		.SpillR      (1'b0)
 	) inbound_filter_axil_demux (
-		.clk_i            (clk_smc_i),
+		.clk_i            (inbound_filter_clk),
 		.rst_ni           (rst_primary_smc_clk_ni),
 		.test_i           (test_en_i),
 		.slv_req_i        (axil_inbound_filter_ctrl_req_i),
@@ -489,7 +489,7 @@ module smc_internal_regs
 				.SpillAr     (1'b1),
 				.SpillR      (1'b0)
 			) inbound_filter_axi_lite_demux (
-				.clk_i            (clk_smc_i),
+				.clk_i            (inbound_filter_clk),
 				.rst_ni           (rst_primary_smc_clk_ni),
 				.test_i           (test_en_i),
 				.slv_req_i        (inbound_filter_axi_lite_reqs[f]),
@@ -504,7 +504,7 @@ module smc_internal_regs
 
 			// Filter control register
 			filter_ctrl_reg inbound_filter_ctrl_reg (
-				.clk            (clk_smc_i),
+				.clk            (inbound_filter_clk),
 				.arst_n         (rst_primary_smc_clk_ni),
 
 				.s_axil_awready (filter_reg_resp.aw_ready),
@@ -539,7 +539,7 @@ module smc_internal_regs
 				.axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
 				.axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
 			) err_slv (
-				.clk_i       (clk_smc_i),
+				.clk_i       (inbound_filter_clk),
 				.rst_ni      (rst_primary_smc_clk_ni),
 				.axil_req_i  (locked_reg_req),
 				.axil_resp_o (locked_reg_resp)
@@ -574,7 +574,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_mR_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -673,7 +673,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_xR_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -772,7 +772,7 @@ module smc_internal_regs
 		.snoop_r_ready_i (axil_aR_ctrl_req_i.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continously kick to keep clock awake when not gating
+		.kick_i			 (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_ctrl_hysteresis),
@@ -874,7 +874,7 @@ module smc_internal_regs
 		.tdr_dbg_ctrl_clocks_stopped_by_cla_o		(tdr_dbg_ctrl_clocks_stopped_by_cla_o),
 
 		.dbg_mux_sel_csr_i							(dbg_mux_sel_csr),
-		.debug_bus_i								(debug_bus_i),    // We could add a sync2 here for every bit of the debug bus to smc clk but I thats alot of area 'wasted'
+		.debug_bus_i								(debug_bus_i),    // We could add a sync2 here for every bit of the debug bus to smc clk but I that's a lot of area 'wasted'
 		.debug_marker_o								(debug_marker_o),
 
 		.trace_mem_req_o							(trace_mem_req_o),

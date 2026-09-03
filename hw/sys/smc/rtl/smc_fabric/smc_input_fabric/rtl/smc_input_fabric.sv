@@ -5,7 +5,6 @@
 
 module smc_input_fabric
 #(
-	parameter bit [smc_pkg::AXI_ADDR_WIDTH-1:0] LOCAL_ALIAS_REGION_SIZE = smc_pkg::LOCAL_ALIAS_REGION_SIZE,
 	parameter bit          				        FilterReqPipelineEnable = 1'b0,
     parameter bit          				        FilterRspPipelineEnable = 1'b0,
 	parameter int unsigned                      NumFilters = 16
@@ -21,6 +20,7 @@ module smc_input_fabric
 	// Configuration Bits
 	input smc_pkg::smc_axi_addr_t                              							  global_base_addr_i,
 	input smc_pkg::smc_axi_addr_t                              							  local_base_addr_i,
+	input logic [31:0]                                         							  region_size_i,
 
 	// JTAG AXI Input
 	input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t           	                          axi_in_jtag_req_i,
@@ -233,11 +233,20 @@ module smc_input_fabric
 
 	logic local_space_write;
 	logic local_space_read;
+
+	// One bit wider than the address so a base near the top of the 56-bit space cannot
+	// wrap the end address and make the window compare pass on unrelated addresses.
+	logic [smc_pkg::AXI_ADDR_WIDTH:0] local_region_end;
+	logic [smc_pkg::AXI_ADDR_WIDTH:0] global_region_end;
+
+	assign local_region_end  = {1'b0, local_base_addr_i}  + region_size_i;
+	assign global_region_end = {1'b0, global_base_addr_i} + region_size_i;
+
 	always_comb begin
-		local_space_write = (axi_from_input_mux_req.aw.addr >= local_base_addr_i)  && (axi_from_input_mux_req.aw.addr < local_base_addr_i  + LOCAL_ALIAS_REGION_SIZE) ||
-							(axi_from_input_mux_req.aw.addr >= global_base_addr_i) && (axi_from_input_mux_req.aw.addr < global_base_addr_i + LOCAL_ALIAS_REGION_SIZE);
-		local_space_read  = (axi_from_input_mux_req.ar.addr >= local_base_addr_i)  && (axi_from_input_mux_req.ar.addr < local_base_addr_i  + LOCAL_ALIAS_REGION_SIZE) ||
-							(axi_from_input_mux_req.ar.addr >= global_base_addr_i) && (axi_from_input_mux_req.ar.addr < global_base_addr_i + LOCAL_ALIAS_REGION_SIZE);
+		local_space_write = (axi_from_input_mux_req.aw.addr >= local_base_addr_i)  && ({1'b0, axi_from_input_mux_req.aw.addr} < local_region_end) ||
+							(axi_from_input_mux_req.aw.addr >= global_base_addr_i) && ({1'b0, axi_from_input_mux_req.aw.addr} < global_region_end);
+		local_space_read  = (axi_from_input_mux_req.ar.addr >= local_base_addr_i)  && ({1'b0, axi_from_input_mux_req.ar.addr} < local_region_end) ||
+							(axi_from_input_mux_req.ar.addr >= global_base_addr_i) && ({1'b0, axi_from_input_mux_req.ar.addr} < global_region_end);
 	end
 
 	// The demux should be 56 bit address width
@@ -325,7 +334,7 @@ module smc_input_fabric
 		.snoop_r_ready_i (sys_axi_in_req_i.r_ready),
 		.snoop_r_last_i	 (sys_axi_in_resp_o.r.last),
 
-		.kick_i			 (~filter_axi_cg_en_i), // continously kick to keep clock awake when not gating
+		.kick_i			 (~filter_axi_cg_en_i), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_hysteresis_i),

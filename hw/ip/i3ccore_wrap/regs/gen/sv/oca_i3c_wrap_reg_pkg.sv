@@ -7,8 +7,9 @@
 package oca_i3c_wrap_reg_pkg;
 
     localparam OCA_I3C_WRAP_REG_DATA_WIDTH = 32;
-    localparam OCA_I3C_WRAP_REG_MIN_ADDR_WIDTH = 11;
-    localparam OCA_I3C_WRAP_REG_SIZE = 'h500;
+    localparam OCA_I3C_WRAP_REG_MIN_ADDR_WIDTH = 15;
+    localparam OCA_I3C_WRAP_REG_SIZE = 'h6000;
+    localparam NUM_I3CS = 'h6;
 
     typedef struct {
         logic rd_ack;
@@ -17,18 +18,18 @@ package oca_i3c_wrap_reg_pkg;
     } I3CCSR__external__in_t;
 
     typedef struct {
-        I3CCSR__external__in_t i3c_csr;
+        I3CCSR__external__in_t i3c_csr[6];
     } oca_i3c_wrap__in_t;
 
     typedef struct {
         logic req;
-        logic [10:0] addr;
+        logic [11:0] addr;
         logic req_is_wr;
         logic [31:0] wr_data;
         logic [31:0] wr_biten;
     } I3CCSR__external__out_t;
 
     typedef struct {
-        I3CCSR__external__out_t i3c_csr;
+        I3CCSR__external__out_t i3c_csr[6];
     } oca_i3c_wrap__out_t;
 endpackage

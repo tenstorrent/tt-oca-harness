@@ -58,24 +58,21 @@ module sep_cpu (
 
     output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     output logic iccm_ecc_single_error,
     output logic iccm_ecc_double_error,
     output logic dccm_ecc_single_error,
     output logic dccm_ecc_double_error,
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
     output logic dec_tlu_perfcnt1,
     output logic dec_tlu_perfcnt2,
     output logic dec_tlu_perfcnt3,
 
-  // FIXME: Forward this to safety island somehow or SEP-level CSRs
-  `ifdef RV_LOCKSTEP_ENABLE
-    input  logic disable_corruption_detection_i,
-    input  logic lockstep_err_injection_en_i,
-    output logic corruption_detected_o,
-  `endif
+    // Unconditional: the VeeR wrapper's lockstep ports only exist under
+    // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
+    // port footprint regardless of the define.
+    input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t lockstep_status_o,
 
     // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
     output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -150,7 +147,6 @@ module sep_cpu (
       .o_q       (mpc_reset_run_req_sync)
   );
 
-  // TODO: Make it such that this is easier to replace with another CPU
   el2_veer_wrapper #(
     .RESET_VEC (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
   ) el2_veer_wrapper (
@@ -219,23 +215,20 @@ module sep_cpu (
     .dbg_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .dma_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB slave interface
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     .iccm_ecc_single_error (iccm_ecc_single_error),
     .iccm_ecc_double_error (iccm_ecc_double_error),
     .dccm_ecc_single_error (dccm_ecc_single_error),
     .dccm_ecc_double_error (dccm_ecc_double_error),
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     .dec_tlu_perfcnt0 (dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
     .dec_tlu_perfcnt1 (dec_tlu_perfcnt1),
     .dec_tlu_perfcnt2 (dec_tlu_perfcnt2),
     .dec_tlu_perfcnt3 (dec_tlu_perfcnt3),
 
-      // FIXME: Forward this to safety island somehow or SEP-level CSRs
       `ifdef RV_LOCKSTEP_ENABLE
-    .disable_corruption_detection_i (disable_corruption_detection_i),
-    .lockstep_err_injection_en_i    (lockstep_err_injection_en_i),
-    .corruption_detected_o          (corruption_detected_o),
+    .disable_corruption_detection_i (lockstep_ctrl_i.disable_corruption_detection),
+    .lockstep_err_injection_en_i    (lockstep_ctrl_i.err_injection_en),
+    .corruption_detected_o          (lockstep_status_o.corruption_detected),
       `endif
 
     // Memory macro interfaces
@@ -398,6 +391,18 @@ module sep_cpu (
     .dma_axi_rresp   (cpu_tcm_axi_resp_o.r.resp),
     .dma_axi_rlast   (cpu_tcm_axi_resp_o.r.last)
   );
+
+  //////////////////////////////
+  // Lockstep (when not built) //
+  //////////////////////////////
+
+`ifndef RV_LOCKSTEP_ENABLE
+  // No VeeR lockstep ports to bind to; keep this module's own ports well-defined.
+  assign lockstep_status_o = '0;
+
+  logic unused_lockstep_ctrl;
+  assign unused_lockstep_ctrl = |lockstep_ctrl_i;
+`endif
 
   ///////////////////////////////////////////
   // SB/DBG AXI ID Width Conversion Logic //

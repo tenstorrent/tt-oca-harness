@@ -4,11 +4,9 @@
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
+from sep_reg_meta import sym
 
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 
@@ -23,8 +21,7 @@ class sep_sram_smoke_seq(uvm_sequence):
         await self.start_item(item)
         await self.finish_item(item)
 
-    async def _write(self, addr: int, data: int, length: int,
-                     size: int | None = None) -> None:
+    async def _write(self, addr: int, data: int, length: int, size: int | None = None) -> None:
         item = SepAxiItem(f"wr_sram_0x{addr:08x}")
         item.op = SepAxiOp.WRITE
         item.addr = addr

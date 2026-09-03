@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
 | 0x0 | SW_RESET_N | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SW_RESET_N Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:5 | `Reserved` | - | - a| Reserved
+| 63:6 | `Reserved` | - | - a| Reserved
+| 5 | `trng_sw_rst_n` | RW | 0x1 a| Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.
 | 4 | `kmac_sw_rst_n` | RW | 0x1 a| KMAC reset (0=assert, 1=release)
 | 3 | `hmac_sw_rst_n` | RW | 0x1 a| HMAC reset (0=assert, 1=release)
 | 2 | `aes_sw_rst_n` | RW | 0x1 a| AES reset (0=assert, 1=release)

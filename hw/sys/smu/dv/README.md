@@ -2,14 +2,17 @@
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
 Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
+See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
+[`docs/SMU_TB_ARCH.adoc`](docs/SMU_TB_ARCH.adoc) for the testbench
+architecture and [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
+verification plan.
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
-— live green `phase1` **14**, `sep0_all` **19** (no Force; product-pin CTM).
+— live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).
 
 **Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
 Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
-`testlists/deferred.toml` — **not** reportable as PASS. Shared cleanup
-checklist: [`../../smc/doc/dv_hack_cleanup_checklist.md`](../../smc/doc/dv_hack_cleanup_checklist.md).
+`testlists/deferred.toml` — **not** reportable as PASS.
 
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
@@ -17,7 +20,7 @@ checklist: [`../../smc/doc/dv_hack_cleanup_checklist.md`](../../smc/doc/dv_hack_
 
 ```
 smu_<scenario>_test
-  └─ SmuEnv (planned)
+  └─ SmuEnv (`cocotb/env/smu_env.py`)
        ├─ SMC boot / scratch + mailbox observation
        ├─ DTP JTAG TAP BFM
        ├─ External SMN AXI master / OcahAxiSlaveAgent
@@ -29,7 +32,7 @@ smu_<scenario>_test
 | `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
 | `cocotb/tests_deferred/` | Force-era raise stubs (catalog only) |
-| `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 19) |
+| `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
 | `testlists/deferred.toml` | Non-enrolled inventory (not default-included) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
 | `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
@@ -51,9 +54,8 @@ smu_<scenario>_test
 ## Running (Phase-1 SEP=0)
 
 ```bash
-source bin/setup_env.sh
-export TMPDIR=/localdev/$USER/TMPDIR
-mkdir -p "$TMPDIR"
+# Simulator and bender on PATH (see AGENTS.md for the with/without-companion paths).
+mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
 
 python3 tools/dv/run_dv.py --dut smu --build-only
 python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
@@ -66,13 +68,15 @@ python3 tools/dv/run_dv.py --dut smu --items phase1
 python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 ```
 
-Groups: `smoke`, `top5`, `top10`, `phase1`, `smc`, `dtp`, `fabric`.
+Groups: `smoke` (4), `top5` (5), `top10` (11), `phase1` (49), `smc` (12),
+`dtp` (29), `fabric` (14), `phase2` (50), `phase3` (5), `phase4_sep0` (19),
+`sep0_all` (53), `sep0_p4_all` (55).
 
 ## Signoff sources (dual TB)
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (14), `sep0_all` (19) |
+| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (49), `sep0_all` (53) |
 | Wrapper `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | Production-pin boot / elab smoke — **≠** `sep0_all` density signoff |
 
 Do not merge wrapper smoke PASS into bare `sep0_all` evidence. Logs carry
@@ -122,9 +126,8 @@ path is tracked separately.
 ### Running
 
 ```bash
-source bin/setup_env.sh
-export TMPDIR="$PWD/hw/sys/smu/dv/build/TMPDIR"
-mkdir -p "$TMPDIR"
+# Simulator and bender on PATH (see AGENTS.md).
+mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
 # Firmware toolchain: riscv64-unknown-elf-* on PATH, RISCV_TOOLCHAIN, or
 # per-tool overrides (e.g. Homebrew): RISCV_GCC/RISCV_OBJCOPY/RISCV_NM.
 
@@ -145,5 +148,7 @@ seeds, and those run paths on the tracking GitHub issue.
 
 ## Status
 
-Phase-1 testlists are in place. Cocotb env/sequences/test bodies and a
-fully-wired `SEP=0` `tb_top.sv` are the next implementation step.
+The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
+59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
+`cocotb/tests_deferred/`. `sep0_all` (53) is the SMU nightly group in
+`.github/workflows/sim.yml`.

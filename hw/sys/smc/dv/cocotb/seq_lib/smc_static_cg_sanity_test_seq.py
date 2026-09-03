@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_002 ANCHOR: smc_static_cg_sanity_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 3e58481e3b0cf7321a51f26a98560768603af989a54bb69cf5e776f5b9e6d34b
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 # Also preserves P1 CHK-MODULE-GATING / CHK-ENABLE-THRESHOLD evidence for closed P1 grade.
 """
 
@@ -13,13 +11,12 @@ import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
-from . import smc_addr_map as _addr
 
 _LOG = logging.getLogger(__name__)
 
@@ -81,13 +78,11 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
     def _dut(self):
         return cocotb.top
 
-    async def _program_cg(
-        self, *, dma_en: bool, zeroer_en: bool, hyst: int
-    ) -> None:
+    async def _program_cg(self, *, dma_en: bool, zeroer_en: bool, hyst: int) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (
-            cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK
-        ) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
+        nxt = (cur & ~DMA_CG_EN & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
+            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
+        )
         if dma_en:
             nxt |= DMA_CG_EN
         if zeroer_en:
@@ -100,9 +95,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write(
-            "INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
-        )
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
         await self.csr_write(
             "INBOUND0_FILTER_CONFIG_PASS_ALL",
             INBOUND0_FILTER_CONFIG,
@@ -137,15 +130,11 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         await self.csr_write(
             "DMA_DST_ADDRESS_LO", DMA_CTRL_DST_ADDRESS_LO, DMA_DST_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_DST_ADDRESS_HI", DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32
-        )
+        await self.csr_write("DMA_DST_ADDRESS_HI", DMA_CTRL_DST_ADDRESS_HI, DMA_DST_ADDR >> 32)
         await self.csr_write(
             "DMA_SRC_ADDRESS_LO", DMA_CTRL_SRC_ADDRESS_LO, DMA_SRC_ADDR & 0xFFFF_FFFF
         )
-        await self.csr_write(
-            "DMA_SRC_ADDRESS_HI", DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32
-        )
+        await self.csr_write("DMA_SRC_ADDRESS_HI", DMA_CTRL_SRC_ADDRESS_HI, DMA_SRC_ADDR >> 32)
         await self.csr_write("DMA_LENGTH_LO", DMA_CTRL_LENGTH_LO, len(DMA_PAYLOAD))
         await self.csr_write("DMA_LENGTH_HI", DMA_CTRL_LENGTH_HI, 0)
         await self.csr_write("DMA_DST_STRIDE_LO", DMA_CTRL_DST_STRIDE_LO, 0)
@@ -244,9 +233,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         edges.kill()
         assert state["busy_seen"] and state["busy_fall_at"] >= 0
         delay = max(0, state["last_edge_at"] - state["busy_fall_at"] + 1)
-        assert abs(delay - hyst) <= 1, (
-            f"threshold delay {delay} != programmed {hyst} (±1)"
-        )
+        assert abs(delay - hyst) <= 1, f"threshold delay {delay} != programmed {hyst} (±1)"
         self.measured[cell] = delay
         self.required_cells_hit.append(cell)
         cg.mark_fence(self.fence, fence)
@@ -280,9 +267,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         assert cg.sample_bit(dut, "tb_dma_cg_en") == 0
         await ClockCycles(dut.clk_smc_i, HYST_IDLE + 4)
         cg.log_step("S2", "sample dma_gated_clk free-run with cg disabled")
-        dma_edges_s1 = await cg.count_enabled_at_smc_rise(
-            dut, "tb_dma_gated_clk", IDLE_OBSERVE
-        )
+        dma_edges_s1 = await cg.count_enabled_at_smc_rise(dut, "tb_dma_gated_clk", IDLE_OBSERVE)
         assert dma_edges_s1 == IDLE_OBSERVE, (
             f"DMA gated off while cg disabled: edges={dma_edges_s1} window={IDLE_OBSERVE}"
         )
@@ -329,9 +314,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         assert zreg_n == IDLE_OBSERVE, (
             f"Zeroer reg should stay enabled (cg disabled): edges={zreg_n}"
         )
-        self.required_cells_hit.extend(
-            ["module_gating_disabled", "module_gating_enabled"]
-        )
+        self.required_cells_hit.extend(["module_gating_disabled", "module_gating_enabled"])
         continuous = int(dma_edges_s1 == IDLE_OBSERVE)
         independent = int(dma_n == 0 and zaxi_n == IDLE_OBSERVE)
         cg.emit_chk(
@@ -395,8 +378,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
-            "CHK-NONVAC: dma-gate-disabled-free-run < "
-            "zeroer-gate-disabled-free-run < PASS",
+            "CHK-NONVAC: dma-gate-disabled-free-run < zeroer-gate-disabled-free-run < PASS",
         )
         cg.mark_fence(self.fence, "PASS")
         _LOG.info("smc_static_cg_sanity_test_seq PASS")

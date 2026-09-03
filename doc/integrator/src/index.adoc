@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.3
-:revdate: 2026-08-21
+:revnumber: 0.0.5
+:revdate: 2026-09-02
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -100,6 +100,109 @@ For the architecture-level responsibility split between the integrator, firmware
 and the internal SEP/SMC maps, see
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
 
+[[immutable-rom-fw-integration]]
+=== Immutable ROM FW Integration
+
+OCAH contains three immutable ROM FW images: the SMC production ROM FW, the
+SEP production ROM FW, and the Key Manager production ROM FW. Each image has
+two integration contracts. The adopter connects and configures the
+corresponding ROM macro, and the final ROM FW image must be present before its
+processor leaves reset. Where ROM FW must initialize or access an
+adopter-owned peripheral outside OCAH, the image may also expose build-time
+integration hooks.
+
+[[rom-fw-override-method]]
+==== Weak-symbol override method
+
+An immutable ROM FW image may provide selected vendor-neutral integration hooks
+as weak symbols. Supply an adopter implementation as a strong definition of the
+same symbol before the final image is frozen. The strong implementation must
+program the same adopter-owned IP instantiated by the RTL integration, and its
+signature, ABI, return values, and documented semantics must match the weak
+declaration.
+
+This mechanism applies only when the ROM FW needs to interact with a peripheral
+outside OCAH. It is a build-time image-composition mechanism, not a runtime
+extension mechanism. Include the adopter implementation in the final ROM FW
+build so that it replaces the weak definition at link time.
+
+Inspect the final ELF or linker map after linking. For example,
+`riscv64-unknown-elf-nm` must report each selected implementation as a strong
+symbol rather than `W`; successful linking alone does not prove that the weak
+default was replaced.
+
+[[smc-rom-fw-integration]]
+==== SMC ROM FW integration
+
+Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
+implementation. In the current four-core configuration, the request provides
+the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
+one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
+ROM FW image must be present before the first boot; its build is under
+`hw/sys/smc/bootrom/prod/`.
+
+Connect the ROM macro configuration input reached as `rom_cfg_i` and
+`mem_cfg_i` according to the selected macro's contract. OCAH forwards these 11
+bits without assigning technology-specific semantics; the reference
+`smc_ip_integration.sv` ties them to zero. Set the eFuse shadow value that
+drives the CPU's `rom_flip_endianness_i` path to match the byte order of the
+image and ROM macro. Deasserted passes each 64-bit read word unchanged;
+asserted reverses its eight bytes.
+
+.SMC ROM FW override inventory
+[width="100%",cols="18%,20%,27%,35%",options="header"]
+|=======================================================================
+|Hook |Weak default |Rationale |Override and integration action
+|`smc_pll_init()`
+|Returns `SMC_PLL_SUCCESS` without programming PLL hardware.
+|PLL implementation is technology- and vendor-specific, so OCAH does not
+include a vendor-specific PLL driver.
+|Override when `BL0_PLLCLK` is asserted and the adopter's PLL requires
+ROM-time configuration. Provide the same
+`smc_pll_result_t smc_pll_init(void)` signature in the final ROM FW build.
+Any result other than `SMC_PLL_SUCCESS` is fatal: the ROM FW records an
+interface error and remains in `wfi`.
+|`i3c_release_reset()`, `cfg_ps()`, `init_i3c_ctrl()`, and
+`I3C_GetDriverInstance()`
+|Permit the ROM FW to boot without an active I3C implementation; I3C data
+operations report a hardware error.
+|OCAH includes an I3C implementation, but the adopter may select a different
+I3C target and driver for the final system.
+|When the ROM FW must use an active I3C target, select the open HCI
+implementation with `I3C_CORE=swap`, or connect the adopter's I3C target
+through the SMC external AXI-Lite master (`smc_external_req_o` and
+`smc_external_resp_i`) and link strong implementations that conform to
+`drivers/include/i3c_target_driver.h`.
+|=======================================================================
+
+[[sep-rom-fw-integration]]
+==== SEP ROM FW integration
+
+The SEP exposes the `sep_boot_rom` memory interface for its production ROM FW
+image. The detailed ROM-macro configuration, image-loading contract, and
+adopter override inventory are not yet documented here.
+
+.SEP ROM FW override inventory
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Hook |Status
+|_To be documented_ |No adopter override requirement is defined here yet.
+|=======================================================================
+
+[[km-rom-fw-integration]]
+==== Key Manager ROM FW integration
+
+The Key Manager exposes the `km_rom_mem` interface through SEP for its
+production ROM FW image. The detailed ROM-macro configuration, image-loading
+contract, and adopter override inventory are not yet documented here.
+
+.Key Manager ROM FW override inventory
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Hook |Status
+|_To be documented_ |No adopter override requirement is defined here yet.
+|=======================================================================
+
 [[smc-integration]]
 === System Management Controller (SMC) Integration
 
@@ -174,17 +277,17 @@ The SMC fabric uses three registers in the CPU Control block
 (`0xC001_0000`) to distinguish local from remote addresses:
 
 * `LOCAL_BASE` (read-only, fixed at `0xC000_0000`): The local alias
-  base. Together with the fixed 16 MiB `LOCAL_ALIAS_REGION_SIZE`, this
-  is the address space the SMC CPU and internal fabric use to access SMC
-  resources.
+  base. Together with `REGION_SIZE`, this is the address space the SMC
+  CPU and internal fabric use to access SMC resources.
 * `GLOBAL_BASE` (read-write, defaults to `0x4000_0000`): The
   system-level base address. Firmware must program this during early boot
   to match the adopter's system address assignment, enabling the SMC to
   issue outbound transactions using global system addresses.
-* `REGION_SIZE` (read-write, currently resets to `0x0100_0000` /
-  16 MiB): The size of the SMC global aperture used by SMU-level routing
-  and SEP-to-SMC decode. The SMC input fabric's local/global split uses
-  the fixed `LOCAL_ALIAS_REGION_SIZE` parameter in RTL.
+* `REGION_SIZE` (read-write, resets to `0x0100_0000` / 16 MiB): The size
+  of both the local alias window and the global aperture. It sizes the
+  SMC input fabric's local/global split as well as SMU-level routing and
+  SEP-to-SMC decode. Firmware must not program it to zero, and must keep
+  `LOCAL_BASE + REGION_SIZE` inside the 32-bit SMC-local address space.
 
 For full details on alias remapping and outbound routing, see the SMC
 Fabric documentation (`hw/sys/smc/doc/fabric.adoc`).
@@ -331,9 +434,11 @@ indicates completion of this sensing operation.
 ==== Memory Subsystem Integration
 
 The SMC includes an embedded RISC-V CPU cluster with associated memory
-interfaces. The `rom_intf_req_o` and `rom_intf_rsp_i` signals connect to boot
-ROM containing the SMC firmware. The ROM must be populated with valid firmware
-images before initiating the boot sequence.
+interfaces. See <<immutable-rom-fw-integration>> for the ROM FW integration
+contract.
+
+[[smc-sram-cache-integration]]
+===== SRAM and Cache Array Integration
 
 Scratch RAM interfaces (`scratch_ram_intf_req_o` and `scratch_ram_intf_rsp_i`)
 connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
@@ -391,7 +496,7 @@ Repair completion and success are reported through
 `DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
 indicates completion regardless of success, while `mem_repair_success` indicates
 successful repair. Both bits are set by the external repair controller. The SMC
-ROM firmware monitors these bits during initialization to verify repair
+ROM FW monitors these bits during initialization to verify repair
 completion.
 
 **Bypass Configuration:**
@@ -472,7 +577,8 @@ cross-trigger signals at the SMC boundary. The adopter-visible SMU cross-trigger
 interfaces are `xtrig_ctm_*`, `xtrig_clk_stop_req_i`, and the CTP groups.
 
 Trace memory interfaces (`trace_mem_req_o` and `trace_mem_resp_i`) connect to trace RAM
-instances for storing captured debug data.
+instances for storing captured debug data. `smc_ip_integration.sv` shows an example set of
+RAM instances that can be adapted to your debug requirements.
 
 ==== Bring-Up Sequence
 
@@ -486,10 +592,11 @@ straps sampled during this phase determine boot modes and operational settings. 
 sensing completes, the SMC releases internal subsystem resets based on the programmed reset
 sequencing configuration.
 
-The CPU cluster begins firmware execution from the boot ROM after reset release. The firmware
-performs additional initialization including peripheral configuration, memory testing (unless
-disabled), and system health checks. The `init_mem_done_o` signal indicates completion of
-memory initialization if automatic SRAM zeroing is enabled.
+The CPU cluster begins executing the ROM FW after reset release. The ROM FW
+performs additional initialization including peripheral configuration, memory
+testing (unless disabled), and system health checks. The `init_mem_done_o`
+signal indicates completion of memory initialization if automatic SRAM zeroing
+is enabled.
 
 For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
 a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
@@ -761,7 +868,7 @@ their own integration logic. Tie the input low when unused.
 ==== Bring-Up Considerations
 
 The SEP boot sequence begins after the SMC completes fuse sensing and releases
-the SEP reset. The SEP BL0 ROM firmware verifies the BL1 software image using
+the SEP reset. The SEP BL0 ROM FW verifies the BL1 software image using
 non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
@@ -967,22 +1074,86 @@ SEP-related DTP configuration is not exposed as an SMU config-struct field.
 The SMU derives SEP debug/STAP enablement from the module parameter `SEP` and
 wires the corresponding DTP interfaces internally to the SEP block when `SEP=1`.
 
-The DTP IC_RESET TDR is composed of three independent struct-typed slices. The
-SMU passes `smc_pkg::jtag_smc_reset_ctrl_t` into the DTP's `ic_reset_smc_t`
-parameter (with `JTAG_IC_RESET_SMC_ENABLE=1`), `sep_pkg::jtag_sep_reset_ctrl_t`
-into `ic_reset_sep_t` (with `JTAG_IC_RESET_SEP_ENABLE=SEP`), and exposes the
-external slice via the SMU's own `ic_reset_ext_t` type parameter and
-`jtag_ic_reset_ext_o` port (gated by `JTAG_IC_RESET_ENABLE`). Each slice's
-`.ovrd`/`.val` sub-structs must be the same width; `jtag_ptap` interleaves them
-into the `{enable, control}` bit order required by the JTAG specification.
+[[ic-reset-tdr-structure]]
+==== IC_RESET TDR Structure
 
-The SMC and SEP slices are consumed inside the SMU and have no port. The
-external slice is reserved for the adopter: set `ic_reset_ext_t` to a struct
-carrying the reset overrides needed by logic instantiated outside the SMU and
-route `jtag_ic_reset_ext_o` to that logic. The struct is defined by the adopter,
-not by the OCAH packages; the parameter default
+The DTP primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+independently enabled slices plus a single `reset_hold` bit nearest TDO. At the
+SMU the scan order from TDI to TDO is:
+
+[source]
+----
+TDI → SMC slice → SEP slice → external slice → reset_hold → TDO
+----
+
+The SMU enables the SMC slice unconditionally, the SEP slice when `SEP=1`
+(otherwise that slice has width 0 and is omitted), and the external slice when
+`JTAG_IC_RESET_ENABLE` is set. Each slice is a packed struct with `.ovrd` and
+`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`
+and interleaves the halves into the `{reset_enable, reset_control}` pair IEEE
+§17 requires per port. Declaration order within each half is the TDI-to-TDO
+scan order: the first field is nearest TDI.
+
+[cols="<18%,<12%,<28%,<42%",options="header"]
+|===
+|Slice |Ports |Defined by |Consumed by
+|SMC |68 |OCAH (`smc_pkg::jtag_smc_reset_ctrl_t`) |SMC reset unit; SMU-internal, no SMU port
+|SEP |7 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
+|External |`$bits(ic_reset_ext_t)/2` |Adopter (`ic_reset_ext_t`) |SMU output `jtag_ic_reset_ext_o`
+|`reset_hold` |1 bit |IEEE 1149.1 §17 |Nearest TDO; not a reset port
+|===
+
+The TDR length is `2 * (SMC ports + SEP ports + external ports) + 1`. Programming
+order and `reset_enable` polarity are in the DTP JTAG chapter of the Technical
+Reference Manual.
+
+===== SMC slice (TDI to TDO)
+
+The SMC slice covers the SMC reset domains and the 32 managed-subsystem (SS)
+cold and warm resets. Vector index `[31]` of each SS field is nearer TDI than
+`[0]`.
+
+[cols="<35%,<65%",options="header"]
+|===
+|Port |Reset domain
+|`ss_warm_reset_n[31:0]` |Per-subsystem warm reset
+|`ss_cold_reset_n[31:0]` |Per-subsystem cold reset
+|`cold_reset_n` |SMC cold reset
+|`cool_reset_n` |SMC cool reset
+|`warm_reset_n` |SMC warm reset
+|`fuse_reset_n` |Fuse reset (nearest the SEP slice)
+|===
+
+===== SEP slice (TDI to TDO)
+
+When `SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
+Manager, and TRNG resets consumed by `sep_reset_ctrl`. `trng_jtag_rst_n` is
+nearest TDI.
+
+[cols="<35%,<65%",options="header"]
+|===
+|Port |Reset domain
+|`trng_jtag_rst_n` |TRNG
+|`sep_reset_n` |SEP main reset
+|`kmac_jtag_rst_n` |KMAC
+|`hmac_jtag_rst_n` |HMAC
+|`aes_jtag_rst_n` |AES
+|`otbn_jtag_rst_n` |OTBN
+|`km_jtag_rst_n` |Key Manager (nearest the external slice)
+|===
+
+===== External slice (adopter-defined)
+
+The external slice is reserved for reset overrides on logic instantiated
+outside the SMU. OCAH does not name its ports. Set the SMU type parameter
+`ic_reset_ext_t` to a packed struct with `.ovrd` and `.val` halves of equal
+width, and route `jtag_ic_reset_ext_o` to that logic. The parameter default
 (`jtag_tap_pkg::jtag_ic_reset_default_t`) is a single-override stub. Clear
 `JTAG_IC_RESET_ENABLE` when no external overrides are required.
+
+Declare a new external override at each half's MSB so already-assigned TDR
+positions do not shift. Extra subsystem reset controls beyond the SMC slice
+use this typed port.
 
 ==== DTP Parameter Pass-Through
 
@@ -1893,6 +2064,7 @@ are:
 |`d0nt_stdbuf`    |Size only   |`prim_stdbuf`
 |`d0nt_stdinv`    |Size only   |`prim_flop_*sync_*` reset inverter
 |`d0nt_an`        |Size only   |`prim_and2`
+|`d0nt_ao222`     |Size only   |`prim_ao222`
 |`d0nt_wrap_sync` |Size only   |`prim_flop_*sync_*` synchronizer flops
 |===
 

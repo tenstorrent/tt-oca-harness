@@ -4,12 +4,12 @@
 
 Samples the OR of all SMC AXI-Lite downstream master *_valid signals
 (dtp_csr, pll, pvt, extension, efuse). With no CPU stimulus, the master
-busses must stay idle after cold reset release.
+buses must stay idle after cold reset release.
 """
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_axil_idle_test_seq import smc_axil_idle_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

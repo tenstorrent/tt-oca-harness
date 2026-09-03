@@ -6,24 +6,52 @@ from __future__ import annotations
 
 from typing import Any
 
-from seq_lib.smu_jtag_helpers import J2A_STATUS_SUCCESS, jtag2axi_single_write
+from cocotb.triggers import ClockCycles
 
-INBOUND0_FILTER_CONFIG = 0xC001_5000
-INBOUND0_START = 0xC001_5008
-INBOUND0_END = 0xC001_5010
-OUTBOUND0_FILTER_CONFIG = 0xC001_6000
-OUTBOUND0_START = 0xC001_6008
-OUTBOUND0_END = 0xC001_6010
+from seq_lib.smu_addr_map import (
+    INBOUND0_END,
+    INBOUND0_FILTER_CONFIG,
+    INBOUND0_START,
+    OUTBOUND0_END,
+    OUTBOUND0_FILTER_CONFIG,
+    OUTBOUND0_START,
+    SMC_CHIP_CONFIG_VERSION_LO,
+    SMC_CHIP_CONFIG_VERSION_LO_RESET,
+    filter_ctrl_bm,
+    filter_ctrl_field_reset_encode,
+    smc_addr,
+)
+from seq_lib.smu_axi_helpers import axi_read32_resp_bounded, resp_name
+from seq_lib.smu_jtag_helpers import (
+    J2A_STATUS_SUCCESS,
+    SMC_AXI_ERR_SLV_POISON,
+    jtag2axi_single_read,
+    jtag2axi_single_write,
+    require_jtag_tdo_resolved,
+)
+
 # External SMN fabric window used by SMC SYS_OUT (not an SMC CSR address).
 EXT_FABRIC_PROBE_ADDR = 0x8000_0000
-# READ+WRITE + ADDR_MODE + ALLOW_NS + bus-width/src encodings (P1/P2).
-PASS_RW_CONFIG = 0x0100_3113
+
+# Compose from filter_ctrl.h *_bm (DATA_BUS_WIDTH reset encoding = 3 << bp).
+_F_READ = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm")
+_F_WRITE = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm")
+_F_ENTRY = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm")
+_F_ALLOW_NS = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm")
+_F_ALLOW_BURST = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
+_F_BUS_WIDTH_64 = filter_ctrl_field_reset_encode("DATA_BUS_WIDTH")
+
+PASS_RW_CONFIG = _F_READ | _F_WRITE | _F_ENTRY | _F_ALLOW_NS | _F_BUS_WIDTH_64 | _F_ALLOW_BURST
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 
-SMC_VERSION_LO_ADDR = 0xC000_2900
-VERSION_LO_EXPECT = 0x0001_00A0
-SCRATCH_COLD_ADDR = 0xC000_2800
-WDT_CTRL_ADDR = 0xC000_0000
+SMC_VERSION_LO_ADDR = SMC_CHIP_CONFIG_VERSION_LO
+VERSION_LO_EXPECT = SMC_CHIP_CONFIG_VERSION_LO_RESET
+SCRATCH_COLD_ADDR = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
+WDT_CTRL_ADDR = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR")
+SMC_FILTER_POISON_LO = SMC_AXI_ERR_SLV_POISON
+
+FILTER_READY_POLLS = 64
+FILTER_READY_STEP = 4
 
 
 def page_align_window(start: int, end: int) -> tuple[int, int]:
@@ -50,14 +78,16 @@ async def program_inbound0_window(
         (INBOUND0_END, end, f"{tag}_END"),
         (INBOUND0_FILTER_CONFIG, config, f"{tag}_CONFIG"),
     ):
-        st, _ = await jtag2axi_single_write(jtag, addr, data)
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
+        require_jtag_tdo_resolved(f"J2A WR {name}")
         if scoreboard is not None:
             scoreboard.expect_eq(f"JTAG2AXI {name} write", st, J2A_STATUS_SUCCESS)
 
 
 async def clear_inbound0_config(jtag, *, scoreboard: Any = None) -> None:
     """Clear INBOUND0 CONFIG (restore BlockByDefault deny for unprogrammed)."""
-    st, _ = await jtag2axi_single_write(jtag, INBOUND0_FILTER_CONFIG, 0)
+    st, _ = await jtag2axi_single_write(jtag, INBOUND0_FILTER_CONFIG, 0, require_complete=True)
+    require_jtag_tdo_resolved("J2A WR INBOUND0_CONFIG clear")
     if scoreboard is not None:
         scoreboard.expect_eq("JTAG2AXI INBOUND0_CONFIG clear", st, J2A_STATUS_SUCCESS)
 
@@ -69,6 +99,41 @@ async def program_outbound0_pass_all(jtag, *, scoreboard: Any = None) -> None:
         (OUTBOUND0_END, PASS_ALL_END, "OUTBOUND0_END"),
         (OUTBOUND0_FILTER_CONFIG, PASS_RW_CONFIG, "OUTBOUND0_CONFIG"),
     ):
-        st, _ = await jtag2axi_single_write(jtag, addr, data)
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
+        require_jtag_tdo_resolved(f"J2A WR {name}")
         if scoreboard is not None:
             scoreboard.expect_eq(f"JTAG2AXI {name} write", st, J2A_STATUS_SUCCESS)
+
+
+async def inbound0_config_readback(jtag) -> int:
+    """Read INBOUND0 FILTER_CONFIG (32b)."""
+    st, rdata = await jtag2axi_single_read(jtag, INBOUND0_FILTER_CONFIG, require_complete=True)
+    require_jtag_tdo_resolved("J2A RD INBOUND0_CONFIG")
+    if st != J2A_STATUS_SUCCESS:
+        raise AssertionError(f"INBOUND0_CONFIG read status={st} want SUCCESS={J2A_STATUS_SUCCESS}")
+    return int(rdata) & 0xFFFF_FFFF
+
+
+async def await_smn_resp(
+    master,
+    addr: int,
+    want,
+    *,
+    clk,
+    label: str,
+) -> tuple[int, object]:
+    """Poll SMN until ``want`` resp; fail-closed with last-state."""
+    last = None
+    last_data = None
+    for poll in range(FILTER_READY_POLLS):
+        val, resp = await axi_read32_resp_bounded(master, addr, label=label)
+        last, last_data = resp, val
+        if resp == want:
+            return val, resp
+        await ClockCycles(clk, FILTER_READY_STEP)
+    raise AssertionError(
+        f"TIMEOUT FILTER_READY {label}: want={resp_name(want)} "
+        f"last={resp_name(last) if last is not None else None} "
+        f"data={last_data!r} polls={FILTER_READY_POLLS} "
+        f"step={FILTER_READY_STEP} addr=0x{addr:08x}"
+    )

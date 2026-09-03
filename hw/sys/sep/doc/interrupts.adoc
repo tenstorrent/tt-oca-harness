@@ -21,10 +21,10 @@ tied to zero inside the core. Firmware programs source `N` by writing the
 [[sep-cpu-interrupt-vector-map]]
 ==== SEP CPU Interrupt Vector Map
 
-The PIC supports 255 external sources. Slots 1–39 are individually assigned to
+The PIC supports 255 external sources. Slots 1–42 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 43–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.
 
 [width="100%",cols="10%,35%,55%",options="header",]
@@ -187,9 +187,34 @@ not here; see <<sep-non-pic-paths>>.
 |`39`
 |Token match fault
 |eFuse token comparator redundancy fault (fault). The OR of the three sticky
-`TOKEN_MATCH_FAULT` bits, so it stays asserted until reset.
+`TOKEN_MATCH_FAULT` bits. Those bits are software-read-only and clear only on
+reset, so this source stays asserted. Firmware must mask PIC source 39 after
+it has observed the fault; there is no write-one-to-clear, and an unmasked
+handler re-enters.
 
-|`[40–255]`
+|`40`
+|DMA register-path bus error
+|A CPU access to a Secure DMA register returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial). The faulting access also
+received SLVERR synchronously. Latched and held until firmware writes
+`DMA_BUS_ERR_CLEAR.clr`; unlike PIC source 39 this source is clearable, so
+firmware acknowledges it rather than masking it.
+
+|`41`
+|DMA host-path integrity/bus fault
+|Either the fabric returned a non-OKAY AXI response to a DMA transfer, or a
+TL-UL command-integrity check failed on a command issued by the DMA. The
+integrity case is a fault-detection event with no other reporting path.
+Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
+
+|`42`
+|Peripheral register-bridge fault
+|The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
+CSRNG, EDN and the watchdog timer. Read `PERIPH_BUS_ERR_STATUS` to identify
+which block faulted, and clear that block's bit in `PERIPH_BUS_ERR_CLEAR`;
+clears are per-block so acknowledging one cannot discard another block's fault.
+
+|`[43–255]`
 |Reserved (external band)
 |Chip-level external interrupt inputs
 |=======================================================================
@@ -209,13 +234,12 @@ runtime modification of the vector once locked.
 The NMI is non-maskable: it cannot be suppressed by `mstatus.MIE` or any PIC
 configuration register.
 
-===== Timer and Software Interrupts (TBD)
+===== Timer and Software Interrupts
 
-The `timer_int` and `soft_int` pins of the VeeR EL2 core are both tied to zero
-at the SMU integration boundary; external CLINT-style delivery is not yet
-routed. The VeeR core contains independent internal timers that generate
-standard RISC-V `mip.MTIP` and `mip.MSIP` interrupts without requiring an
-external signal; those remain functional.
+The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
+the SMU integration boundary. There is no external CLINT-style delivery path.
+The VeeR core contains independent internal timers that generate standard RISC-V
+`mip.MTIP` and `mip.MSIP` interrupts without requiring an external signal.
 
 
 [[sep-pic-registers]]

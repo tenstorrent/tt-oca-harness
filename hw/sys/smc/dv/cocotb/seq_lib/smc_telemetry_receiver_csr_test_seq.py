@@ -11,17 +11,31 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from .smc_addr_map import TELEMETRY_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-from .smc_addr_map import TELEMETRY_CG_EN, smc_addr, smc_indexed_addr
-
 TELEMETRY_READS = [
-    ("TELEMETRY_RECEIVER_0", smc_indexed_addr(
-        "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 0), 0x0),
-    ("TELEMETRY_RECEIVER_1", smc_indexed_addr(
-        "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 1), 0x0),
-    ("TELEMETRY_RECEIVER_2", smc_indexed_addr(
-        "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 2), 0x0),
+    (
+        "TELEMETRY_RECEIVER_0",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 0
+        ),
+        0x0,
+    ),
+    (
+        "TELEMETRY_RECEIVER_1",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 1
+        ),
+        0x0,
+    ),
+    (
+        "TELEMETRY_RECEIVER_2",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 2
+        ),
+        0x0,
+    ),
 ]
 
 _TELEMETRY_0_CTRL = smc_indexed_addr(
@@ -45,9 +59,7 @@ _TELEMETRY_0_PROBE_ID = smc_indexed_addr(
 )
 _STATUS_EMPTY = 0x1
 _INTR_MISSING_LAST = 0x1
-_CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+_CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 _TELEMETRY_CG_EN = TELEMETRY_CG_EN
 _NUM_BEATS_PER_PACKET = 8
 _PROBE_ID = 0x05
@@ -111,12 +123,8 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         assert status & _STATUS_EMPTY, (
             f"TELEMETRY_0 STATUS.EMPTY expected at reset, got 0x{status:08x}"
         )
-        intr_st = await self.csr_read(
-            "TELEMETRY_0_INTR_STATUS", _TELEMETRY_0_INTR_STATUS
-        )
-        assert intr_st == 0, (
-            f"TELEMETRY_0 INTR_STATUS not quiet at reset: 0x{intr_st:08x}"
-        )
+        intr_st = await self.csr_read("TELEMETRY_0_INTR_STATUS", _TELEMETRY_0_INTR_STATUS)
+        assert intr_st == 0, f"TELEMETRY_0 INTR_STATUS not quiet at reset: 0x{intr_st:08x}"
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", _CLOCK_GATE_CONTROL)
         await self.csr_write(
@@ -131,14 +139,10 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         await self.csr_write(
             "TELEMETRY_0_INTR_ENABLE", _TELEMETRY_0_INTR_ENABLE, _INTR_MISSING_LAST
         )
-        await self.csr_write(
-            "TELEMETRY_0_INTR_TEST", _TELEMETRY_0_INTR_TEST, _INTR_MISSING_LAST
-        )
+        await self.csr_write("TELEMETRY_0_INTR_TEST", _TELEMETRY_0_INTR_TEST, _INTR_MISSING_LAST)
         await ClockCycles(dut.clk_smc_i, 8)
         irq_after = int(dut.tb_telemetry_irq_any.value)
-        intr_st = await self.csr_read(
-            "TELEMETRY_0_INTR_STATUS_POST", _TELEMETRY_0_INTR_STATUS
-        )
+        intr_st = await self.csr_read("TELEMETRY_0_INTR_STATUS_POST", _TELEMETRY_0_INTR_STATUS)
         assert irq_after == 1, (
             f"tb_telemetry_irq_any not asserted after INTR_TEST "
             f"(before={irq_before} after={irq_after} INTR_STATUS=0x{intr_st:08x})"
@@ -169,8 +173,7 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
             await ClockCycles(dut.clk_smc_i, 1)
         else:
             raise AssertionError(
-                f"TELEMETRY_0 buffer stayed EMPTY after ATB message "
-                f"(STATUS=0x{status:08x})"
+                f"TELEMETRY_0 buffer stayed EMPTY after ATB message (STATUS=0x{status:08x})"
             )
         probe = await self.csr_read("TELEMETRY_0_PROBE_ID", _TELEMETRY_0_PROBE_ID)
         assert (probe & 0x1F) == _PROBE_ID, (
@@ -183,7 +186,6 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
         self.telemetry_atb_ok = True
         cocotb.log.info(
-            "Telemetry U4-6 PASS: INTR_TEST IRQ + ATB msg probe_id=0x%02X "
-            "(STATUS was non-empty)",
+            "Telemetry U4-6 PASS: INTR_TEST IRQ + ATB msg probe_id=0x%02X (STATUS was non-empty)",
             _PROBE_ID,
         )

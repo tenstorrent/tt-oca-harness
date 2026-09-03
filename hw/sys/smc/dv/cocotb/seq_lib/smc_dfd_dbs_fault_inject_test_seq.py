@@ -4,15 +4,14 @@
 
 DOES NOT DEFEND: smc_dfd_wrap / hw/ip/dfd CLA / trace-RAM (real DFD RTL).
 DEFENDS only: TB public capture ports wired in tb_top.sv.
-See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
 """
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Keep a diagnostic CSR touch so the test still exercises SEP_IN.

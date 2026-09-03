@@ -63,7 +63,7 @@ static inline void log_simputshex32(const char *msg, uint32_t val) {
 #endif
 }
 
-// This version I2C target must use stop bit for leaveing clock stretch state so controller should
+// This version I2C target must use stop bit for leaving clock stretch state so controller should
 // send stop bit after the i2c read/write transaction
 
 static const uintptr_t kCtrlGateAddrs[I2C_CONTROLLER_COUNT] = {
@@ -627,14 +627,6 @@ I2C_Status write_target(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len, siz
     if (bytes_received != NULL) {
         *bytes_received = index;
     }
-
-    // if (index < rx_buf_len)
-    // {
-    //     simputs("[I2C_TARGET][RX] I2C_ERR_INCOMPLETE\n");
-    //     simputshex16("index\n", index);
-    //     simputshex16("rx_buf_len\n", rx_buf_len);
-    //     return I2C_ERR_INCOMPLETE; // Custom error for incomplete packet
-    // }
 
     // Oversized packet: we received the expected number of bytes but did not observe STOP.
     // Received expected number of bytes without observing STOP: treat as overflow so upper layers

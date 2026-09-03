@@ -37,15 +37,23 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi[_lite]_slave_config.py` | Responder memory/reset/backend knobs |
 | `cocotb/ocah_axi[_lite]_slave_driver.py` | Fault-capable RAM responder engine |
 | `cocotb/ocah_axi[_lite]_slave_sequence.py` | Test-facing responder API (backdoor/inject/backpressure) |
-| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items (side-neutral) |
+| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items and result dataclasses (side-neutral) |
 | `cocotb/ocah_axi_monitor.py` | Passive item-producing bus monitors (side-neutral) |
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
-| `cocotb/ocah_axi_results.py` | Result dataclasses and response-code helpers |
+| `cocotb/ocah_axi_types.py` | Response/protection code constants and value-conversion helpers (side-neutral) |
 | `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
 Tests always drive a side through its `*Sequence` class — usually
 `agent.sequence` — never through the raw driver; missing operations get
 added to the sequence layer first.
+
+The cocotb package contains only canonical component files, matching the
+SV-UVM flow's basenames (`uvm/ocah_axi_*.svh`) one-to-one; flow-only
+components follow the same naming pattern. Shared dataclasses live in
+`_item`, shared constants and value conversions in `_types`, and behavior
+lives in the component that owns it (e.g. `AxiTimingProfile` is a
+`_master_config` knob applied by the `_master_driver`) — support modules
+outside the taxonomy are not added.
 
 ## Import Pattern
 
@@ -62,6 +70,12 @@ from ocah_axi_vip import (
     RESP_DECERR,
 )
 ```
+
+Response codes are plain integers (`RESP_OKAY`, `RESP_EXOKAY`, `RESP_SLVERR`,
+`RESP_DECERR`, `RESP_TIMEOUT`); `resp_name(resp)` renders them for log and
+failure messages. AxPROT values are built by OR-ing the plain
+`PROT_PRIVILEGED`, `PROT_NONSECURE`, and `PROT_INSTRUCTION` bits and passed
+via the `prot=` argument.
 
 Do not import `cocotbext.axi.AxiMaster`, `AxiLiteMaster`, `AxiRam`, or backend
 response enums in new OCAH tests. Add missing behavior to this wrapper instead.
@@ -99,6 +113,24 @@ Result helpers:
 |---|---|---|
 | `await write_result(addr, data, ...)` | `OcahAxiWriteResult` | Negative writes, exact response checks |
 | `await read_result(addr, ...)` | `OcahAxiReadResult` | Negative reads, data plus RRESP checks |
+
+`write_result`/`write` accept a contiguous partial `strb`: the selected
+bytes of `data` are written as a sub-word access (the backend derives WSTRB
+from address and length), so `strb=0x2` writes byte lane 1 only.
+Non-contiguous patterns (`0x5`, `0x9`, ...) are rejected with `ValueError`.
+
+Protocol-control operations (SV-UVM parity; see
+`ocah_axi_master_sequence.svh` for the same knobs on the SV side):
+
+| Method | Return | Use |
+|---|---|---|
+| `await write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew — AXI permits either arrival order — plus a deferred BREADY assert after the request phase |
+| `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
+
+Both operations require an idle engine on their direction (the skew is
+applied by pausing the backend's channel sources/sinks) and bound every
+phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
+`timed_out` result.
 
 Event helpers:
 
@@ -143,6 +175,8 @@ is a 4-byte beat and `size=3` is an 8-byte beat. The compatibility API accepts
 | `resp_list` | One response code per backend response element |
 | `ok` | True only for OKAY/EXOKAY |
 | `timed_out` | True only when `allow_timeout=True` absorbed a timeout |
+| `issued_id` | The AWID/ARID the master drove (`0` when the caller used the default) |
+| `observed_id` | BID/RID sampled from the live response handshake, or `None` (see below) |
 | `raw` | Backend object for debug only |
 
 `OcahAxiReadResult` adds:
@@ -152,6 +186,33 @@ is a 4-byte beat and `size=3` is an 8-byte beat. The compatibility API accepts
 | `data` | First data beat as an integer |
 | `data_bytes` | Raw read payload as bytes |
 | `data_words` | One integer per beat |
+
+### Response-ID observation
+
+Every blocking AXI4 result carries the issued request ID and a response ID
+sampled independently from the live B/R handshake (`OcahAxiIdCapture` inside
+the master driver) — never a copy of the issued ID, so an `observed_id ==
+issued_id` check is non-tautological. Reads sample on the completing (RLAST)
+beat. The `id_match` property returns `True`/`False` when both IDs are known
+and `None` otherwise.
+
+`observed_id` is `None` on AXI4-Lite results (the protocol has no ID
+signals), on absorbed timeouts, and on a capture miss (an unresolvable ID on
+a completing beat — logged as a warning, never raised). Tests that gate on
+IDs must assert `observed_id is not None` explicitly.
+
+Capture is scoped to one blocking transaction: it samples the first
+completing response beat between issue and completion, which is that
+transaction's beat whenever the caller serializes transactions (the normal
+use of the blocking result API). Event-style `init_read`/`init_write` flows
+that overlap transactions should use
+`driver.start_response_id_capture("b"|"r")` around the window they own.
+
+The cocotbext backend itself polices response-ID pairing and fails on an ID
+it never issued, so a responder that returns a wrong ID is fatal to the
+transaction either way; `observed_id` supplies the wire-truth evidence for
+the passing case and for wire-level scenarios (see the
+`--dut ocah_axi_vip` selftests under `dv/`).
 
 Use `check_response=False` and `raise_on_error=False` when a negative test
 expects a non-OKAY response:
@@ -196,7 +257,8 @@ Responder methods:
 | `read(addr, length)` / `write(addr, data)` | Backdoor byte access |
 | `read32/read64` / `write32/write64` | Little-endian integer helpers |
 | `inject_error(addr, resp, read=True, write=True)` | Program one-shot non-OKAY response |
-| `clear_errors()` | Clear all programmed errors |
+| `inject_id_corruption(mask=0x1, read=True, write=True)` | Arm one-shot response-ID corruption: the next selected transaction answers with `request_id ^ mask` (ID-width truncated); data path and response code stay untouched (AXI4 responder only) |
+| `clear_errors()` | Clear all programmed errors and armed ID corruption |
 | `enable_backpressure(channels, stall_cycles)` | Repeating bounded READY stalls |
 | `disable_backpressure()` | Clear READY stalls |
 
@@ -339,9 +401,12 @@ zero findings.
 
 ## SystemVerilog Layer (interface / sva / sv / uvm)
 
-The SV side of this package (compiled via `[frameworks.uvm.build].sources`-style
-explicit source lists in the consuming DUT's sim config, never Bender or
-Verilator filelists):
+The SV side of this package compiles through the VIP-owned ordered manifest
+`uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
+its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
+the DUT's own sources — never hand-copy these paths into a DUT sim config, and
+never add them to Bender or Verilator filelists. The manifest is the complete
+VIP layer; unused modules simply do not elaborate. Its contents:
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
@@ -365,13 +430,62 @@ Verilator filelists):
   items), `ocah_axi_scoreboard` (in-order pairing; `CHK-AXI-RESP/RDATA/
   BEATS/ADDR-ALIGN/ERR-INJ`; finalizes in `check_phase`), `ocah_axi_cov`
   (optional `ocah_axi_cov_if` sampler), and `ocah_axi_env` (cfg-gated
-  passive bundle). Slave side: `ocah_axi_slave_config` (memory geometry +
+  passive bundle; frozen surface `cfg`, `item_ap`, `m_checker`). Slave
+  side: `ocah_axi_slave_config` (memory geometry +
   one-shot error injection tables), `ocah_axi_slave_driver` (reactive
   memory-backed responder — the class analogue of the RAM responder
   modules; samples via `mon_cb`, drives the responder-side vif signals
   procedurally), `ocah_axi_slave_sequence` (test-facing backdoor/inject
   API), and `ocah_axi_slave_agent` (reactive bundle: no sequencer, by
-  design). The master side (active SV-UVM initiator) is not shipped yet.
+  design). Master side: `ocah_axi_master_config` (vif, geometry, handshake
+  watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
+  and AR/R engines, single transaction outstanding; samples via `mon_cb`,
+  drives the initiator-side vif signals procedurally), the standard
+  `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
+  stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;
+  deliberately no agent monitor — observation stays with the side-neutral
+  passive env), and `ocah_axi_master_env` (frozen surface: `m_sequencer`,
+  `cfg`; the commercial-override unit, same template contract as
+  `ocah_jtag_master_env`).
+
+Commercial-VIP integration follows the Template Contract in the
+ocah_jtag_vip README: the open tree carries only the hooks (the opaque
+`vendor_cfg` extension, the `en_monitor` knob, the guarded
+`OCAH_AXI_VENDOR_IF` nest inside `ocah_axi_if`, and the factory-overridable
+env/agent classes above); the implementations live in the proprietary
+`nonfree/` companion repository, and the dependency is strictly one-way —
+the open tree never references companion paths and is complete without
+them.
+
+### SV-UVM master sequence API
+
+`ocah_axi_master_sequence` is the SV twin of the cocotb
+`OcahAxiMasterSequence` surface: tests and DUT sequence libraries extend it
+and drive the master only through its blocking operations — `write` /
+`read` / `write_result` / `read_result` / `burst_write[_result]` /
+`burst_read[_result]` — never through raw `ocah_axi_item` handshakes.
+Missing operations get added there first. Every `*_result` operation
+returns the completed `ocah_axi_item` as the result object, the SV analogue
+of `OcahAxiWriteResult`/`OcahAxiReadResult`:
+
+| Item field | Result meaning |
+|---|---|
+| `transaction_id` | The issued AWID/ARID (as passed to the operation) |
+| `observed_id` / `observed_id_valid` | BID/RID sampled live from the response handshake on the completing beat (RLAST for reads); invalid on ID-less buses and timeouts |
+| `id_match()` | Both IDs known and equal (gate on `observed_id_valid` to separate mismatch from capture miss) |
+| `resp_list` / `worst_resp()` / `is_ok()` | Per-beat response evidence |
+| `data_words` | Read data, one raw bus word per beat |
+| `timed_out` | A handshake wait exceeded `ocah_axi_master_config.timeout_cycles` |
+
+The response-ID contract is cross-flow parity with "Response-ID
+observation" above: `observed_id` is wire truth, never an issued-ID echo.
+On the responder side, `ocah_axi_slave_sequence.inject_id_corruption(mask,
+for_read, for_write)` mirrors the cocotb fault slave: the next selected
+transaction answers `request_id ^ mask` (ID-width truncated; data path and
+response code untouched), one-shot per direction, disarmed by
+`clear_errors()`. `check_response=1` (default) escalates a non-OKAY
+response to `uvm_error`; `allow_timeout=1` downgrades a watchdog expiry to
+a returned result with `timed_out` set.
 
 The DTP SV-UVM flow (`--dut dtp --framework uvm`) is the first consumer:
 tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
@@ -379,7 +493,39 @@ tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
 module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
 JTAG VIP path, programming responder error injection via the slave agent's
-`ocah_axi_slave_sequence`.
+`ocah_axi_slave_sequence`. The master side's consumers are the SV-UVM
+selftests (`--dut ocah_axi_vip --framework uvm`): the same
+`ocah_axi_id_match_test` / `ocah_axi_id_mismatch_test` scenarios as the
+cocotb selftests, driven full-stack through the master sequence API against
+the fault slave, with the passive env scoring the same wires in the match
+scenario.
+
+## UVM Env Surface Convention
+
+Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
+convention, with the JTAG master env as the reference template:
+
+- **Side tokens.** Side-specific components — config, driver, sequencer,
+  sequence, agent, env, and agent-attached monitors — carry the side token
+  (`_master_*` / `_slave_*`). Wire-level observation classes — items, bus
+  monitors, reference models, scoreboards, checkers, coverage subscribers,
+  and the passive observation env — are side-neutral: they observe
+  DUT-generated traffic regardless of which VIP side, if any, is active.
+- **config_db fields.** An env-wrapped unit resolves its config from field
+  `cfg` and republishes the same object to its children as `cfg`. A
+  standalone reactive agent (the slave stacks) resolves the side-tokened
+  field `slave_cfg` instead.
+- **Payload-named analysis ports.** An observation port is named
+  `<kind>_ap` after the class it streams, mirroring the cocotb monitor
+  callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names are
+  deliberately not unified across VIPs — the payloads genuinely differ,
+  and the name tells a DUT env what it is subscribing to.
+- **Frozen surface is env-top-level handles only.** Everything a DUT env,
+  test, or sequence may depend on is a direct member of the VIP env — the
+  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
+  `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
+  letting consumers reach through its children.
 
 ## Functional Coverage Hook
 

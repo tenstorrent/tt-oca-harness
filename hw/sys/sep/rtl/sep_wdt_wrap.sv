@@ -22,7 +22,11 @@ module sep_wdt_wrap
     output logic                         wdt_timer_rst_req_o,
     // Aggregated fatal alert (alert pulse | integ_fail of all channels)
     output logic                         wdt_alert_o,
-    input  logic                         wdt_debug_sleep_mode_i
+    input  logic                         wdt_debug_sleep_mode_i,
+
+    // Register bridge fault (sticky, held until bus_err_clr_i)
+    output logic                         bus_err_o,
+    input  logic                         bus_err_clr_i
 );
 
     localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;
@@ -49,7 +53,7 @@ module sep_wdt_wrap
     sep_pkg::sep_32_32_6_12_axi_req_t  sep_wdt_tlul_axi_req_offset;
 
     axi_dw_converter #(
-        .AxiMaxReads         (16), // TODO: Add max reads parameter to sep_pkg
+        .AxiMaxReads         (16),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
         .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -125,7 +129,8 @@ module sep_wdt_wrap
         .axi_lite_rsp_o  (axi_lite_resp),
         .tl_o            (tl_d_i),
         .tl_i            (tl_d_o),
-        .err_o           (/* UNUSED */)
+        .err_o           (bus_err_o),
+        .err_clr_i       (bus_err_clr_i)
     );
 
     aon_timer #(
@@ -147,7 +152,7 @@ module sep_wdt_wrap
         .racl_policies_i           ('0),
         .racl_error_o              (/* UNUSED */),
 
-        .lc_escalate_en_i          (lc_ctrl_pkg::Off), // TODO: Add lifecycle controller support @nicole
+        .lc_escalate_en_i          (lc_ctrl_pkg::Off),
         .intr_wkup_timer_expired_o (/* UNUSED */),
         .intr_wdog_timer_bark_o    (intr_wdog_timer_bark_o),
         .nmi_wdog_timer_bark_o     (/* UNUSED */),

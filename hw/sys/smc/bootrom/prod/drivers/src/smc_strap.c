@@ -144,12 +144,12 @@ static inline void smc_strap_post_code_update(void) {
         /* Report boot modes detected */
         smc_status_report(SMC_STATUS_TYPE_STATUS,
                           SMC_STATUS_PRIMARY_MODE); // report primary mode or secondary mode though
-                                                    // it doesnt affect the SMC ROM behavior
+                                                    // it doesn't affect the SMC ROM behavior
     } else {
         smc_post_code_mark_secondary();
         smc_status_report(
             SMC_STATUS_TYPE_STATUS,
-            SMC_STATUS_SECONDARY_MODE); // report primary mode or secondary mode though it doesnt
+            SMC_STATUS_SECONDARY_MODE); // report primary mode or secondary mode though it doesn't
                                         // affect the SMC ROM behavior
     }
 

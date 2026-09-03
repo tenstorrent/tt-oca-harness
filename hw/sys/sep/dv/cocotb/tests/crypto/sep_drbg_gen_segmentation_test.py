@@ -30,7 +30,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_bringup_seq import SepEntropyCfg
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
@@ -48,15 +47,17 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
 
-        # KM must be out of reset to sink the genbits, same as the smoke test.
-        await self.start_seq(sep_km_release_seq("km_release"))
-
         # The delta from the smoke test. glen feeds GENERATE_CMD and the golden;
         # program_boot_generate also writes BOOT_GEN_CMD, which is the command
         # BOOT_REQ actually issues (reset glen=4095). SepEntropyCfg is frozen.
         cfg = SepEntropyCfg(glen=SEGMENTATION_GLEN, program_boot_generate=True)
 
         await self.bring_up_entropy(cfg=cfg, strict=True)
+
+        # Release KM after the shared TRNG reset, matching the smoke test.
+        # SepEsrcConfigSeq preserves the reset register's hardware default while
+        # pulsing the TRNG bit, and that default keeps KM held.
+        await self.start_seq(sep_km_release_seq("km_release"))
 
         # Concurrent FIFO_RDATA drain after the last bring-up write, matching the
         # e2e smoke. Without it the entropy FIFO fills, the chain stalls, and only
@@ -66,10 +67,12 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         self.start_fifo_drain()
 
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        assert await self.wait_km_entropy_handshake(), (
-            "KM never handshook a genbits word"
-        )
+        assert await self.wait_km_entropy_handshake(), "KM never handshook a genbits word"
         assert await self.wait_km_consumed_word(), "KM never consumed a genbits word"
+        # The non-zero poll above only says the KM CPU reached its store. Compare
+        # the stored word against the word the DUT delivered on the AXIS endpoint,
+        # so the SRAM landing is a value check and not a liveness marker.
+        self.check_km_sram_word_matches_consumed()
 
         # Keep draining until several Generate commands have had time to finish.
         # At glen=4 the usual block budget spans multiple commands, so this is
@@ -77,8 +80,10 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         sb = self.drbg_sb
         target_blocks = SEGMENTATION_GLEN * 5
         for _ in range(400):
-            if (sb.results["CHK4_genbits"].dut_items >= target_blocks
-                    and sum(sb.completed_generate_lengths().values()) >= 2):
+            if (
+                sb.results["CHK4_genbits"].dut_items >= target_blocks
+                and sum(sb.completed_generate_lengths().values()) >= 2
+            ):
                 break
             await ClockCycles(cocotb.top.clk_i, 200)
 
@@ -105,7 +110,9 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         self.logger.info(
             "CHK4-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "
             "%d blocks; trailing CTR_DRBG Update exercised %d time(s)",
-            completed, SEGMENTATION_GLEN, completed,
+            completed,
+            SEGMENTATION_GLEN,
+            completed,
         )
 
         # Bit-exactness across those Update boundaries is the actual regression

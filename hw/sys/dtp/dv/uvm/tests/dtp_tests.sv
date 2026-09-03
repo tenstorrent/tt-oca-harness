@@ -1,176 +1,202 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP SV-UVM tests (`<DUT>_tests.sv` convention). Tests are non-reusable by
-// definition, so they are NOT packaged: this file is `include`d in module
-// scope by tb/tb_top.sv under `ifdef DTP_UVM_TB and compiles as part of the
-// top. Test classes stay thin — scenario content lives in dtp_seq_lib_pkg
-// sequences; shared infrastructure lives in dtp_env_pkg.
+// DTP SV-UVM test include manifest. Tests are non-reusable by definition, so
+// they are NOT packaged: this file is `include`d in module scope by
+// tb/tb_top.sv under `ifdef UVM and compiles as part of the top. One test
+// class per file, named exactly like its cocotb twin (file = class =
+// scenario name); this manifest only lists them so tb_top keeps a single
+// stable hook as tests grow. Test classes stay thin — scenario content lives
+// in dtp_seq_lib_pkg sequences; shared infrastructure lives in dtp_env_pkg.
 //
-// Testlist mapping (testlists/uvm.toml): logical item names are framework-
-// neutral VPLAN scenario names; `module` carries the class name here and
+// Testlist mapping: logical item names are framework-neutral VPLAN scenario
+// names; the `module` binding map's `uvm` entry equals the scenario name and
 // drives +UVM_TESTNAME.
 
 `include "uvm_macros.svh"
 import dtp_env_pkg::*;
 import dtp_seq_lib_pkg::*;
+// Shared AXI VIP types referenced by test-class signatures (e.g. the
+// robustness tests' add_required_axi_ids(ocah_axi_config) hook).
+import ocah_axi_uvm_pkg::*;
 
-// ---------------------------------------------------------------------
-// Base test: environment construction and the pass-banner contract.
-// "UVM TEST PASSED" is emitted only from report_phase and only when the
-// global UVM_ERROR/UVM_FATAL counts are both zero (uvm-log parser contract);
-// never from sequence or scoreboard code mid-run.
-// ---------------------------------------------------------------------
-class dtp_uvm_base_test extends uvm_test;
-    `uvm_component_utils(dtp_uvm_base_test)
+`include "dtp_base_test.svh"
+`include "dtp_sanity_test.svh"
 
-    dtp_uvm_env m_env;
+// Basic-JTAG instruction-family scenarios.
+`include "dtp_jtag_bypass_test.svh"
+`include "dtp_jtag_inv_bypass_test.svh"
+`include "dtp_jtag_zero_length_bypass_test.svh"
+`include "dtp_jtag_idcode_test.svh"
+`include "dtp_jtag_undef_instr_test.svh"
+`include "dtp_jtag_runbist_test.svh"
+`include "dtp_jtag_sample_preload_test.svh"
+`include "dtp_jtag_extest_test.svh"
+`include "dtp_jtag_intest_test.svh"
+`include "dtp_jtag_clamp_test.svh"
+`include "dtp_jtag_clamp_hold_test.svh"
+`include "dtp_jtag_clamp_release_test.svh"
+`include "dtp_jtag_highz_test.svh"
+`include "dtp_jtag_ac_extest_train_test.svh"
+`include "dtp_jtag_ac_extest_pulse_test.svh"
+`include "dtp_jtag_trst_test.svh"
+`include "dtp_jtag_trst_por_independence_test.svh"
+`include "dtp_jtag_tlr_reset_test.svh"
 
-    function new(string name = "dtp_uvm_base_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+// JTAG2AXI single-op scenarios.
+`include "dtp_jtag2axi_smc_otp_axi_single_write_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_single_write_read_test.svh"
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        m_env = dtp_uvm_env::type_id::create("m_env", this);
-    endfunction
+// SMC-fabric JTAG2AXI scenarios.
+`include "dtp_jtag2axi_smc_axi_single_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_single_write_data_verify_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_no_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test.svh"
+`include "dtp_jtag2axi_smc_axi_random_ops_test.svh"
+`include "dtp_jtag2axi_smc_axi_write_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test.svh"
+`include "dtp_jtag2axi_smc_axi_read_random_ops_test.svh"
+`include "dtp_jtag2axi_smc_axi_read_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_single_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_single_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_write_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_read_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test.svh"
+`include "dtp_jtag2axi_smc_axi_error_security_gating_test.svh"
 
-    function void report_phase(uvm_phase phase);
-        uvm_report_server svr = uvm_report_server::get_server();
-        super.report_phase(phase);
-        if (svr.get_severity_count(UVM_FATAL) == 0 && svr.get_severity_count(UVM_ERROR) == 0)
-            `uvm_info(get_type_name(), "UVM TEST PASSED", UVM_NONE)
-        else
-            `uvm_info(get_type_name(), "UVM TEST FAILED", UVM_NONE)
-    endfunction
+// SMC OTP JTAG2AXI scenarios.
+`include "dtp_jtag2axi_smc_otp_axi_single_write_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_incr_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_random_ops_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_write_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_read_random_ops_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_read_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_single_write_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_single_read_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_error_security_gating_test.svh"
 
-endclass : dtp_uvm_base_test
+// SEP OTP JTAG2AXI scenarios.
+`include "dtp_jtag2axi_sep_otp_axi_single_write_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_series_write_incr_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_random_ops_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_write_security_gating_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_single_write_read_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_read_random_ops_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_read_security_gating_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_single_write_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_single_read_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test.svh"
+`include "dtp_jtag2axi_sep_otp_axi_error_security_gating_test.svh"
 
-// ---------------------------------------------------------------------
-// dtp_uvm_sanity_test — VPLAN 0.1 (`--items dtp_sanity_test`): runs
-// dtp_sanity_seq on the shared ocah_jtag_vip agent's sequencer, then
-// asserts full FSM state/edge closure via the env checker (this scenario's
-// closure obligation — the per-cycle legality check is always on). Also
-// arms the JTAG TAP-contract named evidence (issue #3296): required CHK-*
-// IDs finalize through env.m_jtag_checker in check_phase.
-// ---------------------------------------------------------------------
-class dtp_uvm_sanity_test extends dtp_uvm_base_test;
-    `uvm_component_utils(dtp_uvm_sanity_test)
+// Cross-bridge JTAG2AXI robustness scenarios (all three bridges).
+`include "dtp_jtag2axi_robustness_base_test.svh"
+`include "dtp_jtag2axi_backpressure_aw_before_w_test.svh"
+`include "dtp_jtag2axi_backpressure_long_stall_test.svh"
+`include "dtp_jtag2axi_backpressure_abort_at_data_w_test.svh"
+`include "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test.svh"
+`include "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test.svh"
+`include "dtp_jtag2axi_decode_error_decerr_write_test.svh"
+`include "dtp_jtag2axi_decode_error_decerr_read_test.svh"
+`include "dtp_jtag2axi_decode_error_mixed_test.svh"
+`include "dtp_jtag2axi_series_corner_all_bridges_test.svh"
 
-    function new(string name = "dtp_uvm_sanity_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+// Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
+`include "dtp_jtag_tmp_status_register_smoke_test.svh"
+`include "dtp_jtag_tmp_status_chrst_n_in_persistence_test.svh"
+`include "dtp_jtag_tmp_status_bypass_escape_test.svh"
+`include "dtp_jtag_ic_reset_test.svh"
+`include "dtp_dbg_jtag_caps_test.svh"
+`include "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test.svh"
+`include "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test.svh"
+`include "dtp_dbg_ctrl_clk_stop_random_clock_stop_test.svh"
+`include "dtp_dbg_ctrl_boot_stall_test.svh"
+`include "dtp_dbg_smc_jtag2axi_caps_test.svh"
+`include "dtp_dbg_smc_otp_jtag2axi_caps_test.svh"
+`include "dtp_dbg_sep_otp_jtag2axi_caps_test.svh"
 
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        m_env.jtag_require_checks = 1'b1;
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-STATE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-RESET-TLR");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-TLR-TMS5");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-GOTO");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-TLR-IDCODE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-RAW");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-STABLE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-MARKER");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-BYPASS-LATENCY");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-SCAN-IR-LEN");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-SCAN-DR-LEN");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-NONVAC");
-    endfunction
+// Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
+`include "dtp_ijtag_sib_all_off_test.svh"
+`include "dtp_ijtag_sib_all_on_test.svh"
+`include "dtp_ijtag_sib_random_test.svh"
+`include "dtp_ijtag_dft_test.svh"
+`include "dtp_ijtag_dfd_test.svh"
+`include "dtp_3dcr_stap_sel_ds_test.svh"
+`include "dtp_3dcr_stap_sel_smc_test.svh"
+`include "dtp_3dcr_stap_sel_sep_test.svh"
+`include "dtp_3dcr_stap_sel_extra_test.svh"
+`include "dtp_ext_stap_scan_test.svh"
+`include "dtp_3dcr_config_hold_test.svh"
+`include "dtp_3dcr_tms_hold_test.svh"
+`include "dtp_scan_dbg_disable_matrix_test.svh"
+`include "dtp_jtag2axi_dbg_disable_matrix_test.svh"
 
-    task run_phase(uvm_phase phase);
-        dtp_sanity_seq seq;
-        phase.raise_objection(this, "dtp_uvm_sanity_test running");
-        seq = dtp_sanity_seq::type_id::create("seq");
-        seq.tb_vif       = m_env.tb_vif;
-        seq.evidence     = m_env.m_jtag_checker;
-        seq.scan_builder = m_env.m_scan_builder;
-        seq.start(m_env.m_jtag_env.m_sequencer);
-        m_env.m_fsm_checker.check_fsm_closure();
-        phase.drop_objection(this, "dtp_uvm_sanity_test done");
-    endtask
+// Cross-trigger scenarios (XTRIG CSR / CTP protocols / CTM routing).
+`include "dtp_xtrig_base_test.svh"
+`include "dtp_xtrig_reg_stall_test.svh"
+`include "dtp_xtrig_rand_deterministic_csr_sweep_test.svh"
+`include "dtp_ctm_rand_deterministic_csr_sweep_test.svh"
+`include "dtp_ctm_rand_all_source_select_coverage_test.svh"
+`include "dtp_xtrig_axi_channel_skew_test.svh"
+`include "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test.svh"
+`include "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test.svh"
+`include "dtp_xtrig_wire_or_test.svh"
+`include "dtp_xtrig_p2p_test.svh"
+`include "dtp_xtrig_reset_test.svh"
+`include "dtp_xtrig_rand_test.svh"
+`include "dtp_xtrig_rand_deterministic_dst_port_sweep_test.svh"
+`include "dtp_ctm_wire_or_cla_to_ctp_test.svh"
+`include "dtp_ctm_wire_or_ctp_to_cla_test.svh"
+`include "dtp_ctm_wire_or_cla_to_cla_test.svh"
+`include "dtp_ctm_wire_or_ctp_to_ctp_test.svh"
+`include "dtp_ctm_p2p_cla_to_ctp_test.svh"
+`include "dtp_ctm_p2p_ctp_to_cla_test.svh"
+`include "dtp_ctm_p2p_cla_to_cla_test.svh"
+`include "dtp_ctm_p2p_ctp_to_ctp_test.svh"
+`include "dtp_ctm_reset_wire_or_mode_test.svh"
+`include "dtp_ctm_reset_p2p_mode_test.svh"
+`include "dtp_ctm_reset_all_modes_test.svh"
+`include "dtp_ctm_rand_all_scenarios_test.svh"
+`include "dtp_ctm_rand_wire_or_only_test.svh"
+`include "dtp_ctm_rand_p2p_only_test.svh"
+`include "dtp_ctm_rand_cla_to_ctp_test.svh"
+`include "dtp_ctm_rand_ctp_to_cla_test.svh"
 
-endclass : dtp_uvm_sanity_test
-
-// ---------------------------------------------------------------------
-// dtp_uvm_jtag2axi_smc_otp_test — issue #3295 (`--items
-// dtp_jtag2axi_smc_otp_axi_single_write_read_test`): JTAG2AXI single-op
-// traffic on the SMC OTP AXI-Lite port through the shared ocah_axi_vip
-// passive env — randomized write/readback, armed SLVERR/DECERR classified
-// as EXPECTED, security-gating no-activity, and required CHK-* evidence.
-// ---------------------------------------------------------------------
-class dtp_uvm_jtag2axi_smc_otp_test extends dtp_uvm_base_test;
-    `uvm_component_utils(dtp_uvm_jtag2axi_smc_otp_test)
-
-    function new(string name = "dtp_uvm_jtag2axi_smc_otp_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
-
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        m_env.m_smc_otp_axi_cfg.require_checks = 1'b1;
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-RESP");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-RDATA");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-ERR-INJ");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-STRB");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-WADDR");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-WDATA");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-RADDR");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AW");
-        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AR");
-    endfunction
-
-    task run_phase(uvm_phase phase);
-        dtp_jtag2axi_single_op_seq seq;
-        phase.raise_objection(this, "dtp_uvm_jtag2axi_smc_otp_test running");
-        seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
-        seq.tb_vif        = m_env.tb_vif;
-        seq.target_name   = "smc_otp";
-        seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;
-        seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_scoreboard.m_checker;
-        seq.otp_slave_seq = m_env.m_smc_otp_slave_agent.seq;
-        seq.start(m_env.m_jtag_env.m_sequencer);
-        phase.drop_objection(this, "dtp_uvm_jtag2axi_smc_otp_test done");
-    endtask
-
-endclass : dtp_uvm_jtag2axi_smc_otp_test
-
-// ---------------------------------------------------------------------
-// dtp_uvm_jtag2axi_smc_axi_test — issue #3295 Phase B: the same single-op
-// scenario on the SMC fabric AXI4 manager port (132-bit wide TDR scans,
-// 64-bit data, ID-tagged bursts observed by the shared monitor).
-// ---------------------------------------------------------------------
-class dtp_uvm_jtag2axi_smc_axi_test extends dtp_uvm_base_test;
-    `uvm_component_utils(dtp_uvm_jtag2axi_smc_axi_test)
-
-    function new(string name = "dtp_uvm_jtag2axi_smc_axi_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
-
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        m_env.m_smc_axi_cfg.require_checks = 1'b1;
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RESP");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RDATA");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-ERR-INJ");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-STRB");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-WADDR");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-WDATA");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RADDR");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AW");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AR");
-    endfunction
-
-    task run_phase(uvm_phase phase);
-        dtp_jtag2axi_single_op_seq seq;
-        phase.raise_objection(this, "dtp_uvm_jtag2axi_smc_axi_test running");
-        seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
-        seq.tb_vif       = m_env.tb_vif;
-        seq.target_name  = "smc_axi";
-        seq.axi_cfg      = m_env.m_smc_axi_cfg;
-        seq.axi_evidence = m_env.m_smc_axi_env.m_scoreboard.m_checker;
-        seq.start(m_env.m_jtag_env.m_sequencer);
-        phase.drop_objection(this, "dtp_uvm_jtag2axi_smc_axi_test done");
-    endtask
-
-endclass : dtp_uvm_jtag2axi_smc_axi_test
+// Adopter overlay hook: an external (non-OSS) build may append vendor-
+// specific test classes -- e.g. a commercial-VIP overlay -- by defining
+// DTP_OVERLAY_TESTS to the quoted name of an include file on its own
+// include path. Never defined by the OSS flists.
+`ifdef DTP_OVERLAY_TESTS
+`include `DTP_OVERLAY_TESTS
+`endif

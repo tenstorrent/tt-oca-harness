@@ -24,9 +24,8 @@ state, so no entropy/fuse bring-up is needed.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ReadOnly, RisingEdge
 import pyuvm
-
+from cocotb.triggers import ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_irq_aggregator_seq import SepIrqIp
 from seq_lib.sep_irq_fanin_seq import (
@@ -96,7 +95,9 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             f"expected only bit[{base.agg_idx}]"
         )
         self.logger.info(
-            "CHK-NONVAC PASS: single source %s lights exactly bit[%d]", base.name, base.agg_idx,
+            "CHK-NONVAC PASS: single source %s lights exactly bit[%d]",
+            base.name,
+            base.agg_idx,
         )
         await self._drive(base, on=False)
         assert (await self._poll_region(0))[0], "baseline source did not clear"
@@ -118,25 +119,26 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         # independent -- it addresses the IP's own register rather than the aggregate --
         # so it is what carries per-source evidence.
         for src in sources:
-            assert await self.irq.read_state_bit(src) == 1, (
-                f"{src.name}: INTR_STATE bit not set"
-            )
+            assert await self.irq.read_state_bit(src) == 1, f"{src.name}: INTR_STATE bit not set"
         self.logger.info(
             "CHK-FANIN-MAP PASS: %d sources asserted together -> exactly bits %s "
             "(vec[8:31]=0x%08x)",
-            len(sources), [s.agg_idx for s in sources], vec & REGION_MASK,
+            len(sources),
+            [s.agg_idx for s in sources],
+            vec & REGION_MASK,
         )
 
-        # The anti-alias property is proven by the EXACT-equality poll above, not by a
-        # separate check. A former CHK-ANTI-ALIAS assert required
-        # `(vec & REGION_MASK) & ~want == 0`; since the poll only returns when
-        # `vec & REGION_MASK == want & REGION_MASK`, and want & REGION_MASK is a subset
-        # of want, that expression is identically zero -- it could not fail for any DUT
-        # behaviour. A real aggregator smear lights a neighbour bit, which breaks the
-        # poll's equality and times it out. That is where the proof actually lives.
+        # The anti-alias property is proven by the EXACT-equality poll above, not
+        # by a separate mask computation. `(vec & REGION_MASK) & ~want == 0` is
+        # identically zero once the poll has returned with
+        # `vec & REGION_MASK == want & REGION_MASK`, so it cannot fail. A real
+        # aggregator smear lights a neighbour bit, which breaks the poll's
+        # equality and times it out — that is where the proof lives.
         self.logger.info(
             "CHK-ANTI-ALIAS PASS: no non-driven bit in [%d:%d] is set (mask=0x%08x)",
-            REGION_LO, REGION_HI, REGION_MASK,
+            REGION_LO,
+            REGION_HI,
+            REGION_MASK,
         )
 
         # CHK-CLEAR: W1C every driven source's INTR_STATE -> the region returns to 0

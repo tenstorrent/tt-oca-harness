@@ -3,16 +3,14 @@
 """SMC OSS zeroer datapath payload test.
 
 DV-CARD:          SMC_006   ANCHOR: smc_zeroer_dma_timeout_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 8434b5884c73c281ef8ebefa9a3a1aa867a172be603a87301d97408f42460538
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_zeroer_dma_timeout_test_seq import smc_zeroer_dma_timeout_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

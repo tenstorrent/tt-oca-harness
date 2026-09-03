@@ -60,8 +60,9 @@ args = [
 # single image proves allowed-MMR coexistence AND the LC-gated shadow deny
 # (0xbadcab1e) with no backdoor force. cpu run mode + REAL fuse sense (NO
 # +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
-# CHK-JTAG-MMR-DENY currently FAILS (RTL OKAY vs hw/sys/sep/doc/periphs.adoc DECERR on a
-# non-token MMR in PROD). Expected red, not an XFAIL.
+# PROD/RMA_SIP JTAG may reach the MMR token block (TOKEN_I / TOKEN_EOP /
+# MATCH) and must DECERR on shadow and the program/read interface.
+# After sense-done both OTP JTAG2AXIL dbg_disable bits read 0 (LCC ungated).
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"
@@ -69,3 +70,80 @@ seed = 1
 timeout_sec = 3600
 tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
+
+[[tests]]
+# eFuse program x write-lock on a legal spare field (never LC_STATE). RAND-REP:
+# unlocked program + write-lock reject every seed; spare index and bit offsets
+# from the run seed. Real fuse sense. Clear-after-program.
+name = "sep_efuse_program_lock_matrix_test"
+module = "efuse.sep_efuse_program_lock_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset. RAND-REP.
+# feat_ctrl vs spec golden and one live inbound-filter gate per cell. Real fuse
+# sense. The stitch test stays the LC->feat_ctrl e2e.
+name = "sep_lcc_demote_feat_ctrl_matrix_test"
+module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["lcc", "demote", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# eFuse set-only shadow OR-merge on version / revoke / required-signer
+# fields (never LC_STATE). RANDCFG: every seed walks all five legal
+# set-only fields; word index and bit patterns come from the run seed.
+# Real fuse sense. Program x lock stays a different mechanism.
+name = "sep_efuse_set_only_monotonicity_test"
+module = "efuse.sep_efuse_set_only_monotonicity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "set_only", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEC_DIS token-match override. RAND-NONE. Real fuse sense. tb_top binds
+# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. Zero matches and
+# opens FEAT_CTRL; token=1 mismatches and restores fail-closed PROD.
+# Does not force sec_dis.
+name = "sep_sec_dis_override_test"
+module = "efuse.sep_sec_dis_override_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# RMA token match vs mismatch -> LC update, then the comparator redundancy
+# fault path (collapse / disagree / common-mode / sticky IRQ). RANDCFG: token
+# values from the run seed; SIP and CHIPLET both walk match and mismatch.
+# Real fuse sense. Does not stretch the stitch e2e.
+name = "sep_efuse_rma_token_rand_test"
+module = "efuse.sep_efuse_rma_token_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
+# write-lock and read-lock every seed. RANDCFG: which SPARE0..7 fields carry
+# write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.
+# Shadow aperture, not OTP program. Pulse-only combinational IRQ. no_cpu.
+name = "sep_locked_field_access_irq_path_test"
+module = "efuse.sep_locked_field_access_irq_path_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "interrupt", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"

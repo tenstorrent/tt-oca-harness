@@ -16,10 +16,10 @@
 |Primary simulator |Verilator
 |Reference SPEC |`DTP_SPEC.adoc`
 |Reference CSR |`DTP_CSR.adoc`
-|Open-source scenario-expanded test cases |149
+|Open-source scenario-expanded test cases |151
 |===
 
-This standalone VPLAN defines 149 public scenario-level test cases. The
+This standalone VPLAN defines 151 public scenario-level test cases. The
 implementation uses unified OCAH BFM wrappers for standard protocols and
 OCAH-local DTP BFMs for DTP-specific protocols.
 
@@ -132,6 +132,7 @@ selectable in the public testlists.
 |`dtp_jtag2axi_smc_axi_single_write_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric single write
 |`dtp_jtag2axi_smc_axi_single_write_data_verify_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric single write with read-back data verification
 |`dtp_jtag2axi_smc_axi_series_write_incr_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric incrementing series write
+|`dtp_jtag2axi_smc_axi_series_write_incr_narrow_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric 32-bit incrementing series write at beat offset +4
 |`dtp_jtag2axi_smc_axi_series_write_no_incr_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric fixed-address series write
 |`dtp_jtag2axi_smc_axi_series_write_incr_with_error_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric series write with status
 |`dtp_jtag2axi_smc_axi_random_ops_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric randomized write operations
@@ -159,6 +160,7 @@ selectable in the public testlists.
 |Test Case |Source Module |VIP / Model |Description
 |`dtp_jtag2axi_smc_axi_single_write_read_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric write-read path
 |`dtp_jtag2axi_smc_axi_series_write_read_incr_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric incrementing series write-read
+|`dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric 32-bit incrementing series write-read at beat offset +4
 |`dtp_jtag2axi_smc_axi_series_write_read_no_incr_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric fixed-address series write-read
 |`dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric write-read with error status
 |`dtp_jtag2axi_smc_axi_read_random_ops_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric randomized reads
@@ -1702,6 +1704,49 @@ b. Confirm no writes landed outside the addressed range.
 
 '''''
 
+[[sec-22a-dtp_jtag2axi_smc_axi_series_write_incr_narrow_test]]
+===== 2.2a `dtp_jtag2axi_smc_axi_series_write_incr_narrow_test`
+
+*Source Module*: `dtp_jtag2axi_smc_axi_wr_test`
+
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
+
+*Objective*: SMC fabric 32-bit incrementing series write at beat offset +4
+
+*Test Coverage*:
+
+* A SERIES_DATA_INCR write stream with `size=2` (32-bit) whose base address is beat-aligned plus four bytes
+* AXI WSTRB and WDATA placed on the high 32-bit lanes of the 64-bit SMC fabric beat (`WSTRB=0xF0`, data in `[63:32]`)
+* Distinct 32-bit payload per address landing at `base+i*4` in the `OcahAxiSlaveAgent` subordinate (no low-lane aliasing)
+* Address advance of four bytes per beat, consistent with `AxSIZE=2`
+
+*Test Procedure*:
+
+[arabic]
+. Establish the series parameters:
+a. Choose a beat-aligned base, add four, set stride to four bytes, and choose a beat count N.
+b. Build a per-beat 32-bit data pattern and mirror each expected write in a reference memory at the size-aligned address.
+. Issue the incrementing write series:
+a. Load SMC_AXI_SERIES_CTRL with `op=Write`, `size=2`, and the +4 base; Update-DR.
+b. For each beat i in 0..N-1: shift the i-th 32-bit payload through SERIES_DATA_INCR; Update-DR.
+c. After each Update-DR, wait for the corresponding AXI write handshake and confirm the responder holds the payload at `base+i*4`.
+. Verify SERIES_CTRL capture:
+a. Confirm status is OKAY and the captured address equals `base+N*4`.
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker Type |Description
+|`smc_axi_wr_incr_narrow_status_chk` |Every beat returns OKAY after Busy
+|`smc_axi_wr_incr_narrow_lane_chk` |Each write uses the AXI byte lanes selected by the current address (`WSTRB=0xF0` at +4)
+|`smc_axi_wr_incr_narrow_data_chk` |Each size-aligned address holds its distinct 32-bit payload
+|===
+
+*Pass Criteria*: All N 32-bit incrementing writes complete with OKAY status, land on the address-selected AXI lanes, and each target address holds its expected data, with zero scoreboard/reference-model errors.
+
+'''''
+
 [[sec-23-dtp_jtag2axi_smc_axi_series_write_no_incr_test]]
 ===== 2.3 `dtp_jtag2axi_smc_axi_series_write_no_incr_test`
 
@@ -1714,7 +1759,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge all targeting one fixed address (no-incr mode)
-* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
+* Each beat reuses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2012,7 +2057,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4-Lite writes through the SMC OTP bridge all targeting one fixed 32-bit address (no-incr mode)
-* Each beat re-uses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
+* Each beat reuses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2310,7 +2355,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4-Lite writes through the SEP OTP bridge all targeting one fixed 32-bit address (no-incr mode)
-* Each beat re-uses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
+* Each beat reuses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2558,6 +2603,44 @@ b. Poll until not Busy; capture returned data and status.
 |===
 
 *Pass Criteria*: Every incrementing-address write and read completes OKAY and all per-beat comparisons match the reference memory, with zero scoreboard/reference-model errors.
+
+'''''
+
+[[sec-32a-dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test]]
+===== 3.2a `dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test`
+
+*Source Module*: `dtp_jtag2axi_smc_axi_rd_test`
+
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
+
+*Objective*: SMC fabric 32-bit incrementing series write-read at beat offset +4
+
+*Test Coverage*:
+
+* A SERIES_DATA_INCR write then read stream with `size=2` whose base is beat-aligned plus four bytes
+* Write-side AXI lane placement of the 32-bit logical payload onto the high half of the 64-bit beat
+* Capture-DR returning that same logical payload extracted from the address-selected AXI RDATA lanes
+* Per-beat memory compare at `base+i*4` against the written 32-bit pattern
+
+*Test Procedure*:
+
+[arabic]
+. Choose a beat-aligned base, add four, set stride to four bytes, and choose a beat count N.
+. Write the series through SERIES_CTRL(WRITE) + SERIES_DATA_INCR and confirm each `OcahAxiSlaveAgent` location at `base+i*4` holds the 32-bit payload.
+. Read the series back in the same order through SERIES_CTRL(READ) + SERIES_DATA_INCR; Capture-DR returns the logical 32-bit payload.
+. Compare every returned beat with the written pattern and the responder memory.
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker Type |Description
+|`smc_axi_series_incr_narrow_status_chk` |Every op in the series reaches OKAY after Busy clears
+|`smc_axi_series_incr_narrow_rdata_chk` |Each Capture-DR beat matches the written 32-bit payload
+|`smc_axi_series_incr_narrow_mem_chk` |`OcahAxiSlaveAgent` content at each size-aligned address matches the issued write
+|===
+
+*Pass Criteria*: Every 32-bit incrementing write and read completes OKAY, Capture-DR returns the logical payload from the address-selected lanes, and all per-beat comparisons match, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -6526,15 +6609,14 @@ temporary testlist aliases.
 |===
 |Group |Tests |Purpose
 |`smoke` |`dtp_sanity_test`, `dtp_jtag_idcode_test` |Fast TAP bring-up gate
-|`functional` |Smoke/JTAG2AXI tests from the public functional set |Legacy public functional regression
+|`functional` |Smoke plus the JTAG2AXI `single_write` and `single_write_read` scenarios |Fast functional regression
 |`basic_jtag` |All 19 Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, and TMP smoke coverage
 |`debug_tdr` |12 TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS tests |Debug TDR coverage
-|`all` |Smoke, Basic JTAG, JTAG2AXI single-op, and debug TDR tests |Aggregate public DTP regression
+|`all` |All 149 scenario-expanded tests (`expected_count`-pinned in `all.toml`) |Full OCAH DTP regression; the nightly CI tier runs this group
 |`jtag2axi` |All JTAG2AXI write/read/error/robustness scenarios |AXI/AXI-Lite bridge coverage
 |`scan` |STAP, 3DCR, and iJTAG scenarios |IEEE 1838 and IEEE 1687 coverage
 |`dbg_disable` |The two debug-disable matrix tests plus every resource-specific directed gating test |Per-field `dbg_disable_t` closure (22-cell coverage contract)
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
-|`nightly` |All 149 scenario-expanded tests |Full OCAH DTP regression
 |===
 
 === Known Limitations
@@ -6542,8 +6624,8 @@ temporary testlist aliases.
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|CTP/CTM generated CSR blocks are stubbed for Verilator |XTRIG CSR scenarios require non-stub CSR behavior |Replace stubs with Verilator-compatible CSR RTL or run these tests on a commercial simulator
-|iJTAG and OCH cross-trigger protocols do not have established public cocotb VIP |No public protocol VIP identified |Implement OCAH-local DTP BFMs in `env/`
+|STAP/iJTAG scan chains are looped back (`scan_in <- scan_out`) in `tb_top` |Scan scenarios validate the DTP-side path plumbing, not an external iJTAG network |Attach an iJTAG network model behind the STAP when integration scenarios need one
+|The SV-UVM harness ties off the XTRIG CSR port, `xtrig_clk_stop_req`, and SEP OTP AXI-Lite |XTRIG and SEP-OTP scenarios run in the cocotb framework only |Extend the UVM harness as the SV-UVM flow grows beyond smoke
 |The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus |The `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
 |SV covergroups are not supported by Verilator |Functional coverage must be Python-side or commercial-sim |See `DTP_FCOV.adoc`
 |===

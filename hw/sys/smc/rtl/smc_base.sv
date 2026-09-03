@@ -6,7 +6,6 @@
 module smc_base
 #(
   parameter bit                               NO_ADDR_REMAP           = 1'b1,
-  parameter bit [smc_pkg::AXI_ADDR_WIDTH-1:0] LOCAL_ALIAS_REGION_SIZE = 56'h8_0000,
 
   parameter smc_pkg::smc_cpu_config_e         SMC_CPU_CONFIG          = smc_pkg::SMC_1CORE,
 
@@ -87,7 +86,7 @@ module smc_base
     input  logic [9:0]                                                         efuse_debug_i,
 
     // DFD signals
-		output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]		           cla_ext_action_custom_o,
+		output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]		           cla_ext_action_custom_o,
 
     output smc_pkg::xtrigger_t                                                 xtrigger_ss_o,
     input  wire smc_pkg::xtrigger_t                                            xtrigger_ss_i,
@@ -96,8 +95,8 @@ module smc_base
     input  wire logic                                                          tdr_dbg_ctrl_clock_stop_en_i,
     output      logic                                                          tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-    output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req_o,
-    input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
+    output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req_o,
+    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
 
     // Test mode
     input  logic                                                               test_en_i,
@@ -146,8 +145,6 @@ module smc_base
   smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req;
   smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp;
-  smc_pkg::smc_axil_32_64_req_t  axil_dfd_ctrl_req;
-  smc_pkg::smc_axil_32_64_resp_t axil_dfd_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req;
   smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp;
 
@@ -381,6 +378,7 @@ module smc_base
 
     .global_base_addr_i                     (smc_global_base_o),
     .local_base_addr_i                      (smc_local_base),
+    .region_size_i                          (smc_region_size_o),
 
     // Input Fabric interfaces (placeholder connections)
     .axi_in_jtag_req_i                      (jtag_axi_in_req_i),
@@ -597,12 +595,26 @@ module smc_base
   // Data Accelerator Wrap //
   ///////////////////////////
 
+  // Assertions to protect against truncation on casts
+  `OCAH_OT_ASSERT_INIT(DmaCtrlBaseFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+  `OCAH_OT_ASSERT_INIT(DmaCtrlSizeFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+  `OCAH_OT_ASSERT_INIT(ZeroerCtrlBaseFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+  `OCAH_OT_ASSERT_INIT(ZeroerCtrlSizeFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+
   // Contains DMA and Zeroer
   smc_data_accelerator_wrap #(
-    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
-    .DMA_CTRL_REG_MAP_SIZE              (smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE),
-    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
-    .ZEROER_CTRL_REG_MAP_SIZE           (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)
+    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR)),
+    .DMA_CTRL_REG_MAP_SIZE              (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)),
+    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR)),
+    .ZEROER_CTRL_REG_MAP_SIZE           (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))
   ) u_smc_data_accelerator_wrap (
     .clk_i                              (clk_smc_i),
     .rst_ni                             (rst_primary_smc_clk_ni),
@@ -637,8 +649,10 @@ module smc_base
   // One non-intrusive detector per independent master AXI into the fabric (CPU
   // is excluded -- covered by the watchdog). Snoop is local; config comes from
   // the cpu_ctrl register block (u_internal_regs). The three irqs are OR'd into
-  // a single fault line routed out of the SMC to the safety island. clk_smc_i
-  // domain, AXI4 so r_last comes from the read response.
+  // a single fault line on axi_hang_irq_o, which smc.sv feeds back into
+  // smc_peripherals to land on peripheral_interrupts[31] -> PLIC source 288.
+  // Software reads the per-detector HANG_DET_*_CTRL registers to tell which
+  // master stalled.
   logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
 
   axi_hang_detector #(.OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX)) u_hang_det_sys_axi (
@@ -704,7 +718,7 @@ module smc_base
       .irq_o            (hang_irq_data_accel)
   );
 
-  // Combined fault to the safety island
+  // Combined fault out to smc.sv, which routes it to peripheral_interrupts[31]
   assign axi_hang_irq_o = hang_irq_sys_axi | hang_irq_sep_axi | hang_irq_data_accel;
 
 endmodule

@@ -14,7 +14,7 @@
 /*
  * _synchronize_harts() is called by crt0.S to cause harts > 0 to wait for
  * hart 0 to finish copying the datat section, zeroing the BSS, and running
- * the libc contstructors.
+ * the libc constructors.
  */
 __attribute__((section(".init"))) void __metal_synchronize_harts() {
 #if __METAL_DT_MAX_HARTS > 1

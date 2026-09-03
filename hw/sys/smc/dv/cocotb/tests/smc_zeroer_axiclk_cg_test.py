@@ -2,20 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_AXICLK_CG_TEST ANCHOR: smc_zeroer_axiclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 67c81eca9fc764cc694026df6a7da34a406f4c5528305cc17e43d9d6b9a045db
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_002 ANCHOR: smc_zeroer_axiclk_cg_test
-DV-CARD-REVISION: 2 RECORD-SHA256: 7716914f5e4c5adb60a4a2ebb6c58c271518148cdabc04a7796f561b5743fc7f
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_zeroer_axiclk_cg_test_seq import smc_zeroer_axiclk_cg_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

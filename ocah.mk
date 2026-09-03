@@ -52,6 +52,15 @@ include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
+include $(OCAH_ROOT)/flows/lint/ruff.mk
+include $(OCAH_ROOT)/flows/lint/mypy.mk
+include $(OCAH_ROOT)/flows/lint/codespell.mk
+include $(OCAH_ROOT)/flows/lint/markdownlint.mk
+include $(OCAH_ROOT)/flows/lint/yamllint.mk
+include $(OCAH_ROOT)/flows/lint/tomllint.mk
+include $(OCAH_ROOT)/flows/lint/checkmake.mk
+include $(OCAH_ROOT)/flows/lint/shell.mk
+include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
 ## Generate the filelist for the OCAH repository.

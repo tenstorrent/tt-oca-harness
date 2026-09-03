@@ -156,7 +156,7 @@ module zeroer #(
 		.snoop_r_ready_i (zeroer_ctrl_axil_req.r_ready),
 		.snoop_r_last_i	 (1'b1), // every beat is "last" in AXI-L
 
-		.kick_i			 (disable_cg), // continously kick to keep clock awake when not gating
+		.kick_i			 (disable_cg), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_hysteresis_i),
@@ -252,7 +252,7 @@ module zeroer #(
 		mst_wstrb = axi_strb_t'(0);
 		mst_wlast = 1'b0;
 
-		mst_bready = 1'b1;  // TODO: ever need to backpressure responses?
+		mst_bready = 1'b1;
 
 		unique case (cur_state)
 			ST_IDLE: begin
@@ -269,7 +269,7 @@ module zeroer #(
 				// remove any offset from address
 				mst_awaddr = cur_dest_addr & {{(AXI_ADDR_WIDTH-AXI_DATA_SIZE){1'b1}},{AXI_DATA_SIZE{1'b0}}};
 
-				// cannot burst accross 4KB boundary, calculate how many bursts can be done before hitting boundary
+				// cannot burst across 4KB boundary, calculate how many bursts can be done before hitting boundary
 				// -> using 'hFFF ensures that when addr offset == data_size, it gives the correct length
 				if ((('hFFF - cur_dest_addr[11:0]) >> AXI_DATA_SIZE) > AXI_MAX_BURST_LEN) begin
 					burst_len = AXI_MAX_BURST_LEN;
@@ -358,7 +358,7 @@ module zeroer #(
 		end
 	end
 
-	// everytime a transaction is sent out, count to know when it has completed
+	// every time a transaction is sent out, count to know when it has completed
 	always_ff @(posedge axi_clk or negedge rst_ni) begin
 		if (~rst_ni) begin
 			outstanding_reqs <= 32'd0;
