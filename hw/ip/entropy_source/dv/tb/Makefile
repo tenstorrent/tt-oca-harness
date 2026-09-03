@@ -62,6 +62,7 @@ HEALTH_VCD_FILE = health_test.vcd
 SCLKDIV_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ripple_divider.sv $(RTL_DIR)/entropy_sampler_clocks.sv $(RTL_DIR)/entropy_generator.sv $(RTL_DIR)/entropy_noise_source.sv $(RTL_DIR)/entropy_ring_oscillator.sv $(RTL_DIR)/entropy_decorrelator.sv $(RTL_DIR)/entropy_health_test.sv $(RTL_DIR)/entropy_repetition_test.sv $(RTL_DIR)/entropy_adaptive_proportion_test.sv $(RTL_DIR)/entropy_markov_test.sv $(RTL_DIR)/entropy_rosc_tune_fsm.sv $(RTL_DIR)/gf_muladd.sv entropy_generator_test_wrapper.sv
 SCLKDIV_TESTBENCH = tb_sample_clk_divider.v
 SCLKDIV_SIM_OUT = tb_sample_clk_divider
+SCLKDIV_FULL_SIM_OUT = tb_sample_clk_divider_full
 SCLKDIV_VCD_FILE = sample_clk_divider.vcd
 
 # Entropy FIFO Test configuration
@@ -390,10 +391,15 @@ $(SCLKDIV_SIM_OUT): $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 	@echo "=== Compiling Sample Clock Divider Test ==="
 	$(IVERILOG) -g2012 -DSIMULATION -o $(SCLKDIV_SIM_OUT) $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 
-# Run full test (all 12 generators)
-sclkdiv-full: $(SCLKDIV_SIM_OUT)
+# Full test compiles a second image: `ifdef FULL_TEST is a preprocessor gate, so
+# the name has to reach iverilog as -D, not vvp as a plusarg.
+sclkdiv-full: $(SCLKDIV_FULL_SIM_OUT)
 	@echo "=== Running Full Sample Clock Divider Test (All 12 Generators) ==="
-	$(VVP) $(SCLKDIV_SIM_OUT) +define+FULL_TEST
+	$(VVP) $(SCLKDIV_FULL_SIM_OUT)
+
+$(SCLKDIV_FULL_SIM_OUT): $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
+	@echo "=== Compiling Full Sample Clock Divider Test ==="
+	$(IVERILOG) -g2012 -DSIMULATION -DFULL_TEST -o $(SCLKDIV_FULL_SIM_OUT) $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 
 # View sample clock divider waveforms
 sclkdiv-waves: $(SCLKDIV_VCD_FILE)
@@ -403,7 +409,7 @@ sclkdiv-waves: $(SCLKDIV_VCD_FILE)
 # Clean sample clock divider test files
 sclkdiv-clean:
 	@echo "=== Cleaning Sample Clock Divider Test Files ==="
-	rm -f $(SCLKDIV_SIM_OUT) $(SCLKDIV_VCD_FILE)
+	rm -f $(SCLKDIV_SIM_OUT) $(SCLKDIV_FULL_SIM_OUT) $(SCLKDIV_VCD_FILE)
 
 #==============================================================================
 # ENTROPY FIFO TEST TARGETS

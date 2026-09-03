@@ -86,6 +86,8 @@ module sep_entropy_fifo
     // Status / interrupt outputs (routed to the SEP PIC in sep.sv).
     output logic       pool_low_o,      // occupancy below LowWatermark (informational)
     output logic       fill_stall_o,    // EDN not acknowledging for > StallThresh (fault)
+    // Pool pointer-integrity fault.
+    output logic       pool_err_o,
     output logic [$clog2(FifoDepth+1)-1:0] fifo_level_o  // current occupancy in packed 64b entries
 );
 
@@ -227,6 +229,7 @@ module sep_entropy_fifo
         .err_o    (pool_err)
     );
 
+    assign pool_err_o   = pool_err;
     assign fifo_level_o = entropy_clear_i ? '0 : pool_depth;
     assign pool_low_o   = entropy_clear_i ||
                           (pool_depth < LowWatermark[$clog2(FifoDepth+1)-1:0]);
@@ -324,7 +327,7 @@ module sep_entropy_fifo
         rd_pop       = 1'b0;
         unique case (rd_offset)
             16'h0000: rd_data_next = status_word;
-            16'h0008: rd_data_next = {62'b0, fill_stall_o, pool_low_o};
+            16'h0008: rd_data_next = {61'b0, pool_err_o, fill_stall_o, pool_low_o};
             16'h0010: begin
                 rd_data_next = entropy_clear_i ? 64'b0 : pool_rdata;
                 rd_pop       = pool_rvalid & ~entropy_clear_i;

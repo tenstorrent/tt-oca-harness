@@ -129,38 +129,6 @@ overlay layer") may dedup-append further defines into the target tables —
 the intended use is commercial-VIP gate defines such as
 `OCAH_JTAG_VENDOR_IF`/`OCAH_AXI_VENDOR_IF`, which no checked-in config sets.
 
-==== Inherited native-profile defines DTP sources do not consume
-
-The native profile also passes the following names on every DTP DV compile.
-No DTP RTL, DTP testbench, or DTP-compile-unit vendored source branches on
-them. They are part of the shared native-profile set applied to every DUT.
-
-[cols="<,<",options="header"]
-|===
-|Define |Notes
-
-|`DISABLE_ASSERT`
-|No DTP compile-unit source tests this name. Verilator assertion gating is
-`VERILATOR`, `ASSERTS_OFF`, and `COMMON_CELLS_ASSERTS_OFF` above.
-
-|`NO_LIBCELL`
-|No DTP compile-unit source tests this name.
-
-|`INITIALIZE_MEMORY`
-|No DTP compile-unit source tests this name.
-
-|`RANDOM=0`
-|FIRRTL/Chisel simulation random seed. Unused by DTP (no Chisel-generated
-CPU in this compile).
-
-|`RANDOMIZE_MEM_INIT`, `RANDOMIZE_REG_INIT`, `RANDOMIZE_GARBAGE_ASSIGN`,
-`RANDOMIZE_INVALID_ASSIGN`
-|FIRRTL/Chisel register and memory initialization. Unused by DTP.
-
-|`RANDOMIZE_DELAY=0.02`
-|FIRRTL/Chisel simulation delay. Unused by DTP.
-|===
-
 ==== Bender targets
 
 `hw/sys/dtp/dv/dtp_sim_cfg.toml` sets `bender_targets = ["dtp", "simulation"]`.
