@@ -25,9 +25,9 @@ module smc_fabric #(
   input  logic [31:0]                                         region_size_i,
 
   // Clock Gating
-  input  logic                     ob_filter_axi_cg_en_i,
-  input  logic                     ib_filter_axi_cg_en_i,
-  input  logic                     fabric_cg_en_i,
+  input  logic                                                ob_filter_axi_cg_en_i,
+  input  logic                                                ib_filter_axi_cg_en_i,
+  input  logic                                                fabric_cg_en_i,
   input  smc_pkg::cg_hyster_t                                 cg_hysteresis_i,
 
   // Input Fabric interfaces
@@ -86,8 +86,8 @@ module smc_fabric #(
   output filter_ctrl_reg_pkg::filter_ctrl__in_t                                         inbound_filter_status_o  [NumInboundFilters-1:0],
 
   // CSR structs for remap configurations
-  input output_remap_reg_pkg::output_remap__out_t                                      mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
-  input output_remap_reg_pkg::output_remap__out_t                                      xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
+  input output_remap_reg_pkg::output_remap__out_t                                       mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
+  input output_remap_reg_pkg::output_remap__out_t                                       xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
   input alias_remap_reg_pkg::alias_remap__out_t                                         aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
 
   // Debug outputs
@@ -135,7 +135,7 @@ module smc_fabric #(
     .scan_rst_ni                (scan_rst_ni),
 
     .filter_axi_cg_en_i         (ib_filter_axi_cg_en_i),
-    .cg_hysteresis_i      (cg_hysteresis_i),
+    .cg_hysteresis_i            (cg_hysteresis_i),
 
     .global_base_addr_i         (global_base_addr_i),
     .local_base_addr_i          (local_base_addr_i),
@@ -246,7 +246,7 @@ module smc_fabric #(
 
     .filter_axi_cg_en_i           (ob_filter_axi_cg_en_i),
     .fabric_cg_en_i               (fabric_cg_en_i),
-    .cg_hysteresis_i        (cg_hysteresis_i),
+    .cg_hysteresis_i              (cg_hysteresis_i),
 
     // AXI Buses
     .axi_req_i                    (axi_to_output_fabric_req),

@@ -4,102 +4,102 @@
 // SMC Padring
 
 module smc_padring #(
-  parameter int unsigned  MAX_TRANS   = 1,
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Size per GPIO instance (32 bytes)
+  parameter int unsigned      MAX_TRANS           = 1,
+  parameter bit [gpio_pkg::ADDR_WIDTH-1:0]    ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Size per GPIO instance (32 bytes)
   parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR = 32'h00000000      // Base address for all GPIO intfs
 
 ) (
-  input  logic        clk_i,
-  input  logic        rst_primary_ni,
-  input  logic        rst_cold_stable_smc_clk_ni,
+  input  logic                                clk_i,
+  input  logic                                rst_primary_ni,
+  input  logic                                rst_cold_stable_smc_clk_ni,
 
   // Test Interface
-  input  logic        test_en_i,
-  input  logic        scan_rst_ni,
+  input  logic                                test_en_i,
+  input  logic                                scan_rst_ni,
 
   // AXI-Lite Register Interface
-  input  gpio_pkg::gpio_axil_req_t   axil_req_i,
-  output gpio_pkg::gpio_axil_resp_t   axil_resp_o,
+  input  gpio_pkg::gpio_axil_req_t            axil_req_i,
+  output gpio_pkg::gpio_axil_resp_t           axil_resp_o,
 
   // SPI
-  input  logic        spi_enable_i,
-  input  logic        spi_clk_i,     // Serial bir-rate clock
-  input  logic [7:0]       spi_txd_i,     // Transmit Data Signal
-  input  logic        spi_cs_n_i,     // Chip Select Signal
-  input  logic        spi_cs_oe_n_i,    // chip select output enable
-  input  logic        spi_cs_ie_n_i,
-  input  logic        spi_clk_ie_n_i,
-  input  logic        spi_clk_oe_n_i,
-  input  logic        spi_dqs_ie_n_i,
-  input  logic        spi_dqs_oe_n_i,
-  input  logic [7:0]       spi_dq_ie_n_i,
-  input  logic [7:0]       spi_dq_oe_n_i,
-  output logic [7:0]       spi_rxd_o,     // Receive Data Signal
-  output logic        spi_rxds_o,     // Read Data strobe in DDR mode of operation
-  input  logic        spi_mem_rebar_oepad_i,
-  input  logic        spi_mem_rebar_opad_i,
-  input  logic        spi_mem_rebar_iepad_i,
-  output logic        spi_mem_rebar_ipad_o,
+  input  logic                                spi_enable_i,
+  input  logic                                spi_clk_i,                  // Serial bir-rate clock
+  input  logic [7:0]                          spi_txd_i,                  // Transmit Data Signal
+  input  logic                                spi_cs_n_i,                 // Chip Select Signal
+  input  logic                                spi_cs_oe_n_i,              // chip select output enable
+  input  logic                                spi_cs_ie_n_i,
+  input  logic                                spi_clk_ie_n_i,
+  input  logic                                spi_clk_oe_n_i,
+  input  logic                                spi_dqs_ie_n_i,
+  input  logic                                spi_dqs_oe_n_i,
+  input  logic [7:0]                          spi_dq_ie_n_i,
+  input  logic [7:0]                          spi_dq_oe_n_i,
+  output logic [7:0]                          spi_rxd_o,                  // Receive Data Signal
+  output logic                                spi_rxds_o,                 // Read Data strobe in DDR mode of operation
+  input  logic                                spi_mem_rebar_oepad_i,
+  input  logic                                spi_mem_rebar_opad_i,
+  input  logic                                spi_mem_rebar_iepad_i,
+  output logic                                spi_mem_rebar_ipad_o,
 
   // UART
-  input  logic [smc_config_pkg::NUM_UART-1:0]  uart_enable_i,
-  output logic [smc_config_pkg::NUM_UART-1:0]  uart_rx_o,
-  input  logic [smc_config_pkg::NUM_UART-1:0]  uart_tx_i,
-  input  logic [smc_config_pkg::NUM_UART-1:0]  uart_rts_n_i,
-  output logic [smc_config_pkg::NUM_UART-1:0]  uart_cts_n_o,
+  input  logic [smc_config_pkg::NUM_UART-1:0]     uart_enable_i,
+  output logic [smc_config_pkg::NUM_UART-1:0]     uart_rx_o,
+  input  logic [smc_config_pkg::NUM_UART-1:0]     uart_tx_i,
+  input  logic [smc_config_pkg::NUM_UART-1:0]     uart_rts_n_i,
+  output logic [smc_config_pkg::NUM_UART-1:0]     uart_cts_n_o,
 
   // System Timer OCTS
-  input  logic        chiplet_is_primary_i,
-  input  logic        timer_sync_load_i,
-  input  logic        timer_cnt_credit_i,
-  output logic        timer_sync_load_o,
-  output logic        timer_cnt_credit_o,
-  input  logic        timer_gpio_enable_i,
+  input  logic                                chiplet_is_primary_i,
+  input  logic                                timer_sync_load_i,
+  input  logic                                timer_cnt_credit_i,
+  output logic                                timer_sync_load_o,
+  output logic                                timer_cnt_credit_o,
+  input  logic                                timer_gpio_enable_i,
 
   // Boot Stall
-  output logic        boot_stall_o,
+  output logic                                boot_stall_o,
 
   // I3C
-  input  logic [smc_config_pkg::NUM_I3C-1:0]   i3c_enable_i,
-  output logic [smc_config_pkg::NUM_I3C-1:0]   i3c_scl_o,
-  output logic [smc_config_pkg::NUM_I3C-1:0]   i3c_sda_o,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]   i3c_scl_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]   i3c_scl_oen_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]   i3c_sda_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]   i3c_sda_oen_i,    // Output enable for SDA IO pad (active low)
-  input  logic [smc_config_pkg::NUM_I3C-1:0]   i3c_sda_pp_i,    // Push-pull - output enable for SDA IO pad
+  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_enable_i,
+  output logic [smc_config_pkg::NUM_I3C-1:0]          i3c_scl_o,
+  output logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_o,
+  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_scl_i,
+  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_scl_oen_i,
+  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_i,
+  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_oen_i,              // Output enable for SDA IO pad (active low)
+  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_pp_i,               // Push-pull - output enable for SDA IO pad
 
   // I2C
-  input  logic [smc_config_pkg::NUM_I2C-1:0]   i2c_enable_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]   i2c_master_enable_i,
-  output logic [smc_config_pkg::NUM_I2C-1:0]   i2c_scl_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0]   i2c_sda_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0]   i2c_smbus_n_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0]   i2c_smbus_alert_n_o,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]   i2c_scl_oen_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]   i2c_sda_oen_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]   i2c_smbus_n_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]   i2c_smbus_alert_oe_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_enable_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_master_enable_i,
+  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_scl_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_sda_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_n_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_alert_n_o,
+  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_scl_oen_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_sda_oen_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_n_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_alert_oe_i,
 
   // AVS
-  input  logic        avs_enable_i,
-  input  logic        avs_clock_i,
-  input  logic        avs_mdata_i,
-  output logic        avs_sdata_o,
+  input  logic                                avs_enable_i,
+  input  logic                                avs_clock_i,
+  input  logic                                avs_mdata_i,
+  output logic                                avs_sdata_o,
 
   // Reset Unit signals
-  input  logic        rst_cool_ni,
-  output logic        isolate_req_pin_o,
+  input  logic                                rst_cool_ni,
+  output logic                                isolate_req_pin_o,
 
   // GPIO Data Signals (to external GPIO macros via gpio_shim instances)
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       lsio_interface_select_o,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_o,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_en_o,
-  input logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       pad2core_i,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       pad2core_en_o,
+  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       lsio_interface_select_o,
+  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_o,
+  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_en_o,
+  input   logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       pad2core_i,
+  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       pad2core_en_o,
 
   // GPIO Interrupts - only bonded GPIOs can be used for interrupts
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]      gpio_interrupt_o
 
 );
 
@@ -122,14 +122,14 @@ module smc_padring #(
   always_comb begin
     // Decode gpio_intf window. Out of window accesses routed to error slave
     if (axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR &&
-        ((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
+            ((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
       gpio_intf_aw_select = (axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4;
     end else begin
       gpio_intf_aw_select = INTF_ERR_IDX;
     end
 
     if (axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR &&
-        ((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
+            ((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
       gpio_intf_ar_select = (axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4;
     end else begin
       gpio_intf_ar_select = INTF_ERR_IDX;
@@ -137,31 +137,31 @@ module smc_padring #(
   end
 
   axi_lite_demux #(
-    .aw_chan_t   (gpio_pkg::gpio_axil_aw_chan_t),
-    .w_chan_t   (gpio_pkg::gpio_axil_w_chan_t),
-    .b_chan_t   (gpio_pkg::gpio_axil_b_chan_t),
-    .ar_chan_t   (gpio_pkg::gpio_axil_ar_chan_t),
-    .r_chan_t   (gpio_pkg::gpio_axil_r_chan_t),
-    .axi_req_t   (gpio_pkg::gpio_axil_req_t),
-    .axi_resp_t   (gpio_pkg::gpio_axil_resp_t),
-    .NoMstPorts   (NUM_INTF_DEMUX_MST),  // gpio_intf + decode-error target
-    .MaxTrans   (MAX_TRANS),
-    .FallThrough  (1'b0),
-    .SpillAw   (1'b1),
-    .SpillW    (1'b0),
-    .SpillB    (1'b0),
-    .SpillAr   (1'b1),
-    .SpillR    (1'b0)
+    .aw_chan_t          (gpio_pkg::gpio_axil_aw_chan_t),
+    .w_chan_t           (gpio_pkg::gpio_axil_w_chan_t),
+    .b_chan_t           (gpio_pkg::gpio_axil_b_chan_t),
+    .ar_chan_t          (gpio_pkg::gpio_axil_ar_chan_t),
+    .r_chan_t           (gpio_pkg::gpio_axil_r_chan_t),
+    .axi_req_t          (gpio_pkg::gpio_axil_req_t),
+    .axi_resp_t         (gpio_pkg::gpio_axil_resp_t),
+    .NoMstPorts         (NUM_INTF_DEMUX_MST),  // gpio_intf + decode-error target
+    .MaxTrans           (MAX_TRANS),
+    .FallThrough        (1'b0),
+    .SpillAw            (1'b1),
+    .SpillW             (1'b0),
+    .SpillB             (1'b0),
+    .SpillAr            (1'b1),
+    .SpillR             (1'b0)
   ) u_gpio_intf_demux (
-    .clk_i    (clk_i),
-    .rst_ni    (rst_primary_ni),
-    .test_i    (test_en_i),
-    .slv_req_i   (axil_req_i),
-    .slv_resp_o   (axil_resp_o),
-    .slv_aw_select_i (gpio_intf_aw_select),
-    .slv_ar_select_i (gpio_intf_ar_select),
-    .mst_reqs_o   (axil_reqs_to_intf),
-    .mst_resps_i  (axil_resps_from_intf)
+    .clk_i              (clk_i),
+    .rst_ni             (rst_primary_ni),
+    .test_i             (test_en_i),
+    .slv_req_i          (axil_req_i),
+    .slv_resp_o         (axil_resp_o),
+    .slv_aw_select_i    (gpio_intf_aw_select),
+    .slv_ar_select_i    (gpio_intf_ar_select),
+    .mst_reqs_o         (axil_reqs_to_intf),
+    .mst_resps_i        (axil_resps_from_intf)
   );
 
   // Decode-error slave on the demux's final target: unmapped gpio_intf-window accesses return DECERR
@@ -192,17 +192,17 @@ module smc_padring #(
   always_comb begin
     // Disable all LSIO interface by default
     lsio_interface_select_o = '0;
-    lsio_core2pad_en_n   = {smc_pkg::NUM_GPIO_WRAPS{smc_padring_pkg::DISABLED}};
-    lsio_core2pad_data   = '0;
-    lsio_pad2core_en_n   = {smc_pkg::NUM_GPIO_WRAPS{smc_padring_pkg::DISABLED}};
+    lsio_core2pad_en_n      = {smc_pkg::NUM_GPIO_WRAPS{smc_padring_pkg::DISABLED}};
+    lsio_core2pad_data      = '0;
+    lsio_pad2core_en_n      = {smc_pkg::NUM_GPIO_WRAPS{smc_padring_pkg::DISABLED}};
 
     // SPI
     for (int s = 0; s < 8; s = s + 1) begin : gen_spi_connections
       lsio_interface_select_o[s]  = spi_enable_i;
-      lsio_core2pad_en_n[s]     = spi_dq_oe_n_i[s];
-      lsio_core2pad_data[s]     = spi_txd_i[s];
-      lsio_pad2core_en_n[s]     = spi_dq_ie_n_i[s];
-      spi_rxd_o[s]              = lsio_pad2core_data[s];
+      lsio_core2pad_en_n[s]       = spi_dq_oe_n_i[s];
+      lsio_core2pad_data[s]       = spi_txd_i[s];
+      lsio_pad2core_en_n[s]       = spi_dq_ie_n_i[s];
+      spi_rxd_o[s]                = lsio_pad2core_data[s];
     end
 
     lsio_interface_select_o[8]  = spi_enable_i;
@@ -219,7 +219,7 @@ module smc_padring #(
     lsio_core2pad_en_n[10]      = spi_dqs_oe_n_i;
     lsio_core2pad_data[10]      = 1'b0;
     lsio_pad2core_en_n[10]      = spi_dqs_ie_n_i;
-    spi_rxds_o                 = lsio_pad2core_data[10];
+    spi_rxds_o                  = lsio_pad2core_data[10];
 
     // UART
     for (integer u = 0; u < smc_config_pkg::NUM_UART; u = u + 1) begin : gen_uart_connections
@@ -293,12 +293,12 @@ module smc_padring #(
       lsio_interface_select_o[37+4*i] = i2c_enable_i[i];
       if (i2c_master_enable_i[i]) begin
         lsio_core2pad_en_n[37+4*i]  = i2c_scl_oen_i[i];
-        lsio_core2pad_data[37+4*i]  = 1'b0;  // drive 0 because board will have pullups
+        lsio_core2pad_data[37+4*i]  = 1'b0;     // drive 0 because board will have pullups
         lsio_pad2core_en_n[37+4*i]  = ~i2c_scl_oen_i[i];
         i2c_scl_o[i]                = lsio_pad2core_data[37+4*i];
       end else begin
         lsio_core2pad_en_n[37+4*i]  = i2c_scl_oen_i[i];
-        lsio_core2pad_data[37+4*i]  = 1'b0;  // drive 0 because board will have pullups
+        lsio_core2pad_data[37+4*i]  = 1'b0;     // drive 0 because board will have pullups
         lsio_pad2core_en_n[37+4*i]  = ~i2c_scl_oen_i[i];
         i2c_scl_o[i]                = lsio_pad2core_data[37+4*i];
       end
@@ -306,12 +306,12 @@ module smc_padring #(
       lsio_interface_select_o[38+4*i] = i2c_enable_i[i];
       if (i2c_master_enable_i[i]) begin
         lsio_core2pad_en_n[38+4*i]  = i2c_sda_oen_i[i];
-        lsio_core2pad_data[38+4*i]  = 1'b0;  // drive 0 because board will have pullups
+        lsio_core2pad_data[38+4*i]  = 1'b0;     // drive 0 because board will have pullups
         lsio_pad2core_en_n[38+4*i]  = ~i2c_sda_oen_i[i];
         i2c_sda_o[i]                = lsio_pad2core_data[38+4*i];
       end else begin
         lsio_core2pad_en_n[38+4*i]  = i2c_sda_oen_i[i];
-        lsio_core2pad_data[38+4*i]  = 1'b0;  // drive 0 because board will have pullups
+        lsio_core2pad_data[38+4*i]  = 1'b0;     // drive 0 because board will have pullups
         lsio_pad2core_en_n[38+4*i]  = ~i2c_sda_oen_i[i];
         i2c_sda_o[i]                = lsio_pad2core_data[38+4*i];
       end
@@ -400,7 +400,7 @@ module smc_padring #(
     lsio_core2pad_en_n[57]        = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[57]        = '0;
     lsio_pad2core_en_n[57]        = smc_padring_pkg::ENABLED;
-    boot_stall_o      = lsio_pad2core_data[57];
+    boot_stall_o                  = lsio_pad2core_data[57];
 
     // ROTATE_UPDATE strap pad; also the OCCP interface software GPIO (old 61, now 58)
     lsio_interface_select_o[58] = '0;
@@ -439,36 +439,36 @@ module smc_padring #(
 
     // GPIO interface
     gpio #(
-      .MAX_TRANS     (MAX_TRANS),
-      .INPUT_BY_DEFAULT   (INPUT_BY_DEFAULT),
+      .MAX_TRANS                  (MAX_TRANS),
+      .INPUT_BY_DEFAULT           (INPUT_BY_DEFAULT),
 
       .GPIO_INTF_REG_MAP_BASE_ADDR(GPIO_INTF_BASE_ADDR + (i * ADDRESS_MAP_SIZE_PER_GPIO)),
       .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
       .ADDRESS_MAP_SIZE_PER_GPIO  (ADDRESS_MAP_SIZE_PER_GPIO)
     ) u_gpio_interface (
-      .clk_i     (clk_i),
-      .rst_primary_ni   (rst_primary_ni),
-      .rst_cold_ni   (rst_cold_stable_smc_clk_ni),
-      .test_en_i    (test_en_i),
+      .clk_i                  (clk_i),
+      .rst_primary_ni         (rst_primary_ni),
+      .rst_cold_ni            (rst_cold_stable_smc_clk_ni),
+      .test_en_i              (test_en_i),
 
       // AXI-Lite Register Interface from secondary demux
-      .axil_req_i    (axil_reqs_to_intf[i]),
-      .axil_resp_o   (axil_resps_from_intf[i]),
+      .axil_req_i             (axil_reqs_to_intf[i]),
+      .axil_resp_o            (axil_resps_from_intf[i]),
 
       // LSIO Interface
       .lsio_interface_select_i(lsio_interface_select_o[i]),
-      .lsio_core2pad_en_ni (lsio_core2pad_en_n[i]),
-      .lsio_core2pad_data_i (lsio_core2pad_data[i]),
-      .lsio_pad2core_en_ni (lsio_pad2core_en_n[i]),
-      .lsio_pad2core_data_o (lsio_pad2core_data[i]),
+      .lsio_core2pad_en_ni    (lsio_core2pad_en_n[i]),
+      .lsio_core2pad_data_i   (lsio_core2pad_data[i]),
+      .lsio_pad2core_en_ni    (lsio_pad2core_en_n[i]),
+      .lsio_pad2core_data_o   (lsio_pad2core_data[i]),
 
       // GPIO Interrupts
-      .interrupt_o   (gpio_interrupt_o[i]),
+      .interrupt_o            (gpio_interrupt_o[i]),
 
-      .core2pad_o    (core2pad_o[i]),
-      .core2pad_en_o   (core2pad_en_o[i]),
-      .pad2core_i    (pad2core_i[i]),
-      .pad2core_en_o   (pad2core_en_o[i])
+      .core2pad_o             (core2pad_o[i]),
+      .core2pad_en_o          (core2pad_en_o[i]),
+      .pad2core_i             (pad2core_i[i]),
+      .pad2core_en_o          (pad2core_en_o[i])
 
     );
   end

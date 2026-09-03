@@ -40,7 +40,7 @@ module smc_alias_remap_wrap (
   input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_out_remapped_log_resp_i,
 
   // Config struct from register block -- alias remap
-  input  alias_remap_reg_pkg::alias_remap__out_t                      aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  input  alias_remap_reg_pkg::alias_remap__out_t                                        aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
 
   // debug structs
   output smc_pkg::remap_debug_t                                                         o_remap_debug_mmio,
@@ -53,11 +53,11 @@ module smc_alias_remap_wrap (
 
   // Connect hwif_out to remap_table array
   for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin
-    assign remap_table[i].region_start[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START] = aR_ctrl_i[i].REGION.region_start.start_addr.value;
-    assign remap_table[i].region_end[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]   = aR_ctrl_i[i].REGION.region_end.end_addr.value;
-    assign remap_table[i].offset[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]       = aR_ctrl_i[i].REGION.region_attrs.offset.value;
-    assign remap_table[i].cacheable                                                              = aR_ctrl_i[i].REGION.region_attrs.cacheable.value;
-    assign remap_table[i].region_valid                                                           = aR_ctrl_i[i].REGION.region_attrs.valid.value;
+    assign remap_table[i].region_start[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]    = aR_ctrl_i[i].REGION.region_start.start_addr.value;
+    assign remap_table[i].region_end[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]      = aR_ctrl_i[i].REGION.region_end.end_addr.value;
+    assign remap_table[i].offset[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]          = aR_ctrl_i[i].REGION.region_attrs.offset.value;
+    assign remap_table[i].cacheable                                                                 = aR_ctrl_i[i].REGION.region_attrs.cacheable.value;
+    assign remap_table[i].region_valid                                                              = aR_ctrl_i[i].REGION.region_attrs.valid.value;
   end
 
   // tie off unused bits of remap addresses to 0
@@ -68,14 +68,14 @@ module smc_alias_remap_wrap (
   end
 
   axi_alias_remap #(
-    .axi_req_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
-    .axi_resp_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
-    .remap_region_t          (smc_pkg::remap_region_t),
-    .remap_debug_t          (smc_pkg::remap_debug_t),
-    .NUM_REGIONS          (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
-    .DEBUG_OUTPUT          (1),
-    .ALIAS_REMAP_IDX_START        (smc_pkg::ALIAS_REMAP_IDX_START),
-    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
+    .axi_req_t                     (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
+    .axi_resp_t                    (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
+    .remap_region_t                (smc_pkg::remap_region_t),
+    .remap_debug_t                 (smc_pkg::remap_debug_t),
+    .NUM_REGIONS                   (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
+    .DEBUG_OUTPUT                  (1),
+    .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
+    .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
   ) smc_mmio_alias_remap (
     .i_remap_regions    (remap_table),
@@ -87,14 +87,14 @@ module smc_alias_remap_wrap (
   );
 
   axi_alias_remap #(
-    .axi_req_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
-    .axi_resp_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
-    .remap_region_t          (smc_pkg::remap_region_t),
-    .remap_debug_t          (smc_pkg::remap_debug_t),
-    .NUM_REGIONS          (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
-    .DEBUG_OUTPUT          (1),
-    .ALIAS_REMAP_IDX_START        (smc_pkg::ALIAS_REMAP_IDX_START),
-    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
+    .axi_req_t                     (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
+    .axi_resp_t                    (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
+    .remap_region_t                (smc_pkg::remap_region_t),
+    .remap_debug_t                 (smc_pkg::remap_debug_t),
+    .NUM_REGIONS                   (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
+    .DEBUG_OUTPUT                  (1),
+    .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
+    .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
   ) smc_jtag_alias_remap (
     .i_remap_regions    (remap_table),
@@ -106,14 +106,14 @@ module smc_alias_remap_wrap (
   );
 
   axi_alias_remap #(
-    .axi_req_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
-    .axi_resp_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
-    .remap_region_t          (smc_pkg::remap_region_t),
-    .remap_debug_t          (smc_pkg::remap_debug_t),
-    .NUM_REGIONS          (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
-    .DEBUG_OUTPUT          (1),
-    .ALIAS_REMAP_IDX_START        (smc_pkg::ALIAS_REMAP_IDX_START),
-    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
+    .axi_req_t                     (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
+    .axi_resp_t                    (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
+    .remap_region_t                (smc_pkg::remap_region_t),
+    .remap_debug_t                 (smc_pkg::remap_debug_t),
+    .NUM_REGIONS                   (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
+    .DEBUG_OUTPUT                  (1),
+    .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
+    .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
   ) smc_log_alias_remap (
     .i_remap_regions    (remap_table),
@@ -125,14 +125,14 @@ module smc_alias_remap_wrap (
   );
 
   axi_alias_remap #(
-    .axi_req_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
-    .axi_resp_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
-    .remap_region_t          (smc_pkg::remap_region_t),
-    .remap_debug_t          (smc_pkg::remap_debug_t),
-    .NUM_REGIONS          (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
-    .DEBUG_OUTPUT          (1),
-    .ALIAS_REMAP_IDX_START        (smc_pkg::ALIAS_REMAP_IDX_START),
-    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
+    .axi_req_t                     (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
+    .axi_resp_t                    (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
+    .remap_region_t                (smc_pkg::remap_region_t),
+    .remap_debug_t                 (smc_pkg::remap_debug_t),
+    .NUM_REGIONS                   (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
+    .DEBUG_OUTPUT                  (1),
+    .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
+    .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
   ) smc_dma_alias_remap (
     .i_remap_regions    (remap_table),

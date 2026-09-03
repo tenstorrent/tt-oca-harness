@@ -29,14 +29,14 @@ module axi_filter_wrap #(
   parameter bit           FlopReqEn                 = 1'b0,
   parameter bit           FlopRespEn                = 1'b0,
 
-  parameter type    filter_axi_req_t    = logic,
-  parameter type    filter_axi_resp_t    = logic,
+  parameter type          filter_axi_req_t          = logic,
+  parameter type          filter_axi_resp_t         = logic,
 
-  parameter type    filter_aw_chan_t    = logic,
-  parameter type    filter_w_chan_t        = logic,
-  parameter type    filter_b_chan_t        = logic,
-  parameter type    filter_ar_chan_t    = logic,
-  parameter type    filter_r_chan_t        = logic,
+  parameter type          filter_aw_chan_t          = logic,
+  parameter type          filter_w_chan_t           = logic,
+  parameter type          filter_b_chan_t           = logic,
+  parameter type          filter_ar_chan_t          = logic,
+  parameter type          filter_r_chan_t           = logic,
 
   localparam int unsigned AxiStrbWidth             = AxiDataWidth / 8,
 

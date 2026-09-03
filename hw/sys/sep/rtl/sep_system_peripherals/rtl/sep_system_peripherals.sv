@@ -367,10 +367,10 @@ module sep_system_peripherals (
     .filter_ar_chan_t            (sep_pkg::sep_system_peripherals_outbound_axi_ar_chan_t),
     .filter_r_chan_t             (sep_pkg::sep_system_peripherals_outbound_axi_r_chan_t)
   ) u_outbound_filter (
-    .clk_i             (clk_i),
-    .rst_ni             (rst_ni),
-    .test_en_i            (test_en_i),
-    .filter_skip_i           (outbound_filter_skip_i),
+    .clk_i                       (clk_i),
+    .rst_ni                      (rst_ni),
+    .test_en_i                   (test_en_i),
+    .filter_skip_i               (outbound_filter_skip_i),
 
     .filter_ctrl_i               (outbound_filter_ctrl),
     .filter_status_o             (outbound_filter_status),

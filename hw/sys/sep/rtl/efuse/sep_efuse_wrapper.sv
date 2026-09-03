@@ -22,18 +22,18 @@ module sep_efuse_wrapper #(
   // During synthesis, to be replaced with the actual token digest embedded in the netlist
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
-  input logic                               clk_i,
-  input logic                               rst_ni,
+  input logic                                clk_i,
+  input logic                                rst_ni,
 
   input  logic                               test_en_i,
   input  logic                               scan_rst_ni,
 
-  input  sep_pkg::sep_straps_t              sep_straps_i,
+  input  sep_pkg::sep_straps_t               sep_straps_i,
   input  logic                               ext_boot_seq_done_i,
 
   output logic                               security_disable_o,
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-  output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
+  output sep_efuse_pkg::efuse_map_t          shadow_regs_o,
   output logic                               fuse_sense_done_o,
   output logic                               secure_tm_o,
 
@@ -58,7 +58,7 @@ module sep_efuse_wrapper #(
   input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,
 
   // Efuse intermediate reset
-  output logic           sep_intermediate_reset_no,
+  output logic                               sep_intermediate_reset_no,
 
   // PROD_DBG isolation: block LC_STATE transitions when DEMOTE is active
   input  logic                               prod_dbg_active_i,
@@ -359,16 +359,16 @@ module sep_efuse_wrapper #(
     .axil_req_i                 (efuse_axil_mux_req),
     .axil_resp_o                (efuse_axil_mux_resp),
 
-    .axil_jtag_req_i   (axil_sep_otp_jtag_req_filtered[0]),
-    .axil_jtag_resp_o   (axil_sep_otp_jtag_resp_filtered[0]),
+    .axil_jtag_req_i            (axil_sep_otp_jtag_req_filtered[0]),
+    .axil_jtag_resp_o           (axil_sep_otp_jtag_resp_filtered[0]),
 
     // AXI4-Lite Register Interface from Efuse Controller to shim CSR
     .fuse_bank_ctrl_req_o       (efuse_bank_ctrl_req_o),
     .fuse_bank_ctrl_resp_i      (efuse_bank_ctrl_resp_i),
 
     // eFuse Command Interface - custom interface for SHIM state machine
-    .fuse_command_req_o      (efuse_shim_command_req_o),
-    .fuse_command_resp_i  (efuse_shim_command_resp_i),
+    .fuse_command_req_o         (efuse_shim_command_req_o),
+    .fuse_command_resp_i        (efuse_shim_command_resp_i),
 
     .secure_tm_i                (secure_tm_n0_scan),
     .security_disable_i         (1'b0), // in SEP we use internal security disable and tie off the input to efuse_interface
@@ -379,7 +379,7 @@ module sep_efuse_wrapper #(
     .security_disable_o         (security_disable), // Used for LC control, and secure_tm latch logic
     .shadow_regs_o              (shadow_regs_o),
 
-    .ext_boot_seq_done_i  (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
+    .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
 
     .prod_dbg_active_i          (prod_dbg_active_i),
 

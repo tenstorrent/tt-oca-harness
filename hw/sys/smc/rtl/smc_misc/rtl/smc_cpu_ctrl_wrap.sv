@@ -6,41 +6,41 @@
 module smc_cpu_ctrl_wrap #(
   parameter bit NO_ADDR_REMAP = 1'b1,
   parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_1CORE,
-  parameter int unsigned NumCPUCores        = 1,
+  parameter int unsigned NumCPUCores                 = 1,
 
-  localparam int unsigned MaxCPUCores        = 4
+  localparam int unsigned MaxCPUCores                = 4
 ) (
-  input  logic         clk_ref_i,
-  input  logic         clk_smc_i,
-  input  logic         rst_warm_smc_clk_ni,
-  input  logic         rst_primary_ni,
+  input  logic                                    clk_ref_i,
+  input  logic                                    clk_smc_i,
+  input  logic                                    rst_warm_smc_clk_ni,
+  input  logic                                    rst_primary_ni,
 
-  input  logic         test_en_i,
-  input  logic         scan_rst_ni,
+  input  logic                                    test_en_i,
+  input  logic                                    scan_rst_ni,
 
-  input  smc_pkg::smc_axil_32_64_req_t   axil_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t      axil_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t            axil_req_i,
+  output smc_pkg::smc_axil_32_64_resp_t           axil_resp_o,
 
-  input  logic [NumCPUCores-1:0][57:0]   wb_reg_pc_i,
-  input  logic [NumCPUCores-1:0]     wb_pc_valid_i,
+  input  logic [NumCPUCores-1:0][57:0]            wb_reg_pc_i,
+  input  logic [NumCPUCores-1:0]                  wb_pc_valid_i,
 
-  input  logic [NumCPUCores-1:0]     wdt_timeout_cluster_i,
-  input  logic         chiplet_is_primary_i,
-  output logic         wdt_second_timeout_o,
+  input  logic [NumCPUCores-1:0]                  wdt_timeout_cluster_i,
+  input  logic                                    chiplet_is_primary_i,
+  output logic                                    wdt_second_timeout_o,
 
-  output logic [NumCPUCores-1:0]     core_reset_n_n0_scan_o,
-  output logic [NumCPUCores-1:0][55:0]   core_reset_vector_o,
-  output logic         cluster_uncore_reset_n_n0_scan_o,
-  output logic         debug_reset_n_o,
+  output logic [NumCPUCores-1:0]                  core_reset_n_n0_scan_o,
+  output logic [NumCPUCores-1:0][55:0]            core_reset_vector_o,
+  output logic                                    cluster_uncore_reset_n_n0_scan_o,
+  output logic                                    debug_reset_n_o,
 
   // Reset-drain handshake to/from the CPU cluster (always-on rst_cold domain)
-  output logic         isolate_req_o,
-  input  logic         drained_i
+  output logic                                    isolate_req_o,
+  input  logic                                    drained_i
 );
 
   localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ?
-                                        smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS :
-                                        smc_1core_cpu_pkg::DEFAULT_RESET_SETTINGS ;
+                                                                            smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS :
+                                                                            smc_1core_cpu_pkg::DEFAULT_RESET_SETTINGS ;
 
   ///////////////////////
   // Reference Counter //
@@ -474,15 +474,15 @@ module smc_cpu_ctrl_wrap #(
   assign reset_ctrl_reset_value = DEFAULT_RESET_SETTINGS;
   // never write the value for the pulse start bits
   assign reset_ctrl_wr_data = {((reset_ctrl_reg_value_n0_scan[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
-     ~external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8]) |
-    (external_wr_data[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
-     external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8])),
-   4'd0,
-   ((reset_ctrl_reg_value_n0_scan[MaxCPUCores-1:0] &
-     ~external_wr_bit_mask[MaxCPUCores-1:0]) |
-    (external_wr_data[MaxCPUCores-1:0] &
-     external_wr_bit_mask[MaxCPUCores-1:0]))
-  };
+                    ~external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8]) |
+                (external_wr_data[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
+                    external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8])),
+            4'd0,
+            ((reset_ctrl_reg_value_n0_scan[MaxCPUCores-1:0] &
+                    ~external_wr_bit_mask[MaxCPUCores-1:0]) |
+                (external_wr_data[MaxCPUCores-1:0] &
+                    external_wr_bit_mask[MaxCPUCores-1:0]))
+        };
 
   always_ff @(posedge clk_smc_i or negedge rst_primary_ni) begin
     if (~rst_primary_ni) begin

@@ -9,22 +9,22 @@ module smc_peripherals #(
   // literal because the open smc_external map is opaque. Threaded from smc.sv.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44
 ) (
-  input  logic                                                   clk_ref_i,
-  input  logic                                                   clk_smc_i,
-  input  logic                      clk_periph_i,
-  input  logic                                                   test_en_i,
-  input  logic                                                   scan_rst_ni,
+  input  logic                                                                                    clk_ref_i,
+  input  logic                                                                                    clk_smc_i,
+  input  logic                                                                                    clk_periph_i,
+  input  logic                                                                                    test_en_i,
+  input  logic                                                                                    scan_rst_ni,
 
   // Telemetry Unit clock and reset
   input  logic                                                                                    clk_telemetry_i,
   input  logic                                                                                    rst_telemetry_ni,
 
   // Clock Gating
-  input  logic                     i3c_cg_en_i,
-  input  logic                     avs_cg_en_i,
-  input  logic                     i2c_cg_en_i,
-  input  logic                     uart_cg_en_i,
-  input  logic                     tel_cg_en_i,
+  input  logic                                                                                    i3c_cg_en_i,
+  input  logic                                                                                    avs_cg_en_i,
+  input  logic                                                                                    i2c_cg_en_i,
+  input  logic                                                                                    uart_cg_en_i,
+  input  logic                                                                                    tel_cg_en_i,
 
   // Peripherals AXI-Lite Slave
   input  smc_pkg::smc_axil_32_32_req_t                                                            axil_peripherals_req_i,
@@ -96,9 +96,9 @@ module smc_peripherals #(
   input  smc_pkg::smc_axil_32_32_resp_t                                                           fuse_bank_ctrl_resp_i,
 
   // Boot Stall
-  input  logic                                                                              boot_stall_jtag_ovrd_i,
-  input  logic                                                                              boot_stall_jtag_val_i,
-  output logic                                                                              boot_stall_processed_o,
+  input  logic                                                                                    boot_stall_jtag_ovrd_i,
+  input  logic                                                                                    boot_stall_jtag_val_i,
+  output logic                                                                                    boot_stall_processed_o,
 
   // Efuse Command Interface - custom interface for SHIM
   output smc_efuse_pkg::fuse_command_req_t                                                        efuse_shim_command_req_o,
@@ -119,7 +119,7 @@ module smc_peripherals #(
   output smc_efuse_pkg::efuse_map_t                                                               shadow_regs_o,
 
   // PVT
-  input  logic                                                                                temp_interrupt_i,
+  input  logic                                                                                    temp_interrupt_i,
 
   // SMC Misc Wrap Signals
   output logic [3:0]                                                                              ras_bank_chip_o,
@@ -129,41 +129,41 @@ module smc_peripherals #(
   output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]                                          ndmreset_process_o,
 
   // SMC Reset Unit Signals
-  input  logic                                                                              powergood_i,
-  input  logic                                                                              rst_cold_ni,
+  input  logic                                                                                    powergood_i,
+  input  logic                                                                                    rst_cold_ni,
   input  logic                                                                                    rst_cool_ni,
 
-  output logic                                                                              rst_cold_stable_ref_clk_no,
-  output logic                                                                              powergood_stable_o,
+  output logic                                                                                    rst_cold_stable_ref_clk_no,
+  output logic                                                                                    powergood_stable_o,
 
-  input  logic                                                                              rst_ext_wdt_ni,
-  input  logic                                                                              smc_wdt_first_timeout_i,
-  input  logic                                                                              smc_wdt_second_timeout_i,
+  input  logic                                                                                    rst_ext_wdt_ni,
+  input  logic                                                                                    smc_wdt_first_timeout_i,
+  input  logic                                                                                    smc_wdt_second_timeout_i,
 
-  input  logic                                                                              cfg_flr_pf_active_i,
-  output logic [31:0]                                                                       isolate_req_o,
-  output logic                                                                              skip_mem_repair_o,
+  input  logic                                                                                    cfg_flr_pf_active_i,
+  output logic [31:0]                                                                             isolate_req_o,
+  output logic                                                                                    skip_mem_repair_o,
 
-  input  logic [31:0]                                                                       ss_reset_complete_i,
-  output logic [31:0]                                                                       ss_config_o,
-  output smc_reset_unit_pkg::reset_ctrl_t                                                   ss_reset_ctrl_o[31:0],
+  input  logic [31:0]                                                                             ss_reset_complete_i,
+  output logic [31:0]                                                                             ss_config_o,
+  output smc_reset_unit_pkg::reset_ctrl_t                                                         ss_reset_ctrl_o[31:0],
 
-  output logic                                                                              rst_primary_ref_clk_no,
-  output logic                                                                              rst_primary_smc_clk_no,
-  output logic                                                                              rst_warm_smc_clk_no,
-  output logic                                                                              rst_wdt_smc_clk_no,
-  output logic                                                                              rst_primary_periph_clk_no,
+  output logic                                                                                    rst_primary_ref_clk_no,
+  output logic                                                                                    rst_primary_smc_clk_no,
+  output logic                                                                                    rst_warm_smc_clk_no,
+  output logic                                                                                    rst_wdt_smc_clk_no,
+  output logic                                                                                    rst_primary_periph_clk_no,
 
-  output logic                                                                              sync_irq_o,
+  output logic                                                                                    sync_irq_o,
 
   input  smc_pkg::jtag_smc_reset_ctrl_t                                                           jtag_reset_ctrl_i,
 
-  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]                                               captured_straps_i,
+  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]                                                     captured_straps_i,
 
-  input  logic [7:0]                                                                       sep_mailbox_interrupts_i,
+  input  logic [7:0]                                                                              sep_mailbox_interrupts_i,
 
-  input  logic                                                                             axi_hang_irq_i,
-  output logic [31:0]                                                                       peripheral_interrupts_o,
+  input  logic                                                                                    axi_hang_irq_i,
+  output logic [31:0]                                                                             peripheral_interrupts_o,
 
   // UART and GPIO interrupt outputs to top level
   output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]                                                      gpio_interrupt_o,
@@ -256,41 +256,41 @@ module smc_peripherals #(
   logic                                                                                    tel_cg_en_telemetry_clk;
 
   // AVSBus control signals
-  logic                                 avs_sdata;
-  logic                                 avs_mdata;
-  logic                                 avs_clock;
-  logic                                 avs_gpio_enable;
+  logic                                                                                    avs_sdata;
+  logic                                                                                    avs_mdata;
+  logic                                                                                    avs_clock;
+  logic                                                                                    avs_gpio_enable;
 
   // I2C control signals
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_enable_smc_clk;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_enable_periph_clk;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_master_enable;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_enable_smc_clk;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_enable_periph_clk;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_master_enable;
 
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_scl_o;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_sda_o;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_smbsus_no;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_smbalert_no;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_scl_o;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_sda_o;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_smbsus_no;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_smbalert_no;
 
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_smbsus_ni;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_smbalert_ni;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_smbsus_ni;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_smbalert_ni;
 
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_scl_i;
-  logic [smc_config_pkg::NUM_I2C-1:0]               i2c_sda_i;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_scl_i;
+  logic [smc_config_pkg::NUM_I2C-1:0]                                                      i2c_sda_i;
 
   // UART control signals
-  logic [smc_config_pkg::NUM_UART-1:0]               uart_enable_smc_clk;
-  logic [smc_config_pkg::NUM_UART-1:0]               uart_enable_periph_clk;
-  logic [smc_config_pkg::NUM_UART-1:0]               uart_rx;
-  logic [smc_config_pkg::NUM_UART-1:0]               uart_tx;
-  logic [smc_config_pkg::NUM_UART-1:0]               uart_rts_n;
-  logic [smc_config_pkg::NUM_UART-1:0]               uart_cts_n;
+  logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_enable_smc_clk;
+  logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_enable_periph_clk;
+  logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_rx;
+  logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_tx;
+  logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_rts_n;
+  logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_cts_n;
 
   // Clock gate enable signal from CDC
   logic                                                                                    i3c_cg_en_periph_clk;
 
   // I3C control signals
-  logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_scl_to_pad;        // SCL output from I3C core
-  logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_sda_to_pad;        // SDA output from I3C core
+  logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_scl_to_pad;         // SCL output from I3C core
+  logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_sda_to_pad;         // SDA output from I3C core
   logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_scl_oe_to_pad;      // SCL output enable
   logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_sda_oe_to_pad;      // SDA output enable
   logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_sel_od_pp_to_pad;   // Select open-drain (0) or push-pull (1)
@@ -298,17 +298,17 @@ module smc_peripherals #(
   logic [smc_config_pkg::NUM_I3C-1:0]                                                      i3c_sda_from_pad;       // SDA input to I3C core
 
   // Boot Stall
-  logic                      boot_stall_from_bp;
-  logic                      boot_stall_combined;
-  logic                      boot_stall_sticky;
-  logic                      fuse_reset_stalled_n;
+  logic                                                                                    boot_stall_from_bp;
+  logic                                                                                    boot_stall_combined;
+  logic                                                                                    boot_stall_sticky;
+  logic                                                                                    fuse_reset_stalled_n;
 
   // Reset Unit Signals
   logic                                                                                    rst_cold_stable_smc_clk_n; // Cold reset stable synchronized to SMCCLK, used by the padring
-  logic                      isolate_req_pin;
-  logic                      rst_cool_from_primary_n; // Generated by the reset
-  logic                       rst_primary_periph_clk_n;
-  logic                      powergood_stable;
+  logic                                                                                    isolate_req_pin;
+  logic                                                                                    rst_cool_from_primary_n; // Generated by the reset
+  logic                                                                                    rst_primary_periph_clk_n;
+  logic                                                                                    powergood_stable;
 
   // peripheral interrupts
   logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]                                      telemetry_irq;
@@ -320,7 +320,7 @@ module smc_peripherals #(
   logic                                                                                    avsbus_irq_smc_clk;
   logic                                                                                    temp_interrupt_smc_clk;
   logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_smc_clk, i2c_irqs_periph_clk;
-  logic                       locked_field_access_interrupt;
+  logic                                                                                    locked_field_access_interrupt;
   logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_irq_combined_smc_clk;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0]                                                      gpio_interrupt;
 
@@ -494,23 +494,23 @@ module smc_peripherals #(
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
     .ADDRESS_MAP_SIZE_PER_GPIO  (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
-    .GPIO_INTF_BASE_ADDR   (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
+    .GPIO_INTF_BASE_ADDR        (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
   ) u_smc_padring (
     .clk_i                      (clk_smc_i),
     .rst_primary_ni             (rst_primary_smc_clk_no),
     .rst_cold_stable_smc_clk_ni (rst_cold_stable_smc_clk_n),
 
-    .test_en_i         (test_en_i),
-    .scan_rst_ni        (scan_rst_ni),
+    .test_en_i                  (test_en_i),
+    .scan_rst_ni                (scan_rst_ni),
 
     // AXI-Lite Register Interface
     .axil_req_i                 (axil_padring_req),
     .axil_resp_o                (axil_padring_resp),
 
     // SPI
-    .spi_enable_i       (spi_enable_i),
+    .spi_enable_i               (spi_enable_i),
     .spi_clk_i                  (spi_clk_i),
-    .spi_txd_i        (spi_txd_i),
+    .spi_txd_i                  (spi_txd_i),
     .spi_cs_n_i                 (spi_cs_n_i),
     .spi_cs_oe_n_i              (spi_cs_oe_n_i),
     .spi_cs_ie_n_i              (spi_cs_ie_n_i),
@@ -535,15 +535,15 @@ module smc_peripherals #(
     .uart_cts_n_o               (uart_cts_n),
 
     // System Timer OCTS
-    .chiplet_is_primary_i  (chiplet_is_primary_i),
-    .timer_sync_load_i   (timer_sync_load_primary),
-    .timer_cnt_credit_i   (timer_cnt_credit_primary),
-    .timer_sync_load_o   (timer_sync_load_secondary),
-    .timer_cnt_credit_o   (timer_cnt_credit_secondary),
-    .timer_gpio_enable_i  (timer_gpio_enable),
+    .chiplet_is_primary_i       (chiplet_is_primary_i),
+    .timer_sync_load_i          (timer_sync_load_primary),
+    .timer_cnt_credit_i         (timer_cnt_credit_primary),
+    .timer_sync_load_o          (timer_sync_load_secondary),
+    .timer_cnt_credit_o         (timer_cnt_credit_secondary),
+    .timer_gpio_enable_i        (timer_gpio_enable),
 
     // Boot Stall
-    .boot_stall_o    (boot_stall_from_bp),
+    .boot_stall_o               (boot_stall_from_bp),
 
     // I3C - OCA I3C instances
     .i3c_enable_i         ('1),
@@ -556,16 +556,16 @@ module smc_peripherals #(
     .i3c_sda_pp_i         (i3c_sel_od_pp_to_pad), // Push-pull select
 
     // I2C
-    .i2c_enable_i    (i2c_enable_smc_clk),
-    .i2c_master_enable_i  (i2c_master_enable),
-    .i2c_scl_o     (i2c_scl_i),
-    .i2c_sda_o     (i2c_sda_i),
-    .i2c_smbus_n_o    (i2c_smbsus_ni),
-    .i2c_smbus_alert_n_o  (i2c_smbalert_ni),
-    .i2c_scl_oen_i    (i2c_scl_o),
-    .i2c_sda_oen_i    (i2c_sda_o),
-    .i2c_smbus_n_i    (i2c_smbsus_no),
-    .i2c_smbus_alert_oe_i  (~i2c_smbalert_no),
+    .i2c_enable_i               (i2c_enable_smc_clk),
+    .i2c_master_enable_i        (i2c_master_enable),
+    .i2c_scl_o                  (i2c_scl_i),
+    .i2c_sda_o                  (i2c_sda_i),
+    .i2c_smbus_n_o              (i2c_smbsus_ni),
+    .i2c_smbus_alert_n_o        (i2c_smbalert_ni),
+    .i2c_scl_oen_i              (i2c_scl_o),
+    .i2c_sda_oen_i              (i2c_sda_o),
+    .i2c_smbus_n_i              (i2c_smbsus_no),
+    .i2c_smbus_alert_oe_i       (~i2c_smbalert_no),
 
     // AVS
     .avs_enable_i               (avs_gpio_enable),
@@ -580,11 +580,11 @@ module smc_peripherals #(
     .isolate_req_pin_o          (isolate_req_pin),
 
     // GPIO Data Lines
-    .lsio_interface_select_o (lsio_interface_select_o),
-    .core2pad_o     (core2pad_o),
-    .core2pad_en_o    (core2pad_en_o),
-    .pad2core_i     (pad2core_i),
-    .pad2core_en_o    (pad2core_en_o),
+    .lsio_interface_select_o    (lsio_interface_select_o),
+    .core2pad_o                 (core2pad_o),
+    .core2pad_en_o              (core2pad_en_o),
+    .pad2core_i                 (pad2core_i),
+    .pad2core_en_o              (pad2core_en_o),
 
     // GPIO Interrupts
     .gpio_interrupt_o           (gpio_interrupt)
@@ -676,7 +676,7 @@ module smc_peripherals #(
     .I2C_CTRL_REG_MAP_SIZE      (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE)),
     .I2C_0__REG_MAP_BASE_ADDR   (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))),
     .I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE)),
-    .I2C_INSTANCE_SPACING  (i2c_wrap_pkg::I2C_INSTANCE_SPACING)
+    .I2C_INSTANCE_SPACING       (i2c_wrap_pkg::I2C_INSTANCE_SPACING)
   ) i2c_wrap (
     .clk_i                    (gated_clk_periph_i2c),
     .rst_ni                   (rst_primary_periph_clk_n),
@@ -1096,7 +1096,7 @@ module smc_peripherals #(
   smc_reset_unit u_smc_reset_unit (
     .clk_ref_i                  (clk_ref_i),
     .clk_smc_i                  (clk_smc_i),
-    .clk_periph_i    (clk_periph_i),
+    .clk_periph_i               (clk_periph_i),
 
     .powergood_i                (powergood_i),
     .powergood_stable_o         (powergood_stable),
@@ -1119,7 +1119,7 @@ module smc_peripherals #(
 
     .isolate_req_pin_i          (isolate_req_pin),
     .cfg_flr_pf_active_i        (cfg_flr_pf_active_i),
-    .rst_cool_ni                (rst_cool_ni),       // Driven from ip_integration - cool_rst_n_from_pin
+    .rst_cool_ni                (rst_cool_ni),              // Driven from ip_integration - cool_rst_n_from_pin
     .isolate_req_o              (isolate_req_o),
     .skip_mem_repair_o          (skip_mem_repair_o),
     .rst_cool_no                (rst_cool_from_primary_n),

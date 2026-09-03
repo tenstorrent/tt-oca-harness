@@ -9,45 +9,45 @@
 module memory_interface #(
 
   // Memory Generic Parameters
-  parameter int unsigned MEM_ADDR_WIDTH  = 0,
-  parameter int unsigned MEM_DATA_WIDTH  = 0,
-  parameter int unsigned MEM_ID_WIDTH  = 0,
-  parameter type mem_req_t     = logic,
-  parameter type mem_rsp_t     = logic,
-  parameter type mem_axi_req_t    = logic,
-  parameter type mem_axi_resp_t    = logic,
+  parameter int unsigned MEM_ADDR_WIDTH   = 0,
+  parameter int unsigned MEM_DATA_WIDTH   = 0,
+  parameter int unsigned MEM_ID_WIDTH     = 0,
+  parameter type mem_req_t                = logic,
+  parameter type mem_rsp_t                = logic,
+  parameter type mem_axi_req_t            = logic,
+  parameter type mem_axi_resp_t           = logic,
 
   // CSR Port Generic Parameters
-  parameter int unsigned CSR_ADDR_WIDTH  = 0,
-  parameter int unsigned CSR_DATA_WIDTH  = 0,
-  parameter type csr_axil_req_t    = logic,
-  parameter type csr_axil_resp_t    = logic,
+  parameter int unsigned CSR_ADDR_WIDTH   = 0,
+  parameter int unsigned CSR_DATA_WIDTH   = 0,
+  parameter type csr_axil_req_t           = logic,
+  parameter type csr_axil_resp_t          = logic,
 
   // Address Decode
-  parameter logic [31:0] CSR_BASE_ADDR  = 0,  // CSR base address
-  parameter logic [31:0] MEM_BASE_ADDR  = 0,  // Memory (SRAM) base address
+  parameter logic [31:0] CSR_BASE_ADDR    = 0,    // CSR base address
+  parameter logic [31:0] MEM_BASE_ADDR    = 0,    // Memory (SRAM) base address
 
-  parameter int unsigned NUM_BANKS   = 1  // Number of memory banks (for split banks)
+  parameter int unsigned NUM_BANKS        = 1     // Number of memory banks (for split banks)
 ) (
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input   logic                           clk_i,
+  input   logic                           rst_ni,
 
   // AXI interface
-  input  mem_axi_req_t      mem_axi_req_i,
-  output  mem_axi_resp_t      mem_axi_resp_o,
+  input   mem_axi_req_t                   mem_axi_req_i,
+  output  mem_axi_resp_t                  mem_axi_resp_o,
 
   // AXI4-Lite IN interface
-  input  csr_axil_req_t      csr_in_axil_req_i,
-  output  csr_axil_resp_t     csr_in_axil_resp_o,
+  input   csr_axil_req_t                  csr_in_axil_req_i,
+  output  csr_axil_resp_t                 csr_in_axil_resp_o,
 
   // AXI4-Lite OUT interface
-  output csr_axil_req_t      csr_out_axil_req_o,
-  input  csr_axil_resp_t      csr_out_axil_resp_i,
+  output csr_axil_req_t                   csr_out_axil_req_o,
+  input  csr_axil_resp_t                  csr_out_axil_resp_i,
 
   // Memory Interface
-  output mem_req_t       mem_req_o,
-  input  mem_rsp_t       mem_rsp_i,
-  output          busy_o
+  output mem_req_t                        mem_req_o,
+  input  mem_rsp_t                        mem_rsp_i,
+  output                                  busy_o
 );
 
   `include "axi/typedef.svh"
@@ -130,37 +130,37 @@ module memory_interface #(
 
   // Pass through all signals but translate addresses
   always_comb begin
-    mem_axi_req_mem    = mem_axi_req_i;
-    mem_axi_req_mem.aw.addr  = mem_axi_req_i.aw.addr - MEM_BASE_ADDR;
-    mem_axi_req_mem.ar.addr  = mem_axi_req_i.ar.addr - MEM_BASE_ADDR;
+    mem_axi_req_mem             = mem_axi_req_i;
+    mem_axi_req_mem.aw.addr     = mem_axi_req_i.aw.addr - MEM_BASE_ADDR;
+    mem_axi_req_mem.ar.addr     = mem_axi_req_i.ar.addr - MEM_BASE_ADDR;
   end
 
   axi_to_mem #(
-    .axi_req_t  (mem_axi_req_t),
-    .axi_resp_t  (mem_axi_resp_t),
-    .AddrWidth  (MEM_ADDR_WIDTH),
-    .DataWidth  (MEM_DATA_WIDTH),
-    .IdWidth  (MEM_ID_WIDTH),
-    .NumBanks  (NUM_BANKS),
-    .BufDepth  (1)
+    .axi_req_t      (mem_axi_req_t),
+    .axi_resp_t     (mem_axi_resp_t),
+    .AddrWidth      (MEM_ADDR_WIDTH),
+    .DataWidth      (MEM_DATA_WIDTH),
+    .IdWidth        (MEM_ID_WIDTH),
+    .NumBanks       (NUM_BANKS),
+    .BufDepth       (1)
   ) u_axi_to_mem (
-    .clk_i   (clk_i),
-    .rst_ni   (rst_ni),
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
 
-    .busy_o   (busy_o),
+    .busy_o         (busy_o),
 
-    .axi_req_i  (mem_axi_req_mem),
-    .axi_resp_o  (mem_axi_resp_o),
+    .axi_req_i      (mem_axi_req_mem),
+    .axi_resp_o     (mem_axi_resp_o),
 
-    .mem_req_o  (mem_req_o.req),
-    .mem_gnt_i  (mem_rsp_i.gnt),
-    .mem_addr_o  (mem_req_o.addr),
-    .mem_wdata_o (mem_req_o.wdata),
-    .mem_strb_o  (mem_req_o.strb),
-    .mem_atop_o  (mem_req_o.atop),
-    .mem_we_o  (mem_req_o.wenable),
-    .mem_rvalid_i (mem_rsp_i.rvalid),
-    .mem_rdata_i (mem_rsp_i.rdata)   // rdata stands for response data (not read data)
+    .mem_req_o      (mem_req_o.req),
+    .mem_gnt_i      (mem_rsp_i.gnt),
+    .mem_addr_o     (mem_req_o.addr),
+    .mem_wdata_o    (mem_req_o.wdata),
+    .mem_strb_o     (mem_req_o.strb),
+    .mem_atop_o     (mem_req_o.atop),
+    .mem_we_o       (mem_req_o.wenable),
+    .mem_rvalid_i   (mem_rsp_i.rvalid),
+    .mem_rdata_i    (mem_rsp_i.rdata)   // rdata stands for response data (not read data)
   );
 
   ///////////////////////////
@@ -169,7 +169,7 @@ module memory_interface #(
 
   // Pass through all signals but translate addresses
   always_comb begin
-    csr_out_axil_req_o    = csr_in_axil_req_i;
+    csr_out_axil_req_o          = csr_in_axil_req_i;
     csr_out_axil_req_o.aw.addr  = csr_in_axil_req_i.aw.addr - CSR_BASE_ADDR;
     csr_out_axil_req_o.ar.addr  = csr_in_axil_req_i.ar.addr - CSR_BASE_ADDR;
   end

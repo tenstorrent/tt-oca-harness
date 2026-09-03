@@ -243,8 +243,8 @@ module smc_cpu_wrapper #(
       chipyard_4core_mem_pkg::rom_tilelink_rsp_t rom_tilelink_intf_rsp;
 
       smc_4core_cpu u_smc_cpu (
-        .clk_i        (clk_i),
-        .rst_isolate_ni             (rst_isolate_ni),
+        .clk_i                        (clk_i),
+        .rst_isolate_ni               (rst_isolate_ni),
 
         .mem_init_reset_ni            (fuse_reset_ni),
 
@@ -333,8 +333,8 @@ module smc_cpu_wrapper #(
 
     end else if (SMC_CPU_CONFIG == smc_pkg::SMC_1CORE) begin : gen_1core_cpu
       smc_1core_cpu u_smc_cpu (
-        .clk_i        (clk_i),
-        .rst_isolate_ni             (rst_isolate_ni),
+        .clk_i                        (clk_i),
+        .rst_isolate_ni               (rst_isolate_ni),
 
         .mem_init_reset_ni            (fuse_reset_ni),
 

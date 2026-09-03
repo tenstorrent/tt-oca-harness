@@ -52,7 +52,7 @@ module smc_dfd_wrap #(
 
   smc_pkg::xtrigger_t                                               smc_xtrigger_out_o;
 
-  logic                                                           smc_action_halt_clock_o;
+  logic                                                             smc_action_halt_clock_o;
 
   logic                                                             time_tick;
   logic                                                             rst_ref_n;
@@ -93,17 +93,17 @@ module smc_dfd_wrap #(
 
     tt_debug_bus_mux #(
       .DEBUG_MUX_OUTPUT_WIDTH (LANE_WIDTH*4),
-      .LANE_WIDTH    (LANE_WIDTH),
-      .NUM_INPUT_LANES  (8),
+      .LANE_WIDTH          (LANE_WIDTH),
+      .NUM_INPUT_LANES     (8),
       .DISABLE_OUTPUT_FLOP (1),
-      .DEBUG_MUX_ID   (MUX_ID)
+      .DEBUG_MUX_ID        (MUX_ID)
     ) u_debug_bus_mux_l3 (
-      .clk     (clk_gated_i),
-      .reset_n    (rst_primary_ni),
-      .debug_signals_in  (debug_bus_i[LANE_WIDTH*8*i -1:LANE_WIDTH*8*(i-1)]),
-      .debug_bus_out   (debug_bus_l3[LANE_WIDTH*4*i -1:LANE_WIDTH*4*(i-1)]),
-      .debug_clken   (/* UNUSED */),
-      .DbgMuxSelMmr   (dbg_mux_sel_csr_i)
+      .clk                 (clk_gated_i),
+      .reset_n             (rst_primary_ni),
+      .debug_signals_in    (debug_bus_i[LANE_WIDTH*8*i -1:LANE_WIDTH*8*(i-1)]),
+      .debug_bus_out       (debug_bus_l3[LANE_WIDTH*4*i -1:LANE_WIDTH*4*(i-1)]),
+      .debug_clken         (/* UNUSED */),
+      .DbgMuxSelMmr        (dbg_mux_sel_csr_i)
     );
   end
 
@@ -117,8 +117,8 @@ module smc_dfd_wrap #(
 
     tt_debug_bus_mux #(
       .DEBUG_MUX_OUTPUT_WIDTH (LANE_WIDTH*4),
-      .LANE_WIDTH    (LANE_WIDTH),
-      .NUM_INPUT_LANES  (8),
+      .LANE_WIDTH          (LANE_WIDTH),
+      .NUM_INPUT_LANES     (8),
       .DEBUG_MUX_ID        (MUX_ID)
     ) u_debug_bus_mux_l2 (
       .clk                 (clk_gated_i),
@@ -148,122 +148,122 @@ module smc_dfd_wrap #(
     .MMR_BASE_ADDRESS                       (BASE_ADDR),
     .EXTERNAL_SINK_MEM                      (1)
   ) u_dfd_top (
-    .i_clk         (clk_gated_i),
-    .i_rst_n        (rst_primary_ni),
-    .i_critical_signal_hold     (1'b0),
+    .i_clk                                  (clk_gated_i),
+    .i_rst_n                                (rst_primary_ni),
+    .i_critical_signal_hold                 (1'b0),
 
-    .psel         (apb_smc_dfd_reg_req_i.psel),
-    .penable        (apb_smc_dfd_reg_req_i.penable),
-    .pwrite         (apb_smc_dfd_reg_req_i.pwrite),
-    .paddr         (apb_smc_dfd_reg_req_i.paddr[22:0]),
-    .pwdata         (apb_smc_dfd_reg_req_i.pwdata),
-    .pstrb         (apb_smc_dfd_reg_req_i.pstrb),
-    .pready         (apb_smc_dfd_reg_resp_o.pready),
-    .prdata         (apb_smc_dfd_reg_resp_o.prdata),
-    .pslverr        (apb_smc_dfd_reg_resp_o.pslverr),
+    .psel                                   (apb_smc_dfd_reg_req_i.psel),
+    .penable                                (apb_smc_dfd_reg_req_i.penable),
+    .pwrite                                 (apb_smc_dfd_reg_req_i.pwrite),
+    .paddr                                  (apb_smc_dfd_reg_req_i.paddr[22:0]),
+    .pwdata                                 (apb_smc_dfd_reg_req_i.pwdata),
+    .pstrb                                  (apb_smc_dfd_reg_req_i.pstrb),
+    .pready                                 (apb_smc_dfd_reg_resp_o.pready),
+    .prdata                                 (apb_smc_dfd_reg_resp_o.prdata),
+    .pslverr                                (apb_smc_dfd_reg_resp_o.pslverr),
 
     // JTAG-side MMR access (was JT_TR_SlvReq / TR_JT_SlvResp) - unused
-    .i_jtag_mmr_req_vld      ('0),
-    .i_jtag_mmr_req_we      ('0),
-    .i_jtag_mmr_req_addr     ('0),
-    .i_jtag_mmr_req_data     ('0),
-    .o_jtag_mmr_rsp_vld      (),
-    .o_jtag_mmr_rsp_data     (),
+    .i_jtag_mmr_req_vld                     ('0),
+    .i_jtag_mmr_req_we                      ('0),
+    .i_jtag_mmr_req_addr                    ('0),
+    .i_jtag_mmr_req_data                    ('0),
+    .o_jtag_mmr_rsp_vld                     (),
+    .o_jtag_mmr_rsp_data                    (),
 
-    .o_cla_xtrigger       (smc_xtrigger_out_o),
-    .i_cla_xtrigger       (xtrigger_ss_i),
-    .o_cla_external_action_halt_clock_out (smc_action_halt_clock_o),
+    .o_cla_xtrigger                         (smc_xtrigger_out_o),
+    .i_cla_xtrigger                         (xtrigger_ss_i),
+    .o_cla_external_action_halt_clock_out   (smc_action_halt_clock_o),
     .o_cla_external_action_halt_clock_local_out (),
     .o_cla_external_action_debug_interrupt_out  (external_action_debug_interrupt_o),
-    .o_cla_external_action_toggle_gpio_out (external_action_toggle_gpio_o),
-    .o_cla_external_action_custom   (external_action_custom_o),
+    .o_cla_external_action_toggle_gpio_out  (external_action_toggle_gpio_o),
+    .o_cla_external_action_custom           (external_action_custom_o),
 
-    .i_debug_bus_signals     (debug_bus_l2),
-    .o_debug_mux_sel      (),
-    .o_cla_debug_marker      (debug_marker_o),
+    .i_debug_bus_signals                    (debug_bus_l2),
+    .o_debug_mux_sel                        (),
+    .o_cla_debug_marker                     (debug_marker_o),
 
-    .i_cla_time_tick      (time_tick),
-    .i_timestamp       ('0),
+    .i_cla_time_tick                        (time_tick),
+    .i_timestamp                            ('0),
 
     // DST instruction-trigger control (from N-Trace); no N-Trace in this build
-    .i_sdtrig_control      (te_pkg::TRIG_TRACE_NONE),
-    .i_vid_map        ('0),
+    .i_sdtrig_control                       (te_pkg::TRIG_TRACE_NONE),
+    .i_vid_map                              ('0),
 
     // Trace sink RAMs are external; tsel travels with them
-    .o_sink_mem_req       (trace_mem_req_o),
-    .i_sink_mem_rsp       (trace_mem_resp_i),
-    .i_mem_tsel_settings     ('0),
+    .o_sink_mem_req                         (trace_mem_req_o),
+    .i_sink_mem_rsp                         (trace_mem_resp_i),
+    .i_mem_tsel_settings                    ('0),
 
     // Power / fuse controls: 0 = enabled. clk_dis_ctrl = 0 leaves the functional
     // clock enable under the block's own MMRs.
-    .i_cla_fuse_dis       ('0),
-    .i_cla_clk_dis       ('0),
-    .i_cla_clk_dis_ctrl      ('0),
-    .i_cla_func_clamp      ('0),
-    .i_dst_fuse_dis       ('0),
-    .i_dst_clk_dis       ('0),
-    .i_dst_clk_dis_ctrl      ('0),
-    .i_dst_func_clamp      ('0),
-    .i_dst_sink_fuse_dis     ('0),
-    .i_dst_sink_clk_dis      ('0),
-    .i_dst_sink_clk_dis_ctrl    ('0),
-    .i_dst_sink_func_clamp     ('0),
-    .i_funnel_fuse_dis      ('0),
-    .i_funnel_clk_dis      ('0),
-    .i_funnel_clk_dis_ctrl     ('0),
-    .i_funnel_func_clamp     ('0),
+    .i_cla_fuse_dis                         ('0),
+    .i_cla_clk_dis                          ('0),
+    .i_cla_clk_dis_ctrl                     ('0),
+    .i_cla_func_clamp                       ('0),
+    .i_dst_fuse_dis                         ('0),
+    .i_dst_clk_dis                          ('0),
+    .i_dst_clk_dis_ctrl                     ('0),
+    .i_dst_func_clamp                       ('0),
+    .i_dst_sink_fuse_dis                    ('0),
+    .i_dst_sink_clk_dis                     ('0),
+    .i_dst_sink_clk_dis_ctrl                ('0),
+    .i_dst_sink_func_clamp                  ('0),
+    .i_funnel_fuse_dis                      ('0),
+    .i_funnel_clk_dis                       ('0),
+    .i_funnel_clk_dis_ctrl                  ('0),
+    .i_funnel_func_clamp                    ('0),
 
     // DFT
-    .i_test_icg_en       (test_en_i),
-    .i_test_reset_en      (1'b0),
-    .i_test_reset_n       (rst_primary_ni),
+    .i_test_icg_en                          (test_en_i),
+    .i_test_reset_en                        (1'b0),
+    .i_test_reset_n                         (rst_primary_ni),
 
     // Trace-to-memory AXI master (was TR_EXT_SlvReq / EXT_TR_SlvResp) - unused
-    .m_trc_axi_awready      ('0),
-    .m_trc_axi_wready      ('0),
-    .m_trc_axi_bid       ('0),
-    .m_trc_axi_bresp      ('0),
-    .m_trc_axi_buser      ('0),
-    .m_trc_axi_bvalid      ('0),
-    .m_trc_axi_arready      ('0),
-    .m_trc_axi_rid       ('0),
-    .m_trc_axi_rdata      ('0),
-    .m_trc_axi_rresp      ('0),
-    .m_trc_axi_rlast      ('0),
-    .m_trc_axi_ruser      ('0),
-    .m_trc_axi_rvalid      ('0),
-    .m_trc_axi_awid       (),
-    .m_trc_axi_awaddr      (),
-    .m_trc_axi_awlen      (),
-    .m_trc_axi_awsize      (),
-    .m_trc_axi_awburst      (),
-    .m_trc_axi_awlock      (),
-    .m_trc_axi_awcache      (),
-    .m_trc_axi_awprot      (),
-    .m_trc_axi_awqos      (),
-    .m_trc_axi_awregion      (),
-    .m_trc_axi_awatop      (),
-    .m_trc_axi_awuser      (),
-    .m_trc_axi_awvalid      (),
-    .m_trc_axi_wdata      (),
-    .m_trc_axi_wstrb      (),
-    .m_trc_axi_wlast      (),
-    .m_trc_axi_wuser      (),
-    .m_trc_axi_wvalid      (),
-    .m_trc_axi_bready      (),
-    .m_trc_axi_arid       (),
-    .m_trc_axi_araddr      (),
-    .m_trc_axi_arlen      (),
-    .m_trc_axi_arsize      (),
-    .m_trc_axi_arburst      (),
-    .m_trc_axi_arlock      (),
-    .m_trc_axi_arcache      (),
-    .m_trc_axi_arprot      (),
-    .m_trc_axi_arqos      (),
-    .m_trc_axi_arregion      (),
-    .m_trc_axi_aruser      (),
-    .m_trc_axi_arvalid      (),
-    .m_trc_axi_rready      ()
+    .m_trc_axi_awready                      ('0),
+    .m_trc_axi_wready                       ('0),
+    .m_trc_axi_bid                          ('0),
+    .m_trc_axi_bresp                        ('0),
+    .m_trc_axi_buser                        ('0),
+    .m_trc_axi_bvalid                       ('0),
+    .m_trc_axi_arready                      ('0),
+    .m_trc_axi_rid                          ('0),
+    .m_trc_axi_rdata                        ('0),
+    .m_trc_axi_rresp                        ('0),
+    .m_trc_axi_rlast                        ('0),
+    .m_trc_axi_ruser                        ('0),
+    .m_trc_axi_rvalid                       ('0),
+    .m_trc_axi_awid                         (),
+    .m_trc_axi_awaddr                       (),
+    .m_trc_axi_awlen                        (),
+    .m_trc_axi_awsize                       (),
+    .m_trc_axi_awburst                      (),
+    .m_trc_axi_awlock                       (),
+    .m_trc_axi_awcache                      (),
+    .m_trc_axi_awprot                       (),
+    .m_trc_axi_awqos                        (),
+    .m_trc_axi_awregion                     (),
+    .m_trc_axi_awatop                       (),
+    .m_trc_axi_awuser                       (),
+    .m_trc_axi_awvalid                      (),
+    .m_trc_axi_wdata                        (),
+    .m_trc_axi_wstrb                        (),
+    .m_trc_axi_wlast                        (),
+    .m_trc_axi_wuser                        (),
+    .m_trc_axi_wvalid                       (),
+    .m_trc_axi_bready                       (),
+    .m_trc_axi_arid                         (),
+    .m_trc_axi_araddr                       (),
+    .m_trc_axi_arlen                        (),
+    .m_trc_axi_arsize                       (),
+    .m_trc_axi_arburst                      (),
+    .m_trc_axi_arlock                       (),
+    .m_trc_axi_arcache                      (),
+    .m_trc_axi_arprot                       (),
+    .m_trc_axi_arqos                        (),
+    .m_trc_axi_arregion                     (),
+    .m_trc_axi_aruser                       (),
+    .m_trc_axi_arvalid                      (),
+    .m_trc_axi_rready                       ()
   );
 
   ////////////////////////////////////////
@@ -284,11 +284,11 @@ module smc_dfd_wrap #(
   prim_sync_reset #(
     .WIDTH(3)
   ) u_ref_rst_sync (
-    .clk   (clk_ref_i),
-    .rst_n   (rst_primary_ni),
-    .test_mode  (test_en_i),
-    .scan_rst_n  (rst_primary_ni),
-    .sync_rst_n  (rst_ref_n)
+    .clk            (clk_ref_i),
+    .rst_n          (rst_primary_ni),
+    .test_mode      (test_en_i),
+    .scan_rst_n     (rst_primary_ni),
+    .sync_rst_n     (rst_ref_n)
   );
 
   always_ff @(posedge clk_ref_i) begin
@@ -311,10 +311,10 @@ module smc_dfd_wrap #(
   prim_sync3r #(
     .WIDTH(REF_CNT_W)
   ) u_ref_cnt_sync (
-    .i_clk  (clk_gated_i),
-    .i_reset_n (rst_primary_ni),
-    .i_d  (ref_cnt_gray_q),
-    .o_q  (ref_cnt_gray_sync)
+    .i_clk      (clk_gated_i),
+    .i_reset_n  (rst_primary_ni),
+    .i_d        (ref_cnt_gray_q),
+    .o_q        (ref_cnt_gray_sync)
   );
 
   prim_gray2bin #(

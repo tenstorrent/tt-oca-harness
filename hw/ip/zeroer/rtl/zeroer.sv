@@ -26,15 +26,15 @@ module zeroer #(
 
   parameter int unsigned CG_HYSTERESIS_W = 6
 ) (
-  input  logic        clk_i,
-  input  logic        rst_ni,
-  input  logic        test_en_i,
+  input   logic                               clk_i,
+  input   logic                               rst_ni,
+  input   logic                               test_en_i,
 
-  input  logic        cg_enable_i,
-  input  logic [CG_HYSTERESIS_W-1:0]   cg_hysteresis_i,
+  input   logic                               cg_enable_i,
+  input   logic [CG_HYSTERESIS_W-1:0]         cg_hysteresis_i,
 
-  output logic        zeroer_busy_o,
-  output logic        zeroer_intp_o,
+  output  logic                               zeroer_busy_o,
+  output  logic                               zeroer_intp_o,
 
   // AXI Register Interface
   input   zeroer_ctrl_req_t                   zeroer_ctrl_axi_req_i,
@@ -142,8 +142,8 @@ module zeroer #(
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
   ) zeroer_cg (
-    .clk_i    (clk_i),
-    .rst_ni    (rst_ni),
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
 
     .snoop_aw_valid_i(zeroer_ctrl_axil_req.aw_valid),
     .snoop_aw_ready_i(zeroer_ctrl_axil_resp.aw_ready),
@@ -156,13 +156,13 @@ module zeroer #(
     .snoop_r_ready_i (zeroer_ctrl_axil_req.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (disable_cg), // continuously kick to keep clock awake when not gating
+    .kick_i          (disable_cg), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_hysteresis_i),
-    .clk_active_o  (zeroer_clk_active_o),
-    .gated_clk_o  (reg_clk),
-    .bus_active_o  (zeroer_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_hysteresis_i),
+    .clk_active_o    (zeroer_clk_active_o),
+    .gated_clk_o     (reg_clk),
+    .bus_active_o    (zeroer_bus_active_o)
   );
 
   // ----------

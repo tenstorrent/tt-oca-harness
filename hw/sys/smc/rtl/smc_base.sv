@@ -85,7 +85,7 @@ module smc_base #(
   input  logic [9:0]                                                         efuse_debug_i,
 
   // DFD signals
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]             cla_ext_action_custom_o,
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]                   cla_ext_action_custom_o,
 
   output smc_pkg::xtrigger_t                                                 xtrigger_ss_o,
   input  wire smc_pkg::xtrigger_t                                            xtrigger_ss_i,

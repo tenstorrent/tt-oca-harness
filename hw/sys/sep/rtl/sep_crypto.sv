@@ -63,16 +63,16 @@ module sep_crypto #(
   // Efuse release reset
   input logic                                sep_reset_ni,
   // Efuse intermediate reset
-  output logic           sep_intermediate_reset_no,
+  output logic                               sep_intermediate_reset_no,
   // Efuse signals
-  input  sep_pkg::sep_straps_t              sep_straps_i,
+  input  sep_pkg::sep_straps_t               sep_straps_i,
   input  logic                               ext_boot_seq_done_i,
   output logic                               security_disable_o,       // To SMC
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
   output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
   output logic                               lc_sigint_err_o,
-  output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
+  output sep_efuse_pkg::efuse_map_t          shadow_regs_o,
   output logic                               fuse_sense_done_o,
   output logic                               secure_tm_o,
 

@@ -122,8 +122,8 @@ module idma_wrapper #(
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
   ) frontend_cg (
-    .clk_i    (clk_i),
-    .rst_ni    (rst_ni),
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
 
     .snoop_aw_valid_i(dma_ctrl_axi_req_i[0].aw_valid),
     .snoop_aw_ready_i(dma_ctrl_axi_resp_o[0].aw_ready),
@@ -136,13 +136,13 @@ module idma_wrapper #(
     .snoop_r_ready_i (dma_ctrl_axi_req_i[0].r_ready),
     .snoop_r_last_i  (dma_ctrl_axi_resp_o[0].r.last), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_enable_i | dma_busy), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_enable_i | dma_busy), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_hysteresis_i),
-    .clk_active_o  (frontend_clk_active_o),
-    .gated_clk_o  (frontend_clock),
-    .bus_active_o  (frontend_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_hysteresis_i),
+    .clk_active_o    (frontend_clk_active_o),
+    .gated_clk_o     (frontend_clock),
+    .bus_active_o    (frontend_bus_active_o)
   );
 
   prim_clk_gater_hysteresis #(

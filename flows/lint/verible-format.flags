@@ -12,6 +12,12 @@
 # column spacing the author already wrote instead of recomputing it, which
 # matches this hand-authored codebase's existing port/signal alignment
 # without introducing that padding.
+#
+# preserve reproduces the original whitespace character-for-character rather
+# than by rendered column, so a file whose author aligned columns with literal
+# tabs (rather than spaces) comes out misaligned once those tabs are
+# substituted; expand such a file's tabs to spaces (at the author's intended
+# tab width) before this pass ever sees it.
 --assignment_statement_alignment=preserve
 --case_items_alignment=preserve
 --class_member_variable_alignment=preserve

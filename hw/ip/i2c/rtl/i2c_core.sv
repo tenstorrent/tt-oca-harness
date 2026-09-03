@@ -751,7 +751,7 @@ module i2c_core
     .unhandled_tx_stretch_event_i (unhandled_tx_stretch_event),
     .ack_ctrl_mode_i              (reg_out_i.CTRL.ACK_CTRL_EN.value),
     .acq_start_stop_en_i           (reg_out_i.CTRL.ACQ_START_STOP_EN.value),
-    .auto_ack_cnt_i         (reg_out_i.TARGET_ACK_CTRL.NBYTES.value),
+    .auto_ack_cnt_i               (reg_out_i.TARGET_ACK_CTRL.NBYTES.value),
     .auto_ack_cnt_clr_o           (reg_in_o.TARGET_ACK_CTRL.NBYTES.hwclr),
     .auto_ack_cnt_decr_o          (reg_in_o.TARGET_ACK_CTRL.NBYTES.decr),
     .sw_nack_i                    (target_ack_ctrl_sw_nack),

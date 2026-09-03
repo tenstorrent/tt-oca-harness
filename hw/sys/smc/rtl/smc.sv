@@ -221,7 +221,7 @@ module smc #(
   input  smc_pkg::jtag_smc_reset_ctrl_t                                                  jtag_reset_ctrl_i,
 
   // DFD signals
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]                     cla_ext_action_custom_o,
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]                                       cla_ext_action_custom_o,
 
   output smc_pkg::xtrigger_t                                                             xtrigger_ss_o,
   input  wire smc_pkg::xtrigger_t                                                        xtrigger_ss_i,
@@ -422,7 +422,7 @@ module smc #(
     .mbist_pass_i                           (mbist_pass_i),
     .mbist_abort_i                          (mbist_abort_i),
 
-    // AXI hang detector fault output.
+    // AXI hang detector fault output. 
     // The OR'd fault is routed into smc_peripherals peripheral_interrupts[31] so PLIC can see it.
     .axi_hang_irq_o                         (axi_hang_irq)
   );

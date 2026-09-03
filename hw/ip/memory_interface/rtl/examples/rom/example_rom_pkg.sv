@@ -29,10 +29,10 @@ package example_rom_pkg;
   typedef logic [MEM_DATA_WIDTH/8-1:0] mem_strb_t;
 
   typedef struct packed {
-    logic    req;
-    mem_addr_t   addr;
-    mem_data_t   wdata;
-    mem_strb_t   strb;
+    logic           req;
+    mem_addr_t      addr;
+    mem_data_t      wdata;
+    mem_strb_t      strb;
     axi_pkg::atop_t atop;
     logic           wenable;
   } mem_req_t;

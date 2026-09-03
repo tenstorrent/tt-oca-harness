@@ -8,21 +8,21 @@ module smc_misc_wrap #(
   parameter int unsigned CHIP_ID = 0,
   parameter int unsigned LC_STATE_WIDTH = 8
 ) (
-  input  logic                                       clk_i,
-  input  logic                                       rst_ni,
-  input  logic                                       rst_warm_ni,
-  input  logic                                       test_en_i,
+  input  logic                                                clk_i,
+  input  logic                                                rst_ni,
+  input  logic                                                rst_warm_ni,
+  input  logic                                                test_en_i,
 
   // AXI-Lite Register Interface
-  input  smc_pkg::smc_axil_32_32_req_t               reg_axi_lite_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t              reg_axi_lite_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t                        reg_axi_lite_req_i,
+  output smc_pkg::smc_axil_32_32_resp_t                       reg_axi_lite_resp_o,
 
   // Lifecycle state
-  input  logic [LC_STATE_WIDTH-1:0]                  lc_state_i,
+  input  logic [LC_STATE_WIDTH-1:0]                           lc_state_i,
 
   // RAS bank settings
-  output logic [3:0]                                 ras_bank_chip_o,
-  output logic [3:0]                                 ras_bank_instance_o,
+  output logic [3:0]                                          ras_bank_chip_o,
+  output logic [3:0]                                          ras_bank_instance_o,
 
   // NDM Reset signals (connected to SMU)
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]      ndmreset_request_i,

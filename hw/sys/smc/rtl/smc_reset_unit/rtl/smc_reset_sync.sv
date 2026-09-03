@@ -34,12 +34,12 @@ module smc_reset_sync (
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_cold_smc_sync (
-    .clk     (clk_smc_i),
-    .rst_n     (rst_cold_stable_ni),
-    .sync_rst_n    (rst_cold_smc_no),
+    .clk                    (clk_smc_i),
+    .rst_n                  (rst_cold_stable_ni),
+    .sync_rst_n             (rst_cold_smc_no),
 
-    .test_mode    (test_en_i),
-    .scan_rst_n    (scan_rst_ni)
+    .test_mode              (test_en_i),
+    .scan_rst_n             (scan_rst_ni)
   );
 
   // Primary reset synchronization to SMC clock

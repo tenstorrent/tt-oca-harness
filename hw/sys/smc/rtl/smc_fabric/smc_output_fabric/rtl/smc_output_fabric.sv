@@ -19,9 +19,9 @@ module smc_output_fabric #(
   input  smc_pkg::smc_axi_addr_t                           global_base_addr_i,
   input  smc_pkg::smc_axi_addr_t                           local_base_addr_i,
 
-  input  logic                  filter_axi_cg_en_i,
-  input  logic                  fabric_cg_en_i,
-  input  smc_pkg::cg_hyster_t               cg_hysteresis_i,
+  input  logic                                             filter_axi_cg_en_i,
+  input  logic                                             fabric_cg_en_i,
+  input  smc_pkg::cg_hyster_t                              cg_hysteresis_i,
 
   // AXI interface
   input  smc_pkg::smc_56_64_6_12_axi_req_t           axi_req_i,
@@ -104,8 +104,8 @@ module smc_output_fabric #(
       .DenyDelay(1),
       .HystWidth(smc_pkg::CG_HYSTERESIS_W)
     ) fabric_cg (
-      .clk_i    (clk_i),
-      .rst_ni    (rst_ni),
+      .clk_i           (clk_i),
+      .rst_ni          (rst_ni),
 
       .snoop_aw_valid_i(axi_req_i.aw_valid),
       .snoop_aw_ready_i(axi_resp_o.aw_ready),
@@ -118,13 +118,13 @@ module smc_output_fabric #(
       .snoop_r_ready_i (axi_req_i.r_ready),
       .snoop_r_last_i  (axi_resp_o.r.last),
 
-      .kick_i    (~fabric_cg_en_i), // continuously kick to keep clock awake when not gating
+      .kick_i          (~fabric_cg_en_i), // continuously kick to keep clock awake when not gating
 
-      .test_clk_en_i  (test_en_i),
-      .hysteresis_i  (cg_hysteresis_i),
-      .clk_active_o  (fabric_clk_active_o),
-      .gated_clk_o  (fabric_clk),
-      .bus_active_o  (fabric_bus_active_o)
+      .test_clk_en_i   (test_en_i),
+      .hysteresis_i    (cg_hysteresis_i),
+      .clk_active_o    (fabric_clk_active_o),
+      .gated_clk_o     (fabric_clk),
+      .bus_active_o    (fabric_bus_active_o)
     );
 
     /////////////////////////
@@ -319,8 +319,8 @@ module smc_output_fabric #(
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) sys_out_filter_cg (
-    .clk_i    (clk_i),
-    .rst_ni    (rst_ni),
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
 
     .snoop_aw_valid_i(axi_remapped_to_filter_req.aw_valid),
     .snoop_aw_ready_i(axi_remapped_to_filter_resp.aw_ready),
@@ -333,13 +333,13 @@ module smc_output_fabric #(
     .snoop_r_ready_i (axi_remapped_to_filter_req.r_ready),
     .snoop_r_last_i  (axi_remapped_to_filter_resp.r.last),
 
-    .kick_i    (~filter_axi_cg_en_i), // continuously kick to keep clock awake when not gating
+    .kick_i          (~filter_axi_cg_en_i), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_hysteresis_i),
-    .clk_active_o  (sys_out_filter_clk_active_o),
-    .gated_clk_o  (filter_clk),
-    .bus_active_o  (sys_out_filter_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_hysteresis_i),
+    .clk_active_o    (sys_out_filter_clk_active_o),
+    .gated_clk_o     (filter_clk),
+    .bus_active_o    (sys_out_filter_bus_active_o)
   );
 
   axi_filter_wrap #(
@@ -364,8 +364,8 @@ module smc_output_fabric #(
     .filter_axi_req_t    (smc_pkg::smc_output_56_64_8_12_axi_req_t),
     .filter_axi_resp_t   (smc_pkg::smc_output_56_64_8_12_axi_resp_t),
     .filter_aw_chan_t    (smc_pkg::smc_output_56_64_8_12_axi_aw_chan_t),
-    .filter_w_chan_t  (smc_pkg::smc_output_56_64_8_12_axi_w_chan_t),
-    .filter_b_chan_t  (smc_pkg::smc_output_56_64_8_12_axi_b_chan_t),
+    .filter_w_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_w_chan_t),
+    .filter_b_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_b_chan_t),
     .filter_ar_chan_t    (smc_pkg::smc_output_56_64_8_12_axi_ar_chan_t),
     .filter_r_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_r_chan_t)
   ) smc_sys_outbound_filter (

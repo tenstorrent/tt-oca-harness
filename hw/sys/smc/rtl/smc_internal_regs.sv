@@ -4,11 +4,11 @@
 // SMC Internal Registers Module
 
 module smc_internal_regs #(
-  parameter int unsigned NumOutboundFilters      = 16,
-  parameter int unsigned NumInboundFilters       = 16,
+  parameter int unsigned NumOutboundFilters          = 16,
+  parameter int unsigned NumInboundFilters           = 16,
 
-  localparam type outbound_select_t              = logic [$clog2(NumOutboundFilters)-1:0],
-  localparam type inbound_select_t               = logic [$clog2(NumInboundFilters)-1:0]
+  localparam type outbound_select_t                  = logic [$clog2(NumOutboundFilters)-1:0],
+  localparam type inbound_select_t                   = logic [$clog2(NumInboundFilters)-1:0]
 ) (
   input  logic                                                                           clk_ref_i,
   input  logic                                                                           clk_smc_i,
@@ -94,10 +94,10 @@ module smc_internal_regs #(
 
   // DFD signals
   output logic                                                                           cla_interrupt_o,
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]         cla_ext_action_custom_o,
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]                           cla_ext_action_custom_o,
 
-  output smc_pkg::xtrigger_t                                           xtrigger_ss_o,
-  input  wire smc_pkg::xtrigger_t                                      xtrigger_ss_i,
+  output smc_pkg::xtrigger_t                                                             xtrigger_ss_o,
+  input  wire smc_pkg::xtrigger_t                                                        xtrigger_ss_i,
 
   // TDR debug control signals
   input  wire logic                                                                      tdr_dbg_ctrl_clock_stop_en_i,
@@ -114,12 +114,12 @@ module smc_internal_regs #(
   input  logic                                                                           test_en_i,
 
   // indicators for DFT status
-  input  logic                                    mem_repair_done_i,
-  input  logic                                    mem_repair_success_i,
-  input  logic                                    mem_repair_abort_i,
-  input  logic                                    mbist_done_i,
-  input  logic                                    mbist_pass_i,
-  input  logic                                    mbist_abort_i,
+  input  logic                                                                           mem_repair_done_i,
+  input  logic                                                                           mem_repair_success_i,
+  input  logic                                                                           mem_repair_abort_i,
+  input  logic                                                                           mbist_done_i,
+  input  logic                                                                           mbist_pass_i,
+  input  logic                                                                           mbist_abort_i,
 
   // Clock gater activity indicators
   output logic                                                                           mailbox_clk_active_o,
@@ -167,8 +167,8 @@ module smc_internal_regs #(
     .DenyDelay(),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) mailbox_cg (
-    .clk_i    (clk_smc_i),
-    .rst_ni    (rst_primary_smc_clk_ni),
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_ni),
 
     .snoop_aw_valid_i(axil_mailbox_req_i.aw_valid),
     .snoop_aw_ready_i(axil_mailbox_resp_o.aw_ready),
@@ -181,20 +181,20 @@ module smc_internal_regs #(
     .snoop_r_ready_i (axil_mailbox_req_i.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_ctrl_mailbox_cg_en), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_ctrl_mailbox_cg_en), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_ctrl_hysteresis),
-    .clk_active_o  (mailbox_clk_active_o),
-    .gated_clk_o  (mailbox_clk),
-    .bus_active_o  (mailbox_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_ctrl_hysteresis),
+    .clk_active_o    (mailbox_clk_active_o),
+    .gated_clk_o     (mailbox_clk),
+    .bus_active_o    (mailbox_bus_active_o)
   );
 
   axi_lite_mailbox_unit #(
     .NUM_MAILBOXES          (smc_pkg::NUM_MAILBOXES),
     .MAILBOX_DEPTH          (smc_pkg::MAILBOX_DEPTH),
     .MAX_TRANS              (smc_pkg::FABRIC_MAX_TRANS),
-    .MAILBOX_BASE_ADDR  (smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
+    .MAILBOX_BASE_ADDR      (smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
     .MAILBOX_SIZE           (SPACE_PER_MAILBOX),
     .ADDR_WIDTH             (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
     .DATA_WIDTH             (smc_pkg::AXI_LITE_64_DATA_WIDTH),
@@ -234,8 +234,8 @@ module smc_internal_regs #(
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) outbound_filter_reg_cg (
-    .clk_i    (clk_smc_i),
-    .rst_ni    (rst_primary_smc_clk_ni),
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_ni),
 
     .snoop_aw_valid_i(axil_outbound_filter_ctrl_req_i.aw_valid),
     .snoop_aw_ready_i(axil_outbound_filter_ctrl_resp_o.aw_ready),
@@ -248,13 +248,13 @@ module smc_internal_regs #(
     .snoop_r_ready_i (axil_outbound_filter_ctrl_req_i.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_ctrl_ob_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_ctrl_ob_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_ctrl_hysteresis),
-    .clk_active_o  (ob_filter_clk_active_o),
-    .gated_clk_o  (outbound_filter_clk),
-    .bus_active_o  (ob_filter_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_ctrl_hysteresis),
+    .clk_active_o    (ob_filter_clk_active_o),
+    .gated_clk_o     (outbound_filter_clk),
+    .bus_active_o    (ob_filter_bus_active_o)
   );
 
   always_comb begin
@@ -374,10 +374,10 @@ module smc_internal_regs #(
         .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
         .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
       ) err_slv (
-        .clk_i        (outbound_filter_clk),
-        .rst_ni       (rst_primary_smc_clk_ni),
-        .axil_req_i   (locked_reg_req),
-        .axil_resp_o  (locked_reg_resp)
+        .clk_i          (outbound_filter_clk),
+        .rst_ni         (rst_primary_smc_clk_ni),
+        .axil_req_i     (locked_reg_req),
+        .axil_resp_o    (locked_reg_resp)
       );
 
     end
@@ -405,8 +405,8 @@ module smc_internal_regs #(
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) inbound_filter_reg_cg (
-    .clk_i    (clk_smc_i),
-    .rst_ni    (rst_primary_smc_clk_ni),
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_ni),
 
     .snoop_aw_valid_i(axil_inbound_filter_ctrl_req_i.aw_valid),
     .snoop_aw_ready_i(axil_inbound_filter_ctrl_resp_o.aw_ready),
@@ -419,13 +419,13 @@ module smc_internal_regs #(
     .snoop_r_ready_i (axil_inbound_filter_ctrl_req_i.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_ctrl_ib_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_ctrl_ib_filter_reg_cg_en), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_ctrl_hysteresis),
-    .clk_active_o  (ib_filter_clk_active_o),
-    .gated_clk_o  (inbound_filter_clk),
-    .bus_active_o  (ib_filter_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_ctrl_hysteresis),
+    .clk_active_o    (ib_filter_clk_active_o),
+    .gated_clk_o     (inbound_filter_clk),
+    .bus_active_o    (ib_filter_bus_active_o)
   );
 
   axi_lite_demux #(
@@ -560,8 +560,8 @@ module smc_internal_regs #(
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) mmode_remap_cg (
-    .clk_i    (clk_smc_i),
-    .rst_ni    (rst_primary_smc_clk_ni),
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_ni),
 
     .snoop_aw_valid_i(axil_mR_ctrl_req_i.aw_valid),
     .snoop_aw_ready_i(axil_mR_ctrl_resp_o.aw_ready),
@@ -574,13 +574,13 @@ module smc_internal_regs #(
     .snoop_r_ready_i (axil_mR_ctrl_req_i.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_ctrl_hysteresis),
-    .clk_active_o  (mmode_remap_clk_active_o),
-    .gated_clk_o  (mR_local_clk),
-    .bus_active_o  (mmode_remap_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_ctrl_hysteresis),
+    .clk_active_o    (mmode_remap_clk_active_o),
+    .gated_clk_o     (mR_local_clk),
+    .bus_active_o    (mmode_remap_bus_active_o)
   );
 
   localparam int unsigned mmode_remap_sel_start_idx = $clog2(
@@ -661,8 +661,8 @@ module smc_internal_regs #(
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) xvisor_remap_cg (
-    .clk_i    (clk_smc_i),
-    .rst_ni    (rst_primary_smc_clk_ni),
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_ni),
 
     .snoop_aw_valid_i(axil_xR_ctrl_req_i.aw_valid),
     .snoop_aw_ready_i(axil_xR_ctrl_resp_o.aw_ready),
@@ -675,13 +675,13 @@ module smc_internal_regs #(
     .snoop_r_ready_i (axil_xR_ctrl_req_i.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_ctrl_hysteresis),
-    .clk_active_o  (xvisor_remap_clk_active_o),
-    .gated_clk_o  (xR_local_clk),
-    .bus_active_o  (xvisor_remap_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_ctrl_hysteresis),
+    .clk_active_o    (xvisor_remap_clk_active_o),
+    .gated_clk_o     (xR_local_clk),
+    .bus_active_o    (xvisor_remap_bus_active_o)
   );
 
   localparam int unsigned xvisor_remap_sel_start_idx = $clog2(
@@ -764,8 +764,8 @@ module smc_internal_regs #(
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
   ) alias_remap_cg (
-    .clk_i    (clk_smc_i),
-    .rst_ni    (rst_primary_smc_clk_ni),
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_ni),
 
     .snoop_aw_valid_i(axil_aR_ctrl_req_i.aw_valid),
     .snoop_aw_ready_i(axil_aR_ctrl_resp_o.aw_ready),
@@ -778,13 +778,13 @@ module smc_internal_regs #(
     .snoop_r_ready_i (axil_aR_ctrl_req_i.r_ready),
     .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
 
-    .kick_i    (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
+    .kick_i          (~cg_ctrl_addr_remap_cg_en), // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i  (test_en_i),
-    .hysteresis_i  (cg_ctrl_hysteresis),
-    .clk_active_o  (alias_remap_clk_active_o),
-    .gated_clk_o  (aR_local_clk),
-    .bus_active_o  (alias_remap_bus_active_o)
+    .test_clk_en_i   (test_en_i),
+    .hysteresis_i    (cg_ctrl_hysteresis),
+    .clk_active_o    (alias_remap_clk_active_o),
+    .gated_clk_o     (aR_local_clk),
+    .bus_active_o    (alias_remap_bus_active_o)
   );
 
   localparam int unsigned alias_remap_sel_start_idx = $clog2(
@@ -863,32 +863,32 @@ module smc_internal_regs #(
   smc_dfd_wrap #(
     .BASE_ADDR({32'd0, smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR})
   ) u_smc_dfd_wrap (
-    .clk_smc_i         (clk_smc_i),
-    .clk_ref_i         (clk_ref_i),
-    .rst_primary_ni        (rst_primary_smc_clk_ni),
+    .clk_smc_i                                  (clk_smc_i),
+    .clk_ref_i                                  (clk_ref_i),
+    .rst_primary_ni                             (rst_primary_smc_clk_ni),
 
-    .apb_smc_dfd_reg_req_i      (apb_smc_dfd_reg_req_i),
-    .apb_smc_dfd_reg_resp_o      (apb_smc_dfd_reg_resp_o),
+    .apb_smc_dfd_reg_req_i                      (apb_smc_dfd_reg_req_i),
+    .apb_smc_dfd_reg_resp_o                     (apb_smc_dfd_reg_resp_o),
 
-    .dfd_enables_i        (dfd_enables),
+    .dfd_enables_i                              (dfd_enables),
 
-    .external_action_debug_interrupt_o   (cla_interrupt_o),
-    .external_action_custom_o     (cla_ext_action_custom_o),
+    .external_action_debug_interrupt_o          (cla_interrupt_o),
+    .external_action_custom_o                   (cla_ext_action_custom_o),
 
-    .xtrigger_ss_o        (xtrigger_ss_o),
-    .xtrigger_ss_i        (xtrigger_ss_i),
+    .xtrigger_ss_o                              (xtrigger_ss_o),
+    .xtrigger_ss_i                              (xtrigger_ss_i),
 
-    .tdr_dbg_ctrl_clock_stop_en_i    (tdr_dbg_ctrl_clock_stop_en_i),
-    .tdr_dbg_ctrl_clocks_stopped_by_cla_o  (tdr_dbg_ctrl_clocks_stopped_by_cla_o),
+    .tdr_dbg_ctrl_clock_stop_en_i               (tdr_dbg_ctrl_clock_stop_en_i),
+    .tdr_dbg_ctrl_clocks_stopped_by_cla_o       (tdr_dbg_ctrl_clocks_stopped_by_cla_o),
 
-    .dbg_mux_sel_csr_i       (dbg_mux_sel_csr),
-    .debug_bus_i        (debug_bus_i),    // We could add a sync2 here for every bit of the debug bus to smc clk but I that's a lot of area 'wasted'
-    .debug_marker_o        (debug_marker_o),
+    .dbg_mux_sel_csr_i                          (dbg_mux_sel_csr),
+    .debug_bus_i                                (debug_bus_i),    // We could add a sync2 here for every bit of the debug bus to smc clk but I that's a lot of area 'wasted'
+    .debug_marker_o                             (debug_marker_o),
 
-    .trace_mem_req_o       (trace_mem_req_o),
-    .trace_mem_resp_i       (trace_mem_resp_i),
+    .trace_mem_req_o                            (trace_mem_req_o),
+    .trace_mem_resp_i                           (trace_mem_resp_i),
 
-    .test_en_i         (test_en_i)
+    .test_en_i                                  (test_en_i)
   );
 
   /////////////////////
@@ -896,19 +896,19 @@ module smc_internal_regs #(
   /////////////////////
 
   smc_dfx_ctrl_status_wrap smc_dfx_ctrl_status_wrap (
-    .clk_i     (clk_smc_i),
-    .rst_ni     (rst_primary_smc_clk_ni),
-    .axil_dfx_csr_req_i  (axil_dfx_csr_req_i),
-    .axil_dfx_csr_resp_o (axil_dfx_csr_resp_o),
-    .mem_repair_done_i  (mem_repair_done_i),
-    .mem_repair_success_i (mem_repair_success_i),
-    .mem_repair_abort_i  (mem_repair_abort_i),
-    .mbist_done_i   (mbist_done_i),
-    .mbist_pass_i   (mbist_pass_i),
-    .mbist_abort_i   (mbist_abort_i),
+    .clk_i                  (clk_smc_i),
+    .rst_ni                 (rst_primary_smc_clk_ni),
+    .axil_dfx_csr_req_i     (axil_dfx_csr_req_i),
+    .axil_dfx_csr_resp_o    (axil_dfx_csr_resp_o),
+    .mem_repair_done_i      (mem_repair_done_i),
+    .mem_repair_success_i   (mem_repair_success_i),
+    .mem_repair_abort_i     (mem_repair_abort_i),
+    .mbist_done_i           (mbist_done_i),
+    .mbist_pass_i           (mbist_pass_i),
+    .mbist_abort_i          (mbist_abort_i),
     .debug_chiplet_enable_o (debug_chiplet_enable),
-    .dfd_enables_o   (dfd_enables),
-    .dbg_mux_sel_csr_o  (dbg_mux_sel_csr)
+    .dfd_enables_o          (dfd_enables),
+    .dbg_mux_sel_csr_o      (dbg_mux_sel_csr)
   );
 
   //////////////////////
