@@ -8,18 +8,17 @@
 // stress, a safe IR load, or a BYPASS scan — and the reads must be stable
 // (CHK-IDCODE-STABLE) with the IEEE 1149.1 fields decoding to the expected
 // marker/version/part/manufacturer values. Read count per pass comes from
-// +DTP_IDCODE_READS_PER_LOOP (default 4, minimum 2 for the stability check).
+// test_cfg.idcode_reads_per_loop (+DTP_IDCODE_READS_PER_LOOP, default 4,
+// minimum 2 for the stability check).
 
-class dtp_jtag_idcode_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_jtag_idcode_test_seq)
 
-    int unsigned read_loops = 4;
+    // IDCODE reads per pass, taken from the test cfg at the top of body().
+    protected int unsigned read_loops = 4;
 
     function new(string name = "dtp_jtag_idcode_test_seq");
-        int unsigned count;
         super.new(name);
-        if ($value$plusargs("DTP_IDCODE_READS_PER_LOOP=%d", count) && count > 0)
-            read_loops = count;
     endfunction
 
     // Randomize the TAP context before reloading and reading IDCODE. Loop 0
@@ -74,6 +73,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_cmd_lib_seq;
         string     values_s = "";
 
         seed_scenario_rng();
+        read_loops = test_cfg.idcode_reads_per_loop;
         // No scan-count cross-check: the random-TMS-walk preconditions cross
         // Shift-x, publishing scan-builder items the sequence cannot count
         // (the cocotb twin likewise ran without the pin-level monitor).

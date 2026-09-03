@@ -2,14 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Base XTRIG sequence — the SV analogue of the cocotb
-// dtp_xtrig_base_test_seq helper layer. Extends the shared VIP master
-// sequence (the CSR AXI-Lite stimulus surface, running on the env's XTRIG
-// master sequencer) with the DTP cross-trigger layer:
+// dtp_xtrig_base_test_seq helper layer. A virtual sequence on the DTP
+// virtual sequencer whose CSR accesses are reusable AXI-Lite operations
+// (dtp_axi_csr_write_seq / dtp_axi_csr_read_seq) started on the XTRIG
+// master sequencer handle, with the DTP cross-trigger layer on top:
 //
-//   * the XTRIG CSR map (CTM CT_SRC select registers, CTP config/status/
-//     stretch registers) and typed write/read/check accessors,
-//   * the CTM reference model (OR-of-selected-destinations routing, the
-//     cocotb DtpCtmRefModel twin) cross-checked on every programmed route,
+//   * the XTRIG CSR map (dtp_types: CTM CT_SRC select registers, CTP
+//     config/status/stretch registers) and typed write/read/check accessors,
+//   * the CTM reference model (env dtp_xtrig_ctm_ref_model, the cocotb
+//     DtpCtmRefModel twin) cross-checked on every programmed route,
 //   * the cross-trigger pin surface over dtp_tb_if (CTM src/dst req-ack
 //     pairs for the internal CTs, CTP pad din/dout/en quartets), with
 //     pulse drivers, masked-signal polls, width measurement, and quiet
@@ -18,8 +19,8 @@
 //     ocah_checker: body() finalizes with required-ID enforcement so a
 //     silently skipped check net cannot report PASS.
 //
-// +DTP_XTRIG_CHECKER_NEGATIVE is the documented negative-validation hook
-// (the plusarg twin of the cocotb env knob): the CTM reference model is
+// test_cfg.xtrig_checker_negative (+DTP_XTRIG_CHECKER_NEGATIVE) is the
+// documented negative-validation hook: the CTM reference model is
 // programmed with an INVERTED destination select so CHK-XTRIG-ROUTE-MODEL
 // must fail on route scenarios, proving the model comparison gates
 // pass/fail end to end.
@@ -29,74 +30,43 @@
 // route helpers therefore program `output_port <- input_port_mask` and log
 // both the VPLAN source/destination intent and the concrete CSR mapping.
 
-// Small CTM model matching the OR-of-selected-destinations RTL behavior
-// (the cocotb DtpCtmRefModel twin).
-class dtp_xtrig_ctm_ref_model;
-
-    localparam int unsigned NumPorts = dtp_pkg::DEFAULT_NUM_CTP +
-                                       dtp_pkg::DEFAULT_NUM_INT_CT;
-    localparam bit [31:0]   SelectMask = (32'd1 << NumPorts) - 1;
-
-    bit [31:0] select [NumPorts];
-
-    function new();
-        foreach (select[i])
-            select[i] = '0;
-    endfunction
-
-    function void program_src(int unsigned src_idx, bit [31:0] dst_mask);
-        select[src_idx] = dst_mask & SelectMask;
-    endfunction
-
-    function bit [31:0] route(bit [31:0] dst_value);
-        bit [31:0] routed = '0;
-        dst_value &= SelectMask;
-        foreach (select[src_idx]) begin
-            if ((dst_value & select[src_idx]) != 0)
-                routed |= 32'd1 << src_idx;
-        end
-        return routed & SelectMask;
-    endfunction
-
-endclass : dtp_xtrig_ctm_ref_model
-
-class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
+class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     `uvm_object_utils(dtp_xtrig_base_test_seq)
 
     // ------------------------------------------------------------------
     // XTRIG geometry and CSR map (cocotb dtp_xtrig_types parity; the port
     // counts come from the RTL package).
     // ------------------------------------------------------------------
-    localparam int unsigned XtrigNumCtp      = dtp_pkg::DEFAULT_NUM_CTP;
-    localparam int unsigned XtrigNumIntCt    = dtp_pkg::DEFAULT_NUM_INT_CT;
-    localparam int unsigned XtrigNumCtmPorts = XtrigNumCtp + XtrigNumIntCt;
+    // dtp_types constants under the family's short names.
+    localparam int unsigned XtrigNumCtp      = DtpXtrigNumCtp;
+    localparam int unsigned XtrigNumIntCt    = DtpXtrigNumIntCt;
+    localparam int unsigned XtrigNumCtmPorts = DtpXtrigNumCtmPorts;
 
-    localparam bit [63:0]   XtrigCtmBase   = 64'h000;
-    localparam int unsigned XtrigCtmStride = 8;
-    localparam bit [63:0]   XtrigCtpBase   = 64'h200;
-    localparam int unsigned XtrigCtpStride = 16;
-    localparam bit [63:0]   XtrigUnmappedBase =
-        XtrigCtpBase + XtrigNumCtp * XtrigCtpStride;
+    localparam bit [63:0]   XtrigCtmBase      = DtpXtrigCtmBase;
+    localparam int unsigned XtrigCtmStride    = DtpXtrigCtmStride;
+    localparam bit [63:0]   XtrigCtpBase      = DtpXtrigCtpBase;
+    localparam int unsigned XtrigCtpStride    = DtpXtrigCtpStride;
+    localparam bit [63:0]   XtrigUnmappedBase = DtpXtrigUnmappedBase;
 
-    localparam int unsigned CtpConfigOffset  = 0;
-    localparam int unsigned CtpStatusOffset  = 4;
-    localparam int unsigned CtpStretchOffset = 8;
+    localparam int unsigned CtpConfigOffset  = DtpCtpConfigOffset;
+    localparam int unsigned CtpStatusOffset  = DtpCtpStatusOffset;
+    localparam int unsigned CtpStretchOffset = DtpCtpStretchOffset;
 
-    localparam bit [31:0] CtpConfigModeMask   = 32'h1;
-    localparam bit [31:0] CtpConfigInvertMask = 32'h2;
-    localparam bit [31:0] CtpConfigResetMask  = 32'h4;
-    localparam bit [31:0] CtpConfigMask       = 32'h7;
-    localparam bit [31:0] CtpStretchMask      = 32'hFFFF;
-    localparam bit [31:0] CtmSelectMask       = (32'd1 << XtrigNumCtmPorts) - 1;
+    localparam bit [31:0] CtpConfigModeMask   = DtpCtpConfigModeMask;
+    localparam bit [31:0] CtpConfigInvertMask = DtpCtpConfigInvertMask;
+    localparam bit [31:0] CtpConfigResetMask  = DtpCtpConfigResetMask;
+    localparam bit [31:0] CtpConfigMask       = DtpCtpConfigMask;
+    localparam bit [31:0] CtpStretchMask      = DtpCtpStretchMask;
+    localparam bit [31:0] CtmSelectMask       = DtpCtmSelectMask;
 
-    localparam int unsigned CtpModeWireOr = 0;
-    localparam int unsigned CtpModeP2p    = 1;
+    localparam int unsigned CtpModeWireOr = DtpCtpModeWireOr;
+    localparam int unsigned CtpModeP2p    = DtpCtpModeP2p;
 
-    localparam bit [31:0] CtpStatusBusy   = 32'h01;
-    localparam bit [31:0] CtpStatusReqOut = 32'h10;
-    localparam bit [31:0] CtpStatusAckIn  = 32'h20;
-    localparam bit [31:0] CtpStatusReqIn  = 32'h40;
-    localparam bit [31:0] CtpStatusAckOut = 32'h80;
+    localparam bit [31:0] CtpStatusBusy   = DtpCtpStatusBusy;
+    localparam bit [31:0] CtpStatusReqOut = DtpCtpStatusReqOut;
+    localparam bit [31:0] CtpStatusAckIn  = DtpCtpStatusAckIn;
+    localparam bit [31:0] CtpStatusReqIn  = DtpCtpStatusReqIn;
+    localparam bit [31:0] CtpStatusAckOut = DtpCtpStatusAckOut;
 
     // Named-evidence IDs recorded by the shared helpers below.
     localparam string ChkCsr        = "CHK-XTRIG-CSR";
@@ -107,19 +77,8 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
     localparam string ChkStretch    = "CHK-XTRIG-STRETCH";
     localparam string ChkAxil       = "CHK-XTRIG-AXIL";
 
-    localparam time SysClkPeriod = 10ns;
-
     // Selected by the test before start(); dispatch_scenario() switches on it.
     string scenario = "";
-
-    // Plumbed by the test from dtp_env before start(sequencer).
-    virtual dtp_tb_if tb_vif;
-
-    // Looped-scenario contract (dtp_base_test runner parity): per-pass seed,
-    // random volume, and pass index.
-    int unsigned scenario_seed = 0;
-    int unsigned random_count  = 5;
-    int unsigned loop_index    = 0;
 
     // Per-pass evidence and routing model.
     ocah_checker            m_check;
@@ -131,22 +90,14 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
         ctm_model = new();
     endfunction
 
-    // Seed this body() process from the per-pass scenario seed (start()
-    // forks body() in its own process, so the seed scopes to this pass).
-    function void seed_scenario_rng();
-        process p = process::self();
-        if (p != null)
-            p.srandom(scenario_seed);
-    endfunction
-
     // ------------------------------------------------------------------
     // Body: seed, attach evidence, dispatch, finalize. Scenario families
     // (CSR/AXI, CTP routes, CTM routes) override dispatch_scenario().
     // ------------------------------------------------------------------
     task body();
         string ids[$];
-        if (tb_vif == null)
-            `uvm_fatal(get_type_name(), "tb_vif not plumbed by the test")
+        if (tb_vif == null || test_cfg == null)
+            `uvm_fatal(get_type_name(), "tb_vif/test_cfg not plumbed by the test")
         seed_scenario_rng();
         scenario_required_ids(scenario, ids);
         attach_xtrig_checker(ids);
@@ -191,7 +142,7 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
         m_check = ocah_checker::type_id::create({get_name(), ".xtrig"});
         m_check.name_tag = "dtp_xtrig";
         m_check.required_ids = required_ids;
-        m_negative = $test$plusargs("DTP_XTRIG_CHECKER_NEGATIVE");
+        m_negative = test_cfg.xtrig_checker_negative;
         if (m_negative)
             `uvm_warning(get_type_name(),
                 "NEGATIVE VALIDATION: CTM reference-model selects will be inverted")
@@ -279,32 +230,74 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
     static function bit [31:0] apply_wstrb(bit [31:0] old_value,
                                            bit [31:0] new_value,
                                            bit [3:0]  wstrb);
-        bit [31:0] merged = old_value;
-        for (int unsigned byte_idx = 0; byte_idx < 4; byte_idx++) begin
-            if (wstrb[byte_idx])
-                merged = (merged & ~(32'hFF << (8 * byte_idx))) |
-                         (new_value & (32'hFF << (8 * byte_idx)));
-        end
-        return merged;
+        return dtp_xtrig_apply_wstrb(old_value, new_value, wstrb);
     endfunction
 
     // ------------------------------------------------------------------
-    // CSR accessors (the master-sequence write/read already escalate a
-    // non-OKAY response to uvm_error, mirroring the cocotb BRESP asserts).
+    // CSR accessors: reusable AXI-Lite operations on the XTRIG master
+    // sequencer (the VIP escalates a non-OKAY response to uvm_error when
+    // check_response is set, mirroring the cocotb BRESP asserts).
     // ------------------------------------------------------------------
+
+    // One CSR write, optionally channel-skewed; returns the VIP result item.
+    task write_skewed_result(
+        input  bit [63:0]    addr,
+        input  bit [63:0]    data,
+        output ocah_axi_item result,
+        input  int unsigned  aw_valid_delay = 0,
+        input  int unsigned  w_valid_delay  = 0,
+        input  int unsigned  b_ready_delay  = 0,
+        input  bit [7:0]     strb = 8'hFF,
+        input  bit           check_response = 1'b1,
+        input  bit           allow_timeout  = 1'b0
+    );
+        dtp_axi_csr_write_seq wr = dtp_axi_csr_write_seq::type_id::create("csr_write");
+        if (p_sequencer.m_xtrig_seqr == null)
+            `uvm_fatal(get_type_name(), "dtp_virtual_sequencer.m_xtrig_seqr is null")
+        wr.addr           = addr;
+        wr.data           = data[31:0];
+        wr.wstrb          = strb[3:0];
+        wr.aw_valid_delay = aw_valid_delay;
+        wr.w_valid_delay  = w_valid_delay;
+        wr.b_ready_delay  = b_ready_delay;
+        wr.check_response = check_response;
+        wr.allow_timeout  = allow_timeout;
+        wr.start(p_sequencer.m_xtrig_seqr, this);
+        result = wr.result;
+    endtask
+
+    // One CSR read, optionally holding RREADY low; returns the VIP result item.
+    task read_hold_result(
+        input  bit [63:0]    addr,
+        input  int unsigned  hold_cycles,
+        output ocah_axi_item result,
+        input  bit           check_response = 1'b1,
+        input  bit           allow_timeout  = 1'b0
+    );
+        dtp_axi_csr_read_seq rd = dtp_axi_csr_read_seq::type_id::create("csr_read");
+        if (p_sequencer.m_xtrig_seqr == null)
+            `uvm_fatal(get_type_name(), "dtp_virtual_sequencer.m_xtrig_seqr is null")
+        rd.addr           = addr;
+        rd.hold_cycles    = hold_cycles;
+        rd.check_response = check_response;
+        rd.allow_timeout  = allow_timeout;
+        rd.start(p_sequencer.m_xtrig_seqr, this);
+        result = rd.result;
+    endtask
+
     task csr_write(bit [63:0] addr, bit [31:0] data,
                    bit [3:0] wstrb = 4'hF, string label = "");
-        ocah_axi_resp_e resp;
-        write(addr, 64'(data), resp, '0, 8'(wstrb));
+        ocah_axi_item result;
+        write_skewed_result(addr, 64'(data), result, .strb(8'(wstrb)));
         `uvm_info(get_type_name(), $sformatf(
             "XTRIG CSR WRITE %-34s addr=0x%03h data=0x%08h wstrb=0x%h resp=%s",
-            label, addr, data, wstrb, resp.name()), UVM_MEDIUM)
+            label, addr, data, wstrb, result.worst_resp().name()), UVM_MEDIUM)
     endtask
 
     task csr_read(bit [63:0] addr, output bit [31:0] data, input string label = "");
-        bit [63:0] data64;
-        read(addr, data64);
-        data = data64[31:0];
+        ocah_axi_item result;
+        read_hold_result(addr, 0, result);
+        data = result.first_data();
         `uvm_info(get_type_name(), $sformatf(
             "XTRIG CSR READ  %-34s addr=0x%03h data=0x%08h",
             label, addr, data), UVM_MEDIUM)
@@ -376,10 +369,6 @@ class dtp_xtrig_base_test_seq extends ocah_axi_master_sequence;
     // ------------------------------------------------------------------
     // Cross-trigger pin surface over dtp_tb_if.
     // ------------------------------------------------------------------
-    task wait_sys_cycles(int unsigned cycles);
-        #(cycles * SysClkPeriod);
-    endtask
-
     task clear_xtrig_inputs();
         tb_vif.xtrig_ctm_src_ack     <= '0;
         tb_vif.xtrig_ctm_dst_req     <= '0;
