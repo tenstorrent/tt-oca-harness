@@ -282,7 +282,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_trng_reset_recovery_test`
 |no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
-|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three AXI ports to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated ports answer DECERR while the external CSR responder and source-select stay outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
+|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer DECERR while the external CSR responder and source-select stay outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -389,7 +389,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_efuse_token_match_fault_pic_test`
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 39, reads the SEC_DISABLE sticky bit, and masks `meie[39]` so the level-high line does not re-enter.
+|Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 40, reads the SEC_DISABLE sticky bit, and masks `meie[40]` so the level-high line does not re-enter.
 |===
 
 ===== SPI and DMA
@@ -633,7 +633,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three AXI ports to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external CSR and source-select staying outside the domain, and the JTAG hold/release pair.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external CSR and source-select staying outside the domain, and the JTAG hold/release pair.
 
 |Clock-gate CSR
 |PROVEN
@@ -3480,7 +3480,7 @@ both lock flavours of one seed-selected spare.
 . Legal SIP then CHIPLET token: match code, LC advances, shadow and `FEAT_CTRL` match the independent golden after resense.
 . Common-mode invert of all three RMA_SIP comparators on a valid token: legal mismatch code, no sticky bit, IRQ low.
 . Common-mode invert of all three RMA_SIP comparators on a wrong token: legal match code, no sticky bit, IRQ low (fail-open hole).
-. Collapse instance 0, then two-instance disagree: match status `6'b111111`, SIP sticky bit, `sep_internal_interrupts[38]`. Valid retry plus write-0 leave the bit and IRQ asserted.
+. Collapse instance 0, then two-instance disagree: match status `6'b111111`, SIP sticky bit, `sep_internal_interrupts[39]`. Valid retry plus write-0 leave the bit and IRQ asserted.
 
 *Checkers*:
 
@@ -3496,9 +3496,9 @@ both lock flavours of one seed-selected spare.
 |CHK-RANDCFG
 |SIP and CHIPLET both walked match and mismatch; tokens from the seed.
 |CHK-COMMON-MODE
-|All three comparators flipping a match to a legal mismatch does not set a sticky bit or raise `sep_internal_interrupts[38]`.
+|All three comparators flipping a match to a legal mismatch does not set a sticky bit or raise `sep_internal_interrupts[39]`.
 |CHK-COMMON-MODE-MATCH
-|All three comparators flipping a mismatch to a legal match does not set a sticky bit or raise `sep_internal_interrupts[38]`.
+|All three comparators flipping a mismatch to a legal match does not set a sticky bit or raise `sep_internal_interrupts[39]`.
 |CHK-COLLAPSE
 |A collapsed differential pair forces `6'b111111` and the SIP sticky bit.
 |CHK-DISAGREE
@@ -3508,7 +3508,7 @@ both lock flavours of one seed-selected spare.
 |CHK-STICKY
 |A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq38 asserted (`sw=r` until reset).
 |CHK-IRQ-38
-|`sep_internal_interrupts[38]` (PIC source 39) asserts with the sticky bit.
+|`sep_internal_interrupts[39]` (PIC source 40) asserts with the sticky bit.
 |CHK-WHICH-TOKEN
 |Collapse on CHIPLET and SEC_DISABLE sets bits 8 and 16 (OR with SIP bit 0).
 |CHK-JTAG-FAULT
@@ -3528,12 +3528,12 @@ both lock flavours of one seed-selected spare.
 
 *VIP / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 39, reads the SEC_DISABLE sticky bit, and masks `meie[39]` so the level-high line does not re-enter.
+*Objective*: Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 40, reads the SEC_DISABLE sticky bit, and masks `meie[40]` so the level-high line does not re-enter.
 
 *Test Procedure*:
 
 [arabic]
-. Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 39, reads the SEC_DISABLE sticky bit, and masks `meie[39]` so the level-high line does not re-enter.
+. Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 40, reads the SEC_DISABLE sticky bit, and masks `meie[40]` so the level-high line does not re-enter.
 . Host injects collapse on the SEC_DISABLE comparator after READY.
 
 *Checkers*:
@@ -3546,7 +3546,7 @@ both lock flavours of one seed-selected spare.
 |CHK-PIC-FAULT
 |`TOKEN_MATCH_FAULT` secure-disable bit is set.
 |CHK-PIC-MASK
-|After meie[39] is masked the ISR does not re-enter.
+|After meie[40] is masked the ISR does not re-enter.
 |===
 
 '''''

@@ -459,12 +459,12 @@ through real sense.
 |Named evidence |Test / sequence logs |`CHK-* PASS` lines required for audit
 |Regression parsing |Global DV parser |Positive cocotb / `results.xml` evidence — exit 0 alone is not enough
 |===
-RTL and vendor-IP SVA do not participate in any run. The shared native build
-profile — used by both the cocotb and the UVM flow — defines `DISABLE_ASSERT`
-and `COMMON_CELLS_ASSERTS_OFF`, so no assertion in the design or in the
-vendored IP is watching. The checks above are the whole of the checking layer:
-nothing is watching except what a test states explicitly, and there is no
-assertion layer underneath catching what a checker misses.
+RTL SVA participation depends on the backend. Under Verilator, first-party
+and OpenTitan concurrent macros expand to nothing because those headers test
+`VERILATOR`. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`,
+so PULP `common_cells` inline assertions are off on every backend. The checks
+above are the checking layer the Verilator acceptance path relies on: nothing
+else is watching there for a checker miss.
 
 
 === Coverage Strategy

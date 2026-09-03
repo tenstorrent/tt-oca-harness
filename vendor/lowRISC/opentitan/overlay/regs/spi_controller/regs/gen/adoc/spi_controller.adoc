@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -19,7 +19,7 @@
 | 0x34 | EVENT_ENABLE | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -30,7 +30,7 @@ information.
 information.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -39,7 +39,7 @@ information.
 | 0 | `ERROR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.error is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -48,7 +48,7 @@ information.
 | 0 | `ERROR` | W | 0x0 a| Write 1 to force !!INTR_STATE.error to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -56,7 +56,7 @@ information.
 | 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CONTROL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -79,7 +79,7 @@ an interrupt when the depth of the RX FIFO reaches
 RX_WATERMARK words (32b each).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -117,7 +117,7 @@ Indicates how many unsent 32-bit words are currently in the TX FIFO.
 When active, this result may be an overestimate due to synchronization delays.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CONFIGOPTS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -159,14 +159,14 @@ factor of (CLKDIV+1) relative to the core clock frequency.  The
 period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CSID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `CSID` | RW | 0x0 a| Chip Select ID
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .COMMAND Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -197,7 +197,7 @@ pausing for dummy cycles, and transmitting or receiving data from
 the device.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERROR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -217,7 +217,7 @@ interrupt whenever a command is issued while busy (i.e. a 1 is
 when !!STATUS.READY is not asserted.)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERROR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -234,7 +234,7 @@ speed
 | 0 | `CMDBUSY` | RW | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EVENT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description

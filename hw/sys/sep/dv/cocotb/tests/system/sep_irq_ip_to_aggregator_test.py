@@ -30,14 +30,14 @@ EDN cmd_req_done/fatal_err -> bits 27..28), the full reference suite 3-phase che
 
 Then one through-adapter SLVERR on the Secure DMA register hole and one on
 each HMAC / KMAC / OTBN CSR gap:
-  CHK-BUSERR-BASE   both STATUS words and aggregator [39]/[41] read 0
-  CHK-BUSERR-DMA    DMA hole read is SLVERR; exclusive reg_path_err; [39]=1
-  CHK-BUSERR-PERIPH each hole read is SLVERR; exclusive hmac / kmac / otbn; [41]=1
+  CHK-BUSERR-BASE   both STATUS words and aggregator [40]/[42] read 0
+  CHK-BUSERR-DMA    DMA hole read is SLVERR; exclusive reg_path_err; [40]=1
+  CHK-BUSERR-PERIPH each hole read is SLVERR; exclusive hmac / kmac / otbn; [42]=1
   CHK-BUSERR-CLR    each matching CLEAR write returns STATUS and the PIC bit to 0
 
 A beat past an adapter window is DECERR and never sets err_o. AES, CSRNG,
 EDN and WDT windows are packed to the last register. This leaf does not
-start a DMA transfer, so it does not prove host_path_err / bit 40.
+start a DMA transfer, so it does not prove host_path_err / bit 41.
 Lockstep punch-through has no frontdoor on this build.
 
 INTR_TEST sets INTR_STATE regardless of IP functional state, so no entropy bring-
@@ -179,12 +179,12 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         assert dma_st == 0, f"DMA_BUS_ERR_STATUS=0x{dma_st:x} at baseline, expected 0"
         assert periph_st == 0, f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} at baseline, expected 0"
         assert await self._agg_bit(IRQ_DMA_REG_PATH) == 0, (
-            "sep_internal_interrupts[39] high before a DMA register-path fault"
+            "sep_internal_interrupts[40] high before a DMA register-path fault"
         )
         assert await self._agg_bit(IRQ_PERIPH_OR) == 0, (
-            "sep_internal_interrupts[41] high before a peripheral bridge fault"
+            "sep_internal_interrupts[42] high before a peripheral bridge fault"
         )
-        self.logger.info("CHK-BUSERR-BASE PASS: DMA/PERIPH STATUS=0; aggregator [39]/[41]=0")
+        self.logger.info("CHK-BUSERR-BASE PASS: DMA/PERIPH STATUS=0; aggregator [40]/[42]=0")
 
         await self.irq.read_expect_slverr(dma_hole)
         dma_st = await self.irq.read32(DMA_STATUS_ADDR)
@@ -202,13 +202,13 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             f"DMA register-path SLVERR (vec=0x{dma_vec:x})"
         )
         assert ((dma_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
-            "host-path bit [40] set on a register-path fault"
+            "host-path bit [41] set on a register-path fault"
         )
         assert ((dma_vec >> IRQ_PERIPH_OR) & 1) == 0, (
-            "periph OR [41] set on a DMA register-path fault"
+            "periph OR [42] set on a DMA register-path fault"
         )
         self.logger.info(
-            "CHK-BUSERR-DMA PASS: 0x%08x SLVERR; STATUS=0x%x exclusive; [39]=1",
+            "CHK-BUSERR-DMA PASS: 0x%08x SLVERR; STATUS=0x%x exclusive; [40]=1",
             dma_hole,
             dma_st,
         )
@@ -220,8 +220,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         dma_st = await self.irq.read32(DMA_STATUS_ADDR)
         assert dma_st == 0, f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after CLEAR, expected 0"
         clr_ok, _ = await self._poll_agg(IRQ_DMA_REG_PATH, 0)
-        assert clr_ok, "sep_internal_interrupts[39] stuck after DMA_BUS_ERR_CLEAR"
-        self.logger.info("CHK-BUSERR-CLR PASS: DMA_BUS_ERR_CLEAR; STATUS=0; [39]=0")
+        assert clr_ok, "sep_internal_interrupts[40] stuck after DMA_BUS_ERR_CLEAR"
+        self.logger.info("CHK-BUSERR-CLR PASS: DMA_BUS_ERR_CLEAR; STATUS=0; [40]=0")
 
         for hole in holes:
             await self.irq.read_expect_slverr(hole.addr)
@@ -240,10 +240,10 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 f"{hole.name} adapter SLVERR (vec=0x{per_vec:x})"
             )
             assert ((per_vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
-                f"DMA register-path [39] set on a {hole.name} bridge fault"
+                f"DMA register-path [40] set on a {hole.name} bridge fault"
             )
             self.logger.info(
-                "CHK-BUSERR-PERIPH PASS: %s 0x%08x SLVERR; STATUS=0x%x exclusive; [41]=1",
+                "CHK-BUSERR-PERIPH PASS: %s 0x%08x SLVERR; STATUS=0x%x exclusive; [42]=1",
                 hole.name,
                 hole.addr,
                 periph_st,
@@ -256,9 +256,9 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             )
             clr_ok, _ = await self._poll_agg(IRQ_PERIPH_OR, 0)
             assert clr_ok, (
-                f"sep_internal_interrupts[41] stuck after PERIPH_BUS_ERR_CLEAR.{hole.name}"
+                f"sep_internal_interrupts[42] stuck after PERIPH_BUS_ERR_CLEAR.{hole.name}"
             )
             self.logger.info(
-                "CHK-BUSERR-CLR PASS: PERIPH_BUS_ERR_CLEAR.%s; STATUS=0; [41]=0",
+                "CHK-BUSERR-CLR PASS: PERIPH_BUS_ERR_CLEAR.%s; STATUS=0; [42]=0",
                 hole.name,
             )

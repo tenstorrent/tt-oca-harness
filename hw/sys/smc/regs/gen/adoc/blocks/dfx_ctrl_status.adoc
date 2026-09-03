@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -10,7 +10,7 @@
 | 0x10 | DEBUG_BUS_MUX | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS_SMU Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -32,7 +32,7 @@ This register is sticky 1 and will hold the value until reset
 This register is sticky 1 and will hold the value until reset
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DEBUG_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -47,7 +47,7 @@ This register is sticky 1 and will hold the value until reset
 | 1:0 | `chiplet_enable` | RW | 0x0 a| Chiplet Enable Used for Triggering
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DEBUG_BUS_MUX Register
 |===
 | Bits | Field | Access | Reset | Description

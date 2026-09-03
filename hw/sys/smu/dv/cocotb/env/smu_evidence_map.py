@@ -213,6 +213,117 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_axi_atomic_operation_test": [
         ("CHK-AXI-NON-ATOP", "AXI_NON_ATOP_OK", "non-ATOP SMN path completes"),
     ],
+    # --- sep0_all rows that were enrolled without a map (tokens match seq expect_*) ---
+    "smu_axi_xbar_structure_test": [
+        (
+            "CHK-XBAR-POS-NO-GEN-SEP",
+            "CHK-XBAR-POS-NO-GEN-SEP",
+            "gen_sep absent under SEP=0",
+        ),
+        (
+            "CHK-XBAR-POS-IW",
+            "CHK-XBAR-POS-IW",
+            "gen_no_sep ID converters resolve",
+        ),
+        (
+            "CHK-XBAR-ABSENT-NO-SEP",
+            "CHK-XBAR-ABSENT-NO-SEP",
+            "smu_axi_xbar absent under gen_no_sep",
+        ),
+    ],
+    "smu_axi_filter_allow_ns_test": [
+        ("CHK-SMU-ALLOW-NS-S1", "CHK-SMU-ALLOW-NS-S1", "allow_ns=0 secure OKAY / NS DECERR"),
+        ("CHK-SMU-ALLOW-NS-S2", "CHK-SMU-ALLOW-NS-S2", "dual-slot admits secure and NS"),
+        ("CHK-SMU-ALLOW-NS-S3", "CHK-SMU-ALLOW-NS-S3", "clear returns DECERR for both"),
+    ],
+    "smu_axi_prot_encoding_decode_test": [
+        (
+            "CHK-SMU-PROT-S9-MATRIX",
+            "CHK-SMU-PROT-S9-MATRIX",
+            "eight-way AxPROT matrix on VERSION_LO",
+        ),
+    ],
+    "smu_axi_filter_in_instance_matrix_test": [
+        (
+            "CHK-FILTER-IN-INSTANCES-S1",
+            "CHK-FILTER-IN-INSTANCES-S1",
+            "inbound instance DECODE bases",
+        ),
+    ],
+    "smu_axi_filter_out_instance_matrix_test": [
+        (
+            "CHK-FILTER-OUT-INSTANCES-S1",
+            "CHK-FILTER-OUT-INSTANCES-S1",
+            "outbound instance DECODE bases",
+        ),
+    ],
+    "smu_fabric_reg_bar_wr_test": [
+        (
+            "CHK-SUB-AXIL-LOCAL-S2",
+            "CHK-SUB-AXIL-LOCAL-S2",
+            "fabric config CSR delivered OKAY",
+        ),
+    ],
+    "smu_axi_alias_remap_manager_scope_test": [
+        (
+            "CHK-ALIAS-REMAP-SCOPE-S3",
+            "CHK-ALIAS-REMAP-SCOPE-S3",
+            "jtag2axi alias_remapped write/readback",
+        ),
+    ],
+    "smu_system_timer_octs_test": [
+        (
+            "CHK-OCTS-PRIMARY-STRAP",
+            "CHK-OCTS-PRIMARY-STRAP",
+            "primary strap tracks chiplet_is_primary_i",
+        ),
+        (
+            "CHK-OCTS-COUNT-MONOTONIC",
+            "CHK-OCTS-COUNT-MONOTONIC",
+            "OCTS pin count advances",
+        ),
+    ],
+    "smu_i3c_mem_port_connectivity_test": [
+        (
+            "CHK-SUB-AXIL-LOCAL-S1",
+            "CHK-SUB-AXIL-LOCAL-S1",
+            "local peripheral destinations observed OKAY",
+        ),
+    ],
+    "smu_dtp_io_stap_smoke_test": [
+        ("CHK-DTP-IO-STAP-SCAN", "CHK-DTP-IO-STAP-SCAN", "IO STAP host TCK observe"),
+    ],
+    "smu_dtp_smc_stap_smoke_test": [
+        (
+            "CHK-DTP-SMC-STAP-IDCODE",
+            "CHK-DTP-SMC-STAP-IDCODE",
+            "SMC STAP selected IDCODE TCK match",
+        ),
+    ],
+    "smu_dtp_bsr_ijtag_scan_test": [
+        (
+            "CHK-DTP-BSR-EXTEST-SELECT",
+            "CHK-DTP-BSR-EXTEST-SELECT",
+            "EXTEST selects BSR TCK",
+        ),
+    ],
+    "smu_dtp_otp_smc_map_rw_test": [
+        ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP BIRA R/W"),
+    ],
+    "smu_dtp_otp_smc_series_error_test": [
+        (
+            "CHK-OTP-SMC-DECODE-SLVERR",
+            "CHK-OTP-SMC-DECODE-SLVERR",
+            "OTP decode-hole SLVERR",
+        ),
+    ],
+    "smu_smc_dtp_jtag2axi_smoke_test": [
+        (
+            "CHK-JTAG2AXI-SMOKE-SCRATCH",
+            "CHK-JTAG2AXI-SMOKE-SCRATCH",
+            "J2A scratch write/readback",
+        ),
+    ],
     # --- P1 phase2 deepeners ---
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [
         ("CHK-J2A-RW-MATRIX", "J2A_RW_MATRIX_OK", "partial WSTRB 0x55/0xAA merge"),

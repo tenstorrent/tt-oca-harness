@@ -411,12 +411,13 @@ package sep_pkg;
     // Internal SEP interrupt sources occupying the low PIC slots; see the
     // sep_internal_interrupts aggregation in sep.sv for the slot map. Growing this
     // shifts the external sources up and narrows NUM_EXTERNAL_IRQS accordingly.
-    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall;
-    // 38 = eFuse token comparator redundancy fault; 39,40 = Secure DMA register-path
-    // bus error / host-path integrity fault (level, cleared via DMA_BUS_ERR_CLEAR);
-    // 41 = aggregated peripheral register-bridge fault (level, per-block source
-    // identified by PERIPH_BUS_ERR_STATUS and cleared via PERIPH_BUS_ERR_CLEAR).
-    parameter int unsigned NUM_INTERNAL_IRQS = 42;
+    // 34,35 = Adams Bridge error / notif; 36,37,38 = entropy pool low / fill stall /
+    // pointer-integrity fault; 39 = eFuse token comparator redundancy fault; 40,41 = Secure DMA
+    // register-path bus error / host-path integrity fault (level, cleared via
+    // DMA_BUS_ERR_CLEAR); 42 = aggregated peripheral register-bridge fault (level,
+    // per-block source identified by PERIPH_BUS_ERR_STATUS and cleared via
+    // PERIPH_BUS_ERR_CLEAR).
+    parameter int unsigned NUM_INTERNAL_IRQS = 43;
     parameter int unsigned NUM_EXTERNAL_IRQS = pt.PIC_TOTAL_INT - NUM_INTERNAL_IRQS;
 
     // Peripheral register-bridge fault bit map. This ordering is shared by the
@@ -498,6 +499,26 @@ package sep_pkg;
         logic otbn;
         logic km;
     } sep_sw_rst_t;
+
+    // One bit per isolatable AXI-Lite path in sep_crypto. trng_* are the
+    // converted CSR paths to the internal TRNG complex; host_* are the SEP host
+    // paths to the accelerator wrappers; km_* are the Key Manager master paths
+    // to its slaves. Same layout is used for isolate_req and isolated.
+    typedef struct packed {
+        logic trng_entropy_source;
+        logic trng_csrng;
+        logic trng_edn;
+        logic host_otbn;
+        logic host_aes;
+        logic host_hmac;
+        logic host_kmac;
+        logic km_otbn;
+        logic km_aes;
+        logic km_hmac;
+        logic km_kmac;
+        logic km_abr;
+        logic km_efuse;
+    } sep_crypto_isolate_t;
 
     ////////////////////////////
     // SEP System Peripherals //

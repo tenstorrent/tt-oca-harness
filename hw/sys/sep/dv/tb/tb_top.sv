@@ -1268,11 +1268,12 @@ module sep_uvm_top
     // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
-    assign trng_gated_rst_n_probe_o = `SEP_CORE.sep_crypto.u_sep_trng.trng_gated_rst_n;
+    assign trng_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_axi_isolated_probe_o = {
-        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.edn_isolated,
-        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.csrng_isolated,
-        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.esrc_isolated
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
