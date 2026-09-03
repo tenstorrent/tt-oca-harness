@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -25,7 +25,7 @@
 | 0x44 | MAIN_SM_STATE | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -34,7 +34,7 @@
 | 0 | `edn_cmd_req_done` | RW | 0x0 a| Asserted when a software CSRNG request has completed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -43,7 +43,7 @@
 | 0 | `edn_cmd_req_done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -52,7 +52,7 @@
 | 0 | `edn_cmd_req_done` | W | 0x0 a| Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -61,7 +61,7 @@
 | 0 | `recov_alert` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -72,7 +72,7 @@ Note that this needs to be cleared after initial configuration at boot in order 
 lock in the listed register settings.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -101,7 +101,7 @@ entropy complex may only be enabled and disabled in a specific order, see
 Programmers Guide for details.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BOOT_INS_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -113,7 +113,7 @@ If `clen` has a different value, EDN will hang.
 Fixing this requires disabling and restarting both EDN and CSRNG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BOOT_GEN_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -125,7 +125,7 @@ If `clen` has a different value, EDN will hang.
 Fixing this requires disabling and restarting both EDN and CSRNG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SW_CMD_REQ Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -138,7 +138,7 @@ After that command has been processed, writes to this register will have no effe
 Refer to the [CSRNG documentation](../../csrng/doc/theory_of_operation.md#general-command-format) for details on the command format.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SW_CMD_STS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -163,7 +163,7 @@ This bit has to be polled before each word of a command is written to !!SW_CMD_R
 0b1: The EDN is ready to accept the next word.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HW_CMD_STS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -188,7 +188,7 @@ The instantiate command is issued via SW interface and is thus not part of the h
 0b1: The EDN is in boot mode.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESEED_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -202,7 +202,7 @@ Otherwise, undefined behavior may result.
 If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENERATE_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -217,7 +217,7 @@ Otherwise, undefined behavior may result.
 If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MAX_NUM_REQS_BETWEEN_RESEEDS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -230,7 +230,7 @@ This register will be used by a counter that counts down, triggering an automati
 Note that this value must be chosen smaller than or equal to the value configured in the [`RESEED_INTERVAL` register of CSRNG](../../csrng/doc/registers.md#reseed-interval).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RECOV_ALERT_STS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -255,7 +255,7 @@ something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERR_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -288,7 +288,7 @@ bits (bits 28 through 30 of this register).
 When this bit is set, a fatal error condition will result.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERR_CODE_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -301,7 +301,7 @@ register is to test that any error properly propagates to either
 an interrupt or an alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MAIN_SM_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
