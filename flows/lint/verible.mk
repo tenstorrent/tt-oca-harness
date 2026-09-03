@@ -20,8 +20,18 @@ FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 # reflows comment text, so most violations are structurally unfixable; the
 # rest would need --try_wrap_long_lines, which the formatter's own docs flag
 # as an experimental line-wrap optimizer, and which crashes outright on at
-# least one file in this tree.
-OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length
+# least one file in this tree. unpacked-dimensions-range-ordering wants
+# every unpacked array dimension declared big-endian ([0:N-1], or plain [N]
+# for the zero-based case); this repo instead always writes unpacked array
+# dimensions the same way it writes packed ranges, [N-1:0], and switching
+# the two conventions per-declaration depending on packed vs. unpacked would
+# be a net readability loss for no functional benefit. plusarg-assignment
+# flags every $test$plusargs call in the tree; each one checks
+# only whether a boolean flag was passed (waves, smc_skip_pll_init,
+# sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
+# none of them extract a value, so the rule's suggested $value$plusargs
+# would be wrong for all of them.
+OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
 OCAH_LINT_VERIBLE_WAIVER_FILE := $(OCAH_FORMAT_DIR)/verible-lint.waiver
 OCAH_LINT_VERIBLE_EXTRA_FLAGS ?= --waiver_files=$(OCAH_LINT_VERIBLE_WAIVER_FILE)
 OCAH_FORMAT_VERIBLE_FLAGS ?= --flagfile=$(OCAH_FORMAT_DIR)/verible-format.flags
@@ -79,8 +89,12 @@ OCAH_VERIBLE_SINGLE_FILE_EXCLUDES := \
 #
 # Exclusions cover build output, materialized third-party sources, nested
 # copied vendor trees, PeakRDL output, generated fabrics and CPU internals,
-# OpenTitan-origin package stubs, and the individually generated overlay
-# files that ship pre-generated rather than built by this tree.  The
+# OpenTitan-origin package stubs, the individually generated overlay files
+# that ship pre-generated rather than built by this tree, and the eFuse DV
+# model's register block, which PeakRDL generated once into dv/models/
+# (outside any regs/gen/ tree) and which stays hand-maintained rather than
+# regenerated (see hw/ip/efuse/dv/models/README.md), so its struct/union
+# style still reflects that origin rather than this repo's conventions.
 ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
 	-not -path '*/build/*' \
 	-not -path '$(OCAH_ROOT)/vendor/*/*/upstream/*' \
@@ -93,6 +107,8 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '$(OCAH_ROOT)/vendor/pulp-platform/idma/overlay/target/rtl/*' \
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv' \
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv' \
+	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg.sv' \
+	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv' \
 	$(foreach file,$(OCAH_VERIBLE_SINGLE_FILE_EXCLUDES),-not -path '$(OCAH_ROOT)/$(file)')
 
 ocah_verible_check_files = @$(call ocah_verible_find,$(1)) -print -quit 2>/dev/null | grep -q . || { \
