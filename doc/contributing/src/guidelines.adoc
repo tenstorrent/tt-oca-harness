@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-== OCAH development guidelines
+= OCAH development guidelines
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-=== Standards
+== Standards
 
 The OCAH design will follow industry or FOSS standards where appropriate:
 
@@ -32,7 +32,7 @@ and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
 SystemVerilog RTL.
 
-=== Development Tools
+== Development Tools
 
 We aim primarily to use open source tools for the development of OCAH in
 order to eliminate commercial dependencies and enabling open-sourcing
@@ -50,7 +50,7 @@ tapeout. This includes:
 * lint tools for code quality
 * logic synthesis
 
-=== Component Directory Organization
+== Component Directory Organization
 
 All components will have a uniform directory structure which has the
 following elements:
@@ -115,7 +115,7 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 
 The high level goals are:
 
-* avoid SystemVerilog constructs that are error prone or not consistently supported, 
+* avoid SystemVerilog constructs that are error prone or not consistently supported,
 particularly across open source tools
 * ensure that the code is tidy and easy to read
 * keep the code style consistent across the project's code base regardless of who authored it
@@ -159,15 +159,15 @@ computational elements
 
 === RTL Code Comments
 
-Include a description of the purpose and overall function of the module 
-in the header. 
+Include a description of the purpose and overall function of the module
+in the header.
 
 RTL code comments may be redundant or add little value to the code.
 Keep comments in the RTL as minimal as possible and, where possible,
-make the code self explanatory. 
+make the code self explanatory.
 
 Do not add a comment which describes the functionality of the code
 where the code is clear.
 
-If there is a tricky bit of code with some nuance, add a comment describing 
-the overall goal or strategy of the code. 
+If there is a tricky bit of code with some nuance, add a comment describing
+the overall goal or strategy of the code.
