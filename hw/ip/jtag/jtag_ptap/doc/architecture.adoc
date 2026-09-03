@@ -440,7 +440,8 @@ shifted in for each transaction, this instruction is most useful for sparse
 accesses. This instruction uses semantics very similar to the RISC-V DTM DMI
 instruction.
 
-image::jtag2axi_single_op.png[AXI Single Op Instruction Diagram,scaledwidth=90.0%]
+.AXI Single OP Instruction layout with size==3 and addr_size==51.
+image::jtag2axi_single_op.svg[AXI Single OP Instruction layout with size==3 and addr_size==51,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
@@ -464,7 +465,8 @@ is used when an external debugger wants to either:
 Using the series instructions instead of the AXI_SINGLE_OP instruction is much
 more time efficient for these use cases.
 
-image::jtag2axi_series_ctrl.png[AXI Series Control Instruction Diagram,scaledwidth=90.0%]
+.AXI Series Control Instruction layout with addr_size==51.
+image::jtag2axi_series_ctrl.svg[AXI Series Control Instruction layout with addr_size==51,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
@@ -495,9 +497,17 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-image::jtag2axi_series_data_incr0.png[AXI Series Data INCR Diagram (size 0),scaledwidth=90.0%]
+.AXISeriesDataIncr when AXISeriesCtrl.size==0.
+image::jtag2axi_series_data_incr0.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-image::jtag2axi_series_data_incr1-2-3.png[AXI Series Data INCR Diagram (sizes 1-3),scaledwidth=90.0%]
+.AXISeriesDataIncr when AXISeriesCtrl.size==1.
+image::jtag2axi_series_data_incr1.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+
+.AXISeriesDataIncr when AXISeriesCtrl.size==2.
+image::jtag2axi_series_data_incr2.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+
+.AXISeriesDataIncr when AXISeriesCtrl.size==3.
+image::jtag2axi_series_data_incr3.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
@@ -522,9 +532,17 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-image::jtag2axi_series_data_noincr0-1.png[AXI Series Data NO_INCR Diagram (sizes 0-1),scaledwidth=90.0%]
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==0.
+image::jtag2axi_series_data_incr0.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-image::jtag2axi_series_data_noincr2-3.png[AXI Series Data NO_INCR Diagram (sizes 2-3),scaledwidth=90.0%]
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==1.
+image::jtag2axi_series_data_incr1.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==2.
+image::jtag2axi_series_data_incr2.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==3.
+image::jtag2axi_series_data_incr3.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
@@ -549,9 +567,17 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-image::jtag2axi_series_data_error0-1.png[AXI Series Data With Error Status (sizes 0-1),scaledwidth=90.0%]
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0.
+image::jtag2axi_series_data_error0.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-image::jtag2axi_series_data_error2-3.png[AXI Series Data With Error Status (sizes 2-3),scaledwidth=90.0%]
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1.
+image::jtag2axi_series_data_error1.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2.
+image::jtag2axi_series_data_error2.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3.
+image::jtag2axi_series_data_error3.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
