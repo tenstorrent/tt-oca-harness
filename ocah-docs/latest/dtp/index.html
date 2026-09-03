@@ -67,7 +67,7 @@
         </div>
 		<div class="navbar-item tt-link">
 		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
-			<img src="../../../_/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
 		  </a>
 		</div>
       </div>
@@ -2396,8 +2396,9 @@ instruction.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_single_op.png" alt="AXI Single Op Instruction Diagram">
+<img src="_images/jtag2axi_single_op.svg" alt="AXI Single OP Instruction layout with size==3 and addr_size==51">
 </div>
+<div class="title">Figure 1. AXI Single OP Instruction layout with size==3 and addr_size==51.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2478,8 +2479,9 @@ more time efficient for these use cases.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_ctrl.png" alt="AXI Series Control Instruction Diagram">
+<img src="_images/jtag2axi_series_ctrl.svg" alt="AXI Series Control Instruction layout with addr_size==51">
 </div>
+<div class="title">Figure 2. AXI Series Control Instruction layout with addr_size==51.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2564,13 +2566,27 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_data_incr0.png" alt="AXI Series Data INCR Diagram (size 0)">
+<img src="_images/jtag2axi_series_data_incr0.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==0">
 </div>
+<div class="title">Figure 3. AXISeriesDataIncr when AXISeriesCtrl.size==0.</div>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_data_incr1-2-3.png" alt="AXI Series Data INCR Diagram (sizes 1-3)">
+<img src="_images/jtag2axi_series_data_incr1.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==1">
 </div>
+<div class="title">Figure 4. AXISeriesDataIncr when AXISeriesCtrl.size==1.</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/jtag2axi_series_data_incr2.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==2">
+</div>
+<div class="title">Figure 5. AXISeriesDataIncr when AXISeriesCtrl.size==2.</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/jtag2axi_series_data_incr3.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==3">
+</div>
+<div class="title">Figure 6. AXISeriesDataIncr when AXISeriesCtrl.size==3.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2623,13 +2639,27 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_data_noincr0-1.png" alt="AXI Series Data NO_INCR Diagram (sizes 0-1)">
+<img src="_images/jtag2axi_series_data_incr0.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==0">
 </div>
+<div class="title">Figure 7. AXISeriesDataNoIncr when AXISeriesCtrl.size==0.</div>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_data_noincr2-3.png" alt="AXI Series Data NO_INCR Diagram (sizes 2-3)">
+<img src="_images/jtag2axi_series_data_incr1.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==1">
 </div>
+<div class="title">Figure 8. AXISeriesDataNoIncr when AXISeriesCtrl.size==1.</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/jtag2axi_series_data_incr2.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==2">
+</div>
+<div class="title">Figure 9. AXISeriesDataNoIncr when AXISeriesCtrl.size==2.</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/jtag2axi_series_data_incr3.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==3">
+</div>
+<div class="title">Figure 10. AXISeriesDataNoIncr when AXISeriesCtrl.size==3.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2682,13 +2712,27 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_data_error0-1.png" alt="AXI Series Data With Error Status (sizes 0-1)">
+<img src="_images/jtag2axi_series_data_error0.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0">
 </div>
+<div class="title">Figure 11. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0.</div>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/jtag2axi_series_data_error2-3.png" alt="AXI Series Data With Error Status (sizes 2-3)">
+<img src="_images/jtag2axi_series_data_error1.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1">
 </div>
+<div class="title">Figure 12. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1.</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/jtag2axi_series_data_error2.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2">
+</div>
+<div class="title">Figure 13. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2.</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/jtag2axi_series_data_error3.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3">
+</div>
+<div class="title">Figure 14. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -5920,12 +5964,12 @@ tool is also told to do that separately.</p>
 </div>
 <footer class="footer">
   <div class="footer-inner">
-    <img src="../../../_/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
     <div class="footer-main">
       <p class="oca-footer-text">
         The Open Chiplet Atlas&#174; has been developed by
         <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
-          <img src="../../../_/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
         </a>
         as an open standard.
       </p>
