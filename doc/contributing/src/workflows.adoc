@@ -560,7 +560,7 @@ make format-tcl
 
 The search path for script files may be overridden with `TCL_PATH`.
 
-==== Optional Pre-Commit Checks
+=== Optional Pre-Commit Checks
 
 The repository provides optional, check-only hooks for staged Python, C/C++,
 Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
@@ -584,7 +584,7 @@ launcher. It does not change `core.hooksPath`, and no setup or checkout command
 installs it automatically. CI remains authoritative whether or not a
 contributor enables the hook.
 
-==== Linting and CI
+=== Linting and CI
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
@@ -599,22 +599,66 @@ child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
 report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
 Scheduled and manually dispatched pipelines always run in full.
 
-| CI job | Reviewdog check(s) | Local command |
-|---|---|---|
-| `lint-sv-slang` | `lint-sv-slang/smu`, `lint-sv-slang/aou` | `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl` |
-| `lint-sv-verilator` | `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu` | `make lint-verilator-all [BLOCK=<block>]` |
-| `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
-| `lint-python` | `lint-python` | `make lint-python` and `make format-python-check` |
-| `lint-python-mypy` | `lint-python-mypy` (report-only) | `make ocah-lint-python-mypy` |
-| `format-c` | `format-c` | `make format-c-check` |
-| `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
-| `lint-spelling` | `lint-spelling` | `make ocah-lint-spelling` and `make ocah-lint-spelling-fix` |
-| `lint-yaml` | `lint-yaml` | `make ocah-lint-yaml` |
-| `lint-toml` | `lint-toml` | `make ocah-lint-toml` |
-| `lint-markdown` | `lint-markdown` | `make ocah-lint-markdown` and `make ocah-lint-markdown-fix` |
-| `lint-make` | `lint-make` (report-only) | `make ocah-lint-make` |
-| `lint-shell` | `lint-shell` | `make ocah-lint-shell`, `make ocah-format-shell`, and `make ocah-format-shell-check` |
-| `regen-regs` | — (job fails on a dirty tree) | `make regen-regs regen-regs-adoc regen-regs-html` |
+[cols="1,1,2",options="header"]
+|===
+| CI job | Reviewdog check(s) | Local command
+
+| `lint-sv-slang`
+| `lint-sv-slang/smu`, `lint-sv-slang/aou`
+| `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl`
+
+| `lint-sv-verilator`
+| `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu`
+| `make lint-verilator-all [BLOCK=<block>]`
+
+| `lint-sv-verible` (disabled in CI)
+| `lint-sv-verible`
+| `make lint-sv-verible`
+
+| `lint-python`
+| `lint-python`
+| `make lint-python` and `make format-python-check`
+
+| `lint-python-mypy`
+| `lint-python-mypy` (report-only)
+| `make ocah-lint-python-mypy`
+
+| `format-c`
+| `format-c`
+| `make format-c-check`
+
+| `lint-tcl`
+| `lint-tcl`
+| `make lint-tcl` and `make format-tcl-check`
+
+| `lint-spelling`
+| `lint-spelling`
+| `make ocah-lint-spelling` and `make ocah-lint-spelling-fix`
+
+| `lint-yaml`
+| `lint-yaml`
+| `make ocah-lint-yaml`
+
+| `lint-toml`
+| `lint-toml`
+| `make ocah-lint-toml`
+
+| `lint-markdown`
+| `lint-markdown`
+| `make ocah-lint-markdown` and `make ocah-lint-markdown-fix`
+
+| `lint-make`
+| `lint-make` (report-only)
+| `make ocah-lint-make`
+
+| `lint-shell`
+| `lint-shell`
+| `make ocah-lint-shell`, `make ocah-format-shell`, and `make ocah-format-shell-check`
+
+| `regen-regs`
+| — (job fails on a dirty tree)
+| `make regen-regs regen-regs-adoc regen-regs-html`
+|===
 
 The `regen-regs` gate regenerates every register block's collateral from the RDLs
 and fails if the working tree changes, so the committed `**/regs/gen/` outputs
