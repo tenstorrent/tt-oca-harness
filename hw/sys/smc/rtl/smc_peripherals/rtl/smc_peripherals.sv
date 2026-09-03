@@ -993,7 +993,7 @@ module smc_peripherals #(
 	i3ccore_wrapper #(
 		.NUM_I3C            (smc_config_pkg::NUM_I3C),
 		.I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
-		.BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR),
+		.BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
 
 		.INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
 
