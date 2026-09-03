@@ -11,8 +11,13 @@ include $(OCAH_FORMAT_DIR)/../common.mk
 # hand-authored overlays; upstream and generated overlay files are excluded
 # below.  LINT_PATH / FORMAT_PATH accept one or more repository-relative paths.
 OCAH_VERIBLE_PATHS ?= hw vendor
+ifneq ($(BLOCK),)
+LINT_PATH ?= hw/sys/$(BLOCK)
+FORMAT_PATH ?= hw/sys/$(BLOCK)
+else
 LINT_PATH ?= $(OCAH_VERIBLE_PATHS)
 FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
+endif
 
 # parameter-name-style is deferred to issue #1051. line-length is disabled
 # outright: the port/parameter/net alignment mode below (preserve) never
@@ -107,6 +112,7 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1)) -print -quit 2>/dev/n
 ## parameter-name-style is deferred to issue #1051; line-length is disabled
 ## outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
+## @param BLOCK=smu Shorthand for the above (LINT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-lint-sv-verible
 ocah-lint-sv-verible:
 	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh eda-run make lint-sv-verible)
@@ -124,6 +130,7 @@ OCAH_PHONY += ocah-lint-sv-verible
 ## Requires `verible-verilog-format` on PATH; otherwise install it or run via
 ## `./scripts/docker-run.sh eda-run make format-sv`.
 ## @param FORMAT_PATH=hw/sys/smu Optional path(s) to scope formatting; default hw vendor
+## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv
 ocah-format-sv:
 	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv)
@@ -136,6 +143,7 @@ ocah-format-sv:
 
 ## Check formatting without modifying files (CI-friendly: exit 0 clean, 1 would-reformat).
 ## @param FORMAT_PATH=hw/sys/smu Optional path(s) to scope the check; default hw vendor
+## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv-check
 ocah-format-sv-check:
 	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv-check)

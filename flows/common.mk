@@ -67,4 +67,6 @@ ocah_flow_run = @$(foreach b,$(if $(strip $(BLOCK)),$(strip $(BLOCK)),$(OCAH_FLO
 	  echo "==> $(b): $(1)"; \
 	  $(MAKE) -C "$$dir" -f flow.mk OCAH_ROOT="$(OCAH_ROOT)" $(2) $(1); } &&) true
 
+OCAH_UV_RUN := $(UV) --directory "$(OCAH_ROOT)" run --locked
+
 endif
