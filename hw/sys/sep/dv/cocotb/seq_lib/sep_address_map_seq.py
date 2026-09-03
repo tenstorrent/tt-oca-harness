@@ -159,10 +159,10 @@ if _INFILT0_CFG_RESET is None:
         "check; update FABRIC_BLOCKS if the block was renamed"
     )
 FABRIC_BLOCKS = [
-    ("SECURE_DMA", 0x1080_0000, None),
-    ("WDT_TIMER", 0x1080_1000, None),
-    ("SEP_SCRATCH_COLD", 0x1080_2000, None),  # SCRATCH[0] (RW)
-    ("SEP_SCRATCH_WARM", 0x1080_2080, None),  # SCRATCH[0] (RW)
+    ("SECURE_DMA", sym("SECURE_DMA_REG_MAP_BASE_ADDR"), None),
+    ("WDT_TIMER", sym("WDT_TIMER_REG_MAP_BASE_ADDR"), None),
+    ("SEP_SCRATCH_COLD", sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
+    ("SEP_SCRATCH_WARM", sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
     # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC/TRNG[5:1]=1
     # released. The reference suite's ext_axi reg-walk delegates this register
     # (it cannot reach it); the CPU LSU path reads it safely, since a read has no
@@ -173,24 +173,22 @@ FABRIC_BLOCKS = [
         SEP_RESET_CTRL.reset32("SW_RESET_N"),
     ),
     ("OTBN", OTBN.addr("INTR_STATE"), OTBN.reset32("INTR_STATE")),
-    ("AES", 0x1091_0000, None),
+    ("AES", sym("AES_REG_MAP_BASE_ADDR"), None),
     ("HMAC", HMAC.addr("INTR_STATE"), HMAC.reset32("INTR_STATE")),
     ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
-    # CSRNG/EDN are OpenTitan blocks not exported by the SEP RDL header; their
-    # INTR_STATE-resets-to-0 is an OpenTitan-wide invariant.
-    ("DRBG_CSRNG", 0x1091_5000, 0x0000_0000),  # INTR_STATE
-    ("DRBG_EDN", 0x1091_5800, 0x0000_0000),  # INTR_STATE
-    ("ENTROPY_SRC", 0x1091_6000, None),  # INTR_STATE hw-driven
-    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]
-    ("ENTROPY_POOL", POOL_STATUS, None),  # status only; never pop
-    ("SEP_LIFECYCLE", 0x1091_8000, None),  # FEAT_CTRL (RO, hw-driven)
-    ("KM_MAILBOX", 0x1092_000C, None),  # SEP_STATUS (offset 0 is write-only)
-    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),  # LC_STATE shadow
-    ("AXIL_MAILBOX", 0x10A0_0000, None),
-    ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),  # FILTER_CONFIG entry 0
-    ("ALIAS_REMAP", 0x10A1_0000, None),  # region_start
-    ("AP_OUTPUT_REMAP", 0x10A1_0200, None),  # output-remap region
-    ("OT_SPI_HOST", 0x10B0_0000, None),  # INTR_STATUS
+    ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), 0x0000_0000),
+    ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), 0x0000_0000),
+    ("ENTROPY_SRC", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR"), None),
+    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]; no OSS RDL block
+    ("ENTROPY_POOL", POOL_STATUS, None),  # adapter not in PeakRDL
+    ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
+    ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
+    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
+    ("AXIL_MAILBOX", sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"), None),
+    ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),
+    ("ALIAS_REMAP", sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
+    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
+    ("OT_SPI_HOST", sym("SPI_CONTROLLER_INTR_STATUS_REG_ADDR"), None),
 ]
 
 

@@ -29,32 +29,32 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import WDT_TIMER, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 WDT_BASE = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
-WKUP_CTRL = WDT_BASE + 0x04
-WKUP_THOLD_HI = WDT_BASE + 0x08
-WKUP_THOLD_LO = WDT_BASE + 0x0C
-WKUP_COUNT_HI = WDT_BASE + 0x10
-WKUP_COUNT_LO = WDT_BASE + 0x14
-WDOG_REGWEN = WDT_BASE + 0x18
-WDOG_CTRL = WDT_BASE + 0x1C
-WDOG_BARK_THOLD = WDT_BASE + 0x20
-WDOG_BITE_THOLD = WDT_BASE + 0x24
-WDOG_COUNT = WDT_BASE + 0x28
-INTR_STATE = WDT_BASE + 0x2C
-INTR_TEST = WDT_BASE + 0x30
-WKUP_CAUSE = WDT_BASE + 0x34
+WKUP_CTRL = WDT_TIMER.addr("WKUP_CTRL")
+WKUP_THOLD_HI = WDT_TIMER.addr("WKUP_THOLD_HI")
+WKUP_THOLD_LO = WDT_TIMER.addr("WKUP_THOLD_LO")
+WKUP_COUNT_HI = WDT_TIMER.addr("WKUP_COUNT_HI")
+WKUP_COUNT_LO = WDT_TIMER.addr("WKUP_COUNT_LO")
+WDOG_REGWEN = WDT_TIMER.addr("WDOG_REGWEN")
+WDOG_CTRL = WDT_TIMER.addr("WDOG_CTRL")
+WDOG_BARK_THOLD = WDT_TIMER.addr("WDOG_BARK_THOLD")
+WDOG_BITE_THOLD = WDT_TIMER.addr("WDOG_BITE_THOLD")
+WDOG_COUNT = WDT_TIMER.addr("WDOG_COUNT")
+INTR_STATE = WDT_TIMER.addr("INTR_STATE")
+INTR_TEST = WDT_TIMER.addr("INTR_TEST")
+WKUP_CAUSE = WDT_TIMER.addr("WKUP_CAUSE")
 
-WKUP_ENABLE = 1 << 0
-WKUP_PRESCALER_SHIFT = 1  # WKUP_CTRL.prescaler[12:1]
-WDOG_ENABLE = 1 << 0
-INTR_TEST_WKUP_EXPIRED = 1 << 0
-INTR_WKUP_EXPIRED = 1 << 0
-INTR_WDOG_BARK = 1 << 1
+WKUP_ENABLE = WDT_TIMER.field_mask("WKUP_CTRL", "enable")
+WKUP_PRESCALER_SHIFT = WDT_TIMER.field_lsb("WKUP_CTRL", "prescaler")
+WDOG_ENABLE = WDT_TIMER.field_mask("WDOG_CTRL", "enable")
+INTR_TEST_WKUP_EXPIRED = WDT_TIMER.field_mask("INTR_TEST", "wkup_timer_expired")
+INTR_WKUP_EXPIRED = WDT_TIMER.field_mask("INTR_STATE", "wkup_timer_expired")
+INTR_WDOG_BARK = WDT_TIMER.field_mask("INTR_STATE", "wdog_timer_bark")
 
 RESP_OKAY = 0
 

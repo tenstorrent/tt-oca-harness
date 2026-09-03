@@ -40,9 +40,9 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define DMA_SRC_ADDR 0x10000000u // SRAM: DMA copy source
-#define DMA_DST_ADDR 0x10004000u // SRAM: DMA copy destination
-#define CONT_ADDR 0x10008000u    // SRAM: CPU contention region (disjoint)
+#define DMA_SRC_ADDR OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+#define DMA_DST_ADDR (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x4000u)
+#define CONT_ADDR (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x8000u)
 
 #define DMA_BYTES 0x800u // 2 KiB DMA copy (>> CPU loop)
 #define DMA_WORDS (DMA_BYTES / 4)
