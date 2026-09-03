@@ -98,7 +98,12 @@ consume it from the release checkout or tarball rather than a separate package:
 
 For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
-xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+ifdef::backend-html5[]
+link:/ocah-docs/latest/architecture.html#ocah-memory-map[OCAH Memory Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _OCAH Memory Map_ section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[immutable-rom-fw-integration]]
 === Immutable ROM FW Integration
@@ -979,10 +984,10 @@ SMC inbound subordinates, and the external SMU AXI output
 
 ifdef::backend-html5[]
 Connectivity is described in
-xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];
+link:/ocah-docs/latest/architecture.html#smu-axi-crossbar[SMU AXI Crossbar];
 the split between hardware-fixed behaviour and firmware-programmable apertures
 is documented in
-xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+link:/ocah-docs/latest/architecture.html#ocah-memory-map[OCAH Memory Map].
 endif::backend-html5[]
 ifdef::backend-pdf[]
 See the _SMU AXI Crossbar_ and _OCAH Memory Map_ sections of the Technical
@@ -1028,7 +1033,7 @@ envelope assigned by the integrator. The SMU crossbar does not itself
 constrain envelope size.
 
 ifdef::backend-html5[]
-See xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map] for
+See link:/ocah-docs/latest/architecture.html#ocah-memory-map[OCAH Memory Map] for
 the responsibility split between integrator, firmware, and the internal SEP/SMC
 address maps.
 endif::backend-html5[]
