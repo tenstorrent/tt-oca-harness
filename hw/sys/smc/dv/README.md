@@ -86,6 +86,61 @@ python3 $PY --dut smc --items smc_cold_reset_test --stage flist --stage hdl_comp
 python3 $PY --dut smc --items all --stage sim --regress
 ```
 
+### SystemVerilog UVM framework (`--framework uvm`)
+
+The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
+flow: `smc_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
+Bender RTL recipe), and `--dut smc --framework uvm` selects it. A testlist
+scenario carries both implementations in its `module` binding map
+(`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is
+the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
+errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
+VCS only: Verilator has no SV-UVM support. The bench architecture is in
+`docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+
+The first bound scenario is `smc_register_sanity_test` (VPLAN TC_SMC_P0_006):
+SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
+`SCRATCH_COLD_WARM` registers over 16 seeded passes, every scratch read
+predicted by `smc_scratch_csr_ref_model` and paired by the always-on
+`smc_scoreboard`, and every access recorded as named `CHK-*` evidence
+(`CHECKER_SUMMARY name=smc_csr`).
+
+```bash
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only
+
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut smc --items smc_register_sanity_test --tool verilator
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test --seed 1
+
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+
+# Scoreboard negative validation: a corrupted scratch readback prediction
+# must FAIL the run
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test \
+  --plusarg +SMC_CSR_SCOREBOARD_NEGATIVE
+
+# Loop-count knobs, resolved specific-first (per test, per group, suite-wide);
+# every looped test runs at least 16 seeded passes by default
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test \
+  --plusarg +SMC_REGISTER_SANITY_TEST_LOOPS=4
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented \
+  --plusarg +SMC_TEST_LOOPS=1
+```
+
+To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
+`smc_base_test_seq` (CSR accesses through `csr_write` / `csr_read`, named
+evidence through `attach_evidence` / `check_evidence` / `finalize_evidence`),
+add `uvm/tests/<name>.svh` on `smc_base_test` (override
+`create_scenario_seq()`, the loop-knob hooks, and `configure_test_cfg()` for
+the scoreboard features it requires), add both `include`s to the package and
+the manifest, and change the scenario's testlist entry to the binding map. A
+pin the scenario needs that the harness ties off today is promoted into
+`tb/smc_tb_if.sv` first.
+
 PASS/FAIL is classified by the global parser registry
 (`hw/common/dv/configs/parsers.toml`). The cocotb flow requires positive
 evidence from `results.xml`; a clean simulator exit alone is not enough.

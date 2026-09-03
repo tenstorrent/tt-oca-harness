@@ -20,6 +20,9 @@ import smc_seq_lib_pkg::*;
 
 `include "smc_base_test.svh"
 
+// CSR scenarios on the SEP_IN AXI4 ingress.
+`include "smc_register_sanity_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // SMC_OVERLAY_TESTS to the quoted name of an include file on its own
