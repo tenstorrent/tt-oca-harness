@@ -90,7 +90,6 @@ module gpio
     assign reg__use_reg_tx = gpio_intf_hwif_out.DATA_CTRL_ENABLE.use_reg_tx.value;
     assign reg__use_reg_rx = gpio_intf_hwif_out.DATA_CTRL_ENABLE.use_reg_rx.value;
 
-    assign gpio_intf_hwif_in.DATA_CTRL.lsio_enable.next = lsio_interface_select_i;
     assign gpio_intf_hwif_in.DATA_CTRL.pad2core.next = reg__pad2core;
 
     //--------------------//
@@ -162,8 +161,15 @@ module gpio
 
     logic pad2core_synced;
 
-    logic lsio_active;
-    assign lsio_active = (lsio_interface_select_i || reg__lsio_select) && ~reg__lsio_disable;
+    logic lsio_pin, lsio_sw, lsio_active;
+    assign lsio_pin = lsio_interface_select_i && ~reg__lsio_disable;
+    assign lsio_sw  = reg__lsio_select && ~reg__lsio_disable;
+
+    // Any LSIO request. Used only for the pad2core return path, which does not participate in the ownership ranking.
+    assign lsio_active = lsio_pin || lsio_sw;
+
+    // Status back to software
+    assign gpio_intf_hwif_in.DATA_CTRL.lsio_enable.next = lsio_pin;
 
     // Per-field register override, each OR'd with the global interface_enable
     logic sel_reg_core2pad, sel_reg_tx, sel_reg_rx;
@@ -186,23 +192,29 @@ module gpio
             lsio_pad2core_data_o = pad2core;
         end else begin
             // core2pad data
-            if (sel_reg_core2pad) begin
+            if (lsio_pin) begin
+                core2pad = lsio_core2pad_data_i;
+            end else if (sel_reg_core2pad) begin
                 core2pad = reg__core2pad;
-            end else if (lsio_active) begin
+            end else if (lsio_sw) begin
                 core2pad = lsio_core2pad_data_i;
             end
 
             // output enable (tx)
-            if (sel_reg_tx) begin
+            if (lsio_pin) begin
+                core2pad_en = ~lsio_core2pad_en_ni;
+            end else if (sel_reg_tx) begin
                 core2pad_en = reg__enable_rx_tx[0];
-            end else if (lsio_active) begin
+            end else if (lsio_sw) begin
                 core2pad_en = ~lsio_core2pad_en_ni;
             end
 
             // input enable (rx)
-            if (sel_reg_rx) begin
+            if (lsio_pin) begin
+                pad2core_en = ~lsio_pad2core_en_ni;
+            end else if (sel_reg_rx) begin
                 pad2core_en = reg__enable_rx_tx[1];
-            end else if (lsio_active) begin
+            end else if (lsio_sw) begin
                 pad2core_en = ~lsio_pad2core_en_ni;
             end
 
