@@ -74,9 +74,11 @@ module jtag_ic_reset_reg
     // Reset hold register signals
     logic             reset_hold_scan_out;
     logic             reset_hold;
+    logic             reset_hold_n;
 
     // Reset enable/control register signals
     logic                                  reset_enable_control_scan_out;
+    logic                                  rst_n_gate;
     logic [RESET_ENABLE_CONTROL_WIDTH-1:0] reset_enable_control_data;
 
     // Extracted control bits
@@ -95,10 +97,22 @@ module jtag_ic_reset_reg
     //--------------------------------------------------------------------------
     // Scan Control for Reset Enable/Control Register
     //--------------------------------------------------------------------------
-    // Reset enable/control register uses scan_ctrl_i.rst_n but blocked when reset_hold=0
+    // Hold=0 blocks TLR so the enable/control scan reg is not asynchronously
+    // cleared. Primitive gates keep the async reset path a known cell.
+    prim_inv u_reset_hold_inv (
+        .in_i  (reset_hold),
+        .out_o (reset_hold_n)
+    );
+
+    prim_or2 u_rst_n_or (
+        .in0_i (scan_ctrl_i.rst_n),
+        .in1_i (reset_hold_n),
+        .out_o (rst_n_gate)
+    );
+
     always_comb begin
-        reset_enable_control_scan_ctrl = scan_ctrl_i;
-        reset_enable_control_scan_ctrl.rst_n = scan_ctrl_i.rst_n || !reset_hold;
+        reset_enable_control_scan_ctrl       = scan_ctrl_i;
+        reset_enable_control_scan_ctrl.rst_n = rst_n_gate;
     end
 
     //--------------------------------------------------------------------------

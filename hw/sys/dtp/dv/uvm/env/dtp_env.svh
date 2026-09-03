@@ -6,9 +6,50 @@
 // published by tb_top), the DTP TAP FSM checker subscribed to the VIP env's
 // event stream, and owns the DTP-local dtp_tb_if for sequences (reset
 // sequencing) and the checker (TAP-state observable).
+//
+// Downstream STAP TAPs (issue #1056): one shared ocah_jtag_vip slave agent
+// per STAP host port, on the ocah_jtag_if tb_top wires from the port's
+// forwarded tck/tms/trst_n and TDO. Always built and running; a port's
+// device reaches the DUT only while the test sets dtp_tb_if.stap_<x>_ds_en
+// (default 0 keeps the wire loopback). The device map is the parity contract
+// with the cocotb env/dtp_stap_ds_agent.py: IR width 5, IDCODE at 0x01, one
+// writable DS_TDR at 0x02, and a per-port IDCODE and DS_TDR width so a
+// swapped or misaligned splice is caught by the chain readback.
 
 class dtp_env extends uvm_env;
     `uvm_component_utils(dtp_env)
+
+    localparam int unsigned StapDsCount     = 4;
+    localparam int unsigned StapDsIrWidth   = 5;
+    localparam bit [63:0]   StapDsTdrOpcode = 64'h2;
+
+    // Index order is the STAP chain order (TDI to TDO): io, smc, sep, extra0.
+    static function string stap_ds_name(int unsigned idx);
+        case (idx)
+            0:       return "io";
+            1:       return "smc";
+            2:       return "sep";
+            default: return "extra0";
+        endcase
+    endfunction
+
+    static function bit [31:0] stap_ds_idcode(int unsigned idx);
+        case (idx)
+            0:       return 32'h1D51_0101;
+            1:       return 32'h1D51_0203;
+            2:       return 32'h1D51_0305;
+            default: return 32'h1D51_0407;
+        endcase
+    endfunction
+
+    static function int unsigned stap_ds_tdr_width(int unsigned idx);
+        case (idx)
+            0:       return 12;
+            1:       return 16;
+            2:       return 20;
+            default: return 8;
+        endcase
+    endfunction
 
     ocah_jtag_master_config          m_jtag_cfg;
     ocah_jtag_master_env          m_jtag_env;
@@ -51,6 +92,10 @@ class dtp_env extends uvm_env;
     ocah_axi_slave_agent  m_sep_otp_slave_agent;
     ocah_axi_slave_config m_smc_axi_slave_cfg;
     ocah_axi_slave_agent  m_smc_axi_slave_agent;
+
+    // Downstream STAP TAP devices, indexed per stap_ds_name().
+    ocah_jtag_slave_config m_stap_ds_cfg[StapDsCount];
+    ocah_jtag_slave_agent  m_stap_ds_agent[StapDsCount];
 
     virtual dtp_tb_if tb_vif;
 
@@ -201,6 +246,31 @@ class dtp_env extends uvm_env;
                                                    "slave_cfg", m_smc_axi_slave_cfg);
         m_smc_axi_slave_agent =
             ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
+
+        for (int unsigned i = 0; i < StapDsCount; i++) begin
+            string nm = stap_ds_name(i);
+            m_stap_ds_cfg[i] =
+                ocah_jtag_slave_config::type_id::create({"m_stap_", nm, "_ds_cfg"});
+            if (!uvm_config_db#(virtual ocah_jtag_if)::get(this, "", {"stap_", nm, "_ds_vif"},
+                                                           m_stap_ds_cfg[i].vif))
+                `uvm_fatal(get_type_name(), $sformatf(
+                    "virtual ocah_jtag_if `stap_%s_ds_vif` not found in uvm_config_db", nm))
+            m_stap_ds_cfg[i].is_active     = UVM_ACTIVE;
+            // No passive monitor: the composed-chain scans span the whole
+            // network, so per-device scan reconstruction carries no
+            // checkable width; the evidence is the device's own state and
+            // Update-DR history through ocah_jtag_slave_sequence.
+            m_stap_ds_cfg[i].en_monitor    = 1'b0;
+            m_stap_ds_cfg[i].ir_width      = StapDsIrWidth;
+            m_stap_ds_cfg[i].idcode        = stap_ds_idcode(i);
+            // The STAP host port has no downstream tdo_oen input.
+            m_stap_ds_cfg[i].drive_tdo_oen = 1'b0;
+            m_stap_ds_cfg[i].add_reg("DS_TDR", StapDsTdrOpcode, stap_ds_tdr_width(i), 1'b1);
+            uvm_config_db#(ocah_jtag_slave_config)::set(this, {"m_stap_", nm, "_ds_agent*"},
+                                                        "slave_cfg", m_stap_ds_cfg[i]);
+            m_stap_ds_agent[i] =
+                ocah_jtag_slave_agent::type_id::create({"m_stap_", nm, "_ds_agent"}, this);
+        end
     endfunction
 
     function void connect_phase(uvm_phase phase);

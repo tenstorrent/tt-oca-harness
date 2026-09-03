@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -37,12 +37,12 @@ SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 # Full 32-bit RW scratch register with no side effects (same target the AXI
 # smoke write/readback uses); CSR spacing is 64-bit, so a 4-byte read here
 # obligates only RDATA[31:0].
-SW_DEBUG_ADDR = SEP_CPU_CTRL_BASE + 0x178
+SW_DEBUG_ADDR = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
 
 # Non-zero RO register used as the disturbing read between CSR repeats; its
 # value is also checked, so the disturbance itself is evidence.
-LOCAL_BASE_ADDR_ADDR = SEP_CPU_CTRL_BASE + 0x0C8
-LOCAL_BASE_ADDR_EXP = 0xD000_0000
+LOCAL_BASE_ADDR_ADDR = SEP_CPU_CTRL.addr("SEP_LOCAL_BASE_ADDR")
+LOCAL_BASE_ADDR_EXP = SEP_CPU_CTRL.reset32("SEP_LOCAL_BASE_ADDR")
 
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 

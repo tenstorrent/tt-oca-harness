@@ -304,21 +304,25 @@ static int stage_kmac(void) {
 }
 
 int main(void) {
-    /* Beacon 0 = main entered; written via raw store BEFORE outbound filter
-     * init.  In the standalone SEP TB the outbound filter is open by default
-     * and STDOUT writes succeed immediately.  In the SMU TB we cannot tell
-     * whether the SoC fabric routes 0x80000000 stores out as ext_out_*,
-     * so the very first beacon also serves as a sanity check that the SEP
-     * CPU is at least executing instructions.
+    /* The outbound window must be opened BEFORE the first STDOUT store.
      *
-     * NOTE: writing to STDOUT before sep_outbound_filter_init() will be
-     * rejected by the SEP outbound filter (no AXI write reaches the SMU
-     * fabric).  We deliberately keep this beacon — if no beacon ever shows
-     * up on ext_out, even after filter init, the firmware likely never
-     * reached main().  Read sep_stdout_count from cocotb to disambiguate.
+     * An earlier revision emitted STAGE_BEACON(0) here, ahead of
+     * sep_outbound_filter_init(), assuming a pre-filter store would simply be
+     * dropped.  It is not dropped: the SEP outbound filter is instantiated
+     * with BlockByDefault=1 (sep_system_peripherals.sv), so an unmatched write
+     * is isolated and answered with an error, which the EL2 takes as a store
+     * access fault.  crt0's _trap then jumps to _finish, so the firmware dies
+     * before it can open the very window it needs -- a deadlock by
+     * construction.  Observed at SMU level as: SEP retires only as far as
+     * main+0x10, _trap runs once, then _finish spins forever having issued
+     * zero outbound AW.
+     *
+     * Beacon 0 therefore now means "main entered AND the outbound window is
+     * open".  Liveness earlier than that is covered by sep_smu_boot_health,
+     * whose evidence is SEP-local and needs no outbound path at all.
      */
-    STAGE_BEACON(0);
     sep_outbound_filter_init();
+    STAGE_BEACON(0);
     STAGE_BEACON(1);
 
     printf("\n========================================\n");

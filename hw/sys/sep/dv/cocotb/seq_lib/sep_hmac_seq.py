@@ -23,19 +23,19 @@ from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from sep_reg_meta import sym
+from sep_reg_meta import HMAC, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
-HMAC_INTR_STATE = HMAC_BASE + 0x000
-HMAC_CFG = HMAC_BASE + 0x010
-HMAC_CMD = HMAC_BASE + 0x014
-HMAC_STATUS = HMAC_BASE + 0x018
-HMAC_ERR_CODE = HMAC_BASE + 0x01C
-HMAC_KEY_0 = HMAC_BASE + 0x024
-HMAC_DIGEST_0 = HMAC_BASE + 0x0A4
-HMAC_MSG_FIFO = HMAC_BASE + 0x1000
+HMAC_INTR_STATE = HMAC.addr("INTR_STATE")
+HMAC_CFG = HMAC.addr("CFG")
+HMAC_CMD = HMAC.addr("CMD")
+HMAC_STATUS = HMAC.addr("STATUS")
+HMAC_ERR_CODE = HMAC.addr("ERR_CODE")
+HMAC_KEY_0 = sym("HMAC_KEY_0__REG_ADDR")
+HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
+HMAC_MSG_FIFO = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
 HMAC_NUM_PUBLIC_KEY = 32
 
 # CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
