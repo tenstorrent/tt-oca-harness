@@ -185,6 +185,31 @@ class dtp_base_test_seq(uvm_sequence):
             self.visited_tap_states.add(DtpTapState.RUN_TEST_IDLE)
         return item
 
+    async def shift_ir(
+        self,
+        value: int,
+        width: int,
+        *,
+        back_to_rti: bool = True,
+    ) -> DtpJtagItem:
+        """Shift a raw IR value of any width and return captured TDO bits.
+
+        The PTAP forwards its scan controls to the STAP chain on IR scans
+        too, so a network-wide instruction scan (PTAP IR followed by the
+        STAP chain and any spliced downstream TAP IRs) is longer than the
+        PTAP's own IR; ``load_ir`` stays the plain 6-bit load.
+        """
+        item = await self._send(
+            op=DtpJtagOp.SHIFT_IR,
+            value=value,
+            width=width,
+            back_to_rti=back_to_rti,
+        )
+        if back_to_rti:
+            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.visited_tap_states.add(DtpTapState.RUN_TEST_IDLE)
+        return item
+
     async def shift_dr(
         self,
         value: int,

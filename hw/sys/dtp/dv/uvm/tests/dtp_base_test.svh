@@ -105,15 +105,58 @@ class dtp_base_test extends uvm_test;
         return MinDefaultLoops;
     endfunction
 
+    // Downstream STAP TAP attachment (cocotb dtp_base_test.stap_ds_attach
+    // parity): bit i selects the STAP host port in dtp_env::stap_ds_name()
+    // order (io, smc, sep, extra0) that gets the shared ocah_jtag_vip slave
+    // device spliced behind it for this test. Default: every port keeps its
+    // wire loopback; the STAP-selection scenarios attach all four.
+    virtual function bit [dtp_env::StapDsCount-1:0] stap_ds_attach_mask();
+        return '0;
+    endfunction
+
     // Standard env handle plumbing for every scenario pass; looped tests
     // override to add scenario-specific handles (AXI cfg, slave sequences)
-    // and must call super.plumb_scenario_seq().
+    // and must call super.plumb_scenario_seq(). Scan sequences additionally
+    // receive one ocah_jtag_slave_sequence per downstream STAP TAP.
     virtual function void plumb_scenario_seq(dtp_jtag_base_test_seq seq);
+        dtp_scan_base_test_seq scan_seq;
         seq.tb_vif       = m_env.tb_vif;
         seq.jtag_vif     = m_env.m_jtag_cfg.vif;
         seq.evidence     = m_env.m_jtag_checker;
         seq.scan_builder = m_env.m_scan_builder;
+        if ($cast(scan_seq, seq))
+            plumb_stap_ds(scan_seq);
     endfunction
+
+    // Hand a scan sequence the slave sequences (bound to each downstream
+    // device's driver, evidence on the shared env checker until the pass
+    // rebinds it to its family checker), the device configurations the scan
+    // reference model is seeded from, and which ports are attached.
+    virtual function void plumb_stap_ds(dtp_scan_base_test_seq seq);
+        bit [dtp_env::StapDsCount-1:0] mask = stap_ds_attach_mask();
+        for (int unsigned i = 0; i < dtp_env::StapDsCount; i++) begin
+            seq.stap_ds_seq[i] = ocah_jtag_uvm_pkg::ocah_jtag_slave_sequence::type_id::create(
+                {"stap_", dtp_env::stap_ds_name(i), "_ds_seq"});
+            seq.stap_ds_seq[i].responder = m_env.m_stap_ds_agent[i].m_driver;
+            seq.stap_ds_seq[i].evidence  = m_env.m_jtag_checker;
+            seq.stap_ds_cfg[i]           = m_env.m_stap_ds_cfg[i];
+            seq.stap_ds_attached[i]      = mask[i];
+        end
+    endfunction
+
+    // Route each selected STAP host port to its downstream device (the
+    // dtp_tb_if enables feed the tb_top host-TDI muxes) before bring-up, so
+    // the attachment is static for the whole run.
+    task attach_stap_ds();
+        bit [dtp_env::StapDsCount-1:0] mask = stap_ds_attach_mask();
+        m_env.tb_vif.stap_io_ds_en     <= mask[0];
+        m_env.tb_vif.stap_smc_ds_en    <= mask[1];
+        m_env.tb_vif.stap_sep_ds_en    <= mask[2];
+        m_env.tb_vif.stap_extra0_ds_en <= mask[3];
+        if (mask != '0)
+            `uvm_info(get_type_name(), $sformatf(
+                "downstream STAP TAPs attached: mask=0b%04b (io,smc,sep,extra0)", mask), UVM_LOW)
+    endtask
 
     // Clock/reset bring-up (cocotb _bring_up parity): sequence POR and
     // system reset through dtp_tb_if with the startup dbg_disable vector
@@ -135,6 +178,7 @@ class dtp_base_test extends uvm_test;
                                         group_loops_plusarg(), default_loops());
         int unsigned seed   = base_seed();
         int unsigned rcount = random_count();
+        attach_stap_ds();
         bring_up();
         for (int unsigned idx = 0; idx < loops; idx++) begin
             dtp_jtag_base_test_seq seq = create_scenario_seq();
