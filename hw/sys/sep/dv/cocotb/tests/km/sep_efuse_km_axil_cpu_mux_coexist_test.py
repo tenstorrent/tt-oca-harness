@@ -40,6 +40,7 @@ import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "km_efuse_coexist")
@@ -47,7 +48,7 @@ _ITCM_HEX = os.path.join(_FW_DIR, "km_efuse_coexist.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "km_efuse_coexist.dtcm.hex")
 _KM_ROM_HEX = os.path.join(_DV_ROOT, "cocotb", "tests", "km_rom_coexist.parhex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Real fuse-sense + EL2 boot + the dual-CPU contended window; the run loop
 # early-exits on fw_done, so this is an upper bound only.
 _MAX_RUN_CYCLES = 6_000_000

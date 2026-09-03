@@ -19,7 +19,7 @@ readable field reads back verbatim).
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
 # The generated map itself, for enumerating the eFuse register set rather than
 # naming each entry. Import order matters: sep_reg_meta puts regs/gen/py on
@@ -54,8 +54,7 @@ WORD_MASK = (1 << WORD_BITS) - 1
 # Software-visible shadow-register block base.
 SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
-SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
-SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
+SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 
 # LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
 # 4-bit raw code in [3:0] and the FSM differential-encodes it.

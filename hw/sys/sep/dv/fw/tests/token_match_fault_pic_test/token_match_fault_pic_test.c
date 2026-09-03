@@ -2,15 +2,15 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * PIC source 39 delivery for the token-comparator redundancy fault.
+ * PIC source 40 delivery for the token-comparator redundancy fault.
  *
  * The line is level-high and TOKEN_MATCH_FAULT is sw=r, so the handler
- * masks meie[39]. There is no W1C. The host injects the collapse on the
+ * masks meie[40]. There is no W1C. The host injects the collapse on the
  * SEC_DISABLE comparator after this firmware publishes READY; firmware
  * then presents a token so the compare is in flight.
  *
  * Checks:
- *   CHK-PIC-CLAIM  : ISR claim id == 39
+ *   CHK-PIC-CLAIM  : ISR claim id == 40
  *   CHK-PIC-FAULT  : TOKEN_MATCH_FAULT secure-disable bit set
  *   CHK-PIC-MASK   : after mask, the ISR does not re-enter
  */
@@ -24,9 +24,9 @@
 #include "sep_scratch_drv.h"
 
 #define CSR_MEIHAP 0xFC8
-#define PIC_TOKEN_FAULT 39u
+#define PIC_TOKEN_FAULT 40u
 #define FAULT_SEC_DISABLE 0x00010000u
-#define READY_MARKER 0xE9050039u
+#define READY_MARKER 0xE9050040u
 #define SCRATCH_READY 0u
 #define ISR_WAIT_ITERS 200000
 #define STORM_CHECK_ITERS 4096
@@ -70,7 +70,7 @@ int main(void) {
     g_claim_id = 0;
     g_fault = 0;
     sep_scratch_wr(SCRATCH_READY, READY_MARKER);
-    sep_mbx_puts("STEP PIC 39 armed; READY\n");
+    sep_mbx_puts("STEP PIC 40 armed; READY\n");
 
     for (i = 0; i < PRESENT_TRIES && g_isr_count == 0; i++) {
         present_sec_disable();
@@ -81,13 +81,13 @@ int main(void) {
     }
 
     if (g_isr_count == 0) {
-        sep_mbx_puts("FAIL: PIC source 39 ISR never reached the CPU\n");
+        sep_mbx_puts("FAIL: PIC source 40 ISR never reached the CPU\n");
         errors++;
     } else if (g_claim_id != PIC_TOKEN_FAULT) {
-        sep_mbx_puts("FAIL: PIC claim id was not 39\n");
+        sep_mbx_puts("FAIL: PIC claim id was not 40\n");
         errors++;
     } else {
-        sep_mbx_puts("CHK-PIC-CLAIM PASS: ISR claim id == 39\n");
+        sep_mbx_puts("CHK-PIC-CLAIM PASS: ISR claim id == 40\n");
     }
 
     if ((g_fault & FAULT_SEC_DISABLE) == 0) {
@@ -103,10 +103,10 @@ int main(void) {
             __asm__ volatile("nop");
         }
         if (g_isr_count != before) {
-            sep_mbx_puts("FAIL: PIC 39 re-entered after mask\n");
+            sep_mbx_puts("FAIL: PIC 40 re-entered after mask\n");
             errors++;
         } else {
-            sep_mbx_puts("CHK-PIC-MASK PASS: meie[39] mask stopped re-entry\n");
+            sep_mbx_puts("CHK-PIC-MASK PASS: meie[40] mask stopped re-entry\n");
         }
     }
 
