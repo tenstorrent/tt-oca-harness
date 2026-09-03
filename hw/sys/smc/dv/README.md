@@ -7,18 +7,16 @@ driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
 `docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
 recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
 `docs/SMC_FCOV.adoc` for the coverage pipeline, and
-`docs/SMC_DEFERRED_DISPOSITION.adoc` for the v0.5.0 deferred/OUT
-classification and idle-boundary table, and
 `docs/SMC_SCOPE_TRACEABILITY.adoc` for the candidate v0.5.0
 requirement-to-test matrix (unsigned; #496).
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
-— not reportable as feature PASS. Every named deferred entry is classified
-in `docs/SMC_DEFERRED_DISPOSITION.adoc`; none is a v0.5.0 restore.
-Green `smc_i3c_to_fabric_test` is
-**decode only** (fabric → real OCA core `HCI_VERSION`). Checklist:
+— not reportable as feature PASS. `smc_i3c_to_fabric_test` is
+**decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
+in `smoke`, `canonical_top*`, or `project_p0`. Run it via `i3c_depth`
+or by name. Checklist:
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without
@@ -42,8 +40,7 @@ so the bare DUT name selects the wrapper-based TB.
 | testlist | `testlists/all.toml` (deferred: `testlists/deferred.toml`, not included) |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP) |
-| v0.5.0 OUT boundaries | I3C DAT/DCT and DTP CSR are **idle** on `smc_wrapper` (no TB terminator). Recorded as adopter-pending OUT in `docs/SMC_DEFERRED_DISPOSITION.adoc`. Do not add a placeholder responder here; I3C protocol stays on the I3C block TB, and SMU already wires DTP internally. |
+| still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR / I3C DAT ports **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |
 
 ## Verilator stubs policy
 
