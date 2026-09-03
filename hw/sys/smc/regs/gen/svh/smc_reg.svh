@@ -16048,13 +16048,6 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [3:0]   bank_instance ;
-    logic [3:0]   bank_chip ;
-} chip_config_ras_bank_info_reg_t;
-
-
-
-typedef struct packed {
     logic [31:0]   ndmreset_request ;
 } ndm_reset_ndmreset_request_reg_t;
 
