@@ -19,21 +19,21 @@ class dtp_3dcr_stap_sel_extra_test extends dtp_base_test;
     endfunction
 
     // Every port carries a downstream TAP so the isolation neighbor has one too.
-    virtual function bit [dtp_env::StapDsCount-1:0] stap_ds_attach_mask();
+    virtual function bit [DtpStapCount-1:0] stap_ds_attach_mask();
         return '1;
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_stap_scan_test_seq seq = dtp_stap_scan_test_seq::type_id::create("seq");
         seq.scenario = "stap_sel_extra";
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_3DCR_STAP_SEL_EXTRA_TEST_LOOPS";
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_SCAN_TEST_LOOPS";
     endfunction
 

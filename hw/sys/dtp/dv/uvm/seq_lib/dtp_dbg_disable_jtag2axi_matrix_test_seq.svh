@@ -28,7 +28,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
         super.new(name);
     endfunction
 
-    protected function bit [63:0] row_addr(j2a_target_t t, int unsigned row_idx);
+    protected function bit [63:0] row_addr(dtp_j2a_target_t t, int unsigned row_idx);
         return MatrixBaseAddr + row_idx * 8 * t.beat_bytes;
     endfunction
 
@@ -43,12 +43,12 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
 
     // Allowed bridge: write+readback with request-activity proof.
     protected task check_allowed(
-        j2a_target_t t,
+        dtp_j2a_target_t t,
         bit [63:0]   addr,
         bit [63:0]   data,
         string       context_s
     );
-        j2a_status_e op_status;
+        dtp_j2a_status_e op_status;
         int unsigned aw0, w0, ar0;
         int unsigned size = t.default_size;
         sample_activity(t, aw0, w0, ar0);
@@ -66,7 +66,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     // Blocked bridge: gated attempt produces no request activity and the
     // RAM sentinel stays untouched.
     protected task check_blocked(
-        j2a_target_t      t,
+        dtp_j2a_target_t      t,
         bit [63:0]        addr,
         bit [63:0]        data,
         string            context_s,
@@ -82,7 +82,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
         // Gated attempt: issue_single suppresses the scoreboard intents
         // while the target's disable is asserted (the write must never
         // reach the bus, so no credit may be armed for it).
-        issue_single(t, J2A_OP_WRITE, addr, data & data_mask(size),
+        issue_single(t, DTP_J2A_OP_WRITE, addr, data & data_mask(size),
                      full_wstrb(size), size, 1'b0);
         wait_sys_cycles(8);
         sample_activity(t, aw1, w1, ar1);
@@ -101,9 +101,9 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
         string row_labels[$];
         sep_lifecycle_ctrl_pkg::dbg_disable_t d;
         seed_scenario_rng();
-        foreach (target_slaves[i]) begin
+        foreach (target_cfgs[i]) begin
             if (target_cfgs[i] == null || target_evidence[i] == null ||
-                target_ref_models[i] == null || target_slaves[i] == null)
+                target_ref_models[i] == null)
                 `uvm_fatal(get_type_name(), $sformatf(
                     "matrix sequence needs all target bundles plumbed (index %0d)", i))
         end
@@ -138,7 +138,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
             set_dbg_disable(d);
 
             for (int unsigned i = 0; i < NumTargets; i++) begin
-                j2a_target_t t = select_target(i);
+                dtp_j2a_target_t t = select_target(i);
                 bit [63:0] addr = row_addr(t, r);
                 bit [63:0] data = 64'h0000_0000_C0DE_0000 | (64'(r) << 8);
                 if (row_bits[r][i])
@@ -159,7 +159,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
                 enable_all_debug();
                 wait_sys_cycles(8);
                 foreach (sentinels[i]) begin
-                    j2a_target_t t = select_target(i);
+                    dtp_j2a_target_t t = select_target(i);
                     bit [63:0] observed =
                         read_target_mem_int(t, sentinel_addrs[i], t.default_size);
                     if (observed !== sentinels[i])
@@ -168,7 +168,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
                             row_labels[r], t.name, observed, sentinels[i]))
                 end
                 foreach (sentinels[i]) begin
-                    j2a_target_t t = select_target(i);
+                    dtp_j2a_target_t t = select_target(i);
                     check_allowed(t, sentinel_addrs[i] + 4 * t.beat_bytes,
                                   64'h0000_0000_FEED_0000 | (64'(r) << 4),
                                   $sformatf("%s.%s.recovery",
@@ -179,7 +179,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
 
         emit_robustness_nonvacuity("dbg_disable_jtag2axi_matrix");
         for (int unsigned i = 0; i < NumTargets; i++) begin
-            j2a_target_t t = select_target(i);
+            dtp_j2a_target_t t = select_target(i);
             clear_target_error(t);
         end
         enable_all_debug();

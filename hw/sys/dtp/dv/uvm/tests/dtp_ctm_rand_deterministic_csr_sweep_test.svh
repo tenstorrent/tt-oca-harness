@@ -12,13 +12,13 @@ class dtp_ctm_rand_deterministic_csr_sweep_test extends dtp_xtrig_base_test;
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_xtrig_base_test_seq create_xtrig_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_xtrig_csr_test_seq seq = dtp_xtrig_csr_test_seq::type_id::create("seq");
         seq.scenario = "ctm_csr_sweep";
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_CTM_RAND_DETERMINISTIC_CSR_SWEEP_TEST_LOOPS";
     endfunction
 

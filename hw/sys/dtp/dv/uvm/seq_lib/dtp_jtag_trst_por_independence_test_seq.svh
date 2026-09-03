@@ -22,11 +22,8 @@
 // the navigation path into the Pause states crosses Shift -> Exit1, which
 // publishes partial scans the sequence cannot count.
 
-class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_jtag_trst_por_independence_test_seq)
-
-    // One TCK period at the harness's 10 MHz TCK.
-    localparam time TckPeriod = 100ns;
 
     function new(string name = "dtp_jtag_trst_por_independence_test_seq");
         super.new(name);
@@ -67,11 +64,11 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_cmd_lib_seq;
 
         // POR-only reset: assert pwr_on_rst with TRST high and no TCK edges.
         tb_vif.por_rst_n <= 1'b0;
-        #(por_cycles * TckPeriod);
+        wait_tck_periods(por_cycles);
         check_state(TEST_LOGIC_RESET, "jtag_por_chk",
                     $sformatf("during POR from %s, TRST deasserted", target.name()));
         tb_vif.por_rst_n <= 1'b1;
-        #(TckPeriod);
+        wait_tck_periods(1);
         check_state(TEST_LOGIC_RESET, "jtag_por_chk", "after POR release, before TRST");
         // Re-align sequence-side TAP tracking with the asynchronous reset.
         sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
