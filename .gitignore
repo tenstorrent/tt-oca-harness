@@ -8,7 +8,9 @@
 __pycache__/
 *.pyc
 
-# Optional repositories cloned by make nonfree-init
+# Optional repositories cloned by make nonfree-init. The bare pattern also
+# covers a symlink into a companion checkout, which "nonfree/" does not match.
+nonfree
 nonfree/
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
