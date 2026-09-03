@@ -26,11 +26,13 @@ enforce only when the manifest asks. A zero OTP gives TEST_DEV with sboot_dis=0,
 and the signed manifest sets the bit -- so this test needs no special eFuse
 image, unlike the reference flow which ships a PROD preload to force it.
 
-NOTE ON ENTROPY: this run does NOT exercise the entropy chain. OTBN cannot execute
-until URND is reseeded, and the boot flow does not bring up
-entropy_source/CSRNG/EDN, so the testlist opts into +sep_crypto_edn_force to grant
-OTBN's EDN handshakes directly. That supplies entropy only -- the RSA assertions
-below are untouched, so a pass still means the signature genuinely verified.
+NOTE ON ENTROPY: this run DOES exercise the entropy chain. The ROM brings
+entropy_source -> CSRNG -> EDN up itself before the signature-verification
+callback drives OTBN. The testlist opts into +esrc_noise_force only because ring
+oscillators do not self-oscillate under Verilator; the health tests, CSRNG, EDN
+and the command handshakes above that noise source all run for real. The RSA
+assertions below are untouched, so a pass still means the signature genuinely
+verified.
 """
 
 from __future__ import annotations
