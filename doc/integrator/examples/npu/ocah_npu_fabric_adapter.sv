@@ -12,10 +12,13 @@ module ocah_npu_fabric_adapter
   parameter bit          PrefetchEn      = 1'b1
 ) (
   input  logic clk_i,
+  // The caller must provide an asynchronous-assert, synchronous-deassert
+  // reset. This example adapter does not contain a reset synchronizer.
   input  logic rst_ni,
 
-  // Trusted release from secure-management logic. Assert synchronously to
-  // clk_i only after authentication and fabric containment are active.
+  // Trusted release from secure-management logic. The caller must synchronize
+  // the rising edge to clk_i before this port; a falling edge may be
+  // asynchronous. Assert only after authentication and containment are active.
   input  logic security_release_i,
 
   // Application CSR fabric: 32-bit AXI4-Lite subordinate.
@@ -79,10 +82,12 @@ module ocah_npu_fabric_adapter
   logic [31:0] npu_dma_araddr;
   logic        npu_rst_ni;
 
-  // Either input may assert reset asynchronously. Both rising inputs must be
-  // synchronized to clk_i so npu_rst_ni deasserts synchronously. The rst_ni
-  // source must also meet the implementation technology's minimum reset pulse
-  // width; the NPU architecture does not prescribe a clock-cycle count.
+  // This is only a combinational reset gate; it performs no synchronization.
+  // The caller must present rst_ni and security_release_i with their rising
+  // edges already synchronized to clk_i. Either falling edge may assert reset
+  // asynchronously. The rst_ni source must also meet the implementation
+  // technology's minimum reset pulse width; the NPU architecture does not
+  // prescribe a clock-cycle count.
   assign npu_rst_ni = rst_ni & security_release_i;
 
   // The NPU can issue only low-4-GiB physical addresses. These sized casts
@@ -96,9 +101,8 @@ module ocah_npu_fabric_adapter
   assign m_axi_awprot_o = 3'b010;
   assign m_axi_arprot_o = 3'b010;
 
-  initial begin
-    assert (FabricAddrWidth >= 32)
-      else $error("FabricAddrWidth must be at least 32");
+  if (FabricAddrWidth < 32) begin : gen_invalid_fabric_addr_width
+    $fatal(1, "FabricAddrWidth must be at least 32");
   end
 
   npu_axi_csr_wrap #(

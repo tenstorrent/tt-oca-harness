@@ -72,6 +72,10 @@ void npu_irq_handler(void) {
     npu_write(NPU_INTR_STATE, state); // W1C
 }
 
+// All timeout arguments below are polling-iteration budgets, not elapsed-time
+// deadlines. Replace them with a platform timer when wall-clock behavior is a
+// requirement; CPU speed, compiler optimization, and memory latency change the
+// duration represented by an iteration count.
 static int npu_push_descriptor(const uint32_t *words, size_t word_count, uint32_t timeout) {
     for (size_t word = 0; word < word_count; ++word) {
         uint32_t remaining = timeout;
@@ -93,8 +97,8 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words, u
         return NPU_SMOKE_ERR_SECURITY_RELEASE;
     }
 
-    if (descriptor == NULL || descriptor_words == 0u || buffer < PLATFORM_NPU_DMA_BASE ||
-        buffer_size > PLATFORM_NPU_DMA_SIZE ||
+    if (descriptor == NULL || descriptor_words == 0u || buffer_size == 0u ||
+        buffer < PLATFORM_NPU_DMA_BASE || buffer_size > PLATFORM_NPU_DMA_SIZE ||
         buffer > PLATFORM_NPU_DMA_BASE + PLATFORM_NPU_DMA_SIZE - buffer_size ||
         buffer > UINT32_MAX) {
         return NPU_SMOKE_ERR_INVALID_ARGUMENT;
@@ -118,7 +122,7 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words, u
         }
         if ((status & NPU_STATUS_DONE) != 0u) {
             platform_dma_complete(buffer, buffer_size);
-            npu_write(NPU_INTR_STATE, NPU_INTR_DONE);
+            npu_write(NPU_INTR_STATE, NPU_INTR_DONE | NPU_INTR_ERROR);
             return NPU_SMOKE_OK;
         }
     }

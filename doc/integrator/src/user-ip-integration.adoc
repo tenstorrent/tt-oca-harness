@@ -174,9 +174,14 @@ ordinary application accelerator here merely to make it appear trusted.
 `sep_external_req_o` and `sep_external_resp_i` expose the SEP local crossbar's
 32-bit-address, 64-bit-data AXI4 extension target at local addresses
 `0x2000_0000` through `0x3fff_ffff`. The first four bytes at `0x2000_0000` are
-intercepted by current `sep.sv` RTL for the eFuse SHIM, so an adopter decoder
-must not allocate that address. Reserve naturally aligned, non-overlapping
-ranges in the remainder and return `DECERR` for holes.
+intercepted by `sep.sv` for the eFuse SHIM, so an adopter decoder must not
+allocate any block overlapping `0x2000_0000`--`0x2000_0003`. Use
+`hw/sys/sep/dv/models/regs/sep_external.rdl` and the generated
+`OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR` and
+`OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_SIZE` constants in
+`hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv` as the machine-readable source of
+truth; the map may evolve independently of this guide. Reserve naturally
+aligned, non-overlapping ranges in the remainder and return `DECERR` for holes.
 
 The port is a transaction path from SEP-local initiators to adopter
 subordinates. It is not a connection for an adopter IP's DMA manager. The SEP
@@ -218,6 +223,12 @@ independent management reason to receive the event.
 
 Use this model when an application processor owns the command queue, buffers,
 and normal interrupt service for an accelerator.
+
+NOTE: Validation status: this section is integration guidance. OCAH Phase 1
+provides neither the application fabric/SMN nor an application-owned
+accelerator attachment, so the complete path described here has not been
+implemented or exercised in OCAH simulation. Adopters must record product-level
+RTL, CDC/RDC, simulation, firmware, and security-review evidence.
 
 === Connect control and DMA independently
 
@@ -507,17 +518,23 @@ interrupt.
 
 |`clk_i`, `rst_ni`
 |Single NPU clock and asynchronous active-low reset
-|Use an adopter clock/reset domain. Assert `rst_ni` asynchronously and deassert
-it synchronously to `clk_i`. Meet the implementation technology's minimum reset
-pulse width; the NPU architecture does not prescribe a clock-cycle count. The
-NPU contains no internal CDC.
+|Use an adopter clock/reset domain. Before the adapter input, condition
+`rst_ni` to assert asynchronously and deassert synchronously to `clk_i`. Meet
+the implementation technology's minimum reset pulse width; the NPU architecture
+does not prescribe a clock-cycle count. The NPU contains no internal CDC.
 
 |`security_release_i`
 |Trusted release into the example adapter
-|Keep low until authentication and containment setup succeed. Synchronize its
-rising edge to `clk_i`; deassertion may asynchronously force the NPU back into
-reset. This signal does not replace the external DMA firewall.
+|Keep low until authentication and containment setup succeed. Before the
+adapter input, synchronize its rising edge to `clk_i`; a falling edge may
+asynchronously force the NPU back into reset. This signal does not replace the
+external DMA firewall.
 |===
+
+The example adapter combines `rst_ni` and `security_release_i` with a
+combinational AND gate. It contains no synchronizer: the caller is responsible
+for presenting both rising edges synchronously to `clk_i` so the combined NPU
+reset deasserts synchronously.
 
 The NPU's mutable executable/configuration surface must be established for the
 selected product configuration. If it loads microcode or other executable
@@ -570,7 +587,10 @@ containment setup, policy lock, and NPU release. The application must not be
 able to manufacture that indication. The example `npu_smoke.c` accepts a valid
 NPU descriptor supplied by the test application. It clears stale state,
 programs the 32-bit DMA base, queues the descriptor, starts the NPU, and polls
-`STATUS.done` / `STATUS.error` with a bounded timeout. Passing the test requires:
+`STATUS.done` / `STATUS.error` with a bounded timeout. The example's `timeout`
+values count polling-loop iterations, not units of elapsed time. Replace them
+with a platform timer when the integration requires a wall-clock deadline.
+Passing the test requires:
 
 * successful CSR read and write transactions;
 * DMA reads and writes only inside the assigned buffer range;
