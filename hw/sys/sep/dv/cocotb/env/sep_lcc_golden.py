@@ -15,17 +15,18 @@ measures cannot disagree with it.
 Keep it that way. If a future decode change makes the RTL and the chapter
 disagree, follow the chapter and let the test fail; do not transcribe the RTL.
 
-Also holds the lifecycle-state encoding / transition validators: legal encoding,
-W1S monotonicity, valid transition, and terminal stability. These express the
-lifecycle walk rules in a value-driven form. There is no lifecycle SVA state
-checker in this repository, and assertions are compiled out of the acceptance
-build in any case, so these validators are the only thing enforcing the rules
-here -- feed them DUT-observed codes, never the codes the test programmed.
+Also holds the lifecycle-state encoding / transition model: legal encoding, W1S
+monotonicity, the two RMA token gates, the observed-transition predicate, and the
+per-write next-state function. These express the lifecycle walk rules in a
+value-driven form. There is no lifecycle SVA state checker in this repository,
+and assertions are compiled out of the acceptance build in any case, so these
+validators are the only thing enforcing the rules here -- feed them DUT-observed
+codes, never the codes the test programmed.
 """
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
 # -- lifecycle-state raw encodings (efuse_pkg::lc_state_raw_e) -----------------
 LC_TEST_DEV = 0x0
@@ -36,21 +37,29 @@ LC_RMA_CHIP_0 = 0x6
 LC_RMA_CHIP_1 = 0x7
 LC_PROD_END = 0x8
 LEGAL_LC_RAW = (
-    LC_TEST_DEV, LC_PROD, LC_RMA_SIP_0, LC_RMA_SIP_1,
-    LC_RMA_CHIP_0, LC_RMA_CHIP_1, LC_PROD_END,
+    LC_TEST_DEV,
+    LC_PROD,
+    LC_RMA_SIP_0,
+    LC_RMA_SIP_1,
+    LC_RMA_CHIP_0,
+    LC_RMA_CHIP_1,
+    LC_PROD_END,
 )
 _LC_NAME = {
-    LC_TEST_DEV: "TEST_DEV", LC_PROD: "PROD",
-    LC_RMA_SIP_0: "RMA_SIP_0", LC_RMA_SIP_1: "RMA_SIP_1",
-    LC_RMA_CHIP_0: "RMA_CHIP_0", LC_RMA_CHIP_1: "RMA_CHIP_1",
+    LC_TEST_DEV: "TEST_DEV",
+    LC_PROD: "PROD",
+    LC_RMA_SIP_0: "RMA_SIP_0",
+    LC_RMA_SIP_1: "RMA_SIP_1",
+    LC_RMA_CHIP_0: "RMA_CHIP_0",
+    LC_RMA_CHIP_1: "RMA_CHIP_1",
     LC_PROD_END: "PROD_END",
 }
 
 # -- LCC register map (single source of truth; imported by the LCC sequences) -
 SEP_LCC_BASE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
-LCC_FEAT_CTRL = SEP_LCC_BASE + 0x0    # 64-bit RO, hw-driven from lc_state; [0]=sep_debug
-LCC_DEMOTE_1 = SEP_LCC_BASE + 0x8     # demote [0:0], lock [1:1]
-LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10
+LCC_FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
+LCC_DEMOTE_1 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_1")
+LCC_DEMOTE_2 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")
 
 # -- feat_ctrl bit layout (sep_efuse_pkg, and Table 50's four groups) ---------
 # Feature control is per GROUP, and demotion acts on one debug group at a time --
@@ -61,11 +70,11 @@ LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10
 #                    38 fuse_vendor_test, [47:39] reserved
 #   [63:48] Function func_reserved[15:0]
 M64 = (1 << 64) - 1
-DBG1_MASK = (1 << 16) - 1             # bits [15:0]
-DBG2_MASK = ((1 << 16) - 1) << 16     # bits [31:16]
-DEBUG_MASK = DBG1_MASK | DBG2_MASK    # bits [31:0], both debug groups
-TEST_MASK = ((1 << 16) - 1) << 32     # bits [47:32] -- the DFT group
-FUNC_MASK = ((1 << 16) - 1) << 48     # bits [63:48]
+DBG1_MASK = (1 << 16) - 1  # bits [15:0]
+DBG2_MASK = ((1 << 16) - 1) << 16  # bits [31:16]
+DEBUG_MASK = DBG1_MASK | DBG2_MASK  # bits [31:0], both debug groups
+TEST_MASK = ((1 << 16) - 1) << 32  # bits [47:32] -- the DFT group
+FUNC_MASK = ((1 << 16) - 1) << 48  # bits [63:48]
 
 
 def lc_state_name(raw: int) -> str:
@@ -82,36 +91,82 @@ def is_w1s_superset(prev: int, cur: int) -> bool:
     return (prev & cur) == prev
 
 
-def is_valid_lc_transition(prev: int, cur: int) -> bool:
-    """Lifecycle transition truth table.
+def is_invalid_lc(raw: int) -> bool:
+    """INVALID: any encoding outside the named set ("All other values" in the
+    chapter's LC-state table). The chapter calls INVALID the end-of-life state --
+    "the chip is permanently inoperable" -- so it is the one terminal condition.
+    """
+    return not is_legal_lc(raw)
 
-    Forward-only lifecycle: TEST_DEV -> PROD -> RMA_SIP -> RMA_CHIPLET, plus the
-    PROD_END terminal; RMA_CHIPLET and PROD_END are terminal (self only). A
-    same-state step is always allowed (resense of an unchanged image).
+
+def lc_state_next(
+    cur: int,
+    wdata: int,
+    *,
+    sip_match: bool,
+    chiplet_match: bool,
+) -> int:
+    """Spec next-state for ONE write-1-to-set write of the LC_STATE shadow word.
+
+    The chapter gives three rules and no per-state destination table:
+
+      * The shadow word is write-1-to-set, so a bit only ever goes 0 -> 1
+        ("only transition from 0 to 1, never from 1 to 0").
+      * RMA_SIP is ``4'b001X`` and RMA_CHIPLET is ``4'b011X``: bit 0 is a
+        DON'T CARE inside either state, so setting it is a move within one
+        state, not a transition out of it. Bit 3 (PROD_END) is likewise ungated.
+      * The RMA ordering is hardware-enforced: bit 1 needs the RMA_SIP token,
+        and bit 2 needs the RMA_CHIPLET token AND RMA_SIP already established
+        ("the device must first enter RMA_SIP via the RMA_SIP_TOKEN, then
+        transition to RMA_CHIPLET via the RMA_CHIPLET_TOKEN").
+
+    Everything else follows from those three, including the destinations the
+    chapter never names: from PROD_END every reachable set lands outside the
+    named set, which is exactly the chapter's "the only permitted transition is
+    to INVALID". Do not re-add a destination table -- it would be a second,
+    weaker statement of the same rule.
+
+    ``sip_match`` / ``chiplet_match`` are the token-comparator verdicts
+    (``TOKEN_MATCH_CODE`` presented, not merely a token written).
+    """
+    cur &= 0xF
+    wdata &= 0xF
+    if is_invalid_lc(cur):
+        return cur  # end-of-life: nothing leaves INVALID
+    nxt = cur | (wdata & 0b1001)  # bit 0 (state-internal) and bit 3: ungated W1S
+    if sip_match:
+        nxt |= wdata & 0b0010
+    if chiplet_match and (cur & 0b0010):
+        nxt |= wdata & 0b0100
+    return nxt
+
+
+def is_valid_lc_transition(prev: int, cur: int) -> bool:
+    """Is an OBSERVED prev -> cur step one the lifecycle permits?
+
+    The value-driven form of the same three chapter rules, for a checker that
+    sees two sensed codes and not the write that caused the step:
+
+      * W1S-monotonic: no bit may drop.
+      * RMA_CHIPLET (bit 2) may only appear once RMA_SIP (bit 1) is established.
+      * Nothing leaves INVALID.
+
+    A same-state step is always allowed (a resense of an unchanged image, or a
+    bit-0 set inside RMA_SIP / RMA_CHIPLET). This deliberately does NOT freeze
+    PROD_END or RMA_CHIPLET: the chapter permits PROD_END -> INVALID, and bit 0
+    is a don't-care within an RMA state.
     """
     prev &= 0xF
     cur &= 0xF
-    if not (is_legal_lc(prev) and is_legal_lc(cur)):
-        return False
+    if is_invalid_lc(prev):
+        return cur == prev
     if cur == prev:
         return True
-    # Terminal states cannot leave.
-    if prev in (LC_RMA_CHIP_0, LC_RMA_CHIP_1, LC_PROD_END):
-        return False
-    # All advancing transitions must be W1S-monotonic. NOTE: the W1S gate above
-    # is what tightens the per-state table below to the SVA truth table -- e.g.
-    # PROD(0x1) lists RMA_SIP_0(0x2) but 0x1->0x2 is not W1S (bit0 would drop),
-    # so it is correctly rejected here, not in the table. Do not "simplify" the
-    # table without re-adding that filtering.
     if not is_w1s_superset(prev, cur):
         return False
-    valid = {
-        LC_TEST_DEV: (LC_PROD, LC_RMA_SIP_0, LC_RMA_SIP_1, LC_PROD_END),
-        LC_PROD: (LC_RMA_SIP_0, LC_RMA_SIP_1),  # PROD cannot skip to RMA_CHIPLET
-        LC_RMA_SIP_0: (LC_RMA_SIP_1, LC_RMA_CHIP_0, LC_RMA_CHIP_1),
-        LC_RMA_SIP_1: (LC_RMA_CHIP_0, LC_RMA_CHIP_1),
-    }
-    return cur in valid.get(prev, ())
+    if (cur & 0b0100) and not (prev & 0b0100) and not (prev & 0b0010):
+        return False
+    return True
 
 
 def feat_ctrl_expected(
@@ -144,27 +199,27 @@ def feat_ctrl_expected(
     if sigint_err:
         feat = 0
     else:
-        both = (~(sip_dis | sys_dis)) & M64           # both vectors bind
-        sip_only = (~sip_dis) & M64                   # SIP_DIS alone binds the SiP owner
-        if lc_raw == LC_TEST_DEV:                     # 4'b0000
+        both = (~(sip_dis | sys_dis)) & M64  # both vectors bind
+        sip_only = (~sip_dis) & M64  # SIP_DIS alone binds the SiP owner
+        if lc_raw == LC_TEST_DEV:  # 4'b0000
             feat = both
-            if demote_1:                              # DBG_1 forced open
+            if demote_1:  # DBG_1 forced open
                 feat = (feat & ~DBG1_MASK) | DBG1_MASK
-            if demote_2:                              # DBG_2 forced open
+            if demote_2:  # DBG_2 forced open
                 feat = (feat & ~DBG2_MASK) | DBG2_MASK
-        elif lc_raw == LC_PROD:                       # 4'b0001
-            feat = both & FUNC_MASK                   # debug + DFT off unless demoted
-            if demote_1:                              # DBG_1 relaxed to the DIS vectors
+        elif lc_raw == LC_PROD:  # 4'b0001
+            feat = both & FUNC_MASK  # debug + DFT off unless demoted
+            if demote_1:  # DBG_1 relaxed to the DIS vectors
                 feat |= both & DBG1_MASK
-            if demote_2:                              # DBG_2 relaxed to the DIS vectors
+            if demote_2:  # DBG_2 relaxed to the DIS vectors
                 feat |= both & DBG2_MASK
-        elif lc_raw == LC_PROD_END:                   # 4'b1000, demotion has no effect
+        elif lc_raw == LC_PROD_END:  # 4'b1000, demotion has no effect
             feat = both & FUNC_MASK
         elif lc_raw in (LC_RMA_SIP_0, LC_RMA_SIP_1):  # 4'b001?, demotion has no effect
             feat = sip_only
         elif lc_raw in (LC_RMA_CHIP_0, LC_RMA_CHIP_1):  # 4'b011?, all features enabled
             feat = M64
-        else:                                         # INVALID/others -- chip not live
+        else:  # INVALID/others -- chip not live
             feat = 0
 
     if sec_dis:
@@ -182,16 +237,16 @@ def feat_ctrl_expected(
 # hand from Table 50 of the lifecycle-controller chapter. Note secure_tm=0 (the no-CPU
 # image default) clears TEST_MASK ([47:32]), so a full-ones result reads
 # 0xFFFF_0000_FFFF_FFFF.
-_FULL_NO_TEST = 0xFFFF_0000_FFFF_FFFF       # M64 with TEST_MASK cleared
-_FUNC_ALL = 0xFFFF_0000_0000_0000           # FUNC_MASK only
+_FULL_NO_TEST = 0xFFFF_0000_FFFF_FFFF  # M64 with TEST_MASK cleared
+_FUNC_ALL = 0xFFFF_0000_0000_0000  # FUNC_MASK only
 
-_LCC_GOLDEN_VECTORS = (
+_LCC_GOLDEN_VECTORS: tuple[tuple[int, int, int, dict[str, int], int], ...] = (
     # (lc_raw, sip_dis, sys_dis, kwargs, expected)
-    (LC_TEST_DEV, 0, 0, {}, _FULL_NO_TEST),                       # all-enable, test bits cleared
-    (LC_TEST_DEV, 0, 0, {"secure_tm": 1}, M64),                   # secure_tm keeps test bits
-    (LC_PROD, 0, 0, {}, _FUNC_ALL),                               # PROD: func only, debug off
-    (LC_PROD, 0, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFF),      # PROD+DEMOTE_1: DBG_1 only
-    (LC_PROD, 0, 0, {"demote_2": 1}, 0xFFFF_0000_FFFF_0000),      # PROD+DEMOTE_2: DBG_2 only
+    (LC_TEST_DEV, 0, 0, {}, _FULL_NO_TEST),  # all-enable, test bits cleared
+    (LC_TEST_DEV, 0, 0, {"secure_tm": 1}, M64),  # secure_tm keeps test bits
+    (LC_PROD, 0, 0, {}, _FUNC_ALL),  # PROD: func only, debug off
+    (LC_PROD, 0, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFF),  # PROD+DEMOTE_1: DBG_1 only
+    (LC_PROD, 0, 0, {"demote_2": 1}, 0xFFFF_0000_FFFF_0000),  # PROD+DEMOTE_2: DBG_2 only
     # DEMOTE in PROD only RELAXES its group to the DIS vectors -- it does not force
     # them open. sep_debug (bit 0) is disabled here, so DEMOTE_1 must leave it off.
     (LC_PROD, 0x1, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFE),
@@ -201,17 +256,21 @@ _LCC_GOLDEN_VECTORS = (
     (LC_TEST_DEV, M64, 0, {"demote_2": 1}, 0x0000_0000_FFFF_0000),
     (LC_TEST_DEV, M64, 0, {"demote_1": 1, "demote_2": 1}, 0x0000_0000_FFFF_FFFF),
     (LC_PROD, 0x000A_0000_0000_0000, 0, {}, 0xFFF5_0000_0000_0000),  # func-bit masking by SIP
-    (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),                     # RMA_CHIPLET: all ones
-    (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),        # SEC_DIS override = all ones
-    (LC_TEST_DEV, 0xFFFF_FFFF_FFFF_FFFF, 0, {"sigint_err": 1}, 0),   # sigint -> all disabled
+    (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),  # RMA_CHIPLET: all ones
+    (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),  # SEC_DIS override = all ones
+    (LC_TEST_DEV, 0xFFFF_FFFF_FFFF_FFFF, 0, {"sigint_err": 1}, 0),  # sigint -> all disabled
     # SEC_DIS overrides sigint to all-ones; the SECURE_TM gate still applies last.
     (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1}, _FULL_NO_TEST),
     (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1, "secure_tm": 1}, M64),
     # Stitch-test DIS vectors: DFT group is 0xF000 with secure_tm=1, forced 0 without.
-    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {},
-     0xF000_0000_F000_F000),
-    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {"secure_tm": 1},
-     0xF000_F000_F000_F000),
+    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {}, 0xF000_0000_F000_F000),
+    (
+        LC_TEST_DEV,
+        0x0F0F_0F0F_0F0F_0F0F,
+        0x00FF_00FF_00FF_00FF,
+        {"secure_tm": 1},
+        0xF000_F000_F000_F000,
+    ),
 )
 
 
@@ -225,10 +284,25 @@ def selftest() -> None:
             f"sip=0x{sip_dis:x}, sys=0x{sys_dis:x}, {kwargs}) = 0x{got:016x} "
             f"!= expected 0x{expected:016x}"
         )
-    # Transition-validator spot checks (mirror the SVA truth table).
-    assert is_valid_lc_transition(LC_TEST_DEV, LC_PROD)           # forward W1S
-    assert not is_valid_lc_transition(LC_PROD, LC_RMA_CHIP_1)     # PROD cannot skip
-    assert not is_valid_lc_transition(LC_RMA_CHIP_1, LC_PROD_END) # terminal
+    # Transition-validator spot checks (chapter rules, not a state table).
+    assert is_valid_lc_transition(LC_TEST_DEV, LC_PROD)  # forward W1S
+    assert not is_valid_lc_transition(LC_PROD, LC_RMA_CHIP_1)  # bit 2 without RMA_SIP
+    assert not is_valid_lc_transition(LC_RMA_SIP_1, LC_PROD)  # W1S: bit 1 cannot drop
+    assert is_valid_lc_transition(LC_RMA_CHIP_0, LC_RMA_CHIP_1)  # bit 0 is don't-care in 011X
+    assert not is_valid_lc_transition(0x9, LC_PROD_END)  # nothing leaves INVALID
+
+    # Next-state spot checks: the two token gates, and INVALID as the only
+    # terminal condition.
+    assert lc_state_next(LC_TEST_DEV, 0x1, sip_match=False, chiplet_match=False) == LC_PROD
+    assert lc_state_next(LC_PROD, 0x2, sip_match=False, chiplet_match=False) == LC_PROD
+    assert lc_state_next(LC_PROD, 0x2, sip_match=True, chiplet_match=False) == LC_RMA_SIP_1
+    assert lc_state_next(LC_PROD, 0x4, sip_match=False, chiplet_match=True) == LC_PROD
+    assert lc_state_next(LC_RMA_SIP_0, 0x4, sip_match=False, chiplet_match=True) == LC_RMA_CHIP_0
+    assert lc_state_next(LC_RMA_SIP_0, 0x1, sip_match=False, chiplet_match=False) == LC_RMA_SIP_1
+    assert lc_state_next(LC_RMA_CHIP_0, 0x1, sip_match=False, chiplet_match=False) == LC_RMA_CHIP_1
+    # PROD_END's only reachable destinations are outside the named set.
+    assert is_invalid_lc(lc_state_next(LC_PROD_END, 0x1, sip_match=True, chiplet_match=True))
+    assert lc_state_next(0x9, 0xF, sip_match=True, chiplet_match=True) == 0x9
 
 
 selftest()

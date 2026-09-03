@@ -58,7 +58,10 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_select</ipxact:name>
-            <ipxact:description>Force LSIO interface to be used. interface_enable has higher priority over this</ipxact:description>
+            <ipxact:description>Force the LSIO interface to be used from software, when no hardware LSIO request is
+present on this pad. interface_enable has higher priority over this bit. This ranking
+applies to this software force bit only: the hardware lsio_interface_select_i input
+outranks interface_enable. Use lsio_disable to gate both.</ipxact:description>
             <ipxact:bitOffset>17</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -82,7 +85,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_disable</ipxact:name>
-            <ipxact:description>When set, LSIO acceses will be blocked from the GPIO interface</ipxact:description>
+            <ipxact:description>When set, LSIO accesses will be blocked from the GPIO interface</ipxact:description>
             <ipxact:bitOffset>19</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -106,7 +109,11 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_enable</ipxact:name>
-            <ipxact:description>When set, this bit indicates that the pad being driving by the LSIO</ipxact:description>
+            <ipxact:description>LSIO hardware request status. Set while lsio_interface_select_i is asserted and
+lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,
+a set value also means the LSIO plane is driving this pad's data and direction.
+This field does not reflect a software-forced selection via lsio_select, which ranks
+below the register interface - it reads 0 in that case even when LSIO drives the pad.</ipxact:description>
             <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

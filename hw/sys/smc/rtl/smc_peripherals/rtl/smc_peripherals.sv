@@ -159,6 +159,8 @@ module smc_peripherals #(
 	input  smc_pkg::jtag_smc_reset_ctrl_t                                                           jtag_reset_ctrl_i,
 
     input  logic [7:0]                                                            			        sep_mailbox_interrupts_i,
+
+    input  logic                                                                  			        axi_hang_irq_i,
     output logic [31:0]                                                                    			peripheral_interrupts_o,
 
 	// UART and GPIO interrupt outputs to top level
@@ -989,7 +991,7 @@ module smc_peripherals #(
 	i3ccore_wrapper #(
 		.NUM_I3C            (smc_config_pkg::NUM_I3C),
 		.I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
-		.BASE_ADDR          (oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_BASE_ADDR),
+		.BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
 		.INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
 
 		// I3C Core parameters
@@ -1157,6 +1159,7 @@ module smc_peripherals #(
 		peripheral_interrupts_o[28]      = locked_field_access_interrupt;
 		peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
 		peripheral_interrupts_o[30]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
+		peripheral_interrupts_o[31]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
 	end
 
 	// async assignment to top level ports

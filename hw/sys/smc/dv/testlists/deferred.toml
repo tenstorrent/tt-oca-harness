@@ -94,9 +94,7 @@ timeout_sec = 1800
 tags = ["deferred", "rtl_placeholder"]
 
 # ---------------------------------------------------------------------------
-# PLANNED: Nightly Tier A inventory (nonfree2 Main_SMC_Chiplet_Nightly MISS)
-# Source: /proj_soc/user_dev/minshaoho/tryrun/nonfree2/.../testlist_smc_chiplet.yaml
-# Dest plan: /proj_soc/user_dev/minshaoho/tryrun/oss2/hw/sys/smc/doc/smc_port.md
+# PLANNED: Nightly Tier A inventory
 # Bodies are not enrolled; rebuild as BFM/PyUVM before moving to leaf tomls.
 # ---------------------------------------------------------------------------
 

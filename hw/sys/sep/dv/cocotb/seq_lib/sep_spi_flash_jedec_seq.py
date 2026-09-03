@@ -13,11 +13,9 @@ addresses. Offsets mirror the OpenTitan spi_host register block.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
+from sep_reg_meta import sym
 
 SPI_CONTROLLER_CTRL = sym("SPI_CONTROLLER_CTRL_REG_ADDR")
 SPI_CONTROLLER_STATUS = sym("SPI_CONTROLLER_STATUS_REG_ADDR")

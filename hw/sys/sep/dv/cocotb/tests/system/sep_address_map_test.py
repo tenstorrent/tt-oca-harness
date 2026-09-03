@@ -13,7 +13,6 @@ env/sep_reg_meta.py and the ABR / pool seq constants — see sep_address_map_seq
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_address_map_seq import sep_address_map_seq
 
@@ -46,13 +45,15 @@ class sep_address_map_test(sep_base_test):
             seq.base_addr_rw_checks,
         )
         self.logger.info(
-            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore"
-            "%s",
+            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore%s",
             seq.write_readback_checks,
-            (f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "
-             f"`reserved` placeholders with no software-usable fields: "
-             f"{', '.join(seq.write_readback_storage_only)})")
-            if seq.write_readback_storage_only else "",
+            (
+                f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "
+                f"`reserved` placeholders with no software-usable fields: "
+                f"{', '.join(seq.write_readback_storage_only)})"
+            )
+            if seq.write_readback_storage_only
+            else "",
         )
         self.logger.info(
             "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",

@@ -34,16 +34,12 @@ class OcahJtagSlaveAgent:
         self.config = config or OcahJtagSlaveConfig()
         self.device = self.config.build_device()
         self.driver: OcahJtagSlaveDriver | None = (
-            OcahJtagSlaveDriver(
-                jtag_intf, self.device, **self.config.driver_kwargs()
-            )
+            OcahJtagSlaveDriver(jtag_intf, self.device, **self.config.driver_kwargs())
             if active
             else None
         )
         self.monitor: OcahJtagSlaveMonitor | None = (
-            OcahJtagSlaveMonitor(jtag_intf, **self.config.monitor_kwargs())
-            if en_monitor
-            else None
+            OcahJtagSlaveMonitor(jtag_intf, **self.config.monitor_kwargs()) if en_monitor else None
         )
         self.checker = checker or OcahJtagChecker(
             name=f"{self.config.name}.checker", ir_width=self.config.ir_width

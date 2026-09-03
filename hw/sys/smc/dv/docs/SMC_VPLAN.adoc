@@ -273,40 +273,40 @@ cool reset, cleared on cold)
 
 |`SCRATCH_COLD_WARM_7` |0xC000_289C |RW |Cold+warm-domain scratch
 
-|`CHIP_CONFIG_VERSION_LO` |0xC000_2900 |RO |Chip config version low;
+|`CHIP_CONFIG_VERSION_LO` |0xC000_2900 |R |Chip config version low;
 *must equal 0x0001_00A0*
 
-|`CHIP_CONFIG_VERSION_HI` |0xC000_2904 |RO |Chip config version high
+|`CHIP_CONFIG_VERSION_HI` |0xC000_2904 |R |Chip config version high
 
-|`CHIP_CONFIG_CHIP_ID` |0xC000_2908 |RO |Chip identifier
+|`CHIP_CONFIG_CHIP_ID` |0xC000_2908 |R |Chip identifier
 
-|`CHIP_CONFIG_LC_STATE` |0xC000_290C |RO |Lifecycle-state fuses
+|`CHIP_CONFIG_LC_STATE` |0xC000_290C |R |Lifecycle-state fuses
 
-|`CHIP_CONFIG_RAS_BANK_INFO` |0xC000_2910 |RO |RAS bank/instance info
+|`CHIP_CONFIG_RAS_BANK_INFO` |0xC000_2910 |R |RAS bank/instance info
 
-|`NDMRESET_PROCESS` |0xC000_2A04 |RO |NDM reset process bitmap
+|`NDMRESET_PROCESS` |0xC000_2A04 |R |NDM reset process bitmap
 
-|`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |RO |Cluster count for NDM reset
+|`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |R |Cluster count for NDM reset
 broadcast
 
-|`I3C0_HCI_VERSION` |0xC000_5000 |RO |I3C CSR window on the real OCA
+|`I3C0_HCI_VERSION` |0xC000_5000 |R |I3C CSR window on the real OCA
 core; *expect OKAY + `0x120`*
 
-|`AVS_READBACK` |0xC000_8004 |RO |AVSBus master readback
+|`AVS_READBACK` |0xC000_8004 |R |AVSBus master readback
 
-|`AVS_DEBUG_READBACK` |0xC000_8008 |RO |AVSBus debug readback
+|`AVS_DEBUG_READBACK` |0xC000_8008 |R |AVSBus debug readback
 
-|`AVS_NORMAL_STATUS` |0xC000_8020 |RO |AVSBus normal status
+|`AVS_NORMAL_STATUS` |0xC000_8020 |R |AVSBus normal status
 
-|`AVS_SLAVE_STATUS` |0xC000_8024 |RO |AVSBus slave status
+|`AVS_SLAVE_STATUS` |0xC000_8024 |R |AVSBus slave status
 
-|`AVS_FIFOS_STATUS` |0xC000_8028 |RO |AVSBus FIFO occupancy
+|`AVS_FIFOS_STATUS` |0xC000_8028 |R |AVSBus FIFO occupancy
 
 |`AVS_INTERRUPT` |0xC000_8030 |RW1C |AVSBus interrupt status
 
 |`AVS_INTERRUPT_MASK` |0xC000_8034 |RW |AVSBus interrupt mask
 
-|`AVS_INTERRUPT_CLEAR` |0xC000_8038 |WO |AVSBus interrupt clear (reads
+|`AVS_INTERRUPT_CLEAR` |0xC000_8038 |W |AVSBus interrupt clear (reads
 as 0)
 
 |`CPU_CTRL_RESET_VECTOR_0` |0xC001_0000 |RW |CPU reset vector 0
@@ -330,7 +330,7 @@ address
 
 |`CPU_DEBUG_BUS_MUX` |0xC001_0210 |RW |CPU-debug bus multiplexer
 
-|`SMC_ATTRIBUTES` |0xC001_1000 |RO |Static SMC attributes (RTL constant)
+|`SMC_ATTRIBUTES` |0xC001_1000 |R |Static SMC attributes (RTL constant)
 
 |`ALIAS_REMAP_0_START` |0xC001_2000 |RW |Local-master alias remap entry
 0 start
@@ -359,7 +359,7 @@ start addr
 |`OUTBOUND_FILTER_0_END` |0xC001_6010 |RW |Outbound filter entry 0 end
 addr
 
-|`MAILBOX0_STATUS` |0xC001_8010 |RO |Outbound mailbox 0 status
+|`MAILBOX0_STATUS` |0xC001_8010 |R |Outbound mailbox 0 status
 (empty/full/level)
 
 |`MAILBOX0_ERROR_FLAGS` |0xC001_8018 |RW1C |Outbound mailbox 0 error
@@ -377,7 +377,7 @@ threshold
 
 |`LOG_ENGINE_CTRL` |0xC000_A200 |RW |Log-engine control
 
-|`OCTS_STATUS` |0xC000_E008 |RO |OCTS system timer status
+|`OCTS_STATUS` |0xC000_E008 |R |OCTS system timer status
 |=======================================================================
 
 [[smc-p0-verification-test-cases]]
@@ -777,9 +777,11 @@ exists
 |Merge legacy RD/WR, NACK, FIFO, timeout/stretch into two dense protocol
 tests after I2C BFM/VIP
 
-|I3C |`smc_i3c_to_fabric_test` (`HCI_VERSION` decode);
+|I3C |`smc_i3c_to_fabric_test` (`HCI_VERSION` decode only; not in
+`smoke` / `canonical_top*` / `project_p0`);
 CCC/IBI/sanity → deferred |P0/P1 |Green proves fabric→real OCA core
-decode; CCC/IBI stay with the IP-level DV
+decode; do not treat it as I3C protocol PASS. CCC/IBI stay with the
+IP-level DV
 
 |iJTAG / JTAG / DFT |`smc_ijtag_basic_test`;
 `smc_jtag_dmi_smoke_test`; `smc_efuse_jtag_lc_negative_test` |P0/P1
@@ -856,13 +858,14 @@ the SMC P0 Verification Test Cases table above (for tests in P0) or in
 §P1 Test Plan below (for depth tests that are canonical members but sit
 in P1). This section only records the group membership and its purpose.
 
-* *`canonical_top6`* — minimum CI smoke: `smc_canonical_smoke_test`,
-`smc_register_sanity_test`, `smc_default_reg_rd_test`,
-`smc_mailbox_irq_test`, `smc_i3c_to_fabric_test`,
-`smc_axi_error_response_depth_test`.
-* *`canonical_top10`* — adds: `smc_flr_sanity_test`,
-`smc_i2c_master_target_test`, `smc_ijtag_basic_test`,
+* *`canonical_top6`* — minimum CI smoke (five live members):
+`smc_canonical_smoke_test`, `smc_register_sanity_test`,
+`smc_default_reg_rd_test`, `smc_mailbox_irq_test`,
 `smc_input_output_fabric_wr_rd_test`.
+`smc_i3c_to_fabric_test` is HCI_VERSION decode only and is not in this group.
+* *`canonical_top10`* — adds: `smc_flr_sanity_test`,
+`smc_i2c_master_target_test`, `smc_ijtag_basic_test`
+(fabric wr/rd is already in top6).
 * *`canonical_top20`* — adds: `smc_cpu_to_sep_axi_test`,
 `smc_efuse_otp_clock_test`, `smc_pll_pvt_clock_config_test`,
 `smc_gpio_irq_active_test`, `smc_sideband_protocol_smoke_test`,
@@ -904,8 +907,7 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
-    "smc_axi_error_response_depth_test",
+    "smc_input_output_fabric_wr_rd_test",
 ]
 
 [[groups]]
@@ -915,8 +917,6 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
-    "smc_axi_error_response_depth_test",
     "smc_flr_sanity_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
@@ -930,15 +930,12 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
-    "smc_axi_error_response_depth_test",
     "smc_flr_sanity_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
     "smc_efuse_otp_clock_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
     "smc_uart_spi_log_engine_test",

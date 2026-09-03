@@ -13,18 +13,19 @@ DAT[0] payload are randomized (shared framework, seed from +seed/SEED/default).
 DAT[0] keeps the real target's assigned dynamic address (0x10 from bring-up);
 the absent address is constrained to be legal and distinct from it.
 """
+
 import cocotb
-from i3c_test_base import make_env, bring_up_and_assign, DEFAULT_DYNAMIC_ADDR
-from i3c_rand import RandMgr, rand_i3c_addr, rand_len, rand_bytes
+from i3c_rand import RandMgr, rand_bytes, rand_i3c_addr, rand_len
+from i3c_test_base import DEFAULT_DYNAMIC_ADDR, bring_up_and_assign, make_env
 
 MWL = 64
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_multi_target_dat(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="multi_target")          # seed logged; +seed/SEED override
+    r = RandMgr(name="multi_target")  # seed logged; +seed/SEED override
 
     # DAT[1] -> a legal address distinct from the real target (no device there)
     absent_dyn = rand_i3c_addr(r, exclude={DEFAULT_DYNAMIC_ADDR})

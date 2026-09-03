@@ -8,7 +8,6 @@ DV-CARD:          SMU_005   ANCHOR: smu_no_sep_configuration_test
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_no_sep_configuration_test_seq import smu_no_sep_configuration_test_seq
 from smu_base_test import smu_base_test
 

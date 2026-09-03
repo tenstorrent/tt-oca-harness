@@ -70,9 +70,7 @@ class smu_clock_stop_coordination_test_seq:
                 raise AssertionError(f"{chk} lifecycle missing: {phase}")
         for a, b in zip(order, order[1:]):
             if ts[a] >= ts[b]:
-                raise AssertionError(
-                    f"{chk} lifecycle order fail: {a} not before {b}"
-                )
+                raise AssertionError(f"{chk} lifecycle order fail: {a} not before {b}")
 
     def _sample(self, signal, name: str) -> int:
         val = signal.value
@@ -95,17 +93,13 @@ class smu_clock_stop_coordination_test_seq:
             await RisingEdge(clk)
             last = self._sample(signal, name)
             if last == expect:
-                self._timeout_paths.append(
-                    f"{label}: bound={bound} ok last=0x{last:x}"
-                )
+                self._timeout_paths.append(f"{label}: bound={bound} ok last=0x{last:x}")
                 return last
         self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED last="
-            f"{'None' if last is None else f'0x{last:x}'}"
+            f"{label}: bound={bound} EXPIRED last={'None' if last is None else f'0x{last:x}'}"
         )
         raise AssertionError(
-            f"TIMEOUT {label}: bound={bound} last_state={last} "
-            f"expect={expect} name={name}"
+            f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect} name={name}"
         )
 
     async def _wait_eq_hold(
@@ -128,15 +122,12 @@ class smu_clock_stop_coordination_test_seq:
             if last == expect:
                 consecutive += 1
                 if consecutive >= hold:
-                    self._timeout_paths.append(
-                        f"{label}: bound={bound} ok last=0x{last:x}"
-                    )
+                    self._timeout_paths.append(f"{label}: bound={bound} ok last=0x{last:x}")
                     return last
             else:
                 consecutive = 0
         self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED last="
-            f"{'None' if last is None else f'0x{last:x}'}"
+            f"{label}: bound={bound} EXPIRED last={'None' if last is None else f'0x{last:x}'}"
         )
         raise AssertionError(
             f"TIMEOUT {label}: bound={bound} last_state={last} "
@@ -172,17 +163,11 @@ class smu_clock_stop_coordination_test_seq:
         )
         dut.xtrig_clk_stop_req.value = 0
         baseline_stop = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
-        baseline_stall_ovrd = self._sample(
-            dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd"
-        )
+        baseline_stall_ovrd = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         baseline_stall = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
-        baseline_fuse = self._sample(
-            dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
-        )
+        baseline_fuse = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
         if baseline_stop != 0:
-            raise AssertionError(
-                f"baseline dtp_stop_clks_o={baseline_stop} expect 0"
-            )
+            raise AssertionError(f"baseline dtp_stop_clks_o={baseline_stop} expect 0")
         self._log(
             f"BASELINE: stop_clks={baseline_stop} stall_ovrd={baseline_stall_ovrd} "
             f"stall={baseline_stall} fuse_reset={baseline_fuse} "
@@ -209,9 +194,7 @@ class smu_clock_stop_coordination_test_seq:
         ovrd = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         stall = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         if ovrd != 1 or stall != 1:
-            raise AssertionError(
-                f"BOOT-STALL.S1 set fail: ovrd={ovrd} stall={stall}"
-            )
+            raise AssertionError(f"BOOT-STALL.S1 set fail: ovrd={ovrd} stall={stall}")
 
         # Cold reset; keep TRST high so DEBUG_CONTROL persists.
         dut.rst_cold_ni.value = 0
@@ -236,9 +219,7 @@ class smu_clock_stop_coordination_test_seq:
             name="fuse_reset_n_delayed_o",
             hold=16,
         )
-        fuse_held = self._sample(
-            dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
-        )
+        fuse_held = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S1",
             "observed",
@@ -249,21 +230,15 @@ class smu_clock_stop_coordination_test_seq:
         # cleared = cold-reset pulse cleared (rst_cold_ni back high) while stall holds
         cold_n = self._sample(dut.rst_cold_ni, "rst_cold_ni")
         if cold_n != 1:
-            raise AssertionError(
-                f"BOOT-STALL.S1 clear/ack fail: rst_cold_ni={cold_n}"
-            )
+            raise AssertionError(f"BOOT-STALL.S1 clear/ack fail: rst_cold_ni={cold_n}")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S1",
             "cleared",
             f"clear/ack cold-reset exit rst_cold_ni={cold_n} while stall holds",
         )
-        fuse_still = self._sample(
-            dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
-        )
+        fuse_still = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
         if fuse_still != 0:
-            raise AssertionError(
-                f"BOOT-STALL.S1 checked_cleared fail: fuse_reset={fuse_still}"
-            )
+            raise AssertionError(f"BOOT-STALL.S1 checked_cleared fail: fuse_reset={fuse_still}")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S1",
             "checked_cleared",
@@ -271,8 +246,7 @@ class smu_clock_stop_coordination_test_seq:
         )
         self._check_lifecycle("CHK-DTP-BOOT-STALL-S1")
         detail_s1 = (
-            f"ovrd=1 stall=1 boot=held fuse_reset={fuse_still} "
-            f"cells=ovrd=1,stall=1,boot=held"
+            f"ovrd=1 stall=1 boot=held fuse_reset={fuse_still} cells=ovrd=1,stall=1,boot=held"
         )
         self._log(f"CHK-DTP-BOOT-STALL-S1: PASS ({detail_s1})")
         sb.expect_eq(
@@ -290,9 +264,7 @@ class smu_clock_stop_coordination_test_seq:
             "ACTION/RESPONSE/EFFECT DTP-BOOT-STALL.S2: clear stall/override "
             "allows SMC fuse_reset progression",
         )
-        self._log(
-            "COVERAGE DTP-BOOT-STALL.S2 cells: stall=0,boot=progresses"
-        )
+        self._log("COVERAGE DTP-BOOT-STALL.S2 cells: stall=0,boot=progresses")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S2",
             "set",
@@ -308,9 +280,7 @@ class smu_clock_stop_coordination_test_seq:
             label="s3_fuse_release",
             name="fuse_reset_n_delayed_o",
         )
-        fuse_rel = self._sample(
-            dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
-        )
+        fuse_rel = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S2",
             "observed",
@@ -319,31 +289,22 @@ class smu_clock_stop_coordination_test_seq:
         ovrd_c = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         stall_c = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         if ovrd_c != 0 or stall_c != 0:
-            raise AssertionError(
-                f"BOOT-STALL.S2 clear fail: ovrd={ovrd_c} stall={stall_c}"
-            )
+            raise AssertionError(f"BOOT-STALL.S2 clear fail: ovrd={ovrd_c} stall={stall_c}")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S2",
             "cleared",
             f"clear/ack stall outputs ovrd={ovrd_c} stall={stall_c}",
         )
-        fuse_chk = self._sample(
-            dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
-        )
+        fuse_chk = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
         if fuse_chk != 1:
-            raise AssertionError(
-                f"BOOT-STALL.S2 checked_cleared fuse_reset={fuse_chk}"
-            )
+            raise AssertionError(f"BOOT-STALL.S2 checked_cleared fuse_reset={fuse_chk}")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S2",
             "checked_cleared",
             f"readback cleared stall; fuse_reset={fuse_chk}",
         )
         self._check_lifecycle("CHK-DTP-BOOT-STALL-S2")
-        detail_s2 = (
-            f"stall=0 boot=progresses fuse_reset={fuse_chk} "
-            f"cells=stall=0,boot=progresses"
-        )
+        detail_s2 = f"stall=0 boot=progresses fuse_reset={fuse_chk} cells=stall=0,boot=progresses"
         self._log(f"CHK-DTP-BOOT-STALL-S2: PASS ({detail_s2})")
         sb.expect_eq(
             "CHK-DTP-BOOT-STALL-S2 fuse released",
@@ -368,20 +329,11 @@ class smu_clock_stop_coordination_test_seq:
         )
         await jtag.write("IC_RESET", smc_assert)
         await ClockCycles(dut.clk_smu_i, 16)
-        smc_ovrd = self._sample(
-            dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"
-        )
-        smc_ctrl = self._sample(
-            dut.jtag_ic_reset_smc_ctrl_n, "jtag_ic_reset_smc_ctrl_n"
-        )
+        smc_ovrd = self._sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd")
+        smc_ctrl = self._sample(dut.jtag_ic_reset_smc_ctrl_n, "jtag_ic_reset_smc_ctrl_n")
         if smc_ovrd != 1 or smc_ctrl != 0:
-            raise AssertionError(
-                f"IC-RESET.S1 fail: smc_ovrd={smc_ovrd} smc_ctrl_n={smc_ctrl}"
-            )
-        detail_ic1 = (
-            f"target=smc ovrd=1 ctrl_n={smc_ctrl} "
-            f"cells=target=smc,ovrd=1"
-        )
+            raise AssertionError(f"IC-RESET.S1 fail: smc_ovrd={smc_ovrd} smc_ctrl_n={smc_ctrl}")
+        detail_ic1 = f"target=smc ovrd=1 ctrl_n={smc_ctrl} cells=target=smc,ovrd=1"
         self._log(f"CHK-DTP-IC-RESET-S1: PASS ({detail_ic1})")
         sb.expect_eq(
             "CHK-DTP-IC-RESET-S1 SMC ovrd",
@@ -398,31 +350,21 @@ class smu_clock_stop_coordination_test_seq:
             "ACTION/RESPONSE/EFFECT DTP-IC-RESET.S3: clear override then "
             "TRST/POR each remove the override effect",
         )
-        self._log(
-            "COVERAGE DTP-IC-RESET.S3 cells: exit=clear_ovrd,exit=trst_por"
-        )
+        self._log("COVERAGE DTP-IC-RESET.S3 cells: exit=clear_ovrd,exit=trst_por")
         # Path A: clear_ovrd via TDR default
         await jtag.write("IC_RESET", SMU_IC_RESET_DEFAULT)
         await ClockCycles(dut.clk_smu_i, 16)
-        clr_ovrd = self._sample(
-            dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"
-        )
+        clr_ovrd = self._sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd")
         if clr_ovrd != 0:
-            raise AssertionError(
-                f"IC-RESET.S3 clear_ovrd fail: smc_ovrd={clr_ovrd}"
-            )
+            raise AssertionError(f"IC-RESET.S3 clear_ovrd fail: smc_ovrd={clr_ovrd}")
         self._log(f"IC-RESET.S3 exit=clear_ovrd smc_ovrd={clr_ovrd}")
 
         # Re-assert then TRST exit
         await jtag.write("IC_RESET", smc_assert)
         await ClockCycles(dut.clk_smu_i, 16)
-        re_ovrd = self._sample(
-            dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"
-        )
+        re_ovrd = self._sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd")
         if re_ovrd != 1:
-            raise AssertionError(
-                f"IC-RESET.S3 re-assert fail: smc_ovrd={re_ovrd}"
-            )
+            raise AssertionError(f"IC-RESET.S3 re-assert fail: smc_ovrd={re_ovrd}")
         dut.jtag_trst.value = 0
         for _ in range(self.TRST_CYCLES):
             await RisingEdge(dut.clk_ref_i)
@@ -432,13 +374,9 @@ class smu_clock_stop_coordination_test_seq:
         jtag._current_instruction = None
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 16)
-        trst_ovrd = self._sample(
-            dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"
-        )
+        trst_ovrd = self._sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd")
         if trst_ovrd != 0:
-            raise AssertionError(
-                f"IC-RESET.S3 TRST exit fail: smc_ovrd={trst_ovrd}"
-            )
+            raise AssertionError(f"IC-RESET.S3 TRST exit fail: smc_ovrd={trst_ovrd}")
         self._log(f"IC-RESET.S3 exit=trst_por smc_ovrd={trst_ovrd}")
         detail_ic3 = (
             f"exit=clear_ovrd clr={clr_ovrd} exit=trst_por trst={trst_ovrd} "
@@ -457,8 +395,7 @@ class smu_clock_stop_coordination_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S6",
-            "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S1: only jtag_clock_stop "
-            "asserts stop_clks_o",
+            "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S1: only jtag_clock_stop asserts stop_clks_o",
         )
         self._log("COVERAGE DTP-CLKSTOP-AGG.S1 cells: src=jtag,stop_clks=1")
         dut.xtrig_clk_stop_req.value = 0
@@ -466,8 +403,7 @@ class smu_clock_stop_coordination_test_seq:
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S1",
             "set",
-            f"assert observation DEBUG_CONTROL jtag_clock_stop "
-            f"val=0x{val_jtag:x} xtrig=0",
+            f"assert observation DEBUG_CONTROL jtag_clock_stop val=0x{val_jtag:x} xtrig=0",
         )
         await jtag.write("DEBUG_CONTROL", val_jtag)
         stop1 = await self._wait_eq(
@@ -480,9 +416,7 @@ class smu_clock_stop_coordination_test_seq:
         )
         xtrig_idle = self._sample(dut.xtrig_clk_stop_req, "xtrig_clk_stop_req")
         if xtrig_idle != 0:
-            raise AssertionError(
-                f"CLKSTOP-AGG.S1 not JTAG-only: xtrig={xtrig_idle}"
-            )
+            raise AssertionError(f"CLKSTOP-AGG.S1 not JTAG-only: xtrig={xtrig_idle}")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S1",
             "observed",
@@ -504,16 +438,14 @@ class smu_clock_stop_coordination_test_seq:
         )
         stop_chk = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
         if stop_chk != 0:
-            raise AssertionError(
-                f"CLKSTOP-AGG.S1 checked_cleared stop_clks={stop_chk}"
-            )
+            raise AssertionError(f"CLKSTOP-AGG.S1 checked_cleared stop_clks={stop_chk}")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S1",
             "checked_cleared",
             f"readback cleared stop_clks={stop_chk}",
         )
         self._check_lifecycle("CHK-DTP-CLKSTOP-AGG-S1")
-        detail_c1 = f"src=jtag stop_clks=1 then cleared cells=src=jtag,stop_clks=1"
+        detail_c1 = "src=jtag stop_clks=1 then cleared cells=src=jtag,stop_clks=1"
         self._log(f"CHK-DTP-CLKSTOP-AGG-S1: PASS ({detail_c1})")
         sb.expect_eq(
             "CHK-DTP-CLKSTOP-AGG-S1 jtag-only",
@@ -530,9 +462,7 @@ class smu_clock_stop_coordination_test_seq:
             "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S2: only CLA "
             "clk_stop_req asserts stop_clks_o and CLA-only status",
         )
-        self._log(
-            "COVERAGE DTP-CLKSTOP-AGG.S2 cells: src=cla,stop_clks=1,cla_status=1"
-        )
+        self._log("COVERAGE DTP-CLKSTOP-AGG.S2 cells: src=cla,stop_clks=1,cla_status=1")
         # jtag_clock_stop=0; TB xtrig[0] -> DTP[1] (CLA request path)
         await jtag.write("DEBUG_CONTROL", 0)
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
@@ -560,9 +490,7 @@ class smu_clock_stop_coordination_test_seq:
                 f"cla_status={cla_status}"
             )
         if jtag_stop_bit != 0:
-            raise AssertionError(
-                f"CLKSTOP-AGG.S2 not CLA-only: jtag_clock_stop={jtag_stop_bit}"
-            )
+            raise AssertionError(f"CLKSTOP-AGG.S2 not CLA-only: jtag_clock_stop={jtag_stop_bit}")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S2",
             "observed",
@@ -587,8 +515,7 @@ class smu_clock_stop_coordination_test_seq:
         cla_status2 = (int(rb2) >> DBG_CLA_CLOCK_STOP_BIT) & 0x1
         if cla_status2 != 0 or stop_cla_clr != 0:
             raise AssertionError(
-                f"CLKSTOP-AGG.S2 checked_cleared fail: stop={stop_cla_clr} "
-                f"cla_status={cla_status2}"
+                f"CLKSTOP-AGG.S2 checked_cleared fail: stop={stop_cla_clr} cla_status={cla_status2}"
             )
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S2",
@@ -596,10 +523,7 @@ class smu_clock_stop_coordination_test_seq:
             f"readback cleared stop={stop_cla_clr} cla_status={cla_status2}",
         )
         self._check_lifecycle("CHK-DTP-CLKSTOP-AGG-S2")
-        detail_c2 = (
-            f"src=cla stop_clks=1 cla_status=1 "
-            f"cells=src=cla,stop_clks=1,cla_status=1"
-        )
+        detail_c2 = "src=cla stop_clks=1 cla_status=1 cells=src=cla,stop_clks=1,cla_status=1"
         self._log(f"CHK-DTP-CLKSTOP-AGG-S2: PASS ({detail_c2})")
         sb.expect_eq(
             "CHK-DTP-CLKSTOP-AGG-S2 CLA-only",
@@ -616,9 +540,7 @@ class smu_clock_stop_coordination_test_seq:
             "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S3: port[0] reserved for "
             "SMC participates in SMC CLA handshake (CONNECTIVITY)",
         )
-        self._log(
-            "COVERAGE DTP-CLKSTOP-AGG.S3 cells: port0=smc_reserved,smc_cla=handshake"
-        )
+        self._log("COVERAGE DTP-CLKSTOP-AGG.S3 cells: port0=smc_reserved,smc_cla=handshake")
         cla_en = pack_debug_control(cla_clock_stop_en=1)
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
@@ -629,16 +551,12 @@ class smu_clock_stop_coordination_test_seq:
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
         en_o = self._sample(dut.dtp_cla_clock_stop_en, "dtp_cla_clock_stop_en")
         if en_o != 1:
-            raise AssertionError(
-                f"CLKSTOP-AGG.S3 handshake en fail: dtp_cla_clock_stop_en={en_o}"
-            )
+            raise AssertionError(f"CLKSTOP-AGG.S3 handshake en fail: dtp_cla_clock_stop_en={en_o}")
         # Drive TB xtrig[0]=1; must appear at DTP[1], NOT DTP[0]
         dut.xtrig_clk_stop_req.value = 0x1
         await RisingEdge(dut.clk_smu_i)
         await RisingEdge(dut.clk_smu_i)
-        dtp_req = self._sample(
-            dut.u_dut.dtp_xtrig_clk_stop_req, "dtp_xtrig_clk_stop_req"
-        )
+        dtp_req = self._sample(dut.u_dut.dtp_xtrig_clk_stop_req, "dtp_xtrig_clk_stop_req")
         smc_fb = self._sample(
             dut.u_dut.tdr_dbg_ctrl_clocks_stopped_by_cla,
             "tdr_dbg_ctrl_clocks_stopped_by_cla",
@@ -652,8 +570,7 @@ class smu_clock_stop_coordination_test_seq:
             )
         if dtp_hi != 0x1:
             raise AssertionError(
-                f"CLKSTOP-AGG.S3 TB xtrig remap fail: DTP[8:1]=0x{dtp_hi:x} "
-                f"expect 0x1"
+                f"CLKSTOP-AGG.S3 TB xtrig remap fail: DTP[8:1]=0x{dtp_hi:x} expect 0x1"
             )
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
@@ -664,13 +581,9 @@ class smu_clock_stop_coordination_test_seq:
         dut.xtrig_clk_stop_req.value = 0
         await jtag.write("DEBUG_CONTROL", 0)
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
-        en_clr = self._sample(
-            dut.dtp_cla_clock_stop_en, "dtp_cla_clock_stop_en"
-        )
+        en_clr = self._sample(dut.dtp_cla_clock_stop_en, "dtp_cla_clock_stop_en")
         if en_clr != 0:
-            raise AssertionError(
-                f"CLKSTOP-AGG.S3 clear fail: dtp_cla_clock_stop_en={en_clr}"
-            )
+            raise AssertionError(f"CLKSTOP-AGG.S3 clear fail: dtp_cla_clock_stop_en={en_clr}")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
             "cleared",
@@ -687,8 +600,7 @@ class smu_clock_stop_coordination_test_seq:
         # Upper bits must be 0; port0 still equals SMC fb
         if ((dtp_idle >> 1) & 0xFF) != 0:
             raise AssertionError(
-                f"CLKSTOP-AGG.S3 checked_cleared upper bits live: "
-                f"dtp=0x{dtp_idle:x}"
+                f"CLKSTOP-AGG.S3 checked_cleared upper bits live: dtp=0x{dtp_idle:x}"
             )
         if (dtp_idle & 0x1) != (
             self._sample(
@@ -696,9 +608,7 @@ class smu_clock_stop_coordination_test_seq:
                 "tdr_dbg_ctrl_clocks_stopped_by_cla",
             )
         ):
-            raise AssertionError(
-                "CLKSTOP-AGG.S3 checked_cleared port0/SMC fb mismatch"
-            )
+            raise AssertionError("CLKSTOP-AGG.S3 checked_cleared port0/SMC fb mismatch")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
             "checked_cleared",
@@ -723,8 +633,7 @@ class smu_clock_stop_coordination_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S9",
-            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry "
-            "+ last observed state",
+            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last observed state",
         )
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
@@ -736,13 +645,9 @@ class smu_clock_stop_coordination_test_seq:
             )
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}")
         self._log(
             "CHK-TIMEOUT-PATHS: Finite bound on S9; expiry fails with "
             f"last-state diagnostics (paths={n_paths} "
@@ -757,9 +662,7 @@ class smu_clock_stop_coordination_test_seq:
         )
 
         self._step_ts["PASS"] = time.monotonic()
-        self._log(
-            "SMU_ALL_006 sequence complete (PASS term recorded for NONVAC fence)"
-        )
+        self._log("SMU_ALL_006 sequence complete (PASS term recorded for NONVAC fence)")
         order = [
             "S1",
             "S2",
@@ -779,8 +682,7 @@ class smu_clock_stop_coordination_test_seq:
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
         deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
-            for a, b in zip(order, order[1:])
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
         positive_deltas = sum(1 for d in deltas_ns if d > 0)
         expect_deltas = len(order) - 1
@@ -789,9 +691,7 @@ class smu_clock_stop_coordination_test_seq:
                 f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
                 f"expect={expect_deltas} deltas_ns={deltas_ns}"
             )
-        self._log(
-            "CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS all hold"
-        )
+        self._log("CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS all hold")
         sb.expect_eq(
             "CHK-NONVAC positive step-delta count",
             positive_deltas,

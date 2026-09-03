@@ -35,9 +35,7 @@ list exactly.  For a padring-wrapped DUT the signal names may differ; pass
 the correct cocotb handles for each pin.
 """
 
-import logging
-import os
-from typing import Optional, Any
+from typing import Any, Optional
 
 import cocotb
 from cocotb.triggers import FallingEdge, RisingEdge
@@ -154,9 +152,9 @@ class OcahSepSpiFlash(OcahSpiFlash):
                 verbose=verbose,
             )
 
-        self._dq_oe_n  = dq_oe_n
-        self._rebar_o  = rebar_o
-        self._rebar_i  = rebar_i
+        self._dq_oe_n = dq_oe_n
+        self._rebar_o = rebar_o
+        self._rebar_i = rebar_i
 
         self._rebar_task: Optional[Any] = None
 
@@ -172,7 +170,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
         """
         super().init_signals()
         if self._rebar_i is not None:
-            self._rebar_i.value = 1   # not in reset
+            self._rebar_i.value = 1  # not in reset
 
     # ------------------------------------------------------------------
     # Lifecycle (override to add REBAR monitor)
@@ -206,8 +204,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
             await FallingEdge(self._rebar_o)
             if not self._running:
                 break
-            self.log.info("%s: REBAR asserted — resetting flash state machine",
-                          self.name)
+            self.log.info("%s: REBAR asserted — resetting flash state machine", self.name)
             self._on_rebar_assert()
 
             # Wait for REBAR to deassert before re-arming.
@@ -218,8 +215,8 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
     def _on_rebar_assert(self) -> None:
         """Reset internal state machine (not flash contents) on REBAR."""
-        self._wel  = False
-        self._sr1  = self._sr1 & ~0x02   # clear WEL bit in SR1
+        self._wel = False
+        self._sr1 = self._sr1 & ~0x02  # clear WEL bit in SR1
         # Note: flash memory contents are preserved across REBAR (NOR semantics)
         if self._rebar_i is not None:
             self._rebar_i.value = 0

@@ -182,7 +182,9 @@ class AdopterOverlayLayer(unittest.TestCase):
             '[build]\nincdirs = ["vendor/inc", "dut/inc"]\nsources = ["vendor/pkg.sv"]\n'
             '[sim]\nargs = ["+uvm_set_type_override=ocah_axi_master_env,vendor_axi_env"]\n',
         )
-        self.assertEqual(data["build"]["incdirs"], ["dut/inc", "vendor/inc"])  # dedup keeps DUT order
+        self.assertEqual(
+            data["build"]["incdirs"], ["dut/inc", "vendor/inc"]
+        )  # dedup keeps DUT order
         self.assertEqual(data["build"]["sources"], ["dut/tb.sv", "vendor/pkg.sv"])
         self.assertEqual(
             data["sim"]["args"],
@@ -192,7 +194,9 @@ class AdopterOverlayLayer(unittest.TestCase):
     def test_target_defines_and_tool_flags_dedup_append(self):
         data = {
             "framework": "uvm",
-            "target_defaults": {"default": {"defines": ["UVM"], "tools": {"vcs": {"flags": ["-x"]}}}},
+            "target_defaults": {
+                "default": {"defines": ["UVM"], "tools": {"vcs": {"flags": ["-x"]}}}
+            },
         }
         self.apply(
             data,
@@ -257,9 +261,7 @@ class AdopterOverlayLoadDut(unittest.TestCase):
             'schema_version = 1\nname = "unit"\nkind = "dv"\n'
             'default_tool = "verilator"\ntools = ["verilator"]\n' + extra_cfg
         )
-        return load_dut(
-            cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay
-        )
+        return load_dut(cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay)
 
     def test_config_set_reserved_key_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -327,7 +329,7 @@ class GroupMemberValidation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "leaf.toml").write_text(
-                'schema_version = 1\n'
+                "schema_version = 1\n"
                 '[[tests]]\nname = "t_leaf"\nrun_modes = ["smoke"]\n'
                 '[[groups]]\nname = "g_leaf"\ntests = ["t_gone"]\n'
             )

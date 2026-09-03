@@ -68,11 +68,11 @@ module sep_cpu (
     output logic dec_tlu_perfcnt2,
     output logic dec_tlu_perfcnt3,
 
-  `ifdef RV_LOCKSTEP_ENABLE
-    input  logic disable_corruption_detection_i,
-    input  logic lockstep_err_injection_en_i,
-    output logic corruption_detected_o,
-  `endif
+    // Unconditional: the VeeR wrapper's lockstep ports only exist under
+    // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
+    // port footprint regardless of the define.
+    input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+    output sep_pkg::sep_lockstep_status_t lockstep_status_o,
 
     // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
     output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -226,9 +226,9 @@ module sep_cpu (
     .dec_tlu_perfcnt3 (dec_tlu_perfcnt3),
 
       `ifdef RV_LOCKSTEP_ENABLE
-    .disable_corruption_detection_i (disable_corruption_detection_i),
-    .lockstep_err_injection_en_i    (lockstep_err_injection_en_i),
-    .corruption_detected_o          (corruption_detected_o),
+    .disable_corruption_detection_i (lockstep_ctrl_i.disable_corruption_detection),
+    .lockstep_err_injection_en_i    (lockstep_ctrl_i.err_injection_en),
+    .corruption_detected_o          (lockstep_status_o.corruption_detected),
       `endif
 
     // Memory macro interfaces
@@ -391,6 +391,18 @@ module sep_cpu (
     .dma_axi_rresp   (cpu_tcm_axi_resp_o.r.resp),
     .dma_axi_rlast   (cpu_tcm_axi_resp_o.r.last)
   );
+
+  //////////////////////////////
+  // Lockstep (when not built) //
+  //////////////////////////////
+
+`ifndef RV_LOCKSTEP_ENABLE
+  // No VeeR lockstep ports to bind to; keep this module's own ports well-defined.
+  assign lockstep_status_o = '0;
+
+  logic unused_lockstep_ctrl;
+  assign unused_lockstep_ctrl = |lockstep_ctrl_i;
+`endif
 
   ///////////////////////////////////////////
   // SB/DBG AXI ID Width Conversion Logic //

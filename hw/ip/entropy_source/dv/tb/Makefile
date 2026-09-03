@@ -28,12 +28,6 @@ DEBUG_TESTBENCH = tb_debug_monitor.v
 DEBUG_SIM_OUT = tb_debug_monitor
 DEBUG_VCD_FILE = debug_monitor.vcd
 
-# Adaptive Proportion Test configuration
-APT_SOURCES = $(RTL_DIR)/entropy_adaptive_proportion_test.sv
-APT_TESTBENCH = tb_adaptive_proportion_test.sv
-APT_SIM_OUT = tb_adaptive_proportion_test
-APT_VCD_FILE = apt_test.vcd
-
 # Repetition Test configuration
 REP_SOURCES = $(RTL_DIR)/entropy_repetition_test.sv
 REP_TESTBENCH = tb_repetition_test.v
@@ -68,6 +62,7 @@ HEALTH_VCD_FILE = health_test.vcd
 SCLKDIV_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ripple_divider.sv $(RTL_DIR)/entropy_sampler_clocks.sv $(RTL_DIR)/entropy_generator.sv $(RTL_DIR)/entropy_noise_source.sv $(RTL_DIR)/entropy_ring_oscillator.sv $(RTL_DIR)/entropy_decorrelator.sv $(RTL_DIR)/entropy_health_test.sv $(RTL_DIR)/entropy_repetition_test.sv $(RTL_DIR)/entropy_adaptive_proportion_test.sv $(RTL_DIR)/entropy_markov_test.sv $(RTL_DIR)/entropy_rosc_tune_fsm.sv $(RTL_DIR)/gf_muladd.sv entropy_generator_test_wrapper.sv
 SCLKDIV_TESTBENCH = tb_sample_clk_divider.v
 SCLKDIV_SIM_OUT = tb_sample_clk_divider
+SCLKDIV_FULL_SIM_OUT = tb_sample_clk_divider_full
 SCLKDIV_VCD_FILE = sample_clk_divider.vcd
 
 # Entropy FIFO Test configuration
@@ -182,30 +177,6 @@ tune-fsm-correct-waves: $(TUNE_FSM_CORRECT_VCD_FILE)
 tune-fsm-correct-clean:
 	@echo "=== Cleaning Tune FSM Correct Files ==="
 	rm -f $(TUNE_FSM_CORRECT_SIM_OUT) $(TUNE_FSM_CORRECT_VCD_FILE)
-
-#==============================================================================
-# ADAPTIVE PROPORTION TEST TARGETS
-#==============================================================================
-
-# Adaptive proportion test simulation
-apt: $(APT_SIM_OUT)
-	@echo "=== Running Adaptive Proportion Test ==="
-	$(VVP) $(APT_SIM_OUT)
-
-# Compile adaptive proportion test testbench
-$(APT_SIM_OUT): $(APT_SOURCES) $(APT_TESTBENCH)
-	@echo "=== Compiling Adaptive Proportion Test ==="
-	$(IVERILOG) -g2012 -DSIMULATION -o $(APT_SIM_OUT) $(APT_SOURCES) $(APT_TESTBENCH)
-
-# View APT waveforms
-apt-waves: $(APT_VCD_FILE)
-	@echo "=== Opening Adaptive Proportion Test Waveforms ==="
-	$(SURFER) $(APT_VCD_FILE) &
-
-# Clean APT files
-apt-clean:
-	@echo "=== Cleaning Adaptive Proportion Test Files ==="
-	rm -f $(APT_SIM_OUT) $(APT_VCD_FILE)
 
 #==============================================================================
 # REPETITION TEST TARGETS
@@ -420,10 +391,15 @@ $(SCLKDIV_SIM_OUT): $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 	@echo "=== Compiling Sample Clock Divider Test ==="
 	$(IVERILOG) -g2012 -DSIMULATION -o $(SCLKDIV_SIM_OUT) $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 
-# Run full test (all 12 generators)
-sclkdiv-full: $(SCLKDIV_SIM_OUT)
+# Full test compiles a second image: `ifdef FULL_TEST is a preprocessor gate, so
+# the name has to reach iverilog as -D, not vvp as a plusarg.
+sclkdiv-full: $(SCLKDIV_FULL_SIM_OUT)
 	@echo "=== Running Full Sample Clock Divider Test (All 12 Generators) ==="
-	$(VVP) $(SCLKDIV_SIM_OUT) +define+FULL_TEST
+	$(VVP) $(SCLKDIV_FULL_SIM_OUT)
+
+$(SCLKDIV_FULL_SIM_OUT): $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
+	@echo "=== Compiling Full Sample Clock Divider Test ==="
+	$(IVERILOG) -g2012 -DSIMULATION -DFULL_TEST -o $(SCLKDIV_FULL_SIM_OUT) $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 
 # View sample clock divider waveforms
 sclkdiv-waves: $(SCLKDIV_VCD_FILE)
@@ -433,7 +409,7 @@ sclkdiv-waves: $(SCLKDIV_VCD_FILE)
 # Clean sample clock divider test files
 sclkdiv-clean:
 	@echo "=== Cleaning Sample Clock Divider Test Files ==="
-	rm -f $(SCLKDIV_SIM_OUT) $(SCLKDIV_VCD_FILE)
+	rm -f $(SCLKDIV_SIM_OUT) $(SCLKDIV_FULL_SIM_OUT) $(SCLKDIV_VCD_FILE)
 
 #==============================================================================
 # ENTROPY FIFO TEST TARGETS
@@ -504,12 +480,6 @@ MARKOV_BS_TESTBENCH = tb_markov_test_byte_stream.v
 MARKOV_BS_SIM_OUT = tb_markov_test_byte_stream
 MARKOV_BS_VCD_FILE = markov_test_byte_stream.vcd
 
-# Integrated Health Test Byte Stream configuration
-HEALTH_BS_SOURCES = $(RTL_DIR)/entropy_health_test_byte_stream.sv $(RTL_DIR)/entropy_repetition_test_byte_stream.sv $(RTL_DIR)/entropy_markov_test_byte_stream.sv
-HEALTH_BS_TESTBENCH = tb_health_test_byte_stream.v
-HEALTH_BS_SIM_OUT = tb_health_test_byte_stream
-HEALTH_BS_VCD_FILE = health_test_byte_stream.vcd
-
 # Repetition test byte stream simulation
 repetition-bs: $(REP_BS_SIM_OUT)
 	@echo "=== Running Repetition Test Byte Stream ==="
@@ -535,19 +505,6 @@ $(MARKOV_BS_SIM_OUT): $(MARKOV_BS_SOURCES) $(MARKOV_BS_TESTBENCH)
 markov-bs-clean:
 	@echo "=== Cleaning Markov Test Byte Stream Files ==="
 	rm -f $(MARKOV_BS_SIM_OUT) $(MARKOV_BS_VCD_FILE)
-
-# Integrated health test byte stream simulation
-health-bs: $(HEALTH_BS_SIM_OUT)
-	@echo "=== Running Integrated Health Test Byte Stream ==="
-	$(VVP) $(HEALTH_BS_SIM_OUT)
-
-$(HEALTH_BS_SIM_OUT): $(HEALTH_BS_SOURCES) $(HEALTH_BS_TESTBENCH)
-	@echo "=== Compiling Integrated Health Test Byte Stream ==="
-	$(IVERILOG) -g2012 -DSIMULATION -o $(HEALTH_BS_SIM_OUT) $(HEALTH_BS_SOURCES) $(HEALTH_BS_TESTBENCH)
-
-health-bs-clean:
-	@echo "=== Cleaning Integrated Health Test Byte Stream Files ==="
-	rm -f $(HEALTH_BS_SIM_OUT) $(HEALTH_BS_VCD_FILE)
 
 #==============================================================================
 # VERILATOR LINT TARGETS
@@ -631,18 +588,18 @@ verilator-clean:
 #==============================================================================
 
 # Run all testbenches
-test: ring debug apt repetition markov health fifo axi4lite
+test: ring debug repetition markov health fifo axi4lite
 	@echo "=== All Tests Complete ==="
 
 # Run all byte stream testbenches
-test-bs: repetition-bs markov-bs health-bs
+test-bs: repetition-bs markov-bs
 	@echo "=== All Byte Stream Tests Complete ==="
 
 # View all waveforms
-waves: ring-waves debug-waves tune-fsm-correct-waves apt-waves repetition-waves repetition-threshold-waves repetition-simple-runs-waves markov-waves markov-window-waves decorr-disable-waves health-waves fifo-waves axi4lite-waves
+waves: ring-waves debug-waves tune-fsm-correct-waves repetition-waves repetition-threshold-waves repetition-simple-runs-waves markov-waves markov-window-waves decorr-disable-waves health-waves fifo-waves axi4lite-waves
 
 # Clean all generated files
-clean: ring-clean debug-clean sclkdiv-clean tune-fsm-correct-clean apt-clean repetition-clean repetition-threshold-clean repetition-simple-runs-clean markov-clean markov-window-clean decorr-disable-clean health-clean fifo-clean axi4lite-clean repetition-bs-clean markov-bs-clean health-bs-clean verilator-clean
+clean: ring-clean debug-clean sclkdiv-clean tune-fsm-correct-clean repetition-clean repetition-threshold-clean repetition-simple-runs-clean markov-clean markov-window-clean decorr-disable-clean health-clean fifo-clean axi4lite-clean repetition-bs-clean markov-bs-clean verilator-clean
 	@echo "=== All Files Cleaned ==="
 
 #==============================================================================
@@ -664,7 +621,6 @@ help:
 	@echo "  make sclkdiv          - Test sample clock divider (3 generators, quick)"
 	@echo "  make sclkdiv-full     - Test sample clock divider (all 12 generators)"
 	@echo "  make tune-fsm-correct - Test tune FSM (rising edge only health error detection)"
-	@echo "  make apt              - Test adaptive proportion health test"
 	@echo "  make repetition      - Test repetition count health test"
 	@echo "  make markov          - Test Markov chain health test"
 	@echo "  make markov-window   - Test Markov counter windowing/scaling mechanism"
@@ -677,7 +633,6 @@ help:
 	@echo "BYTE STREAM TESTS:"
 	@echo "  make repetition-bs   - Test repetition count health test (byte stream)"
 	@echo "  make markov-bs       - Test Markov chain health test (byte stream)"
-	@echo "  make health-bs       - Test integrated health test module (byte stream)"
 	@echo "  make test-bs         - Run all byte stream tests"
 	@echo ""
 	@echo "VERILATOR VERIFICATION:"
@@ -690,7 +645,6 @@ help:
 	@echo "  make debug-waves            - View debug monitor waveforms"
 	@echo "  make sclkdiv-waves          - View sample clock divider waveforms"
 	@echo "  make tune-fsm-correct-waves - View tune FSM waveforms"
-	@echo "  make apt-waves              - View APT waveforms"
 	@echo "  make repetition-waves     - View repetition test waveforms"
 	@echo "  make markov-waves         - View Markov test waveforms"
 	@echo "  make markov-window-waves  - View Markov windowing test waveforms"
@@ -703,7 +657,6 @@ help:
 	@echo "  make ring-clean             - Clean ring oscillator files"
 	@echo "  make debug-clean            - Clean debug monitor files"
 	@echo "  make tune-fsm-correct-clean - Clean tune FSM files"
-	@echo "  make apt-clean              - Clean APT files"
 	@echo "  make repetition-clean     - Clean repetition test files"
 	@echo "  make markov-clean         - Clean Markov test files"
 	@echo "  make markov-window-clean  - Clean Markov windowing test files"
@@ -719,9 +672,9 @@ help:
 	@echo ""
 	@echo "================================================================================"
 
-.PHONY: all ring debug tune-fsm-correct apt repetition markov markov-window health fifo axi4lite test test-bs waves clean help
-.PHONY: ring-waves ring-clean debug-waves debug-clean tune-fsm-correct-waves tune-fsm-correct-clean apt-waves apt-clean
+.PHONY: all ring debug tune-fsm-correct repetition markov markov-window health fifo axi4lite test test-bs waves clean help
+.PHONY: ring-waves ring-clean debug-waves debug-clean tune-fsm-correct-waves tune-fsm-correct-clean
 .PHONY: repetition-waves repetition-clean markov-waves markov-clean markov-window-waves markov-window-clean
 .PHONY: health-waves health-clean fifo-waves fifo-clean axi4lite-waves axi4lite-clean verilator-lint verilator-cpp verilator-verify verilator-clean
-.PHONY: repetition-bs markov-bs health-bs
-.PHONY: repetition-bs-clean markov-bs-clean health-bs-clean
+.PHONY: repetition-bs markov-bs
+.PHONY: repetition-bs-clean markov-bs-clean

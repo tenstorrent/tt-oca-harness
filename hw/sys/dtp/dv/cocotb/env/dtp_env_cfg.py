@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import random
+from typing import Any
 
 from cocotb.triggers import Event
 from pyuvm import uvm_object
@@ -30,21 +31,28 @@ class DtpEnvCfg(uvm_object):
         self.axi_ram = None
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
-        self.jtag2axi_responders = {}
-        # Shared AXI checker adoption (issue #3295): opt-in per test via
+        self.jtag2axi_responders: dict[str, Any] = {}
+        # Shared AXI checker adoption: opt-in per test via
         # dtp_base_test.use_axi_scoreboard. Populated by DtpAxiScoreboard
         # (scoreboard/models) and DtpAxiAgent (monitors/watchers).
         self.axi_scoreboard_enabled = False
-        self.axi_checker_required_ids = set()
-        self.axi_checker_stream_minimums = {}
+        self.axi_checker_required_ids: set[str] = set()
+        self.axi_checker_stream_minimums: dict[str, int] = {}
         self.axi_scoreboard = None
-        self.axi_models = {}
-        self.axi_monitors = {}
-        self.axi_watchers = {}
+        self.axi_models: dict[str, Any] = {}
+        self.axi_monitors: dict[str, Any] = {}
+        self.axi_watchers: dict[str, Any] = {}
         self.xtrig_axil = None
         self.xtrig_bfm = None
         self.xtrig_num_ctp = 16
         self.xtrig_num_int_ct = 10
+        # Downstream STAP TAPs (issue #1056): the STAP names whose host port
+        # gets a reactive ocah_jtag_vip slave device spliced behind it (empty
+        # = every port keeps its wire loopback), plus the per-port slave
+        # sequence and device map published by DtpStapDsAgent.
+        self.stap_ds_attach: set[str] = set()
+        self.stap_ds_seq: dict[str, Any] = {}
+        self.stap_ds_device: dict[str, Any] = {}
 
     def randomize_timing(self, seed: int | None = None) -> None:
         """Randomize the JTAG TCK and system-clock periods for timing variety.

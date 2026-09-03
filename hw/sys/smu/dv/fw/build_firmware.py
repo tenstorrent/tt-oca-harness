@@ -11,7 +11,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 FW_ROOT = Path(__file__).resolve().parent
 DV_ROOT = FW_ROOT.parent
 COMMON = FW_ROOT / "common"
@@ -31,7 +30,7 @@ def _tool(name: str) -> str:
             return str(candidate)
     candidate = shutil.which(f"riscv64-unknown-elf-{name}")
     if candidate:
-        return candidate
+        return str(candidate)
     tools_soc = Path("/tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin")
     candidate = tools_soc / f"riscv64-unknown-elf-{name}"
     if candidate.is_file():
@@ -209,7 +208,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--target",
-        choices=("preloads", "smu_smc_smoke", "smu_sep_smoke", "all"),
+        choices=(
+            "preloads",
+            "smu_smc_smoke",
+            "smu_sep_smoke",
+            "smu_sep_bidirect",
+            "smu_sep_ext_axi",
+            "all",
+        ),
         required=True,
     )
     args = parser.parse_args()
@@ -219,6 +225,16 @@ def main() -> int:
     if args.target in ("smu_sep_smoke", "all"):
         build_smc_rom("smu_sep_arm")
         build_sep_firmware()
+        build_sep_boot_rom()
+    if args.target in ("smu_sep_bidirect", "all"):
+        # SMC half of the SEP<->SMC handshake; the SEP half is the picolibc
+        # image sep_smu_bidirect, built by the SEP fw engine.
+        build_smc_rom("smu_sep_bidirect_arm")
+        build_sep_boot_rom()
+    if args.target in ("smu_sep_ext_axi", "all"):
+        # ROM that hands the SMC over to the scratch-RAM image; see the comment
+        # in its main.c for why the handoff has to happen from the ROM.
+        build_smc_rom("smu_sep_ext_axi_arm")
         build_sep_boot_rom()
     return 0
 

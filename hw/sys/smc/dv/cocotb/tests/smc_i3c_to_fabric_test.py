@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_i3c_to_fabric_test_seq import smc_i3c_to_fabric_test_seq
 from seq_lib.smc_i3c_vip_utils import check_i3c0_external_pull_low
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

@@ -45,6 +45,8 @@
  * @param axil_resp_t  Internal AXI-Lite response type after conversion.
  */
 
+`include "prim_assert.sv"
+
 module sep_entropy_fifo
     import edn_pkg::*;
 #(
@@ -65,6 +67,10 @@ module sep_entropy_fifo
     input  logic       clk_i,
     input  logic       rst_ni,
 
+    // Synchronous clear from the internal TRNG reset domain. This scrubs only
+    // entropy-path state; the AXI responder remains alive and reports empty.
+    input  logic       entropy_clear_i,
+
     // Test-mode enable for the internal AXI->AXI-Lite converter.
     input  logic       test_en_i,
 
@@ -80,6 +86,8 @@ module sep_entropy_fifo
     // Status / interrupt outputs (routed to the SEP PIC in sep.sv).
     output logic       pool_low_o,      // occupancy below LowWatermark (informational)
     output logic       fill_stall_o,    // EDN not acknowledging for > StallThresh (fault)
+    // Pool pointer-integrity fault.
+    output logic       pool_err_o,
     output logic [$clog2(FifoDepth+1)-1:0] fifo_level_o  // current occupancy in packed 64b entries
 );
 
@@ -135,6 +143,7 @@ module sep_entropy_fifo
     logic        packer_wready;
     logic        packer_rvalid;
     logic [63:0] packer_rdata;
+    logic [1:0]  packer_depth;
 
     // Pool FIFO
     logic                              pool_wready;
@@ -156,6 +165,8 @@ module sep_entropy_fifo
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             req_pending_q <= 1'b0;
+        end else if (entropy_clear_i) begin
+            req_pending_q <= 1'b0;
         end else begin
             if (edn_rsp_i.edn_ack) begin
                 req_pending_q <= 1'b0;       // ack received -- request complete
@@ -166,7 +177,7 @@ module sep_entropy_fifo
     end
 
     assign edn_req_o.edn_req = req_pending_q;
-    assign edn_word_valid    = edn_rsp_i.edn_ack & req_pending_q;
+    assign edn_word_valid    = edn_rsp_i.edn_ack & req_pending_q & ~entropy_clear_i;
     assign edn_word_data     = edn_rsp_i.edn_bus;
 
     // -------------------------------------------------------------------------
@@ -182,14 +193,14 @@ module sep_entropy_fifo
     ) u_packer (
         .clk_i,
         .rst_ni,
-        .clr_i    (1'b0),
+        .clr_i    (entropy_clear_i),
         .wvalid_i (edn_word_valid),
         .wdata_i  (edn_word_data),
         .wready_o (packer_wready),
         .rvalid_o (packer_rvalid),
         .rdata_o  (packer_rdata),
         .rready_i (pool_wready),
-        .depth_o  ()
+        .depth_o  (packer_depth)
     );
 
     // -------------------------------------------------------------------------
@@ -206,7 +217,7 @@ module sep_entropy_fifo
     ) u_pool (
         .clk_i,
         .rst_ni,
-        .clr_i    (1'b0),
+        .clr_i    (entropy_clear_i),
         .wvalid_i (packer_rvalid),
         .wready_o (pool_wready),
         .wdata_i  (packer_rdata),
@@ -218,8 +229,10 @@ module sep_entropy_fifo
         .err_o    (pool_err)
     );
 
-    assign fifo_level_o = pool_depth;
-    assign pool_low_o   = (pool_depth < LowWatermark[$clog2(FifoDepth+1)-1:0]);
+    assign pool_err_o   = pool_err;
+    assign fifo_level_o = entropy_clear_i ? '0 : pool_depth;
+    assign pool_low_o   = entropy_clear_i ||
+                          (pool_depth < LowWatermark[$clog2(FifoDepth+1)-1:0]);
 
     // -------------------------------------------------------------------------
     // fill_stall_o -- active fault when EDN stops acknowledging
@@ -237,11 +250,15 @@ module sep_entropy_fifo
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) edn_armed_q <= 1'b0;
+        else if (entropy_clear_i) edn_armed_q <= 1'b0;
         else if (edn_rsp_i.edn_ack) edn_armed_q <= 1'b1;
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
+            stall_cnt_q  <= '0;
+            fill_stall_q <= 1'b0;
+        end else if (entropy_clear_i) begin
             stall_cnt_q  <= '0;
             fill_stall_q <= 1'b0;
         end else if (edn_rsp_i.edn_ack || !req_pending_q || !edn_armed_q) begin
@@ -257,7 +274,16 @@ module sep_entropy_fifo
         end
     end
 
-    assign fill_stall_o = fill_stall_q;
+    assign fill_stall_o = fill_stall_q & ~entropy_clear_i;
+
+    `OCAH_OT_ASSERT(ClearDropsRequest_A, entropy_clear_i |=> !req_pending_q, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(ClearScrubsPacker_A, entropy_clear_i |=> (packer_depth == '0), clk_i,
+                    !rst_ni)
+    `OCAH_OT_ASSERT(ClearScrubsPool_A, entropy_clear_i |=> (pool_depth == '0), clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(ClearResetsStall_A, entropy_clear_i |=> (!edn_armed_q && !fill_stall_q), clk_i,
+                    !rst_ni)
+    `OCAH_OT_ASSERT(NoEntropyAcceptedDuringClear_A, entropy_clear_i |-> !edn_word_valid, clk_i,
+                    !rst_ni)
 
     // -------------------------------------------------------------------------
     // AXI-Lite read channel (single outstanding, non-blocking pop)
@@ -279,6 +305,7 @@ module sep_entropy_fifo
     axi_pkg::resp_t rd_resp_next;
     logic [15:0] rd_offset;
     logic        rd_pop;
+    logic        rd_entropy_q;
 
     logic [63:0] status_word;
 
@@ -300,14 +327,14 @@ module sep_entropy_fifo
         rd_pop       = 1'b0;
         unique case (rd_offset)
             16'h0000: rd_data_next = status_word;
-            16'h0008: rd_data_next = {62'b0, fill_stall_o, pool_low_o};
+            16'h0008: rd_data_next = {61'b0, pool_err_o, fill_stall_o, pool_low_o};
             16'h0010: begin
-                rd_data_next = pool_rdata;
-                rd_pop       = pool_rvalid;    // pop only if data is present
+                rd_data_next = entropy_clear_i ? 64'b0 : pool_rdata;
+                rd_pop       = pool_rvalid & ~entropy_clear_i;
                 // Distinguish "no entropy available" from a popped word: an
                 // empty pool returns SLVERR instead of OKAY with RDATA=0.
-                rd_resp_next = pool_rvalid ? axi_pkg::RESP_OKAY
-                                           : axi_pkg::RESP_SLVERR;
+                rd_resp_next = pool_rvalid && !entropy_clear_i ? axi_pkg::RESP_OKAY
+                                                               : axi_pkg::RESP_SLVERR;
             end
             default: begin
                 rd_data_next = 64'b0;
@@ -327,18 +354,37 @@ module sep_entropy_fifo
             rd_pending_q <= 1'b0;
             rd_data_q    <= 64'b0;
             rd_resp_q    <= axi_pkg::RESP_OKAY;
-        end else if (rd_accept) begin
-            rd_pending_q <= 1'b1;
-            rd_data_q    <= rd_data_next;
-            rd_resp_q    <= rd_resp_next;
-        end else if (rd_pending_q && s_axil_req.r_ready) begin
-            rd_pending_q <= 1'b0;
+            rd_entropy_q <= 1'b0;
+        end else begin
+            // Keep the AXI response state alive across a TRNG reset, but scrub
+            // any staged pool word before it can be consumed.
+            if (entropy_clear_i && rd_entropy_q) begin
+                rd_data_q <= 64'b0;
+                rd_resp_q <= axi_pkg::RESP_SLVERR;
+            end
+            if (rd_accept) begin
+                rd_pending_q <= 1'b1;
+                rd_data_q    <= rd_data_next;
+                rd_resp_q    <= rd_resp_next;
+                rd_entropy_q <= (rd_offset == 16'h0010);
+            end else if (rd_pending_q && s_axil_req.r_ready) begin
+                rd_pending_q <= 1'b0;
+                rd_entropy_q <= 1'b0;
+            end
         end
     end
 
     assign s_axil_resp.r_valid = rd_pending_q;
-    assign s_axil_resp.r.data  = rd_data_q;
-    assign s_axil_resp.r.resp  = rd_resp_q;
+    assign s_axil_resp.r.data  = entropy_clear_i && rd_entropy_q ? 64'b0
+                                                                 : rd_data_q;
+    assign s_axil_resp.r.resp  = entropy_clear_i && rd_entropy_q ? axi_pkg::RESP_SLVERR
+                                                                 : rd_resp_q;
+
+    `OCAH_OT_ASSERT(
+        ClearScrubsPendingRead_A,
+        entropy_clear_i && rd_pending_q && rd_entropy_q
+        |-> (s_axil_resp.r.data == '0 && s_axil_resp.r.resp == axi_pkg::RESP_SLVERR),
+        clk_i, !rst_ni)
 
     // -------------------------------------------------------------------------
     // AXI-Lite write channel -- reject every write with SLVERR (no state change)

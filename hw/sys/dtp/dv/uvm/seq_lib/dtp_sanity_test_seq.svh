@@ -14,7 +14,7 @@
 //     patterns (checked here from the DR_SCAN item responses);
 //   * clean scan-path returns to Run-Test/Idle, final Test-Logic-Reset via
 //     five consecutive TMS=1 cycles;
-//   * named TAP-contract evidence through env.m_jtag_checker (issue #3296):
+//   * named TAP-contract evidence through env.m_jtag_checker:
 //     reset-to-TLR, TLR-selects-IDCODE, IDCODE value/stability/marker, and
 //     reconstructed scan lengths. +DTP_JTAG_TAP_CHECKER_NEGATIVE is the
 //     documented negative-validation hook: it arms a deliberately WRONG
@@ -24,9 +24,14 @@
 class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_sanity_test_seq)
 
-    localparam int unsigned RandWalks = 2;
+    // Seeded random walks per pass come from test_cfg.rand_walks
+    // (+DTP_RAND_WALKS, default 16: the suite-wide minimum-iteration floor).
     localparam int unsigned RandWalkSteps = 64;
-    localparam int unsigned GotoHops = 8;
+    localparam int unsigned GotoHops = 16;
+
+    protected function int unsigned rand_walks();
+        return test_cfg.rand_walks;
+    endfunction
 
     function new(string name = "dtp_sanity_test_seq");
         super.new(name);
@@ -65,14 +70,15 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     // Randomized raw-TMS stress walks (reproducible via +ntb_random_seed;
     // every choice logged, every step model-checked by the env checker).
     task run_random_walks();
-        for (int unsigned w = 0; w < RandWalks; w++) begin
+        int unsigned walks = rand_walks();
+        for (int unsigned w = 0; w < walks; w++) begin
             bit [RandWalkSteps-1:0] tms_bits, tdi_bits;
             bit tms[], tdi[];
             if (!std::randomize(tms_bits, tdi_bits))
                 `uvm_fatal(get_type_name(), "randomize() failed for TMS stress walk")
             `uvm_info(get_type_name(), $sformatf(
                 "random TMS stress walk %0d/%0d: tms=0x%016h tdi=0x%016h",
-                w + 1, RandWalks, tms_bits, tdi_bits), UVM_LOW)
+                w + 1, walks, tms_bits, tdi_bits), UVM_LOW)
             tms = new[RandWalkSteps];
             tdi = new[RandWalkSteps];
             for (int unsigned i = 0; i < RandWalkSteps; i++) begin
@@ -115,7 +121,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
         bit [31:0] expected_idcode = DtpDefaultIdcode;
         bit stable;
 
-        if ($test$plusargs("DTP_JTAG_TAP_CHECKER_NEGATIVE")) begin
+        if (test_cfg.tap_checker_negative) begin
             expected_idcode ^= 32'h2;
             `uvm_warning(get_type_name(), $sformatf(
                 "NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",
@@ -155,18 +161,25 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     task body();
         bit [63:0] rand_pattern;
         bit [63:0] bypass_patterns[$];
-        int unsigned seed_val;
         int unsigned delayed_observations = 0;
 
-        // Start-of-test banner: intent, seed, and randomized configuration.
-        if (!$value$plusargs("ntb_random_seed=%d", seed_val)) seed_val = 0;
+        seed_scenario_rng();
+        // Start-of-pass banner: intent, per-pass seed, and randomized volume.
         `uvm_info(get_type_name(), $sformatf(
             {"DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK ",
-             "latency + IDCODE + scan path; seed=%0d (+ntb_random_seed) rand_walks=%0dx%0d steps"},
-            seed_val, RandWalks, RandWalkSteps), UVM_LOW)
+             "latency + IDCODE + scan path; scenario_seed=%0d rand_walks=%0dx%0d steps"},
+            scenario_seed, rand_walks(), RandWalkSteps), UVM_LOW)
 
         // Power-on/system reset sequencing, then TAP reset (VPLAN 0.1 step 1).
         sys_reset();
+        // The random TMS/TDI stress loads arbitrary instructions and shifts
+        // arbitrary data registers; with the lifecycle disables cleared a
+        // JTAG2AXI bridge would launch garbage bus requests. This scenario
+        // proves the TAP alone, so it holds every debug disable at the
+        // fail-closed vector (the bridge scenarios enable what they exercise).
+        // The vector settles through the TCK-domain synchronizers during the
+        // TAP reset and the deterministic walk, well before the stress walks.
+        tb_vif.dbg_disable <= '1;
         tap_reset();
 
         // sanity_fsm_visit_chk: deterministic 32-edge closure walk.

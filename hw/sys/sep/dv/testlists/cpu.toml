@@ -10,7 +10,7 @@ schema_version = 1
 # sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
 # rom_fw.toml (different RTL target and firmware profile). They run in
 # the `all` and `rom_fw` groups, not `cpu`; this VPLAN grades ROM hardware
-# access only (see docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
+# access only (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
 
 [[tests]]
 name = "sep_hello_world_test"
@@ -100,10 +100,13 @@ args = ["+skip_fuse_sense"]
 # drives the DMA (sep_dma.h) over the CPU LSU for SRAM->SRAM copies: CSR reset
 # values, CFG_REGWEN HW busy-lock, RANGE_REGWEN rw0c lock + range gating,
 # FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
-# widths, STATUS.done RW1C, and one invalid-opcode error + recovery. Src/dst
-# offsets, copy length and fill seed come from the run seed (3 seeds). Distinct
-# from the Phase-1 DMA trio (hash/contention/spi-rx). cpu run mode;
-# +skip_fuse_sense (no OTP read). DMA & data movement (cpu-fw bucket).
+# widths, STATUS.done RW1C, one invalid-opcode error + recovery, and a
+# DMA-issued host-path command-integrity inject (exclusive host_path_err /
+# aggregator bit 40, CLEAR, recovery copy) and a fabric DECERR dest that
+# raises the same bit with the pin low. Src/dst offsets, copy length and
+# fill seed come from the run seed (3 seeds). Distinct from the Phase-1 DMA
+# trio (hash/contention/spi-rx). cpu run mode; +skip_fuse_sense (no OTP read).
+# DMA & data movement (cpu-fw bucket).
 name = "sep_dma_basic_test"
 module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
@@ -115,13 +118,13 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# CPU debug-reset domain isolation (the reference suite clock reset_assertion_deassertion +
-# jtag_clock_independence). Pulses the EL2 debugger reset dbg_rstb_i (now a
-# controllable tb_top input -- was hardwired to rst_ni) with rst_ni held
-# released and proves sep_reset_n + sep_cpu_reset_n stay released (debug reset
-# is domain-isolated); a wdt_rst_ni contrast proves the observable is live so the
-# isolation check is non-vacuous. no_cpu; +skip_fuse_sense (reset-observable only,
-# no AXI/OTP). CPU complex.
+# Reset-observable baseline and liveness for the CPU complex. Checks both reset
+# observables are released at rest, then drops and restores the CPU observable
+# from a real warm-reset source so it is live rather than stuck at one.
+# dbg_rstb_i isolation is NOT proven here: in lsu_stub_all_live the pin has no
+# netlist path to either observable, so pulsing it would be a vacuous check.
+# Proving it needs a run mode where dbg_rstb_i reaches sep_cpu.
+# no_cpu; +skip_fuse_sense (reset-observable only, no AXI/OTP). CPU complex.
 name = "sep_cpu_dbg_reset_independence_test"
 module = "cpu.sep_cpu_dbg_reset_independence_test"
 seed = 1

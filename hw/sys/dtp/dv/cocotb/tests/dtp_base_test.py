@@ -23,105 +23,31 @@ if _dv_root_str not in sys.path:
 from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
+from env.dtp_scan_ref_model import STAP_ORDER
 
 
 class dtp_base_test(uvm_test):
     """Shared DTP test: env build, clock/reset bring-up, scenario hook."""
 
-    # Shared-VIP AXI scoreboard adoption (issue #3295): opt-in per test.
+    # Shared-VIP AXI scoreboard adoption: opt-in per test.
     # Tests that enable it declare the CHK-* IDs that must execute and the
     # minimum compared-transaction count per JTAG2AXI stream.
     use_axi_scoreboard = False
     axi_checker_required_ids: tuple[str, ...] = ()
     axi_checker_stream_minimums: dict[str, int] | None = None
 
-    # JTAG2AXI scenarios with randomized address/data/series choices get more
-    # default passes. Directed/exhaustive scenarios stay one-pass so group loop
-    # knobs do not inflate simulation time without adding coverage.
-    JTAG2AXI_DEFAULT_LOOP_SCENARIOS = {
-        "series_write_incr",
-        "series_write_no_incr",
-        "series_write_incr_with_error",
-        "random_ops",
-        "series_write_read_incr",
-        "series_write_read_no_incr",
-        "series_write_read_incr_with_error",
-        "read_random_ops",
-        "error_single_write",
-        "error_single_read",
-        "backpressure_aw_before_w",
-        "backpressure_long_stall",
-        "backpressure_abort_at_data_w",
-        "decode_error_mixed",
-    }
-    JTAG2AXI_ONE_PASS_SCENARIOS = {
-        "single_write",
-        "single_write_data_verify",
-        "write_security_gating",
-        "single_write_read",
-        "read_security_gating",
-        "read_security_gating_no_axi_activity",
-        "error_series_no_incr_write",
-        "error_series_no_incr_read",
-        "error_series_incr_write",
-        "error_series_incr_read",
-        "error_series_incr_write_with_status",
-        "error_series_incr_read_with_status",
-        "error_security_gating",
-        "cdc_clear_abort_narrow_reset_mid_xaction",
-        "cdc_clear_abort_back_to_back_reset",
-        "decode_error_decerr_write",
-        "decode_error_decerr_read",
-        "series_corner_all_bridges",
-    }
-    SCAN_DEFAULT_LOOP_SCENARIOS = {
-        "sib_random",
-        "dfd",
-    }
-    SCAN_ONE_PASS_SCENARIOS = {
-        "sib_all_off",
-        "sib_all_on",
-        "dft",
-        "stap_sel_ds",
-        "stap_sel_smc",
-        "stap_sel_extra",
-        "stap_sel_sep",
-        "ext_stap_scan",
-        "config_hold",
-        "tms_hold",
-    }
-    XTRIG_DEFAULT_LOOP_SCENARIOS = {
-        "random",
-        "ctm_rand_all_scenarios",
-        "ctm_rand_wire_or_only",
-        "ctm_rand_p2p_only",
-        "ctm_rand_cla_to_ctp",
-        "ctm_rand_ctp_to_cla",
-    }
-    XTRIG_ONE_PASS_SCENARIOS = {
-        "reg_stall",
-        "ctp_csr_sweep",
-        "ctm_csr_sweep",
-        "wire_or",
-        "p2p",
-        "reset",
-        "dst_port_sweep",
-        "axi_channel_skew",
-        "axi_channel_skew_demux_aw_lock_release",
-        "axi_channel_skew_read_decode_backpressure",
-        "ctm_wire_or_cla_to_ctp",
-        "ctm_wire_or_ctp_to_cla",
-        "ctm_wire_or_cla_to_cla",
-        "ctm_wire_or_ctp_to_ctp",
-        "ctm_p2p_cla_to_ctp",
-        "ctm_p2p_ctp_to_cla",
-        "ctm_p2p_cla_to_cla",
-        "ctm_p2p_ctp_to_ctp",
-        "ctm_reset_wire_or_mode",
-        "ctm_reset_p2p_mode",
-        "ctm_reset_all_modes",
-        "ctm_all_source_select",
-    }
+    # Downstream STAP TAPs: the STAP host ports (env.dtp_scan_ref_model
+    # STAP_ORDER names) that get a reactive ocah_jtag_vip slave device spliced
+    # behind them for this test. Default empty keeps every port's wire
+    # loopback; the STAP-selection scenarios attach all four.
+    stap_ds_attach: tuple[str, ...] = ()
+
+    # Every looped scenario runs at least this many passes by default. Each
+    # pass gets its own scenario seed (base_seed + loop_idx), so directed
+    # scenarios re-prove back-to-back recovery and randomized scenarios add
+    # stimulus diversity. Env knobs (specific/group/DTP_TEST_LOOPS) can still
+    # raise or lower the count for a given run.
+    MIN_DEFAULT_LOOPS = 16
 
     @staticmethod
     def random_seed() -> int:
@@ -167,6 +93,10 @@ class dtp_base_test(uvm_test):
         self.cfg.axi_scoreboard_enabled = self.use_axi_scoreboard
         self.cfg.axi_checker_required_ids = set(self.axi_checker_required_ids)
         self.cfg.axi_checker_stream_minimums = dict(self.axi_checker_stream_minimums or {})
+        unknown = set(self.stap_ds_attach) - set(STAP_ORDER)
+        if unknown:
+            raise ValueError(f"unknown STAP name(s) in stap_ds_attach: {sorted(unknown)}")
+        self.cfg.stap_ds_attach = set(self.stap_ds_attach)
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.env = DtpEnv("env", self)
 
@@ -181,31 +111,12 @@ class dtp_base_test(uvm_test):
         base_name: str,
         *,
         specific_env: str,
-        default_loops: int = 4,
+        default_loops: int = 16,
         group_env: str | None = "DTP_TEST_LOOPS",
         **seq_kwargs,
     ) -> list:
         """Run a sequence class multiple times with deterministic per-loop seeds."""
-        scenario = seq_kwargs.get("scenario")
-        if group_env == "DTP_JTAG2AXI_TEST_LOOPS":
-            if scenario in self.JTAG2AXI_DEFAULT_LOOP_SCENARIOS:
-                default_loops = max(default_loops, 16)
-            elif scenario in self.JTAG2AXI_ONE_PASS_SCENARIOS:
-                default_loops = 1
-                group_env = None
-        elif group_env == "DTP_SCAN_TEST_LOOPS":
-            if scenario in self.SCAN_DEFAULT_LOOP_SCENARIOS:
-                default_loops = max(default_loops, 16)
-            elif scenario in self.SCAN_ONE_PASS_SCENARIOS:
-                default_loops = 1
-                group_env = None
-        elif group_env == "DTP_XTRIG_TEST_LOOPS":
-            if scenario in self.XTRIG_DEFAULT_LOOP_SCENARIOS:
-                default_loops = max(default_loops, 16)
-            elif scenario in self.XTRIG_ONE_PASS_SCENARIOS:
-                default_loops = 1
-                group_env = None
-
+        default_loops = max(default_loops, self.MIN_DEFAULT_LOOPS)
         loops = self.loop_count(specific_env, default_loops, group_env=group_env)
         random_count = self.env_int("DTP_RANDOM_COUNT", 5)
         base_seed = self.random_seed()
@@ -251,6 +162,12 @@ class dtp_base_test(uvm_test):
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0
+        # Downstream STAP TAP ports: the device TDO inputs idle low and each
+        # port's attach mux follows the test's stap_ds_attach selection
+        # (0 = wire loopback) for the whole run.
+        for stap in STAP_ORDER:
+            getattr(dut, f"jtag_stap_{stap}_tdi").value = 0
+            getattr(dut, f"jtag_stap_{stap}_ds_en").value = int(stap in self.cfg.stap_ds_attach)
         # Startup vector, driven while POR is still asserted: all eleven
         # active-high disables cleared so tests begin with full debug access
         # and assert the disables they gate explicitly. The DUT itself is

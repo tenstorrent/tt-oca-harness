@@ -17,13 +17,26 @@ import sys
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# A log record carrying a non-ASCII character raises UnicodeEncodeError inside the
+# logging handler when the interpreter's stdio encoding follows an ASCII locale,
+# and the traceback is reported as a simulation error rather than the failed print
+# it is. Shared VIP log strings outside this tree carry such characters, so escape
+# unencodable output instead of aborting on it. Nothing is suppressed: the record
+# still prints, with the offending character shown escaped.
+for _log_stream in (sys.stdout, sys.stderr):
+    try:
+        _log_stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, with_timeout
-from pyuvm import ConfigDB, uvm_test
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
 
 # Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
 from ocah_axi_vip import OcahAxiLiteMasterAgent
+from pyuvm import ConfigDB, uvm_test
 
 try:  # cocotb < 2.0
     from cocotb.result import SimTimeoutError
@@ -41,10 +54,9 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_str)
 
 from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
+from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
-from env.sep_efuse_image import SepEfuseImage
-
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
@@ -71,10 +83,35 @@ class sep_base_test(uvm_test):
 
     @staticmethod
     def rd(sig) -> int:
-        """Read a DUT signal as int, resolving X/Z to zero via the env policy."""
+        """Read a DUT signal as int, resolving unknown bits to zero per BIT.
+
+        A wide probe with one unknown bit still yields every other lane: a
+        256-bit scratch probe resolved as a whole would read as a zeroed
+        counter, which is indistinguishable from a counter that stopped.
+
+        Two cocotb versions are in use here -- the Verilator flow runs 2.x,
+        which offers LogicArray.resolve(), and the VCS flow runs 1.x, which
+        does not and exposes the bit string instead. Both paths are kept so a
+        wide read does not silently collapse on either.
+
+        Callers that must distinguish "unknown" from "zero" cannot use this.
+        """
+        value = sig.value
         try:
-            return int(sig.value)
+            return int(value)
         except Exception:
+            pass
+        resolve = getattr(value, "resolve", None)
+        if resolve is not None:
+            try:
+                return int(resolve("zeros"))
+            except Exception:
+                pass
+        bits = getattr(value, "binstr", None) or str(value)
+        resolved = "".join(c if c in "01" else "1" if c in "hH" else "0" for c in bits)
+        try:
+            return int(resolved, 2)
+        except ValueError:
             return 0
 
     @staticmethod
@@ -135,9 +172,24 @@ class sep_base_test(uvm_test):
         # TEST_EN strap / LC sigint inject default off. Tests that need either
         # polarity raise the port themselves after bring-up (or before sense).
         self._set_if_exists(dut, "test_en_strap_i", 0)
+        self._set_if_exists(dut, "jtag_otbn_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_aes_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_hmac_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_kmac_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_trng_rst_hold_i", 0)
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
+        # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
+        # does not construct OcahAxiMasterAgent still presents a resolved idle
+        # bus. Called before start_clocks. Env-built tests drive the same idle.
+        for prefix in ("s_axi", "m_axi"):
+            self._set_if_exists(dut, f"{prefix}_awvalid", 0)
+            self._set_if_exists(dut, f"{prefix}_wvalid", 0)
+            self._set_if_exists(dut, f"{prefix}_arvalid", 0)
+            self._set_if_exists(dut, f"{prefix}_bready", 1)
+            self._set_if_exists(dut, f"{prefix}_rready", 1)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
@@ -157,8 +209,22 @@ class sep_base_test(uvm_test):
         probe = getattr(cocotb.top, "secure_tm_o", None)
         if probe is not None:
             secure_tm = int(probe.value) & 0x1
-        check_efuse_shadow_backdoor(
-            self.logger, self._efuse_compare_image, secure_tm=secure_tm)
+        check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
+
+    def check_otp_jtag2axi_ungated(self) -> None:
+        """Require both OTP JTAG2AXIL disable bits to read 0.
+
+        LCC ties ``dbg_disable_o.smc_otp_jtag2axi`` and
+        ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
+        """
+        dut = cocotb.top
+        smc = self.rd(dut.dbg_disable_smc_otp_jtag2axi_o)
+        sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
+        if smc != 0 or sep != 0:
+            raise AssertionError(
+                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
+            )
+        self.logger.info("CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0")
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
@@ -177,20 +243,72 @@ class sep_base_test(uvm_test):
                 self.logger.info("SEP fuse sense done at cycle %d", cycle)
                 await ClockCycles(dut.clk_i, 20)
                 self._check_efuse_shadow_after_sense()
+                self.check_otp_jtag2axi_ungated()
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 
-    async def release_no_cpu_reset(self) -> None:
+    _JTAG_SW_RST_HOLD = {
+        "otbn": "jtag_otbn_rst_hold_i",
+        "aes": "jtag_aes_rst_hold_i",
+        "hmac": "jtag_hmac_rst_hold_i",
+        "kmac": "jtag_kmac_rst_hold_i",
+        "trng": "jtag_trng_rst_hold_i",
+    }
+
+    def _jtag_sw_rst_hold(self, engines: tuple[str, ...], hold: bool) -> None:
+        """Drive the JTAG SW-reset override so named engines never leave reset.
+
+        Applied before ``rst_ni`` release so AES/KMAC/OTBN cannot raise
+        crypto ``edn_req`` (CSR reset 0x3E would release them). The caller
+        drops the override after the hold window. Empty ``engines`` is a no-op.
+        """
+        dut = cocotb.top
+        val = 1 if hold else 0
+        for eng in engines:
+            port = self._JTAG_SW_RST_HOLD.get(eng)
+            if port is not None:
+                self._set_if_exists(dut, port, val)
+        if engines:
+            self.logger.info(
+                "JTAG SW-reset hold %s -> %s",
+                ",".join(engines),
+                "on" if hold else "off",
+            )
+
+    async def assert_cold_reset(self, dut) -> None:
+        """Assert ``rst_ni`` with a real falling edge, before any clock runs.
+
+        An async-reset flop is written ``always_ff @(posedge clk or negedge
+        rst_ni)``, so it only ever executes on an edge. Driving ``rst_ni`` low
+        from an undriven net gives the flops nothing to trigger on, and they
+        hold X for the whole run. Presenting 1 first makes the assertion a
+        genuine 1->0, so every async reset in the design fires and loads its
+        reset value.
+
+        No clock is running across this window, so nothing sequential advances.
+        The bus request nets are idled before this runs, because the reset
+        rules sample VALID against a low reset and an undriven net fails them
+        on stimulus that does not exist.
+        """
+        dut.rst_ni.value = 1
+        await Timer(1, units="ns")
+        dut.rst_ni.value = 0
+        await Timer(1, units="ns")
+
+    async def release_no_cpu_reset(self, *, park: tuple[str, ...] = ()) -> None:
         """Clocks + ``rst_ni`` release, CPU held off. Does not wait for sense.
 
         The local AXI xbar and LCC sit on ``rst_ni``, so a test can issue a
         CPU-LSU beat before ``sep_fuse_sense_done_o``. Sets ``reset_done`` so
         the AXI agent will start. Call ``wait_fuse_sense`` afterwards.
+        ``park`` names engines to JTAG-hold through this ``rst_ni`` release
+        (``bring_up_no_cpu`` drops the override after sense + CSR park).
         """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU held off)")
-        dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=False)
+        await self.assert_cold_reset(dut)
+        self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
         self.logger.info("Releasing rst_ni")
@@ -217,14 +335,11 @@ class sep_base_test(uvm_test):
 
         dut = cocotb.top
         assert not self.rd(dut.sep_fuse_sense_done_o), (
-            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; "
-            "no pre-sense window"
+            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; no pre-sense window"
         )
         # LC_STATE_INVALID low nibble is 4'hF — not a legal raw state.
         closed = feat_ctrl_expected(0xF, 0, 0)
-        assert closed == 0, (
-            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
-        )
+        assert closed == 0, "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
         seq = SepLccFeatCtrlCheckSeq(closed)
         await self.start_seq(seq)
         assert not self.rd(dut.sep_fuse_sense_done_o), (
@@ -232,16 +347,38 @@ class sep_base_test(uvm_test):
             "read; the closed side was not observed"
         )
         self.logger.info(
-            "CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x%016x while "
-            "sep_fuse_sense_done_o=0",
+            "CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x%016x while sep_fuse_sense_done_o=0",
             seq.feat_ctrl,
         )
 
-    async def bring_up_no_cpu(self, *, max_cycles: int = 20_000) -> None:
+    async def bring_up_no_cpu(
+        self,
+        *,
+        max_cycles: int = 20_000,
+        park: tuple[str, ...] = (),
+    ) -> None:
         """Bring up the DUT (CPU held off; the stub drives the LSU AXI from the
-        cocotb master), gating on fuse-sense-done before returning."""
-        await self.release_no_cpu_reset()
+        cocotb master), gating on fuse-sense-done before returning.
+
+        ``park`` names SW_RESET_N engines to JTAG-hold through ``rst_ni``
+        release and fuse sense, then park in the CSR, then drop the override.
+        AES/KMAC/OTBN power up released (reset 0x3E) and would assert crypto
+        ``edn_req``; dropping that ungranted ``req`` fails the arbiter
+        hold-until-grant assume. The CSR write waits until sense has opened
+        the fabric — an in-flight ``SW_RESET_N`` beat across sense-done
+        underflows the LSU demux ID counter. An empty tuple leaves the
+        hardware reset default.
+        """
+        await self.release_no_cpu_reset(park=park)
         await self.wait_fuse_sense(max_cycles=max_cycles)
+        if park:
+            from seq_lib.sep_sw_reset_seq import SepSwReset
+
+            if getattr(self, "swrst", None) is None:
+                self.swrst = SepSwReset(self)
+            await self.swrst.park(*park)
+            await ClockCycles(cocotb.top.clk_i, 2)
+            self._jtag_sw_rst_hold(park, False)
 
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
         """Alias for bring_up_no_cpu, kept for eFuse-test intent. Both gate on
@@ -251,9 +388,14 @@ class sep_base_test(uvm_test):
     async def resense(self, *, hold_cycles: int = 20, max_cycles: int = 20_000) -> None:
         """Re-pulse rst_ni to trigger a fresh fuse-sense (clocks already running).
 
-        The OTP responder reloads its image on reset assertion, so a test can
-        regenerate the eFuse image between sense cycles and resense to pick up
-        the new contents.
+        This re-senses whatever the OTP bank currently holds. It does NOT reload
+        the image file: ``efuse_bank_model`` deposits the hex in a time-0
+        ``initial`` and a fuse holds its state across every reset (the bank
+        register field has no reset value), so rewriting ``out/sep_efuse.hex``
+        between senses changes only the golden, not the DUT. To change what the
+        DUT senses, either program the OTP bits for real -- W1S, so only a
+        superset is reachable -- or start a new leaf with the image staged at
+        t=0 by ``dv_sim_prestage.py``.
         """
         dut = cocotb.top
         self.logger.info("Re-sensing: pulsing rst_ni")
@@ -272,14 +414,25 @@ class sep_base_test(uvm_test):
         wait_after_reset_cycles: int = 30,
         run_pulse_cycles: int = 20,
         max_cycles: int = 20_000,
+        park: tuple[str, ...] = (),
+        release_park: bool = True,
     ) -> None:
-        """Bring up the DUT with the CPU owning its master buses."""
+        """Bring up the DUT with the CPU owning its master buses.
+
+        ``park`` JTAG-holds named engines through ``rst_ni`` and fuse-sense.
+        With ``release_park`` (the default) the override drops after sense;
+        with ``release_park=False`` the hold stays for the rest of the run
+        so those engines never raise crypto ``edn_req``. The SW_RESET_N CSR
+        stays at reset 0x3E either way (JTAG is an override). Empty ``park``
+        leaves the hardware reset default.
+        """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU run, rst_vec=0x%x)", rst_vec)
-        dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
+        await self.assert_cold_reset(dut)
         # CPU boot: EL2 debug reset follows cold reset.
         self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
         if pre_reset_hook is not None:
@@ -291,6 +444,14 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "dbg_rstb_i", 1)
         # Gate on the real fabric-release signal, then a small CPU settle margin.
         await self._wait_fuse_sense(max_cycles)
+        if park and release_park:
+            await ClockCycles(dut.clk_i, 2)
+            self._jtag_sw_rst_hold(park, False)
+        elif park:
+            self.logger.info(
+                "CPU boot: JTAG SW-reset hold stays asserted for %s",
+                ",".join(park),
+            )
         self.logger.info(
             "CPU boot: post-fuse reset state sep_rst_n=%d cpu_rst_n=%d run_ack=%d iccm_act=%d",
             self.rd(dut.dbg_sep_reset_n_o),
@@ -324,11 +485,16 @@ class sep_base_test(uvm_test):
         no_boot_cycles: int = 80_000,
         progress_every: int = 2_000,
         run_pulse_cycles: int = 40,
+        park: tuple[str, ...] = (),
+        release_park: bool = True,
     ) -> None:
         """Stage a firmware TCM image, boot the EL2 core, and sample boot
         observables into the boot scoreboard ``sb`` until the firmware signals
         completion. Shared by every CPU firmware-boot test so the TCM staging and
         boot-poll live in one place (do not duplicate this in concrete tests).
+
+        ``park`` / ``release_park`` are forwarded to ``bring_up_cpu_boot``.
+        The SW_RESET_N CSR stays at reset 0x3E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
         the sim CWD, so the images are staged there. (CWD-shared: only one CPU
@@ -360,8 +526,7 @@ class sep_base_test(uvm_test):
             for sym in sym_files:
                 self.cpu_trace_mon.add_symbols(sym)
         else:
-            self.logger.info("no %s.*.sym next to %s; trace PCs stay numeric",
-                             fw_name, itcm_hex)
+            self.logger.info("no %s.*.sym next to %s; trace PCs stay numeric", fw_name, itcm_hex)
 
         async def _load_tcm() -> None:
             self.logger.info("CPU boot: pulsing tcm_load_i")
@@ -372,7 +537,11 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: tcm_load_i pulse complete")
 
         await self.bring_up_cpu_boot(
-            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles,
+            rst_vec,
+            pre_reset_hook=_load_tcm,
+            run_pulse_cycles=run_pulse_cycles,
+            park=park,
+            release_park=release_park,
         )
 
         await self.poll_boot(
@@ -425,8 +594,13 @@ class sep_base_test(uvm_test):
                 self.logger.info(
                     "boot progress cyc=%d retired=%d pcs=%d last_pc=0x%08x con=%dB rst_n=%s "
                     "iccm_act=%s exc=%s",
-                    cycle, mon.trace_count, len(mon.pcs), mon.last_pc, len(sb.console),
-                    self.rd(dut.dbg_sep_reset_n_o), self.rd(dut.dbg_iccm_active_o),
+                    cycle,
+                    mon.trace_count,
+                    len(mon.pcs),
+                    mon.last_pc,
+                    len(sb.console),
+                    self.rd(dut.dbg_sep_reset_n_o),
+                    self.rd(dut.dbg_iccm_active_o),
                     self.rd(dut.dbg_cpu_trace_exc_o),
                 )
             if cycle >= no_boot_cycles and mon.trace_count == 0:
@@ -549,8 +723,9 @@ class sep_base_test(uvm_test):
             ).sequence
         return self._jtag_axil
 
-    async def jtag_axil_op(self, *, write: bool, addr: int, wdata: int = 0,
-                           timeout_ns: int = 50_000) -> tuple[int, int]:
+    async def jtag_axil_op(
+        self, *, write: bool, addr: int, wdata: int = 0, timeout_ns: int = 50_000
+    ) -> tuple[int, int]:
         """Drive one JTAG AXI-Lite op; return (resp_code, rdata).
 
         resp_code is the AXI response (OKAY=0, SLVERR=2, DECERR=3; -1 if
@@ -626,15 +801,15 @@ class sep_base_test(uvm_test):
         # to prevent. The strobe counts above always survive, so a wedged CSR path
         # degrades to "counts logged, CSR unreadable" instead of taking the whole
         # report down with it.
+        from env.sep_axi_agent import SepAxiOp
+        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
         from seq_lib.sep_esrc_bringup_seq import (
+            ESRC_CTRL,
             ESRC_FIFO_STATUS,
             ESRC_HEALTH_TEST_CTRL,
             ESRC_HEALTH_TEST_STATUS,
             ESRC_MAIN_SM_STATUS,
-            ESRC_CTRL,
         )
-        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-        from env.sep_axi_agent import SepAxiOp
 
         for label, addr in (
             ("ESRC_CTRL", ESRC_CTRL),
@@ -705,7 +880,9 @@ class sep_base_test(uvm_test):
         )
         self.logger.info(
             "CHK5_km_sram PASS: KM SRAM word0 = 0x%08x == the delivered "
-            "EDN->KM AXIS word (beat 1 of %d)", actual, len(delivered),
+            "EDN->KM AXIS word (beat 1 of %d)",
+            actual,
+            len(delivered),
         )
         return actual
 
@@ -720,9 +897,12 @@ class sep_base_test(uvm_test):
         assert seq.edn_err == 0, f"EDN ERR_CODE=0x{seq.edn_err:08x}"
         assert seq.edn_alert == 0, f"EDN RECOV_ALERT=0x{seq.edn_alert:08x}"
         self.logger.info(
-            "CHK-ALERTS-ZERO PASS: CSRNG/EDN ERR_CODE=0 RECOV_ALERT=0 "
-            "(0x%x 0x%x 0x%x 0x%x)",
-            seq.csrng_err, seq.csrng_alert, seq.edn_err, seq.edn_alert)
+            "CHK-ALERTS-ZERO PASS: CSRNG/EDN ERR_CODE=0 RECOV_ALERT=0 (0x%x 0x%x 0x%x 0x%x)",
+            seq.csrng_err,
+            seq.csrng_alert,
+            seq.edn_err,
+            seq.edn_alert,
+        )
         return seq
 
     async def assert_noise_force_active(self, cycles: int = 16) -> None:
@@ -743,8 +923,14 @@ class sep_base_test(uvm_test):
             prev = drv
         assert toggled, "driven ESRC noise is static (LFSR not toggling)"
 
-    async def bring_up_entropy(self, cfg=None, *, strict: bool = True,
-                               score_km: bool | str = True, score_sinks: dict | None = None):
+    async def bring_up_entropy(
+        self,
+        cfg=None,
+        *,
+        strict: bool = True,
+        score_km: bool | str = True,
+        score_sinks: dict | None = None,
+    ):
         """Bring up the real ESRC->DRBG->CSRNG->EDN entropy stack and return the
         started CHK1..CHK5 scoreboard (also stored as ``self.drbg_sb``).
 
@@ -776,17 +962,21 @@ class sep_base_test(uvm_test):
         from seq_lib.sep_esrc_bringup_seq import (
             SepEntropyCfg,
             SepEsrcConfigSeq,
-            SepEsrcEnableGeneratorsSeq,
             SepEsrcEnableEdnSeq,
+            SepEsrcEnableGeneratorsSeq,
         )
 
         if cfg is None:
             cfg = SepEntropyCfg()
         self.entropy_cfg = cfg
         self.drbg_sb = SepDrbgScoreboard(
-            cocotb.top, self.logger, strict=strict,
-            golden_kwargs=cfg.golden_kwargs(), chk2_backdoor=cfg.chk2_backdoor,
-            score_km=score_km, score_sinks=score_sinks,
+            cocotb.top,
+            self.logger,
+            strict=strict,
+            golden_kwargs=cfg.golden_kwargs(),
+            chk2_backdoor=cfg.chk2_backdoor,
+            score_km=score_km,
+            score_sinks=score_sinks,
         )
         self.drbg_sb.start()
         await self.assert_noise_force_active()
@@ -820,7 +1010,8 @@ class sep_base_test(uvm_test):
         """Fork the concurrent FIFO drain (no-op for backdoor-CHK2 configs)."""
         self._drain_stop = False
         self._drain_task = (
-            None if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor
+            None
+            if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor
             else cocotb.start_soon(self._fifo_drain_loop())
         )
 

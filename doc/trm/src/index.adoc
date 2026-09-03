@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.5.23
-:revdate: 2026-08-13
+:revnumber: 0.5.29
+:revdate: 2026-09-02
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the

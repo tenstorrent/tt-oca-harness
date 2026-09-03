@@ -29,6 +29,10 @@
  *          it from the producer's own FIPS policy (commonly tied low when
  *          the source is not NIST SP 800-90A approved).
  *
+ *          `clear_i` synchronously flushes staged entropy and returns each
+ *          endpoint handshake FSM to its disabled/startup sequence. While
+ *          asserted, the adapter accepts no AXI-Stream or native-EDN transfer.
+ *
  * @param NUM_ENDPOINTS Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
  */
 module drbg_axis_edn_adapter import drbg_pkg::*; #(
@@ -36,6 +40,7 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
 ) (
     input  wire logic clk_i,
     input  wire logic rst_ni,
+    input  wire logic clear_i,
 
     // 32b AXI-Stream sink (producer drives valid/data/strb; adapter drives tready)
     input  wire drbg_axis_req_t axis_req_i,
@@ -67,7 +72,7 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
 
     // Accept a stream word only when all strobes are high (32b word) and the
     // staging FIFO has space.
-    assign axis_rsp_o.tready = !stage_full && (&axis_req_i.tstrb);
+    assign axis_rsp_o.tready = !clear_i && !stage_full && (&axis_req_i.tstrb);
 
     prim_fifo_sync #(
         .Width             (StageWidth),
@@ -77,7 +82,7 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
     ) u_stage_fifo (
         .clk_i    (clk_i),
         .rst_ni   (rst_ni),
-        .clr_i    (1'b0),
+        .clr_i    (clear_i),
         .wvalid_i (axis_req_i.tvalid && axis_rsp_o.tready),
         .wready_o (stage_wready),
         .wdata_i  ({axis_req_i.tuser, axis_req_i.tdata}),
@@ -145,10 +150,10 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
 
     for (genvar i = 0; i < NUM_ENDPOINTS; i++) begin : gen_ep
         // Only request when the client asks and we don't already hold a word.
-        assign arb_req[i] = edn_req_i[i].edn_req && !ep_rvalid[i];
+        assign arb_req[i] = !clear_i && edn_req_i[i].edn_req && !ep_rvalid[i];
 
         // Push the staged word into the winning endpoint's holding FIFO.
-        assign ep_push[i] = stage_rready && arb_gnt[i];
+        assign ep_push[i] = !clear_i && stage_rready && arb_gnt[i];
 
         prim_fifo_sync #(
             .Width             (StageWidth),
@@ -158,7 +163,7 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
         ) u_ep_fifo (
             .clk_i    (clk_i),
             .rst_ni   (rst_ni),
-            .clr_i    (ep_clr[i]),
+            .clr_i    (ep_clr[i] | clear_i),
             .wvalid_i (ep_push[i]),
             .wready_o (ep_wready[i]),
             .wdata_i  ({stage_rfips, stage_rdata}),
@@ -173,7 +178,7 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
         edn_ack_sm u_edn_ack_sm (
             .clk_i            (clk_i),
             .rst_ni           (rst_ni),
-            .enable_i         (1'b1),
+            .enable_i         (!clear_i),
             .req_i            (edn_req_i[i].edn_req),
             .ack_o            (ep_ack[i]),
             .fifo_not_empty_i (ep_rvalid[i]),
@@ -183,10 +188,12 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
             .ack_sm_err_o     (ack_sm_err[i])
         );
 
-        assign edn_rsp_o[i].edn_ack  = ep_ack[i];
-        assign edn_rsp_o[i].edn_bus  = ep_rdata_raw[i][DataWidth-1:0];
+        assign edn_rsp_o[i].edn_ack  = ep_ack[i] & ~clear_i;
+        assign edn_rsp_o[i].edn_bus  = clear_i ? '0 : ep_rdata_raw[i][DataWidth-1:0];
         // FIPS forwarded per-beat from the AXI-Stream tuser sideband.
-        assign edn_rsp_o[i].edn_fips = ep_rdata_raw[i][DataWidth];
+        assign edn_rsp_o[i].edn_fips = clear_i ? 1'b0 : ep_rdata_raw[i][DataWidth];
+
+        `OCAH_OT_ASSERT(AxisEdnNoAckDuringClear_A, clear_i |-> !edn_rsp_o[i].edn_ack)
     end
 
     logic unused_ep_wready;
@@ -200,10 +207,13 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
     `OCAH_OT_ASSERT(AxisEdnAllAckSmHealthy_A, !(|ack_sm_err))
 
     `OCAH_OT_ASSERT(AxisEdnStableDataWhenStall_A,
-        axis_req_i.tvalid && !axis_rsp_o.tready |=> $stable(axis_req_i.tdata))
+        !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready
+        |=> clear_i || $stable(axis_req_i.tdata))
     `OCAH_OT_ASSERT(AxisEdnStableStrbWhenStall_A,
-        axis_req_i.tvalid && !axis_rsp_o.tready |=> $stable(axis_req_i.tstrb))
+        !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready
+        |=> clear_i || $stable(axis_req_i.tstrb))
     `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
+    `OCAH_OT_ASSERT(AxisEdnNoReadyDuringClear_A, clear_i |-> !axis_rsp_o.tready)
 
     `OCAH_OT_ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
 

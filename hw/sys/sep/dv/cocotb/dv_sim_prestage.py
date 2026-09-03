@@ -84,6 +84,20 @@ def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
     return mod.SepLockedFieldIrqCfg(seed).image_fixed()
 
 
+def _lc_transition_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_lcc_lc_state_transition_matrix_test``'s ``cfg.image_fixed()``.
+
+    The annotated local is load-bearing, not style: ``_load_env_module`` returns
+    ``Any``, so returning its result directly is a mypy ``no-any-return``. The
+    three sibling helpers above still carry that finding, and the mypy reporter
+    has no output cap -- its GitHub payload is within a few characters of the
+    65535-character annotation limit, so one more finding fails the check run.
+    """
+    mod = _load_env_module("sep_lc_transition", "sep_lc_transition.py")
+    fixed: dict[str, int] = mod.SepLcTransitionCfg(seed).image_fixed()
+    return fixed
+
+
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
@@ -117,17 +131,32 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_efuse_sense_test": {"mode": "preload", "preload": str(_DEFAULT_EFUSE_PRELOAD)},
     # LC stitch: starts at TEST_DEV (lc_raw=0x0) with SIP/SYS pins.
     "sep_efuse_lcc_lc_state_stitch_test": {
-        "mode": "random", "lc_raw": 0x0, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     # PROD-lifecycle real-sense tests (lc_raw=0x1 = LC_PROD).
     "sep_efuse_jtag_axil_el2_cpu_mux_test": {"mode": "random", "lc_raw": 0x1},
     "sep_fabric_inbound_filter_rule_matrix_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     "sep_sec_dis_override_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     "sep_lcc_uvm_inbound_filter_gating_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN),
+    },
     "sep_efuse_km_axil_cpu_mux_coexist_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": {"CHIPLET_UID": 0xDEAD_BEEF}},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": {"CHIPLET_UID": 0xDEAD_BEEF},
+    },
     "sep_km_kmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_aes_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_hmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
@@ -160,6 +189,45 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "mode": "random",
         "lc_raw": 0x0,
         "fixed_from": "set_only",
+    },
+    # LC_STATE shadow-write next-state walk. The OTP image is a t=0 deposit that
+    # survives reset, so each sensed starting state is its own leaf and the
+    # +lc_start on the leaf's args must agree with lc_raw here -- the test reads
+    # the sensed nibble off the DUT and fails loudly if they disagree. Token
+    # digests and SIP/SYS pins come from SepLcTransitionCfg(seed); see
+    # _lc_transition_fixed().
+    "sep_lcc_lc_state_w1s_prod_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_demote_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_rma_sip_test": {
+        "mode": "random",
+        "lc_raw": 0x2,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_rma_chiplet_test": {
+        "mode": "random",
+        "lc_raw": 0x6,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_end_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+    },
+    # The transient-RMA leaf senses TRANSIENT_RMA_EN=1, which the test re-pins in
+    # its own select_efuse_image call.
+    "sep_lcc_lc_state_w1s_transient_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+        "fixed_extra": {"TRANSIENT_RMA_EN": 1},
     },
     # Locked-field shadow IRQ. SPARE lock bits and patterns come from
     # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
@@ -244,8 +312,13 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "set_only":
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "lc_transition":
+            fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        extra = spec.get("fixed_extra")
+        if extra:
+            fixed = {**(fixed or {}), **extra}
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),

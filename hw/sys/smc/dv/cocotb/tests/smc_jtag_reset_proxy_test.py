@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib._one_shot import _OneShot
-from seq_lib.smc_jtag_vip_utils import check_cpu_jtag_pin_vip
 from seq_lib.smc_jtag_reset_proxy_test_seq import smc_jtag_reset_proxy_test_seq
+from seq_lib.smc_jtag_vip_utils import check_cpu_jtag_pin_vip
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

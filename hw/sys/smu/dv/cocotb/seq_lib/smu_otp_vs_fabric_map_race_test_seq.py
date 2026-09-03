@@ -81,16 +81,12 @@ class smu_otp_vs_fabric_map_race_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         otp_gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         fab_gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
         if otp_gate != 0 or fab_gate != 0:
-            raise AssertionError(
-                f"J2A gated after TCK: otp={otp_gate} fab={fab_gate}"
-            )
+            raise AssertionError(f"J2A gated after TCK: otp={otp_gate} fab={fab_gate}")
         if lc != SEP0_LC_STATE:
             raise AssertionError(f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x}")
         self.s1_ok = True
@@ -134,27 +130,20 @@ class smu_otp_vs_fabric_map_race_test_seq:
         )
         require_jtag_tdo_resolved("overlap fabric read")
         if st_or != J2A_STATUS_SUCCESS or st_fr != J2A_STATUS_SUCCESS:
-            raise AssertionError(
-                f"overlap read OTP st={st_or} fabric st={st_fr}"
-            )
+            raise AssertionError(f"overlap read OTP st={st_or} fabric st={st_fr}")
         o_val = int(ord_) & 0xFFFF_FFFF
         f_val = int(frd) & 0xFFFF_FFFF
         if o_val != f_val:
-            raise AssertionError(
-                f"overlap OTP=0x{o_val:08x} fabric=0x{f_val:08x} disagree"
-            )
+            raise AssertionError(f"overlap OTP=0x{o_val:08x} fabric=0x{f_val:08x} disagree")
         if o_val not in (PAT_O, PAT_F):
             raise AssertionError(f"overlap tear: got 0x{o_val:08x}")
         shadow = shadow_map_word32(dut, MAP_BYTE_OFF)
         if shadow is None:
             raise AssertionError(
-                "overlap shadow_map_word32 returned None "
-                "(smc_shadow_regs missing or unreadable)"
+                "overlap shadow_map_word32 returned None (smc_shadow_regs missing or unreadable)"
             )
         if shadow != o_val:
-            raise AssertionError(
-                f"overlap shadow=0x{shadow:08x} != readback 0x{o_val:08x}"
-            )
+            raise AssertionError(f"overlap shadow=0x{shadow:08x} != readback 0x{o_val:08x}")
         self.s2_ok = True
         self._log(
             f"OTPFAB overlap winner=0x{o_val:08x} shadow=0x{shadow:08x} "
@@ -205,31 +194,23 @@ class smu_otp_vs_fabric_map_race_test_seq:
             raise AssertionError(f"pingpong fabric read status={st_r}")
         got = int(rb) & 0xFFFF_FFFF
         if got != last:
-            raise AssertionError(
-                f"pingpong last-writer want 0x{last:08x} got 0x{got:08x}"
-            )
+            raise AssertionError(f"pingpong last-writer want 0x{last:08x} got 0x{got:08x}")
         st_or2, ord2 = await otp_jtag2axi_single_read(
             jtag, BIRA, require_complete=True, poll_limit=OTP_POLL
         )
         if st_or2 != J2A_STATUS_SUCCESS or (int(ord2) & 0xFFFF_FFFF) != last:
             raise AssertionError(
-                f"pingpong OTP final st={st_or2} data=0x{int(ord2):08x} "
-                f"want 0x{last:08x}"
+                f"pingpong OTP final st={st_or2} data=0x{int(ord2):08x} want 0x{last:08x}"
             )
         shadow2 = shadow_map_word32(dut, MAP_BYTE_OFF)
         if shadow2 is None:
             raise AssertionError(
-                "pingpong shadow_map_word32 returned None "
-                "(smc_shadow_regs missing or unreadable)"
+                "pingpong shadow_map_word32 returned None (smc_shadow_regs missing or unreadable)"
             )
         if shadow2 != last:
-            raise AssertionError(
-                f"pingpong shadow=0x{shadow2:08x} != last 0x{last:08x}"
-            )
+            raise AssertionError(f"pingpong shadow=0x{shadow2:08x} != last 0x{last:08x}")
         self.s3_ok = True
-        self._log(
-            f"CHK-OTPFAB-PINGPONG last=0x{last:08x} shadow=0x{shadow2:08x}"
-        )
+        self._log(f"CHK-OTPFAB-PINGPONG last=0x{last:08x} shadow=0x{shadow2:08x}")
         sb.expect_eq("CHK-OTPFAB-PINGPONG", got, last)
         sb.expect_eq(
             "CHK-RACE-OTP-FAB shadow==last-writer",

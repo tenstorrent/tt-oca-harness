@@ -63,7 +63,16 @@ module sep_system_peripherals
         output logic [2:0]                                                      ext_trng_src_sel_o,
 
         // Key Manager emergency wipe control (from sep_cpu_ctrl)
-        output logic                                                            km_wipe_state_o
+        output logic                                                            km_wipe_state_o,
+
+        // Secure DMA bridge fault status/clear (from sep_cpu_ctrl)
+        input  logic                                                            dma_reg_bus_err_i,
+        input  logic                                                            dma_host_intg_err_i,
+        output logic                                                            dma_err_clr_o,
+
+        // Peripheral register-bridge fault status/clear (from sep_cpu_ctrl)
+        input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0]                         periph_bus_err_i,
+        output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0]                         periph_bus_err_clr_o
     );
 
     /////////////////////////
@@ -522,7 +531,12 @@ module sep_system_peripherals
         .nmi_vec_o                                 (nmi_vec_o),
 
         .ext_trng_src_sel_o                        (ext_trng_src_sel_o),
-        .km_wipe_state_o                           (km_wipe_state_o)
+        .km_wipe_state_o                           (km_wipe_state_o),
+        .dma_reg_bus_err_i                         (dma_reg_bus_err_i),
+        .dma_host_intg_err_i                       (dma_host_intg_err_i),
+        .dma_err_clr_o                             (dma_err_clr_o),
+        .periph_bus_err_i                          (periph_bus_err_i),
+        .periph_bus_err_clr_o                      (periph_bus_err_clr_o)
     );
 
     ////////////////////

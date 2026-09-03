@@ -42,6 +42,70 @@ class ocah_jtag_slave_sequence extends uvm_object;
         responder.clear_updates();
     endfunction
 
+    // Resolve a register name to its IR opcode in the responder's map.
+    protected function bit reg_opcode(string reg_name, output bit [63:0] opcode);
+        foreach (responder.cfg.reg_name[op])
+            if (responder.cfg.reg_name[op] == reg_name) begin
+                opcode = op;
+                return 1'b1;
+            end
+        return 1'b0;
+    endfunction
+
+    // ------------------------------------------------------------------
+    // Device-state inspection (emit CHK-* named evidence).
+    // ------------------------------------------------------------------
+
+    // Named check: a register currently holds the expected value,
+    // independent of the Update-DR history (proves a value survived, or
+    // never changed, regardless of how many host scans ran meanwhile).
+    function bit check_register(
+        string     reg_name,
+        bit [63:0] expected,
+        string     context_s = "",
+        string     check_id = "CHK-SLAVE-REG"
+    );
+        bit [63:0] opcode, observed, mask;
+        require_responder();
+        if (!reg_opcode(reg_name, opcode))
+            `uvm_fatal(get_type_name(), $sformatf(
+                "check_register: no slave register named %s", reg_name))
+        mask = (responder.cfg.reg_width[opcode] < 64)
+             ? ((64'h1 << responder.cfg.reg_width[opcode]) - 1) : '1;
+        observed = responder.get_register(opcode);
+        if (evidence != null)
+            return evidence.expect_equal(check_id, observed, expected & mask, $sformatf(
+                "reg=%s width=%0d %s", reg_name, responder.cfg.reg_width[opcode], context_s));
+        if (observed !== (expected & mask)) begin
+            `uvm_error(get_type_name(), $sformatf(
+                "%s: reg=%s expected=0x%0h observed=0x%0h (%s)",
+                check_id, reg_name, expected & mask, observed, context_s))
+            return 1'b0;
+        end
+        return 1'b1;
+    endfunction
+
+    // Named check: the device's TAP controller is in the expected state.
+    function bit check_state(
+        ocah_jtag_tap_state_e expected_state,
+        string                context_s = "",
+        string                check_id = "CHK-SLAVE-STATE"
+    );
+        ocah_jtag_tap_state_e observed;
+        require_responder();
+        observed = responder.device_state();
+        if (evidence != null)
+            return evidence.expect_equal(check_id, 64'(observed), 64'(expected_state), $sformatf(
+                "state=%s expected=%s %s", observed.name(), expected_state.name(), context_s));
+        if (observed != expected_state) begin
+            `uvm_error(get_type_name(), $sformatf(
+                "%s: expected TAP state %s, observed %s (%s)",
+                check_id, expected_state.name(), observed.name(), context_s))
+            return 1'b0;
+        end
+        return 1'b1;
+    endfunction
+
     // ------------------------------------------------------------------
     // Host-write inspection (emit CHK-* named evidence).
     // ------------------------------------------------------------------

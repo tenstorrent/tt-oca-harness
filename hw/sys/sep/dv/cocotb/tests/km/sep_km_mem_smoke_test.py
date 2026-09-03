@@ -5,10 +5,8 @@
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
-
 import pyuvm
-
+from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mem_smoke_seq import KM_SMOKE_SRAM_WORD0, sep_km_release_seq
 
@@ -33,7 +31,8 @@ class sep_km_mem_smoke_test(sep_base_test):
                 break
         self.logger.info(
             "STEP KM activity observed after %d polled cycles (bound %d)",
-            polled, _MAX_KM_CYCLES,
+            polled,
+            _MAX_KM_CYCLES,
         )
 
         rom_count = self.rd(dut.km_rom_req_count_o)

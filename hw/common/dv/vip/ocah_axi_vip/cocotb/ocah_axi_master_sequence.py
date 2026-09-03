@@ -14,10 +14,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from .ocah_axi_item import OcahAxiReadResult, OcahAxiWriteResult
 from .ocah_axi_master_driver import OcahAxiMasterDriver
-from .ocah_axi_results import (
-    OcahAxiReadResult,
-    OcahAxiWriteResult,
+from .ocah_axi_types import (
     axi_resp_ok,
     normalize_resp_list,
     words_from_bytes,
@@ -394,7 +393,8 @@ class OcahAxiMasterSequence:
     ) -> OcahAxiWriteResult:
         capture = self.driver.start_response_id_capture("b")
         event = self.driver.init_write(
-            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user))
+            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user)
+        )
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
@@ -442,7 +442,8 @@ class OcahAxiMasterSequence:
     ) -> OcahAxiReadResult:
         capture = self.driver.start_response_id_capture("r")
         event = self.driver.init_read(
-            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user))
+            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user)
+        )
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:

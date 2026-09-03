@@ -47,7 +47,16 @@ module sep_system_csr
 	output logic [2:0]                                                        ext_trng_src_sel_o,
 
 	// Key Manager emergency wipe control (from sep_cpu_ctrl KM_WIPE_CTRL register)
-	output logic                                                              km_wipe_state_o
+	output logic                                                              km_wipe_state_o,
+
+	// Secure DMA bridge fault status/clear (sep_cpu_ctrl DMA_BUS_ERR_* registers)
+	input  logic                                                              dma_reg_bus_err_i,
+	input  logic                                                              dma_host_intg_err_i,
+	output logic                                                              dma_err_clr_o,
+
+	// Peripheral bridge fault status/clear (sep_cpu_ctrl PERIPH_BUS_ERR_* registers)
+	input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0]                           periph_bus_err_i,
+	output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0]                           periph_bus_err_clr_o
 );
 
 	////////////////////////////////////////////////////////////////////////////
@@ -761,6 +770,29 @@ module sep_system_csr
 
 	// KM_WIPE_CTRL
 	assign km_wipe_state_o = sep_cpu_ctrl_hwif_out.KM_WIPE_CTRL.wipe_state.value;
+
+	// DMA_BUS_ERR_STATUS / DMA_BUS_ERR_CLEAR
+	assign sep_cpu_ctrl_hwif_in.DMA_BUS_ERR_STATUS.reg_path_err.next  = dma_reg_bus_err_i;
+	assign sep_cpu_ctrl_hwif_in.DMA_BUS_ERR_STATUS.host_path_err.next = dma_host_intg_err_i;
+	assign dma_err_clr_o = sep_cpu_ctrl_hwif_out.DMA_BUS_ERR_CLEAR.clr.value;
+
+	// PERIPH_BUS_ERR_STATUS / PERIPH_BUS_ERR_CLEAR. Field order must match
+	// sep_pkg::periph_bus_err_e.
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.aes.next  = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_AES];
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.hmac.next = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_HMAC];
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.kmac.next = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_KMAC];
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.otbn.next = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_OTBN];
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.csrng.next = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_CSRNG];
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.edn.next  = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_EDN];
+	assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.wdt.next  = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_WDT];
+
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_AES]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.aes.value;
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_HMAC] = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.hmac.value;
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_KMAC] = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.kmac.value;
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_OTBN] = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.otbn.value;
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_CSRNG] = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.csrng.value;
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_EDN]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.edn.value;
+	assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_WDT]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.wdt.value;
 
 	///////////////////////
 	// Scratch Registers //

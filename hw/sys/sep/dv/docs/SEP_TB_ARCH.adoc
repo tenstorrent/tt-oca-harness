@@ -24,8 +24,9 @@ layout under `hw/sys/sep/dv/`. It uses a PyUVM environment and the unified OCAH
 BFM packages for AXI, SPI, and (where needed) JTAG. Sibling SMC and DTP envs
 share the same runner and cocotb/PyUVM idioms; this document describes *SEP*.
 
-eFuse image selection, memory/eFuse/SPI models, CPU-trace reconstruction, and
-Boot ROM image builds are covered in the sections below. Test contracts live in
+eFuse image selection, memory/eFuse/SPI models, CPU-trace reconstruction,
+Boot ROM image builds, and Key Manager `rom_main` builds are covered in the
+sections below. Test contracts live in
 link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
 
 === VIP Selection Policy
@@ -154,7 +155,7 @@ structs to cocotb-friendly scalar/vector ports.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes — observation-only unless listed as a signed-off inject
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
 |===
 
 Signed-off exceptions (do not extend without owner approval):
@@ -167,6 +168,9 @@ Signed-off exceptions (do not extend without owner approval):
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate, …).
+* *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
+  `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
+  reach that port. Protocol, not data.
 
 === Environment Components
 
@@ -292,7 +296,10 @@ SECDED-valid zero) and backdoor-loads images:
 
 * boot-ROM / SEP-SRAM / KM-ROM via the `+sep_boot_rom_hex` / `+sep_sram_hex` /
   `+km_rom_hex` plusargs, with a CWD-default fallback to `sep_boot_rom.hex` /
-  `sep_sram.hex` / `km_rom.parhex`.
+  `sep_sram.hex` / `km_rom.parhex`. A named `+km_rom_hex` file must exist at
+  t=0 (`$fatal`); `rom_main` tests declare
+  `firmware = { name = "rom_main", mode = "km_rom_main" }` so `c_compile` builds
+  it.
 * the ICCM/DCCM firmware on `tcm_load_i`, de-interleaved with per-word Hsiao ECC.
 
 These backdoor writes require the target arrays to be public under Verilator
@@ -452,12 +459,12 @@ through real sense.
 |Named evidence |Test / sequence logs |`CHK-* PASS` lines required for audit
 |Regression parsing |Global DV parser |Positive cocotb / `results.xml` evidence — exit 0 alone is not enough
 |===
-RTL and vendor-IP SVA do not participate in any run. The shared native build
-profile — used by both the cocotb and the UVM flow — defines `DISABLE_ASSERT`
-and `COMMON_CELLS_ASSERTS_OFF`, so no assertion in the design or in the
-vendored IP is watching. The checks above are the whole of the checking layer:
-nothing is watching except what a test states explicitly, and there is no
-assertion layer underneath catching what a checker misses.
+RTL SVA participation depends on the backend. Under Verilator, first-party
+and OpenTitan concurrent macros expand to nothing because those headers test
+`VERILATOR`. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`,
+so PULP `common_cells` inline assertions are off on every backend. The checks
+above are the checking layer the Verilator acceptance path relies on: nothing
+else is watching there for a checker miss.
 
 
 === Coverage Strategy
@@ -535,6 +542,34 @@ make -C hw/sys/sep/bootrom/prod toolchain-images \
 
 # pack-images is pure Python and always runs on the host:
 make -C hw/sys/sep/bootrom/prod pack-images
+----
+
+[[_km_rom_main_firmware_builds]]
+=== Key Manager `rom_main` Firmware Builds
+
+Tests that boot the production KM ROM (`sep_km_*_sideload_kat_test`,
+`sep_drbg_real_sink_multi_km_aes_test`) declare
+
+`firmware = { name = "rom_main", mode = "km_rom_main" }`
+
+so `c_compile` builds `hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex` from
+tracked `hw/ip/key_manager/dv/fw` source. The parhex is gitignored. The
+profile drives `make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main`, which
+passes `ROM_KM_BOOT_WIPE_DEFAULT=0` / `ROM_KM_UNREC_WIPE_DEFAULT=0`. A
+default KM build wipes SRAM at boot and halts before `RESP_KM_READY`.
+
+`--stage sim` without that output fails with `firmware outputs missing`
+rather than hanging the KM. A named `+km_rom_hex` that does not resolve is
+a t=0 `$fatal` in `tb_top`.
+
+The small committed `km_rom*.parhex` assembly images are a different class
+and stay tracked; they do not use this profile.
+
+Build the image by hand only when iterating on the KM firmware itself:
+
+[source,bash]
+----
+make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main
 ----
 
 === Build and Run

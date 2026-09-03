@@ -8,7 +8,6 @@ import os
 
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
-
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import (
     SMC_DBG_AXSIZE_8B,
@@ -16,12 +15,12 @@ from env.dtp_types import (
     DtpJtag2AxiStatus,
     DtpJtagInstr,
     get_jtag2axi_target,
-    pack_single_op,
     pack_series_ctrl,
     pack_series_data,
-    unpack_single_op,
+    pack_single_op,
     unpack_series_ctrl,
     unpack_series_data,
+    unpack_single_op,
 )
 
 from .dtp_base_test_seq import dtp_base_test_seq
@@ -91,7 +90,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self.cfg.axi_ram.write(addr, payload)
         self._mirror_model_preload("smc_axi", addr, payload)
 
-    # --- shared-VIP AXI scoreboard glue (issue #3295) -------------------------
+    # --- shared-VIP AXI scoreboard glue ---------------------------------------
     @property
     def axi_scoreboard(self):
         """The shared OcahAxiScoreboard, or None when the test did not opt in."""
@@ -170,9 +169,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             expected=expected,
         )
 
-    def scoreboard_arm_strobes(
-        self, target: str, wstrb: int, addr: int, *, context: str
-    ) -> None:
+    def scoreboard_arm_strobes(self, target: str, wstrb: int, addr: int, *, context: str) -> None:
         """Arm the intent write strobes for the next observed write."""
         scoreboard = self.axi_scoreboard
         if scoreboard is None:
@@ -186,9 +183,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             context=f"{context} target={target} source=stimulus-wstrb",
         )
 
-    def scoreboard_expect_completion(
-        self, target: str, status: int, *, context: str
-    ) -> None:
+    def scoreboard_expect_completion(self, target: str, status: int, *, context: str) -> None:
         """Emit CHK-AXI-COMPLETION: the bridge left BUSY within the poll bound."""
         scoreboard = self.axi_scoreboard
         if scoreboard is None:
@@ -247,8 +242,15 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         *,
         read: bool = True,
         write: bool = True,
+        arm: bool = True,
     ) -> DtpJtag2AxiStatus:
-        """Configure a one-shot target response error and return expected status."""
+        """Configure a one-shot target response error and return expected status.
+
+        ``arm=False`` injects the responder error WITHOUT arming the reference
+        model or a scoreboard credit — for gated attempts whose op must never
+        reach the bus (an armed credit that is never consumed correctly fails
+        CHK-AXI-CREDITS at finalization).
+        """
         cfg = self.target_cfg(target)
         aligned = addr - (addr % cfg.beat_bytes)
         self.log.info(
@@ -261,8 +263,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             write,
         )
         self.target_responder(target).inject_error(aligned, resp, read=read, write=write)
+        if not arm:
+            return self.axi_resp_to_jtag_status(resp)
         # Arm the shared reference model and scoreboard credit so the injected
-        # non-OKAY is classified as EXPECTED (issue #3295). One credit covers
+        # non-OKAY is classified as EXPECTED. One credit covers
         # the single op; direction narrows when only one side is armed.
         # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
         # hook: it deliberately arms the WRONG response so the run must FAIL,
@@ -325,7 +329,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         return rng.randrange(0, (max_addr // align) + 1) * align
 
     def read_target_mem_int(self, target: str, addr: int, size: int) -> int:
-        return int.from_bytes(self.target_memory(target).read(addr, self.size_bytes(size)), "little")
+        return int.from_bytes(
+            self.target_memory(target).read(addr, self.size_bytes(size)), "little"
+        )
 
     def write_target_mem_int(self, target: str, addr: int, value: int, size: int) -> None:
         payload = (value & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
@@ -395,7 +401,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         wstrb = self.full_wstrb(size) if wstrb is None else wstrb
         data &= self.data_mask(size)
         self.log_jtag2axi_op(context, addr=addr, data=data, size=size, wstrb=wstrb)
+        self.scoreboard_arm_strobes("smc_axi", wstrb, addr, context=context)
         item = await self.jtag2axi_write(addr, data, wstrb=wstrb, size=size)
+        self.scoreboard_expect_completion("smc_axi", item.status, context=context)
         self.assert_equal(f"{context}.status", item.status, DtpJtag2AxiStatus.SUCCESS)
         observed = self.read_mem_int(addr, size)
         for byte_idx in range(self.size_bytes(size)):
@@ -422,6 +430,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         expected &= self.data_mask(size)
         self.log_jtag2axi_op(context, addr=addr, size=size)
         item = await self.jtag2axi_read(addr, size=size)
+        self.scoreboard_expect_completion("smc_axi", item.status, context=context)
         self.assert_equal(f"{context}.status", item.status, DtpJtag2AxiStatus.SUCCESS)
         self.assert_equal(
             f"{context}.rdata",
@@ -440,11 +449,17 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         data: int = 0,
         wstrb: int = 0,
         size: int | None = None,
+        arm_strobes: bool = True,
     ) -> None:
-        """Issue a target-specific SINGLE_OP without waiting for completion."""
+        """Issue a target-specific SINGLE_OP without waiting for completion.
+
+        ``arm_strobes=False`` skips the CHK-AXI-STRB intent credit — for gated
+        attempts whose write must never reach the bus (an armed strobe credit
+        that is never consumed correctly fails CHK-AXI-CREDITS).
+        """
         cfg = self.target_cfg(target)
         size = cfg.default_size if size is None else size
-        if op == DtpJtag2AxiOp.WRITE:
+        if op == DtpJtag2AxiOp.WRITE and arm_strobes:
             # Intent strobes for CHK-AXI-STRB: the wstrb programmed into the
             # TDR is the stimulus truth the observed bus strobes must match.
             self.scoreboard_arm_strobes(target, wstrb, addr, context="single_op")
@@ -699,6 +714,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             decoded[3],
             DtpJtag2AxiStatus(decoded[4]).name,
         )
+        # Every series stream ends with this status capture; a bridge stuck
+        # BUSY fails CHK-AXI-COMPLETION here (every call site expects a final,
+        # settled status — SUCCESS or an expected error, never BUSY).
+        self.scoreboard_expect_completion(target, decoded[4], context=f"series_ctrl.{target}")
         return decoded
 
     async def _series_data_shift(
@@ -887,4 +906,3 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             f"{context}: expected {target} {key.upper()} activity within {timeout_cycles} "
             f"cycles, before={before}, after={after}"
         )
-

@@ -14,22 +14,23 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import LC_WORD_IDX
 from env.sep_lcc_golden import LC_RMA_CHIP_1, LC_RMA_SIP_1
-from env.sep_rma_token import SepRmaTokenCfg
+
+# Re-exported for sep_efuse_rma_token_rand_test, which builds its golden via
+# seq_lib rather than reaching into env directly.
+from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
+from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 
-_EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
-_RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
-_RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
-_SEC_DISABLE_TOKEN_I = _EFUSE_MMR_BASE + 0x40
-_TOKEN_EOP = _EFUSE_MMR_BASE + 0x60
-_RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
-_RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
-_SEC_DISABLE_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x6C
+_RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
+_RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
+_SEC_DISABLE_TOKEN_I = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
+_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
+_RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
+_SEC_DISABLE_TOKEN_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _TOKEN_MATCH_FAULT = sym("EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
 _TOKEN_MATCH = 0x15
 _TOKEN_MISMATCH = 0x2A
@@ -51,7 +52,7 @@ TOKEN_CMP_INJECT_COMMON_MATCH = 4
 TOKEN_CMP_SEL_SIP = 0
 TOKEN_CMP_SEL_CHIPLET = 1
 TOKEN_CMP_SEL_SEC = 2
-IRQ_TOKEN_MATCH_FAULT = 38
+IRQ_TOKEN_MATCH_FAULT = 39
 
 TOKEN_RMA_SIP = 0
 TOKEN_RMA_CHIPLET = 1
@@ -129,13 +130,16 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                 self.matched = result == _TOKEN_MATCH
                 cocotb.log.info(
                     "[rma] %s token code=0x%02x matched=%s",
-                    token_name, result, self.matched,
+                    token_name,
+                    result,
+                    self.matched,
                 )
                 return
         self.matched = False
         cocotb.log.info(
             "[rma] %s token did not settle (last code=0x%02x)",
-            token_name, self.match_code,
+            token_name,
+            self.match_code,
         )
 
 

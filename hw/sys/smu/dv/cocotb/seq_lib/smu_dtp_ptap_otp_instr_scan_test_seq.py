@@ -74,22 +74,17 @@ class smu_dtp_ptap_otp_instr_scan_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-PTAP-OTP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"OTP J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
         smc_caps = int(await jtag.read("SMC_OTP_JTAG2AXI_CAPS")) & CAPS_MASK
         require_jtag_tdo_resolved("SMC OTP CAPS")
         if smc_caps != DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC OTP CAPS=0x{smc_caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS:04x}"
+                f"SMC OTP CAPS=0x{smc_caps:04x} want 0x{DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
         self._log(f"CHK-PTAP-SMC-OTP-CAPS caps=0x{smc_caps:04x}")
@@ -104,8 +99,7 @@ class smu_dtp_ptap_otp_instr_scan_test_seq:
         require_jtag_tdo_resolved("SEP OTP CAPS")
         if sep_caps != DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SEP OTP CAPS=0x{sep_caps:04x} "
-                f"want 0x{DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS:04x}"
+                f"SEP OTP CAPS=0x{sep_caps:04x} want 0x{DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS:04x}"
             )
         self.s2_ok = True
         self._log(f"CHK-PTAP-SEP-OTP-CAPS caps=0x{sep_caps:04x}")
@@ -121,8 +115,7 @@ class smu_dtp_ptap_otp_instr_scan_test_seq:
         sep_dbg = (jcaps >> DTP_JTAG_CAPS_SEP_DBG_EN_BIT) & 1
         if sep_dbg != 0:
             raise AssertionError(
-                f"JTAG_CAPS sep_dbg_en={sep_dbg} want 0 on SEP=0 "
-                f"(caps=0x{jcaps:015x})"
+                f"JTAG_CAPS sep_dbg_en={sep_dbg} want 0 on SEP=0 (caps=0x{jcaps:015x})"
             )
         self.s3_ok = True
         self._log(f"CHK-PTAP-JTAG-CAPS-SEP-DBG caps=0x{jcaps:015x} sep_dbg_en=0")
@@ -144,13 +137,10 @@ class smu_dtp_ptap_otp_instr_scan_test_seq:
         # fake OKAY.
         if (echo & echo_mask) != (probe & echo_mask):
             raise AssertionError(
-                f"SMC OTP SINGLE_OP TDR did not echo probe "
-                f"in=0x{probe:x} out=0x{echo:x}"
+                f"SMC OTP SINGLE_OP TDR did not echo probe in=0x{probe:x} out=0x{echo:x}"
             )
 
-        await jtag.shift_ir(
-            DTP_IR_SEP_OTP_AXI_SINGLE_OP, width=DTP_IR_WIDTH, back_to_rti=False
-        )
+        await jtag.shift_ir(DTP_IR_SEP_OTP_AXI_SINGLE_OP, width=DTP_IR_WIDTH, back_to_rti=False)
         byp = int(await jtag.shift_dr(0b01, 2, back_to_rti=True)) & 0x3
         require_jtag_tdo_resolved("SEP OTP SINGLE_OP BYPASS")
         if byp != 0b10:
@@ -160,10 +150,7 @@ class smu_dtp_ptap_otp_instr_scan_test_seq:
                 "(stuck-0 chain returns 0b00)"
             )
         self.s4_ok = True
-        self._log(
-            f"CHK-PTAP-OTP-SINGLE-OP-IRDR smc_echo=0x{echo:x} "
-            f"sep_bypass=0b{byp:02b}"
-        )
+        self._log(f"CHK-PTAP-OTP-SINGLE-OP-IRDR smc_echo=0x{echo:x} sep_bypass=0b{byp:02b}")
         sb.expect_eq(
             "CHK-PTAP-OTP-SINGLE-OP-IRDR",
             (echo & echo_mask, byp),

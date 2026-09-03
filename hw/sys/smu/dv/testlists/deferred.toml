@@ -403,10 +403,9 @@ name = "smu_fabric_id_remap_stress_test"
 module = "smu_fabric_id_remap_stress_test"
 tags = ["deferred", "fabric"]
 
-# ----- PLANNED: without-SEP Tier A (from hw/sys/smu/doc/smu_port.md) -----
-# Commercial Nightly MISS names not yet in OSS deferred/live. Inventory only —
-# rewrite no-Force under cocotb/{tests,seq_lib}/ before fabric.toml enroll.
-# Commercial refs: nonfree2/.../cocotb_tests/<name>.py
+# ----- PLANNED: without-SEP Tier A -----
+# Names not yet in OSS deferred/live. Inventory only — rewrite no-Force under
+# cocotb/{tests,seq_lib}/ before fabric.toml enroll.
 # smu_axi_filter_allow_ns_test → fabric.toml (J2A + s_axi inbound allow_ns)
 # smu_axi_prot_encoding_decode_test → fabric.toml (S9 AxPROT matrix; S1-S8 deferred)
 # smu_axi_filter_in_instance_matrix_test → fabric.toml (local-alias S1-S5; J2A+s_axi)

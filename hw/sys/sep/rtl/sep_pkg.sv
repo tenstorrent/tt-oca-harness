@@ -337,6 +337,19 @@ package sep_pkg;
 
     typedef el2_trace_pkt_t sep_cpu_trace_t;
 
+    // VeeR lockstep control/status. These are carried unconditionally through the
+    // hierarchy above sep_cpu so the port footprint does not change with
+    // RV_LOCKSTEP_ENABLE; sep_cpu zeroes the status and sinks the control when the
+    // core is built without lockstep.
+    typedef struct packed {
+        logic disable_corruption_detection;
+        logic err_injection_en;
+    } sep_lockstep_ctrl_t;
+
+    typedef struct packed {
+        logic corruption_detected;
+    } sep_lockstep_status_t;
+
     // TCM (ICCM/DCCM) memory interface types
     // Request struct: from CPU to TCM macros (active-high signals from EL2 core)
     typedef struct packed {
@@ -398,10 +411,29 @@ package sep_pkg;
     // Internal SEP interrupt sources occupying the low PIC slots; see the
     // sep_internal_interrupts aggregation in sep.sv for the slot map. Growing this
     // shifts the external sources up and narrows NUM_EXTERNAL_IRQS accordingly.
-    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall;
-    // 38 = eFuse token comparator redundancy fault.
-    parameter int unsigned NUM_INTERNAL_IRQS = 39;
+    // 34,35 = Adams Bridge error / notif; 36,37,38 = entropy pool low / fill stall /
+    // pointer-integrity fault; 39 = eFuse token comparator redundancy fault; 40,41 = Secure DMA
+    // register-path bus error / host-path integrity fault (level, cleared via
+    // DMA_BUS_ERR_CLEAR); 42 = aggregated peripheral register-bridge fault (level,
+    // per-block source identified by PERIPH_BUS_ERR_STATUS and cleared via
+    // PERIPH_BUS_ERR_CLEAR).
+    parameter int unsigned NUM_INTERNAL_IRQS = 43;
     parameter int unsigned NUM_EXTERNAL_IRQS = pt.PIC_TOTAL_INT - NUM_INTERNAL_IRQS;
+
+    // Peripheral register-bridge fault bit map. This ordering is shared by the
+    // periph_bus_err vector assembled in sep.sv and the PERIPH_BUS_ERR_STATUS /
+    // PERIPH_BUS_ERR_CLEAR fields in sep_cpu_ctrl.rdl; changing one without the other
+    // silently misattributes faults to the wrong block.
+    parameter int unsigned NUM_PERIPH_BUS_ERRS = 7;
+    typedef enum int unsigned {
+        PERIPH_BUS_ERR_AES   = 0,
+        PERIPH_BUS_ERR_HMAC  = 1,
+        PERIPH_BUS_ERR_KMAC  = 2,
+        PERIPH_BUS_ERR_OTBN  = 3,
+        PERIPH_BUS_ERR_CSRNG = 4,
+        PERIPH_BUS_ERR_EDN   = 5,
+        PERIPH_BUS_ERR_WDT   = 6
+    } periph_bus_err_e;
 
     /////////////////////////////////////////////
     // Alias + Output Remap parameters + types //
@@ -448,12 +480,33 @@ package sep_pkg;
     /////////////////////////////////////
 
     typedef struct packed {
+        logic trng;
         logic kmac;
         logic hmac;
         logic aes;
         logic otbn;
         logic km;
     } sep_sw_rst_t;
+
+    // One bit per isolatable AXI-Lite path in sep_crypto. trng_* are the
+    // converted CSR paths to the internal TRNG complex; host_* are the SEP host
+    // paths to the accelerator wrappers; km_* are the Key Manager master paths
+    // to its slaves. Same layout is used for isolate_req and isolated.
+    typedef struct packed {
+        logic trng_entropy_source;
+        logic trng_csrng;
+        logic trng_edn;
+        logic host_otbn;
+        logic host_aes;
+        logic host_hmac;
+        logic host_kmac;
+        logic km_otbn;
+        logic km_aes;
+        logic km_hmac;
+        logic km_kmac;
+        logic km_abr;
+        logic km_efuse;
+    } sep_crypto_isolate_t;
 
     ////////////////////////////
     // SEP System Peripherals //
@@ -635,6 +688,11 @@ package sep_pkg;
 
     // JTAG SEP Reset Control
     typedef struct packed {
+        // jtag_ptap sizes the SEP IC_RESET slice from $bits(type)/2 and maps the
+        // ovrd and val sub-structs independently by packed bit index. TRNG sits
+        // at each sub-struct's MSB, so it takes the new top port and the
+        // existing port indices keep their TDR positions.
+        logic trng_jtag_rst_n_ovrd;
         logic sep_reset_n_ovrd;
         logic kmac_jtag_rst_n_ovrd;
         logic hmac_jtag_rst_n_ovrd;
@@ -644,6 +702,7 @@ package sep_pkg;
     } jtag_sep_reset_ctrl_ovrd_t;
 
     typedef struct packed {
+        logic trng_jtag_rst_n_val;
         logic sep_reset_n_val;
         logic kmac_jtag_rst_n_val;
         logic hmac_jtag_rst_n_val;
