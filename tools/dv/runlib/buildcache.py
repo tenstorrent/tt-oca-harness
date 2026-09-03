@@ -131,20 +131,28 @@ def xcelium_build_args(
 ) -> list[str]:
     """Translate `[build.options]` + `[build.xcelium]` into Xcelium elaboration (xmelab/xrun) flags.
 
-    - ``build_jobs`` -> ``-mce -mce_build_thread_count <N>`` (multi-core build)  [Verilator: --build-jobs; VCS: -j]
     - ``cflags``     -> ``-Wcxx,<flag>``                                          [Verilator/VCS: -CFLAGS]
-    - ``ccache`` / ``output_split`` -> ignored; Xcelium uses multi-core + incremental elaboration
+    - ``ccache`` / ``output_split`` -> ignored; Xcelium uses incremental elaboration
     Xcelium-only (`[build.xcelium]`):
-    - ``mce`` (bool)        -> force ``-mce`` even without a thread count
+    - ``mce`` (bool)        -> ``-mce``, and ``build_jobs`` then sets its thread count
     - ``opt_level``         -> raw optimization flag passthrough
     - ``extra_args``        -> appended verbatim
+
+    ``build_jobs`` does not reach Xcelium on its own. On Verilator and VCS it is
+    a build-time knob (``--build-jobs`` / ``-j``), but the nearest Xcelium option
+    is ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
+    makes ``xmsim`` check out an ``Xcelium_Multi_Core`` feature instead of
+    ``Xcelium_Single_Core``. Treating a compile-parallelism setting as a request
+    for a different runtime licence class means a single-core entitlement cannot
+    run at all, which is a steep price for elaboration speed. Sites holding a
+    multi-core licence ask for it by name via ``[build.xcelium] mce``.
     """
     extra: list[str] = []
-    build_jobs = effective_build_jobs(options, jobs)
-    if build_jobs > 0:
-        extra += ["-mce", "-mce_build_thread_count", str(build_jobs)]
-    elif bool(xcelium_cfg.get("mce", False)):
+    if bool(xcelium_cfg.get("mce", False)):
         extra.append("-mce")
+        build_jobs = effective_build_jobs(options, jobs)
+        if build_jobs > 0:
+            extra += ["-mce_build_thread_count", str(build_jobs)]
 
     opt = str(xcelium_cfg.get("opt_level", "")).strip()
     if opt:

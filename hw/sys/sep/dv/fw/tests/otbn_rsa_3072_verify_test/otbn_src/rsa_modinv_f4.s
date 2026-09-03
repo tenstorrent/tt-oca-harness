@@ -271,7 +271,7 @@ modinv_f4:
       bn.cmpb  w23, w20, FG1
 
     /* The modulus needs to be subtracted (w26 = all 1s) in two cases:
-         1. FG1.C = 0, the last word addition did not underlow: A + C > m.
+         1. FG1.C = 0, the last word addition did not underflow: A + C > m.
          2. FG0.C = 1, the last word addition has overflowed:   A + C > m. */
     bn.not   w23, w31
     bn.sel   w26, w31, w23, FG1.C

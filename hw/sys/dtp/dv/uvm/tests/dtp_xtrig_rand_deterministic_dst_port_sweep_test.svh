@@ -5,21 +5,21 @@
 // (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
 
 class dtp_xtrig_rand_deterministic_dst_port_sweep_test extends dtp_xtrig_base_test;
-    `uvm_component_utils(dtp_xtrig_rand_deterministic_dst_port_sweep_test)
+  `uvm_component_utils(dtp_xtrig_rand_deterministic_dst_port_sweep_test)
 
-    function new(string name = "dtp_xtrig_rand_deterministic_dst_port_sweep_test",
-                 uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "dtp_xtrig_rand_deterministic_dst_port_sweep_test",
+               uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    virtual function dtp_xtrig_base_test_seq create_xtrig_scenario_seq();
-        dtp_xtrig_route_test_seq seq = dtp_xtrig_route_test_seq::type_id::create("seq");
-        seq.scenario = "dst_port_sweep";
-        return seq;
-    endfunction
+  virtual function ocah_sequence create_scenario_seq();
+    dtp_xtrig_route_test_seq seq = dtp_xtrig_route_test_seq::type_id::create("seq");
+    seq.scenario = "dst_port_sweep";
+    return seq;
+  endfunction
 
-    virtual function string specific_loops_plusarg();
-        return "DTP_XTRIG_RAND_DETERMINISTIC_DST_PORT_SWEEP_TEST_LOOPS";
-    endfunction
+  virtual function string specific_loops_knob();
+    return "DTP_XTRIG_RAND_DETERMINISTIC_DST_PORT_SWEEP_TEST_LOOPS";
+  endfunction
 
 endclass : dtp_xtrig_rand_deterministic_dst_port_sweep_test

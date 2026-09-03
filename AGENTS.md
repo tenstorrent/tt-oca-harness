@@ -504,8 +504,8 @@ open files to compensate.
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
-| SystemVerilog lint (verible) | `make lint-sv-verible` |
-| SystemVerilog formatting | `make format-sv`, `make format-sv-check` |
+| SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
+| SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
@@ -516,6 +516,20 @@ plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs on
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
 `scripts/ci/diff_class.py` is the classifier.
+
+Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
+They exclude generated output and `vendor/<org>/<repo>/upstream/**`; never patch upstream code
+for a style-only finding. Fix formatter-safe whitespace and wrapping after reviewing the diff,
+but treat types, range direction, assignment semantics, task lifetime, case completeness and
+hierarchy labels as manual changes requiring owner review. Parameter naming remains deferred to
+issue #1051 and is disabled in this pass.
+
+Fix actionable findings rather than hiding them. If the pinned Verible release has a
+demonstrated tool limitation, use the narrowest rule/path waiver with the exact rule, a stable
+location pattern, a constraint-focused rationale and an upstream bug link.
+`OCAH_VERIBLE_SINGLE_FILE_EXCLUDES` is only for documented parser, preprocessor or formatter
+convergence failures that prevent a reliable single-file result. The full scope and vendor
+policy are authoritative in `flows/lint/verible.mk` and `CONTRIBUTING.md`.
 
 Optional staged-file checks are documented in `CONTRIBUTING.md`. Agents may
 run `make hooks-run` or the underlying lint/format checks without installing a

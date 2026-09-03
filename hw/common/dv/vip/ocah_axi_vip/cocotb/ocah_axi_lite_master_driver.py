@@ -4,8 +4,11 @@
 
 `OcahAxiLiteMasterDriver` owns the bus/clock/reset resolution and the
 underlying ``cocotbext.axi.AxiLiteMaster`` instance, and exposes the
-event-level ``init_write``/``init_read`` transaction starters. The blocking,
-checked, result-returning API lives in `OcahAxiLiteMasterSequence`.
+event-level ``init_write``/``init_read`` transaction starters plus the
+cycle-level protocol-control engines behind ``write_skewed_result`` /
+``read_hold_result`` (independent AW/W launch skew, deferred BREADY/RREADY).
+The blocking, checked, result-returning API lives in
+`OcahAxiLiteMasterSequence`.
 """
 
 from __future__ import annotations
@@ -13,6 +16,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import cocotb
+from cocotb.triggers import ClockCycles, First, ReadOnly, RisingEdge
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from cocotbext.axi.constants import AxiProt
 
@@ -113,8 +118,6 @@ class OcahAxiLiteMasterDriver:
         """Wait until reset deassertion if a reset signal was provided."""
         if self._reset is None:
             return
-        from cocotb.triggers import RisingEdge
-
         while int(self._reset.value) == 0:
             await RisingEdge(self._clock)
 
@@ -164,12 +167,179 @@ class OcahAxiLiteMasterDriver:
         return bytes(data)
 
     def check_strb(self, strb: int | None) -> None:
-        """Reject partial strobes the cocotbext backend cannot honor."""
-        if strb is not None and int(strb) != self.full_strb:
+        """Reject strobe patterns the cocotbext backend cannot honor."""
+        self.strb_payload(0, strb)
+
+    def strb_payload(self, data: int | bytes | bytearray, strb: int | None) -> tuple[int, bytes]:
+        """Map a contiguous strobe onto a (byte offset, payload bytes) pair.
+
+        The cocotbext backend derives WSTRB from the sub-word address and
+        length of the payload, so any contiguous strobe is expressible as an
+        offset write of the selected bytes of ``data``. Non-contiguous
+        patterns have no such mapping and are rejected.
+        """
+        full = self.data_bytes(data)
+        if strb is None or int(strb) == self.full_strb:
+            return 0, full
+        value = int(strb)
+        if value == 0 or value & ~self.full_strb:
             raise ValueError(
-                f"{self.name}: cocotbext AXI-Lite master supports contiguous full-width writes only; "
-                f"got strb=0x{int(strb):X}, expected 0x{self.full_strb:X}"
+                f"{self.name}: strb=0x{value:X} out of range for "
+                f"{self.bytes_per_beat}-byte beats (full strobe 0x{self.full_strb:X})"
             )
+        offset = (value & -value).bit_length() - 1
+        span = value >> offset
+        if span & (span + 1):
+            raise ValueError(
+                f"{self.name}: cocotbext AXI-Lite master supports contiguous strobes only; "
+                f"got strb=0x{value:X}"
+            )
+        return offset, full[offset : offset + span.bit_length()]
+
+    async def write_skewed(
+        self,
+        address: int,
+        data: int | bytes | bytearray = 0,
+        *,
+        strb: int | None = None,
+        prot: int = int(AxiProt.NONSECURE),
+        aw_valid_delay: int = 0,
+        w_valid_delay: int = 0,
+        b_ready_delay: int = 0,
+        timeout_cycles: int = 1000,
+    ):
+        """Single-beat write with independent AW/W launch skew; return the raw response.
+
+        Mirrors the SV-UVM master's knobs: ``aw_valid_delay``/``w_valid_delay``
+        hold that channel's VALID low for N cycles before it launches — AXI
+        permits either arrival order — and ``b_ready_delay`` defers the BREADY
+        assert after both request handshakes (BREADY idles low for the whole
+        request phase). Requires an idle write engine, since the skew is
+        applied by pausing its channels. Raises ``TimeoutError`` when a phase
+        exceeds ``timeout_cycles``.
+        """
+        write_if = self._master.write_if
+        if not write_if.idle():
+            raise RuntimeError(f"{self.name}: write_skewed requires an idle write engine")
+        offset, payload = self.strb_payload(data, strb)
+        aw_channel = write_if.aw_channel
+        w_channel = write_if.w_channel
+        b_channel = write_if.b_channel
+        aw_bus = self._bus.write.aw
+        w_bus = self._bus.write.w
+        aw_channel.pause = aw_valid_delay > 0
+        w_channel.pause = w_valid_delay > 0
+        b_channel.pause = True
+        releases = []
+        try:
+            event = write_if.init_write(int(address) + offset, payload, prot=AxiProt(int(prot)))
+            if aw_valid_delay > 0:
+                releases.append(cocotb.start_soon(self._release_pause(aw_channel, aw_valid_delay)))
+            if w_valid_delay > 0:
+                releases.append(cocotb.start_soon(self._release_pause(w_channel, w_valid_delay)))
+            aw_done = False
+            w_done = False
+            for _ in range(int(timeout_cycles)):
+                await RisingEdge(self._clock)
+                aw_done = aw_done or bool(
+                    self._sample(aw_bus.awvalid) and self._sample(aw_bus.awready)
+                )
+                w_done = w_done or bool(self._sample(w_bus.wvalid) and self._sample(w_bus.wready))
+                if aw_done and w_done:
+                    break
+            else:
+                raise TimeoutError(
+                    f"{self.name}: skewed write request phase timed out: addr=0x{int(address):08X} "
+                    f"aw_done={aw_done} w_done={w_done}"
+                )
+            if b_ready_delay > 0:
+                await ClockCycles(self._clock, int(b_ready_delay))
+            b_channel.pause = False
+            await First(event.wait(), ClockCycles(self._clock, int(timeout_cycles)))
+            if not event.is_set():
+                raise TimeoutError(
+                    f"{self.name}: skewed write response timed out: addr=0x{int(address):08X}"
+                )
+            return event.data
+        finally:
+            for task in releases:
+                task.cancel()
+            aw_channel.pause = False
+            w_channel.pause = False
+            b_channel.pause = False
+
+    async def read_hold(
+        self,
+        address: int,
+        *,
+        hold_cycles: int,
+        prot: int = int(AxiProt.NONSECURE),
+        timeout_cycles: int = 1000,
+    ):
+        """Single-beat read holding RREADY low for ``hold_cycles`` after RVALID.
+
+        Returns ``(raw response, hold_stable)`` where ``hold_stable`` reports
+        that RVALID stayed asserted with RDATA/RRESP unchanged across the hold
+        window. Requires an idle read engine. Raises ``TimeoutError`` when a
+        phase exceeds ``timeout_cycles``.
+        """
+        read_if = self._master.read_if
+        if not read_if.idle():
+            raise RuntimeError(f"{self.name}: read_hold requires an idle read engine")
+        r_channel = read_if.r_channel
+        r_bus = self._bus.read.r
+        r_channel.pause = True
+        try:
+            event = read_if.init_read(int(address), self.bytes_per_beat, prot=AxiProt(int(prot)))
+            for _ in range(int(timeout_cycles)):
+                await RisingEdge(self._clock)
+                if self._sample(r_bus.rvalid):
+                    break
+            else:
+                raise TimeoutError(
+                    f"{self.name}: held read saw no RVALID: addr=0x{int(address):08X}"
+                )
+            first_data = self._sample(r_bus.rdata)
+            first_resp = self._sample(getattr(r_bus, "rresp", None))
+            hold_stable = True
+            for _ in range(int(hold_cycles)):
+                await RisingEdge(self._clock)
+                hold_stable = (
+                    hold_stable
+                    and bool(self._sample(r_bus.rvalid))
+                    and self._sample(r_bus.rdata) == first_data
+                    and self._sample(getattr(r_bus, "rresp", None)) == first_resp
+                )
+            r_channel.pause = False
+            await First(event.wait(), ClockCycles(self._clock, int(timeout_cycles)))
+            if not event.is_set():
+                raise TimeoutError(
+                    f"{self.name}: held read completion timed out: addr=0x{int(address):08X}"
+                )
+            return event.data, hold_stable
+        finally:
+            r_channel.pause = False
+
+    async def _release_pause(self, channel, cycles: int) -> None:
+        """Drop a channel's pause after ``cycles`` clock edges.
+
+        The release lands in the ReadOnly phase, after the channel's own
+        edge evaluation, so the launch happens on the following edge and the
+        observed skew is never shorter than requested.
+        """
+        await ClockCycles(self._clock, int(cycles))
+        await ReadOnly()
+        channel.pause = False
+
+    @staticmethod
+    def _sample(handle) -> int:
+        """Sample a signal as an int; absent handles and X resolve to 0."""
+        if handle is None:
+            return 0
+        try:
+            return int(handle.value)
+        except ValueError:
+            return 0
 
     @staticmethod
     def _coalesce_addr(address: int | None, addr: int | None) -> int:

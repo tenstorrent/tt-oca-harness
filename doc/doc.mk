@@ -29,19 +29,11 @@ OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG := $(if $(OCAH_DOC_RELEASE_ENABLED),-a release)
 # Optional Antora --url override (nested publish paths, e.g. /trm).
 OCAH_DOC_SITE_URL ?=
 
-# Reuse the reg flow's per-block adoc accessor over every block (regs.mk filters
-# OCAH_REGEN_REG_ADOC by TARGET; docs want all blocks). Depending on these would
-# couple the doc build to blocks with known Plan A regen gaps, so the setup step
-# regenerates them best-effort (-k) instead and stages whatever exists.
-OCAH_DOC_REG_ADOC := $(foreach b,$(OCAH_REG_BLOCKS),$(call ocah_reg_adoc_target,$(b)))
-
-# The one genuinely new bit of discovery: the doc page sources (analogous to
-# discover.mk's ocah_reg_dirs glob).
-OCAH_DOC_PAGE_DIRS := $(wildcard $(OCAH_ROOT)/hw/ip/*/doc $(OCAH_ROOT)/hw/ip/*/*/doc $(OCAH_ROOT)/hw/sys/*/doc)
-
 ## @section Documentation
 
 ## Regenerate register docs best-effort for documentation products.
+# A hard dependency on every block's adoc would fail the doc build on known
+# regen gaps. -k regenerates what it can; stage-docs.sh stages whatever exists.
 .PHONY: ocah-doc-reg-setup
 ifeq ($(OCAH_DOC_REGEN_REGS),1)
 ocah-doc-reg-setup:
@@ -51,6 +43,29 @@ else
 ocah-doc-reg-setup:
 	@true
 endif
+
+## Verification dashboard data.
+#
+# doc/trm/src/dashboard.adoc fetches this JSON in the browser at page load.
+OCAH_DASHBOARD_DATA_DIR ?= $(OCAH_DOC_DIR)/_build/dashboard-data
+OCAH_DASHBOARD_DATA_REF ?= origin/dv-dashboard-data
+OCAH_DASHBOARD_DATA_PATH ?= latest/summary.json
+OCAH_DASHBOARD_STAGE := OCAH_ROOT="$(OCAH_ROOT)" \
+	OCAH_DASHBOARD_DATA_DIR="$(OCAH_DASHBOARD_DATA_DIR)" \
+	OCAH_DASHBOARD_DATA_REF="$(OCAH_DASHBOARD_DATA_REF)" \
+	OCAH_DASHBOARD_DATA_PATH="$(OCAH_DASHBOARD_DATA_PATH)" \
+	bash $(OCAH_ROOT)/tools/doc/stage_dashboard_data.sh
+
+## Stage dashboard JSON from the local clone of the data branch.
+.PHONY: ocah-doc-dashboard-data
+ocah-doc-dashboard-data:
+	@$(OCAH_DASHBOARD_STAGE)
+
+# Copy staged dashboard data into a built site tree.
+# $(call ocah_stage_dashboard_data,<site-root>)
+define ocah_stage_dashboard_data
+@$(OCAH_DASHBOARD_STAGE) "$(1)"
+endef
 
 # Product makefrags.
 -include $(OCAH_DOC_DIR)/trm/doc.mk
@@ -95,6 +110,7 @@ ocah-doc-all-clean: ocah-doc-clean
 
 OCAH_PHONY += \
   ocah-doc-reg-setup \
+  ocah-doc-dashboard-data \
   ocah-doc-setup \
   ocah-doc-html \
   ocah-doc-pdf \

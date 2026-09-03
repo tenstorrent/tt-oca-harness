@@ -13,7 +13,7 @@
 <tr><td>0x0</td><td><a href="#AVS_CMD">AVS_CMD</a></td><td>W</td><td>The command+data to be transferred to the AVS bus</td></tr>
 <tr><td>0x4</td><td><a href="#AVS_READBACK">AVS_READBACK</a></td><td>R</td><td>Response data from AVS slave device (updated in response to both AVS read and write commands). Reading<br>this register causes the AVS response readback fifo pointer to advance.</td></tr>
 <tr><td>0x8</td><td><a href="#AVS_DEBUG_READBACK">AVS_DEBUG_READBACK</a></td><td>R</td><td>This register mirrors the AVS_READBACK register, but reading it does NOT affect the<br>AVS readback fifo pointer. Provided for debug purposes.</td></tr>
-<tr><td>0xC</td><td><a href="#AVS_LATEST_SLAVE_SUBFRAME">AVS_LATEST_SLAVE_SUBFRAME</a></td><td>R</td><td>This register contains the most recently received subframe from the AVS slave, by-passing the<br>AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck<br>settings in a timely fashion, since the status data from the next entry in the readback fifo might<br>have considerable latency relative to when it was initially received from the AVS Slave.</td></tr>
+<tr><td>0xC</td><td><a href="#AVS_LATEST_SLAVE_SUBFRAME">AVS_LATEST_SLAVE_SUBFRAME</a></td><td>R</td><td>This register contains the most recently received subframe from the AVS slave, bypassing the<br>AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck<br>settings in a timely fashion, since the status data from the next entry in the readback fifo might<br>have considerable latency relative to when it was initially received from the AVS Slave.</td></tr>
 <tr><td>0x20</td><td><a href="#AVS_NORMAL_STATUS">AVS_NORMAL_STATUS</a></td><td>R</td><td>Various Status bits indicating normal operating conditions for APB2AVS bridge block.<br>These all have corresponding maskable bits in the AVS_INTERRUPT register</td></tr>
 <tr><td>0x24</td><td><a href="#AVS_SLAVE_STATUS">AVS_SLAVE_STATUS</a></td><td>R</td><td>Contains the most recent status feedback from the AVS slave device</td></tr>
 <tr><td>0x28</td><td><a href="#AVS_FIFOS_STATUS">AVS_FIFOS_STATUS</a></td><td>R</td><td>Contains the number of occupied and vacant slots in the AVS master&#x27;s command and readback FIFOs</td></tr>
@@ -135,7 +135,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of times to attempt a retry if an AVS command returns a fail<br>status (either due to targetted resource being busy or CRC failure)</td></tr>
+<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of times to attempt a retry if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure)</td></tr>
 <tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
 </table>
 <h3 id="AVS_CFG_1">AVS_CFG_1</h3>

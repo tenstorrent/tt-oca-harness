@@ -164,7 +164,7 @@ endgenerate
 
 // Detune status from all generator lanes (for autotune verification)
 // When autotune is enabled, this shows the FSM-controlled detune state, not the register value
-logic debug_detune [12];
+logic debug_detune[12];
 generate
   for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : g_debug_detune
     assign debug_detune[debug_gi] = dut.egen.g_ecmplx[debug_gi].gen_inst.detune;
@@ -264,8 +264,8 @@ generate
 
       // Calculate feedback based on mode and shift direction
       unique case (mode)
-        3'd0,    // DECOR_29
-        3'd1: begin // DECOR_7
+        3'd0,  // DECOR_29
+        3'd1: begin  // DECOR_7
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: feedback from sr[29-depth_eff]
             case (debug_gi)
@@ -300,7 +300,7 @@ generate
             endcase
           end
         end
-        3'd2: begin // BYPASS: no feedback
+        3'd2: begin  // BYPASS: no feedback
           case (debug_gi)
             0:  debug_decor_fb_0  = 1'b0;
             1:  debug_decor_fb_1  = 1'b0;
@@ -316,7 +316,7 @@ generate
             11: debug_decor_fb_11 = 1'b0;
           endcase
         end
-        3'd3: begin // LFSR_29
+        3'd3: begin  // LFSR_29
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: fb = sr[28] ^ sr[1]
             case (debug_gi)
@@ -351,7 +351,7 @@ generate
             endcase
           end
         end
-        3'd4: begin // LFSR_7
+        3'd4: begin  // LFSR_7
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: fb = sr[6] ^ sr[5]
             case (debug_gi)
@@ -386,7 +386,7 @@ generate
             endcase
           end
         end
-        default: begin // Invalid mode - set feedback to 0
+        default: begin  // Invalid mode - set feedback to 0
           case (debug_gi)
             0:  debug_decor_fb_0  = 1'b0;
             1:  debug_decor_fb_1  = 1'b0;

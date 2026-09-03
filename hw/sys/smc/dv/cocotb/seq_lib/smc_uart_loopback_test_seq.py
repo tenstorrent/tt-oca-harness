@@ -43,7 +43,8 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         # start_seq assigns seq.cfg = env.cfg (includes randomized periph period).
         periph_ns = int(getattr(self.cfg, "periph_clk_period_ns", 10) or 10)
-        self.divisor = max(1, int(round(1.0 / ((periph_ns * 1e-9) * 16 * BAUD))))
+        # Baud generator divides by (divisor + 1); divisor 0 disables TX/RX.
+        self.divisor = max(1, int(round(1.0 / ((periph_ns * 1e-9) * 16 * BAUD))) - 1)
         cocotb.log.info(
             "UART DUT TX: periph_clk=%dns baud=%d divisor=%d",
             periph_ns,

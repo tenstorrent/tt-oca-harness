@@ -14,11 +14,9 @@
 // drives +UVM_TESTNAME.
 
 `include "uvm_macros.svh"
+import ocah_lib_pkg::*;  // ocah_test base and the ocah_sequence hook type
 import dtp_env_pkg::*;
 import dtp_seq_lib_pkg::*;
-// Shared AXI VIP types referenced by test-class signatures (e.g. the
-// robustness tests' add_required_axi_ids(ocah_axi_config) hook).
-import ocah_axi_uvm_pkg::*;
 
 `include "dtp_base_test.svh"
 `include "dtp_sanity_test.svh"
@@ -51,11 +49,13 @@ import ocah_axi_uvm_pkg::*;
 `include "dtp_jtag2axi_smc_axi_single_write_test.svh"
 `include "dtp_jtag2axi_smc_axi_single_write_data_verify_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_no_incr_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test.svh"
 `include "dtp_jtag2axi_smc_axi_random_ops_test.svh"
 `include "dtp_jtag2axi_smc_axi_write_security_gating_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_read_incr_test.svh"
+`include "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test.svh"
 `include "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test.svh"
 `include "dtp_jtag2axi_smc_axi_read_random_ops_test.svh"

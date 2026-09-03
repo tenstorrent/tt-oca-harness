@@ -19,18 +19,16 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
-from sep_reg_meta import sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
-# EFUSE interface-controller MMRs (SEP-local shadow base 0x1093_0000 + 0x400 block).
-_EFUSE_READ_CTRL = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR") + 0x400 + 0x8
-_EFUSE_READ_DATA = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR") + 0x400 + 0x10
+_EFUSE_READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
+_EFUSE_READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_INTERFACE_READ_DATA")
 
-# EFUSE_READ_CTRL field encoding (efuse_interface_ctrl.rdl).
-_EFUSE_READ_GO_BIT = 1 << 16  # efuse_read_go (singlepulse)
-_EFUSE_READ_BUSY_BIT = 1 << 24  # read_busy (status)
-_EFUSE_READ_DONE_BIT = 1 << 25  # read_done (status)
-_EFUSE_READ_STATUS_BIT = 1 << 26  # read_status: 1 = logic error (go w/o enable)
-_EFUSE_READ_ENABLE_BIT = 1 << 28  # read_enable
+_EFUSE_READ_GO_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_read_go")
+_EFUSE_READ_BUSY_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_busy")
+_EFUSE_READ_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_done")
+_EFUSE_READ_STATUS_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_status")
+_EFUSE_READ_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable")
 
 _POLL_CYCLES = 200
 
