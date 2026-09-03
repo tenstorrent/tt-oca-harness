@@ -82,13 +82,7 @@ addrmap smc_top #(
 
     cpu_ctrl                       smc_cpu_ctrl                   @BASE_ADDR + 0x003_9000;
 
-    // OCA I3C Controllers — each I3CCSR rounds up to 0x1000, so spaced 0x1000 apart
-    oca_i3c_wrap                   oca_i3c_wrap_0             @BASE_ADDR + 0x003_a000;
-    oca_i3c_wrap                   oca_i3c_wrap_1             @BASE_ADDR + 0x003_b000;
-    oca_i3c_wrap                   oca_i3c_wrap_2             @BASE_ADDR + 0x003_c000;
-    oca_i3c_wrap                   oca_i3c_wrap_3             @BASE_ADDR + 0x003_d000;
-    oca_i3c_wrap                   oca_i3c_wrap_4             @BASE_ADDR + 0x003_e000;
-    oca_i3c_wrap                   oca_i3c_wrap_5             @BASE_ADDR + 0x003_f000;
+    oca_i3c_wrap                   oca_i3c_wrap                   @BASE_ADDR + 0x003_a000;
 
     external spm_rom_memory        spm_rom_memory              @BASE_ADDR + 0x004_0000;
 
