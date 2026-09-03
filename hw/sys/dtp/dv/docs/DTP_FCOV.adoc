@@ -22,7 +22,7 @@ its checker-gated Python ledger (`env/dtp_fcov.py`).
 [cols=",",options="header",]
 |===
 |Field |Value
-|Reference SPEC |`DTP_SPEC.adoc`
+|Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
 |Reference VPLAN |`DTP_VPLAN.adoc`
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
