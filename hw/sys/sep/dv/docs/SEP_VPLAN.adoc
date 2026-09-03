@@ -468,7 +468,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_sec_dis_override_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
+|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-SENSE-GATED-RESET` requires that the match alone does NOT release the sense-gated reset.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_locked_field_access_irq_path_test>> and <<sep_efuse_token_match_fault_pic_test>> reach eFuse state, but their contract is the IRQ/PIC delivery path. They are graded there so each test has one owning bucket.
@@ -645,7 +645,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |SEC_DIS override
 |PROVEN
-|`sep_sec_dis_override_test`
+|`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (issue 1462: release is a DTP TDR step).
 
 |eFuse set-only (anti-rollback)
 |PROVEN
@@ -1397,7 +1397,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-ISOLATION
 |While the CPU reset is asserted, the main SEP reset stays high — and that observable is proven capable of reading 0, by asserting the main reset at the end of the test. Without that anchor a stuck-high read would have satisfied this row identically.
 |CHK-RELEASE
-|Releasing the input returns the CPU reset high — the path is not sticky.
+|Releasing the SEP input `wdt_rst_ni_i` returns `sep_cpu_reset_n` high. This is the pin path only. Closed-loop bite stickiness is outside this DUT.
 |===
 
 '''''
@@ -2613,7 +2613,7 @@ stall-duration / recovery stress are not exercised here.
 |CHK-WRITE-ALLOWED
 |The write-allowed bit gates the matched write in both directions, and the allowed write lands (confirmed by a CPU-side readback).
 |CHK-OWNERSHIP
-|The CPU-LSU reads the programmed rule at the filter CFG CSR. The external master completes DECERR on read and write of that address, and the denied write does not land. CFG stays outside every allow window (firmware must not allow-list CFG).
+|The CPU-LSU reads inbound CFG, outbound CFG[0], alias/AP/STEE remap bases, `SEP_GLOBAL_BASE_ADDR`, and `SEP_REGION_SIZE`. The external master completes DECERR on read and write of each address, and the denied write does not land. Those CSRs stay outside every allow window (firmware must not allow-list them). `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` share the window-0 (`SEP_SW_DEBUG`) 4 KB page, so they also prove the live window is START/END, not the page.
 |CHK-NONVAC
 |Allow and block were both observed under one lifecycle state.
 |CHK-SRC-ID
@@ -2642,7 +2642,7 @@ windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0, then the
 `allow_burst` deny/allow pair on AR and AW of scratch and the burst-to-single
 Lite split, then the same-page 4 KB granule, page-bound, and `FILTER_CONFIG.locked`
-on entry 15. `CHK-OWNERSHIP` keeps CFG outside every allow window. WRAP, FIXED and
+on entry 15. `CHK-OWNERSHIP` keeps inbound CFG, outbound CFG, the remap banks, and `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE` outside every allow window. WRAP, FIXED and
 `AxLEN>1` are not walked: the Lite bridges convert those bursts to singles, so the
 filter only ever sees `tx_len==0`.
 
@@ -4061,16 +4061,16 @@ both lock flavours of one seed-selected spare.
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
-*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
+*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. A match before sense-done must not release the sense-gated reset (`hw/ip/efuse/rtl/efuse_interface_controller.sv`, issue 1462).
 
 *Test Procedure*:
 
 [arabic]
 . A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
 . The comparator hashes the written `SEC_DISABLE_TOKEN_I` and compares it to the metal expected digest reconstructed from `SEP_SEC_DISABLE_TOKEN` (`hw/ip/efuse/rtl/efuse_token_processing.sv`, `hw/sys/sep/doc/token_processing.adoc`).
-. `tb_top` binds that parameter to SHA-256 of the all-zero 32-byte token so an AXI write of zeros matches.
-. Token `1` mismatches.
-. On match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group still gated by SECURE_TM=0).
+. After `release_no_cpu_reset`, write the all-zero token before `sep_fuse_sense_done_o`. Match must assert, and `sep_cpu_reset_n_o` must stay 0 while sense is still open (`ext_boot_seq_done_i` is already 1, so sense is the only held term).
+. Wait for sense-done. Token `1` mismatches.
+. On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group still gated by SECURE_TM=0).
 
 *Checkers*:
 
@@ -4079,6 +4079,8 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-DIGEST-BIND
 |Independent SHA-256 of the all-zero token equals the TB-bound digest.
+|CHK-SENSE-GATED-RESET
+|A match with `sep_fuse_sense_done_o=0` and `ext_boot_seq_done_i=1` leaves `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` at 0. `reset_n` carries no SEC_DIS term; the release is a separate DTP `sep_reset_n` TDR step.
 |CHK-MISMATCH
 |Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=0x2a`.
 |CHK-NO-OVERRIDE
@@ -4478,7 +4480,7 @@ constraint is not an open defect.
 |Topic |Contract
 
 |Inbound CFG allow-list (firmware constraint)
-|Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
+|Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle.
@@ -4504,7 +4506,7 @@ constraint is not an open defect.
 |The array behind the fuse-command interface is a simulation-only behavioural bank, not an OTP macro. Two properties the eFuse programming entries appear to establish are properties of that model rather than of hardware: write-one-to-set additivity is OR-only by construction, so a bank that overwrote instead of OR-ing cannot be represented and no-clobber is not a failable contract; and persistence across cold reset comes from the model having no reset on its storage. What is proven against real logic is that each program reached its addressed bit through the real programming path, and that the sense FSM re-reads the array after reset with the shadow tracking it.
 
 |JTAG MMR token-block access
-|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
+|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
 |RTL assertions are backend-dependent
 |What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA — the `ocah_axi_sva` protocol bind included — expand to nothing. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 
