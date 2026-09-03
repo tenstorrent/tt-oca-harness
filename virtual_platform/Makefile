@@ -685,7 +685,7 @@ vp-py-deps:
 
 # Build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf).
 # The named ot-toolchain-images target owns the BUILD_DIR/flag mapping; it does
-# NOT run oca-images (which needs uv + the tt-boot-manifest submodule — the
+# NOT run oca-images (which needs uv + the tt-oca-manifest submodule — the
 # ELF the VP boots does not).
 boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."
@@ -694,8 +694,8 @@ boot-build:
 	@echo "[VP] Built: $(BOOT_ELF)"
 
 # Generate the signed SPI image used by the OT-negative pytest suite.
-# Needs uv on PATH and the tt-boot-manifest submodule initialized
-# (git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest).
+# Needs uv on PATH and the tt-oca-manifest submodule initialized
+# (git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest).
 # Build + run the boot ROM on sep-vp. Control via BOOT_ARGS, e.g.:
 #   make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"
 #   make boot-run BOOT_ARGS="--boot secondary --timeout 30"

@@ -1,6 +1,6 @@
 """OCA manifest field offsets, loaded from the producer's own constants.
 
-The offsets are not restated here. `src/oca/constants.py` in the tt-boot-manifest
+The offsets are not restated here. `src/oca/constants.py` in the tt-oca-manifest
 submodule is what the packer writes with and what the C validator's layout-sync
 test pins, so a copy in this repo would be a third place to drift. A test that
 pokes byte 3748 because a comment said so is a test that silently stops poking
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from sepvp import paths
 
-_CONSTANTS = (paths.BOOTCODE_DIR / "tools" / "tt-boot-manifest" / "src" / "oca"
+_CONSTANTS = (paths.BOOTCODE_DIR / "tools" / "tt-oca-manifest" / "src" / "oca"
               / "constants.py")
 
 
@@ -25,7 +25,7 @@ def _load():
     if not _CONSTANTS.is_file():
         raise FileNotFoundError(
             f"OCA producer constants not found at {_CONSTANTS}; is the "
-            "tt-boot-manifest submodule checked out?")
+            "tt-oca-manifest submodule checked out?")
     spec = importlib.util.spec_from_file_location("oca_producer_constants", _CONSTANTS)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

@@ -13,7 +13,7 @@ extension, and returns the same list of ini overrides for either:
       chiplet_uid: [1, 2, 3, 4, 5, 6, 7, 8]
 
 * **``.toml``** — the *same* RTL/UVM eFuse config format the SEP testbench's
-  efuse-preload generator consumes (and that tt-boot-manifest's
+  efuse-preload generator consumes (and that tt-oca-manifest's
   ``SepEfuseConfig`` emits). It is keyed by hardware REGISTER name with nested
   ``fields.<name>.value`` and per-register ``write_locked``/``read_locked`` flags
   (see :func:`overrides_from_toml`). This lets one config drive both RTL sim

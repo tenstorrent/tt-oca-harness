@@ -148,7 +148,7 @@ def bootcode_elf(request):
     OpenTitan controller build (the bootrom Makefile's ot-toolchain-images target);
     the default Cadence build is not runnable on the VP (its xSPI controller is not
     modeled). The named variant target is used instead of `all` because oca-images
-    needs uv + the tt-boot-manifest submodule, which the ELF does not."""
+    needs uv + the tt-oca-manifest submodule, which the ELF does not."""
     if request.config.getoption("build"):
         res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
                     "ot-toolchain-images", cwd=paths.OCAH_ROOT)
@@ -202,7 +202,7 @@ def oca_images(request):
                     "oca-images", cwd=paths.OCAH_ROOT, container_ok=False)
         if res.returncode != 0:
             pytest.skip(
-                "oca-images build failed (tt-boot-manifest submodule initialized? "
+                "oca-images build failed (tt-oca-manifest submodule initialized? "
                 "uv and a RISC-V toolchain on PATH?):\n"
                 f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}")
     missing = [str(p) for p in imgs.values() if not p.is_file()]
