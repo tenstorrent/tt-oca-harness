@@ -467,39 +467,39 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from external pins.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External GPIO pins → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from pad ring to core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data to external pins.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → External GPIO pins</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data from core to pad ring.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input enable control.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → GPIO wraps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad-to-core path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output enable control.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → GPIO wraps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO core-to-pad path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -777,8 +777,8 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronized interrupt output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt aggregator → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-controlled global synchronisation bit (<code>SYNC_REG.sync</code> in the reset unit). Not an interrupt aggregate output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit → External</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -944,58 +944,13 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_override_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_reset_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::jtag_smc_reset_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Override cold reset value (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cool_override_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Override cool reset value (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_core_override_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Override core reset value (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_override_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable cold reset override.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cool_override_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable cool reset override.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_core_override_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable core reset override.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed reset-override control struct carrying all SMC reset override enables and active-low values. Driven by DTP via JTAG IC_RESET. Tie all enables to 0 when not used.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP → SMC reset unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All enables 0</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cla_gpio_enable_o</code></p></td>
@@ -1025,58 +980,22 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>halt_clock_global_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[5:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Halt clock global input array.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External XTrigger agents → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>halt_clock_global_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Halt clock global output array.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External XTrigger agents → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_pads_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger pad interface input.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External pads → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_pads_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger pad interface output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFD controller → External pads</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[5:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger subsystem interface inputs.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External subsystems → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross-trigger subsystem input. SMU drives from <code>dtp_xtrig_ctm_src_req[1:0]</code>. Internal SMU connection; not an SMU external port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: DTP <code>xtrig_ctm_src_req_o[1:0]</code> → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger subsystem interface output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFD controller → External subsystems</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross-trigger subsystem output. SMU routes to <code>dtp_xtrig_ctm_dst_req[1:0]</code>. Internal SMU connection; not an SMU external port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: SMC → DTP <code>xtrig_ctm_dst_req_i[1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>trace_mem_req_o</code></p></td>

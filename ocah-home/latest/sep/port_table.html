@@ -509,15 +509,6 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core_id</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:4]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU core ID.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration tie-off</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_int</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -828,8 +819,8 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 1 (to SMC).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC lifecycle logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 1. Exported at SMU boundary; not currently connected to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -837,8 +828,8 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 2 (to SMC).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC lifecycle logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 2. Exported at SMU boundary; not currently connected to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -873,17 +864,17 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LC_STATE_BIT_WIDTH-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (differentially encoded).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via <code>dbg_disable_o</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, SMU external</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed debug-disable struct routed by SMU to DTP debug-disable control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU → DTP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -892,7 +883,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle signal integrity error.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -901,7 +892,16 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security disable output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>

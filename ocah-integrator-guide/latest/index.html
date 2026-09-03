@@ -502,7 +502,9 @@ configuration (see <a href="#smc-peripheral-connections">Peripheral Interface Co
 to drive the I3C interface, I2C interface, UART interface, and AVSBus interface.</p>
 </div>
 <div class="paragraph">
-<p>Assert <code>powergood_i</code> after power-up sequence completion. Deassert <code>rst_cold_ni</code> after the power-up sequence completion.</p>
+<p>Hold <code>rst_cold_ni</code> asserted (low) while power supplies and clocks stabilize.
+Assert <code>powergood_i</code> once supplies reach nominal, then deassert <code>rst_cold_ni</code>
+(drive high) to start the boot sequence.</p>
 </div>
 <div class="paragraph">
 <p>The SMC generates AASD (async-assert / sync-deassert) reset outputs: <code>rst_primary_smc_clk_no</code> for the
@@ -511,11 +513,11 @@ These ensure clean reset release without metastability across the system
 hierarchy.</p>
 </div>
 <div class="paragraph">
-<p>Optional reset override inputs (<code>rst_cold_override_ni</code>, <code>rst_cool_override_ni</code>,
-<code>rst_core_override_ni</code>) allow external control of specific reset domains for
-test and debug scenarios. Most integrations leave these override enables
-deasserted; the DTP drives them through JTAG IC_RESET controls when enabled
-(see <a href="#smc-dtp-interconnection">SMC-DTP Internal Interconnection</a>).</p>
+<p>Reset domain overrides are delivered through a single typed input,
+<code>jtag_reset_ctrl_i</code> (<code>smc_pkg::jtag_smc_reset_ctrl_t</code>), which carries all
+SMC reset override enables and active-low values. The DTP drives this input
+through the JTAG IC_RESET mechanism (see <a href="#smc-dtp-interconnection">SMC-DTP Internal Interconnection</a>); most
+integrations leave all override enables deasserted.</p>
 </div>
 </div>
 <div class="sect3">
@@ -625,14 +627,13 @@ may remain unconnected if your integration does not include SEP.</p>
 to external system resources. This interface uses an 8-bit transaction ID field
 to accommodate merged traffic from multiple input paths. Connect this interface
 to your system interconnect to allow SMC components access to external memory
-and peripherals. The testbench shows example connections using AXI VIP
-components that can be replaced with your system fabric.</p>
+and peripherals. An AXI VIP or equivalent BFM is a suitable stand-in during
+integration verification before the real system fabric is available.</p>
 </div>
 <div class="paragraph">
 <p>The <code>jtag_axi_in</code> interface provides debug access through JTAG mechanisms. This
 interface uses reduced 2-bit transaction IDs and connects to your JTAG debug
-infrastructure. The testbench demonstrates typical debug access patterns through
-this interface.</p>
+infrastructure.</p>
 </div>
 </div>
 <div class="sect3">
@@ -646,7 +647,7 @@ defined by <code>smc_padring_pkg::DefaultDirectionMap</code>, not by the table.<
 <div class="paragraph">
 <p>The public <code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> examples
 show the pad connections. For bidirectional pins, implement proper tri-state
-buffers controlled by the <code>gpio_out_en_o</code> signals. Connect multiplexed UART,
+buffers controlled by the <code>core2pad_en_o</code> signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.</p>
 </div>
@@ -687,7 +688,7 @@ forwards the transaction; what lives behind it is entirely adopter-defined.</p>
 SMC memory map fixes and every integration must implement, and a supplementary
 region for anything else the adopter chooses to expose. For placement and the
 full register layout, refer to the SMC Memory Map documentation
-(<code>hw/smc/doc/memmap.adoc</code>).</p>
+(<code>hw/sys/smc/doc/memmap.adoc</code>).</p>
 </div>
 </div>
 <div class="sect4">
@@ -826,10 +827,10 @@ completion.
   External DFT logic monitors this signal to trigger repair operations.</p>
 </li>
 <li>
-<p><code>skip_mem_repair_o</code>: Reset unit output indicating repair should be bypassed. Asserts
-during FLR operations or when the <code>BYPASS_SRAM_REPAIR</code> strap is set. When
-asserted, external repair logic should skip operations and immediately assert
-completion status.</p>
+<p><code>skip_mem_repair_o</code>: Reset unit output indicating repair should be bypassed. It
+is driven by the isolation request inputs (<code>isolate_req_pin_sync_smc</code> or the
+SMC isolation register), not directly by the strap. When asserted, external
+repair logic should skip operations and immediately assert completion status.</p>
 </li>
 <li>
 <p><code>ext_boot_seq_done_i</code>: External signal indicating the external boot sequence (memory
@@ -864,10 +865,30 @@ completion.</p>
 <p><strong>Bypass Configuration:</strong></p>
 </div>
 <div class="paragraph">
-<p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (<code>STRAPS_LO[13]</code>) bypasses
-repair logic when asserted high, causing <code>skip_mem_repair_o</code> to assert. Use
-bypass mode only when SRAM arrays are guaranteed defect-free, such as during
-development or with known-good components.</p>
+<p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (<code>STRAPS_LO[13]</code>) is captured into
+the reset-unit strap registers. Keep these three mechanisms distinct:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>No RTL path drives <code>skip_mem_repair_o</code> from this strap directly.
+<code>skip_mem_repair_o</code> is driven from the isolation request path.</p>
+</li>
+<li>
+<p>Production ROM reads the strap and, when asserted, skips repair-status
+validation and writes <code>MBIST_STATUS_MEM_REPAIR_BYPASSED</code> to scratchpad
+register 15 (<code>SMC_SCRATCH_MBIST_STATUS</code>, <code>0xC003_90F8</code>). It does not
+cause the external repair controller to skip physical repair.</p>
+</li>
+<li>
+<p>External repair logic independently honors <code>skip_mem_repair_o</code> to decide
+whether to bypass physical repair operations.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
+during development or with known-good components.</p>
 </div>
 <div class="paragraph">
 <p><strong>Integration Requirements:</strong></p>
@@ -876,10 +897,9 @@ development or with known-good components.</p>
 <p>Provide an external memory repair controller that monitors <code>fuse_sense_done_o</code>
 to initiate repair, respects <code>skip_mem_repair_o</code> for bypass control, reads
 repair data from eFuse shadow registers, applies repair configuration to SRAM
-arrays, asserts ext_boot_seq_done_i and updates DFT Control Status registers
+arrays, asserts <code>ext_boot_seq_done_i</code> and updates DFT Control Status registers
 with completion status. The controller operates independently of the SMC core
-and must complete before the CPU cluster accesses SRAM. The testbench demonstrates
-example integration patterns adaptable to your DFT infrastructure.</p>
+and must complete before the CPU cluster accesses SRAM.</p>
 </div>
 <div class="paragraph">
 <p>For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
@@ -887,9 +907,9 @@ adopters must ensure the integrated logic will not interfere with accesses from 
 OCAH&#8217;s efuse interface.</p>
 </div>
 <div class="paragraph">
-<p>During FLR operations, repair is automatically bypassed via <code>skip_mem_repair_o</code>
-to enable rapid reset sequences. Normal cold reset sequences always execute
-repair unless explicitly bypassed via strap configuration.</p>
+<p>During FLR operations, the isolation request path asserts <code>skip_mem_repair_o</code>
+to bypass repair for rapid reset sequences. Normal cold reset sequences always
+execute repair unless isolation is already asserted.</p>
 </div>
 </div>
 <div class="sect3">
@@ -906,9 +926,18 @@ maintained in a single place:</p>
 <p><a href="smc/interrupts.html#cpu-interrupt-vector-map" class="xref page">SMC CPU interrupt vector map</a></p>
 </div>
 <div class="paragraph">
-<p>Configure your interrupt controller to monitor the <code>sync_irq_o</code> signal and read SMC interrupt
-status registers to determine active sources. The testbench demonstrates interrupt injection
-and handling patterns through the various interrupt input ports.</p>
+<p>The SMC PLIC and CPU interrupt vector are internal. <code>sync_irq_o</code> is <strong>not</strong> the
+interrupt aggregate&#8201;&#8212;&#8201;it is the software-controlled <code>SYNC_REG.sync</code> global
+synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
+Do not connect an external interrupt controller to <code>sync_irq_o</code>.</p>
+</div>
+<div class="paragraph">
+<p>External interrupt sources visible to the adopter are <code>ext_interrupts_i</code> (SMC
+external interrupt input vector, width <code>NUM_INT_TO_SMC</code>),
+<code>ext_mailbox_interrupts_o</code> (outbound mailbox notifications, width
+<code>NUM_MAILBOXES</code>), <code>gpio_interrupt_o</code> (GPIO edge/level events, width
+<code>NUM_GPIO_WRAPS</code>), and <code>uart_interrupt_o</code> (UART TX/RX events, width <code>NUM_UART</code>).
+For the full PLIC source map see the SMC Technical Reference Manual.</p>
 </div>
 </div>
 <div class="sect3">
@@ -921,10 +950,11 @@ clock domain with separate <code>rst_telemetry_ni</code> reset. Connect these si
 sources for debug data collection.</p>
 </div>
 <div class="paragraph">
-<p>The <code>ext_debug_bus_i</code> provides a 512-bit wide debug observation bus for internal signal
-monitoring. The cross-trigger interface (<code>xtrigger_pads_i</code>, <code>xtrigger_pads_o</code>, <code>xtrigger_ss_i</code>,
-<code>xtrigger_ss_o</code>) enables coordinated debug triggering across multiple subsystems. The
-<code>halt_clock_global_i</code> input array accepts clock halt requests from external debug agents.</p>
+<p>At the SMC boundary, <code>ext_debug_bus_i</code> is 512 bits wide; the SMU concatenates
+the adopter-visible 128-bit input with the SEP&#8217;s internal 384-bit bus before
+driving SMC. The typed <code>xtrigger_ss_i</code> / <code>xtrigger_ss_o</code> ports are the only
+cross-trigger signals at the SMC boundary. The adopter-visible SMU cross-trigger
+interfaces are <code>xtrig_ctm_*</code>, <code>xtrig_clk_stop_req_i</code>, and the CTP groups.</p>
 </div>
 <div class="paragraph">
 <p>Trace memory interfaces (<code>trace_mem_req_o</code> and <code>trace_mem_resp_i</code>) connect to trace RAM
@@ -954,15 +984,18 @@ signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.</p>
 </div>
 <div class="paragraph">
-<p>For Function Level Reset (FLR) support, assert <code>cfg_flr_pf_active_i</code> to trigger a warm reset
-sequence. This isolates subsystems through <code>isolate_req_o</code> signals and performs controlled
-reset propagation. Monitor <code>ss_reset_complete_i</code> signals to verify subsystem reset completion
-before releasing isolation.</p>
+<p>For Function Level Reset (FLR) support, assert <code>cfg_flr_pf_active_i</code> to trigger
+a warm reset sequence. The SMC asserts <code>isolate_req_o</code> bits for the affected
+subsystem indices. The adopter&#8217;s power controller drives <code>ss_reset_complete_i</code>
+high once the subsystem reset is complete; the SMC synchronizes this into the
+readable <code>SS_RESET_COMPLETE</code> register. Isolation remains asserted until cleared by software: SMC firmware must poll
+<code>SS_RESET_COMPLETE</code> and then write <code>ISOLATE_REQ_SMC_REG</code> to clear the FLR
+isolation latch. Do not assume isolation releases automatically on
+<code>ss_reset_complete_i</code>.</p>
 </div>
 <div class="paragraph">
-<p>The testbench file demonstrates the complete power-on sequence including clock initialization,
-reset timing, strap configuration, and peripheral bring-up. Reference this testbench when
-implementing your integration-specific bring-up procedures.</p>
+<p>See <code>hw/top/smu_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> for reference
+bring-up wiring examples covering clock, reset, strap, and peripheral connections.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1258,39 +1291,39 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from external pins.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External GPIO pins → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from pad ring to core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data to external pins.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → External GPIO pins</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data from core to pad ring.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input enable control.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → GPIO wraps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad-to-core path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output enable control.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → GPIO wraps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO core-to-pad path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -1568,8 +1601,8 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronized interrupt output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt aggregator → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-controlled global synchronisation bit (<code>SYNC_REG.sync</code> in the reset unit). Not an interrupt aggregate output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit → External</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -1735,58 +1768,13 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_override_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_reset_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::jtag_smc_reset_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Override cold reset value (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cool_override_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Override cool reset value (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_core_override_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Override core reset value (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_override_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable cold reset override.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cool_override_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable cool reset override.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_core_override_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable core reset override.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset override enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed reset-override control struct carrying all SMC reset override enables and active-low values. Driven by DTP via JTAG IC_RESET. Tie all enables to 0 when not used.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP → SMC reset unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All enables 0</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cla_gpio_enable_o</code></p></td>
@@ -1816,58 +1804,22 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>halt_clock_global_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[5:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Halt clock global input array.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External XTrigger agents → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>halt_clock_global_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Halt clock global output array.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External XTrigger agents → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_pads_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger pad interface input.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External pads → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_pads_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger pad interface output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFD controller → External pads</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[5:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger subsystem interface inputs.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External subsystems → DFD controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross-trigger subsystem input. SMU drives from <code>dtp_xtrig_ctm_src_req[1:0]</code>. Internal SMU connection; not an SMU external port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: DTP <code>xtrig_ctm_src_req_o[1:0]</code> → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XTrigger subsystem interface output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFD controller → External subsystems</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross-trigger subsystem output. SMU routes to <code>dtp_xtrig_ctm_dst_req[1:0]</code>. Internal SMU connection; not an SMU external port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: SMC → DTP <code>xtrig_ctm_dst_req_i[1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>trace_mem_req_o</code></p></td>
@@ -3653,11 +3605,14 @@ used by the SMC. The SEP must wait for the SMC fuse sense to complete
 signals completion through <code>sep_fuse_sense_done_o</code>.</p>
 </div>
 <div class="paragraph">
-<p>The lifecycle controller outputs <code>lc_state_o</code> (differentially encoded),
-<code>feat_ctrl_o</code> (feature control vector), <code>lc_sigint_err_o</code> (signal integrity
-error), and <code>security_disable_o</code>. These outputs gate debug access through the
-DTP and control feature availability across the chiplet. The <code>lcc_demote_state</code>
-outputs report lifecycle demotion events to the SMC.</p>
+<p>The lifecycle controller exports <code>lc_state_o</code> (differentially encoded),
+<code>lc_sigint_err_o</code> (signal integrity error), <code>security_disable_o</code>,
+<code>secure_tm_o</code>, and <code>dbg_disable_o</code> (the typed debug-disable struct that the
+SMU routes to the DTP). The feature-control vector (<code>feat_ctrl</code>) is separately
+produced by the lifecycle controller and consumed internally within sep.sv; it
+is not an external port. <code>lcc_demote_state_1_o</code> and <code>lcc_demote_state_2_o</code> are
+exported at the SMU boundary; at present the SMU does not connect them to the
+SMC instance.</p>
 </div>
 <div class="paragraph">
 <p>An OTP debug AXI-Lite port (<code>axil_sep_otp_jtag</code>) connects to the DTP for JTAG
@@ -3693,8 +3648,10 @@ permitted after boot.</p>
 </div>
 <div class="paragraph">
 <p>The <code>sep_straps_i</code> input provides configuration straps for SEP-specific
-settings. The <code>rst_vec</code>, <code>jtag_id</code>, and <code>core_id</code> inputs must be tied to
-appropriate constants in the top-level integration.</p>
+settings. The <code>jtag_id</code> input must be tied to an appropriate constant in the
+top-level integration. A <code>rst_vec_i</code> port exists on <code>tb_top.sv</code> for DV reset
+vector injection; it is not present on <code>sep.sv</code> itself and requires no
+integration tie-off.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4034,15 +3991,6 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core_id</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:4]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU core ID.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration tie-off</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_int</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -4353,8 +4301,8 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 1 (to SMC).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC lifecycle logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 1. Exported at SMU boundary; not currently connected to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -4362,8 +4310,8 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 2 (to SMC).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC lifecycle logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 2. Exported at SMU boundary; not currently connected to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -4398,17 +4346,17 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LC_STATE_BIT_WIDTH-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (differentially encoded).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via <code>dbg_disable_o</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, SMU external</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed debug-disable struct routed by SMU to DTP debug-disable control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU → DTP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -4417,7 +4365,7 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle signal integrity error.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -4426,7 +4374,16 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security disable output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -4602,16 +4559,15 @@ Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.<
 </div>
 </div>
 <div class="sect4">
-<h5 id="wrapper-clock-and-pll-architecture"><a class="anchor" href="#wrapper-clock-and-pll-architecture"></a><a class="link" href="#wrapper-clock-and-pll-architecture">Wrapper Clock and PLL Architecture</a></h5>
+<h5 id="wrapper-clock-architecture"><a class="anchor" href="#wrapper-clock-architecture"></a><a class="link" href="#wrapper-clock-architecture">Wrapper Clock Architecture</a></h5>
 <div class="paragraph">
-<p>The <code>smu_wrapper.sv</code> (and <code>smc_wrapper.sv</code>) reference accepts <code>BP_REFCLK</code> at
-the pad level and processes it through the integrated padring to produce internal
-reference timing. A <code>pll_wrapper</code> module generates system clocks <code>pll_cgm_clk_o</code>
-and <code>pll_awm_clk_o</code> from the padring-processed reference. The SMC controls this
-PLL through the same AXI-Lite interface exposed by the core module. However, the
-core receives its clocks through DFX inputs <code>pll_cgm_clk_dfx_i</code> and
-<code>ref_clk_vdd_sys_dfx_i</code>, so the adopter must route PLL outputs through the clock
-distribution network and feed them back through these DFX inputs.</p>
+<p>The <code>smu_wrapper.sv</code> reference wrapper accepts pre-generated clocks directly:
+<code>clk_smu_i</code> (primary), <code>clk_ref_i</code> (reference), and <code>clk_periph_i</code>
+(peripheral). The <code>smc_wrapper.sv</code> uses <code>clk_smc_i</code> for the primary clock.
+Clock generation is entirely the adopter&#8217;s responsibility. The <code>pll_wrap</code> model
+included in the DV environment only terminates the SMC&#8217;s AXI-Lite PLL control
+interface; it does not generate functional clocks and must not be used as a
+synthesis model.</p>
 </div>
 </div>
 </div>
@@ -4676,8 +4632,10 @@ control CSRs <code>GLOBAL_BASE</code> / <code>REGION_SIZE</code>, exposed at bot
 <div class="paragraph">
 <p>SEP, SMC, and <code>smu_axi_xbar</code> all run on <code>clk_smu_i</code>, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar&#8217;s
-address arithmetic is done on 57-bit widened sums; <code>ext_out</code> covers
-<code>0x0000_8000_0000</code> up to the top of the 56-bit address space.</p>
+address arithmetic is done on 57-bit widened sums. <code>ext_out</code> is a
+catch-all port that carries any outbound SEP/SMC manager request not matched by
+the programmed apertures; it has no fixed lower-bound address. Unmatched
+inbound (<code>ext_in</code>) requests return a decode error and do not reach <code>ext_out</code>.</p>
 </div>
 <div class="sect4">
 <h5 id="smu-firmware-programming-order"><a class="anchor" href="#smu-firmware-programming-order"></a><a class="link" href="#smu-firmware-programming-order">Firmware programming order</a></h5>
@@ -5615,25 +5573,25 @@ wired internally within the SMU.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tap_ctrl_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t[1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdi_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_oen_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -5909,13 +5867,13 @@ with DECERR to all transactions.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_boot_stall_ovrd_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disconnected</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>boot_stall_jtag_ovrd_i</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_boot_stall_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disconnected</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>boot_stall_jtag_val_i</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -6116,10 +6074,10 @@ one less than DTP&#8217;s (8 vs 9).</p>
 <div class="sect4">
 <h5 id="cross-trigger-port-gpio-interface"><a class="anchor" href="#cross-trigger-port-gpio-interface"></a><a class="link" href="#cross-trigger-port-gpio-interface">Cross Trigger Port GPIO Interface</a></h5>
 <div class="paragraph">
-<p>The 16 CTP signals from DTP are ported through the SMU to <code>smu_wrapper</code> as
-external ports. In <code>smu_wrapper</code>, they connect to internal signals destined for
-<code>smc_ip_integration</code>. Currently, input signals are tied off to <code>'0</code> and output
-signals are dangling pending proper CTP-to-GPIO connection implementation.</p>
+<p>The 16 CTP signals from DTP are ported through the SMU and are direct
+<code>smu_wrapper</code> external ports (connected through the <code>.*</code> SMU instantiation).
+The adopter must connect them to GPIO pad logic; no tie-off or dangling is
+present in the wrapper itself.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -6141,97 +6099,97 @@ signals are dangling pending proper CTP-to-GPIO connection implementation.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (tied to '0)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (tied to '0)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (tied to '0)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (tied to '0)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external &#8594; smu_wrapper internal (dangling)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 </tbody>
 </table>
@@ -6634,25 +6592,25 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -7320,12 +7278,6 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP <code>xtrig_clk_stop_req_i[0]</code> (SMU connects SMC output to DTP input)</p></td>
 </tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>halt_clock_global_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_MAX_EXTERNAL_XTRIG_AGENTS-1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
-</tr>
 </tbody>
 </table>
 </div>
@@ -7348,28 +7300,16 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_pads_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_pads_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_t[NUM_MAX_EXTERNAL_XTRIG_AGENTS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: DTP <code>xtrig_ctm_src_req_o[1:0]</code> → SMC. Not an SMU external port.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[1:0]: DTP <code>xtrig_ctm_dst_req_i[1:0]</code> (both bits to DTP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: SMC → DTP <code>xtrig_ctm_dst_req_i[1:0]</code>. Not an SMU external port.</p></td>
 </tr>
 </tbody>
 </table>
@@ -7428,7 +7368,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_debug_bus_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[511:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[127:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -7596,15 +7536,15 @@ SMC within the SMU. These connections are not visible on the SMU boundary.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot Stall</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_boot_stall_ovrd_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disconnected</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_stall_jtag_ovrd_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP &#8594; SMC</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_boot_stall_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disconnected</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_stall_jtag_val_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP &#8594; SMC</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>
@@ -8409,39 +8349,39 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from external pins.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External GPIO pins</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from pad ring to core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data to external pins.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External GPIO pins</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data from core to pad ring.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_in_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input enable control.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad-to-core path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_out_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output enable control.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO core-to-pad path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -8728,7 +8668,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronized interrupt output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-controlled global synchronisation bit (<code>SYNC_REG.sync</code> in the SMC reset unit). Not an interrupt aggregate output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External systems</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -9398,7 +9338,11 @@ match cannot pick up unrelated cells.</p>
 </div>
 <div class="paragraph">
 <p>Clock-path cells take the extended prefix <code>d0nt_clk</code>, which selects the stricter
-rule below. The reference mapping uses these names:</p>
+rule below. The <code>d0nt_*</code> naming convention appears in the eFuse IP
+(<code>efuse_token_digest_sha256</code>, <code>efuse_triple_redundant_comparator</code>) as the
+primary example. The adopter is expected to carry the same convention into any
+technology-mapped primitive wrapper they deliver. The intended name assignments
+are:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -9603,8 +9547,9 @@ check. RTL simulation cannot detect their loss.</p>
 <h2 id="cdc-timing-constraints"><a class="anchor" href="#cdc-timing-constraints"></a><a class="link" href="#cdc-timing-constraints">6. CDC Timing Constraints</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>OCAH ships synthesis constraints that bound every clock-domain crossing in the
-SMC, SEP, DTP and SMU. This section explains what those constraints do, how they
+<p>OCAH ships synthesis constraints that bound the enumerated synchronization
+structures in the SMC, SEP, DTP and SMU. Independent CDC sign-off is still
+required for the assembled SoC. This section explains what those constraints do, how they
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.</p>
 </div>
@@ -9648,7 +9593,7 @@ element&#8217;s guarantee still holds.</p>
 <div class="sect2">
 <h3 id="what-is-constrained"><a class="anchor" href="#what-is-constrained"></a><a class="link" href="#what-is-constrained">6.2. What is constrained</a></h3>
 <div class="paragraph">
-<p>Every CDC element in each block is enumerated and given its own <code>set_max_delay</code>,
+<p>Each enumerated CDC element in each block is given its own <code>set_max_delay</code>,
 sized from the clock that actually captures it as read from the netlist. Muxed
 domains resolve to several clocks; the tightest period wins.</p>
 </div>
