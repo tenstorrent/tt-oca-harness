@@ -65,11 +65,11 @@ class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
   protected function void warn_scan_precondition(string op_name);
     ocah_jtag_tap_state_e tracked = m_model.state();
     if (tracked != OCAH_JTAG_RUN_TEST_IDLE)
-      `uvm_warning(get_type_name(), $sformatf(
-                   "%s issued with tracked TAP state %s; the scan contract expects RUN_TEST_IDLE",
-                   op_name,
-                   tracked.name()
-                   ))
+      `uvm_error(get_type_name(), $sformatf(
+                 "%s issued with tracked TAP state %s; the scan contract expects RUN_TEST_IDLE",
+                 op_name,
+                 tracked.name()
+                 ))
   endfunction
 
   // ------------------------------------------------------------------

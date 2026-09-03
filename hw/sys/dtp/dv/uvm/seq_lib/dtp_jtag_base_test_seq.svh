@@ -58,8 +58,8 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     m_family.required_ids = required_ids;
     m_family_negative = test_cfg.family_checker_negative;
     if (m_family_negative)
-      `uvm_warning(get_type_name(),
-                   "NEGATIVE VALIDATION: family checker expectations will be corrupted")
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: family checker expectations will be corrupted", UVM_LOW)
     m_scan_crosscheck = use_scan_crosscheck;
     m_expected_ir_widths.delete();
     m_expected_dr_widths.delete();

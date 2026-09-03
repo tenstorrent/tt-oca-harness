@@ -49,10 +49,10 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_jtag_base_test_seq;
 
     if (test_cfg.tap_checker_negative) begin
       expected_idcode ^= 32'h2;
-      `uvm_warning(
-          get_type_name(),
-          $sformatf("NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",
-                    expected_idcode, DtpDefaultIdcode))
+      `uvm_info(get_type_name(),
+                $sformatf(
+                    "NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",
+                    expected_idcode, DtpDefaultIdcode), UVM_LOW)
     end
 
     states[0] = OCAH_JTAG_RUN_TEST_IDLE;
