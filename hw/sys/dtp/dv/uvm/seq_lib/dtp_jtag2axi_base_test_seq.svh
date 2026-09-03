@@ -441,9 +441,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     if (arm_expected && axi_cfg != null) begin
       if (test_cfg != null && test_cfg.axi_scoreboard_negative) begin
         armed_resp = (resp == OCAH_AXI_RESP_DECERR) ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_DECERR;
-        `uvm_warning(get_type_name(),
-                     $sformatf("NEGATIVE VALIDATION: arming resp=%s instead of injected resp=%s",
-                               armed_resp.name(), resp.name()))
+        `uvm_info(get_type_name(),
+                  $sformatf("NEGATIVE VALIDATION: arming resp=%s instead of injected resp=%s",
+                            armed_resp.name(), resp.name()), UVM_LOW)
       end
       axi_cfg.arm_expected_resp(addr, armed_resp, for_read, for_write);
     end

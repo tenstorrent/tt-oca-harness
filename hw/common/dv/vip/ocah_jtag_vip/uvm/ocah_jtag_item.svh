@@ -44,7 +44,7 @@ class ocah_jtag_item extends uvm_sequence_item;
   bit [63:0] tdo;                  // scan ops: observed TDO, LSB-first
   bit tdo_bits[];                  // raw op: per-step observed TDO
 
-  constraint c_width {
+  constraint width_c {
     (wbits.size() == 0) ->
     width inside {[1 : 64]};
   }

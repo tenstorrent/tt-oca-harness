@@ -71,7 +71,7 @@ module tb_decorrelator_disable;
   // Random noise generation
   always @(posedge clk) begin
     if (rstn) begin
-      noise <= $random;
+      noise <= $urandom;
     end
   end
 

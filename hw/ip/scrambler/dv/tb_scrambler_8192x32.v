@@ -17,10 +17,10 @@
 
 module tb_scrambler_8192x32;
 
-  localparam ADDR_WIDTH = 13;
-  localparam DATA_WIDTH = 32;
-  localparam MEM_DEPTH = 8192;
-  localparam SCRAMBLER_KEY = 32'hDEADBEEF;
+  localparam int unsigned ADDR_WIDTH = 13;
+  localparam int unsigned DATA_WIDTH = 32;
+  localparam int unsigned MEM_DEPTH = 8192;
+  localparam logic [31:0] SCRAMBLER_KEY = 32'hDEADBEEF;
 
   reg clk;
   reg rst_n;
@@ -104,7 +104,7 @@ module tb_scrambler_8192x32;
 
     for (i = 0; i < MEM_DEPTH; i = i + 1) begin
       logical_addr = i[ADDR_WIDTH-1:0];
-      write_data = $random;
+      write_data = $urandom;
       expected_data[i] = write_data;
 
       #1;

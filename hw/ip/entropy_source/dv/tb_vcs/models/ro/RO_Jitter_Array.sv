@@ -19,7 +19,7 @@ module RO_Jitter_Array #(
 );
   genvar i;
   generate
-    for (i = 0; i < N; i++) begin : g_ro
+    for (i = 0; i < N; i++) begin : gen_ro
       RO_Jitter_Model #(
         .PROB_SCALE(PROB_SCALE)
       ) u_ro (

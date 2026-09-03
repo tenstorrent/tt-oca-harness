@@ -217,7 +217,7 @@ module sep_local_axi_xbar_wrapper (
 
 `ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
   // Input ports (3-bit ID, 32-bit addr, 64-bit data, 12-bit user)
-  initial begin : g_input_type_assertions
+  initial begin : gen_input_type_assertions
     // IFU SRAM
     assert ($bits(ifu_sram_axi_req_i.aw.id) == $bits(ifu_sram_req.aw.id))
     else $fatal(1, "IFU SRAM AW ID width mismatch");
@@ -290,7 +290,7 @@ module sep_local_axi_xbar_wrapper (
   end
 
   // Output ports (6-bit ID, 32-bit addr, 64-bit data, 12-bit user)
-  initial begin : g_output_type_assertions
+  initial begin : gen_output_type_assertions
     // cpu_tcm
     assert ($bits(cpu_tcm_axi_req_o.aw.id) == $bits(cpu_tcm_req.aw.id))
     else $fatal(1, "CPU_TCM AW ID width mismatch");
@@ -457,7 +457,7 @@ module sep_local_axi_xbar_wrapper (
   end
 
   // User-field width assertions
-  initial begin : g_user_width_assertions
+  initial begin : gen_user_width_assertions
     // Input ports
     assert ($bits(ifu_sram_axi_req_i.aw.user) == $bits(ifu_sram_req.aw.user))
     else $fatal(1, "IFU SRAM AW USER width mismatch");

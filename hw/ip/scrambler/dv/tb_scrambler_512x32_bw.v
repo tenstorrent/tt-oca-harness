@@ -18,10 +18,10 @@
 
 module tb_scrambler_512x32_bw;
 
-  localparam ADDR_WIDTH = 9;
-  localparam DATA_WIDTH = 32;
-  localparam MEM_DEPTH = 512;
-  localparam SCRAMBLER_KEY = 32'hDEADBEEF;
+  localparam int unsigned ADDR_WIDTH = 9;
+  localparam int unsigned DATA_WIDTH = 32;
+  localparam int unsigned MEM_DEPTH = 512;
+  localparam logic [31:0] SCRAMBLER_KEY = 32'hDEADBEEF;
 
   reg clk;
   reg rst_n;
@@ -71,7 +71,7 @@ module tb_scrambler_512x32_bw;
 
   // Task: write all addresses with current byte_mask and write_data pattern,
   // then read back and verify
-  task run_phase;
+  task automatic run_phase;
     input [3:0] mask;
     input [63:0] phase_name;  // unused, printed by caller
     begin
@@ -80,7 +80,7 @@ module tb_scrambler_512x32_bw;
       write_enable = 1;
       for (i = 0; i < MEM_DEPTH; i = i + 1) begin
         logical_addr     = i[ADDR_WIDTH-1:0];
-        write_data       = $random;
+        write_data       = $urandom;
         expected_data[i] = write_data;
         @(posedge clk);
         #1;
@@ -108,7 +108,7 @@ module tb_scrambler_512x32_bw;
 
   // Task: write with full mask, then read with partial mask and verify
   // only masked bytes changed; unmasked bytes retain previous memory value
-  task run_partial_mask_phase;
+  task automatic run_partial_mask_phase;
     input [3:0] mask;
     integer b;
     begin

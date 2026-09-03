@@ -231,6 +231,17 @@ module tb_i3ccore;
   for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
     logic [63:0]  dat_arr [0:(1<<i3c_pkg::DatAw)-1];
     logic [127:0] dct_arr [0:(1<<i3c_pkg::DctAw)-1];
+
+    // Read-modify-write merge of the incoming write mask onto the current
+    // word, computed combinationally so the always_ff blocks below only
+    // ever commit it with a non-blocking assignment.
+    logic [63:0]  dat_nv;
+    logic [127:0] dct_nv;
+    assign dat_nv = (dat_mem_sink[gi].wdata & dat_mem_sink[gi].wmask) |
+                    (dat_arr[dat_mem_sink[gi].addr] & ~dat_mem_sink[gi].wmask);
+    assign dct_nv = (dct_mem_sink[gi].wdata & dct_mem_sink[gi].wmask) |
+                    (dct_arr[dct_mem_sink[gi].addr] & ~dct_mem_sink[gi].wmask);
+
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) begin
         for (int k = 0; k < (1 << i3c_pkg::DatAw); k++) dat_arr[k] <= '0;
@@ -241,11 +252,8 @@ module tb_i3ccore;
         dat_mem_src[gi].rvalid <= 1'b0;
         dat_mem_src[gi].rerror <= '0;
         if (dat_mem_sink[gi].req) begin
-          logic [63:0] nv;
-          nv = (dat_mem_sink[gi].wdata & dat_mem_sink[gi].wmask) |
-                         (dat_arr[dat_mem_sink[gi].addr] & ~dat_mem_sink[gi].wmask);
-          if (dat_mem_sink[gi].write) dat_arr[dat_mem_sink[gi].addr] <= nv;
-          dat_mem_src[gi].rdata  <= dat_mem_sink[gi].write ? nv : dat_arr[dat_mem_sink[gi].addr];
+          if (dat_mem_sink[gi].write) dat_arr[dat_mem_sink[gi].addr] <= dat_nv;
+          dat_mem_src[gi].rdata  <= dat_mem_sink[gi].write ? dat_nv : dat_arr[dat_mem_sink[gi].addr];
           dat_mem_src[gi].rvalid <= 1'b1;
         end
       end
@@ -260,11 +268,8 @@ module tb_i3ccore;
         dct_mem_src[gi].rvalid <= 1'b0;
         dct_mem_src[gi].rerror <= '0;
         if (dct_mem_sink[gi].req) begin
-          logic [127:0] nv;
-          nv = (dct_mem_sink[gi].wdata & dct_mem_sink[gi].wmask) |
-                         (dct_arr[dct_mem_sink[gi].addr] & ~dct_mem_sink[gi].wmask);
-          if (dct_mem_sink[gi].write) dct_arr[dct_mem_sink[gi].addr] <= nv;
-          dct_mem_src[gi].rdata  <= dct_mem_sink[gi].write ? nv : dct_arr[dct_mem_sink[gi].addr];
+          if (dct_mem_sink[gi].write) dct_arr[dct_mem_sink[gi].addr] <= dct_nv;
+          dct_mem_src[gi].rdata  <= dct_mem_sink[gi].write ? dct_nv : dct_arr[dct_mem_sink[gi].addr];
           dct_mem_src[gi].rvalid <= 1'b1;
         end
       end

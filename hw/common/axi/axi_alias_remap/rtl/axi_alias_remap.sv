@@ -75,10 +75,10 @@ module axi_alias_remap #(
   );
 
   generate
-    if (DEBUG_OUTPUT == 1) begin
+    if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
       assign o_remap_debug.aw_remap_hit_debug = aw_remap_idx;
       assign o_remap_debug.ar_remap_hit_debug = ar_remap_idx;
-    end else begin
+    end else begin : gen_no_remap_debug
       assign o_remap_debug = '0;
     end
   endgenerate

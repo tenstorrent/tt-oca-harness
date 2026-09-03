@@ -144,7 +144,7 @@ module Decorrelator_Checker #(
 
   genvar gi;
   generate
-    for (gi = 0; gi < N_LANES; gi++) begin : g_lane_check
+    for (gi = 0; gi < N_LANES; gi++) begin : gen_lane_check
 
       // Check on reference model valid pulse (only after warm-up)
       always @(posedge clk_i) begin
@@ -227,7 +227,7 @@ module Decorrelator_Checker #(
 
   // Assert that data should match when reference valid
   generate
-    for (gi = 0; gi < N_LANES; gi++) begin : g_assert_match
+    for (gi = 0; gi < N_LANES; gi++) begin : gen_assert_match
 
       property p_data_match;
         @(posedge clk_i) disable iff (~rstn_i || ~enable_i)

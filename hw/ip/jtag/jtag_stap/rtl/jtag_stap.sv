@@ -10,8 +10,8 @@ module jtag_stap
   import prim_jtag_pkg::*;
 #(
   parameter bit  SCAN_IN_PIPE = 0,     // Adds a pipeline stage to the client interface scan input
-  TDI_LOCKUP = 0,       // Adds a lockup latch to the STAP TDI input
-  SCAN_OUT_LOCKUP = 0,  // Adds a lockup latch to the STAP scan out output
+  parameter bit  TDI_LOCKUP = 0,       // Adds a lockup latch to the STAP TDI input
+  parameter bit  SCAN_OUT_LOCKUP = 0,  // Adds a lockup latch to the STAP scan out output
 
   parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,
   parameter type jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t

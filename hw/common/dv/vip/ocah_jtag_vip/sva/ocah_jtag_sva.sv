@@ -105,7 +105,7 @@ module ocah_jtag_sva #(
 `endif  // OCAH_INC_ASSERT
 
   generate
-    if (EN_STATE_RULES) begin : g_state_rules
+    if (EN_STATE_RULES) begin : gen_state_rules
 
       // --------------------------------------------------------------
       // State encoding and controller-diagram legality (§6.1.1).

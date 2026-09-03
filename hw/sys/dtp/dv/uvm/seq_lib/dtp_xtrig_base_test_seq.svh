@@ -144,8 +144,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     m_check.required_ids = required_ids;
     m_negative = test_cfg.xtrig_checker_negative;
     if (m_negative)
-      `uvm_warning(get_type_name(),
-                   "NEGATIVE VALIDATION: CTM reference-model selects will be inverted")
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: CTM reference-model selects will be inverted", UVM_LOW)
   endfunction
 
   function void finalize_xtrig_checker();
@@ -312,9 +312,9 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     // scenarios only), proving the model comparison gates pass/fail.
     if (m_negative) begin
       model_mask = (~input_mask) & CtmSelectMask;
-      `uvm_warning(get_type_name(),
-                   $sformatf("NEGATIVE VALIDATION: CTM model select 0x%0h instead of 0x%0h",
-                             model_mask, input_mask))
+      `uvm_info(get_type_name(),
+                $sformatf("NEGATIVE VALIDATION: CTM model select 0x%0h instead of 0x%0h",
+                          model_mask, input_mask), UVM_LOW)
     end
     ctm_model.program_src(output_port, model_mask);
     write_read_check(ctm_config_addr(output_port), input_mask, input_mask, 4'hF, CtmSelectMask,

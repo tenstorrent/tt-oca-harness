@@ -225,7 +225,7 @@ module entropy_generator_complex #(
   );
 
   // Per-lane generator: noise source + decorrelator + per-lane health test
-  for (genvar i = 0; i < NRINGS; i++) begin : g_ecmplx
+  for (genvar i = 0; i < NRINGS; i++) begin : gen_ecmplx
     entropy_generator #(
       .TOTAL_LENGTH  (get_total_length (i)),
       .TAPPED_LENGTH (get_tapped_length(i)),
@@ -253,16 +253,16 @@ module entropy_generator_complex #(
       .entropy_byte_valid_o       (entropy_byte_valid           [i]),
       .count_err_o                (generator_count_err          [i])
     );
-  end : g_ecmplx
+  end : gen_ecmplx
 
   // BIW GF(2^8) extractor: combines 3 groups of 4 lanes into 4 output bytes
-  for (genvar i = 0; i < 4; i++) begin : g_biw
+  for (genvar i = 0; i < 4; i++) begin : gen_biw
     gf_muladd u_muladd (
       .a (decorrelator_entropy_bytes[i]),
       .b (decorrelator_entropy_bytes[i+4]),
       .c (decorrelator_entropy_bytes[i+8]),
       .y (biw_entropy               [i])
     );
-  end : g_biw
+  end : gen_biw
 
 endmodule

@@ -35,8 +35,8 @@ module entropy_ripple_divider #(
   // Generate the ripple divider chain
   // Each stage is a toggle flip-flop (D=QB) that divides by 2
   generate
-    for (genvar i = 0; i < NUM_STAGES; i++) begin : g_div_stage
-      if (i == 0) begin : g_first_stage
+    for (genvar i = 0; i < NUM_STAGES; i++) begin : gen_div_stage
+      if (i == 0) begin : gen_first_stage
         // First stage: clocked by input clock
         gdffqb u_div_ff (
           .d_i   (div_qb[i]),     // Toggle: D = QB
@@ -45,7 +45,7 @@ module entropy_ripple_divider #(
           .q_o   (div_q[i]),      // Q output
           .qb_o  (div_qb[i])      // QB output (inverted)
         );
-      end else begin : g_ripple_stage
+      end else begin : gen_ripple_stage
         // Subsequent stages: clocked by previous stage's Q output
         gdffqb u_div_ff (
           .d_i   (div_qb[i]),     // Toggle: D = QB

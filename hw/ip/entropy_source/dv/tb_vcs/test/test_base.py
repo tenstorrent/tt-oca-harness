@@ -3085,8 +3085,8 @@ async def verify_autotune_detune_pattern(
     """Verify autotune FSM detune pattern by probing RTL signals.
 
     Probes per-lane RTL signals:
-    - tb_entropy_top.dut.egen.g_ecmplx[lane].gen_inst.nsrc.ro.detune_i
-    - tb_entropy_top.dut.egen.g_ecmplx[lane].gen_inst.test_fail
+    - tb_entropy_top.dut.egen.gen_ecmplx[lane].gen_inst.nsrc.ro.detune_i
+    - tb_entropy_top.dut.egen.gen_ecmplx[lane].gen_inst.test_fail
 
     Args:
         apb: APB master interface

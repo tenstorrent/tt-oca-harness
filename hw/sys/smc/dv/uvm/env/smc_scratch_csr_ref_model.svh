@@ -37,8 +37,9 @@ class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
       `uvm_fatal(get_type_name(), "smc_env_cfg `env_cfg` not found in uvm_config_db")
     if (tb_vif == null) `uvm_fatal(get_type_name(), "virtual smc_tb_if `tb_vif` not set by the env")
     if (cfg.csr_scoreboard_negative)
-      `uvm_warning(get_type_name(),
-                   "NEGATIVE VALIDATION: scratch readback prediction corrupted (bit 0 inverted)")
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: scratch readback prediction corrupted (bit 0 inverted)",
+                UVM_LOW)
   endfunction
 
   // One observed SEP_IN transaction: writes update the shadow, reads of a

@@ -32,7 +32,7 @@ module prim_sync_data_autohs #(
   logic  clk2_ack_toggle_reg;
 
 
-  if (DEPTH == 2) begin : g_depth_2
+  if (DEPTH == 2) begin : gen_depth_2
     prim_flop_2sync_r sync_req_toggle (
       .i_CK     (i_clk_dst),
       .i_RN     (i_reset_dst_n),
@@ -46,7 +46,7 @@ module prim_sync_data_autohs #(
       .i_D      (clk2_ack_toggle_reg),
       .o_Q      (clk1_ack_toggle)
     );
-  end else begin : g_depth_3
+  end else begin : gen_depth_3
     prim_flop_3sync_r sync_req_toggle (
       .i_CK     (i_clk_dst),
       .i_RN     (i_reset_dst_n),

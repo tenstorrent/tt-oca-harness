@@ -156,7 +156,7 @@ module tb_sample_clk_divider;
   //--------------------------------------------------------------------------
 
   // Reset task
-  task reset_dut;
+  task automatic reset_dut;
     begin
       rst_n = 0;
       enable = 0;
@@ -174,7 +174,8 @@ module tb_sample_clk_divider;
   endtask
 
   // Set division ratio and wait for measurement
-  task test_division_ratio(input integer gen_id, input integer div_idx, input integer div_factor);
+  task automatic test_division_ratio(input integer gen_id, input integer div_idx,
+                                     input integer div_factor);
     real expected_freq, measured_freq, freq_error;
     integer measurement_cycles;
     begin
@@ -230,7 +231,7 @@ module tb_sample_clk_divider;
   endtask
 
   // Test all division ratios for a generator
-  task test_generator(input integer gen_id);
+  task automatic test_generator(input integer gen_id);
     real expected_ratio;
     begin
       expected_ratio = real'(SHARED_TOTAL_LENGTH) / real'(jitter_ro_lengths[gen_id]);

@@ -420,7 +420,7 @@ module sep_ip_integration
   localparam int unsigned ABR_SIGZ_ADDR_W = $clog2(ABR_SIGZ_DEPTH);
   localparam int unsigned ABR_PK_ADDR_W = $clog2(ABR_PK_DEPTH);
 
-  // Memory-side counterpart of the g_abr_mem_* checks in sep_crypto_abr_wrapper:
+  // Memory-side counterpart of the gen_abr_mem_* checks in sep_crypto_abr_wrapper:
   // those pin the struct against the vendor parameters, this one pins it against the
   // depths the SRAMs are actually built with. Every channel must match exactly --
   // including INST2, which additionally sets the shared coefficient field width,
@@ -432,7 +432,7 @@ module sep_ip_integration
         ABR_SK_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_SK_ADDR_W    ||
         ABR_SIGZ_ADDR_W  != sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_ADDR_W  ||
         ABR_PK_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_PK_ADDR_W)
-    begin : g_abr_mem_depth_check
+    begin : gen_abr_mem_depth_check
     $error(
         {
           "ABR SRAM depths no longer match the SEP_CRYPTO_ABR_*_ADDR_W mirrors; an ",
@@ -549,7 +549,7 @@ module sep_ip_integration
 
   // Masked (second DOM share) twins of the four coefficient banks. They only exist
   // when abr_top is built with masking; otherwise their read data reads back zero.
-  if (ABR_MASKING_EN) begin : g_abr_masked_mem
+  if (ABR_MASKING_EN) begin : gen_abr_masked_mem
     prim_ram_1r1w #(
       .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
       .Depth           (ABR_INST0_DEPTH),
@@ -629,7 +629,7 @@ module sep_ip_integration
       .cfg_i     ('0),
       .cfg_rsp_o ()
     );
-  end else begin : g_abr_no_masked_mem
+  end else begin : gen_abr_no_masked_mem
     assign abr_mem_rsp_o.mem_inst0_bank0_masked_rdata = '0;
     assign abr_mem_rsp_o.mem_inst0_bank1_masked_rdata = '0;
     assign abr_mem_rsp_o.mem_inst1_masked_rdata       = '0;
@@ -685,12 +685,14 @@ module sep_ip_integration
   if (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W !=
             8 * sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W ||
         sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W !=
-            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W) begin : g_abr_wstrobe_width_check
+            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W) begin : gen_abr_wstrobe_width_check
     $error("ABR sig_z / pk data widths must be 8 bits per wstrobe bit");
   end
 
   logic [sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0] abr_sig_z_wmask;
-  for (genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W; b++) begin : g_abr_sig_z_wmask
+  for (
+      genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W; b++
+  ) begin : gen_abr_sig_z_wmask
     assign abr_sig_z_wmask[b*8+:8] = {8{abr_mem_req_i.sig_z_wstrobe[b]}};
   end
 
@@ -715,7 +717,7 @@ module sep_ip_integration
   );
 
   logic [sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W-1:0] abr_pk_wmask;
-  for (genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W; b++) begin : g_abr_pk_wmask
+  for (genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W; b++) begin : gen_abr_pk_wmask
     assign abr_pk_wmask[b*8+:8] = {8{abr_mem_req_i.pk_mem.wstrobe[b]}};
   end
 

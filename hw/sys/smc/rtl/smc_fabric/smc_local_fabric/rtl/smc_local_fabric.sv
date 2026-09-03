@@ -157,7 +157,7 @@ module smc_local_fabric (
 
 `ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
   // AXI64 input types (6-bit ID, 32-bit addr, 64-bit data, 12-bit user)
-  initial begin : g_axi64_input_type_assertions
+  initial begin : gen_axi64_input_type_assertions
     // input_axi (system)
     assert ($bits(input_axi_req_i.aw.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
     else $fatal(1, "INPUT_AXI AW ID width mismatch");
@@ -202,7 +202,7 @@ module smc_local_fabric (
   end
 
   // AXI64 output types (8-bit ID, 32-bit addr, 64-bit data, 12-bit user)
-  initial begin : g_axi64_output_type_assertions
+  initial begin : gen_axi64_output_type_assertions
     // front_port
     assert ($bits(axi_front_port_req_o.aw.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
     else $fatal(1, "FRONT_PORT AW ID width mismatch");
@@ -233,7 +233,7 @@ module smc_local_fabric (
   end
 
   // APB32 types
-  initial begin : g_apb32_type_assertions
+  initial begin : gen_apb32_type_assertions
     // smc_dfd_reg
     assert ($bits(apb_smc_dfd_reg_req_o.paddr) == $bits(smc_local_xbar_pkg::apb32_addr_t))
     else $fatal(1, "APB_SMC_DFD_REG PADDR width mismatch");

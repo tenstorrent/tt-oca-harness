@@ -18,11 +18,11 @@ class dtp_test_cfg extends ocah_test_cfg;
   // --- randomized timing --------------------------------------------------
   rand int unsigned sys_clk_period_ns;
   rand int unsigned tck_period_ns;
-  constraint c_sys_clk {
+  constraint sys_clk_c {
     sys_clk_period_ns inside {[10 : 100]};
     sys_clk_period_ns % 2 == 0;
   }
-  constraint c_tck {
+  constraint tck_c {
     tck_period_ns inside {[100 : 1000]};
     tck_period_ns % 2 == 0;
   }

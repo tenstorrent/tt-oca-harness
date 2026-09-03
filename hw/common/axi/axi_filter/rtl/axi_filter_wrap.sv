@@ -221,10 +221,10 @@ module axi_filter_wrap #(
   assign isolate_read  = filter_skip_i ? 1'b0 : (no_read_filter_matches ? BlockByDefault : !allow_read[read_filter_hit_idx]);
 
   generate
-    if (DebugOutput == 1) begin
+    if (DebugOutput == 1) begin : gen_filter_hit_debug
       assign write_filter_hit_debug_o = write_filter_hit_idx;
       assign read_filter_hit_debug_o  = read_filter_hit_idx;
-    end else begin
+    end else begin : gen_no_filter_hit_debug
       assign write_filter_hit_debug_o = '0;
       assign read_filter_hit_debug_o  = '0;
     end

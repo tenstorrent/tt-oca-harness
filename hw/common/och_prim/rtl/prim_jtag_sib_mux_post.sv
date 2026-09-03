@@ -9,7 +9,7 @@ module prim_jtag_sib_mux_post
   import prim_jtag_pkg::*;
 #(
   parameter bit  LOCKUP = 0,       // Adds a lockup latch to the output of the scan register
-  SAFE_SELECT = 0,  // Adds an additional flop stage to the SIB enable output to avoid a race on the host update_en.
+  parameter bit  SAFE_SELECT = 0,  // Adds an additional flop stage to the SIB enable output to avoid a race on the host update_en.
 
   parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t
 ) (
