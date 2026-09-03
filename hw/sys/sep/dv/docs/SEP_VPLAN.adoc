@@ -2613,7 +2613,7 @@ stall-duration / recovery stress are not exercised here.
 |CHK-WRITE-ALLOWED
 |The write-allowed bit gates the matched write in both directions, and the allowed write lands (confirmed by a CPU-side readback).
 |CHK-OWNERSHIP
-|The CPU-LSU reads the programmed rule at the filter CFG CSR. The external master completes DECERR on read and write of that address, and the denied write does not land. CFG stays outside every allow window (firmware must not allow-list CFG).
+|The CPU-LSU reads inbound CFG, outbound CFG[0], alias/AP/STEE remap bases, `SEP_GLOBAL_BASE_ADDR`, and `SEP_REGION_SIZE`. The external master completes DECERR on read and write of each address, and the denied write does not land. Those CSRs stay outside every allow window (firmware must not allow-list them). `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` share the window-0 (`SEP_SW_DEBUG`) 4 KB page, so they also prove the live window is START/END, not the page.
 |CHK-NONVAC
 |Allow and block were both observed under one lifecycle state.
 |CHK-SRC-ID
@@ -2642,7 +2642,7 @@ windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0, then the
 `allow_burst` deny/allow pair on AR and AW of scratch and the burst-to-single
 Lite split, then the same-page 4 KB granule, page-bound, and `FILTER_CONFIG.locked`
-on entry 15. `CHK-OWNERSHIP` keeps CFG outside every allow window. WRAP, FIXED and
+on entry 15. `CHK-OWNERSHIP` keeps inbound CFG, outbound CFG, the remap banks, and `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE` outside every allow window. WRAP, FIXED and
 `AxLEN>1` are not walked: the Lite bridges convert those bursts to singles, so the
 filter only ever sees `tx_len==0`.
 
@@ -4480,7 +4480,7 @@ constraint is not an open defect.
 |Topic |Contract
 
 |Inbound CFG allow-list (firmware constraint)
-|Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
+|Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle.
@@ -4506,7 +4506,7 @@ constraint is not an open defect.
 |The array behind the fuse-command interface is a simulation-only behavioural bank, not an OTP macro. Two properties the eFuse programming entries appear to establish are properties of that model rather than of hardware: write-one-to-set additivity is OR-only by construction, so a bank that overwrote instead of OR-ing cannot be represented and no-clobber is not a failable contract; and persistence across cold reset comes from the model having no reset on its storage. What is proven against real logic is that each program reached its addressed bit through the real programming path, and that the sense FSM re-reads the array after reset with the shadow tracking it.
 
 |JTAG MMR token-block access
-|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
+|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
 |RTL assertions are backend-dependent
 |What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA — the `ocah_axi_sva` protocol bind included — expand to nothing. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 
