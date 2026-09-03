@@ -45,8 +45,7 @@ module = "smc_i3c_to_fabric_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "batch_c", "canonical", "project_p0",
-    "canonical_top6", "canonical_top10", "canonical_top20", "pyuvm"
+    "batch_c", "i3c_decode", "pyuvm"
 ]
 run_modes = ["smoke"]
 

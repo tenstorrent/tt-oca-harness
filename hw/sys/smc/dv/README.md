@@ -13,8 +13,10 @@ requirement-to-test matrix (unsigned; #496).
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) are not ported
-— not reportable as feature PASS. Green `smc_i3c_to_fabric_test` is
-**decode only** (fabric → real OCA core `HCI_VERSION`). Checklist:
+— not reportable as feature PASS. `smc_i3c_to_fabric_test` is
+**decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
+in `smoke`, `canonical_top*`, or `project_p0`. Run it via `i3c_depth`
+or by name. Checklist:
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without

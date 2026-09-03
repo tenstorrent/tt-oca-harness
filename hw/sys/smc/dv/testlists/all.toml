@@ -36,7 +36,6 @@ tests = [
     "smc_mailbox_irq_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
-    "smc_i3c_to_fabric_test",
     "smc_flr_sanity_test",
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
@@ -77,7 +76,6 @@ tests = [
     "smc_mailbox_irq_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
-    "smc_i3c_to_fabric_test",
     "smc_flr_sanity_test",
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
@@ -98,7 +96,7 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
+    "smc_input_output_fabric_wr_rd_test",
 ]
 
 [[groups]]
@@ -108,7 +106,6 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
     "smc_flr_sanity_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
@@ -122,7 +119,6 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
     "smc_flr_sanity_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
@@ -151,7 +147,6 @@ tests = [
     "smc_input_fabric_axi_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
     "smc_ijtag_basic_test",
-    "smc_i3c_to_fabric_test",
     "smc_efuse_otp_clock_test",
     "smc_avsbus_sanity_test",
     "smc_dbs_idle_test",
