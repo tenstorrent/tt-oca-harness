@@ -58,10 +58,10 @@ package efuse_pkg;
         LC_PROD_END    = 4'b1000
     } lc_state_raw_e;
 
-    // Returns 1 iff s is a valid LC_STATE encoding per OCAH spec (0x0, 0x1, 0x2, 0x3, 0x6, 0x7, 0x8).
-    function automatic logic is_valid_lc_state(logic [LC_STATE_RAW_WIDTH-1:0] s);
-        return s inside {LC_TEST_DEV, LC_PROD, LC_RMA_SIP_0, LC_RMA_SIP_1,
-                         LC_RMA_CHIP_0, LC_RMA_CHIP_1, LC_PROD_END};
+    // Returns 1 iff s is outside the LC_STATE encodings
+    function automatic logic is_invalid_lc_state(logic [LC_STATE_RAW_WIDTH-1:0] s);
+        return !(s inside {LC_TEST_DEV, LC_PROD, LC_RMA_SIP_0, LC_RMA_SIP_1,
+                         LC_RMA_CHIP_0, LC_RMA_CHIP_1, LC_PROD_END});
     endfunction
 
     //////////////////////////////

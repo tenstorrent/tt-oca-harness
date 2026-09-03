@@ -136,6 +136,7 @@ efuse_bank_reg u_efuse_bank_reg (
 // later programs survive every reset. $readmemh cannot target the unpacked
 // struct array, hence the scratch array. Selected by +smc_efuse_hex /
 // +sep_efuse_hex (default out/sep_efuse.hex).
+
 initial begin
     string img;
     logic [31:0] otp_preload_mem [1024];

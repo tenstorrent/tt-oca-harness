@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.4
-:revdate: 2026-08-31
+:revnumber: 0.0.5
+:revdate: 2026-09-02
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -100,6 +100,109 @@ For the architecture-level responsibility split between the integrator, firmware
 and the internal SEP/SMC maps, see
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
 
+[[immutable-rom-fw-integration]]
+=== Immutable ROM FW Integration
+
+OCAH contains three immutable ROM FW images: the SMC production ROM FW, the
+SEP production ROM FW, and the Key Manager production ROM FW. Each image has
+two integration contracts. The adopter connects and configures the
+corresponding ROM macro, and the final ROM FW image must be present before its
+processor leaves reset. Where ROM FW must initialize or access an
+adopter-owned peripheral outside OCAH, the image may also expose build-time
+integration hooks.
+
+[[rom-fw-override-method]]
+==== Weak-symbol override method
+
+An immutable ROM FW image may provide selected vendor-neutral integration hooks
+as weak symbols. Supply an adopter implementation as a strong definition of the
+same symbol before the final image is frozen. The strong implementation must
+program the same adopter-owned IP instantiated by the RTL integration, and its
+signature, ABI, return values, and documented semantics must match the weak
+declaration.
+
+This mechanism applies only when the ROM FW needs to interact with a peripheral
+outside OCAH. It is a build-time image-composition mechanism, not a runtime
+extension mechanism. Include the adopter implementation in the final ROM FW
+build so that it replaces the weak definition at link time.
+
+Inspect the final ELF or linker map after linking. For example,
+`riscv64-unknown-elf-nm` must report each selected implementation as a strong
+symbol rather than `W`; successful linking alone does not prove that the weak
+default was replaced.
+
+[[smc-rom-fw-integration]]
+==== SMC ROM FW integration
+
+Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
+implementation. In the current four-core configuration, the request provides
+the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
+one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
+ROM FW image must be present before the first boot; its build is under
+`hw/sys/smc/bootrom/prod/`.
+
+Connect the ROM macro configuration input reached as `rom_cfg_i` and
+`mem_cfg_i` according to the selected macro's contract. OCAH forwards these 11
+bits without assigning technology-specific semantics; the reference
+`smc_ip_integration.sv` ties them to zero. Set the eFuse shadow value that
+drives the CPU's `rom_flip_endianness_i` path to match the byte order of the
+image and ROM macro. Deasserted passes each 64-bit read word unchanged;
+asserted reverses its eight bytes.
+
+.SMC ROM FW override inventory
+[width="100%",cols="18%,20%,27%,35%",options="header"]
+|=======================================================================
+|Hook |Weak default |Rationale |Override and integration action
+|`smc_pll_init()`
+|Returns `SMC_PLL_SUCCESS` without programming PLL hardware.
+|PLL implementation is technology- and vendor-specific, so OCAH does not
+include a vendor-specific PLL driver.
+|Override when `BL0_PLLCLK` is asserted and the adopter's PLL requires
+ROM-time configuration. Provide the same
+`smc_pll_result_t smc_pll_init(void)` signature in the final ROM FW build.
+Any result other than `SMC_PLL_SUCCESS` is fatal: the ROM FW records an
+interface error and remains in `wfi`.
+|`i3c_release_reset()`, `cfg_ps()`, `init_i3c_ctrl()`, and
+`I3C_GetDriverInstance()`
+|Permit the ROM FW to boot without an active I3C implementation; I3C data
+operations report a hardware error.
+|OCAH includes an I3C implementation, but the adopter may select a different
+I3C target and driver for the final system.
+|When the ROM FW must use an active I3C target, select the open HCI
+implementation with `I3C_CORE=swap`, or connect the adopter's I3C target
+through the SMC external AXI-Lite master (`smc_external_req_o` and
+`smc_external_resp_i`) and link strong implementations that conform to
+`drivers/include/i3c_target_driver.h`.
+|=======================================================================
+
+[[sep-rom-fw-integration]]
+==== SEP ROM FW integration
+
+The SEP exposes the `sep_boot_rom` memory interface for its production ROM FW
+image. The detailed ROM-macro configuration, image-loading contract, and
+adopter override inventory are not yet documented here.
+
+.SEP ROM FW override inventory
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Hook |Status
+|_To be documented_ |No adopter override requirement is defined here yet.
+|=======================================================================
+
+[[km-rom-fw-integration]]
+==== Key Manager ROM FW integration
+
+The Key Manager exposes the `km_rom_mem` interface through SEP for its
+production ROM FW image. The detailed ROM-macro configuration, image-loading
+contract, and adopter override inventory are not yet documented here.
+
+.Key Manager ROM FW override inventory
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Hook |Status
+|_To be documented_ |No adopter override requirement is defined here yet.
+|=======================================================================
+
 [[smc-integration]]
 === System Management Controller (SMC) Integration
 
@@ -125,18 +228,20 @@ adopter's PLL infrastructure; the SMC provides AXI-Lite control outputs for PLL
 configuration (see <<smc-peripheral-connections>>). The peripheral clock is used
 to drive the I3C interface, I2C interface, UART interface, and AVSBus interface.
 
-Assert `powergood_i` after power-up sequence completion. Deassert `rst_cold_ni` after the power-up sequence completion.
+Hold `rst_cold_ni` asserted (low) while power supplies and clocks stabilize.
+Assert `powergood_i` once supplies reach nominal, then deassert `rst_cold_ni`
+(drive high) to start the boot sequence.
 
 The SMC generates AASD (async-assert / sync-deassert) reset outputs: `rst_primary_smc_clk_no` for the
 main clock domain, `rst_primary_periph_clk_no` for the peripheral clock domain, and `rst_primary_ref_clk_no` for the reference clock domain.
 These ensure clean reset release without metastability across the system
 hierarchy.
 
-Optional reset override inputs (`rst_cold_override_ni`, `rst_cool_override_ni`,
-`rst_core_override_ni`) allow external control of specific reset domains for
-test and debug scenarios. Most integrations leave these override enables
-deasserted; the DTP drives them through JTAG IC_RESET controls when enabled
-(see <<smc-dtp-interconnection>>).
+Reset domain overrides are delivered through a single typed input,
+`jtag_reset_ctrl_i` (`smc_pkg::jtag_smc_reset_ctrl_t`), which carries all
+SMC reset override enables and active-low values. The DTP drives this input
+through the JTAG IC_RESET mechanism (see <<smc-dtp-interconnection>>); most
+integrations leave all override enables deasserted.
 
 [[smc-address-map-integration]]
 ==== Address Map and Aperture
@@ -209,13 +314,12 @@ The `output_axi` interface carries filtered and remapped requests from the SMC
 to external system resources. This interface uses an 8-bit transaction ID field
 to accommodate merged traffic from multiple input paths. Connect this interface
 to your system interconnect to allow SMC components access to external memory
-and peripherals. The testbench shows example connections using AXI VIP
-components that can be replaced with your system fabric.
+and peripherals. An AXI VIP or equivalent BFM is a suitable stand-in during
+integration verification before the real system fabric is available.
 
 The `jtag_axi_in` interface provides debug access through JTAG mechanisms. This
 interface uses reduced 2-bit transaction IDs and connects to your JTAG debug
-infrastructure. The testbench demonstrates typical debug access patterns through
-this interface.
+infrastructure.
 
 ==== GPIO Pad Integration
 
@@ -226,7 +330,7 @@ defined by `smc_padring_pkg::DefaultDirectionMap`, not by the table.
 
 The public `hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv` examples
 show the pad connections. For bidirectional pins, implement proper tri-state
-buffers controlled by the `gpio_out_en_o` signals. Connect multiplexed UART,
+buffers controlled by the `core2pad_en_o` signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
@@ -263,7 +367,7 @@ The window is split into a mandatory region, whose contents and placement the
 SMC memory map fixes and every integration must implement, and a supplementary
 region for anything else the adopter chooses to expose. For placement and the
 full register layout, refer to the SMC Memory Map documentation
-(`hw/smc/doc/memmap.adoc`).
+(`hw/sys/smc/doc/memmap.adoc`).
 
 [[smc-efuse-connection]]
 ===== eFuse Interface
@@ -330,9 +434,11 @@ indicates completion of this sensing operation.
 ==== Memory Subsystem Integration
 
 The SMC includes an embedded RISC-V CPU cluster with associated memory
-interfaces. The `rom_intf_req_o` and `rom_intf_rsp_i` signals connect to boot
-ROM containing the SMC firmware. The ROM must be populated with valid firmware
-images before initiating the boot sequence.
+interfaces. See <<immutable-rom-fw-integration>> for the ROM FW integration
+contract.
+
+[[smc-sram-cache-integration]]
+===== SRAM and Cache Array Integration
 
 Scratch RAM interfaces (`scratch_ram_intf_req_o` and `scratch_ram_intf_rsp_i`)
 connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
@@ -366,10 +472,10 @@ faster recovery.
 completion.
   External DFT logic monitors this signal to trigger repair operations.
 
-* `skip_mem_repair_o`: Reset unit output indicating repair should be bypassed. Asserts
-  during FLR operations or when the `BYPASS_SRAM_REPAIR` strap is set. When
-  asserted, external repair logic should skip operations and immediately assert
-  completion status.
+* `skip_mem_repair_o`: Reset unit output indicating repair should be bypassed. It
+  is driven by the isolation request inputs (`isolate_req_pin_sync_smc` or the
+  SMC isolation register), not directly by the strap. When asserted, external
+  repair logic should skip operations and immediately assert completion status.
 
 * `ext_boot_seq_done_i`: External signal indicating the external boot sequence (memory
   repair and shadow register override) is complete. Held low to pause reset release until
@@ -390,33 +496,42 @@ Repair completion and success are reported through
 `DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
 indicates completion regardless of success, while `mem_repair_success` indicates
 successful repair. Both bits are set by the external repair controller. The SMC
-ROM firmware monitors these bits during initialization to verify repair
+ROM FW monitors these bits during initialization to verify repair
 completion.
 
 **Bypass Configuration:**
 
-The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) bypasses
-repair logic when asserted high, causing `skip_mem_repair_o` to assert. Use
-bypass mode only when SRAM arrays are guaranteed defect-free, such as during
-development or with known-good components.
+The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) is captured into
+the reset-unit strap registers. Keep these three mechanisms distinct:
+
+* No RTL path drives `skip_mem_repair_o` from this strap directly.
+  `skip_mem_repair_o` is driven from the isolation request path.
+* Production ROM reads the strap and, when asserted, skips repair-status
+  validation and writes `MBIST_STATUS_MEM_REPAIR_BYPASSED` to scratchpad
+  register 15 (`SMC_SCRATCH_MBIST_STATUS`, `0xC003_90F8`). It does not
+  cause the external repair controller to skip physical repair.
+* External repair logic independently honors `skip_mem_repair_o` to decide
+  whether to bypass physical repair operations.
+
+Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
+during development or with known-good components.
 
 **Integration Requirements:**
 
 Provide an external memory repair controller that monitors `fuse_sense_done_o`
 to initiate repair, respects `skip_mem_repair_o` for bypass control, reads
 repair data from eFuse shadow registers, applies repair configuration to SRAM
-arrays, asserts ext_boot_seq_done_i and updates DFT Control Status registers
+arrays, asserts `ext_boot_seq_done_i` and updates DFT Control Status registers
 with completion status. The controller operates independently of the SMC core
-and must complete before the CPU cluster accesses SRAM. The testbench demonstrates
-example integration patterns adaptable to your DFT infrastructure.
+and must complete before the CPU cluster accesses SRAM.
 
 For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
 adopters must ensure the integrated logic will not interfere with accesses from the
 OCAH's efuse interface.
 
-During FLR operations, repair is automatically bypassed via `skip_mem_repair_o`
-to enable rapid reset sequences. Normal cold reset sequences always execute
-repair unless explicitly bypassed via strap configuration.
+During FLR operations, the isolation request path asserts `skip_mem_repair_o`
+to bypass repair for rapid reset sequences. Normal cold reset sequences always
+execute repair unless isolation is already asserted.
 
 ==== Interrupt Integration
 
@@ -435,9 +550,17 @@ ifdef::backend-pdf[]
 See the _SMC CPU interrupt vector map_ in the Technical Reference Manual.
 endif::backend-pdf[]
 
-Configure your interrupt controller to monitor the `sync_irq_o` signal and read SMC interrupt
-status registers to determine active sources. The testbench demonstrates interrupt injection
-and handling patterns through the various interrupt input ports.
+The SMC PLIC and CPU interrupt vector are internal. `sync_irq_o` is *not* the
+interrupt aggregate -- it is the software-controlled `SYNC_REG.sync` global
+synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
+Do not connect an external interrupt controller to `sync_irq_o`.
+
+External interrupt sources visible to the adopter are `ext_interrupts_i` (SMC
+external interrupt input vector, width `NUM_INT_TO_SMC`),
+`ext_mailbox_interrupts_o` (outbound mailbox notifications, width
+`NUM_MAILBOXES`), `gpio_interrupt_o` (GPIO edge/level events, width
+`NUM_GPIO_WRAPS`), and `uart_interrupt_o` (UART TX/RX events, width `NUM_UART`).
+For the full PLIC source map see the SMC Technical Reference Manual.
 
 ==== Telemetry and Debug Integration
 
@@ -447,10 +570,11 @@ interfaces. The telemetry interface group (`telemetry_atdata_i`, `telemetry_atid
 clock domain with separate `rst_telemetry_ni` reset. Connect these signals to ATB trace
 sources for debug data collection.
 
-The `ext_debug_bus_i` provides a 512-bit wide debug observation bus for internal signal
-monitoring. The cross-trigger interface (`xtrigger_pads_i`, `xtrigger_pads_o`, `xtrigger_ss_i`,
-`xtrigger_ss_o`) enables coordinated debug triggering across multiple subsystems. The
-`halt_clock_global_i` input array accepts clock halt requests from external debug agents.
+At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
+the adopter-visible 128-bit input with the SEP's internal 384-bit bus before
+driving SMC. The typed `xtrigger_ss_i` / `xtrigger_ss_o` ports are the only
+cross-trigger signals at the SMC boundary. The adopter-visible SMU cross-trigger
+interfaces are `xtrig_ctm_*`, `xtrig_clk_stop_req_i`, and the CTP groups.
 
 Trace memory interfaces (`trace_mem_req_o` and `trace_mem_resp_i`) connect to trace RAM
 instances for storing captured debug data. `smc_ip_integration.sv` shows an example set of
@@ -468,19 +592,23 @@ straps sampled during this phase determine boot modes and operational settings. 
 sensing completes, the SMC releases internal subsystem resets based on the programmed reset
 sequencing configuration.
 
-The CPU cluster begins firmware execution from the boot ROM after reset release. The firmware
-performs additional initialization including peripheral configuration, memory testing (unless
-disabled), and system health checks. The `init_mem_done_o` signal indicates completion of
-memory initialization if automatic SRAM zeroing is enabled.
+The CPU cluster begins executing the ROM FW after reset release. The ROM FW
+performs additional initialization including peripheral configuration, memory
+testing (unless disabled), and system health checks. The `init_mem_done_o`
+signal indicates completion of memory initialization if automatic SRAM zeroing
+is enabled.
 
-For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger a warm reset
-sequence. This isolates subsystems through `isolate_req_o` signals and performs controlled
-reset propagation. Monitor `ss_reset_complete_i` signals to verify subsystem reset completion
-before releasing isolation.
+For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
+a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
+subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
+high once the subsystem reset is complete; the SMC synchronizes this into the
+readable `SS_RESET_COMPLETE` register. Isolation remains asserted until cleared by software: SMC firmware must poll
+`SS_RESET_COMPLETE` and then write `ISOLATE_REQ_SMC_REG` to clear the FLR
+isolation latch. Do not assume isolation releases automatically on
+`ss_reset_complete_i`.
 
-The testbench file demonstrates the complete power-on sequence including clock initialization,
-reset timing, strap configuration, and peripheral bring-up. Reference this testbench when
-implementing your integration-specific bring-up procedures.
+See `hw/top/smu_wrapper.sv` and `hw/top/smc_ip_integration.sv` for reference
+bring-up wiring examples covering clock, reset, strap, and peripheral connections.
 
 ==== SMC Port Interface
 
@@ -710,11 +838,14 @@ used by the SMC. The SEP must wait for the SMC fuse sense to complete
 (`smc_fuse_sense_done_i`) before initiating its own fuse operations, and it
 signals completion through `sep_fuse_sense_done_o`.
 
-The lifecycle controller outputs `lc_state_o` (differentially encoded),
-`feat_ctrl_o` (feature control vector), `lc_sigint_err_o` (signal integrity
-error), and `security_disable_o`. These outputs gate debug access through the
-DTP and control feature availability across the chiplet. The `lcc_demote_state`
-outputs report lifecycle demotion events to the SMC.
+The lifecycle controller exports `lc_state_o` (differentially encoded),
+`lc_sigint_err_o` (signal integrity error), `security_disable_o`,
+`secure_tm_o`, and `dbg_disable_o` (the typed debug-disable struct that the
+SMU routes to the DTP). The feature-control vector (`feat_ctrl`) is separately
+produced by the lifecycle controller and consumed internally within sep.sv; it
+is not an external port. `lcc_demote_state_1_o` and `lcc_demote_state_2_o` are
+exported at the SMU boundary; at present the SMU does not connect them to the
+SMC instance.
 
 An OTP debug AXI-Lite port (`axil_sep_otp_jtag`) connects to the DTP for JTAG
 access to SEP fuses. When SEP is disabled (`SEP=0` at the SMU level), the SMU
@@ -737,14 +868,16 @@ their own integration logic. Tie the input low when unused.
 ==== Bring-Up Considerations
 
 The SEP boot sequence begins after the SMC completes fuse sensing and releases
-the SEP reset. The SEP BL0 ROM firmware verifies the BL1 software image using
+the SEP reset. The SEP BL0 ROM FW verifies the BL1 software image using
 non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
 The `sep_straps_i` input provides configuration straps for SEP-specific
-settings. The `rst_vec`, `jtag_id`, and `core_id` inputs must be tied to
-appropriate constants in the top-level integration.
+settings. The `jtag_id` input must be tied to an appropriate constant in the
+top-level integration. A `rst_vec_i` port exists on `tb_top.sv` for DV reset
+vector injection; it is not present on `sep.sv` itself and requires no
+integration tie-off.
 
 ==== SEP Port Interface
 
@@ -813,16 +946,15 @@ scratchpad RAM, cache tag and data arrays), and trace memory instances.
 components: SEP memory macros (TCM, scratch SRAM, boot ROM, OTBN IMEM/DMEM,
 Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
 
-===== Wrapper Clock and PLL Architecture
+===== Wrapper Clock Architecture
 
-The `smu_wrapper.sv` (and `smc_wrapper.sv`) reference accepts `BP_REFCLK` at
-the pad level and processes it through the integrated padring to produce internal
-reference timing. A `pll_wrapper` module generates system clocks `pll_cgm_clk_o`
-and `pll_awm_clk_o` from the padring-processed reference. The SMC controls this
-PLL through the same AXI-Lite interface exposed by the core module. However, the
-core receives its clocks through DFX inputs `pll_cgm_clk_dfx_i` and
-`ref_clk_vdd_sys_dfx_i`, so the adopter must route PLL outputs through the clock
-distribution network and feed them back through these DFX inputs.
+The `smu_wrapper.sv` reference wrapper accepts pre-generated clocks directly:
+`clk_smu_i` (primary), `clk_ref_i` (reference), and `clk_periph_i`
+(peripheral). The `smc_wrapper.sv` uses `clk_smc_i` for the primary clock.
+Clock generation is entirely the adopter's responsibility. The `pll_wrap` model
+included in the DV environment only terminates the SMC's AXI-Lite PLL control
+interface; it does not generate functional clocks and must not be used as a
+synthesis model.
 
 ==== Clock and Reset Architecture
 
@@ -880,8 +1012,10 @@ apertures are programmable at runtime; the `ext_out` rule is static:
 
 SEP, SMC, and `smu_axi_xbar` all run on `clk_smu_i`, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar's
-address arithmetic is done on 57-bit widened sums; `ext_out` covers
-`0x0000_8000_0000` up to the top of the 56-bit address space.
+address arithmetic is done on 57-bit widened sums. `ext_out` is a
+catch-all port that carries any outbound SEP/SMC manager request not matched by
+the programmed apertures; it has no fixed lower-bound address. Unmatched
+inbound (`ext_in`) requests return a decode error and do not reach `ext_out`.
 
 [[smu-firmware-programming-order]]
 ===== Firmware programming order
@@ -1191,10 +1325,10 @@ wired internally within the SMU.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_stap_extra_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t[1:0]` |SMU external port
-|`jtag_stap_extra_host_tdi_i` |input |[1:0] |SMU external port
-|`jtag_stap_extra_host_tdo_o` |output |[1:0] |SMU external port
-|`jtag_stap_extra_host_tdo_oen_o` |output |[1:0] |SMU external port
+|`jtag_stap_extra_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |SMU external port
+|`jtag_stap_extra_host_tdi_i` |input |[JTAG_NUM_EXTRA_STAP_PORTS-1:0] |SMU external port
+|`jtag_stap_extra_host_tdo_o` |output |[JTAG_NUM_EXTRA_STAP_PORTS-1:0] |SMU external port
+|`jtag_stap_extra_host_tdo_oen_o` |output |[JTAG_NUM_EXTRA_STAP_PORTS-1:0] |SMU external port
 |===
 
 ===== Extended STAP Scan Interface
@@ -1279,8 +1413,8 @@ with DECERR to all transactions.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_boot_stall_ovrd_o` |output |1 |Disconnected
-|`jtag_boot_stall_o` |output |1 |Disconnected
+|`jtag_boot_stall_ovrd_o` |output |1 |SMC `boot_stall_jtag_ovrd_i`
+|`jtag_boot_stall_o` |output |1 |SMC `boot_stall_jtag_val_i`
 |===
 
 ===== JTAG Reset Control
@@ -1351,31 +1485,31 @@ one less than DTP's (8 vs 9).
 
 ===== Cross Trigger Port GPIO Interface
 
-The 16 CTP signals from DTP are ported through the SMU to `smu_wrapper` as
-external ports. In `smu_wrapper`, they connect to internal signals destined for
-`smc_ip_integration`. Currently, input signals are tied off to `'0` and output
-signals are dangling pending proper CTP-to-GPIO connection implementation.
+The 16 CTP signals from DTP are ported through the SMU and are direct
+`smu_wrapper` external ports (connected through the `.*` SMU instantiation).
+The adopter must connect them to GPIO pad logic; no tie-off or dangling is
+present in the wrapper itself.
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`xtrig_ctp_req_out_dout_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_req_out_dout_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_req_out_din_i` |input |[15:0] |SMU external -> smu_wrapper internal (tied to '0)
-|`xtrig_ctp_req_out_din_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_req_in_dout_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_req_in_dout_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_req_in_din_i` |input |[15:0] |SMU external -> smu_wrapper internal (tied to '0)
-|`xtrig_ctp_req_in_din_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_ack_in_dout_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_ack_in_dout_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_ack_in_din_i` |input |[15:0] |SMU external -> smu_wrapper internal (tied to '0)
-|`xtrig_ctp_ack_in_din_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_ack_out_dout_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_ack_out_dout_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
-|`xtrig_ctp_ack_out_din_i` |input |[15:0] |SMU external -> smu_wrapper internal (tied to '0)
-|`xtrig_ctp_ack_out_din_en_o` |output |[15:0] |SMU external -> smu_wrapper internal (dangling)
+|`xtrig_ctp_req_out_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
 |===
 
 ==== SMC Port Mapping
@@ -1500,10 +1634,10 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`lsio_interface_select_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
-|`gpio_in_i` |input |[NUM_GPIO_WRAPS-1:0] |SMU external port
-|`gpio_out_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
-|`gpio_in_en_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
-|`gpio_out_en_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`pad2core_i` |input |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`core2pad_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`pad2core_en_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`core2pad_en_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
 |===
 
 ===== GPIO External Pins
@@ -1691,7 +1825,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`cla_gpio_enable_o` |output |1 |SMU external port
 |`tdr_dbg_ctrl_clock_stop_en_i` |input |1 |DTP `cla_clock_stop_en_o`
 |`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |output |1 |DTP `xtrig_clk_stop_req_i[0]` (SMU connects SMC output to DTP input)
-|`halt_clock_global_i` |input |[NUM_MAX_EXTERNAL_XTRIG_AGENTS-1:0] |SMU external port
 |===
 
 ===== Cross Trigger Interface
@@ -1700,10 +1833,8 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`xtrigger_pads_i` |input |`xtrigger_t` |SMU external port
-|`xtrigger_pads_o` |output |`xtrigger_t` |SMU external port
-|`xtrigger_ss_i` |input |`xtrigger_t[NUM_MAX_EXTERNAL_XTRIG_AGENTS-1:0]` |SMU external port
-|`xtrigger_ss_o` |output |`xtrigger_t` |[1:0]: DTP `xtrig_ctm_dst_req_i[1:0]` (both bits to DTP)
+|`xtrigger_ss_i` |input |`smc_pkg::xtrigger_t` |SMU internal: DTP `xtrig_ctm_src_req_o[1:0]` → SMC. Not an SMU external port.
+|`xtrigger_ss_o` |output |`smc_pkg::xtrigger_t` |SMU internal: SMC → DTP `xtrig_ctm_dst_req_i[1:0]`. Not an SMU external port.
 |===
 
 ===== Trace Memory
@@ -1722,7 +1853,7 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`ext_debug_bus_i` |input |[511:0] |SMU external port
+|`ext_debug_bus_i` |input |[127:0] |SMU external port
 |===
 
 ===== Test Mode
@@ -1767,8 +1898,8 @@ SMC within the SMU. These connections are not visible on the SMU boundary.
 |DTP Reset |`rst_n_i` |`rst_primary_smc_clk_no` |SMC -> DTP |
 |Cross Trigger [1:0] |`xtrig_ctm_dst_req_i[1:0]` |`xtrigger_ss_o[1:0]` |SMC -> DTP |Both bits
 |Clock Stop #0 |`xtrig_clk_stop_req_i[0]` |`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |SMC -> DTP |
-|Boot Stall |`jtag_boot_stall_ovrd_o` |Disconnected |N/A |
-| |`jtag_boot_stall_o` |Disconnected |N/A |
+|Boot Stall |`jtag_boot_stall_ovrd_o` |`boot_stall_jtag_ovrd_i` |DTP -> SMC |
+| |`jtag_boot_stall_o` |`boot_stall_jtag_val_i` |DTP -> SMC |
 |===
 
 [[sep-conditional-wiring]]
@@ -1914,7 +2045,11 @@ names; `d0nt_` occurs only where the protection is intended, so a name-based
 match cannot pick up unrelated cells.
 
 Clock-path cells take the extended prefix `d0nt_clk`, which selects the stricter
-rule below. The reference mapping uses these names:
+rule below. The `d0nt_*` naming convention appears in the eFuse IP
+(`efuse_token_digest_sha256`, `efuse_triple_redundant_comparator`) as the
+primary example. The adopter is expected to carry the same convention into any
+technology-mapped primitive wrapper they deliver. The intended name assignments
+are:
 
 [cols="<25%,<20%,<55%",options="header"]
 |===
@@ -2037,8 +2172,9 @@ check. RTL simulation cannot detect their loss.
 [[cdc-timing-constraints]]
 == CDC Timing Constraints
 
-OCAH ships synthesis constraints that bound every clock-domain crossing in the
-SMC, SEP, DTP and SMU. This section explains what those constraints do, how they
+OCAH ships synthesis constraints that bound the enumerated synchronization
+structures in the SMC, SEP, DTP and SMU. Independent CDC sign-off is still
+required for the assembled SoC. This section explains what those constraints do, how they
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
@@ -2067,7 +2203,7 @@ element's guarantee still holds.
 
 === What is constrained
 
-Every CDC element in each block is enumerated and given its own `set_max_delay`,
+Each enumerated CDC element in each block is given its own `set_max_delay`,
 sized from the clock that actually captures it as read from the netlist. Muxed
 domains resolve to several clocks; the tightest period wins.
 

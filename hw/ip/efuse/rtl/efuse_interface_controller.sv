@@ -107,9 +107,6 @@ module efuse_interface_controller
     // External boot-sequence gate (memory repair / shadow reg override done)
     input  logic                                  ext_boot_seq_done_i,
 
-    // PROD_DBG isolation: block LC_STATE transitions when DEMOTE is active
-    input  logic                                  prod_dbg_active_i,
-
     // Debug signals
     output logic                                  is_write_locked_shadow_regs_o,
     output logic                                  is_read_locked_shadow_regs_o,
@@ -731,8 +728,6 @@ module efuse_interface_controller
         // RMA Token Match
         .rma_chiplet_token_match_i (rma_chiplet_token_match),
         .rma_sip_token_match_i     (rma_sip_token_match),
-
-        .prod_dbg_active_i         (prod_dbg_active_i),
 
         // Fuse Command Request/Response to populate shadow registers during fuse sensing
         .fuse_command_req     (fuse_command_req_shadow_regs),
