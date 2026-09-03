@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 //------------------------------------------------------------------------------
 // RO_Jitter_Model
@@ -93,11 +93,11 @@ module RO_Jitter_Model #(
         end else begin
           int unsigned r_corr;
           int unsigned r_ind;
-          r_corr = $urandom_range(0, PROB_SCALE-1);
+          r_corr = $urandom_range(0, PROB_SCALE - 1);
           if (r_corr < _p_corr_d) begin
             bit_o <= prev_bit_q;
           end else begin
-            r_ind = $urandom_range(0, PROB_SCALE-1);
+            r_ind = $urandom_range(0, PROB_SCALE - 1);
             bit_o <= (r_ind < _p_bias_d);
           end
         end

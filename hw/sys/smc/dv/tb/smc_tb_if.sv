@@ -13,36 +13,36 @@
 
 interface smc_tb_if;
 
-    // Clock periods the harness generators read, set by the env from
-    // smc_env_cfg (the test cfg randomizes them from the runner seed).
-    int unsigned ref_clk_period_ns    = 10;
-    int unsigned smc_clk_period_ns    = 5;
-    int unsigned periph_clk_period_ns = 10;
+  // Clock periods the harness generators read, set by the env from
+  // smc_env_cfg (the test cfg randomizes them from the runner seed).
+  int unsigned ref_clk_period_ns    = 10;
+  int unsigned smc_clk_period_ns    = 5;
+  int unsigned periph_clk_period_ns = 10;
 
-    // Driven by the TB (bring-up and reset scenarios owned by the test).
-    // Initial values match the cocotb bring-up at time zero: power-good and
-    // cold reset asserted, cool reset released.
-    logic powergood  = 1'b0;
-    logic rst_cold_n = 1'b0;
-    logic rst_cool_n = 1'b1;
+  // Driven by the TB (bring-up and reset scenarios owned by the test).
+  // Initial values match the cocotb bring-up at time zero: power-good and
+  // cold reset asserted, cool reset released.
+  logic powergood  = 1'b0;
+  logic rst_cold_n = 1'b0;
+  logic rst_cool_n = 1'b1;
 
-    // Reset-unit outputs (driven by the DUT top).
-    logic powergood_stable;
-    logic rst_cold_stable_ref_clk_n;
-    logic rst_primary_ref_clk_n;
-    logic rst_primary_smc_clk_n;
-    logic rst_wdt_smc_clk_n;
+  // Reset-unit outputs (driven by the DUT top).
+  logic powergood_stable;
+  logic rst_cold_stable_ref_clk_n;
+  logic rst_primary_ref_clk_n;
+  logic rst_primary_smc_clk_n;
+  logic rst_wdt_smc_clk_n;
 
-    // eFuse sense done and the warm-domain release it gates (driven by the
-    // DUT top): warm-domain CSRs answer only after rst_warm_smc_clk_n rises.
-    logic fuse_sense_done;
-    logic fuse_reset_n;
-    logic rst_warm_smc_clk_n;
+  // eFuse sense done and the warm-domain release it gates (driven by the
+  // DUT top): warm-domain CSRs answer only after rst_warm_smc_clk_n rises.
+  logic fuse_sense_done;
+  logic fuse_reset_n;
+  logic rst_warm_smc_clk_n;
 
-    // Cold-reset assertion counter (driven by tb_top).
-    logic [31:0] cold_rst_assert_count;
+  // Cold-reset assertion counter (driven by tb_top).
+  logic [31:0] cold_rst_assert_count;
 
-    // Runtime enable for the shared AXI protocol SVA checker.
-    logic axi_sva_en = 1'b1;
+  // Runtime enable for the shared AXI protocol SVA checker.
+  logic axi_sva_en = 1'b1;
 
 endinterface : smc_tb_if

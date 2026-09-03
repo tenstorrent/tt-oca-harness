@@ -9,13 +9,13 @@
 // here when their agents land.
 
 class smc_virtual_sequencer extends ocah_sequencer;
-    `uvm_component_utils(smc_virtual_sequencer)
+  `uvm_component_utils(smc_virtual_sequencer)
 
-    // SEP_IN AXI4 initiator (VIP typedef: uvm_sequencer over ocah_axi_item).
-    ocah_axi_master_sequencer m_sep_in_seqr;
+  // SEP_IN AXI4 initiator (VIP typedef: uvm_sequencer over ocah_axi_item).
+  ocah_axi_master_sequencer m_sep_in_seqr;
 
-    function new(string name = "smc_virtual_sequencer", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "smc_virtual_sequencer", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
 endclass : smc_virtual_sequencer
