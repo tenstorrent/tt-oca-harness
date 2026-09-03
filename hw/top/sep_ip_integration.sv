@@ -24,7 +24,7 @@ module sep_ip_integration
     import km_intf_pkg::*;
 #(
     parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
-    parameter bit          MASKING_EN        = 1'b1
+    parameter bit          ABR_MASKING_EN    = 1'b1
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -381,7 +381,7 @@ module sep_ip_integration
     // channels tie the write mask all-ones. sig_z and pk expand wstrobe onto
     // that mask (prim_ram_1r1w has no byte-write port). Reset comes from rst_ni.
     //
-    // MASKING_EN must match the value given to sep_crypto_abr_wrapper / abr_top:
+    // ABR_MASKING_EN must match the value given to sep_crypto_abr_wrapper / abr_top:
     // when set, four extra coefficient banks hold the second DOM share; when
     // clear those arrays are omitted and their rdata reads back 0.
     //
@@ -545,7 +545,7 @@ module sep_ip_integration
 
     // Masked (second DOM share) twins of the four coefficient banks. They only exist
     // when abr_top is built with masking; otherwise their read data reads back zero.
-    if (MASKING_EN) begin : g_abr_masked_mem
+    if (ABR_MASKING_EN) begin : g_abr_masked_mem
         prim_ram_1r1w #(
             .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
             .Depth           (ABR_INST0_DEPTH),

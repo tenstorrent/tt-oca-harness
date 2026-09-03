@@ -239,7 +239,7 @@ module sep_wrapper
 
     sep_ip_integration #(
         .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
-        .MASKING_EN        (ABR_MASKING_EN)
+        .ABR_MASKING_EN    (ABR_MASKING_EN)
     ) u_sep_ip_integration (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
