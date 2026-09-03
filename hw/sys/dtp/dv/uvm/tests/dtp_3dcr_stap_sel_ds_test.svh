@@ -11,29 +11,30 @@
 // (looped runner with per-pass family evidence, 16-pass floor).
 
 class dtp_3dcr_stap_sel_ds_test extends dtp_base_test;
-  `uvm_component_utils(dtp_3dcr_stap_sel_ds_test)
+    `uvm_component_utils(dtp_3dcr_stap_sel_ds_test)
 
-  function new(string name = "dtp_3dcr_stap_sel_ds_test", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
+    function new(string name = "dtp_3dcr_stap_sel_ds_test",
+                 uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
 
-  // Every port carries a downstream TAP so the isolation neighbor has one too.
-  virtual function bit [dtp_env::StapDsCount-1:0] stap_ds_attach_mask();
-    return '1;
-  endfunction
+    // Every port carries a downstream TAP so the isolation neighbor has one too.
+    virtual function bit [DtpStapCount-1:0] stap_ds_attach_mask();
+        return '1;
+    endfunction
 
-  virtual function dtp_jtag_base_test_seq create_scenario_seq();
-    dtp_stap_scan_test_seq seq = dtp_stap_scan_test_seq::type_id::create("seq");
-    seq.scenario = "stap_sel_ds";
-    return seq;
-  endfunction
+    virtual function ocah_sequence create_scenario_seq();
+        dtp_stap_scan_test_seq seq = dtp_stap_scan_test_seq::type_id::create("seq");
+        seq.scenario = "stap_sel_ds";
+        return seq;
+    endfunction
 
-  virtual function string specific_loops_plusarg();
-    return "DTP_3DCR_STAP_SEL_DS_TEST_LOOPS";
-  endfunction
+    virtual function string specific_loops_knob();
+        return "DTP_3DCR_STAP_SEL_DS_TEST_LOOPS";
+    endfunction
 
-  virtual function string group_loops_plusarg();
-    return "DTP_SCAN_TEST_LOOPS";
-  endfunction
+    virtual function string group_loops_knob();
+        return "DTP_SCAN_TEST_LOOPS";
+    endfunction
 
 endclass : dtp_3dcr_stap_sel_ds_test
