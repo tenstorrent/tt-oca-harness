@@ -28,7 +28,4 @@ reach.
 |0.0.5 |2026-09-02 |Alessandro Ottaviano |Consolidated immutable ROM FW
 integration guidance, including the generic weak-symbol override method and
 SMC, SEP, and Key Manager ROM FW integration sections.
-|0.0.6 |2026-09-02 |Ben Melton |Documented the DTP DFD host port as an
-adopter-owned IEEE 1687 attachment that public wrappers leave at the SMU
-boundary.
 |=======================================================================
