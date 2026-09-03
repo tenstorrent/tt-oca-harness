@@ -12,8 +12,8 @@ module traffic_filter #(
   parameter int unsigned GroupIdWidth = 4,
   parameter int unsigned DataBusWidthLog2 = 3,
 
-  localparam type addr_t     = logic [    AddrWidth-1:0],
-  localparam type src_id_t   = logic [  SrcIdWidth-1:0],
+  localparam type addr_t     = logic [AddrWidth-1:0],
+  localparam type src_id_t   = logic [SrcIdWidth-1:0],
   localparam type group_id_t = logic [GroupIdWidth-1:0]
 ) (
   input logic             cfg_allow_traffic_type_i,

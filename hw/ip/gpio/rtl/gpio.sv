@@ -54,8 +54,8 @@ module gpio
 
   logic        filter__write_filter_enable;
   logic        filter__read_filter_enable;
-  logic [ 2:0] filter__awprot_requirement;
-  logic [ 2:0] filter__arprot_requirement;
+  logic [2:0]  filter__awprot_requirement;
+  logic [2:0]  filter__arprot_requirement;
 
   gpio_intf_reg_pkg::gpio_intf__out_t gpio_intf_hwif_out;
   gpio_intf_reg_pkg::gpio_intf__in_t gpio_intf_hwif_in;

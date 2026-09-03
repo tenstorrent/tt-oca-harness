@@ -26,8 +26,8 @@ module sep_trng #(
 
   input  prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i,
   output prim_alert_pkg::alert_tx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_tx_o,
-  input  prim_alert_pkg::alert_rx_t [  edn_reg_pkg::NumAlerts-1:0] edn_alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [  edn_reg_pkg::NumAlerts-1:0] edn_alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_rx_i,
+  output prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_tx_o,
 
   output logic entropy_source_irq_o,
   output logic intr_cs_cmd_req_done_o,

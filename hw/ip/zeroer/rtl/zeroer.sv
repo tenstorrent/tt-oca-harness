@@ -109,7 +109,7 @@ module zeroer #(
   logic [63:0] dest_addr;
   logic [63:0] size;
   logic        int_en;
-  logic [ 1:0] status_swacc;
+  logic [1:0]  status_swacc;
 
   logic [31:0] outstanding_reqs;
 

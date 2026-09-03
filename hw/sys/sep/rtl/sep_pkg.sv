@@ -379,24 +379,24 @@ SYSTEM_CSR_DEMUX_PORTS
     logic [pt.ICCM_NUM_BANKS-1:0]                                       iccm_wren_bank;
     logic [pt.ICCM_NUM_BANKS-1:0][pt.ICCM_BITS-1:pt.ICCM_BANK_INDEX_LO] iccm_addr_bank;
 
-    logic [pt.ICCM_NUM_BANKS-1:0][                                31:0] iccm_bank_wr_data;
-    logic [pt.ICCM_NUM_BANKS-1:0][               pt.ICCM_ECC_WIDTH-1:0] iccm_bank_wr_ecc;
+    logic [pt.ICCM_NUM_BANKS-1:0][31:0]                                 iccm_bank_wr_data;
+    logic [pt.ICCM_NUM_BANKS-1:0][pt.ICCM_ECC_WIDTH-1:0]                iccm_bank_wr_ecc;
 
     logic [pt.DCCM_NUM_BANKS-1:0]                                       dccm_clken;
     logic [pt.DCCM_NUM_BANKS-1:0]                                       dccm_wren_bank;
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_BITS-1:(pt.DCCM_BANK_BITS+2)] dccm_addr_bank;
 
-    logic [pt.DCCM_NUM_BANKS-1:0][              pt.DCCM_DATA_WIDTH-1:0] dccm_wr_data_bank;
-    logic [pt.DCCM_NUM_BANKS-1:0][               pt.DCCM_ECC_WIDTH-1:0] dccm_wr_ecc_bank;
+    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_DATA_WIDTH-1:0]               dccm_wr_data_bank;
+    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_ECC_WIDTH-1:0]                dccm_wr_ecc_bank;
   } sep_cpu_tcm_req_t;
 
   // Response struct: from TCM macros back to CPU
   typedef struct packed {
-    logic [pt.ICCM_NUM_BANKS-1:0][                                31:0] iccm_bank_dout;
-    logic [pt.ICCM_NUM_BANKS-1:0][               pt.ICCM_ECC_WIDTH-1:0] iccm_bank_ecc;
+    logic [pt.ICCM_NUM_BANKS-1:0][31:0]                                 iccm_bank_dout;
+    logic [pt.ICCM_NUM_BANKS-1:0][pt.ICCM_ECC_WIDTH-1:0]                iccm_bank_ecc;
 
-    logic [pt.DCCM_NUM_BANKS-1:0][              pt.DCCM_DATA_WIDTH-1:0] dccm_bank_dout;
-    logic [pt.DCCM_NUM_BANKS-1:0][               pt.DCCM_ECC_WIDTH-1:0] dccm_bank_ecc;
+    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_DATA_WIDTH-1:0]               dccm_bank_dout;
+    logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_ECC_WIDTH-1:0]                dccm_bank_ecc;
   } sep_cpu_tcm_rsp_t;
 
   /////////////

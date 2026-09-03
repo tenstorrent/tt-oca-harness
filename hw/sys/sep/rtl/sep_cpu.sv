@@ -41,7 +41,7 @@ module sep_cpu (
   input  logic        dmi_uncore_enable,
   output logic        dmi_uncore_en,
   output logic        dmi_uncore_wr_en,
-  output logic [ 6:0] dmi_uncore_addr,
+  output logic [6:0]  dmi_uncore_addr,
   output logic [31:0] dmi_uncore_wdata,
   input  logic [31:0] dmi_uncore_rdata,
   output logic        dmi_active,

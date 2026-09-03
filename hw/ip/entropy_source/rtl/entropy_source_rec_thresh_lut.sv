@@ -14,7 +14,7 @@
 // independence) -- it does NOT read this table.
 
 module entropy_source_rec_thresh_lut (
-  input  logic [ 7:0] min_entropy_h_i,
+  input  logic [7:0]  min_entropy_h_i,
   output logic [15:0] rct_limit_o,
   output logic [15:0] apt_limit_o
 );

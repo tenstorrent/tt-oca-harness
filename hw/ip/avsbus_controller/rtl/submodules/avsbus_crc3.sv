@@ -8,7 +8,7 @@
 
 module avsbus_crc3 (
   input  logic [31:0] i_msg,
-  output logic [ 2:0] o_crc,
+  output logic [2:0]  o_crc,
   output logic        o_check_good
 );
   //timeunit 1ns;

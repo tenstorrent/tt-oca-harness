@@ -47,7 +47,7 @@ module prim_sync_randomized_delay #(
   input logic [WIDTH*2-1:0] i_mux_sel_ovr,  // Mux Select Override Value, NOT USED FOR NOW
 
   output logic [WIDTH*2-1:0] o_mux_sel,  // Output Mux Select, NOT USED FOR NOW
-  output logic [  WIDTH-1:0] o_d_del     // Delayed Data
+  output logic [WIDTH-1:0]   o_d_del     // Delayed Data
 );
 
 `ifdef SYNTHESIS  // if we are synthesizing ignore random delay logic
@@ -59,10 +59,10 @@ module prim_sync_randomized_delay #(
   assign o_mux_sel = {WIDTH{2'd0}};
 `else  // Otherrwise use random delay logic
   reg [WIDTH-1:0] d_q1, d_q2, d_q3;
-  reg     [  WIDTH-1:0] d_mux;
+  reg     [WIDTH-1:0]   d_mux;
   logic   [WIDTH*2-1:0] mux_sel;
-  reg     [        1:0] mux_sel_gray;
-  reg     [        1:0] mux_sel_gray_init;
+  reg     [1:0]         mux_sel_gray;
+  reg     [1:0]         mux_sel_gray_init;
 
   integer               myseed;
   integer               myseed2;

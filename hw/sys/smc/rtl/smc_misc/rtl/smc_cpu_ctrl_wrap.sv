@@ -217,10 +217,10 @@ module smc_cpu_ctrl_wrap #(
   logic      [63:0] external_wr_bit_mask;
   logic             reset_ctrl_wr_en;
   logic      [63:0] reset_ctrl_rd_data;
-  logic      [ 3:0] mutex;
+  logic      [3:0]  mutex;
   logic [3:0] mutex_wr_swacc, mutex_rd_swacc;
   logic [3:0][15:0] sema;
-  logic      [ 3:0] sema_wr_en;
+  logic      [3:0]  sema_wr_en;
 
   // Pulse core reset signals
   logic      [15:0] pre_reset_pulse_wait;

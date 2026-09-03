@@ -10,12 +10,12 @@ module tilelink_to_rom_mem #(
 
   output logic         auto_in_a_ready,
   input  logic         auto_in_a_valid,
-  input  logic  [ 1:0] auto_in_a_bits_size,
+  input  logic  [1:0]  auto_in_a_bits_size,
   input  logic  [14:0] auto_in_a_bits_source,
   input  logic  [31:0] auto_in_a_bits_address,
   input  logic         auto_in_d_ready,
   output logic         auto_in_d_valid,
-  output logic  [ 1:0] auto_in_d_bits_size,
+  output logic  [1:0]  auto_in_d_bits_size,
   output logic  [14:0] auto_in_d_bits_source,
   output logic  [WORD_WIDTH-1:0] auto_in_d_bits_data,
 
@@ -29,7 +29,7 @@ module tilelink_to_rom_mem #(
 );
 
   // Flop the incoming request
-  logic [ 1:0] prev_auto_in_d_bits_size;
+  logic [1:0]  prev_auto_in_d_bits_size;
   logic [14:0] prev_auto_in_d_bits_source;
   logic [ADDR_WIDTH-1:0] prev_auto_in_bits_address;
 

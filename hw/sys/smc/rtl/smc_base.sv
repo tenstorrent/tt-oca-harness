@@ -276,17 +276,17 @@ module smc_base #(
   // different configs have different set of signals
   generate
     if (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) begin : gen_4core_debug_routing
-      assign debug_bus[16*1 -1:16*0 ]     = cpu_wb_reg_pc_i[0][15:0];
-      assign debug_bus[16*2 -1:16*1 ]     = cpu_wb_reg_pc_i[0][31:16];
-      assign debug_bus[16*3 -1:16*2 ]     = cpu_wb_reg_pc_i[1][15:0];
-      assign debug_bus[16*4 -1:16*3 ]     = cpu_wb_reg_pc_i[1][31:16];
-      assign debug_bus[16*5 -1:16*4 ]     = cpu_wb_reg_pc_i[2][15:0];
-      assign debug_bus[16*6 -1:16*5 ]     = cpu_wb_reg_pc_i[2][31:16];
-      assign debug_bus[16*7 -1:16*6 ]     = cpu_wb_reg_pc_i[3][15:0];
-      assign debug_bus[16*8 -1:16*7 ]     = cpu_wb_reg_pc_i[3][31:16];
+      assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
+      assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
+      assign debug_bus[16*3-1:16*2]       = cpu_wb_reg_pc_i[1][15:0];
+      assign debug_bus[16*4-1:16*3]       = cpu_wb_reg_pc_i[1][31:16];
+      assign debug_bus[16*5-1:16*4]       = cpu_wb_reg_pc_i[2][15:0];
+      assign debug_bus[16*6-1:16*5]       = cpu_wb_reg_pc_i[2][31:16];
+      assign debug_bus[16*7-1:16*6]       = cpu_wb_reg_pc_i[3][15:0];
+      assign debug_bus[16*8-1:16*7]       = cpu_wb_reg_pc_i[3][31:16];
 
-      assign debug_bus[16*9 -1:16*8 ]     = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
-      assign debug_bus[16*10-1:16*9 ]     = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
+      assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
+      assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
       assign debug_bus[16*11-1:16*10]     = cpu_interrupts_o[47:32]   | cpu_interrupts_o[175:160];
       assign debug_bus[16*12-1:16*11]     = cpu_interrupts_o[63:48]   | cpu_interrupts_o[191:176];
       assign debug_bus[16*13-1:16*12]     = cpu_interrupts_o[79:64]   | cpu_interrupts_o[207:192];
@@ -294,17 +294,17 @@ module smc_base #(
       assign debug_bus[16*15-1:16*14]     = cpu_interrupts_o[111:96]  | cpu_interrupts_o[239:224];
       assign debug_bus[16*16-1:16*15]     = cpu_interrupts_o[127:112] | cpu_interrupts_o[255:240];
     end else if (SMC_CPU_CONFIG == smc_pkg::SMC_1CORE) begin : gen_1core_debug_routing
-      assign debug_bus[16*1 -1:16*0 ]     = cpu_wb_reg_pc_i[0][15:0];
-      assign debug_bus[16*2 -1:16*1 ]     = cpu_wb_reg_pc_i[0][31:16];
-      assign debug_bus[16*3 -1:16*2 ]     = '0;
-      assign debug_bus[16*4 -1:16*3 ]     = '0;
-      assign debug_bus[16*5 -1:16*4 ]     = '0;
-      assign debug_bus[16*6 -1:16*5 ]     = '0;
-      assign debug_bus[16*7 -1:16*6 ]     = '0;
-      assign debug_bus[16*8 -1:16*7 ]     = '0;
+      assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
+      assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
+      assign debug_bus[16*3-1:16*2]       = '0;
+      assign debug_bus[16*4-1:16*3]       = '0;
+      assign debug_bus[16*5-1:16*4]       = '0;
+      assign debug_bus[16*6-1:16*5]       = '0;
+      assign debug_bus[16*7-1:16*6]       = '0;
+      assign debug_bus[16*8-1:16*7]       = '0;
 
-      assign debug_bus[16*9 -1:16*8 ]     = cpu_interrupts_o[15:0];
-      assign debug_bus[16*10-1:16*9 ]     = cpu_interrupts_o[31:16];
+      assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0];
+      assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16];
       assign debug_bus[16*11-1:16*10]     = '0;
       assign debug_bus[16*12-1:16*11]     = '0;
       assign debug_bus[16*13-1:16*12]     = '0;

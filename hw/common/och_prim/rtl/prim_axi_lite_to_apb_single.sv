@@ -14,8 +14,8 @@ module prim_axi_lite_to_apb_single #(
   parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,
   parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,
 
-  localparam type addr_t = logic [  AXI_ADDR_WIDTH-1:0],
-  localparam type data_t = logic [  AXI_DATA_WIDTH-1:0],
+  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],
+  localparam type data_t = logic [AXI_DATA_WIDTH-1:0],
   localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]
 ) (
   input logic i_clk,
