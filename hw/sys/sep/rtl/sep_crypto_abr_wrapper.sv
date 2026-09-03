@@ -20,8 +20,9 @@
 // Technology-dependent SRAM macros are NOT instantiated here. The ABR memory is
 // exposed as packed req/rsp structs (abr_mem_req_t / abr_mem_rsp_t) threaded up
 // to sep_ip_integration (the home for all macros / 3rd-party IP), mirroring the
-// OTBN otbn_imem/dmem_sram pattern. A local abr_mem_if + comb pack/unpack adapter
-// bridges abr_top's interface port to the struct ports.
+// OTBN otbn_imem/dmem_sram pattern. Word-write channels are we/re/addr/data;
+// sig_z and pk also carry one-bit-per-byte wstrobe. A local abr_mem_if + comb
+// pack/unpack adapter bridges abr_top's interface port to the struct ports.
 //
 // The shim serves the ML-DSA seed on kv_read[0], the ML-KEM seed (D||Z) on
 // kv_read[1] and the ML-KEM msg on kv_read[2], and implements the ML-KEM
@@ -351,6 +352,84 @@ module sep_crypto_abr_wrapper
     end
 
     // =========================================================================
+    // Address-range asserts (non-power-of-two depths)
+    // =========================================================================
+    // INST0=832, INST2=1536, SK=596, SIG_Z=224. An address can fit in the port
+    // width and still miss the array. SK writes are not checked: abr_ctrl's
+    // MLDSA_PRIVKEY_IN window underflows dword 31 to bank1 address 1023.
+
+    `OCAH_OT_ASSERT_NEVER(Inst0B0Rd_A,
+        u_abr_mem.mem_inst0_bank0_re_i &&
+        (u_abr_mem.mem_inst0_bank0_raddr_i >= abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B0Wr_A,
+        u_abr_mem.mem_inst0_bank0_we_i &&
+        (u_abr_mem.mem_inst0_bank0_waddr_i >= abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B1Rd_A,
+        u_abr_mem.mem_inst0_bank1_re_i &&
+        (u_abr_mem.mem_inst0_bank1_raddr_i >= abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B1Wr_A,
+        u_abr_mem.mem_inst0_bank1_we_i &&
+        (u_abr_mem.mem_inst0_bank1_waddr_i >= abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B0MskRd_A,
+        u_abr_mem.mem_inst0_bank0_masked_re_i &&
+        (u_abr_mem.mem_inst0_bank0_masked_raddr_i >=
+            abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B0MskWr_A,
+        u_abr_mem.mem_inst0_bank0_masked_we_i &&
+        (u_abr_mem.mem_inst0_bank0_masked_waddr_i >=
+            abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B1MskRd_A,
+        u_abr_mem.mem_inst0_bank1_masked_re_i &&
+        (u_abr_mem.mem_inst0_bank1_masked_raddr_i >=
+            abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst0B1MskWr_A,
+        u_abr_mem.mem_inst0_bank1_masked_we_i &&
+        (u_abr_mem.mem_inst0_bank1_masked_waddr_i >=
+            abr_params_pkg::ABR_MEM_INST0_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst2Rd_A,
+        u_abr_mem.mem_inst2_re_i &&
+        (u_abr_mem.mem_inst2_raddr_i >= abr_params_pkg::ABR_MEM_INST2_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst2Wr_A,
+        u_abr_mem.mem_inst2_we_i &&
+        (u_abr_mem.mem_inst2_waddr_i >= abr_params_pkg::ABR_MEM_INST2_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst2MskRd_A,
+        u_abr_mem.mem_inst2_masked_re_i &&
+        (u_abr_mem.mem_inst2_masked_raddr_i >= abr_params_pkg::ABR_MEM_INST2_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(Inst2MskWr_A,
+        u_abr_mem.mem_inst2_masked_we_i &&
+        (u_abr_mem.mem_inst2_masked_waddr_i >= abr_params_pkg::ABR_MEM_INST2_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(SkB0Rd_A,
+        u_abr_mem.sk_mem_bank0_re_i &&
+        (u_abr_mem.sk_mem_bank0_raddr_i >= abr_ctrl_pkg::SK_MEM_BANK_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(SkB1Rd_A,
+        u_abr_mem.sk_mem_bank1_re_i &&
+        (u_abr_mem.sk_mem_bank1_raddr_i >= abr_ctrl_pkg::SK_MEM_BANK_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(SigZRd_A,
+        u_abr_mem.sig_z_mem_re_i &&
+        (u_abr_mem.sig_z_mem_raddr_i >= abr_ctrl_pkg::SIG_Z_MEM_DEPTH),
+        clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_NEVER(SigZWr_A,
+        u_abr_mem.sig_z_mem_we_i &&
+        (u_abr_mem.sig_z_mem_waddr_i >= abr_ctrl_pkg::SIG_Z_MEM_DEPTH),
+        clk_i, !rst_ni)
+
+
+
+    // =========================================================================
     // ABR memory contract checks (elaboration-time; evaluated by synth and simulators)
     // =========================================================================
     // sep_crypto_pkg is compiled before abr_params_pkg / abr_ctrl_pkg, so its
@@ -409,18 +488,6 @@ module sep_crypto_abr_wrapper
         $error({"abr_mem_ch_req_t addr field (SEP_CRYPTO_ABR_INST2_ADDR_W) must equal the ",
                 "widest coefficient-memory address and be >= all of them; a coefficient ",
                 "address bit would be dropped where sep_ip_integration slices the field"});
-    end
-
-    // abr_top here and the ABR SRAMs in sep_ip_integration are configured from the same
-    // package parameters, but this module's parameters are overridable at instantiation.
-    // Catch an override that would desynchronize the engine from its SRAMs (wrong masked
-    // bank count, or a read latency the controller does not schedule against).
-    if (MASKING_EN   != SEP_CRYPTO_ABR_MASKING_EN ||
-        SRAM_LATENCY != SEP_CRYPTO_ABR_SRAM_LATENCY)
-    begin : g_abr_mem_config_check
-        $error({"MASKING_EN/SRAM_LATENCY (%0d/%0d) must match sep_crypto_pkg (%0d/%0d); ",
-                "sep_ip_integration builds the ABR SRAMs from the package values"},
-               MASKING_EN, SRAM_LATENCY, SEP_CRYPTO_ABR_MASKING_EN, SEP_CRYPTO_ABR_SRAM_LATENCY);
     end
 
     // =========================================================================

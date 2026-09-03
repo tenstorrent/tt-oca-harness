@@ -19,6 +19,8 @@ module sep_wrapper
     import km_intf_pkg::*;
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
+    parameter bit ABR_MASKING_EN = 1'b1,
+    parameter int unsigned ABR_SRAM_LATENCY = 1,
     parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
@@ -180,6 +182,8 @@ module sep_wrapper
 
     sep #(
         .KM_LATCHED_MEM_RDATA  (KM_LATCHED_MEM_RDATA),
+        .ABR_MASKING_EN        (ABR_MASKING_EN),
+        .ABR_SRAM_LATENCY      (ABR_SRAM_LATENCY),
         .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
         .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN)
     ) u_sep (
@@ -234,7 +238,8 @@ module sep_wrapper
     /////////////////////////
 
     sep_ip_integration #(
-        .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS)
+        .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
+        .MASKING_EN        (ABR_MASKING_EN)
     ) u_sep_ip_integration (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),

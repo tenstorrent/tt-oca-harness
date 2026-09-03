@@ -510,7 +510,8 @@ module smu_wrapper
     /////////////////////////
 
     sep_ip_integration #(
-        .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS)
+        .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
+        .MASKING_EN        (Cfg.SEP_ABR_MASKING_EN)
     ) u_sep_ip_integration (
         .clk_i  (clk_smu_i),
         .rst_ni (rst_primary_smc_clk_no),

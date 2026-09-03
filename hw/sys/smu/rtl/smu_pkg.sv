@@ -55,6 +55,10 @@ package smu_pkg;
 
         // SEP Key Manager PicoRV32 memory configuration
         bit SEP_KM_LATCHED_MEM_RDATA;
+
+        // Adams Bridge SRAM configuration
+        bit          SEP_ABR_MASKING_EN;
+        int unsigned SEP_ABR_SRAM_LATENCY;
     } smu_cfg_t;
 
     localparam smu_cfg_t DefaultCfg = '{
@@ -81,7 +85,9 @@ package smu_pkg;
         SMC_OTP_WR_PL_DEPTH:      2'h3,
         SMC_RD_PL_DEPTH:          2'h3,
         SMC_WR_PL_DEPTH:          2'h3,
-        SEP_KM_LATCHED_MEM_RDATA: 1'b1
+        SEP_KM_LATCHED_MEM_RDATA: 1'b1,
+        SEP_ABR_MASKING_EN:       1'b1,
+        SEP_ABR_SRAM_LATENCY:     32'd1
     };
 
     localparam smu_cfg_t NoSepCfg = '{
@@ -108,7 +114,9 @@ package smu_pkg;
         SMC_OTP_WR_PL_DEPTH:      2'h3,
         SMC_RD_PL_DEPTH:          2'h3,
         SMC_WR_PL_DEPTH:          2'h3,
-        SEP_KM_LATCHED_MEM_RDATA: 1'b1
+        SEP_KM_LATCHED_MEM_RDATA: 1'b1,
+        SEP_ABR_MASKING_EN:       1'b1,
+        SEP_ABR_SRAM_LATENCY:     32'd1
     };
 
     localparam int unsigned NumSmuConfigs = 2;

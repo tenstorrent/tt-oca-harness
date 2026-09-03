@@ -1185,8 +1185,6 @@ sources:
           # --- SEP integration: KV shim + crypto wrapper ---
           - hw/sys/sep/rtl/sep_abr_kv_shim.sv
           - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
-          - hw/sys/sep/rtl/sep_abr_mem_1r1w.sv
-          - hw/sys/sep/rtl/sep_abr_mem_1r1w_be.sv
   - target: smc
     files:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
