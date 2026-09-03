@@ -227,13 +227,7 @@
 <p>Can we add an installation script to the repo?</p>
 </li>
 <li>
-<p>Need to check the correct RISCV Toolchain is listed here?</p>
-</li>
-<li>
-<p>May need 32b toolchain</p>
-</li>
-<li>
-<p>Makefile references <code>riscv64-unknown-elf-*</code>, but it&#8217;s a 32b Simulator?</p>
+<p>Need to add requirements for tt-oca-manifest and tt-oca-harness-model</p>
 </li>
 </ul>
 </div>
@@ -301,7 +295,9 @@ pip install uv</code></pre>
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone git@github.com:tenstorrent/tt-oca-harness.git
 
-cd tt-oca-harness</code></pre>
+cd tt-oca-harness
+
+git submodule update --init --recursive</code></pre>
 </div>
 </div>
 </div>
@@ -312,8 +308,8 @@ cd tt-oca-harness</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt install asciidoctor asciidoctor-pdf verilator gcc clang \
-fuse-overlayfs ccache picolibc-riscv64-unknown-elf</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt install asciidoctor asciidoctor-pdf verilator gcc \
+ccache picolibc-riscv64-unknown-elf</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -329,6 +325,9 @@ fuse-overlayfs ccache picolibc-riscv64-unknown-elf</code></pre>
 </li>
 <li>
 <p><a href="https://github.com/chipsalliance/verible"><strong>Verible</strong></a></p>
+</li>
+<li>
+<p><a href="https://github.com/MikePopoloski/slang"><strong>Slang</strong></a></p>
 </li>
 <li>
 <p><a href="https://surfer-project.org/"><strong>Surfer</strong></a> (optional, alternatives available, used for wave trace debugging)</p>
@@ -366,11 +365,13 @@ fuse-overlayfs ccache picolibc-riscv64-unknown-elf</code></pre>
 </ul>
 </div>
 <div class="paragraph">
-<p>If you installed podman, you&#8217;ll need to add the docker hub as a container registry to be able to pull the container:</p>
+<p>If you installed podman, you&#8217;ll need to add the docker hub as a container registry to be able to pull the container, and have <code>fuse-overlayfs</code> installed:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo mkdir -p /etc/containers/registries.conf.d
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt install -y fuse-overlayfs
+
+sudo mkdir -p /etc/containers/registries.conf.d
 cat &lt;&lt;'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
 unqualified-search-registries = ["docker.io"]
 EOF</code></pre>

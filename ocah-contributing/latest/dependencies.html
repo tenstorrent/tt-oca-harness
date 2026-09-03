@@ -226,6 +226,9 @@
 <li>
 <p>Check license requirements of external IPs</p>
 </li>
+<li>
+<p>Add Dependencies of <code>tt-oca-harness-model</code></p>
+</li>
 </ul>
 </div>
 </td>
@@ -270,24 +273,94 @@ and a docker container for synthesis tools:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Asciidoctor</strong>: AsciiDoc documentation processing and PDF generation</p>
+<p><strong>Asciidoctor</strong>: AsciiDoc documentation processing and PDF generation - Requires <code>asciidoctor-pdf</code> Version 2.3.24+</p>
 </li>
 <li>
-<p><strong>Antora</strong>: Multi-repository documentation site generator for AsciiDoc</p>
-</li>
-<li>
-<p><strong>PeakRDL</strong>: SystemRDL processing and RTL generation</p>
+<p><strong>Antora</strong>: Multi-repository documentation site generator for AsciiDoc - Version 3.1.10+</p>
 </li>
 <li>
 <p><strong>Python packages</strong>: Managed by the repo-level <code>pyproject.toml</code> and <code>uv.lock</code>;
 run <code>make uv-sync</code> or <code>uv sync</code> from the repository root.</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>PeakRDL</strong>: SystemRDL processing and RTL generation</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>Podman/Docker Containers</strong>: Used for some workflows.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>If using Podman, also required is <strong>Fuse-OverlayFS</strong></p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>RISC-V Toolchain</strong>: <code>riscv64-unknown-elf-*</code> with support for both 32 bit and 64 bit architectures - used
 to compile firmware and bootcode - containerised alternative available</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>riscv-unknown-elf-gcc</code> - Version 15.3.0+ recommended</p>
+</li>
+<li>
+<p><code>binutils-riscv-unknown-elf</code> - Version 2.44+ recommended</p>
+</li>
+<li>
+<p><code>picolibc-riscv64-unknown-elf</code> - Version 1.8.12+ recommended</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Verilator</strong>: Used for simulation workflows - Version 5.050+</p>
+</li>
+<li>
+<p><strong>Verible</strong>: Version v0.0-4148-g1ea007ec or newer</p>
+</li>
+<li>
+<p><strong>GnuMake</strong>: Version 4.4.1</p>
+</li>
+<li>
+<p><strong>Bender</strong>: Version 0.32.0 - Used to manage Vendor RTL and code</p>
+</li>
+<li>
+<p><strong>Slang</strong>: Version 9.1+</p>
+</li>
+<li>
+<p><strong>Yosys</strong>: Version 0.60+ - Currently only used via a container, included for completeness</p>
+</li>
+<li>
+<p><strong>GCC</strong>: Version 15.3.0+ recommended</p>
+</li>
+<li>
+<p><strong>CCache</strong>: Version 4.12.3+</p>
+</li>
+<li>
+<p><strong>CMake</strong>: Version 4.2.3+</p>
+</li>
+<li>
+<p>The Virtual Platform for testing the SEP Firmware has the following additional dependencies, but installs and manages them itself unless configured otherwise:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SystemC</strong>: Version 3.0.2, built with C++20</p>
+</li>
+<li>
+<p><strong>Boost</strong>: Version 1.84.0</p>
+</li>
+<li>
+<p><strong>OPENSSL</strong>: Version 3.3.2</p>
+</li>
+<li>
+<p><strong>SystemC CCI</strong>: Version 1.0.2, built with the above SystemC and C++20</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
