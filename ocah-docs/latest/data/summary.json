@@ -2,11 +2,11 @@
   "dut_status": [
     {
       "flow": "dtp",
-      "pass_rate": 91.38,
-      "tests_total": 58
+      "pass_rate": 96.0,
+      "tests_total": 75
     }
   ],
-  "generated_at": "2026-09-02T19:45:22+00:00",
+  "generated_at": "2026-09-03T20:35:36+00:00",
   "results": [
     {
       "coverage": {
