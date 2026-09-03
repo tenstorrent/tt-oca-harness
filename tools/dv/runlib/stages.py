@@ -1249,8 +1249,14 @@ def _render_run_test_args(
     )
 
 
+def _plusarg_key(arg: str) -> str | None:
+    if arg.startswith("+") and "=" in arg:
+        return arg.split("=", 1)[0]
+    return None
+
+
 def _last_plusarg_wins(rendered: list[str]) -> list[str]:
-    """Drop all but the final `+key=value` for each key, in place.
+    """Return a new list where a later scalar `+key=value` wins.
 
     A testlist entry is more specific than the run mode it runs under, so when
     both set the same plusarg the entry is meant to override. `$value$plusargs`
@@ -1259,8 +1265,11 @@ def _last_plusarg_wins(rendered: list[str]) -> list[str]:
     override that reads as effective and is not. Whether that is visible depends
     on the simulator, because nothing reports the discarded one.
 
-    Only `+key=value` forms are collapsed; bare flags and non-plusarg arguments
-    keep every occurrence and their relative order.
+    Only scalar `+key=value` forms are collapsed. Bare flags, non-plusarg
+    arguments, and every `+uvm_set_*` occurrence keep their relative order:
+    UVM consumes each `+uvm_set_type_override=` / `+uvm_set_config_*` /
+    `+uvm_set_verbosity=` / `+uvm_set_severity=` independently, so two
+    type overrides share a key and collapsing them would drop one.
 
     Each drop is printed. Silently discarding an argument the config author
     wrote is the same class of problem as the one this function exists to fix:
@@ -1268,12 +1277,14 @@ def _last_plusarg_wins(rendered: list[str]) -> list[str]:
     """
     final_at: dict[str, int] = {}
     for index, arg in enumerate(rendered):
-        if arg.startswith("+") and "=" in arg:
-            final_at[arg.split("=", 1)[0]] = index
+        key = _plusarg_key(arg)
+        if key is None or key.startswith("+uvm_set_"):
+            continue
+        final_at[key] = index
     kept: list[str] = []
     for index, arg in enumerate(rendered):
-        if arg.startswith("+") and "=" in arg and final_at[arg.split("=", 1)[0]] != index:
-            key = arg.split("=", 1)[0]
+        key = _plusarg_key(arg)
+        if key is not None and key in final_at and final_at[key] != index:
             print(
                 f"PLUSARG: dropping {arg} -- overridden by {rendered[final_at[key]]}",
                 flush=True,
