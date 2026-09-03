@@ -21,6 +21,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_CMP_INJECT_COLLAPSE,
     TOKEN_CMP_INJECT_OFF,
@@ -32,7 +33,7 @@ _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "token_match_fault_pic_
 _ITCM_HEX = os.path.join(_FW_DIR, "token_match_fault_pic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "token_match_fault_pic_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000

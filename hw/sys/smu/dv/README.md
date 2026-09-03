@@ -7,7 +7,9 @@ See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
 verification plan, and
 [`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
-candidate v0.5.0 SEP=0 feature subset (unsigned; #487).
+candidate v0.5.0 SEP=0 feature subset (unsigned; #487), and
+[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
+for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).
@@ -19,6 +21,9 @@ not ported — **not** reportable as PASS.
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
 **OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
+Every named entry is classified in
+[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc).
+None of those names is a v0.5.0 restore; raise stubs are not reportable as PASS.
 
 ```
 smu_<scenario>_test

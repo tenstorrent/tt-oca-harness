@@ -21,19 +21,19 @@ from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from sep_reg_meta import sym
+from sep_reg_meta import AES, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 AES_BASE = sym("AES_REG_MAP_BASE_ADDR")
-AES_KEY_SHARE0_0 = AES_BASE + 0x04
-AES_KEY_SHARE1_0 = AES_BASE + 0x24
-AES_IV_0 = AES_BASE + 0x44
-AES_DATA_IN_0 = AES_BASE + 0x54
-AES_DATA_OUT_0 = AES_BASE + 0x64
-AES_CTRL_SHADOWED = AES_BASE + 0x74
-AES_TRIGGER = AES_BASE + 0x80
-AES_STATUS = AES_BASE + 0x84
+AES_KEY_SHARE0_0 = sym("AES_KEY_SHARE0_0__REG_ADDR")
+AES_KEY_SHARE1_0 = sym("AES_KEY_SHARE1_0__REG_ADDR")
+AES_IV_0 = sym("AES_IV_0__REG_ADDR")
+AES_DATA_IN_0 = sym("AES_DATA_IN_0__REG_ADDR")
+AES_DATA_OUT_0 = sym("AES_DATA_OUT_0__REG_ADDR")
+AES_CTRL_SHADOWED = AES.addr("CTRL_SHADOWED")
+AES_TRIGGER = AES.addr("TRIGGER")
+AES_STATUS = AES.addr("STATUS")
 
 # CTRL_SHADOWED field encodings (aes_reg_pkg.sv / vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
 #   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
@@ -52,19 +52,17 @@ AES_PRS_RATE_PER_8K = 0b100
 AES_MODE_CTRL = {"ecb": AES_MODE_ECB, "cbc": AES_MODE_CBC, "ctr": AES_MODE_CTR}
 AES_KEYLEN_CTRL = {128: AES_KEY_LEN_128, 192: AES_KEY_LEN_192, 256: AES_KEY_LEN_256}
 
-# STATUS bit positions.
-AES_STATUS_IDLE = 0
-AES_STATUS_OUTPUT_VALID = 3
-AES_STATUS_INPUT_READY = 4
+# STATUS bit positions from the generated field layout.
+AES_STATUS_IDLE = AES.field_lsb("STATUS", "idle")
+AES_STATUS_OUTPUT_VALID = AES.field_lsb("STATUS", "output_valid")
+AES_STATUS_INPUT_READY = AES.field_lsb("STATUS", "input_ready")
 # AES's own alert bits in STATUS: a shadowed-register write mismatch (recoverable)
 # or a fatal fault. Both must stay 0 across a clean run.
-AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR = 5
-AES_STATUS_ALERT_FATAL_FAULT = 6
+AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR = AES.field_lsb("STATUS", "alert_recov_ctrl_update_err")
+AES_STATUS_ALERT_FATAL_FAULT = AES.field_lsb("STATUS", "alert_fatal_fault")
 
-# TRIGGER.PRNG_RESEED (bit 3) -> reseed the masking PRNG from the entropy source.
-AES_TRIGGER_PRNG_RESEED = 1 << 3
-# TRIGGER.DATA_OUT_CLEAR (bit 2) -> CIPHER_CTRL_CLEAR_S: state_we with crypt=0.
-AES_TRIGGER_DATA_OUT_CLEAR = 1 << 2
+AES_TRIGGER_PRNG_RESEED = AES.field_mask("TRIGGER", "prng_reseed")
+AES_TRIGGER_DATA_OUT_CLEAR = AES.field_mask("TRIGGER", "data_out_clear")
 
 
 def build_aes_ctrl(

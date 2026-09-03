@@ -27,24 +27,24 @@ from env.sep_axi_agent import SepAxiOp
 # Shared SP800-185 encoders so the DUT PREFIX / KMAC right_encode(L) bytes match
 # the golden by construction.
 from env.sep_kmac_golden import encode_string, right_encode
-from sep_reg_meta import sym
+from sep_reg_meta import KMAC, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
-KMAC_INTR_STATE = KMAC_BASE + 0x000
-KMAC_CFG_SHADOWED = KMAC_BASE + 0x014
-KMAC_CMD = KMAC_BASE + 0x018
-KMAC_STATUS = KMAC_BASE + 0x01C
-KMAC_KEY_SHARE0_0 = KMAC_BASE + 0x030
-KMAC_KEY_SHARE1_0 = KMAC_BASE + 0x070
-KMAC_KEY_LEN = KMAC_BASE + 0x0B0
-KMAC_PREFIX_0 = KMAC_BASE + 0x0B4
-KMAC_ERR_CODE = KMAC_BASE + 0x0E0
-KMAC_STATE_S0 = KMAC_BASE + 0x400
-KMAC_STATE_S1 = KMAC_BASE + 0x500
-KMAC_MSG_FIFO = KMAC_BASE + 0x800
+KMAC_INTR_STATE = KMAC.addr("INTR_STATE")
+KMAC_CFG_SHADOWED = KMAC.addr("CFG_SHADOWED")
+KMAC_CMD = KMAC.addr("CMD")
+KMAC_STATUS = KMAC.addr("STATUS")
+KMAC_KEY_SHARE0_0 = sym("KMAC_KEY_SHARE0_0__REG_ADDR")
+KMAC_KEY_SHARE1_0 = sym("KMAC_KEY_SHARE1_0__REG_ADDR")
+KMAC_KEY_LEN = KMAC.addr("KEY_LEN")
+KMAC_PREFIX_0 = sym("KMAC_PREFIX_0__REG_ADDR")
+KMAC_ERR_CODE = KMAC.addr("ERR_CODE")
+KMAC_STATE_S0 = sym("KMAC_STATE_MEM_BASE_ADDR")
+KMAC_STATE_S1 = sym("KMAC_STATE_MEM_BASE_ADDR") + (sym("KMAC_STATE_MEM_SIZE") // 2)
+KMAC_MSG_FIFO = sym("KMAC_MSG_FIFO_MEM_BASE_ADDR")
 
 KMAC_NUM_PUBLIC_KEY = 16  # KEY_SHARE0_0..15 / KEY_SHARE1_0..15
 KMAC_NUM_PREFIX = 11  # PREFIX_0..10
@@ -96,11 +96,11 @@ def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool =
     KMAC sideload KAT uses)."""
     return (
         int(bool(kmac_en))
-        | (kstrength << 1)
-        | (mode << 4)
-        | (int(bool(sideload)) << 12)
-        | (0x1 << 16)  # entropy_mode = EDN
-        | (0x1 << 24)  # entropy_ready
+        | (kstrength << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
+        | (mode << KMAC.field_lsb("CFG_SHADOWED", "mode"))
+        | (int(bool(sideload)) << KMAC.field_lsb("CFG_SHADOWED", "sideload"))
+        | (0x1 << KMAC.field_lsb("CFG_SHADOWED", "entropy_mode"))
+        | KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
     )
 
 

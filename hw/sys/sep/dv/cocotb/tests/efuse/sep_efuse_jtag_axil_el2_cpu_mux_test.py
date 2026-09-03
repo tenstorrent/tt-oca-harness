@@ -63,7 +63,7 @@ _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "efuse_jtag_el2_mux_tes
 _ITCM_HEX = os.path.join(_FW_DIR, "efuse_jtag_el2_mux_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "efuse_jtag_el2_mux_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # eFuse addresses reachable on the JTAG AXI-Lite port.
 _EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")  # shadow map -> DENIED to JTAG at PROD
 _EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")  # MMR token region -> ALLOWED

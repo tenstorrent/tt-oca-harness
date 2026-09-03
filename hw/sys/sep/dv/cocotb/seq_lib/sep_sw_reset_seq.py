@@ -26,12 +26,12 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 SEP_RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 
 SW_RESET_N_BIT = {
-    "km": 0,
-    "otbn": 1,
-    "aes": 2,
-    "hmac": 3,
-    "kmac": 4,
-    "trng": 5,
+    "km": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "km_sw_rst_n"),
+    "otbn": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "otbn_sw_rst_n"),
+    "aes": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "aes_sw_rst_n"),
+    "hmac": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "hmac_sw_rst_n"),
+    "kmac": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "kmac_sw_rst_n"),
+    "trng": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "trng_sw_rst_n"),
 }
 
 # HW reset default: km held; otbn/aes/hmac/kmac/trng released.
