@@ -79,10 +79,10 @@ from smc_reg import (  # noqa: E402
     SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
     SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR,
     SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR,
-    SMC_CLA_CDFDCSR_REG_ADDR,
     SMC_CLA_CRSCRATCHPAD_REG_ADDR,
     SMC_CLA_REG_MAP_BASE_ADDR,
     SMC_CLA_SCRATCH_REG_ADDR,
+    SMC_CLA_TRDSTIMPL_REG_ADDR,
     SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
@@ -91,9 +91,9 @@ from smc_reg import (  # noqa: E402
     SMC_MMODE_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
-    SMC_CLA_CDfdCsr_REG_DEFAULT,
     SMC_CLA_CrScratchpad_REG_DEFAULT,
     SMC_CLA_Scratch_REG_DEFAULT,
+    SMC_CLA_Trdstimpl_REG_DEFAULT,
 )
 
 # Per-entry ATTRS addresses from the generated map. Reset value comes from the
@@ -245,7 +245,7 @@ ALIAS_REMAP_REGS = (
 # error slave and no unmapped read can produce.
 CLA_RESET_READS = (
     ("CLA_CRSCRATCHPAD", SMC_CLA_CRSCRATCHPAD_REG_ADDR, SMC_CLA_CrScratchpad_REG_DEFAULT),
-    ("CLA_CDFDCSR", SMC_CLA_CDFDCSR_REG_ADDR, SMC_CLA_CDfdCsr_REG_DEFAULT),
+    ("CLA_TRDSTIMPL", SMC_CLA_TRDSTIMPL_REG_ADDR, SMC_CLA_Trdstimpl_REG_DEFAULT),
 )
 # smc_cla.rdl `Scratch @ 0x33F8`: "Additional scratch register for DV", sw=rw,
 # reset 0x0. Written and read back so the allow leg proves a live register, not
@@ -364,20 +364,18 @@ def _cla_reset_sweep() -> tuple[tuple[str, int, int, int], ...]:
     map ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
     Why a reset compare is a real check here rather than a decode-only read:
-    ``smc_cla.rdl`` declares 17 registers with NON-ZERO resets (``CrScratchpad``
-    0xBFBF..BF, ``Trdstimpl`` 0x41010101, ``Trramimpl``/``Trdstramimpl``
-    0x01003901, ``TrScratchpad{Lo,Hi}`` 0xEFEFEFEF, ``Trdstcontrol`` 0x03000068,
-    ``CDbgDebugTraceCfg`` 0x00302810, ``Trdstinstfeatures`` 0x40000000,
-    ``CDbgClaCtrlStatus`` 0x1B00, ``Trramlimitlow`` 0x8000,
-    ``Trcustomramsmemlimitlow`` 0x4000, ``Trfunnelimpl`` 0x0801, the three
-    ``*control`` 0x8 rows and ``CDfdCsr`` 0x1) -- values no error slave and no
-    unmapped read can fabricate. For the 86 zero-reset rows the discrimination
-    comes from the deny leg in the same run: unmapped in-window offsets answer
-    SLVERR with rdata 0, so an OKAY+0 is distinguishable from a lost decode.
+    of the 137 CLA registers the generated map carries, 10 have NON-ZERO resets
+    (``CrScratchpad`` 0xBFBF..BF, ``Trdstimpl`` 0x41010101, ``Trdstramimpl``
+    0x01003901, ``Trdstcontrol`` 0x03000068, ``CDbgDebugTraceCfg`` 0x00102810,
+    ``Trdstinstfeatures`` 0x40000000, ``CDbgClaCtrlStatus`` 0x1B00,
+    ``Trfunnelimpl`` 0x0801, and ``Trdstramcontrol`` / ``Trfunnelcontrol`` 0x8)
+    -- values no error slave and no unmapped read can fabricate. For the 127
+    zero-reset rows the discrimination comes from the deny leg in the same run:
+    unmapped in-window offsets answer SLVERR with rdata 0, so an OKAY+0 is
+    distinguishable from a lost decode.
 
     Reading the whole aperture is side-effect free: ``smc_cla.rdl`` contains no
-    ``onread`` property on any field (verified), and ``CDfdCsr.DfdEn`` resets 0
-    so the analyser is disabled throughout.
+    ``onread`` property on any field (verified).
     """
     import smc_reg as _r
 
@@ -481,7 +479,7 @@ _EXPECTED_VALUE_CHECKS = (
     32  # 8 MMODE ATTRS + 24 ALIAS START/END/ATTRS reset values
     + 8  # 8 XVISOR ATTRS reset values
     + 2  # XVISOR probe readback + restore readback
-    + 2  # CLA CrScratchpad + CDfdCsr reset values
+    + 2  # CLA CrScratchpad + Trdstimpl reset values
     + 2  # CLA Scratch write readback + restore readback
     + len(CLA_RESET_SWEEP)  # full-aperture reset compares, every row carries expected=
     + 6  # ALIAS_REMAP_0 START/END/ATTRS programming + off + 2 restore readbacks
@@ -603,12 +601,12 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             length=8,
         )
         cocotb.log.info(
-            "CHK-CLA-WINDOW-ALLOW: CrScratchpad=0x%016x and CDfdCsr=0x%016x "
+            "CHK-CLA-WINDOW-ALLOW: CrScratchpad=0x%016x and Trdstimpl=0x%016x "
             "match their generated RDL reset values, and Scratch took "
             "0x%016x -> 0x%016x on a write/readback/restore -- the CLA aperture "
             "answers with live registers (positive control for the deny leg)",
             SMC_CLA_CrScratchpad_REG_DEFAULT,
-            SMC_CLA_CDfdCsr_REG_DEFAULT,
+            SMC_CLA_Trdstimpl_REG_DEFAULT,
             CLA_SCRATCH_PATTERN,
             SMC_CLA_Scratch_REG_DEFAULT,
         )
