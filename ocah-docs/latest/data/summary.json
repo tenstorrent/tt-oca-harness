@@ -1,0 +1,18 @@
+{
+  "dut_status": [
+    {
+      "flow": "dtp",
+      "pass_rate": 91.38,
+      "tests_total": 58
+    }
+  ],
+  "generated_at": "2026-09-02T19:45:22+00:00",
+  "results": [
+    {
+      "coverage": {
+        "effective_metrics": {}
+      },
+      "flow": "dtp"
+    }
+  ]
+}

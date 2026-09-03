@@ -339,8 +339,11 @@ GPIO operation for protocol processing.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Selection Priority</strong>: LSIO mode overrides register-driven control when
-active</p>
+<p><strong>Selection Priority</strong>: an asserted <code>lsio_interface_select_i</code> overrides
+register-driven control, including DATA_CTRL.interface_enable and the
+DATA_CTRL_ENABLE.use_reg_* per-field overrides. The software force bit
+DATA_CTRL.lsio_select ranks the other way, below the register interface;
+DATA_CTRL.lsio_disable gates both</p>
 </li>
 <li>
 <p><strong>Enable Logic</strong>: Active-low enables for both transmit and receive paths</p>
@@ -352,8 +355,9 @@ active</p>
 <p><strong>Mode Switching</strong>: Immediate effect, no settling time required</p>
 </li>
 <li>
-<p><strong>Status Reflection</strong>: LSIO activity status available in
-DATA_CTRL.lsio_enable register</p>
+<p><strong>Status Reflection</strong>: hardware LSIO request status available in
+DATA_CTRL.lsio_enable register. The field tracks the hardware request line
+gated by lsio_disable, so it reads 0 during a software-forced LSIO</p>
 </li>
 </ul>
 </div>

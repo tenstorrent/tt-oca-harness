@@ -326,11 +326,16 @@ pad remains in a benign state.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">if (lsio_interface_select_i &amp;&amp; !lsio_disable) {
-    // LSIO mode: hardware takes over
+    // LSIO mode: the hardware request takes the pad, regardless of
+    // interface_enable. lsio_disable is software's only way to refuse it.
     pad_control_source = LSIO;
-} else if (interface_enable) {
+} else if (interface_enable || use_reg_*) {
     // Register mode: software control
     pad_control_source = REGISTERS;
+} else if (lsio_select &amp;&amp; !lsio_disable) {
+    // Software-forced LSIO. Ranked below the register interface, unlike the
+    // hardware select line above.
+    pad_control_source = LSIO;
 } else {
     // Defaults: pad is idle and safe
     pad_control_source = DEFAULTS;
@@ -541,8 +546,11 @@ GPIO operation for protocol processing.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Selection Priority</strong>: LSIO mode overrides register-driven control when
-active</p>
+<p><strong>Selection Priority</strong>: an asserted <code>lsio_interface_select_i</code> overrides
+register-driven control, including DATA_CTRL.interface_enable and the
+DATA_CTRL_ENABLE.use_reg_* per-field overrides. The software force bit
+DATA_CTRL.lsio_select ranks the other way, below the register interface;
+DATA_CTRL.lsio_disable gates both</p>
 </li>
 <li>
 <p><strong>Enable Logic</strong>: Active-low enables for both transmit and receive paths</p>
@@ -554,8 +562,9 @@ active</p>
 <p><strong>Mode Switching</strong>: Immediate effect, no settling time required</p>
 </li>
 <li>
-<p><strong>Status Reflection</strong>: LSIO activity status available in
-DATA_CTRL.lsio_enable register</p>
+<p><strong>Status Reflection</strong>: hardware LSIO request status available in
+DATA_CTRL.lsio_enable register. The field tracks the hardware request line
+gated by lsio_disable, so it reads 0 during a software-forced LSIO</p>
 </li>
 </ul>
 </div>
@@ -752,12 +761,12 @@ pads, minimizing the risk of unintended external drive or contention.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
 <tr><td>30:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>25</td><td>lsio_enable</td><td>R</td><td>0x0</td><td>When set, this bit indicates that the pad being driving by the LSIO</td></tr>
+<tr><td>25</td><td>lsio_enable</td><td>R</td><td>0x0</td><td>LSIO hardware request status. Set while lsio_interface_select_i is asserted and<br>lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,<br>a set value also means the LSIO plane is driving this pad&#x27;s data and direction.<br>This field does not reflect a software-forced selection via lsio_select, which ranks<br>below the register interface - it reads 0 in that case even when LSIO drives the pad.</td></tr>
 <tr><td>24:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>21:20</td><td>interrupt_type</td><td>RW</td><td>0x0</td><td>Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge</td></tr>
 <tr><td>19</td><td>lsio_disable</td><td>RW</td><td>0x0</td><td>When set, LSIO accesses will be blocked from the GPIO interface</td></tr>
 <tr><td>18</td><td>interrupt_enable</td><td>RW</td><td>0x0</td><td>Interrupt Enable.</td></tr>
-<tr><td>17</td><td>lsio_select</td><td>RW</td><td>0x0</td><td>Force LSIO interface to be used. interface_enable has higher priority over this</td></tr>
+<tr><td>17</td><td>lsio_select</td><td>RW</td><td>0x0</td><td>Force the LSIO interface to be used from software, when no hardware LSIO request is<br>present on this pad. interface_enable has higher priority over this bit. This ranking<br>applies to this software force bit only: the hardware lsio_interface_select_i input<br>outranks interface_enable. Use lsio_disable to gate both.</td></tr>
 <tr><td>16</td><td>interface_enable</td><td>RW</td><td>0x0</td><td>Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core</td></tr>
 <tr><td>15:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:4</td><td>enable_rx_tx</td><td>RW</td><td>0x0</td><td>Direction control. 2&#x27;b00: Neither RX nor TX enabled. 2&#x27;b01: TX enabled. 2&#x27;b10: RX enabled. 2&#x27;b11: Both enabled</td></tr>
@@ -859,21 +868,64 @@ default (INPUT_BY_DEFAULT parameter = 1).</p>
 <div class="paragraph">
 <p>Configuring GPIO for LSIO hardware control:</p>
 </div>
+<div class="paragraph">
+<p>Pad ownership is ranked in three levels. Software does not need to give the
+pad up for a hardware LSIO peripheral to take it:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>1. Hardware LSIO (lsio_interface_select_i asserted, lsio_disable = 0)
+2. Register interface (interface_enable, or a DATA_CTRL_ENABLE.use_reg_* override)
+3. Software-forced LSIO (DATA_CTRL.lsio_select)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Letting a hardware LSIO peripheral drive the pad:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>1. Ensure DATA_CTRL.lsio_disable = 0
+
+2. Nothing else is required. Once the peripheral asserts its select line it
+   takes the pad, whatever DATA_CTRL.interface_enable is set to.
+
+3. Monitor LSIO operation:
+   - Check DATA_CTRL.lsio_enable for LSIO request status
+   - Note this field reports the hardware select line, not which plane
+     currently owns the pad; the two differ when lsio_disable = 1</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Forcing LSIO from software, with no hardware request on the pad:</p>
+</div>
 <div class="literalblock">
 <div class="content">
 <pre>1. Disable register interface:
    - Set DATA_CTRL.interface_enable = 0
+   - Clear any DATA_CTRL_ENABLE.use_reg_* overrides
 
-2. Enable LSIO interface:
-   - Set DATA_CTRL.lsio_select = 1 (if forcing LSIO)
-   - Ensure DATA_CTRL.lsio_disable = 0
+2. Set DATA_CTRL.lsio_select = 1 and ensure DATA_CTRL.lsio_disable = 0
 
-3. Monitor LSIO operation:
-   - Check DATA_CTRL.lsio_enable for active status
-   - Hardware LSIO interface controls pad directly
-
-4. LSIO interface has priority over register control when active</pre>
+Unlike the hardware select line, this bit ranks *below* interface_enable, so
+the register interface must be off for it to take effect.</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Reclaiming a pad from LSIO:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>1. Set DATA_CTRL.lsio_disable = 1
+   This gates both the hardware select line and lsio_select.
+
+2. Set DATA_CTRL.interface_enable = 1 and program core2pad / enable_rx_tx</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Some pads have their select line tied permanently asserted in the integration
+(the I3C pads, and the isolate-request, boot-stall and cool-reset-out pads).
+On those, step 1 above is mandatory: interface_enable alone will not take the
+pad, because the hardware request outranks it.</p>
 </div>
 </div>
 <div class="sect5">
