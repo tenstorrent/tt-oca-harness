@@ -172,6 +172,11 @@ make ocah-synth-all
 This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
 used for synthesis may be selected with `TECH`.
 
+[WARNING]
+====
+The yosys flow is still WIP, as timing constraints are not yet integrated/pipe cleaned.
+====
+
 == Linting
 
 We use linters within the development of OCAH to perform static analysis
