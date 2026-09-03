@@ -3,7 +3,7 @@ root = pathlib.Path('/localdev/cmccoy/dev/tt-oca-harness')
 rom = (root/'hw/sys/sep/doc/rom.adoc').read_text()
 srcs = []
 for pat in ['hw/sys/sep/bootrom/prod/include/*.h','hw/sys/sep/bootrom/prod/src/*.c',
-            'hw/sys/sep/bootrom/prod/tools/tt-boot-manifest/validators/oca/lib/*.h']:
+            'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/validators/oca/lib/*.h']:
     srcs += list(root.glob(pat))
 blob = "\n".join(f.read_text(errors='replace') for f in srcs)
 defined = set(re.findall(r'\b([A-Z][A-Z0-9_]{3,})\b', blob))

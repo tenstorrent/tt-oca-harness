@@ -516,7 +516,7 @@ submodule; without it the pack half dies with `No module named tt_boot_manifest`
 
 [source,bash]
 ----
-git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 ----
 
 Build the ROM by hand only when iterating on the ROM sources themselves. The two

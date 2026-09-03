@@ -1,6 +1,6 @@
 import re, pathlib
 root = pathlib.Path('/localdev/cmccoy/dev/tt-oca-harness')
-c = (root/'hw/sys/sep/bootrom/prod/tools/tt-boot-manifest/src/oca/constants.py').read_text()
+c = (root/'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py').read_text()
 off = {}
 for m in re.finditer(r'^OFF_([A-Z0-9_]+)\s*=\s*(\d+)', c, M := re.M):
     off[m.group(1).lower()] = int(m.group(2))

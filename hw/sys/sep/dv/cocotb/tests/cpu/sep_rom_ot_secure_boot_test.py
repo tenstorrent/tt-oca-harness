@@ -5,7 +5,7 @@
 The signed sibling of ``sep_rom_ot_dma_boot_test``. Identical ROM, identical SPI
 transport (OpenTitan spi_host, SECURE_DMA drain, OcahSpiFlash BFM); the only
 change is the flash image, which carries an RSA-3072 PKCS#1 v1.5 signature over
-the manifest (``make oca-images``, dev0 key from the tt-boot-manifest
+the manifest (``make oca-images``, dev0 key from the tt-oca-manifest
 submodule, digest pinned in key_digests.c slot 0).
 
 That one swap turns on a whole code path the non-secure test never reaches:

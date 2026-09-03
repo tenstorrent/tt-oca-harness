@@ -73,8 +73,8 @@ and are re-verified against them at each revision:
   emitted from the SystemRDL by `make ocah-regen-regs`.
 * Boot ROM implementation: `hw/sys/sep/bootrom/prod/src/` and
   `hw/sys/sep/bootrom/prod/include/`.
-* OCA manifest layout: the `tt-boot-manifest` submodule at
-  `hw/sys/sep/bootrom/prod/tools/tt-boot-manifest` — `validators/oca/lib/oca_layout.h` and
+* OCA manifest layout: the `tt-oca-manifest` submodule at
+  `hw/sys/sep/bootrom/prod/tools/tt-oca-manifest` — `validators/oca/lib/oca_layout.h` and
   `oca_layout_classic.h` (C view) and `src/oca/constants.py` (producer view; CI keeps the
   two in sync).
 * Status codes: `hw/sys/sep/bootrom/prod/include/status_values.h`. This header is the single
@@ -148,12 +148,7 @@ SEP↔SMC coordination protocol, SMC SRAM initialization, secondary-chiplet imag
 sequencing, timing profiles, DMA vs PIO -- as implemented in
 `hw/sys/sep/bootrom/prod/src/sep_ot_spi.c`. This document specifies only the ROM-visible
 transfer contract.
-|*OCA Boot Manifest Specification*, draft v0.8 (`boot_manifest_v5.pdf`) |The authoritative
-definition of the OCA manifest and payload TOC formats, including the requirement IDs cited
-here as `[REQ-BTMANFST-nn]`. Where this document and the `tt-boot-manifest` tooling
-disagree, the OCA specification governs.
-|`tt-boot-manifest` repository |OCA manifest producer tooling and the freestanding C
-validation library (`validators/oca/lib/oca_validator.h`) the ROM integrates.
+|`tt-oca-manifest` repository |OCA manifest specification documentation, producer tooling and the freestanding C validation library (`validators/oca/lib/oca_validator.h`) the ROM integrates.
 Implements a *subset* of the OCA specification (see <<sec:impl_matrix>> for known gaps).
 |RISC-V Privileged Architecture (PMP) |Semantics of `pmpaddr*`/`pmpcfg*` NAPOT entries used
 in <<sec:pmp>>.
@@ -1351,7 +1346,7 @@ endif
 OCAH mutable software is delivered as *manifest + payload* artifacts. The manifest is the
 metadata layer carrying every security control; the payload is the collection of binary
 images. The SEP ROM consumes the *Open Chiplet Atlas (OCA) CLASSIC* manifest format, produced
-and validated by the `tt-boot-manifest` tooling.
+and validated by the `tt-oca-manifest` tooling.
 
 NOTE: The legacy `"TBL1"` format (1184-byte `manifest_t`) is *retired*. The ROM parses the
 OCA format only, by linking the freestanding OCA validation library; the bespoke parser and
@@ -1376,7 +1371,7 @@ consuming any manifest field.
 ===== ROM-Relevant Field Layout
 
 <<tbl:manifest_fields>> lists the fields the ROM consumes. Authoritative source:
-`oca_layout_classic.h` / `oca_layout.h` (`tt-boot-manifest`); reserved fields not listed here
+`oca_layout_classic.h` / `oca_layout.h` (`tt-oca-manifest`); reserved fields not listed here
 must be zero and are covered by the reserved-bits check.
 
 [[tbl:manifest_fields]]
@@ -2125,7 +2120,7 @@ Decryption is AES-256-CBC, in place, using the OpenTitan AES block:
 [CAUTION]
 ====
 *PROVISIONAL — subject to change.* The KDF construction is still under definition. The
-current implementation (both `tt-boot-manifest` and `hw/sys/sep/bootrom/prod/src/kdf.c`) uses NIST
+current implementation (both `tt-oca-manifest` and `hw/sys/sep/bootrom/prod/src/kdf.c`) uses NIST
 SP 800-108r1 counter-mode KBKDF with HMAC-SHA-256 as the PRF: key = `CLASS_KEY` (32 B),
 `info = encryption_kdf_input[0:16]`, `salt = encryption_kdf_input[16:32]`
 (`encryption_key_derivation_function = 0x0001`). The ratified output length is 32 bytes
@@ -2912,7 +2907,7 @@ but the construction is explicitly subject to change. |<<sec:payload>>
 |BL1 load address / entry point |*resolved* |Per OCA Boot Manifest Spec v0.8 Table 6, TOC
 entries carry `load_addr`/`entry_point`; OCAH interpretation for `"OCAHSEP BLSTAGE1"`
 pinned in SEP-ROM-MAN-050/-060 (matches retired TBL1 semantics). |<<sec:manifest>>
-|`tt-boot-manifest` layout tables |*closed* |Re-verified against the upreved submodule
+|`tt-oca-manifest` layout tables |*closed* |Re-verified against the upreved submodule
 (2026-09-02). <<tbl:toc_entry>> matches `oca_layout.h` / `constants.py` (276 B, entry `hash`
 at 80) and per-entry TOC hashes are verified. <<tbl:manifest_fields>> was still recorded
 against the pre-uprev revision — every offset from `payload_encryption_control` onward was

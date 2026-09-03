@@ -216,7 +216,7 @@ outputs = [
 #                     register headers close their packing checks with
 #                     static_assert, i.e. <assert.h>, which is not freestanding).
 #   oca-images        is pure Python and must run on the HOST: the packer's deps
-#                     come from the tt-boot-manifest submodule's pyproject.toml via
+#                     come from the tt-oca-manifest submodule's pyproject.toml via
 #                     uv, and the ocah-toolchain image carries neither.
 #
 # Toolchain resolution and the picolibc probe are deliberately identical to
