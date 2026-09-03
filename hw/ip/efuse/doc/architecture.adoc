@@ -274,30 +274,12 @@ chip's lifecycle state.
 |State |Encoding |Description
 |TEST_DEV |0x0 |Test/Development state (default)
 |PROD |0x1 |Production state
-|RMA_SOP |0x2, 0x3 |RMA System-in-Package. Bit 0 is a don't-care within the state.
-|RMA_CHIPLET |0x6-0x7 |RMA Chiplet level. Bit 0 is a don't-care within the state.
-|PROD_END |0x8 |Production End. The only permitted transition is to INVALID.
-|INVALID |All others |Invalid state. End of life: terminal, and no transition
-leaves it.
+|PROD_DBG |0x1 + DEMOTE=1 |Production Debug (volatile, clears on reset)
+|RMA_SOP |0x2, 0x3 |RMA System-in-Package
+|RMA_CHIPLET |0x6-0x7 |RMA Chiplet level
+|PROD_END |0x8 |Production End (terminal state)
+|INVALID |All others |Invalid state (error fallback)
 |=====================================================================================
-
-In-field debug demotion is not an LC_STATE encoding. It is held in the
-lifecycle controller's volatile DEMOTE_1 / DEMOTE_2 registers and gates the
-feature-control vector only; it is not an input to this block and does not
-constrain LC_STATE.
-
-*LC_STATE Transition Rules:*
-
-The shadow LC_STATE word is write-1-to-set: a bit only ever goes 0 -> 1. Two
-token gates constrain which bits a write may set:
-
-* bit 1 (RMA_SOP) requires an RMA SOP token match, and
-* bit 2 (RMA_CHIPLET) requires an RMA Chiplet token match *and* RMA_SOP
-already established, which is what makes the RMA ordering hardware-enforced.
-
-Bits 0 and 3 are ungated. An encoding outside the table above is terminal: no
-write changes LC_STATE once it holds one. The transient-RMA path applies the
-same two token gates.
 
 *JTAG Access Control Based on LC_STATE:*
 
