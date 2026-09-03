@@ -651,7 +651,7 @@ python3 $PY --dut smc --items all --stage sim --regress
 python3 $PY --dut smc --items all
 
 # SV-UVM realization (VCS; see <<sv-uvm-realization>>)
-python3 $PY --dut smc --framework uvm --build-only
+python3 $PY --dut smc --framework uvm --build-only --skip-unimplemented
 python3 $PY --dut smc --framework uvm --items smc_register_sanity_test --seed 1
 python3 $PY --dut smc --framework uvm --items smoke --skip-unimplemented
 python3 $PY --dut smc --framework uvm --items smc_register_sanity_test \
