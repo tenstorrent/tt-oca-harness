@@ -4,8 +4,8 @@
 // Imported from PeakRDL (https://peakrdl-regblock.readthedocs.io/en/latest/cpuif/axi4lite.html#cpuif-axi4lite)
 
 interface axi4lite_intf #(
-  parameter DATA_WIDTH = 32,
-  parameter ADDR_WIDTH = 32
+  parameter int unsigned DATA_WIDTH = 32,
+  parameter int unsigned ADDR_WIDTH = 32
 );
   logic AWREADY;
   logic AWVALID;

@@ -52,10 +52,10 @@ module tb_repetition_test ();
   integer false_negatives = 0;
 
   // Test parameters
-  localparam [7:0] TEST_THRESHOLD_LOW = 8'd10;  // Low threshold for quick testing
-  localparam [7:0] TEST_THRESHOLD_MED = 8'd15;  // Medium threshold - reduced from 25
-  localparam [7:0] TEST_THRESHOLD_HIGH = 8'd20;  // High threshold - reduced from 50
-  localparam [7:0] TEST_THRESHOLD_SAT = 8'd15;   // Test counter saturation - same as other working tests
+  localparam logic [7:0] TEST_THRESHOLD_LOW = 8'd10;  // Low threshold for quick testing
+  localparam logic [7:0] TEST_THRESHOLD_MED = 8'd15;  // Medium threshold - reduced from 25
+  localparam logic [7:0] TEST_THRESHOLD_HIGH = 8'd20;  // High threshold - reduced from 50
+  localparam logic [7:0] TEST_THRESHOLD_SAT = 8'd15;   // Test counter saturation - same as other working tests
 
   // Instantiate the DUT
   entropy_repetition_test u_repetition_test (

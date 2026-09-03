@@ -18,10 +18,10 @@
 
 module tb_scrambler_8192x32_bw;
 
-  localparam ADDR_WIDTH = 13;
-  localparam DATA_WIDTH = 32;
-  localparam MEM_DEPTH = 8192;
-  localparam SCRAMBLER_KEY = 32'hDEADBEEF;
+  localparam int unsigned ADDR_WIDTH = 13;
+  localparam int unsigned DATA_WIDTH = 32;
+  localparam int unsigned MEM_DEPTH = 8192;
+  localparam logic [31:0] SCRAMBLER_KEY = 32'hDEADBEEF;
 
   reg clk;
   reg rst_n;

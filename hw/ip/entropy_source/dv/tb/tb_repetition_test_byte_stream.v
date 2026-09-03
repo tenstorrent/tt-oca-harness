@@ -15,7 +15,7 @@
 module tb_repetition_test_byte_stream ();
 
   // Test parameters
-  parameter CLOCK_PERIOD = 10;
+  parameter int unsigned CLOCK_PERIOD = 10;
 
   // Test signals
   reg clk_i;

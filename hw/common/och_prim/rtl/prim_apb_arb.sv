@@ -53,12 +53,12 @@ module prim_apb_arb #(
 );
 
 `ifdef SIM_APB_ARB
-  localparam MASTER_SUM_NUM = MASTER_NUM + 1;
+  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM + 1;
 `else
-  localparam MASTER_SUM_NUM = MASTER_NUM;
+  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM;
 `endif
 
-  localparam PTR_WIDTH = $clog2(MASTER_SUM_NUM);
+  localparam int unsigned PTR_WIDTH = $clog2(MASTER_SUM_NUM);
 
   logic [MASTER_SUM_NUM-1:0]                       mst_sel_arb;
 

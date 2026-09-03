@@ -21,10 +21,10 @@
 module tb_entropy_fifo ();
 
   // Test parameters
-  localparam DEPTH = 64;
-  localparam DATA_WIDTH = 32;
-  localparam PTR_WIDTH = $clog2(DEPTH);
-  localparam LEVEL_WIDTH = $clog2(DEPTH) + 1;
+  localparam int unsigned DEPTH = 64;
+  localparam int unsigned DATA_WIDTH = 32;
+  localparam int unsigned PTR_WIDTH = $clog2(DEPTH);
+  localparam int unsigned LEVEL_WIDTH = $clog2(DEPTH) + 1;
 
   // Clock and reset
   reg clk_i;

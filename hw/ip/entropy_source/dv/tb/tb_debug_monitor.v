@@ -14,8 +14,8 @@
 module tb_debug_monitor ();
 
   // Test parameters
-  localparam NSIGNALS = 16;
-  localparam FREQ_DIV_WIDTH = 7;
+  localparam int unsigned NSIGNALS = 16;
+  localparam int unsigned FREQ_DIV_WIDTH = 7;
 
   // Coprime periods for TAPPED_LENGTH=13 based ring oscillators (in ns)
   // These are coprime to minimize correlation between signals

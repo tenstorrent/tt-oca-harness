@@ -9,9 +9,9 @@
 
 module tb_scrambler_simple;
 
-  localparam ADDR_WIDTH = 9;
-  localparam DATA_WIDTH = 32;
-  localparam SCRAMBLER_KEY = 32'hDEADBEEF;
+  localparam int unsigned ADDR_WIDTH = 9;
+  localparam int unsigned DATA_WIDTH = 32;
+  localparam logic [31:0] SCRAMBLER_KEY = 32'hDEADBEEF;
 
   reg [ADDR_WIDTH-1:0] addr;
   reg [DATA_WIDTH-1:0] write_data;

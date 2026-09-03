@@ -6,8 +6,8 @@
 //
 //--------------------------------------------------
 module prim_pipe_stages #(
-  parameter WIDTH      = 8,
-  parameter NUM_STAGES = 1
+  parameter int unsigned WIDTH      = 8,
+  parameter int unsigned NUM_STAGES = 1
 ) (
   input  logic               clk_i,
   input  logic               reset_n_i,

@@ -6,7 +6,7 @@
 //
 //--------------------------------------------------
 module prim_prog_clk_div_posedge #(
-  parameter RESET_WIDTH = 16,  // Reset width in clock cycles
+  parameter int unsigned RESET_WIDTH = 16,  // Reset width in clock cycles
   parameter bit [7:0] INITIAL_DIVIDER_VAL = 8'd2,
   parameter bit DIVIDED_CLOCK_ON_RESET = 1'b0
 ) (
