@@ -134,6 +134,13 @@ class dtp_jtag_cmd_lib_seq extends dtp_jtag_base_test_seq;
             m_expected_ir_widths.push_back(IrWidth);
     endtask
 
+    virtual task ir_scan_raw(input bit [63:0] value, input int unsigned width,
+                             output bit [63:0] captured);
+        super.ir_scan_raw(value, width, captured);
+        if (m_family != null)
+            m_expected_ir_widths.push_back(width);
+    endtask
+
     virtual task shift_dr(input bit [63:0] pattern, input int unsigned width,
                           output bit [63:0] observed);
         super.shift_dr(pattern, width, observed);

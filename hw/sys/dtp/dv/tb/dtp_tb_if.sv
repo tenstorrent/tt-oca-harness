@@ -101,6 +101,15 @@ interface dtp_tb_if;
     logic jtag_stap_host_capture_en;
     logic jtag_stap_host_update_en;
 
+    // Downstream STAP TAP attach enables (driven by the test before
+    // bring-up; default 0 keeps each STAP host port's wire loopback). With
+    // a port's enable set, tb_top routes the shared ocah_jtag_vip slave
+    // device's TDO into that STAP's host TDI.
+    logic stap_io_ds_en     = 1'b0;
+    logic stap_smc_ds_en    = 1'b0;
+    logic stap_sep_ds_en    = 1'b0;
+    logic stap_extra0_ds_en = 1'b0;
+
     // Cross-trigger CTM/CTP pin surface. Request-side vectors are driven by
     // the XTRIG sequences (init '0 = quiescent, matching the cocotb agent's
     // idle state); the remaining vectors are DUT-driven observables. The
