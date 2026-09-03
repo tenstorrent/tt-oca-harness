@@ -13,324 +13,316 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - smc_cla::CDbgMuxSel
-#define SMC_CLA__CDBGMUXSEL__DBMMODE_bm 0x3
-#define SMC_CLA__CDBGMUXSEL__DBMMODE_bp 0
-#define SMC_CLA__CDBGMUXSEL__DBMMODE_bw 2
-#define SMC_CLA__CDBGMUXSEL__DBMMODE_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__DBMID_bm 0xfc
-#define SMC_CLA__CDBGMUXSEL__DBMID_bp 2
-#define SMC_CLA__CDBGMUXSEL__DBMID_bw 6
-#define SMC_CLA__CDBGMUXSEL__DBMID_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__RSVD158_bm 0xff00
-#define SMC_CLA__CDBGMUXSEL__RSVD158_bp 8
-#define SMC_CLA__CDBGMUXSEL__RSVD158_bw 8
-#define SMC_CLA__CDBGMUXSEL__RSVD158_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG0_bm 0x3f0000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG0_bp 16
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG0_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG0_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG1_bm 0xfc00000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG1_bp 22
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG1_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG1_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG2_bm 0x3f0000000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG2_bp 28
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG2_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG2_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG3_bm 0xfc00000000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG3_bp 34
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG3_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG3_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG4_bm 0x3f0000000000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG4_bp 40
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG4_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG4_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG5_bm 0xfc00000000000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG5_bp 46
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG5_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG5_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG6_bm 0x3f0000000000000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG6_bp 52
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG6_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG6_reset 0x0
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG7_bm 0xfc00000000000000
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG7_bp 58
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG7_bw 6
-#define SMC_CLA__CDBGMUXSEL__MUXSELSEG7_reset 0x0
+// reg - smc_cla::Trdstramcontrol
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_bm 0x1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_bp 0
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_bw 1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_reset 0x0
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_bm 0x2
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_bp 1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_bw 1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_reset 0x0
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_bm 0x8
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_bp 3
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_bw 1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_reset 0x1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_bm 0x10
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_bp 4
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_bw 1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_reset 0x0
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_bm 0x100
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_bp 8
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_bw 1
+#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t Dbmmode :2;
-        uint64_t Dbmid :6;
-        uint64_t Rsvd158 :8;
-        uint64_t Muxselseg0 :6;
-        uint64_t Muxselseg1 :6;
-        uint64_t Muxselseg2 :6;
-        uint64_t Muxselseg3 :6;
-        uint64_t Muxselseg4 :6;
-        uint64_t Muxselseg5 :6;
-        uint64_t Muxselseg6 :6;
-        uint64_t Muxselseg7 :6;
-    } f;
-    uint64_t w;
-} smc_cla__CDbgMuxSel_t;
-
-// reg - smc_cla::CDfdCsr
-#define SMC_CLA__CDFDCSR__DFDMMRLOCK_bm 0x1
-#define SMC_CLA__CDFDCSR__DFDMMRLOCK_bp 0
-#define SMC_CLA__CDFDCSR__DFDMMRLOCK_bw 1
-#define SMC_CLA__CDFDCSR__DFDMMRLOCK_reset 0x1
-#define SMC_CLA__CDFDCSR__RSVD621_bm 0x7ffffffffffffffe
-#define SMC_CLA__CDFDCSR__RSVD621_bp 1
-#define SMC_CLA__CDFDCSR__RSVD621_bw 62
-#define SMC_CLA__CDFDCSR__RSVD621_reset 0x0
-#define SMC_CLA__CDFDCSR__DFDEN_bm 0x8000000000000000
-#define SMC_CLA__CDFDCSR__DFDEN_bp 63
-#define SMC_CLA__CDFDCSR__DFDEN_bw 1
-#define SMC_CLA__CDFDCSR__DFDEN_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t DfdMmrLock :1;
-        uint64_t Rsvd621 :62;
-        uint64_t DfdEn :1;
-    } f;
-    uint64_t w;
-} smc_cla__CDfdCsr_t;
-
-// reg - smc_cla::Timestamp
-#define SMC_CLA__TIMESTAMP__TIMESTAMP_bm 0xffffffffffffffff
-#define SMC_CLA__TIMESTAMP__TIMESTAMP_bp 0
-#define SMC_CLA__TIMESTAMP__TIMESTAMP_bw 64
-#define SMC_CLA__TIMESTAMP__TIMESTAMP_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t Timestamp :64;
-    } f;
-    uint64_t w;
-} smc_cla__Timestamp_t;
-
-// reg - smc_cla::TimestampSync
-#define SMC_CLA__TIMESTAMPSYNC__TIMESTAMPSYNC_bm 0xffffffffffffffff
-#define SMC_CLA__TIMESTAMPSYNC__TIMESTAMPSYNC_bp 0
-#define SMC_CLA__TIMESTAMPSYNC__TIMESTAMPSYNC_bw 64
-#define SMC_CLA__TIMESTAMPSYNC__TIMESTAMPSYNC_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t TimestampSync :64;
-    } f;
-    uint64_t w;
-} smc_cla__TimestampSync_t;
-
-// reg - smc_cla::TimeStampConfig
-#define SMC_CLA__TIMESTAMPCONFIG__TSSYNC_bm 0x1
-#define SMC_CLA__TIMESTAMPCONFIG__TSSYNC_bp 0
-#define SMC_CLA__TIMESTAMPCONFIG__TSSYNC_bw 1
-#define SMC_CLA__TIMESTAMPCONFIG__TSSYNC_reset 0x0
-#define SMC_CLA__TIMESTAMPCONFIG__DEBUGMARKER_bm 0x1fe
-#define SMC_CLA__TIMESTAMPCONFIG__DEBUGMARKER_bp 1
-#define SMC_CLA__TIMESTAMPCONFIG__DEBUGMARKER_bw 8
-#define SMC_CLA__TIMESTAMPCONFIG__DEBUGMARKER_reset 0x0
-#define SMC_CLA__TIMESTAMPCONFIG__RSVD_bm 0xfffffe00
-#define SMC_CLA__TIMESTAMPCONFIG__RSVD_bp 9
-#define SMC_CLA__TIMESTAMPCONFIG__RSVD_bw 23
-#define SMC_CLA__TIMESTAMPCONFIG__RSVD_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t TsSync :1;
-        uint32_t DebugMarker :8;
-        uint32_t Rsvd :23;
-    } f;
-    uint32_t w;
-} smc_cla__TimeStampConfig_t;
-
-// reg - smc_cla::Trdstcontrol
-#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_bm 0x1
-#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_bp 0
-#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_bm 0x2
-#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_bp 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_bm 0x4
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_bp 2
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_bm 0x8
-#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_bp 3
-#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_reset 0x1
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_bm 0x70
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_bp 4
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_bw 3
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_reset 0x6
-#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_bm 0x200
-#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_bp 9
-#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_bm 0x800
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_bp 11
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_bm 0x1000
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_bp 12
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_bm 0x2000
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_bp 13
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_bm 0x8000
-#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_bp 15
-#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_bw 1
-#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_bm 0x30000
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_bp 16
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_bw 2
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_bm 0xf00000
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_bp 20
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_bw 4
-#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_reset 0x0
-#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_bm 0x7000000
-#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_bp 24
-#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_bw 3
-#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_reset 0x3
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstactive :1;
-        uint32_t Trdstenable :1;
-        uint32_t Trdstinsttracing :1;
-        uint32_t Trdstempty :1;
-        uint32_t Trdstinstmode :3;
-        uint32_t :2;
-        uint32_t Trdstcontext :1;
+        uint32_t Trdstramactive :1;
+        uint32_t Trdstramenable :1;
         uint32_t :1;
-        uint32_t Trdstinsttriggerenable :1;
-        uint32_t Trdstinststalloroverflow :1;
-        uint32_t Trdstinststallena :1;
-        uint32_t :1;
-        uint32_t Trdstinhibitsrc :1;
-        uint32_t Trdstsyncmode :2;
-        uint32_t :2;
-        uint32_t Trdstsyncmax :4;
-        uint32_t Trdstformat :3;
-        uint32_t :5;
+        uint32_t Trdstramempty :1;
+        uint32_t Trdstrammode :1;
+        uint32_t :3;
+        uint32_t Trdstramstoponwrap :1;
+        uint32_t :23;
     } f;
     uint32_t w;
-} smc_cla__Trdstcontrol_t;
+} smc_cla__Trdstramcontrol_t;
 
-// reg - smc_cla::Trdstimpl
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_bm 0xf
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_bp 0
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_bw 4
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_reset 0x1
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_bm 0xf0
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_bp 4
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_bw 4
-#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_reset 0x0
-#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_bm 0xf00
-#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_bp 8
-#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_bw 4
-#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_reset 0x1
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_bm 0xf0000
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_bp 16
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_bw 4
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_reset 0x1
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_bm 0xf00000
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_bp 20
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_bw 4
-#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_reset 0x0
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bm 0xf000000
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bp 24
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bw 4
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_reset 0x1
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bm 0x70000000
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bp 28
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bw 3
-#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_reset 0x4
+// reg - smc_cla::Trdstramimpl
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_bm 0xf
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_bp 0
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_bw 4
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_reset 0x1
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_bm 0xf0
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_bp 4
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_bw 4
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_reset 0x0
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_bm 0xf00
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_bp 8
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_bw 4
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_reset 0x9
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_bm 0x1000
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_bp 12
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_bw 1
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_reset 0x1
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bm 0x2000
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bp 13
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bw 1
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_reset 0x1
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bm 0xf000000
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bp 24
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bw 4
+#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t Trdstvermajor :4;
-        uint32_t Trdstverminor :4;
-        uint32_t Trdstcomptype :4;
-        uint32_t :4;
-        uint32_t Trdstprotocolmajor :4;
-        uint32_t Trdstprotocolminor :4;
-        uint32_t Trdstvendorframelength :4;
-        uint32_t Trdstvendorstreamlength :3;
-        uint32_t :1;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstimpl_t;
-
-// reg - smc_cla::Trdstinstfeatures
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_bm 0x1
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_bp 0
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_bw 1
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_reset 0x0
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_bm 0x2
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_bp 1
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_bw 1
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_reset 0x0
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bm 0x100
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bp 8
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bw 1
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_reset 0x0
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_bm 0xfff0000
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_bp 16
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_bw 12
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_reset 0x0
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_bm 0xf0000000
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_bp 28
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_bw 4
-#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_reset 0x4
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstinstnoaddrdiff :1;
-        uint32_t Trdstinstnotrapaddr :1;
-        uint32_t :6;
-        uint32_t Trdstinstenrepeatedhistory :1;
-        uint32_t :7;
-        uint32_t Trdstsrcid :12;
-        uint32_t Trdstsrcbits :4;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstinstfeatures_t;
-
-// reg - smc_cla::CDbgDebugTraceCfg
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_bm 0xf
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_bp 0
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_bw 4
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_reset 0x0
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bm 0xff0
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bp 4
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bw 8
-#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_reset 0x81
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bm 0xf000
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bp 12
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bw 4
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_reset 0x2
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bm 0x100000
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bp 20
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bw 1
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_reset 0x1
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bm 0x200000
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bp 21
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bw 1
-#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_reset 0x1
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t TraceSourceId :4;
-        uint32_t TraceFrameFillByte :8;
-        uint32_t FrameLenghtInBytes :4;
-        uint32_t :4;
-        uint32_t FrameModeEnable :1;
-        uint32_t FrameClosureMode :1;
+        uint32_t Trdstramvermajor :4;
+        uint32_t Trdstramverminor :4;
+        uint32_t Trdstramcomptype :4;
+        uint32_t Trdstramhassram :1;
+        uint32_t Trdstramhassmem :1;
         uint32_t :10;
+        uint32_t Trdstramvendorframelength :4;
+        uint32_t :4;
     } f;
     uint32_t w;
-} smc_cla__CDbgDebugTraceCfg_t;
+} smc_cla__Trdstramimpl_t;
+
+// reg - smc_cla::Trdstramstartlow
+#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_bm 0x3
+#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_bp 0
+#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_bw 2
+#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_reset 0x0
+#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_bm 0xfffffffc
+#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_bp 2
+#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_bw 30
+#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Rsvd10 :2;
+        uint32_t Trdstramstartlow :30;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramstartlow_t;
+
+// reg - smc_cla::Trdstramstarthigh
+#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_bm 0xffffffff
+#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_bp 0
+#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_bw 32
+#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trdstramstarthigh :32;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramstarthigh_t;
+
+// reg - smc_cla::Trdstramlimitlow
+#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_bm 0x3
+#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_bp 0
+#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_bw 2
+#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_reset 0x0
+#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_bm 0xfffffffc
+#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_bp 2
+#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_bw 30
+#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Rsvd10 :2;
+        uint32_t Trdstramlimitlow :30;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramlimitlow_t;
+
+// reg - smc_cla::Trdstramlimithigh
+#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_bm 0xffffffff
+#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_bp 0
+#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_bw 32
+#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trdstramlimithigh :32;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramlimithigh_t;
+
+// reg - smc_cla::Trdstramwplow
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_bm 0x1
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_bp 0
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_bw 1
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_reset 0x0
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_bm 0xfffffffc
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_bp 2
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_bw 30
+#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trdstramwrap :1;
+        uint32_t :1;
+        uint32_t Trdstramwplow :30;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramwplow_t;
+
+// reg - smc_cla::Trdstramwphigh
+#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_bm 0xffffffff
+#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_bp 0
+#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_bw 32
+#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trdstramwphigh :32;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramwphigh_t;
+
+// reg - smc_cla::Trdstramrplow
+#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_bm 0x3
+#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_bp 0
+#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_bw 2
+#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_reset 0x0
+#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bm 0xfffffffc
+#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bp 2
+#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bw 30
+#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Rsvd10 :2;
+        uint32_t Trdstramrplow :30;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramrplow_t;
+
+// reg - smc_cla::Trdstramrphigh
+#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_bm 0xffffffff
+#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_bp 0
+#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_bw 32
+#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trdstramrphigh :32;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramrphigh_t;
+
+// reg - smc_cla::Trdstramdata
+#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_bm 0xffffffff
+#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_bp 0
+#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_bw 32
+#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trdstramdata :32;
+    } f;
+    uint32_t w;
+} smc_cla__Trdstramdata_t;
+
+// reg - smc_cla::TrDstSinkScratchLo
+#define SMC_CLA__TRDSTSINKSCRATCHLO__DATA_bm 0xffffffff
+#define SMC_CLA__TRDSTSINKSCRATCHLO__DATA_bp 0
+#define SMC_CLA__TRDSTSINKSCRATCHLO__DATA_bw 32
+#define SMC_CLA__TRDSTSINKSCRATCHLO__DATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Data :32;
+    } f;
+    uint32_t w;
+} smc_cla__TrDstSinkScratchLo_t;
+
+// reg - smc_cla::TrDstSinkScratchHi
+#define SMC_CLA__TRDSTSINKSCRATCHHI__DATA_bm 0xffffffff
+#define SMC_CLA__TRDSTSINKSCRATCHHI__DATA_bp 0
+#define SMC_CLA__TRDSTSINKSCRATCHHI__DATA_bw 32
+#define SMC_CLA__TRDSTSINKSCRATCHHI__DATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Data :32;
+    } f;
+    uint32_t w;
+} smc_cla__TrDstSinkScratchHi_t;
+
+// reg - smc_cla::Trfunnelcontrol
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_bm 0x1
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_bp 0
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_bw 1
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_reset 0x0
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_bm 0x2
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_bp 1
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_bw 1
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_reset 0x0
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_bm 0x8
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_bp 3
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_bw 1
+#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_reset 0x1
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trfunnelactive :1;
+        uint32_t Trfunnelenable :1;
+        uint32_t :1;
+        uint32_t Trfunnelempty :1;
+        uint32_t :28;
+    } f;
+    uint32_t w;
+} smc_cla__Trfunnelcontrol_t;
+
+// reg - smc_cla::Trfunnelimpl
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_bm 0xf
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_bp 0
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_bw 4
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_reset 0x1
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_bm 0xf0
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_bp 4
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_bw 4
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_reset 0x0
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_bm 0xf00
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_bp 8
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_bw 4
+#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_reset 0x8
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trfunnelvermajor :4;
+        uint32_t Trfunnelverminor :4;
+        uint32_t Trfunnelcomptype :4;
+        uint32_t :20;
+    } f;
+    uint32_t w;
+} smc_cla__Trfunnelimpl_t;
+
+// reg - smc_cla::Trfunneldisinput
+#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bm 0xffff
+#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bp 0
+#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bw 16
+#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Trfunneldisinput :16;
+        uint32_t :16;
+    } f;
+    uint32_t w;
+} smc_cla__Trfunneldisinput_t;
+
+// reg - smc_cla::TrFunnelScratchLo
+#define SMC_CLA__TRFUNNELSCRATCHLO__DATA_bm 0xffffffff
+#define SMC_CLA__TRFUNNELSCRATCHLO__DATA_bp 0
+#define SMC_CLA__TRFUNNELSCRATCHLO__DATA_bw 32
+#define SMC_CLA__TRFUNNELSCRATCHLO__DATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Data :32;
+    } f;
+    uint32_t w;
+} smc_cla__TrFunnelScratchLo_t;
+
+// reg - smc_cla::TrFunnelScratchHi
+#define SMC_CLA__TRFUNNELSCRATCHHI__DATA_bm 0xffffffff
+#define SMC_CLA__TRFUNNELSCRATCHHI__DATA_bp 0
+#define SMC_CLA__TRFUNNELSCRATCHHI__DATA_bw 32
+#define SMC_CLA__TRFUNNELSCRATCHHI__DATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t Data :32;
+    } f;
+    uint32_t w;
+} smc_cla__TrFunnelScratchHi_t;
 
 // reg - smc_cla::CDbgClaCounter0Cfg
 #define SMC_CLA__CDBGCLACOUNTER0CFG__COUNTER_bm 0xffff
@@ -529,10 +521,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE0EAP0__UDF_bp 44
 #define SMC_CLA__CDBGNODE0EAP0__UDF_bw 8
 #define SMC_CLA__CDBGNODE0EAP0__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE0EAP0__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE0EAP0__RSVD_bp 52
-#define SMC_CLA__CDBGNODE0EAP0__RSVD_bw 12
-#define SMC_CLA__CDBGNODE0EAP0__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE0EAP0__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE0EAP0__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE0EAP0__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE0EAP0__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE0EAP0__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE0EAP0__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE0EAP0__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE0EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -547,7 +543,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode0Eap0_t;
@@ -601,10 +598,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE0EAP1__UDF_bp 44
 #define SMC_CLA__CDBGNODE0EAP1__UDF_bw 8
 #define SMC_CLA__CDBGNODE0EAP1__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE0EAP1__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE0EAP1__RSVD_bp 52
-#define SMC_CLA__CDBGNODE0EAP1__RSVD_bw 12
-#define SMC_CLA__CDBGNODE0EAP1__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE0EAP1__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE0EAP1__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE0EAP1__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE0EAP1__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE0EAP1__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE0EAP1__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE0EAP1__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE0EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -619,7 +620,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode0Eap1_t;
@@ -673,10 +675,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE1EAP0__UDF_bp 44
 #define SMC_CLA__CDBGNODE1EAP0__UDF_bw 8
 #define SMC_CLA__CDBGNODE1EAP0__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE1EAP0__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE1EAP0__RSVD_bp 52
-#define SMC_CLA__CDBGNODE1EAP0__RSVD_bw 12
-#define SMC_CLA__CDBGNODE1EAP0__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE1EAP0__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE1EAP0__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE1EAP0__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE1EAP0__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE1EAP0__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE1EAP0__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE1EAP0__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE1EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -691,7 +697,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode1Eap0_t;
@@ -745,10 +752,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE1EAP1__UDF_bp 44
 #define SMC_CLA__CDBGNODE1EAP1__UDF_bw 8
 #define SMC_CLA__CDBGNODE1EAP1__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE1EAP1__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE1EAP1__RSVD_bp 52
-#define SMC_CLA__CDBGNODE1EAP1__RSVD_bw 12
-#define SMC_CLA__CDBGNODE1EAP1__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE1EAP1__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE1EAP1__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE1EAP1__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE1EAP1__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE1EAP1__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE1EAP1__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE1EAP1__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE1EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -763,7 +774,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode1Eap1_t;
@@ -817,10 +829,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE2EAP0__UDF_bp 44
 #define SMC_CLA__CDBGNODE2EAP0__UDF_bw 8
 #define SMC_CLA__CDBGNODE2EAP0__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE2EAP0__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE2EAP0__RSVD_bp 52
-#define SMC_CLA__CDBGNODE2EAP0__RSVD_bw 12
-#define SMC_CLA__CDBGNODE2EAP0__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE2EAP0__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE2EAP0__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE2EAP0__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE2EAP0__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE2EAP0__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE2EAP0__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE2EAP0__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE2EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -835,7 +851,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode2Eap0_t;
@@ -889,10 +906,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE2EAP1__UDF_bp 44
 #define SMC_CLA__CDBGNODE2EAP1__UDF_bw 8
 #define SMC_CLA__CDBGNODE2EAP1__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE2EAP1__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE2EAP1__RSVD_bp 52
-#define SMC_CLA__CDBGNODE2EAP1__RSVD_bw 12
-#define SMC_CLA__CDBGNODE2EAP1__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE2EAP1__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE2EAP1__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE2EAP1__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE2EAP1__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE2EAP1__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE2EAP1__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE2EAP1__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE2EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -907,7 +928,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode2Eap1_t;
@@ -961,10 +983,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE3EAP0__UDF_bp 44
 #define SMC_CLA__CDBGNODE3EAP0__UDF_bw 8
 #define SMC_CLA__CDBGNODE3EAP0__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE3EAP0__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE3EAP0__RSVD_bp 52
-#define SMC_CLA__CDBGNODE3EAP0__RSVD_bw 12
-#define SMC_CLA__CDBGNODE3EAP0__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE3EAP0__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE3EAP0__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE3EAP0__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE3EAP0__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE3EAP0__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE3EAP0__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE3EAP0__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE3EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -979,7 +1005,8 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode3Eap0_t;
@@ -1033,10 +1060,14 @@ typedef union {
 #define SMC_CLA__CDBGNODE3EAP1__UDF_bp 44
 #define SMC_CLA__CDBGNODE3EAP1__UDF_bw 8
 #define SMC_CLA__CDBGNODE3EAP1__UDF_reset 0x0
-#define SMC_CLA__CDBGNODE3EAP1__RSVD_bm 0xfff0000000000000
-#define SMC_CLA__CDBGNODE3EAP1__RSVD_bp 52
-#define SMC_CLA__CDBGNODE3EAP1__RSVD_bw 12
-#define SMC_CLA__CDBGNODE3EAP1__RSVD_reset 0x0
+#define SMC_CLA__CDBGNODE3EAP1__ACTION2_bm 0x3f0000000000000
+#define SMC_CLA__CDBGNODE3EAP1__ACTION2_bp 52
+#define SMC_CLA__CDBGNODE3EAP1__ACTION2_bw 6
+#define SMC_CLA__CDBGNODE3EAP1__ACTION2_reset 0x0
+#define SMC_CLA__CDBGNODE3EAP1__ACTION3_bm 0xfc00000000000000
+#define SMC_CLA__CDBGNODE3EAP1__ACTION3_bp 58
+#define SMC_CLA__CDBGNODE3EAP1__ACTION3_bw 6
+#define SMC_CLA__CDBGNODE3EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t DestNode :2;
@@ -1051,83 +1082,84 @@ typedef union {
         uint64_t CustomAction1Enable :1;
         uint64_t EventType2 :6;
         uint64_t Udf :8;
-        uint64_t Rsvd :12;
+        uint64_t Action2 :6;
+        uint64_t Action3 :6;
     } f;
     uint64_t w;
 } smc_cla__CDbgNode3Eap1_t;
 
-// reg - smc_cla::CDbgSignalMask0
-#define SMC_CLA__CDBGSIGNALMASK0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMASK0__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMASK0__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMASK0__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMask0Lo
+#define SMC_CLA__CDBGSIGNALMASK0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK0LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK0LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMask0_t;
+} smc_cla__CDbgSignalMask0Lo_t;
 
-// reg - smc_cla::CDbgSignalMatch0
-#define SMC_CLA__CDBGSIGNALMATCH0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMATCH0__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMATCH0__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMATCH0__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMatch0Lo
+#define SMC_CLA__CDBGSIGNALMATCH0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH0LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH0LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMatch0_t;
+} smc_cla__CDbgSignalMatch0Lo_t;
 
-// reg - smc_cla::CDbgSignalMask1
-#define SMC_CLA__CDBGSIGNALMASK1__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMASK1__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMASK1__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMASK1__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMask1Lo
+#define SMC_CLA__CDBGSIGNALMASK1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK1LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK1LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMask1_t;
+} smc_cla__CDbgSignalMask1Lo_t;
 
-// reg - smc_cla::CDbgSignalMatch1
-#define SMC_CLA__CDBGSIGNALMATCH1__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMATCH1__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMATCH1__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMATCH1__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMatch1Lo
+#define SMC_CLA__CDBGSIGNALMATCH1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH1LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH1LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMatch1_t;
+} smc_cla__CDbgSignalMatch1Lo_t;
 
 // reg - smc_cla::CDbgSignalEdgeDetectCfg
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bm 0x3f
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bm 0x7f
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bp 0
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bw 6
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bw 7
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_reset 0x0
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bm 0x40
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bp 6
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bm 0x80
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bp 7
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bw 1
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_reset 0x0
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bm 0x1f80
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bp 7
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bw 6
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bm 0x7f00
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bp 8
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bw 7
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_reset 0x0
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bm 0x2000
-#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bp 13
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bm 0x8000
+#define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bp 15
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bw 1
 #define SMC_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t Signal0Select :6;
+        uint64_t Signal0Select :7;
         uint64_t PosEdgeSignal0 :1;
-        uint64_t Signal1Select :6;
+        uint64_t Signal1Select :7;
         uint64_t PosEdgeSignal1 :1;
-        uint64_t :50;
+        uint64_t :48;
     } f;
     uint64_t w;
 } smc_cla__CDbgSignalEdgeDetectCfg_t;
@@ -1141,34 +1173,66 @@ typedef union {
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP1_bp 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP1_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP1_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0_bm 0x4
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0_bp 2
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2_bm 0x4
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2_bp 2
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3_bm 0x8
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3_bp 3
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0_bm 0x10
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0_bp 4
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1_bm 0x8
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1_bp 3
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1_bm 0x20
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1_bp 5
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0_bm 0x10
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0_bp 4
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2_bm 0x40
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2_bp 6
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3_bm 0x80
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3_bp 7
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0_bm 0x100
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0_bp 8
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1_bm 0x20
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1_bp 5
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1_bm 0x200
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1_bp 9
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0_bm 0x40
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0_bp 6
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2_bm 0x400
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2_bp 10
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3_bm 0x800
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3_bp 11
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0_bm 0x1000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0_bp 12
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1_bm 0x80
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1_bp 7
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1_bm 0x2000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1_bp 13
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__RSVD318_bm 0xffffff00
-#define SMC_CLA__CDBGEAPSTATUS__RSVD318_bp 8
-#define SMC_CLA__CDBGEAPSTATUS__RSVD318_bw 24
-#define SMC_CLA__CDBGEAPSTATUS__RSVD318_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2_bm 0x4000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2_bp 14
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3_bm 0x8000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3_bp 15
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__RSVD3116_bm 0xffff0000
+#define SMC_CLA__CDBGEAPSTATUS__RSVD3116_bp 16
+#define SMC_CLA__CDBGEAPSTATUS__RSVD3116_bw 16
+#define SMC_CLA__CDBGEAPSTATUS__RSVD3116_reset 0x0
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_bm 0x100000000
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_bp 32
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_bw 1
@@ -1177,50 +1241,98 @@ typedef union {
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_bp 33
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bm 0x400000000
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bp 34
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_bm 0x400000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_bp 34
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_bm 0x800000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_bp 35
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bm 0x1000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bp 36
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bm 0x800000000
-#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bp 35
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bm 0x2000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bp 37
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bm 0x1000000000
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bp 36
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_bm 0x4000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_bp 38
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_bm 0x8000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_bp 39
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bm 0x10000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bp 40
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bm 0x2000000000
-#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bp 37
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bm 0x20000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bp 41
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bm 0x4000000000
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bp 38
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_bm 0x40000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_bp 42
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_bm 0x80000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_bp 43
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bm 0x100000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bp 44
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_reset 0x0
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bm 0x8000000000
-#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bp 39
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bm 0x200000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bp 45
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bw 1
 #define SMC_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_bm 0x400000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_bp 46
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_reset 0x0
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_bm 0x800000000000
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_bp 47
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_bw 1
+#define SMC_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Node0Eap0 :1;
         uint64_t Node0Eap1 :1;
+        uint64_t Node0Eap2 :1;
+        uint64_t Node0Eap3 :1;
         uint64_t Node1Eap0 :1;
         uint64_t Node1Eap1 :1;
+        uint64_t Node1Eap2 :1;
+        uint64_t Node1Eap3 :1;
         uint64_t Node2Eap0 :1;
         uint64_t Node2Eap1 :1;
+        uint64_t Node2Eap2 :1;
+        uint64_t Node2Eap3 :1;
         uint64_t Node3Eap0 :1;
         uint64_t Node3Eap1 :1;
-        uint64_t Rsvd318 :24;
+        uint64_t Node3Eap2 :1;
+        uint64_t Node3Eap3 :1;
+        uint64_t Rsvd3116 :16;
         uint64_t Node0Eap0W2C :1;
         uint64_t Node0Eap1W2C :1;
+        uint64_t Node0Eap2W2C :1;
+        uint64_t Node0Eap3W2C :1;
         uint64_t Node1Eap0W2C :1;
         uint64_t Node1Eap1W2C :1;
+        uint64_t Node1Eap2W2C :1;
+        uint64_t Node1Eap3W2C :1;
         uint64_t Node2Eap0W2C :1;
         uint64_t Node2Eap1W2C :1;
+        uint64_t Node2Eap2W2C :1;
+        uint64_t Node2Eap3W2C :1;
         uint64_t Node3Eap0W2C :1;
         uint64_t Node3Eap1W2C :1;
-        uint64_t :24;
+        uint64_t Node3Eap2W2C :1;
+        uint64_t Node3Eap3W2C :1;
+        uint64_t :16;
     } f;
     uint64_t w;
 } smc_cla__CDbgEapStatus_t;
@@ -1250,6 +1362,14 @@ typedef union {
 #define SMC_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bp 15
 #define SMC_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bw 1
 #define SMC_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_reset 0x0
+#define SMC_CLA__CDBGCLACTRLSTATUS__RSVD6216_bm 0x7fffffffffff0000
+#define SMC_CLA__CDBGCLACTRLSTATUS__RSVD6216_bp 16
+#define SMC_CLA__CDBGCLACTRLSTATUS__RSVD6216_bw 47
+#define SMC_CLA__CDBGCLACTRLSTATUS__RSVD6216_reset 0x0
+#define SMC_CLA__CDBGCLACTRLSTATUS__CLALOCK_bm 0x8000000000000000
+#define SMC_CLA__CDBGCLACTRLSTATUS__CLALOCK_bp 63
+#define SMC_CLA__CDBGCLACTRLSTATUS__CLALOCK_bw 1
+#define SMC_CLA__CDBGCLACTRLSTATUS__CLALOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t CurrentNode :2;
@@ -1259,22 +1379,78 @@ typedef union {
         uint64_t ClaChainLoopDelay :7;
         uint64_t DisableGlobalClockHalt :1;
         uint64_t DisableLocalClockHalt :1;
-        uint64_t :48;
+        uint64_t Rsvd6216 :47;
+        uint64_t ClaLock :1;
     } f;
     uint64_t w;
 } smc_cla__CDbgClaCtrlStatus_t;
 
-// reg - smc_cla::CDbgRsvd0
-#define SMC_CLA__CDBGRSVD0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGRSVD0__VALUE_bp 0
-#define SMC_CLA__CDBGRSVD0__VALUE_bw 64
-#define SMC_CLA__CDBGRSVD0__VALUE_reset 0x0
+// reg - smc_cla::CDbgMuxSelLo
+#define SMC_CLA__CDBGMUXSELLO__DBMMODE_bm 0x3
+#define SMC_CLA__CDBGMUXSELLO__DBMMODE_bp 0
+#define SMC_CLA__CDBGMUXSELLO__DBMMODE_bw 2
+#define SMC_CLA__CDBGMUXSELLO__DBMMODE_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__DBMID_bm 0xfc
+#define SMC_CLA__CDBGMUXSELLO__DBMID_bp 2
+#define SMC_CLA__CDBGMUXSELLO__DBMID_bw 6
+#define SMC_CLA__CDBGMUXSELLO__DBMID_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__FINEGRAINTIME_bm 0x100
+#define SMC_CLA__CDBGMUXSELLO__FINEGRAINTIME_bp 8
+#define SMC_CLA__CDBGMUXSELLO__FINEGRAINTIME_bw 1
+#define SMC_CLA__CDBGMUXSELLO__FINEGRAINTIME_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__RSVD159_bm 0xfe00
+#define SMC_CLA__CDBGMUXSELLO__RSVD159_bp 9
+#define SMC_CLA__CDBGMUXSELLO__RSVD159_bw 7
+#define SMC_CLA__CDBGMUXSELLO__RSVD159_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG0_bm 0x3f0000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG0_bp 16
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG0_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG0_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG1_bm 0xfc00000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG1_bp 22
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG1_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG1_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG2_bm 0x3f0000000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG2_bp 28
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG2_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG2_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG3_bm 0xfc00000000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG3_bp 34
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG3_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG3_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG4_bm 0x3f0000000000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG4_bp 40
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG4_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG4_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG5_bm 0xfc00000000000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG5_bp 46
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG5_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG5_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG6_bm 0x3f0000000000000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG6_bp 52
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG6_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG6_reset 0x0
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG7_bm 0xfc00000000000000
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG7_bp 58
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG7_bw 6
+#define SMC_CLA__CDBGMUXSELLO__MUXSELSEG7_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t Value :64;
+        uint64_t Dbmmode :2;
+        uint64_t Dbmid :6;
+        uint64_t Finegraintime :1;
+        uint64_t Rsvd159 :7;
+        uint64_t Muxselseg0 :6;
+        uint64_t Muxselseg1 :6;
+        uint64_t Muxselseg2 :6;
+        uint64_t Muxselseg3 :6;
+        uint64_t Muxselseg4 :6;
+        uint64_t Muxselseg5 :6;
+        uint64_t Muxselseg6 :6;
+        uint64_t Muxselseg7 :6;
     } f;
     uint64_t w;
-} smc_cla__CDbgRsvd0_t;
+} smc_cla__CDbgMuxSelLo_t;
 
 // reg - smc_cla::CDbgRsvd1
 #define SMC_CLA__CDBGRSVD1__VALUE_bm 0xffffffffffffffff
@@ -1300,53 +1476,53 @@ typedef union {
     uint64_t w;
 } smc_cla__CDbgRsvd2_t;
 
-// reg - smc_cla::CDbgTransitionMask
-#define SMC_CLA__CDBGTRANSITIONMASK__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGTRANSITIONMASK__VALUE_bp 0
-#define SMC_CLA__CDBGTRANSITIONMASK__VALUE_bw 64
-#define SMC_CLA__CDBGTRANSITIONMASK__VALUE_reset 0x0
+// reg - smc_cla::CDbgTransitionMaskLo
+#define SMC_CLA__CDBGTRANSITIONMASKLO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTRANSITIONMASKLO__VALUE_bp 0
+#define SMC_CLA__CDBGTRANSITIONMASKLO__VALUE_bw 64
+#define SMC_CLA__CDBGTRANSITIONMASKLO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgTransitionMask_t;
+} smc_cla__CDbgTransitionMaskLo_t;
 
-// reg - smc_cla::CDbgTransitionFromValue
-#define SMC_CLA__CDBGTRANSITIONFROMVALUE__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGTRANSITIONFROMVALUE__VALUE_bp 0
-#define SMC_CLA__CDBGTRANSITIONFROMVALUE__VALUE_bw 64
-#define SMC_CLA__CDBGTRANSITIONFROMVALUE__VALUE_reset 0x0
+// reg - smc_cla::CDbgTransitionFromValueLo
+#define SMC_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_bp 0
+#define SMC_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_bw 64
+#define SMC_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgTransitionFromValue_t;
+} smc_cla__CDbgTransitionFromValueLo_t;
 
-// reg - smc_cla::CDbgTransitionToValue
-#define SMC_CLA__CDBGTRANSITIONTOVALUE__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGTRANSITIONTOVALUE__VALUE_bp 0
-#define SMC_CLA__CDBGTRANSITIONTOVALUE__VALUE_bw 64
-#define SMC_CLA__CDBGTRANSITIONTOVALUE__VALUE_reset 0x0
+// reg - smc_cla::CDbgTransitionToValueLo
+#define SMC_CLA__CDBGTRANSITIONTOVALUELO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTRANSITIONTOVALUELO__VALUE_bp 0
+#define SMC_CLA__CDBGTRANSITIONTOVALUELO__VALUE_bw 64
+#define SMC_CLA__CDBGTRANSITIONTOVALUELO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgTransitionToValue_t;
+} smc_cla__CDbgTransitionToValueLo_t;
 
-// reg - smc_cla::CDbgOnesCountMask
-#define SMC_CLA__CDBGONESCOUNTMASK__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGONESCOUNTMASK__VALUE_bp 0
-#define SMC_CLA__CDBGONESCOUNTMASK__VALUE_bw 64
-#define SMC_CLA__CDBGONESCOUNTMASK__VALUE_reset 0x0
+// reg - smc_cla::CDbgOnesCountMaskLo
+#define SMC_CLA__CDBGONESCOUNTMASKLO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGONESCOUNTMASKLO__VALUE_bp 0
+#define SMC_CLA__CDBGONESCOUNTMASKLO__VALUE_bw 64
+#define SMC_CLA__CDBGONESCOUNTMASKLO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgOnesCountMask_t;
+} smc_cla__CDbgOnesCountMaskLo_t;
 
 // reg - smc_cla::CDbgOnesCountValue
 #define SMC_CLA__CDBGONESCOUNTVALUE__VALUE_bm 0xffffffffffffffff
@@ -1360,113 +1536,113 @@ typedef union {
     uint64_t w;
 } smc_cla__CDbgOnesCountValue_t;
 
-// reg - smc_cla::CDbgAnyChange
-#define SMC_CLA__CDBGANYCHANGE__MASK_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGANYCHANGE__MASK_bp 0
-#define SMC_CLA__CDBGANYCHANGE__MASK_bw 64
-#define SMC_CLA__CDBGANYCHANGE__MASK_reset 0x0
+// reg - smc_cla::CDbgAnyChangeLo
+#define SMC_CLA__CDBGANYCHANGELO__MASK_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGANYCHANGELO__MASK_bp 0
+#define SMC_CLA__CDBGANYCHANGELO__MASK_bw 64
+#define SMC_CLA__CDBGANYCHANGELO__MASK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Mask :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgAnyChange_t;
+} smc_cla__CDbgAnyChangeLo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode0Eap0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap0Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode0Eap0_t;
+} smc_cla__CDbgSignalSnapshotNode0Eap0Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode0Eap1
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap1Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode0Eap1_t;
+} smc_cla__CDbgSignalSnapshotNode0Eap1Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode1Eap0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap0Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode1Eap0_t;
+} smc_cla__CDbgSignalSnapshotNode1Eap0Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode1Eap1
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap1Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode1Eap1_t;
+} smc_cla__CDbgSignalSnapshotNode1Eap1Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode2Eap0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap0Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode2Eap0_t;
+} smc_cla__CDbgSignalSnapshotNode2Eap0Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode2Eap1
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap1Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode2Eap1_t;
+} smc_cla__CDbgSignalSnapshotNode2Eap1Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode3Eap0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap0Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode3Eap0_t;
+} smc_cla__CDbgSignalSnapshotNode3Eap0Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode3Eap1
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap1Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode3Eap1_t;
+} smc_cla__CDbgSignalSnapshotNode3Eap1Lo_t;
 
 // reg - smc_cla::CDbgClaTimeMatch
 #define SMC_CLA__CDBGCLATIMEMATCH__TIMEMATCHVAL_bm 0xffffffffffffffff
@@ -1480,53 +1656,53 @@ typedef union {
     uint64_t w;
 } smc_cla__CDbgClaTimeMatch_t;
 
-// reg - smc_cla::CDbgSignalMask2
-#define SMC_CLA__CDBGSIGNALMASK2__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMASK2__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMASK2__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMASK2__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMask2Lo
+#define SMC_CLA__CDBGSIGNALMASK2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK2LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK2LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMask2_t;
+} smc_cla__CDbgSignalMask2Lo_t;
 
-// reg - smc_cla::CDbgSignalMatch2
-#define SMC_CLA__CDBGSIGNALMATCH2__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMATCH2__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMATCH2__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMATCH2__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMatch2Lo
+#define SMC_CLA__CDBGSIGNALMATCH2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH2LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH2LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMatch2_t;
+} smc_cla__CDbgSignalMatch2Lo_t;
 
-// reg - smc_cla::CDbgSignalMask3
-#define SMC_CLA__CDBGSIGNALMASK3__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMASK3__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMASK3__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMASK3__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMask3Lo
+#define SMC_CLA__CDBGSIGNALMASK3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK3LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK3LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMask3_t;
+} smc_cla__CDbgSignalMask3Lo_t;
 
-// reg - smc_cla::CDbgSignalMatch3
-#define SMC_CLA__CDBGSIGNALMATCH3__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALMATCH3__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALMATCH3__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALMATCH3__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalMatch3Lo
+#define SMC_CLA__CDBGSIGNALMATCH3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH3LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH3LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalMatch3_t;
+} smc_cla__CDbgSignalMatch3Lo_t;
 
 // reg - smc_cla::CDbgNode0Eap2
 #define SMC_CLA__CDBGNODE0EAP2__DESTNODE_bm 0x3
@@ -2144,101 +2320,101 @@ typedef union {
     uint64_t w;
 } smc_cla__CDbgNode3Eap3_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode0Eap2
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap2Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode0Eap2_t;
+} smc_cla__CDbgSignalSnapshotNode0Eap2Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode0Eap3
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap3Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode0Eap3_t;
+} smc_cla__CDbgSignalSnapshotNode0Eap3Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode1Eap2
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap2Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode1Eap2_t;
+} smc_cla__CDbgSignalSnapshotNode1Eap2Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode1Eap3
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap3Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode1Eap3_t;
+} smc_cla__CDbgSignalSnapshotNode1Eap3Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode2Eap2
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap2Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode2Eap2_t;
+} smc_cla__CDbgSignalSnapshotNode2Eap2Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode2Eap3
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap3Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode2Eap3_t;
+} smc_cla__CDbgSignalSnapshotNode2Eap3Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode3Eap2
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap2Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode3Eap2_t;
+} smc_cla__CDbgSignalSnapshotNode3Eap2Lo_t;
 
-// reg - smc_cla::CDbgSignalSnapshotNode3Eap3
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3__VALUE_bm 0xffffffffffffffff
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3__VALUE_bp 0
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3__VALUE_bw 64
-#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3__VALUE_reset 0x0
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap3Lo
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Value :64;
     } f;
     uint64_t w;
-} smc_cla__CDbgSignalSnapshotNode3Eap3_t;
+} smc_cla__CDbgSignalSnapshotNode3Eap3Lo_t;
 
 // reg - smc_cla::CDbgSignalDelayMuxSel
 #define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG0_bm 0x3
@@ -2273,9 +2449,41 @@ typedef union {
 #define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_bp 14
 #define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_bw 2
 #define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_reset 0x0
-#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_bm 0xffffffffffff0000
-#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_bp 16
-#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_bw 48
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_bm 0x30000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_bp 16
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_bm 0xc0000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_bp 18
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_bm 0x300000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_bp 20
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_bm 0xc00000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_bp 22
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_bm 0x3000000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_bp 24
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_bm 0xc000000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_bp 26
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_bm 0x30000000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_bp 28
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_bm 0xc0000000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_bp 30
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_bw 2
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_reset 0x0
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_bm 0xffffffff00000000
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_bp 32
+#define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_bw 32
 #define SMC_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -2287,27 +2495,18 @@ typedef union {
         uint64_t Muxselseg5 :2;
         uint64_t Muxselseg6 :2;
         uint64_t Muxselseg7 :2;
-        uint64_t Rsvd :48;
+        uint64_t Muxselseg8 :2;
+        uint64_t Muxselseg9 :2;
+        uint64_t Muxselseg10 :2;
+        uint64_t Muxselseg11 :2;
+        uint64_t Muxselseg12 :2;
+        uint64_t Muxselseg13 :2;
+        uint64_t Muxselseg14 :2;
+        uint64_t Muxselseg15 :2;
+        uint64_t Rsvd :32;
     } f;
     uint64_t w;
 } smc_cla__CDbgSignalDelayMuxSel_t;
-
-// reg - smc_cla::CDbgClaTimestampsync
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMP_bm 0x7fffffffffffffff
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMP_bp 0
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMP_bw 63
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMP_reset 0x0
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESYNCMODEENABLE_bm 0x8000000000000000
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESYNCMODEENABLE_bp 63
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESYNCMODEENABLE_bw 1
-#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESYNCMODEENABLE_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t Timestamp :63;
-        uint64_t Timesyncmodeenable :1;
-    } f;
-    uint64_t w;
-} smc_cla__CDbgClaTimestampsync_t;
 
 // reg - smc_cla::CDbgClaXtriggerTimestretch
 #define SMC_CLA__CDBGCLAXTRIGGERTIMESTRETCH__XTRIGGER0STRETCH_bm 0xff
@@ -2331,6 +2530,62 @@ typedef union {
     uint64_t w;
 } smc_cla__CDbgClaXtriggerTimestretch_t;
 
+// reg - smc_cla::CDbgClaTimestamp
+#define SMC_CLA__CDBGCLATIMESTAMP__TIMESTAMP_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCLATIMESTAMP__TIMESTAMP_bp 0
+#define SMC_CLA__CDBGCLATIMESTAMP__TIMESTAMP_bw 64
+#define SMC_CLA__CDBGCLATIMESTAMP__TIMESTAMP_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Timestamp :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgClaTimestamp_t;
+
+// reg - smc_cla::CDbgClaTimestampSync
+#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_bp 0
+#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_bw 64
+#define SMC_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t TimestampSync :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgClaTimestampSync_t;
+
+// reg - smc_cla::CDbgClaTimestampConfig
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bm 0x1
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bp 0
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bw 1
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_reset 0x0
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bm 0x1fe
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bp 1
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bw 8
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_reset 0x0
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_bm 0x200
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_bp 9
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_bw 1
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_reset 0x0
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_bm 0x400
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_bp 10
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_bw 1
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_reset 0x0
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bm 0xfffffffffffff800
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bp 11
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bw 53
+#define SMC_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t TsCapture :1;
+        uint64_t DebugMarker :8;
+        uint64_t TsSyncOffset :1;
+        uint64_t TsSyncRaw :1;
+        uint64_t Rsvd1 :53;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgClaTimestampConfig_t;
+
 // reg - smc_cla::CrScratchpad
 #define SMC_CLA__CRSCRATCHPAD__DATA_bm 0xffffffffffffffff
 #define SMC_CLA__CRSCRATCHPAD__DATA_bp 0
@@ -2342,6 +2597,654 @@ typedef union {
     } f;
     uint64_t w;
 } smc_cla__CrScratchpad_t;
+
+// reg - smc_cla::CDbgSignalMask0Hi
+#define SMC_CLA__CDBGSIGNALMASK0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK0HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK0HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMask0Hi_t;
+
+// reg - smc_cla::CDbgSignalMatch0Hi
+#define SMC_CLA__CDBGSIGNALMATCH0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH0HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH0HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMatch0Hi_t;
+
+// reg - smc_cla::CDbgSignalMask1Hi
+#define SMC_CLA__CDBGSIGNALMASK1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK1HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK1HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMask1Hi_t;
+
+// reg - smc_cla::CDbgSignalMatch1Hi
+#define SMC_CLA__CDBGSIGNALMATCH1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH1HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH1HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMatch1Hi_t;
+
+// reg - smc_cla::CDbgSignalMask2Hi
+#define SMC_CLA__CDBGSIGNALMASK2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK2HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK2HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMask2Hi_t;
+
+// reg - smc_cla::CDbgSignalMatch2Hi
+#define SMC_CLA__CDBGSIGNALMATCH2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH2HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH2HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMatch2Hi_t;
+
+// reg - smc_cla::CDbgSignalMask3Hi
+#define SMC_CLA__CDBGSIGNALMASK3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMASK3HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMASK3HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMASK3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMask3Hi_t;
+
+// reg - smc_cla::CDbgSignalMatch3Hi
+#define SMC_CLA__CDBGSIGNALMATCH3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALMATCH3HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALMATCH3HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALMATCH3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalMatch3Hi_t;
+
+// reg - smc_cla::CDbgMuxSelHi
+#define SMC_CLA__CDBGMUXSELHI__DBMMODE_bm 0x3
+#define SMC_CLA__CDBGMUXSELHI__DBMMODE_bp 0
+#define SMC_CLA__CDBGMUXSELHI__DBMMODE_bw 2
+#define SMC_CLA__CDBGMUXSELHI__DBMMODE_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__DBMID_bm 0xfc
+#define SMC_CLA__CDBGMUXSELHI__DBMID_bp 2
+#define SMC_CLA__CDBGMUXSELHI__DBMID_bw 6
+#define SMC_CLA__CDBGMUXSELHI__DBMID_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__RSVD158_bm 0xff00
+#define SMC_CLA__CDBGMUXSELHI__RSVD158_bp 8
+#define SMC_CLA__CDBGMUXSELHI__RSVD158_bw 8
+#define SMC_CLA__CDBGMUXSELHI__RSVD158_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG8_bm 0x3f0000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG8_bp 16
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG8_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG8_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG9_bm 0xfc00000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG9_bp 22
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG9_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG9_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG10_bm 0x3f0000000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG10_bp 28
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG10_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG10_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG11_bm 0xfc00000000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG11_bp 34
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG11_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG11_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG12_bm 0x3f0000000000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG12_bp 40
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG12_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG12_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG13_bm 0xfc00000000000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG13_bp 46
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG13_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG13_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG14_bm 0x3f0000000000000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG14_bp 52
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG14_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG14_reset 0x0
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG15_bm 0xfc00000000000000
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG15_bp 58
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG15_bw 6
+#define SMC_CLA__CDBGMUXSELHI__MUXSELSEG15_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Dbmmode :2;
+        uint64_t Dbmid :6;
+        uint64_t Rsvd158 :8;
+        uint64_t Muxselseg8 :6;
+        uint64_t Muxselseg9 :6;
+        uint64_t Muxselseg10 :6;
+        uint64_t Muxselseg11 :6;
+        uint64_t Muxselseg12 :6;
+        uint64_t Muxselseg13 :6;
+        uint64_t Muxselseg14 :6;
+        uint64_t Muxselseg15 :6;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgMuxSelHi_t;
+
+// reg - smc_cla::CDbgTransitionMaskHi
+#define SMC_CLA__CDBGTRANSITIONMASKHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTRANSITIONMASKHI__VALUE_bp 0
+#define SMC_CLA__CDBGTRANSITIONMASKHI__VALUE_bw 64
+#define SMC_CLA__CDBGTRANSITIONMASKHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgTransitionMaskHi_t;
+
+// reg - smc_cla::CDbgTransitionFromValueHi
+#define SMC_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_bp 0
+#define SMC_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_bw 64
+#define SMC_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgTransitionFromValueHi_t;
+
+// reg - smc_cla::CDbgTransitionToValueHi
+#define SMC_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_bp 0
+#define SMC_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_bw 64
+#define SMC_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgTransitionToValueHi_t;
+
+// reg - smc_cla::CDbgOnesCountMaskHi
+#define SMC_CLA__CDBGONESCOUNTMASKHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGONESCOUNTMASKHI__VALUE_bp 0
+#define SMC_CLA__CDBGONESCOUNTMASKHI__VALUE_bw 64
+#define SMC_CLA__CDBGONESCOUNTMASKHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgOnesCountMaskHi_t;
+
+// reg - smc_cla::CDbgAnyChangeHi
+#define SMC_CLA__CDBGANYCHANGEHI__MASK_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGANYCHANGEHI__MASK_bp 0
+#define SMC_CLA__CDBGANYCHANGEHI__MASK_bw 64
+#define SMC_CLA__CDBGANYCHANGEHI__MASK_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Mask :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgAnyChangeHi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap0Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode0Eap0Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap1Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode0Eap1Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap0Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode1Eap0Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap1Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode1Eap1Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap0Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode2Eap0Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap1Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode2Eap1Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap0Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode3Eap0Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap1Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode3Eap1Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap2Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode0Eap2Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode0Eap3Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode0Eap3Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap2Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode1Eap2Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode1Eap3Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode1Eap3Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap2Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode2Eap2Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode2Eap3Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode2Eap3Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap2Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode3Eap2Hi_t;
+
+// reg - smc_cla::CDbgSignalSnapshotNode3Eap3Hi
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_bp 0
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_bw 64
+#define SMC_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgSignalSnapshotNode3Eap3Hi_t;
+
+// reg - smc_cla::CDbgLfsr
+#define SMC_CLA__CDBGLFSR__LFSRACTIVE_bm 0x1
+#define SMC_CLA__CDBGLFSR__LFSRACTIVE_bp 0
+#define SMC_CLA__CDBGLFSR__LFSRACTIVE_bw 1
+#define SMC_CLA__CDBGLFSR__LFSRACTIVE_reset 0x0
+#define SMC_CLA__CDBGLFSR__LFSR_bm 0xfffffffffffffffe
+#define SMC_CLA__CDBGLFSR__LFSR_bp 1
+#define SMC_CLA__CDBGLFSR__LFSR_bw 63
+#define SMC_CLA__CDBGLFSR__LFSR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t LfsrActive :1;
+        uint64_t Lfsr :63;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgLfsr_t;
+
+// reg - smc_cla::CDbgLfsrMask
+#define SMC_CLA__CDBGLFSRMASK__RSVD0_bm 0x1
+#define SMC_CLA__CDBGLFSRMASK__RSVD0_bp 0
+#define SMC_CLA__CDBGLFSRMASK__RSVD0_bw 1
+#define SMC_CLA__CDBGLFSRMASK__RSVD0_reset 0x0
+#define SMC_CLA__CDBGLFSRMASK__MASK_bm 0xfffffffffffffffe
+#define SMC_CLA__CDBGLFSRMASK__MASK_bp 1
+#define SMC_CLA__CDBGLFSRMASK__MASK_bw 63
+#define SMC_CLA__CDBGLFSRMASK__MASK_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Rsvd0 :1;
+        uint64_t Mask :63;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgLfsrMask_t;
+
+// reg - smc_cla::CDbgTimestampCapture
+#define SMC_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_bp 0
+#define SMC_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_bw 64
+#define SMC_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Timestamp :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgTimestampCapture_t;
+
+// reg - smc_cla::CDbgCompare0Lo
+#define SMC_CLA__CDBGCOMPARE0LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE0LO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE0LO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE0LO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare0Lo_t;
+
+// reg - smc_cla::CDbgCompare0MaskLo
+#define SMC_CLA__CDBGCOMPARE0MASKLO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE0MASKLO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE0MASKLO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE0MASKLO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare0MaskLo_t;
+
+// reg - smc_cla::CDbgCompare1Lo
+#define SMC_CLA__CDBGCOMPARE1LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE1LO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE1LO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE1LO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare1Lo_t;
+
+// reg - smc_cla::CDbgCompare1MaskLo
+#define SMC_CLA__CDBGCOMPARE1MASKLO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE1MASKLO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE1MASKLO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE1MASKLO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare1MaskLo_t;
+
+// reg - smc_cla::CDbgCompare2Lo
+#define SMC_CLA__CDBGCOMPARE2LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE2LO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE2LO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE2LO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare2Lo_t;
+
+// reg - smc_cla::CDbgCompare2MaskLo
+#define SMC_CLA__CDBGCOMPARE2MASKLO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE2MASKLO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE2MASKLO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE2MASKLO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare2MaskLo_t;
+
+// reg - smc_cla::CDbgCompare3Lo
+#define SMC_CLA__CDBGCOMPARE3LO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE3LO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE3LO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE3LO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare3Lo_t;
+
+// reg - smc_cla::CDbgCompare3MaskLo
+#define SMC_CLA__CDBGCOMPARE3MASKLO__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE3MASKLO__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE3MASKLO__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE3MASKLO__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare3MaskLo_t;
+
+// reg - smc_cla::CDbgCompare0Hi
+#define SMC_CLA__CDBGCOMPARE0HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE0HI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE0HI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE0HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare0Hi_t;
+
+// reg - smc_cla::CDbgCompare0MaskHi
+#define SMC_CLA__CDBGCOMPARE0MASKHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE0MASKHI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE0MASKHI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE0MASKHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare0MaskHi_t;
+
+// reg - smc_cla::CDbgCompare1Hi
+#define SMC_CLA__CDBGCOMPARE1HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE1HI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE1HI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE1HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare1Hi_t;
+
+// reg - smc_cla::CDbgCompare1MaskHi
+#define SMC_CLA__CDBGCOMPARE1MASKHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE1MASKHI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE1MASKHI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE1MASKHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare1MaskHi_t;
+
+// reg - smc_cla::CDbgCompare2Hi
+#define SMC_CLA__CDBGCOMPARE2HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE2HI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE2HI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE2HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare2Hi_t;
+
+// reg - smc_cla::CDbgCompare2MaskHi
+#define SMC_CLA__CDBGCOMPARE2MASKHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE2MASKHI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE2MASKHI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE2MASKHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare2MaskHi_t;
+
+// reg - smc_cla::CDbgCompare3Hi
+#define SMC_CLA__CDBGCOMPARE3HI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE3HI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE3HI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE3HI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare3Hi_t;
+
+// reg - smc_cla::CDbgCompare3MaskHi
+#define SMC_CLA__CDBGCOMPARE3MASKHI__VALUE_bm 0xffffffffffffffff
+#define SMC_CLA__CDBGCOMPARE3MASKHI__VALUE_bp 0
+#define SMC_CLA__CDBGCOMPARE3MASKHI__VALUE_bw 64
+#define SMC_CLA__CDBGCOMPARE3MASKHI__VALUE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t Value :64;
+    } f;
+    uint64_t w;
+} smc_cla__CDbgCompare3MaskHi_t;
 
 // reg - smc_cla::Scratch
 #define SMC_CLA__SCRATCH__DATA_bm 0xffffffffffffffff
@@ -2355,677 +3258,248 @@ typedef union {
     uint64_t w;
 } smc_cla__Scratch_t;
 
-// reg - smc_cla::Trfunnelcontrol
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_bm 0x1
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_bp 0
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_bw 1
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELACTIVE_reset 0x0
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_bm 0x2
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_bp 1
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_bw 1
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELENABLE_reset 0x0
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_bm 0x8
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_bp 3
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_bw 1
-#define SMC_CLA__TRFUNNELCONTROL__TRFUNNELEMPTY_reset 0x1
+// reg - smc_cla::Trdstcontrol
+#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_bm 0x1
+#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_bp 0
+#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTACTIVE_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_bm 0x2
+#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_bp 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTENABLE_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_bm 0x4
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_bp 2
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRACING_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_bm 0x8
+#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_bp 3
+#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTEMPTY_reset 0x1
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_bm 0x70
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_bp 4
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_bw 3
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTMODE_reset 0x6
+#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_bm 0x200
+#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_bp 9
+#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTCONTEXT_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_bm 0x800
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_bp 11
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTTRIGGERENABLE_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_bm 0x1000
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_bp 12
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLOROVERFLOW_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_bm 0x2000
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_bp 13
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTINSTSTALLENA_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_bm 0x8000
+#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_bp 15
+#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_bw 1
+#define SMC_CLA__TRDSTCONTROL__TRDSTINHIBITSRC_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_bm 0x30000
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_bp 16
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_bw 2
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMODE_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_bm 0xf00000
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_bp 20
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_bw 4
+#define SMC_CLA__TRDSTCONTROL__TRDSTSYNCMAX_reset 0x0
+#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_bm 0x7000000
+#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_bp 24
+#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_bw 3
+#define SMC_CLA__TRDSTCONTROL__TRDSTFORMAT_reset 0x3
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t Trfunnelactive :1;
-        uint32_t Trfunnelenable :1;
+        uint32_t Trdstactive :1;
+        uint32_t Trdstenable :1;
+        uint32_t Trdstinsttracing :1;
+        uint32_t Trdstempty :1;
+        uint32_t Trdstinstmode :3;
+        uint32_t :2;
+        uint32_t Trdstcontext :1;
         uint32_t :1;
-        uint32_t Trfunnelempty :1;
-        uint32_t :28;
-    } f;
-    uint32_t w;
-} smc_cla__Trfunnelcontrol_t;
-
-// reg - smc_cla::Trfunnelimpl
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_bm 0xf
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_bp 0
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_bw 4
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMAJOR_reset 0x1
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_bm 0xf0
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_bp 4
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_bw 4
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELVERMINOR_reset 0x0
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_bm 0xf00
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_bp 8
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_bw 4
-#define SMC_CLA__TRFUNNELIMPL__TRFUNNELCOMPTYPE_reset 0x8
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trfunnelvermajor :4;
-        uint32_t Trfunnelverminor :4;
-        uint32_t Trfunnelcomptype :4;
-        uint32_t :20;
-    } f;
-    uint32_t w;
-} smc_cla__Trfunnelimpl_t;
-
-// reg - smc_cla::Trfunneldisinput
-#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bm 0xffff
-#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bp 0
-#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bw 16
-#define SMC_CLA__TRFUNNELDISINPUT__TRFUNNELDISINPUT_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trfunneldisinput :16;
-        uint32_t :16;
-    } f;
-    uint32_t w;
-} smc_cla__Trfunneldisinput_t;
-
-// reg - smc_cla::Trramcontrol
-#define SMC_CLA__TRRAMCONTROL__TRRAMACTIVE_bm 0x1
-#define SMC_CLA__TRRAMCONTROL__TRRAMACTIVE_bp 0
-#define SMC_CLA__TRRAMCONTROL__TRRAMACTIVE_bw 1
-#define SMC_CLA__TRRAMCONTROL__TRRAMACTIVE_reset 0x0
-#define SMC_CLA__TRRAMCONTROL__TRRAMENABLE_bm 0x2
-#define SMC_CLA__TRRAMCONTROL__TRRAMENABLE_bp 1
-#define SMC_CLA__TRRAMCONTROL__TRRAMENABLE_bw 1
-#define SMC_CLA__TRRAMCONTROL__TRRAMENABLE_reset 0x0
-#define SMC_CLA__TRRAMCONTROL__TRRAMEMPTY_bm 0x8
-#define SMC_CLA__TRRAMCONTROL__TRRAMEMPTY_bp 3
-#define SMC_CLA__TRRAMCONTROL__TRRAMEMPTY_bw 1
-#define SMC_CLA__TRRAMCONTROL__TRRAMEMPTY_reset 0x1
-#define SMC_CLA__TRRAMCONTROL__TRRAMMODE_bm 0x10
-#define SMC_CLA__TRRAMCONTROL__TRRAMMODE_bp 4
-#define SMC_CLA__TRRAMCONTROL__TRRAMMODE_bw 1
-#define SMC_CLA__TRRAMCONTROL__TRRAMMODE_reset 0x0
-#define SMC_CLA__TRRAMCONTROL__TRRAMSTOPONWRAP_bm 0x100
-#define SMC_CLA__TRRAMCONTROL__TRRAMSTOPONWRAP_bp 8
-#define SMC_CLA__TRRAMCONTROL__TRRAMSTOPONWRAP_bw 1
-#define SMC_CLA__TRRAMCONTROL__TRRAMSTOPONWRAP_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trramactive :1;
-        uint32_t Trramenable :1;
+        uint32_t Trdstinsttriggerenable :1;
+        uint32_t Trdstinststalloroverflow :1;
+        uint32_t Trdstinststallena :1;
         uint32_t :1;
-        uint32_t Trramempty :1;
-        uint32_t Trrammode :1;
-        uint32_t :3;
-        uint32_t Trramstoponwrap :1;
-        uint32_t :23;
+        uint32_t Trdstinhibitsrc :1;
+        uint32_t Trdstsyncmode :2;
+        uint32_t :2;
+        uint32_t Trdstsyncmax :4;
+        uint32_t Trdstformat :3;
+        uint32_t :5;
     } f;
     uint32_t w;
-} smc_cla__Trramcontrol_t;
+} smc_cla__Trdstcontrol_t;
 
-// reg - smc_cla::Trramimpl
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMAJOR_bm 0xf
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMAJOR_bp 0
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMAJOR_bw 4
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMAJOR_reset 0x1
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMINOR_bm 0xf0
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMINOR_bp 4
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMINOR_bw 4
-#define SMC_CLA__TRRAMIMPL__TRRAMVERMINOR_reset 0x0
-#define SMC_CLA__TRRAMIMPL__TRRAMCOMPTYPE_bm 0xf00
-#define SMC_CLA__TRRAMIMPL__TRRAMCOMPTYPE_bp 8
-#define SMC_CLA__TRRAMIMPL__TRRAMCOMPTYPE_bw 4
-#define SMC_CLA__TRRAMIMPL__TRRAMCOMPTYPE_reset 0x9
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSRAM_bm 0x1000
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSRAM_bp 12
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSRAM_bw 1
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSRAM_reset 0x1
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSMEM_bm 0x2000
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSMEM_bp 13
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSMEM_bw 1
-#define SMC_CLA__TRRAMIMPL__TRRAMHASSMEM_reset 0x1
-#define SMC_CLA__TRRAMIMPL__TRRAMVENDORFRAMELENGTH_bm 0xf000000
-#define SMC_CLA__TRRAMIMPL__TRRAMVENDORFRAMELENGTH_bp 24
-#define SMC_CLA__TRRAMIMPL__TRRAMVENDORFRAMELENGTH_bw 4
-#define SMC_CLA__TRRAMIMPL__TRRAMVENDORFRAMELENGTH_reset 0x1
+// reg - smc_cla::Trdstimpl
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_bm 0xf
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_bp 0
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_bw 4
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMAJOR_reset 0x1
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_bm 0xf0
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_bp 4
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_bw 4
+#define SMC_CLA__TRDSTIMPL__TRDSTVERMINOR_reset 0x0
+#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_bm 0xf00
+#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_bp 8
+#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_bw 4
+#define SMC_CLA__TRDSTIMPL__TRDSTCOMPTYPE_reset 0x1
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_bm 0xf0000
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_bp 16
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_bw 4
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMAJOR_reset 0x1
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_bm 0xf00000
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_bp 20
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_bw 4
+#define SMC_CLA__TRDSTIMPL__TRDSTPROTOCOLMINOR_reset 0x0
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bm 0xf000000
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bp 24
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bw 4
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_reset 0x1
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bm 0x70000000
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bp 28
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bw 3
+#define SMC_CLA__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_reset 0x4
+#define SMC_CLA__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bm 0x80000000
+#define SMC_CLA__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bp 31
+#define SMC_CLA__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bw 1
+#define SMC_CLA__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t Trramvermajor :4;
-        uint32_t Trramverminor :4;
-        uint32_t Trramcomptype :4;
-        uint32_t Trramhassram :1;
-        uint32_t Trramhassmem :1;
-        uint32_t :10;
-        uint32_t Trramvendorframelength :4;
+        uint32_t Trdstvermajor :4;
+        uint32_t Trdstverminor :4;
+        uint32_t Trdstcomptype :4;
         uint32_t :4;
+        uint32_t Trdstprotocolmajor :4;
+        uint32_t Trdstprotocolminor :4;
+        uint32_t Trdstvendorframelength :4;
+        uint32_t Trdstvendorstreamlength :3;
+        uint32_t Trdsttimestampconfig :1;
     } f;
     uint32_t w;
-} smc_cla__Trramimpl_t;
+} smc_cla__Trdstimpl_t;
 
-// reg - smc_cla::Trramstartlow
-#define SMC_CLA__TRRAMSTARTLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRRAMSTARTLOW__RSVD10_bp 0
-#define SMC_CLA__TRRAMSTARTLOW__RSVD10_bw 2
-#define SMC_CLA__TRRAMSTARTLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRRAMSTARTLOW__TRRAMSTARTLOW_bm 0xfffffffc
-#define SMC_CLA__TRRAMSTARTLOW__TRRAMSTARTLOW_bp 2
-#define SMC_CLA__TRRAMSTARTLOW__TRRAMSTARTLOW_bw 30
-#define SMC_CLA__TRRAMSTARTLOW__TRRAMSTARTLOW_reset 0x0
+// reg - smc_cla::Trdstinstfeatures
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_bm 0x1
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_bp 0
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_bw 1
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOADDRDIFF_reset 0x0
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_bm 0x2
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_bp 1
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_bw 1
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTNOTRAPADDR_reset 0x0
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bm 0x100
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bp 8
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bw 1
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_reset 0x0
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_bm 0xfff0000
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_bp 16
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_bw 12
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCID_reset 0x0
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_bm 0xf0000000
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_bp 28
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_bw 4
+#define SMC_CLA__TRDSTINSTFEATURES__TRDSTSRCBITS_reset 0x4
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trramstartlow :30;
+        uint32_t Trdstinstnoaddrdiff :1;
+        uint32_t Trdstinstnotrapaddr :1;
+        uint32_t :6;
+        uint32_t Trdstinstenrepeatedhistory :1;
+        uint32_t :7;
+        uint32_t Trdstsrcid :12;
+        uint32_t Trdstsrcbits :4;
     } f;
     uint32_t w;
-} smc_cla__Trramstartlow_t;
+} smc_cla__Trdstinstfeatures_t;
 
-// reg - smc_cla::Trramstarthigh
-#define SMC_CLA__TRRAMSTARTHIGH__TRRAMSTARTHIGH_bm 0xffffffff
-#define SMC_CLA__TRRAMSTARTHIGH__TRRAMSTARTHIGH_bp 0
-#define SMC_CLA__TRRAMSTARTHIGH__TRRAMSTARTHIGH_bw 32
-#define SMC_CLA__TRRAMSTARTHIGH__TRRAMSTARTHIGH_reset 0x0
+// reg - smc_cla::CDbgDebugTraceCfg
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_bm 0xf
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_bp 0
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_bw 4
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACESOURCEID_reset 0x0
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bm 0xff0
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bp 4
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bw 8
+#define SMC_CLA__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_reset 0x81
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bm 0xf000
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bp 12
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bw 4
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_reset 0x2
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bm 0x100000
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bp 20
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bw 1
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_reset 0x1
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bm 0x200000
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bp 21
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bw 1
+#define SMC_CLA__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t Trramstarthigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trramstarthigh_t;
-
-// reg - smc_cla::Trramlimitlow
-#define SMC_CLA__TRRAMLIMITLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRRAMLIMITLOW__RSVD10_bp 0
-#define SMC_CLA__TRRAMLIMITLOW__RSVD10_bw 2
-#define SMC_CLA__TRRAMLIMITLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRRAMLIMITLOW__TRRAMLIMITLOW_bm 0xfffffffc
-#define SMC_CLA__TRRAMLIMITLOW__TRRAMLIMITLOW_bp 2
-#define SMC_CLA__TRRAMLIMITLOW__TRRAMLIMITLOW_bw 30
-#define SMC_CLA__TRRAMLIMITLOW__TRRAMLIMITLOW_reset 0x2000
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trramlimitlow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trramlimitlow_t;
-
-// reg - smc_cla::Trramlimithigh
-#define SMC_CLA__TRRAMLIMITHIGH__TRRAMLIMITHIGH_bm 0xffffffff
-#define SMC_CLA__TRRAMLIMITHIGH__TRRAMLIMITHIGH_bp 0
-#define SMC_CLA__TRRAMLIMITHIGH__TRRAMLIMITHIGH_bw 32
-#define SMC_CLA__TRRAMLIMITHIGH__TRRAMLIMITHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trramlimithigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trramlimithigh_t;
-
-// reg - smc_cla::Trramwplow
-#define SMC_CLA__TRRAMWPLOW__TRRAMWRAP_bm 0x1
-#define SMC_CLA__TRRAMWPLOW__TRRAMWRAP_bp 0
-#define SMC_CLA__TRRAMWPLOW__TRRAMWRAP_bw 1
-#define SMC_CLA__TRRAMWPLOW__TRRAMWRAP_reset 0x0
-#define SMC_CLA__TRRAMWPLOW__TRRAMWPLOW_bm 0xfffffffc
-#define SMC_CLA__TRRAMWPLOW__TRRAMWPLOW_bp 2
-#define SMC_CLA__TRRAMWPLOW__TRRAMWPLOW_bw 30
-#define SMC_CLA__TRRAMWPLOW__TRRAMWPLOW_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trramwrap :1;
-        uint32_t :1;
-        uint32_t Trramwplow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trramwplow_t;
-
-// reg - smc_cla::Trramwphigh
-#define SMC_CLA__TRRAMWPHIGH__TRRAMWPHIGH_bm 0xffffffff
-#define SMC_CLA__TRRAMWPHIGH__TRRAMWPHIGH_bp 0
-#define SMC_CLA__TRRAMWPHIGH__TRRAMWPHIGH_bw 32
-#define SMC_CLA__TRRAMWPHIGH__TRRAMWPHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trramwphigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trramwphigh_t;
-
-// reg - smc_cla::Trramrplow
-#define SMC_CLA__TRRAMRPLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRRAMRPLOW__RSVD10_bp 0
-#define SMC_CLA__TRRAMRPLOW__RSVD10_bw 2
-#define SMC_CLA__TRRAMRPLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRRAMRPLOW__TRRAMRPLOW_bm 0xfffffffc
-#define SMC_CLA__TRRAMRPLOW__TRRAMRPLOW_bp 2
-#define SMC_CLA__TRRAMRPLOW__TRRAMRPLOW_bw 30
-#define SMC_CLA__TRRAMRPLOW__TRRAMRPLOW_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trramrplow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trramrplow_t;
-
-// reg - smc_cla::Trramrphigh
-#define SMC_CLA__TRRAMRPHIGH__TRRAMRPHIGH_bm 0xffffffff
-#define SMC_CLA__TRRAMRPHIGH__TRRAMRPHIGH_bp 0
-#define SMC_CLA__TRRAMRPHIGH__TRRAMRPHIGH_bw 32
-#define SMC_CLA__TRRAMRPHIGH__TRRAMRPHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trramrphigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trramrphigh_t;
-
-// reg - smc_cla::Trramdata
-#define SMC_CLA__TRRAMDATA__TRRAMDATA_bm 0xffffffff
-#define SMC_CLA__TRRAMDATA__TRRAMDATA_bp 0
-#define SMC_CLA__TRRAMDATA__TRRAMDATA_bw 32
-#define SMC_CLA__TRRAMDATA__TRRAMDATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trramdata :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trramdata_t;
-
-// reg - smc_cla::Trcustomramsmemlimitlow
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__RSVD10_bp 0
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__RSVD10_bw 2
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__TRCUSTOMRAMSMEMLIMITLOW_bm 0xfffffffc
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__TRCUSTOMRAMSMEMLIMITLOW_bp 2
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__TRCUSTOMRAMSMEMLIMITLOW_bw 30
-#define SMC_CLA__TRCUSTOMRAMSMEMLIMITLOW__TRCUSTOMRAMSMEMLIMITLOW_reset 0x1000
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trcustomramsmemlimitlow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trcustomramsmemlimitlow_t;
-
-// reg - smc_cla::Trdstramcontrol
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_bm 0x1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_bp 0
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_bw 1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMACTIVE_reset 0x0
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_bm 0x2
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_bp 1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_bw 1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMENABLE_reset 0x0
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_bm 0x8
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_bp 3
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_bw 1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMEMPTY_reset 0x1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_bm 0x10
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_bp 4
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_bw 1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMMODE_reset 0x0
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_bm 0x100
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_bp 8
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_bw 1
-#define SMC_CLA__TRDSTRAMCONTROL__TRDSTRAMSTOPONWRAP_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramactive :1;
-        uint32_t Trdstramenable :1;
-        uint32_t :1;
-        uint32_t Trdstramempty :1;
-        uint32_t Trdstrammode :1;
-        uint32_t :3;
-        uint32_t Trdstramstoponwrap :1;
-        uint32_t :23;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramcontrol_t;
-
-// reg - smc_cla::Trdstramimpl
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_bm 0xf
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_bp 0
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_bw 4
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMAJOR_reset 0x1
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_bm 0xf0
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_bp 4
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_bw 4
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVERMINOR_reset 0x0
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_bm 0xf00
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_bp 8
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_bw 4
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMCOMPTYPE_reset 0x9
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_bm 0x1000
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_bp 12
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_bw 1
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSRAM_reset 0x1
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bm 0x2000
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bp 13
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bw 1
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMHASSMEM_reset 0x1
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bm 0xf000000
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bp 24
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bw 4
-#define SMC_CLA__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_reset 0x1
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramvermajor :4;
-        uint32_t Trdstramverminor :4;
-        uint32_t Trdstramcomptype :4;
-        uint32_t Trdstramhassram :1;
-        uint32_t Trdstramhassmem :1;
-        uint32_t :10;
-        uint32_t Trdstramvendorframelength :4;
+        uint32_t TraceSourceId :4;
+        uint32_t TraceFrameFillByte :8;
+        uint32_t FrameLenghtInBytes :4;
         uint32_t :4;
+        uint32_t FrameModeEnable :1;
+        uint32_t FrameClosureMode :1;
+        uint32_t :10;
     } f;
     uint32_t w;
-} smc_cla__Trdstramimpl_t;
+} smc_cla__CDbgDebugTraceCfg_t;
 
-// reg - smc_cla::Trdstramstartlow
-#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_bp 0
-#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_bw 2
-#define SMC_CLA__TRDSTRAMSTARTLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_bm 0xfffffffc
-#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_bp 2
-#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_bw 30
-#define SMC_CLA__TRDSTRAMSTARTLOW__TRDSTRAMSTARTLOW_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trdstramstartlow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramstartlow_t;
-
-// reg - smc_cla::Trdstramstarthigh
-#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_bm 0xffffffff
-#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_bp 0
-#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_bw 32
-#define SMC_CLA__TRDSTRAMSTARTHIGH__TRDSTRAMSTARTHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramstarthigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramstarthigh_t;
-
-// reg - smc_cla::Trdstramlimitlow
-#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_bp 0
-#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_bw 2
-#define SMC_CLA__TRDSTRAMLIMITLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_bm 0xfffffffc
-#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_bp 2
-#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_bw 30
-#define SMC_CLA__TRDSTRAMLIMITLOW__TRDSTRAMLIMITLOW_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trdstramlimitlow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramlimitlow_t;
-
-// reg - smc_cla::Trdstramlimithigh
-#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_bm 0xffffffff
-#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_bp 0
-#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_bw 32
-#define SMC_CLA__TRDSTRAMLIMITHIGH__TRDSTRAMLIMITHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramlimithigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramlimithigh_t;
-
-// reg - smc_cla::Trdstramwplow
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_bm 0x1
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_bp 0
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_bw 1
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWRAP_reset 0x0
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_bm 0xfffffffc
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_bp 2
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_bw 30
-#define SMC_CLA__TRDSTRAMWPLOW__TRDSTRAMWPLOW_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramwrap :1;
-        uint32_t :1;
-        uint32_t Trdstramwplow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramwplow_t;
-
-// reg - smc_cla::Trdstramwphigh
-#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_bm 0xffffffff
-#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_bp 0
-#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_bw 32
-#define SMC_CLA__TRDSTRAMWPHIGH__TRDSTRAMWPHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramwphigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramwphigh_t;
-
-// reg - smc_cla::Trdstramrplow
-#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_bm 0x3
-#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_bp 0
-#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_bw 2
-#define SMC_CLA__TRDSTRAMRPLOW__RSVD10_reset 0x0
-#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bm 0xfffffffc
-#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bp 2
-#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bw 30
-#define SMC_CLA__TRDSTRAMRPLOW__TRDSTRAMRPLOW_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Rsvd10 :2;
-        uint32_t Trdstramrplow :30;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramrplow_t;
-
-// reg - smc_cla::Trdstramrphigh
-#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_bm 0xffffffff
-#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_bp 0
-#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_bw 32
-#define SMC_CLA__TRDSTRAMRPHIGH__TRDSTRAMRPHIGH_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramrphigh :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramrphigh_t;
-
-// reg - smc_cla::Trdstramdata
-#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_bm 0xffffffff
-#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_bp 0
-#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_bw 32
-#define SMC_CLA__TRDSTRAMDATA__TRDSTRAMDATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Trdstramdata :32;
-    } f;
-    uint32_t w;
-} smc_cla__Trdstramdata_t;
-
-// reg - smc_cla::TrClusterFuseCfgLow
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__SCHARVESTSTRAP_bm 0xff
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__SCHARVESTSTRAP_bp 0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__SCHARVESTSTRAP_bw 8
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__SCHARVESTSTRAP_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__TRACEENABLE_bm 0x100
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__TRACEENABLE_bp 8
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__TRACEENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__TRACEENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__DEBUGENABLE_bm 0x600
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__DEBUGENABLE_bp 9
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__DEBUGENABLE_bw 2
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__DEBUGENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__RSVD1411_bm 0x7800
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__RSVD1411_bp 11
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__RSVD1411_bw 4
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__RSVD1411_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__LOCK_bm 0x8000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__LOCK_bp 15
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__LOCK_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__LOCK_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0ENABLE_bm 0x10000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0ENABLE_bp 16
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0VID_bm 0xe0000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0VID_bp 17
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE0VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1ENABLE_bm 0x100000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1ENABLE_bp 20
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1VID_bm 0xe00000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1VID_bp 21
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE1VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2ENABLE_bm 0x1000000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2ENABLE_bp 24
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2VID_bm 0xe000000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2VID_bp 25
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE2VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3ENABLE_bm 0x10000000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3ENABLE_bp 28
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3VID_bm 0xe0000000
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3VID_bp 29
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGLOW__CORE3VID_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t ScHarvestStrap :8;
-        uint32_t TraceEnable :1;
-        uint32_t DebugEnable :2;
-        uint32_t Rsvd1411 :4;
-        uint32_t Lock :1;
-        uint32_t Core0Enable :1;
-        uint32_t Core0Vid :3;
-        uint32_t Core1Enable :1;
-        uint32_t Core1Vid :3;
-        uint32_t Core2Enable :1;
-        uint32_t Core2Vid :3;
-        uint32_t Core3Enable :1;
-        uint32_t Core3Vid :3;
-    } f;
-    uint32_t w;
-} smc_cla__TrClusterFuseCfgLow_t;
-
-// reg - smc_cla::TrClusterFuseCfgHi
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4ENABLE_bm 0x1
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4ENABLE_bp 0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4VID_bm 0xe
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4VID_bp 1
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE4VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5ENABLE_bm 0x10
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5ENABLE_bp 4
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5VID_bm 0xe0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5VID_bp 5
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE5VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6ENABLE_bm 0x100
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6ENABLE_bp 8
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6VID_bm 0xe00
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6VID_bp 9
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE6VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7ENABLE_bm 0x1000
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7ENABLE_bp 12
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7ENABLE_bw 1
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7ENABLE_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7VID_bm 0xe000
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7VID_bp 13
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7VID_bw 3
-#define SMC_CLA__TRCLUSTERFUSECFGHI__CORE7VID_reset 0x0
-#define SMC_CLA__TRCLUSTERFUSECFGHI__RSVD3116_bm 0xffff0000
-#define SMC_CLA__TRCLUSTERFUSECFGHI__RSVD3116_bp 16
-#define SMC_CLA__TRCLUSTERFUSECFGHI__RSVD3116_bw 16
-#define SMC_CLA__TRCLUSTERFUSECFGHI__RSVD3116_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Core4Enable :1;
-        uint32_t Core4Vid :3;
-        uint32_t Core5Enable :1;
-        uint32_t Core5Vid :3;
-        uint32_t Core6Enable :1;
-        uint32_t Core6Vid :3;
-        uint32_t Core7Enable :1;
-        uint32_t Core7Vid :3;
-        uint32_t Rsvd3116 :16;
-    } f;
-    uint32_t w;
-} smc_cla__TrClusterFuseCfgHi_t;
-
-// reg - smc_cla::TrScratchLo
-#define SMC_CLA__TRSCRATCHLO__DATA_bm 0xffffffff
-#define SMC_CLA__TRSCRATCHLO__DATA_bp 0
-#define SMC_CLA__TRSCRATCHLO__DATA_bw 32
-#define SMC_CLA__TRSCRATCHLO__DATA_reset 0x0
+// reg - smc_cla::TrDstScratchLo
+#define SMC_CLA__TRDSTSCRATCHLO__DATA_bm 0xffffffff
+#define SMC_CLA__TRDSTSCRATCHLO__DATA_bp 0
+#define SMC_CLA__TRDSTSCRATCHLO__DATA_bw 32
+#define SMC_CLA__TRDSTSCRATCHLO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t Data :32;
     } f;
     uint32_t w;
-} smc_cla__TrScratchLo_t;
+} smc_cla__TrDstScratchLo_t;
 
-// reg - smc_cla::TrScratchHi
-#define SMC_CLA__TRSCRATCHHI__DATA_bm 0xffffffff
-#define SMC_CLA__TRSCRATCHHI__DATA_bp 0
-#define SMC_CLA__TRSCRATCHHI__DATA_bw 32
-#define SMC_CLA__TRSCRATCHHI__DATA_reset 0x0
+// reg - smc_cla::TrDstScratchHi
+#define SMC_CLA__TRDSTSCRATCHHI__DATA_bm 0xffffffff
+#define SMC_CLA__TRDSTSCRATCHHI__DATA_bp 0
+#define SMC_CLA__TRDSTSCRATCHHI__DATA_bw 32
+#define SMC_CLA__TRDSTSCRATCHHI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t Data :32;
     } f;
     uint32_t w;
-} smc_cla__TrScratchHi_t;
-
-// reg - smc_cla::TrScratchpadLo
-#define SMC_CLA__TRSCRATCHPADLO__DATA_bm 0xffffffff
-#define SMC_CLA__TRSCRATCHPADLO__DATA_bp 0
-#define SMC_CLA__TRSCRATCHPADLO__DATA_bw 32
-#define SMC_CLA__TRSCRATCHPADLO__DATA_reset 0xefefefef
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Data :32;
-    } f;
-    uint32_t w;
-} smc_cla__TrScratchpadLo_t;
-
-// reg - smc_cla::TrScratchpadHi
-#define SMC_CLA__TRSCRATCHPADHI__DATA_bm 0xffffffff
-#define SMC_CLA__TRSCRATCHPADHI__DATA_bp 0
-#define SMC_CLA__TRSCRATCHPADHI__DATA_bw 32
-#define SMC_CLA__TRSCRATCHPADHI__DATA_reset 0xefefefef
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t Data :32;
-    } f;
-    uint32_t w;
-} smc_cla__TrScratchpadHi_t;
+} smc_cla__TrDstScratchHi_t;
 
 // addrmap - smc_cla
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_197[0x198];
-    smc_cla__CDbgMuxSel_t CDbgMuxSel;
-    smc_cla__CDfdCsr_t CDfdCsr;
-    uint8_t RESERVED_1a8_1ff[0x58];
-    smc_cla__Timestamp_t Timestamp;
-    smc_cla__TimestampSync_t TimestampSync;
-    smc_cla__TimeStampConfig_t TimeStampConfig;
-    uint8_t RESERVED_214_fff[0xdec];
-    smc_cla__Trdstcontrol_t Trdstcontrol;
-    smc_cla__Trdstimpl_t Trdstimpl;
-    smc_cla__Trdstinstfeatures_t Trdstinstfeatures;
-    uint8_t RESERVED_100c_119f[0x194];
-    smc_cla__CDbgDebugTraceCfg_t CDbgDebugTraceCfg;
-    uint8_t RESERVED_11a4_30ff[0x1f5c];
+    smc_cla__Trdstramcontrol_t Trdstramcontrol;
+    smc_cla__Trdstramimpl_t Trdstramimpl;
+    uint8_t RESERVED_8_f[0x8];
+    smc_cla__Trdstramstartlow_t Trdstramstartlow;
+    smc_cla__Trdstramstarthigh_t Trdstramstarthigh;
+    smc_cla__Trdstramlimitlow_t Trdstramlimitlow;
+    smc_cla__Trdstramlimithigh_t Trdstramlimithigh;
+    smc_cla__Trdstramwplow_t Trdstramwplow;
+    smc_cla__Trdstramwphigh_t Trdstramwphigh;
+    smc_cla__Trdstramrplow_t Trdstramrplow;
+    smc_cla__Trdstramrphigh_t Trdstramrphigh;
+    uint8_t RESERVED_30_3f[0x10];
+    smc_cla__Trdstramdata_t Trdstramdata;
+    uint8_t RESERVED_44_ff7[0xfb4];
+    smc_cla__TrDstSinkScratchLo_t TrDstSinkScratchLo;
+    smc_cla__TrDstSinkScratchHi_t TrDstSinkScratchHi;
+    smc_cla__Trfunnelcontrol_t Trfunnelcontrol;
+    smc_cla__Trfunnelimpl_t Trfunnelimpl;
+    smc_cla__Trfunneldisinput_t Trfunneldisinput;
+    uint8_t RESERVED_100c_1ff7[0xfec];
+    smc_cla__TrFunnelScratchLo_t TrFunnelScratchLo;
+    smc_cla__TrFunnelScratchHi_t TrFunnelScratchHi;
+    uint8_t RESERVED_2000_20ff[0x100];
     smc_cla__CDbgClaCounter0Cfg_t CDbgClaCounter0Cfg;
     smc_cla__CDbgClaCounter1Cfg_t CDbgClaCounter1Cfg;
     smc_cla__CDbgClaCounter2Cfg_t CDbgClaCounter2Cfg;
@@ -3038,35 +3512,35 @@ typedef struct __attribute__ ((__packed__)) {
     smc_cla__CDbgNode2Eap1_t CDbgNode2Eap1;
     smc_cla__CDbgNode3Eap0_t CDbgNode3Eap0;
     smc_cla__CDbgNode3Eap1_t CDbgNode3Eap1;
-    smc_cla__CDbgSignalMask0_t CDbgSignalMask0;
-    smc_cla__CDbgSignalMatch0_t CDbgSignalMatch0;
-    smc_cla__CDbgSignalMask1_t CDbgSignalMask1;
-    smc_cla__CDbgSignalMatch1_t CDbgSignalMatch1;
+    smc_cla__CDbgSignalMask0Lo_t CDbgSignalMask0Lo;
+    smc_cla__CDbgSignalMatch0Lo_t CDbgSignalMatch0Lo;
+    smc_cla__CDbgSignalMask1Lo_t CDbgSignalMask1Lo;
+    smc_cla__CDbgSignalMatch1Lo_t CDbgSignalMatch1Lo;
     smc_cla__CDbgSignalEdgeDetectCfg_t CDbgSignalEdgeDetectCfg;
     smc_cla__CDbgEapStatus_t CDbgEapStatus;
     smc_cla__CDbgClaCtrlStatus_t CDbgClaCtrlStatus;
-    smc_cla__CDbgRsvd0_t CDbgRsvd0;
+    smc_cla__CDbgMuxSelLo_t CDbgMuxSelLo;
     smc_cla__CDbgRsvd1_t CDbgRsvd1;
     smc_cla__CDbgRsvd2_t CDbgRsvd2;
-    smc_cla__CDbgTransitionMask_t CDbgTransitionMask;
-    smc_cla__CDbgTransitionFromValue_t CDbgTransitionFromValue;
-    smc_cla__CDbgTransitionToValue_t CDbgTransitionToValue;
-    smc_cla__CDbgOnesCountMask_t CDbgOnesCountMask;
+    smc_cla__CDbgTransitionMaskLo_t CDbgTransitionMaskLo;
+    smc_cla__CDbgTransitionFromValueLo_t CDbgTransitionFromValueLo;
+    smc_cla__CDbgTransitionToValueLo_t CDbgTransitionToValueLo;
+    smc_cla__CDbgOnesCountMaskLo_t CDbgOnesCountMaskLo;
     smc_cla__CDbgOnesCountValue_t CDbgOnesCountValue;
-    smc_cla__CDbgAnyChange_t CDbgAnyChange;
-    smc_cla__CDbgSignalSnapshotNode0Eap0_t CDbgSignalSnapshotNode0Eap0;
-    smc_cla__CDbgSignalSnapshotNode0Eap1_t CDbgSignalSnapshotNode0Eap1;
-    smc_cla__CDbgSignalSnapshotNode1Eap0_t CDbgSignalSnapshotNode1Eap0;
-    smc_cla__CDbgSignalSnapshotNode1Eap1_t CDbgSignalSnapshotNode1Eap1;
-    smc_cla__CDbgSignalSnapshotNode2Eap0_t CDbgSignalSnapshotNode2Eap0;
-    smc_cla__CDbgSignalSnapshotNode2Eap1_t CDbgSignalSnapshotNode2Eap1;
-    smc_cla__CDbgSignalSnapshotNode3Eap0_t CDbgSignalSnapshotNode3Eap0;
-    smc_cla__CDbgSignalSnapshotNode3Eap1_t CDbgSignalSnapshotNode3Eap1;
+    smc_cla__CDbgAnyChangeLo_t CDbgAnyChangeLo;
+    smc_cla__CDbgSignalSnapshotNode0Eap0Lo_t CDbgSignalSnapshotNode0Eap0Lo;
+    smc_cla__CDbgSignalSnapshotNode0Eap1Lo_t CDbgSignalSnapshotNode0Eap1Lo;
+    smc_cla__CDbgSignalSnapshotNode1Eap0Lo_t CDbgSignalSnapshotNode1Eap0Lo;
+    smc_cla__CDbgSignalSnapshotNode1Eap1Lo_t CDbgSignalSnapshotNode1Eap1Lo;
+    smc_cla__CDbgSignalSnapshotNode2Eap0Lo_t CDbgSignalSnapshotNode2Eap0Lo;
+    smc_cla__CDbgSignalSnapshotNode2Eap1Lo_t CDbgSignalSnapshotNode2Eap1Lo;
+    smc_cla__CDbgSignalSnapshotNode3Eap0Lo_t CDbgSignalSnapshotNode3Eap0Lo;
+    smc_cla__CDbgSignalSnapshotNode3Eap1Lo_t CDbgSignalSnapshotNode3Eap1Lo;
     smc_cla__CDbgClaTimeMatch_t CDbgClaTimeMatch;
-    smc_cla__CDbgSignalMask2_t CDbgSignalMask2;
-    smc_cla__CDbgSignalMatch2_t CDbgSignalMatch2;
-    smc_cla__CDbgSignalMask3_t CDbgSignalMask3;
-    smc_cla__CDbgSignalMatch3_t CDbgSignalMatch3;
+    smc_cla__CDbgSignalMask2Lo_t CDbgSignalMask2Lo;
+    smc_cla__CDbgSignalMatch2Lo_t CDbgSignalMatch2Lo;
+    smc_cla__CDbgSignalMask3Lo_t CDbgSignalMask3Lo;
+    smc_cla__CDbgSignalMatch3Lo_t CDbgSignalMatch3Lo;
     smc_cla__CDbgNode0Eap2_t CDbgNode0Eap2;
     smc_cla__CDbgNode0Eap3_t CDbgNode0Eap3;
     smc_cla__CDbgNode1Eap2_t CDbgNode1Eap2;
@@ -3075,66 +3549,87 @@ typedef struct __attribute__ ((__packed__)) {
     smc_cla__CDbgNode2Eap3_t CDbgNode2Eap3;
     smc_cla__CDbgNode3Eap2_t CDbgNode3Eap2;
     smc_cla__CDbgNode3Eap3_t CDbgNode3Eap3;
-    smc_cla__CDbgSignalSnapshotNode0Eap2_t CDbgSignalSnapshotNode0Eap2;
-    smc_cla__CDbgSignalSnapshotNode0Eap3_t CDbgSignalSnapshotNode0Eap3;
-    smc_cla__CDbgSignalSnapshotNode1Eap2_t CDbgSignalSnapshotNode1Eap2;
-    smc_cla__CDbgSignalSnapshotNode1Eap3_t CDbgSignalSnapshotNode1Eap3;
-    smc_cla__CDbgSignalSnapshotNode2Eap2_t CDbgSignalSnapshotNode2Eap2;
-    smc_cla__CDbgSignalSnapshotNode2Eap3_t CDbgSignalSnapshotNode2Eap3;
-    smc_cla__CDbgSignalSnapshotNode3Eap2_t CDbgSignalSnapshotNode3Eap2;
-    smc_cla__CDbgSignalSnapshotNode3Eap3_t CDbgSignalSnapshotNode3Eap3;
+    smc_cla__CDbgSignalSnapshotNode0Eap2Lo_t CDbgSignalSnapshotNode0Eap2Lo;
+    smc_cla__CDbgSignalSnapshotNode0Eap3Lo_t CDbgSignalSnapshotNode0Eap3Lo;
+    smc_cla__CDbgSignalSnapshotNode1Eap2Lo_t CDbgSignalSnapshotNode1Eap2Lo;
+    smc_cla__CDbgSignalSnapshotNode1Eap3Lo_t CDbgSignalSnapshotNode1Eap3Lo;
+    smc_cla__CDbgSignalSnapshotNode2Eap2Lo_t CDbgSignalSnapshotNode2Eap2Lo;
+    smc_cla__CDbgSignalSnapshotNode2Eap3Lo_t CDbgSignalSnapshotNode2Eap3Lo;
+    smc_cla__CDbgSignalSnapshotNode3Eap2Lo_t CDbgSignalSnapshotNode3Eap2Lo;
+    smc_cla__CDbgSignalSnapshotNode3Eap3Lo_t CDbgSignalSnapshotNode3Eap3Lo;
     smc_cla__CDbgSignalDelayMuxSel_t CDbgSignalDelayMuxSel;
-    smc_cla__CDbgClaTimestampsync_t CDbgClaTimestampsync;
+    uint8_t RESERVED_22d0_22d7[0x8];
     smc_cla__CDbgClaXtriggerTimestretch_t CDbgClaXtriggerTimestretch;
-    uint8_t RESERVED_32e0_33ef[0x110];
+    uint8_t RESERVED_22e0_22ef[0x10];
+    smc_cla__CDbgClaTimestamp_t CDbgClaTimestamp;
+    smc_cla__CDbgClaTimestampSync_t CDbgClaTimestampSync;
+    smc_cla__CDbgClaTimestampConfig_t CDbgClaTimestampConfig;
+    uint8_t RESERVED_2308_23ef[0xe8];
     smc_cla__CrScratchpad_t CrScratchpad;
+    uint8_t RESERVED_23f8_23ff[0x8];
+    smc_cla__CDbgSignalMask0Hi_t CDbgSignalMask0Hi;
+    smc_cla__CDbgSignalMatch0Hi_t CDbgSignalMatch0Hi;
+    smc_cla__CDbgSignalMask1Hi_t CDbgSignalMask1Hi;
+    smc_cla__CDbgSignalMatch1Hi_t CDbgSignalMatch1Hi;
+    smc_cla__CDbgSignalMask2Hi_t CDbgSignalMask2Hi;
+    smc_cla__CDbgSignalMatch2Hi_t CDbgSignalMatch2Hi;
+    smc_cla__CDbgSignalMask3Hi_t CDbgSignalMask3Hi;
+    smc_cla__CDbgSignalMatch3Hi_t CDbgSignalMatch3Hi;
+    smc_cla__CDbgMuxSelHi_t CDbgMuxSelHi;
+    smc_cla__CDbgTransitionMaskHi_t CDbgTransitionMaskHi;
+    smc_cla__CDbgTransitionFromValueHi_t CDbgTransitionFromValueHi;
+    smc_cla__CDbgTransitionToValueHi_t CDbgTransitionToValueHi;
+    smc_cla__CDbgOnesCountMaskHi_t CDbgOnesCountMaskHi;
+    smc_cla__CDbgAnyChangeHi_t CDbgAnyChangeHi;
+    smc_cla__CDbgSignalSnapshotNode0Eap0Hi_t CDbgSignalSnapshotNode0Eap0Hi;
+    smc_cla__CDbgSignalSnapshotNode0Eap1Hi_t CDbgSignalSnapshotNode0Eap1Hi;
+    smc_cla__CDbgSignalSnapshotNode1Eap0Hi_t CDbgSignalSnapshotNode1Eap0Hi;
+    smc_cla__CDbgSignalSnapshotNode1Eap1Hi_t CDbgSignalSnapshotNode1Eap1Hi;
+    smc_cla__CDbgSignalSnapshotNode2Eap0Hi_t CDbgSignalSnapshotNode2Eap0Hi;
+    smc_cla__CDbgSignalSnapshotNode2Eap1Hi_t CDbgSignalSnapshotNode2Eap1Hi;
+    smc_cla__CDbgSignalSnapshotNode3Eap0Hi_t CDbgSignalSnapshotNode3Eap0Hi;
+    smc_cla__CDbgSignalSnapshotNode3Eap1Hi_t CDbgSignalSnapshotNode3Eap1Hi;
+    smc_cla__CDbgSignalSnapshotNode0Eap2Hi_t CDbgSignalSnapshotNode0Eap2Hi;
+    smc_cla__CDbgSignalSnapshotNode0Eap3Hi_t CDbgSignalSnapshotNode0Eap3Hi;
+    smc_cla__CDbgSignalSnapshotNode1Eap2Hi_t CDbgSignalSnapshotNode1Eap2Hi;
+    smc_cla__CDbgSignalSnapshotNode1Eap3Hi_t CDbgSignalSnapshotNode1Eap3Hi;
+    smc_cla__CDbgSignalSnapshotNode2Eap2Hi_t CDbgSignalSnapshotNode2Eap2Hi;
+    smc_cla__CDbgSignalSnapshotNode2Eap3Hi_t CDbgSignalSnapshotNode2Eap3Hi;
+    smc_cla__CDbgSignalSnapshotNode3Eap2Hi_t CDbgSignalSnapshotNode3Eap2Hi;
+    smc_cla__CDbgSignalSnapshotNode3Eap3Hi_t CDbgSignalSnapshotNode3Eap3Hi;
+    smc_cla__CDbgLfsr_t CDbgLfsr;
+    smc_cla__CDbgLfsrMask_t CDbgLfsrMask;
+    smc_cla__CDbgTimestampCapture_t CDbgTimestampCapture;
+    smc_cla__CDbgCompare0Lo_t CDbgCompare0Lo;
+    smc_cla__CDbgCompare0MaskLo_t CDbgCompare0MaskLo;
+    smc_cla__CDbgCompare1Lo_t CDbgCompare1Lo;
+    smc_cla__CDbgCompare1MaskLo_t CDbgCompare1MaskLo;
+    smc_cla__CDbgCompare2Lo_t CDbgCompare2Lo;
+    smc_cla__CDbgCompare2MaskLo_t CDbgCompare2MaskLo;
+    smc_cla__CDbgCompare3Lo_t CDbgCompare3Lo;
+    smc_cla__CDbgCompare3MaskLo_t CDbgCompare3MaskLo;
+    smc_cla__CDbgCompare0Hi_t CDbgCompare0Hi;
+    smc_cla__CDbgCompare0MaskHi_t CDbgCompare0MaskHi;
+    smc_cla__CDbgCompare1Hi_t CDbgCompare1Hi;
+    smc_cla__CDbgCompare1MaskHi_t CDbgCompare1MaskHi;
+    smc_cla__CDbgCompare2Hi_t CDbgCompare2Hi;
+    smc_cla__CDbgCompare2MaskHi_t CDbgCompare2MaskHi;
+    smc_cla__CDbgCompare3Hi_t CDbgCompare3Hi;
+    smc_cla__CDbgCompare3MaskHi_t CDbgCompare3MaskHi;
+    uint8_t RESERVED_2588_2ff7[0xa70];
     smc_cla__Scratch_t Scratch;
-    uint8_t RESERVED_3400_3fff[0xc00];
-    smc_cla__Trfunnelcontrol_t Trfunnelcontrol;
-    smc_cla__Trfunnelimpl_t Trfunnelimpl;
-    smc_cla__Trfunneldisinput_t Trfunneldisinput;
-    uint8_t RESERVED_400c_4fff[0xff4];
-    smc_cla__Trramcontrol_t Trramcontrol;
-    smc_cla__Trramimpl_t Trramimpl;
-    uint8_t RESERVED_5008_500f[0x8];
-    smc_cla__Trramstartlow_t Trramstartlow;
-    smc_cla__Trramstarthigh_t Trramstarthigh;
-    smc_cla__Trramlimitlow_t Trramlimitlow;
-    smc_cla__Trramlimithigh_t Trramlimithigh;
-    smc_cla__Trramwplow_t Trramwplow;
-    smc_cla__Trramwphigh_t Trramwphigh;
-    smc_cla__Trramrplow_t Trramrplow;
-    smc_cla__Trramrphigh_t Trramrphigh;
-    uint8_t RESERVED_5030_503f[0x10];
-    smc_cla__Trramdata_t Trramdata;
-    uint8_t RESERVED_5044_5dff[0xdbc];
-    smc_cla__Trcustomramsmemlimitlow_t Trcustomramsmemlimitlow;
-    uint8_t RESERVED_5e04_5fff[0x1fc];
-    smc_cla__Trdstramcontrol_t Trdstramcontrol;
-    smc_cla__Trdstramimpl_t Trdstramimpl;
-    uint8_t RESERVED_6008_600f[0x8];
-    smc_cla__Trdstramstartlow_t Trdstramstartlow;
-    smc_cla__Trdstramstarthigh_t Trdstramstarthigh;
-    smc_cla__Trdstramlimitlow_t Trdstramlimitlow;
-    smc_cla__Trdstramlimithigh_t Trdstramlimithigh;
-    smc_cla__Trdstramwplow_t Trdstramwplow;
-    smc_cla__Trdstramwphigh_t Trdstramwphigh;
-    smc_cla__Trdstramrplow_t Trdstramrplow;
-    smc_cla__Trdstramrphigh_t Trdstramrphigh;
-    uint8_t RESERVED_6030_603f[0x10];
-    smc_cla__Trdstramdata_t Trdstramdata;
-    uint8_t RESERVED_6044_7ff7[0x1fb4];
-    smc_cla__TrClusterFuseCfgLow_t TrClusterFuseCfgLow;
-    smc_cla__TrClusterFuseCfgHi_t TrClusterFuseCfgHi;
-    uint8_t RESERVED_8000_8fe7[0xfe8];
-    smc_cla__TrScratchLo_t TrScratchLo;
-    smc_cla__TrScratchHi_t TrScratchHi;
-    smc_cla__TrScratchpadLo_t TrScratchpadLo;
-    smc_cla__TrScratchpadHi_t TrScratchpadHi;
+    smc_cla__Trdstcontrol_t Trdstcontrol;
+    smc_cla__Trdstimpl_t Trdstimpl;
+    smc_cla__Trdstinstfeatures_t Trdstinstfeatures;
+    uint8_t RESERVED_300c_319f[0x194];
+    smc_cla__CDbgDebugTraceCfg_t CDbgDebugTraceCfg;
+    uint8_t RESERVED_31a4_3ff7[0xe54];
+    smc_cla__TrDstScratchLo_t TrDstScratchLo;
+    smc_cla__TrDstScratchHi_t TrDstScratchHi;
 } smc_cla_t;
 
 
-static_assert(sizeof(smc_cla_t) == 0x8ff8, "Packing error");
+static_assert(sizeof(smc_cla_t) == 0x4000, "Packing error");
 
 #ifdef __cplusplus
 }
