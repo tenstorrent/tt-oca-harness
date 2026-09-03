@@ -379,6 +379,13 @@ doc_setup() {
     make "$setup_target"
 }
 
+# Stage verification dashboard JSON into a built site tree. doc/trm/src/
+# dashboard.adoc fetches this at page load; without it the page renders its
+# unavailable state.
+doc_stage_dashboard_data() {
+  OCAH_ROOT="$ROOT" bash "${ROOT}/tools/doc/stage_dashboard_data.sh" "$1"
+}
+
 doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   local release_args=()
@@ -390,6 +397,11 @@ doc_html() {
     -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
     -c 'npm install --no-save --no-package-lock asciidoctor-kroki@0.18.1 && antora "$@"' \
     sh "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
+  # Only the TRM carries the dashboard page; staging elsewhere would leave a
+  # stray ocah-docs/ tree inside another book's site.
+  if [ "$product" = trm ]; then
+    doc_stage_dashboard_data "${ROOT}/${basedir}/_build/html_antora"
+  fi
 }
 
 doc_html_all() {
@@ -475,6 +487,8 @@ doc_stage() {
   else
     echo "warning: Contributing PDF not found at $contributing_dist/$contributing_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf contributing)"
   fi
+
+  doc_stage_dashboard_data "$ROOT/$ghpages_dir"
 
   echo "Staged GitHub Pages tree at $ghpages_dir"
   echo "Preview locally with: cd $ghpages_dir && python3 -m http.server 8000"
