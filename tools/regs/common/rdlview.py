@@ -206,7 +206,7 @@ def write_adoc(root, out: str):
             lines.append("")
         lines.append("======\n")
     lines += [
-        '[cols="1,1,1,3", options="header"]',
+        '[cols="1,4,1,6", options="header"]',
         ".Register Map",
         "|===",
         "| Address | Name | Access | Description",
@@ -215,7 +215,7 @@ def write_adoc(root, out: str):
     lines.append("|===\n")
     for r in data.regs:
         lines += [
-            '[cols="1,1,1,1,3", options="header"]',
+            '[cols="1,3,1,1,6", options="header"]',
             f".{r.name} Register",
             "|===",
             "| Bits | Field | Access | Reset | Description",

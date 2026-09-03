@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -11,7 +11,7 @@
 the filter may not update before your next transaction, causing unexpected behavior.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DATA_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -37,7 +37,7 @@ outranks interface_enable. Use lsio_disable to gate both.
 | 0 | `core2pad` | RW | 0x0 a| Register-driven data to send to the pad.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DATA_CTRL_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -48,7 +48,7 @@ outranks interface_enable. Use lsio_disable to gate both.
 | 0 | `use_reg_core2pad` | RW | 0x0 a| Per-field register override. When set, core2pad is register-driven. OR'd with interface_enable.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ACCESS_FILTER Register
 |===
 | Bits | Field | Access | Reset | Description

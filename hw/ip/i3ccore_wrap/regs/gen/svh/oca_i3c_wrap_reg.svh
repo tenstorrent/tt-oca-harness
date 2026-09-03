@@ -26,18 +26,18 @@
 
 
 localparam int unsigned OCA_I3C_WRAP_REG_MAP_BASE_ADDR                                                            = 32'h00000000;
-localparam int unsigned OCA_I3C_WRAP_REG_MAP_SIZE                                                                 = 32'h00001000;
+localparam int unsigned OCA_I3C_WRAP_REG_MAP_SIZE                                                                 = 32'h00006000;
 
 
 
 
 //==============================================================================
-// Addresses for Address Map: i3c_csr
+// Addresses for Address Map: i3c_csr[0]
 //==============================================================================
 
 
-localparam int unsigned I3C_CSR_REG_MAP_BASE_ADDR                                                                 = 32'h00000000;
-localparam int unsigned I3C_CSR_REG_MAP_SIZE                                                                      = 32'h00001000;
+localparam int unsigned I3C_CSR_0__REG_MAP_BASE_ADDR                                                              = 32'h00000000;
+localparam int unsigned I3C_CSR_0__REG_MAP_SIZE                                                                   = 32'h00001000;
 
 
 
@@ -46,96 +46,96 @@ localparam int unsigned I3C_CSR_REG_MAP_SIZE                                    
 // Register File: I3CBase
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3CBASE_REG_FILE_BASE_ADDR                                                        = 32'h00000000;
-localparam int unsigned I3C_CSR_I3CBASE_REG_FILE_SIZE                                                             = 32'h0000006C;
+localparam int unsigned I3C_CSR_0__I3CBASE_REG_FILE_BASE_ADDR                                                     = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3CBASE_REG_FILE_SIZE                                                          = 32'h0000006C;
 
-localparam int unsigned I3C_CSR_I3CBASE_HCI_VERSION_REG_OFFSET                                                    = 32'h00000000;
-localparam int unsigned I3C_CSR_I3CBASE_HCI_VERSION_REG_ADDR                                                      = 32'h00000000;
-localparam int unsigned I3C_CSR_I3CBASE_HC_CONTROL_REG_OFFSET                                                     = 32'h00000004;
-localparam int unsigned I3C_CSR_I3CBASE_HC_CONTROL_REG_ADDR                                                       = 32'h00000004;
-localparam int unsigned I3C_CSR_I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                         = 32'h00000008;
-localparam int unsigned I3C_CSR_I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                           = 32'h00000008;
-localparam int unsigned I3C_CSR_I3CBASE_HC_CAPABILITIES_REG_OFFSET                                                = 32'h0000000C;
-localparam int unsigned I3C_CSR_I3CBASE_HC_CAPABILITIES_REG_ADDR                                                  = 32'h0000000C;
-localparam int unsigned I3C_CSR_I3CBASE_RESET_CONTROL_REG_OFFSET                                                  = 32'h00000010;
-localparam int unsigned I3C_CSR_I3CBASE_RESET_CONTROL_REG_ADDR                                                    = 32'h00000010;
-localparam int unsigned I3C_CSR_I3CBASE_PRESENT_STATE_REG_OFFSET                                                  = 32'h00000014;
-localparam int unsigned I3C_CSR_I3CBASE_PRESENT_STATE_REG_ADDR                                                    = 32'h00000014;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_STATUS_REG_OFFSET                                                    = 32'h00000020;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_STATUS_REG_ADDR                                                      = 32'h00000020;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                             = 32'h00000024;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                               = 32'h00000024;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                             = 32'h00000028;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                               = 32'h00000028;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_FORCE_REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned I3C_CSR_I3CBASE_INTR_FORCE_REG_ADDR                                                       = 32'h0000002C;
-localparam int unsigned I3C_CSR_I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                             = 32'h00000030;
-localparam int unsigned I3C_CSR_I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                               = 32'h00000030;
-localparam int unsigned I3C_CSR_I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                             = 32'h00000034;
-localparam int unsigned I3C_CSR_I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                               = 32'h00000034;
-localparam int unsigned I3C_CSR_I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                    = 32'h00000038;
-localparam int unsigned I3C_CSR_I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                      = 32'h00000038;
-localparam int unsigned I3C_CSR_I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                             = 32'h0000003C;
-localparam int unsigned I3C_CSR_I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                               = 32'h0000003C;
-localparam int unsigned I3C_CSR_I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                        = 32'h00000040;
-localparam int unsigned I3C_CSR_I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                          = 32'h00000040;
-localparam int unsigned I3C_CSR_I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                               = 32'h0000004C;
-localparam int unsigned I3C_CSR_I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                                 = 32'h0000004C;
-localparam int unsigned I3C_CSR_I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                                = 32'h00000058;
-localparam int unsigned I3C_CSR_I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                                  = 32'h00000058;
-localparam int unsigned I3C_CSR_I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                            = 32'h0000005C;
-localparam int unsigned I3C_CSR_I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                              = 32'h0000005C;
-localparam int unsigned I3C_CSR_I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                                = 32'h00000060;
-localparam int unsigned I3C_CSR_I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                                  = 32'h00000060;
-localparam int unsigned I3C_CSR_I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                                = 32'h00000064;
-localparam int unsigned I3C_CSR_I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                                  = 32'h00000064;
-localparam int unsigned I3C_CSR_I3CBASE_DEV_CTX_SG_REG_OFFSET                                                     = 32'h00000068;
-localparam int unsigned I3C_CSR_I3CBASE_DEV_CTX_SG_REG_ADDR                                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_0__I3CBASE_HCI_VERSION_REG_OFFSET                                                 = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3CBASE_HCI_VERSION_REG_ADDR                                                   = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3CBASE_HC_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3CBASE_HC_CONTROL_REG_ADDR                                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                        = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3CBASE_HC_CAPABILITIES_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__I3CBASE_HC_CAPABILITIES_REG_ADDR                                               = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__I3CBASE_RESET_CONTROL_REG_OFFSET                                               = 32'h00000010;
+localparam int unsigned I3C_CSR_0__I3CBASE_RESET_CONTROL_REG_ADDR                                                 = 32'h00000010;
+localparam int unsigned I3C_CSR_0__I3CBASE_PRESENT_STATE_REG_OFFSET                                               = 32'h00000014;
+localparam int unsigned I3C_CSR_0__I3CBASE_PRESENT_STATE_REG_ADDR                                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_STATUS_REG_OFFSET                                                 = 32'h00000020;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_STATUS_REG_ADDR                                                   = 32'h00000020;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                          = 32'h00000024;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                            = 32'h00000024;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                            = 32'h00000028;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_FORCE_REG_OFFSET                                                  = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__I3CBASE_INTR_FORCE_REG_ADDR                                                    = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000030;
+localparam int unsigned I3C_CSR_0__I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_0__I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_0__I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                            = 32'h00000034;
+localparam int unsigned I3C_CSR_0__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_0__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_0__I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                          = 32'h0000003C;
+localparam int unsigned I3C_CSR_0__I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                            = 32'h0000003C;
+localparam int unsigned I3C_CSR_0__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                     = 32'h00000040;
+localparam int unsigned I3C_CSR_0__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_0__I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                            = 32'h0000004C;
+localparam int unsigned I3C_CSR_0__I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                              = 32'h0000004C;
+localparam int unsigned I3C_CSR_0__I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                             = 32'h00000058;
+localparam int unsigned I3C_CSR_0__I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                               = 32'h00000058;
+localparam int unsigned I3C_CSR_0__I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                         = 32'h0000005C;
+localparam int unsigned I3C_CSR_0__I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                           = 32'h0000005C;
+localparam int unsigned I3C_CSR_0__I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned I3C_CSR_0__I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                               = 32'h00000060;
+localparam int unsigned I3C_CSR_0__I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                             = 32'h00000064;
+localparam int unsigned I3C_CSR_0__I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                               = 32'h00000064;
+localparam int unsigned I3C_CSR_0__I3CBASE_DEV_CTX_SG_REG_OFFSET                                                  = 32'h00000068;
+localparam int unsigned I3C_CSR_0__I3CBASE_DEV_CTX_SG_REG_ADDR                                                    = 32'h00000068;
 
 
 //==============================================================================
 // Register File: PIOControl
 //==============================================================================
 
-localparam int unsigned I3C_CSR_PIOCONTROL_REG_FILE_BASE_ADDR                                                     = 32'h00000080;
-localparam int unsigned I3C_CSR_PIOCONTROL_REG_FILE_SIZE                                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_REG_FILE_BASE_ADDR                                                  = 32'h00000080;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_REG_FILE_SIZE                                                       = 32'h00000034;
 
-localparam int unsigned I3C_CSR_PIOCONTROL_COMMAND_PORT_REG_OFFSET                                                = 32'h00000000;
-localparam int unsigned I3C_CSR_PIOCONTROL_COMMAND_PORT_REG_ADDR                                                  = 32'h00000080;
-localparam int unsigned I3C_CSR_PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                               = 32'h00000004;
-localparam int unsigned I3C_CSR_PIOCONTROL_RESPONSE_PORT_REG_ADDR                                                 = 32'h00000084;
-localparam int unsigned I3C_CSR_PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                                = 32'h00000008;
-localparam int unsigned I3C_CSR_PIOCONTROL_TX_DATA_PORT_REG_ADDR                                                  = 32'h00000088;
-localparam int unsigned I3C_CSR_PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                                = 32'h00000008;
-localparam int unsigned I3C_CSR_PIOCONTROL_RX_DATA_PORT_REG_ADDR                                                  = 32'h00000088;
-localparam int unsigned I3C_CSR_PIOCONTROL_IBI_PORT_REG_OFFSET                                                    = 32'h0000000C;
-localparam int unsigned I3C_CSR_PIOCONTROL_IBI_PORT_REG_ADDR                                                      = 32'h0000008C;
-localparam int unsigned I3C_CSR_PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                             = 32'h00000010;
-localparam int unsigned I3C_CSR_PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                               = 32'h00000090;
-localparam int unsigned I3C_CSR_PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                       = 32'h00000014;
-localparam int unsigned I3C_CSR_PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                         = 32'h00000094;
-localparam int unsigned I3C_CSR_PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                                  = 32'h00000018;
-localparam int unsigned I3C_CSR_PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                    = 32'h00000098;
-localparam int unsigned I3C_CSR_PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                              = 32'h0000001C;
-localparam int unsigned I3C_CSR_PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                                = 32'h0000009C;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                             = 32'h00000020;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                               = 32'h000000A0;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                      = 32'h00000024;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                        = 32'h000000A4;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                      = 32'h00000028;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                        = 32'h000000A8;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                              = 32'h0000002C;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                                = 32'h000000AC;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_CONTROL_REG_OFFSET                                                 = 32'h00000030;
-localparam int unsigned I3C_CSR_PIOCONTROL_PIO_CONTROL_REG_ADDR                                                   = 32'h000000B0;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR                                               = 32'h00000080;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                            = 32'h00000004;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR                                              = 32'h00000084;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_TX_DATA_PORT_REG_ADDR                                               = 32'h00000088;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR                                               = 32'h00000088;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_IBI_PORT_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_IBI_PORT_REG_ADDR                                                   = 32'h0000008C;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h00000090;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00000094;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000018;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                 = 32'h00000098;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                           = 32'h0000001C;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                             = 32'h0000009C;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                          = 32'h00000020;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                            = 32'h000000A0;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                   = 32'h00000024;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                     = 32'h000000A4;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                   = 32'h00000028;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                     = 32'h000000A8;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                             = 32'h000000AC;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_CONTROL_REG_OFFSET                                              = 32'h00000030;
+localparam int unsigned I3C_CSR_0__PIOCONTROL_PIO_CONTROL_REG_ADDR                                                = 32'h000000B0;
 
 
 //==============================================================================
 // Register File: I3C_EC
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3C_EC_REG_FILE_BASE_ADDR                                                         = 32'h00000100;
-localparam int unsigned I3C_CSR_I3C_EC_REG_FILE_SIZE                                                              = 32'h000002A4;
+localparam int unsigned I3C_CSR_0__I3C_EC_REG_FILE_BASE_ADDR                                                      = 32'h00000100;
+localparam int unsigned I3C_CSR_0__I3C_EC_REG_FILE_SIZE                                                           = 32'h000002A4;
 
 
 
@@ -143,295 +143,295 @@ localparam int unsigned I3C_CSR_I3C_EC_REG_FILE_SIZE                            
 // Register File: SecFwRecoveryIf
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                         = 32'h00000100;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                              = 32'h0000006C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                      = 32'h00000100;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                           = 32'h0000006C;
 
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                   = 32'h00000000;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                     = 32'h00000100;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                      = 32'h00000004;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                        = 32'h00000104;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                      = 32'h00000008;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                        = 32'h00000108;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                      = 32'h0000000C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                        = 32'h0000010C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                      = 32'h00000010;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                        = 32'h00000110;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                     = 32'h00000014;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                       = 32'h00000114;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                     = 32'h00000018;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                       = 32'h00000118;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                     = 32'h0000001C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                       = 32'h0000011C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                     = 32'h00000020;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                       = 32'h00000120;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                     = 32'h00000024;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                       = 32'h00000124;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                     = 32'h00000028;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                       = 32'h00000128;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                              = 32'h0000002C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                                = 32'h0000012C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                                 = 32'h00000030;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                   = 32'h00000130;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                                 = 32'h00000034;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                   = 32'h00000134;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                    = 32'h00000038;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                      = 32'h00000138;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                   = 32'h0000003C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                     = 32'h0000013C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                                 = 32'h00000040;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                   = 32'h00000140;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                       = 32'h00000044;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                         = 32'h00000144;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                            = 32'h00000048;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                              = 32'h00000148;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                            = 32'h0000004C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                              = 32'h0000014C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                          = 32'h00000050;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                            = 32'h00000150;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                          = 32'h00000054;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                            = 32'h00000154;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                          = 32'h00000058;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                            = 32'h00000158;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                          = 32'h0000005C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                            = 32'h0000015C;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                          = 32'h00000060;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                            = 32'h00000160;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                          = 32'h00000064;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                            = 32'h00000164;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                              = 32'h00000068;
-localparam int unsigned I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                                = 32'h00000168;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                  = 32'h00000100;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                     = 32'h00000104;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                     = 32'h00000108;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                   = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                     = 32'h0000010C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                   = 32'h00000010;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                     = 32'h00000110;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                    = 32'h00000114;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                  = 32'h00000018;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                    = 32'h00000118;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                  = 32'h0000001C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                    = 32'h0000011C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                  = 32'h00000020;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                    = 32'h00000120;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                  = 32'h00000024;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                    = 32'h00000124;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                  = 32'h00000028;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                    = 32'h00000128;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                             = 32'h0000012C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                              = 32'h00000030;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                = 32'h00000130;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                              = 32'h00000034;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                = 32'h00000134;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                   = 32'h00000138;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                  = 32'h0000013C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                              = 32'h00000040;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                = 32'h00000140;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                    = 32'h00000044;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                      = 32'h00000144;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                         = 32'h00000048;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                           = 32'h00000148;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                         = 32'h0000004C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                           = 32'h0000014C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                       = 32'h00000050;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                         = 32'h00000150;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                       = 32'h00000054;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                         = 32'h00000154;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                       = 32'h00000058;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                         = 32'h00000158;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                         = 32'h0000015C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                       = 32'h00000060;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                         = 32'h00000160;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                       = 32'h00000064;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                         = 32'h00000164;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                           = 32'h00000068;
+localparam int unsigned I3C_CSR_0__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                             = 32'h00000168;
 
 
 //==============================================================================
 // Register File: StdbyCtrlMode
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                           = 32'h00000180;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                                = 32'h00000044;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                        = 32'h00000180;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                             = 32'h00000044;
 
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                     = 32'h00000000;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                       = 32'h00000180;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                   = 32'h00000004;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                     = 32'h00000184;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                               = 32'h00000008;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                                 = 32'h00000188;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                              = 32'h0000000C;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                                = 32'h0000018C;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                       = 32'h00000010;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                         = 32'h00000190;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                    = 32'h00000014;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                      = 32'h00000194;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                               = 32'h00000018;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                                 = 32'h00000198;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                             = 32'h0000001C;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                               = 32'h0000019C;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                               = 32'h00000020;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                                 = 32'h000001A0;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                     = 32'h00000024;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                       = 32'h000001A4;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                        = 32'h00000028;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                          = 32'h000001A8;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                                = 32'h0000002C;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                                  = 32'h000001AC;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                        = 32'h00000030;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                          = 32'h000001B0;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET                  = 32'h00000034;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                    = 32'h000001B4;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                          = 32'h00000038;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                            = 32'h000001B8;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                       = 32'h0000003C;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                         = 32'h000001BC;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                       = 32'h00000040;
-localparam int unsigned I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                         = 32'h000001C0;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                  = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                    = 32'h00000180;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                  = 32'h00000184;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                              = 32'h00000188;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                           = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                             = 32'h0000018C;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                    = 32'h00000010;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                      = 32'h00000190;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                   = 32'h00000194;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                            = 32'h00000018;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                              = 32'h00000198;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                            = 32'h0000019C;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                            = 32'h00000020;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                              = 32'h000001A0;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                  = 32'h00000024;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                    = 32'h000001A4;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                     = 32'h00000028;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                       = 32'h000001A8;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                             = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                               = 32'h000001AC;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                     = 32'h00000030;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                       = 32'h000001B0;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET               = 32'h00000034;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                 = 32'h000001B4;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                       = 32'h00000038;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                         = 32'h000001B8;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                    = 32'h0000003C;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                      = 32'h000001BC;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                    = 32'h00000040;
+localparam int unsigned I3C_CSR_0__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                      = 32'h000001C0;
 
 
 //==============================================================================
 // Register File: TTI
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3C_EC_TTI_REG_FILE_BASE_ADDR                                                     = 32'h00000200;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_REG_FILE_SIZE                                                          = 32'h00000094;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_REG_FILE_BASE_ADDR                                                  = 32'h00000200;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_REG_FILE_SIZE                                                       = 32'h00000094;
 
-localparam int unsigned I3C_CSR_I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                               = 32'h00000000;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                                 = 32'h00000200;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_CONTROL_REG_OFFSET                                                     = 32'h00000004;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_CONTROL_REG_ADDR                                                       = 32'h00000204;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_STATUS_REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_STATUS_REG_ADDR                                                        = 32'h00000208;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                               = 32'h0000000C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                                 = 32'h0000020C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                                = 32'h00000010;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                                  = 32'h00000210;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                            = 32'h00000014;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                              = 32'h00000214;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                            = 32'h00000018;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                              = 32'h00000218;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                             = 32'h0000001C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                               = 32'h0000021C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                            = 32'h00000020;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                              = 32'h00000220;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                            = 32'h00000024;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                              = 32'h00000224;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                             = 32'h00000028;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                               = 32'h00000228;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                             = 32'h0000002C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                               = 32'h0000022C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                      = 32'h00000030;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                        = 32'h00000230;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                      = 32'h00000034;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                        = 32'h00000234;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                       = 32'h00000038;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                         = 32'h00000238;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                          = 32'h0000003C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                            = 32'h0000023C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                          = 32'h00000040;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                            = 32'h00000240;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                          = 32'h00000044;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                            = 32'h00000244;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                          = 32'h00000048;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                            = 32'h00000248;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                          = 32'h0000004C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                            = 32'h0000024C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                          = 32'h00000050;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                            = 32'h00000250;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                      = 32'h00000054;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                        = 32'h00000254;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                       = 32'h00000058;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                         = 32'h00000258;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                    = 32'h0000005C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                      = 32'h0000025C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                                  = 32'h00000060;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                    = 32'h00000260;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                               = 32'h00000064;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                                 = 32'h00000264;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                          = 32'h00000068;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                            = 32'h00000268;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                    = 32'h0000006C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                      = 32'h0000026C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                          = 32'h00000070;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                            = 32'h00000270;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                                = 32'h00000074;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                                  = 32'h00000274;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                          = 32'h00000078;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                            = 32'h00000278;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                                = 32'h0000007C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                                  = 32'h0000027C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                    = 32'h00000080;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_IBI_PORT_REG_ADDR                                                      = 32'h00000280;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                                  = 32'h00000084;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                    = 32'h00000284;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                              = 32'h00000088;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                                = 32'h00000288;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                             = 32'h0000008C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                               = 32'h0000028C;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                       = 32'h00000090;
-localparam int unsigned I3C_CSR_I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                         = 32'h00000290;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                              = 32'h00000200;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_CONTROL_REG_ADDR                                                    = 32'h00000204;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_STATUS_REG_OFFSET                                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_STATUS_REG_ADDR                                                     = 32'h00000208;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                            = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                              = 32'h0000020C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                             = 32'h00000010;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                               = 32'h00000210;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000014;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                           = 32'h00000214;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000018;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                           = 32'h00000218;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                            = 32'h0000021C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                         = 32'h00000020;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                           = 32'h00000220;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                         = 32'h00000024;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                           = 32'h00000224;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                            = 32'h00000228;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                          = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                            = 32'h0000022C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                   = 32'h00000030;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                     = 32'h00000230;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                   = 32'h00000034;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                     = 32'h00000234;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                    = 32'h00000038;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                      = 32'h00000238;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                         = 32'h0000023C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                         = 32'h00000240;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                       = 32'h00000044;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                         = 32'h00000244;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                       = 32'h00000048;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                         = 32'h00000248;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                       = 32'h0000004C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                         = 32'h0000024C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                       = 32'h00000050;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                         = 32'h00000250;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                   = 32'h00000054;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                     = 32'h00000254;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                    = 32'h00000058;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                      = 32'h00000258;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                 = 32'h0000005C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                   = 32'h0000025C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                               = 32'h00000060;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                 = 32'h00000260;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                            = 32'h00000064;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                              = 32'h00000264;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                       = 32'h00000068;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                         = 32'h00000268;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                 = 32'h0000006C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                   = 32'h0000026C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00000270;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000074;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                               = 32'h00000274;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000078;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00000278;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                             = 32'h0000007C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                               = 32'h0000027C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                 = 32'h00000080;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_IBI_PORT_REG_ADDR                                                   = 32'h00000280;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000084;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                 = 32'h00000284;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                           = 32'h00000088;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                             = 32'h00000288;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h0000008C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h0000028C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000090;
+localparam int unsigned I3C_CSR_0__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00000290;
 
 
 //==============================================================================
 // Register File: SoCMgmtIf
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                               = 32'h00000300;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                    = 32'h00000094;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                            = 32'h00000300;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                 = 32'h00000094;
 
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                           = 32'h00000300;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                      = 32'h00000004;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                        = 32'h00000304;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                       = 32'h00000008;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                         = 32'h00000308;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                          = 32'h0000000C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                            = 32'h0000030C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                               = 32'h00000010;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                                 = 32'h00000310;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                       = 32'h00000014;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                         = 32'h00000314;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                       = 32'h00000018;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                         = 32'h00000318;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                          = 32'h0000001C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                            = 32'h0000031C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                          = 32'h00000020;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                            = 32'h00000320;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                    = 32'h00000024;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                      = 32'h00000324;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                    = 32'h00000028;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                      = 32'h00000328;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                               = 32'h0000002C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                                 = 32'h0000032C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                               = 32'h00000030;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                                 = 32'h00000330;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                          = 32'h00000034;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                            = 32'h00000334;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                      = 32'h00000038;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                        = 32'h00000338;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                          = 32'h0000003C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                            = 32'h0000033C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                            = 32'h00000040;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                              = 32'h00000340;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                         = 32'h00000044;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                           = 32'h00000344;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                    = 32'h00000048;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                      = 32'h00000348;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                        = 32'h0000004C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                          = 32'h0000034C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                             = 32'h00000050;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                               = 32'h00000350;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                          = 32'h00000054;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                            = 32'h00000354;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                         = 32'h00000058;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                           = 32'h00000358;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                          = 32'h0000005C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                            = 32'h0000035C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                      = 32'h00000060;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                        = 32'h00000360;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                         = 32'h00000064;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                           = 32'h00000364;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                          = 32'h00000068;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                            = 32'h00000368;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                      = 32'h0000006C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                        = 32'h0000036C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                          = 32'h00000070;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                            = 32'h00000370;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                      = 32'h00000074;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                        = 32'h00000374;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                           = 32'h00000078;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                             = 32'h00000378;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                            = 32'h0000007C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                              = 32'h0000037C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                        = 32'h00000080;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                          = 32'h00000380;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                            = 32'h00000084;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                              = 32'h00000384;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                            = 32'h00000088;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                              = 32'h00000388;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                    = 32'h0000008C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                      = 32'h0000038C;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                     = 32'h00000090;
-localparam int unsigned I3C_CSR_I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                       = 32'h00000390;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                      = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                        = 32'h00000300;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                     = 32'h00000304;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                      = 32'h00000308;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                       = 32'h0000000C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                         = 32'h0000030C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                            = 32'h00000010;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                              = 32'h00000310;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                      = 32'h00000314;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                      = 32'h00000318;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                       = 32'h0000001C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                         = 32'h0000031C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                         = 32'h00000320;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                 = 32'h00000024;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                   = 32'h00000324;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                 = 32'h00000028;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                   = 32'h00000328;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                            = 32'h0000002C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                              = 32'h0000032C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                              = 32'h00000330;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                       = 32'h00000034;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                         = 32'h00000334;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                     = 32'h00000338;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                         = 32'h0000033C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                         = 32'h00000040;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                           = 32'h00000340;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                      = 32'h00000044;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                        = 32'h00000344;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                 = 32'h00000048;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                   = 32'h00000348;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                     = 32'h0000004C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                       = 32'h0000034C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                          = 32'h00000050;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                            = 32'h00000350;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                       = 32'h00000054;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                         = 32'h00000354;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                      = 32'h00000058;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                        = 32'h00000358;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                         = 32'h0000035C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                   = 32'h00000060;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                     = 32'h00000360;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                      = 32'h00000064;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                        = 32'h00000364;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                         = 32'h00000368;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                   = 32'h0000006C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                     = 32'h0000036C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                         = 32'h00000370;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                   = 32'h00000074;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                     = 32'h00000374;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                        = 32'h00000078;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                          = 32'h00000378;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                         = 32'h0000007C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                           = 32'h0000037C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                     = 32'h00000080;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                       = 32'h00000380;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                         = 32'h00000084;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                           = 32'h00000384;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                         = 32'h00000088;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                           = 32'h00000388;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                 = 32'h0000008C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                   = 32'h0000038C;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                  = 32'h00000090;
+localparam int unsigned I3C_CSR_0__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                    = 32'h00000390;
 
 
 //==============================================================================
 // Register File: CtrlCfg
 //==============================================================================
 
-localparam int unsigned I3C_CSR_I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                                 = 32'h00000398;
-localparam int unsigned I3C_CSR_I3C_EC_CTRLCFG_REG_FILE_SIZE                                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_0__I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                              = 32'h00000398;
+localparam int unsigned I3C_CSR_0__I3C_EC_CTRLCFG_REG_FILE_SIZE                                                   = 32'h00000008;
 
-localparam int unsigned I3C_CSR_I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                           = 32'h00000000;
-localparam int unsigned I3C_CSR_I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                             = 32'h00000398;
-localparam int unsigned I3C_CSR_I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                       = 32'h00000004;
-localparam int unsigned I3C_CSR_I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                         = 32'h0000039C;
-localparam int unsigned I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                       = 32'h000002A0;
-localparam int unsigned I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                         = 32'h000003A0;
+localparam int unsigned I3C_CSR_0__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned I3C_CSR_0__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                          = 32'h00000398;
+localparam int unsigned I3C_CSR_0__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_0__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                      = 32'h0000039C;
+localparam int unsigned I3C_CSR_0__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                    = 32'h000002A0;
+localparam int unsigned I3C_CSR_0__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                      = 32'h000003A0;
 
 
 //==============================================================================
 // Memory: DAT
 //==============================================================================
 
-localparam int unsigned I3C_CSR_DAT_MEM_BASE_ADDR                                                                 = 32'h00000400;
-localparam int unsigned I3C_CSR_DAT_MEM_SIZE                                                                      = 32'h00000400;
+localparam int unsigned I3C_CSR_0__DAT_MEM_BASE_ADDR                                                              = 32'h00000400;
+localparam int unsigned I3C_CSR_0__DAT_MEM_SIZE                                                                   = 32'h00000400;
 
 
 
@@ -439,8 +439,2073 @@ localparam int unsigned I3C_CSR_DAT_MEM_SIZE                                    
 // Memory: DCT
 //==============================================================================
 
-localparam int unsigned I3C_CSR_DCT_MEM_BASE_ADDR                                                                 = 32'h00000800;
-localparam int unsigned I3C_CSR_DCT_MEM_SIZE                                                                      = 32'h00000800;
+localparam int unsigned I3C_CSR_0__DCT_MEM_BASE_ADDR                                                              = 32'h00000800;
+localparam int unsigned I3C_CSR_0__DCT_MEM_SIZE                                                                   = 32'h00000800;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[1]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_1__REG_MAP_BASE_ADDR                                                              = 32'h00001000;
+localparam int unsigned I3C_CSR_1__REG_MAP_SIZE                                                                   = 32'h00001000;
+
+
+
+
+//==============================================================================
+// Register File: I3CBase
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3CBASE_REG_FILE_BASE_ADDR                                                     = 32'h00001000;
+localparam int unsigned I3C_CSR_1__I3CBASE_REG_FILE_SIZE                                                          = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_1__I3CBASE_HCI_VERSION_REG_OFFSET                                                 = 32'h00000000;
+localparam int unsigned I3C_CSR_1__I3CBASE_HCI_VERSION_REG_ADDR                                                   = 32'h00001000;
+localparam int unsigned I3C_CSR_1__I3CBASE_HC_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_1__I3CBASE_HC_CONTROL_REG_ADDR                                                    = 32'h00001004;
+localparam int unsigned I3C_CSR_1__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_1__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                        = 32'h00001008;
+localparam int unsigned I3C_CSR_1__I3CBASE_HC_CAPABILITIES_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned I3C_CSR_1__I3CBASE_HC_CAPABILITIES_REG_ADDR                                               = 32'h0000100C;
+localparam int unsigned I3C_CSR_1__I3CBASE_RESET_CONTROL_REG_OFFSET                                               = 32'h00000010;
+localparam int unsigned I3C_CSR_1__I3CBASE_RESET_CONTROL_REG_ADDR                                                 = 32'h00001010;
+localparam int unsigned I3C_CSR_1__I3CBASE_PRESENT_STATE_REG_OFFSET                                               = 32'h00000014;
+localparam int unsigned I3C_CSR_1__I3CBASE_PRESENT_STATE_REG_ADDR                                                 = 32'h00001014;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_STATUS_REG_OFFSET                                                 = 32'h00000020;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_STATUS_REG_ADDR                                                   = 32'h00001020;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                          = 32'h00000024;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                            = 32'h00001024;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                            = 32'h00001028;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_FORCE_REG_OFFSET                                                  = 32'h0000002C;
+localparam int unsigned I3C_CSR_1__I3CBASE_INTR_FORCE_REG_ADDR                                                    = 32'h0000102C;
+localparam int unsigned I3C_CSR_1__I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000030;
+localparam int unsigned I3C_CSR_1__I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                            = 32'h00001030;
+localparam int unsigned I3C_CSR_1__I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_1__I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                            = 32'h00001034;
+localparam int unsigned I3C_CSR_1__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_1__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                   = 32'h00001038;
+localparam int unsigned I3C_CSR_1__I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                          = 32'h0000003C;
+localparam int unsigned I3C_CSR_1__I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                            = 32'h0000103C;
+localparam int unsigned I3C_CSR_1__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                     = 32'h00000040;
+localparam int unsigned I3C_CSR_1__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                       = 32'h00001040;
+localparam int unsigned I3C_CSR_1__I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                            = 32'h0000004C;
+localparam int unsigned I3C_CSR_1__I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                              = 32'h0000104C;
+localparam int unsigned I3C_CSR_1__I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                             = 32'h00000058;
+localparam int unsigned I3C_CSR_1__I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                               = 32'h00001058;
+localparam int unsigned I3C_CSR_1__I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                         = 32'h0000005C;
+localparam int unsigned I3C_CSR_1__I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                           = 32'h0000105C;
+localparam int unsigned I3C_CSR_1__I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned I3C_CSR_1__I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                               = 32'h00001060;
+localparam int unsigned I3C_CSR_1__I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                             = 32'h00000064;
+localparam int unsigned I3C_CSR_1__I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                               = 32'h00001064;
+localparam int unsigned I3C_CSR_1__I3CBASE_DEV_CTX_SG_REG_OFFSET                                                  = 32'h00000068;
+localparam int unsigned I3C_CSR_1__I3CBASE_DEV_CTX_SG_REG_ADDR                                                    = 32'h00001068;
+
+
+//==============================================================================
+// Register File: PIOControl
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__PIOCONTROL_REG_FILE_BASE_ADDR                                                  = 32'h00001080;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_REG_FILE_SIZE                                                       = 32'h00000034;
+
+localparam int unsigned I3C_CSR_1__PIOCONTROL_COMMAND_PORT_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_COMMAND_PORT_REG_ADDR                                               = 32'h00001080;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                            = 32'h00000004;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_RESPONSE_PORT_REG_ADDR                                              = 32'h00001084;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_TX_DATA_PORT_REG_ADDR                                               = 32'h00001088;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_RX_DATA_PORT_REG_ADDR                                               = 32'h00001088;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_IBI_PORT_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_IBI_PORT_REG_ADDR                                                   = 32'h0000108C;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h00001090;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00001094;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000018;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                 = 32'h00001098;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                           = 32'h0000001C;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                             = 32'h0000109C;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                          = 32'h00000020;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                            = 32'h000010A0;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                   = 32'h00000024;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                     = 32'h000010A4;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                   = 32'h00000028;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                     = 32'h000010A8;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                             = 32'h000010AC;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_CONTROL_REG_OFFSET                                              = 32'h00000030;
+localparam int unsigned I3C_CSR_1__PIOCONTROL_PIO_CONTROL_REG_ADDR                                                = 32'h000010B0;
+
+
+//==============================================================================
+// Register File: I3C_EC
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3C_EC_REG_FILE_BASE_ADDR                                                      = 32'h00001100;
+localparam int unsigned I3C_CSR_1__I3C_EC_REG_FILE_SIZE                                                           = 32'h000002A4;
+
+
+
+//==============================================================================
+// Register File: SecFwRecoveryIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                      = 32'h00001100;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                           = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                = 32'h00000000;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                  = 32'h00001100;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                     = 32'h00001104;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                     = 32'h00001108;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                   = 32'h0000000C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                     = 32'h0000110C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                   = 32'h00000010;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                     = 32'h00001110;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                    = 32'h00001114;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                  = 32'h00000018;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                    = 32'h00001118;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                  = 32'h0000001C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                    = 32'h0000111C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                  = 32'h00000020;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                    = 32'h00001120;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                  = 32'h00000024;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                    = 32'h00001124;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                  = 32'h00000028;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                    = 32'h00001128;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                             = 32'h0000112C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                              = 32'h00000030;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                = 32'h00001130;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                              = 32'h00000034;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                = 32'h00001134;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                   = 32'h00001138;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                  = 32'h0000113C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                              = 32'h00000040;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                = 32'h00001140;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                    = 32'h00000044;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                      = 32'h00001144;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                         = 32'h00000048;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                           = 32'h00001148;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                         = 32'h0000004C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                           = 32'h0000114C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                       = 32'h00000050;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                         = 32'h00001150;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                       = 32'h00000054;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                         = 32'h00001154;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                       = 32'h00000058;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                         = 32'h00001158;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                         = 32'h0000115C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                       = 32'h00000060;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                         = 32'h00001160;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                       = 32'h00000064;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                         = 32'h00001164;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                           = 32'h00000068;
+localparam int unsigned I3C_CSR_1__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                             = 32'h00001168;
+
+
+//==============================================================================
+// Register File: StdbyCtrlMode
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                        = 32'h00001180;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                             = 32'h00000044;
+
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                  = 32'h00000000;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                    = 32'h00001180;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                = 32'h00000004;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                  = 32'h00001184;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                              = 32'h00001188;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                           = 32'h0000000C;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                             = 32'h0000118C;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                    = 32'h00000010;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                      = 32'h00001190;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                   = 32'h00001194;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                            = 32'h00000018;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                              = 32'h00001198;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                            = 32'h0000119C;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                            = 32'h00000020;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                              = 32'h000011A0;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                  = 32'h00000024;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                    = 32'h000011A4;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                     = 32'h00000028;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                       = 32'h000011A8;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                             = 32'h0000002C;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                               = 32'h000011AC;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                     = 32'h00000030;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                       = 32'h000011B0;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET               = 32'h00000034;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                 = 32'h000011B4;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                       = 32'h00000038;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                         = 32'h000011B8;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                    = 32'h0000003C;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                      = 32'h000011BC;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                    = 32'h00000040;
+localparam int unsigned I3C_CSR_1__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                      = 32'h000011C0;
+
+
+//==============================================================================
+// Register File: TTI
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_REG_FILE_BASE_ADDR                                                  = 32'h00001200;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_REG_FILE_SIZE                                                       = 32'h00000094;
+
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                              = 32'h00001200;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_CONTROL_REG_ADDR                                                    = 32'h00001204;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_STATUS_REG_OFFSET                                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_STATUS_REG_ADDR                                                     = 32'h00001208;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                            = 32'h0000000C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                              = 32'h0000120C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                             = 32'h00000010;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                               = 32'h00001210;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000014;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                           = 32'h00001214;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000018;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                           = 32'h00001218;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                            = 32'h0000121C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                         = 32'h00000020;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                           = 32'h00001220;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                         = 32'h00000024;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                           = 32'h00001224;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                            = 32'h00001228;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                          = 32'h0000002C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                            = 32'h0000122C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                   = 32'h00000030;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                     = 32'h00001230;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                   = 32'h00000034;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                     = 32'h00001234;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                    = 32'h00000038;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                      = 32'h00001238;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                         = 32'h0000123C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                         = 32'h00001240;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                       = 32'h00000044;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                         = 32'h00001244;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                       = 32'h00000048;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                         = 32'h00001248;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                       = 32'h0000004C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                         = 32'h0000124C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                       = 32'h00000050;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                         = 32'h00001250;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                   = 32'h00000054;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                     = 32'h00001254;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                    = 32'h00000058;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                      = 32'h00001258;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                 = 32'h0000005C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                   = 32'h0000125C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                               = 32'h00000060;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                 = 32'h00001260;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                            = 32'h00000064;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                              = 32'h00001264;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                       = 32'h00000068;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                         = 32'h00001268;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                 = 32'h0000006C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                   = 32'h0000126C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00001270;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000074;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                               = 32'h00001274;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000078;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00001278;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                             = 32'h0000007C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                               = 32'h0000127C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                 = 32'h00000080;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_IBI_PORT_REG_ADDR                                                   = 32'h00001280;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000084;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                 = 32'h00001284;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                           = 32'h00000088;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                             = 32'h00001288;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h0000008C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h0000128C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000090;
+localparam int unsigned I3C_CSR_1__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00001290;
+
+
+//==============================================================================
+// Register File: SoCMgmtIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                            = 32'h00001300;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                 = 32'h00000094;
+
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                      = 32'h00000000;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                        = 32'h00001300;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                     = 32'h00001304;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                      = 32'h00001308;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                       = 32'h0000000C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                         = 32'h0000130C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                            = 32'h00000010;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                              = 32'h00001310;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                      = 32'h00001314;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                      = 32'h00001318;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                       = 32'h0000001C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                         = 32'h0000131C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                         = 32'h00001320;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                 = 32'h00000024;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                   = 32'h00001324;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                 = 32'h00000028;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                   = 32'h00001328;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                            = 32'h0000002C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                              = 32'h0000132C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                              = 32'h00001330;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                       = 32'h00000034;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                         = 32'h00001334;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                     = 32'h00001338;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                         = 32'h0000133C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                         = 32'h00000040;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                           = 32'h00001340;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                      = 32'h00000044;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                        = 32'h00001344;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                 = 32'h00000048;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                   = 32'h00001348;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                     = 32'h0000004C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                       = 32'h0000134C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                          = 32'h00000050;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                            = 32'h00001350;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                       = 32'h00000054;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                         = 32'h00001354;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                      = 32'h00000058;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                        = 32'h00001358;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                         = 32'h0000135C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                   = 32'h00000060;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                     = 32'h00001360;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                      = 32'h00000064;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                        = 32'h00001364;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                         = 32'h00001368;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                   = 32'h0000006C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                     = 32'h0000136C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                         = 32'h00001370;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                   = 32'h00000074;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                     = 32'h00001374;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                        = 32'h00000078;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                          = 32'h00001378;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                         = 32'h0000007C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                           = 32'h0000137C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                     = 32'h00000080;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                       = 32'h00001380;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                         = 32'h00000084;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                           = 32'h00001384;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                         = 32'h00000088;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                           = 32'h00001388;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                 = 32'h0000008C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                   = 32'h0000138C;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                  = 32'h00000090;
+localparam int unsigned I3C_CSR_1__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                    = 32'h00001390;
+
+
+//==============================================================================
+// Register File: CtrlCfg
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                              = 32'h00001398;
+localparam int unsigned I3C_CSR_1__I3C_EC_CTRLCFG_REG_FILE_SIZE                                                   = 32'h00000008;
+
+localparam int unsigned I3C_CSR_1__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned I3C_CSR_1__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                          = 32'h00001398;
+localparam int unsigned I3C_CSR_1__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_1__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                      = 32'h0000139C;
+localparam int unsigned I3C_CSR_1__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                    = 32'h000002A0;
+localparam int unsigned I3C_CSR_1__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                      = 32'h000013A0;
+
+
+//==============================================================================
+// Memory: DAT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__DAT_MEM_BASE_ADDR                                                              = 32'h00001400;
+localparam int unsigned I3C_CSR_1__DAT_MEM_SIZE                                                                   = 32'h00000400;
+
+
+
+//==============================================================================
+// Memory: DCT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_1__DCT_MEM_BASE_ADDR                                                              = 32'h00001800;
+localparam int unsigned I3C_CSR_1__DCT_MEM_SIZE                                                                   = 32'h00000800;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[2]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_2__REG_MAP_BASE_ADDR                                                              = 32'h00002000;
+localparam int unsigned I3C_CSR_2__REG_MAP_SIZE                                                                   = 32'h00001000;
+
+
+
+
+//==============================================================================
+// Register File: I3CBase
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3CBASE_REG_FILE_BASE_ADDR                                                     = 32'h00002000;
+localparam int unsigned I3C_CSR_2__I3CBASE_REG_FILE_SIZE                                                          = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_2__I3CBASE_HCI_VERSION_REG_OFFSET                                                 = 32'h00000000;
+localparam int unsigned I3C_CSR_2__I3CBASE_HCI_VERSION_REG_ADDR                                                   = 32'h00002000;
+localparam int unsigned I3C_CSR_2__I3CBASE_HC_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_2__I3CBASE_HC_CONTROL_REG_ADDR                                                    = 32'h00002004;
+localparam int unsigned I3C_CSR_2__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_2__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                        = 32'h00002008;
+localparam int unsigned I3C_CSR_2__I3CBASE_HC_CAPABILITIES_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned I3C_CSR_2__I3CBASE_HC_CAPABILITIES_REG_ADDR                                               = 32'h0000200C;
+localparam int unsigned I3C_CSR_2__I3CBASE_RESET_CONTROL_REG_OFFSET                                               = 32'h00000010;
+localparam int unsigned I3C_CSR_2__I3CBASE_RESET_CONTROL_REG_ADDR                                                 = 32'h00002010;
+localparam int unsigned I3C_CSR_2__I3CBASE_PRESENT_STATE_REG_OFFSET                                               = 32'h00000014;
+localparam int unsigned I3C_CSR_2__I3CBASE_PRESENT_STATE_REG_ADDR                                                 = 32'h00002014;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_STATUS_REG_OFFSET                                                 = 32'h00000020;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_STATUS_REG_ADDR                                                   = 32'h00002020;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                          = 32'h00000024;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                            = 32'h00002024;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                            = 32'h00002028;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_FORCE_REG_OFFSET                                                  = 32'h0000002C;
+localparam int unsigned I3C_CSR_2__I3CBASE_INTR_FORCE_REG_ADDR                                                    = 32'h0000202C;
+localparam int unsigned I3C_CSR_2__I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000030;
+localparam int unsigned I3C_CSR_2__I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                            = 32'h00002030;
+localparam int unsigned I3C_CSR_2__I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_2__I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                            = 32'h00002034;
+localparam int unsigned I3C_CSR_2__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_2__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                   = 32'h00002038;
+localparam int unsigned I3C_CSR_2__I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                          = 32'h0000003C;
+localparam int unsigned I3C_CSR_2__I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                            = 32'h0000203C;
+localparam int unsigned I3C_CSR_2__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                     = 32'h00000040;
+localparam int unsigned I3C_CSR_2__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                       = 32'h00002040;
+localparam int unsigned I3C_CSR_2__I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                            = 32'h0000004C;
+localparam int unsigned I3C_CSR_2__I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                              = 32'h0000204C;
+localparam int unsigned I3C_CSR_2__I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                             = 32'h00000058;
+localparam int unsigned I3C_CSR_2__I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                               = 32'h00002058;
+localparam int unsigned I3C_CSR_2__I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                         = 32'h0000005C;
+localparam int unsigned I3C_CSR_2__I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                           = 32'h0000205C;
+localparam int unsigned I3C_CSR_2__I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned I3C_CSR_2__I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                               = 32'h00002060;
+localparam int unsigned I3C_CSR_2__I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                             = 32'h00000064;
+localparam int unsigned I3C_CSR_2__I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                               = 32'h00002064;
+localparam int unsigned I3C_CSR_2__I3CBASE_DEV_CTX_SG_REG_OFFSET                                                  = 32'h00000068;
+localparam int unsigned I3C_CSR_2__I3CBASE_DEV_CTX_SG_REG_ADDR                                                    = 32'h00002068;
+
+
+//==============================================================================
+// Register File: PIOControl
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__PIOCONTROL_REG_FILE_BASE_ADDR                                                  = 32'h00002080;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_REG_FILE_SIZE                                                       = 32'h00000034;
+
+localparam int unsigned I3C_CSR_2__PIOCONTROL_COMMAND_PORT_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_COMMAND_PORT_REG_ADDR                                               = 32'h00002080;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                            = 32'h00000004;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_RESPONSE_PORT_REG_ADDR                                              = 32'h00002084;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_TX_DATA_PORT_REG_ADDR                                               = 32'h00002088;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_RX_DATA_PORT_REG_ADDR                                               = 32'h00002088;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_IBI_PORT_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_IBI_PORT_REG_ADDR                                                   = 32'h0000208C;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h00002090;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00002094;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000018;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                 = 32'h00002098;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                           = 32'h0000001C;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                             = 32'h0000209C;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                          = 32'h00000020;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                            = 32'h000020A0;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                   = 32'h00000024;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                     = 32'h000020A4;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                   = 32'h00000028;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                     = 32'h000020A8;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                             = 32'h000020AC;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_CONTROL_REG_OFFSET                                              = 32'h00000030;
+localparam int unsigned I3C_CSR_2__PIOCONTROL_PIO_CONTROL_REG_ADDR                                                = 32'h000020B0;
+
+
+//==============================================================================
+// Register File: I3C_EC
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3C_EC_REG_FILE_BASE_ADDR                                                      = 32'h00002100;
+localparam int unsigned I3C_CSR_2__I3C_EC_REG_FILE_SIZE                                                           = 32'h000002A4;
+
+
+
+//==============================================================================
+// Register File: SecFwRecoveryIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                      = 32'h00002100;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                           = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                = 32'h00000000;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                  = 32'h00002100;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                     = 32'h00002104;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                     = 32'h00002108;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                   = 32'h0000000C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                     = 32'h0000210C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                   = 32'h00000010;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                     = 32'h00002110;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                    = 32'h00002114;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                  = 32'h00000018;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                    = 32'h00002118;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                  = 32'h0000001C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                    = 32'h0000211C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                  = 32'h00000020;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                    = 32'h00002120;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                  = 32'h00000024;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                    = 32'h00002124;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                  = 32'h00000028;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                    = 32'h00002128;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                             = 32'h0000212C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                              = 32'h00000030;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                = 32'h00002130;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                              = 32'h00000034;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                = 32'h00002134;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                   = 32'h00002138;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                  = 32'h0000213C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                              = 32'h00000040;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                = 32'h00002140;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                    = 32'h00000044;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                      = 32'h00002144;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                         = 32'h00000048;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                           = 32'h00002148;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                         = 32'h0000004C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                           = 32'h0000214C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                       = 32'h00000050;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                         = 32'h00002150;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                       = 32'h00000054;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                         = 32'h00002154;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                       = 32'h00000058;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                         = 32'h00002158;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                         = 32'h0000215C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                       = 32'h00000060;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                         = 32'h00002160;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                       = 32'h00000064;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                         = 32'h00002164;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                           = 32'h00000068;
+localparam int unsigned I3C_CSR_2__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                             = 32'h00002168;
+
+
+//==============================================================================
+// Register File: StdbyCtrlMode
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                        = 32'h00002180;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                             = 32'h00000044;
+
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                  = 32'h00000000;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                    = 32'h00002180;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                = 32'h00000004;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                  = 32'h00002184;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                              = 32'h00002188;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                           = 32'h0000000C;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                             = 32'h0000218C;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                    = 32'h00000010;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                      = 32'h00002190;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                   = 32'h00002194;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                            = 32'h00000018;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                              = 32'h00002198;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                            = 32'h0000219C;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                            = 32'h00000020;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                              = 32'h000021A0;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                  = 32'h00000024;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                    = 32'h000021A4;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                     = 32'h00000028;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                       = 32'h000021A8;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                             = 32'h0000002C;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                               = 32'h000021AC;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                     = 32'h00000030;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                       = 32'h000021B0;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET               = 32'h00000034;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                 = 32'h000021B4;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                       = 32'h00000038;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                         = 32'h000021B8;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                    = 32'h0000003C;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                      = 32'h000021BC;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                    = 32'h00000040;
+localparam int unsigned I3C_CSR_2__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                      = 32'h000021C0;
+
+
+//==============================================================================
+// Register File: TTI
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_REG_FILE_BASE_ADDR                                                  = 32'h00002200;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_REG_FILE_SIZE                                                       = 32'h00000094;
+
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                              = 32'h00002200;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_CONTROL_REG_ADDR                                                    = 32'h00002204;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_STATUS_REG_OFFSET                                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_STATUS_REG_ADDR                                                     = 32'h00002208;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                            = 32'h0000000C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                              = 32'h0000220C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                             = 32'h00000010;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                               = 32'h00002210;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000014;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                           = 32'h00002214;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000018;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                           = 32'h00002218;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                            = 32'h0000221C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                         = 32'h00000020;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                           = 32'h00002220;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                         = 32'h00000024;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                           = 32'h00002224;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                            = 32'h00002228;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                          = 32'h0000002C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                            = 32'h0000222C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                   = 32'h00000030;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                     = 32'h00002230;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                   = 32'h00000034;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                     = 32'h00002234;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                    = 32'h00000038;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                      = 32'h00002238;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                         = 32'h0000223C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                         = 32'h00002240;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                       = 32'h00000044;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                         = 32'h00002244;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                       = 32'h00000048;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                         = 32'h00002248;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                       = 32'h0000004C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                         = 32'h0000224C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                       = 32'h00000050;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                         = 32'h00002250;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                   = 32'h00000054;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                     = 32'h00002254;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                    = 32'h00000058;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                      = 32'h00002258;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                 = 32'h0000005C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                   = 32'h0000225C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                               = 32'h00000060;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                 = 32'h00002260;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                            = 32'h00000064;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                              = 32'h00002264;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                       = 32'h00000068;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                         = 32'h00002268;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                 = 32'h0000006C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                   = 32'h0000226C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00002270;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000074;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                               = 32'h00002274;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000078;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00002278;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                             = 32'h0000007C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                               = 32'h0000227C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                 = 32'h00000080;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_IBI_PORT_REG_ADDR                                                   = 32'h00002280;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000084;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                 = 32'h00002284;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                           = 32'h00000088;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                             = 32'h00002288;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h0000008C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h0000228C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000090;
+localparam int unsigned I3C_CSR_2__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00002290;
+
+
+//==============================================================================
+// Register File: SoCMgmtIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                            = 32'h00002300;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                 = 32'h00000094;
+
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                      = 32'h00000000;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                        = 32'h00002300;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                     = 32'h00002304;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                      = 32'h00002308;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                       = 32'h0000000C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                         = 32'h0000230C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                            = 32'h00000010;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                              = 32'h00002310;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                      = 32'h00002314;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                      = 32'h00002318;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                       = 32'h0000001C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                         = 32'h0000231C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                         = 32'h00002320;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                 = 32'h00000024;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                   = 32'h00002324;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                 = 32'h00000028;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                   = 32'h00002328;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                            = 32'h0000002C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                              = 32'h0000232C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                              = 32'h00002330;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                       = 32'h00000034;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                         = 32'h00002334;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                     = 32'h00002338;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                         = 32'h0000233C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                         = 32'h00000040;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                           = 32'h00002340;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                      = 32'h00000044;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                        = 32'h00002344;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                 = 32'h00000048;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                   = 32'h00002348;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                     = 32'h0000004C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                       = 32'h0000234C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                          = 32'h00000050;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                            = 32'h00002350;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                       = 32'h00000054;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                         = 32'h00002354;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                      = 32'h00000058;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                        = 32'h00002358;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                         = 32'h0000235C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                   = 32'h00000060;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                     = 32'h00002360;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                      = 32'h00000064;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                        = 32'h00002364;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                         = 32'h00002368;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                   = 32'h0000006C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                     = 32'h0000236C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                         = 32'h00002370;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                   = 32'h00000074;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                     = 32'h00002374;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                        = 32'h00000078;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                          = 32'h00002378;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                         = 32'h0000007C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                           = 32'h0000237C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                     = 32'h00000080;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                       = 32'h00002380;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                         = 32'h00000084;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                           = 32'h00002384;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                         = 32'h00000088;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                           = 32'h00002388;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                 = 32'h0000008C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                   = 32'h0000238C;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                  = 32'h00000090;
+localparam int unsigned I3C_CSR_2__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                    = 32'h00002390;
+
+
+//==============================================================================
+// Register File: CtrlCfg
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                              = 32'h00002398;
+localparam int unsigned I3C_CSR_2__I3C_EC_CTRLCFG_REG_FILE_SIZE                                                   = 32'h00000008;
+
+localparam int unsigned I3C_CSR_2__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned I3C_CSR_2__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                          = 32'h00002398;
+localparam int unsigned I3C_CSR_2__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_2__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                      = 32'h0000239C;
+localparam int unsigned I3C_CSR_2__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                    = 32'h000002A0;
+localparam int unsigned I3C_CSR_2__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                      = 32'h000023A0;
+
+
+//==============================================================================
+// Memory: DAT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__DAT_MEM_BASE_ADDR                                                              = 32'h00002400;
+localparam int unsigned I3C_CSR_2__DAT_MEM_SIZE                                                                   = 32'h00000400;
+
+
+
+//==============================================================================
+// Memory: DCT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_2__DCT_MEM_BASE_ADDR                                                              = 32'h00002800;
+localparam int unsigned I3C_CSR_2__DCT_MEM_SIZE                                                                   = 32'h00000800;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[3]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_3__REG_MAP_BASE_ADDR                                                              = 32'h00003000;
+localparam int unsigned I3C_CSR_3__REG_MAP_SIZE                                                                   = 32'h00001000;
+
+
+
+
+//==============================================================================
+// Register File: I3CBase
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3CBASE_REG_FILE_BASE_ADDR                                                     = 32'h00003000;
+localparam int unsigned I3C_CSR_3__I3CBASE_REG_FILE_SIZE                                                          = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_3__I3CBASE_HCI_VERSION_REG_OFFSET                                                 = 32'h00000000;
+localparam int unsigned I3C_CSR_3__I3CBASE_HCI_VERSION_REG_ADDR                                                   = 32'h00003000;
+localparam int unsigned I3C_CSR_3__I3CBASE_HC_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_3__I3CBASE_HC_CONTROL_REG_ADDR                                                    = 32'h00003004;
+localparam int unsigned I3C_CSR_3__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_3__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                        = 32'h00003008;
+localparam int unsigned I3C_CSR_3__I3CBASE_HC_CAPABILITIES_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned I3C_CSR_3__I3CBASE_HC_CAPABILITIES_REG_ADDR                                               = 32'h0000300C;
+localparam int unsigned I3C_CSR_3__I3CBASE_RESET_CONTROL_REG_OFFSET                                               = 32'h00000010;
+localparam int unsigned I3C_CSR_3__I3CBASE_RESET_CONTROL_REG_ADDR                                                 = 32'h00003010;
+localparam int unsigned I3C_CSR_3__I3CBASE_PRESENT_STATE_REG_OFFSET                                               = 32'h00000014;
+localparam int unsigned I3C_CSR_3__I3CBASE_PRESENT_STATE_REG_ADDR                                                 = 32'h00003014;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_STATUS_REG_OFFSET                                                 = 32'h00000020;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_STATUS_REG_ADDR                                                   = 32'h00003020;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                          = 32'h00000024;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                            = 32'h00003024;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                            = 32'h00003028;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_FORCE_REG_OFFSET                                                  = 32'h0000002C;
+localparam int unsigned I3C_CSR_3__I3CBASE_INTR_FORCE_REG_ADDR                                                    = 32'h0000302C;
+localparam int unsigned I3C_CSR_3__I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000030;
+localparam int unsigned I3C_CSR_3__I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                            = 32'h00003030;
+localparam int unsigned I3C_CSR_3__I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_3__I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                            = 32'h00003034;
+localparam int unsigned I3C_CSR_3__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_3__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                   = 32'h00003038;
+localparam int unsigned I3C_CSR_3__I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                          = 32'h0000003C;
+localparam int unsigned I3C_CSR_3__I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                            = 32'h0000303C;
+localparam int unsigned I3C_CSR_3__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                     = 32'h00000040;
+localparam int unsigned I3C_CSR_3__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                       = 32'h00003040;
+localparam int unsigned I3C_CSR_3__I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                            = 32'h0000004C;
+localparam int unsigned I3C_CSR_3__I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                              = 32'h0000304C;
+localparam int unsigned I3C_CSR_3__I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                             = 32'h00000058;
+localparam int unsigned I3C_CSR_3__I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                               = 32'h00003058;
+localparam int unsigned I3C_CSR_3__I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                         = 32'h0000005C;
+localparam int unsigned I3C_CSR_3__I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                           = 32'h0000305C;
+localparam int unsigned I3C_CSR_3__I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned I3C_CSR_3__I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                               = 32'h00003060;
+localparam int unsigned I3C_CSR_3__I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                             = 32'h00000064;
+localparam int unsigned I3C_CSR_3__I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                               = 32'h00003064;
+localparam int unsigned I3C_CSR_3__I3CBASE_DEV_CTX_SG_REG_OFFSET                                                  = 32'h00000068;
+localparam int unsigned I3C_CSR_3__I3CBASE_DEV_CTX_SG_REG_ADDR                                                    = 32'h00003068;
+
+
+//==============================================================================
+// Register File: PIOControl
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__PIOCONTROL_REG_FILE_BASE_ADDR                                                  = 32'h00003080;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_REG_FILE_SIZE                                                       = 32'h00000034;
+
+localparam int unsigned I3C_CSR_3__PIOCONTROL_COMMAND_PORT_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_COMMAND_PORT_REG_ADDR                                               = 32'h00003080;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                            = 32'h00000004;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_RESPONSE_PORT_REG_ADDR                                              = 32'h00003084;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_TX_DATA_PORT_REG_ADDR                                               = 32'h00003088;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_RX_DATA_PORT_REG_ADDR                                               = 32'h00003088;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_IBI_PORT_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_IBI_PORT_REG_ADDR                                                   = 32'h0000308C;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h00003090;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00003094;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000018;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                 = 32'h00003098;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                           = 32'h0000001C;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                             = 32'h0000309C;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                          = 32'h00000020;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                            = 32'h000030A0;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                   = 32'h00000024;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                     = 32'h000030A4;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                   = 32'h00000028;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                     = 32'h000030A8;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                             = 32'h000030AC;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_CONTROL_REG_OFFSET                                              = 32'h00000030;
+localparam int unsigned I3C_CSR_3__PIOCONTROL_PIO_CONTROL_REG_ADDR                                                = 32'h000030B0;
+
+
+//==============================================================================
+// Register File: I3C_EC
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3C_EC_REG_FILE_BASE_ADDR                                                      = 32'h00003100;
+localparam int unsigned I3C_CSR_3__I3C_EC_REG_FILE_SIZE                                                           = 32'h000002A4;
+
+
+
+//==============================================================================
+// Register File: SecFwRecoveryIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                      = 32'h00003100;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                           = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                = 32'h00000000;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                  = 32'h00003100;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                     = 32'h00003104;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                     = 32'h00003108;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                   = 32'h0000000C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                     = 32'h0000310C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                   = 32'h00000010;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                     = 32'h00003110;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                    = 32'h00003114;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                  = 32'h00000018;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                    = 32'h00003118;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                  = 32'h0000001C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                    = 32'h0000311C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                  = 32'h00000020;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                    = 32'h00003120;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                  = 32'h00000024;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                    = 32'h00003124;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                  = 32'h00000028;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                    = 32'h00003128;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                             = 32'h0000312C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                              = 32'h00000030;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                = 32'h00003130;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                              = 32'h00000034;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                = 32'h00003134;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                   = 32'h00003138;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                  = 32'h0000313C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                              = 32'h00000040;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                = 32'h00003140;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                    = 32'h00000044;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                      = 32'h00003144;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                         = 32'h00000048;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                           = 32'h00003148;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                         = 32'h0000004C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                           = 32'h0000314C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                       = 32'h00000050;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                         = 32'h00003150;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                       = 32'h00000054;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                         = 32'h00003154;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                       = 32'h00000058;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                         = 32'h00003158;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                         = 32'h0000315C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                       = 32'h00000060;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                         = 32'h00003160;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                       = 32'h00000064;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                         = 32'h00003164;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                           = 32'h00000068;
+localparam int unsigned I3C_CSR_3__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                             = 32'h00003168;
+
+
+//==============================================================================
+// Register File: StdbyCtrlMode
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                        = 32'h00003180;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                             = 32'h00000044;
+
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                  = 32'h00000000;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                    = 32'h00003180;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                = 32'h00000004;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                  = 32'h00003184;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                              = 32'h00003188;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                           = 32'h0000000C;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                             = 32'h0000318C;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                    = 32'h00000010;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                      = 32'h00003190;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                   = 32'h00003194;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                            = 32'h00000018;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                              = 32'h00003198;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                            = 32'h0000319C;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                            = 32'h00000020;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                              = 32'h000031A0;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                  = 32'h00000024;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                    = 32'h000031A4;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                     = 32'h00000028;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                       = 32'h000031A8;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                             = 32'h0000002C;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                               = 32'h000031AC;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                     = 32'h00000030;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                       = 32'h000031B0;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET               = 32'h00000034;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                 = 32'h000031B4;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                       = 32'h00000038;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                         = 32'h000031B8;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                    = 32'h0000003C;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                      = 32'h000031BC;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                    = 32'h00000040;
+localparam int unsigned I3C_CSR_3__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                      = 32'h000031C0;
+
+
+//==============================================================================
+// Register File: TTI
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_REG_FILE_BASE_ADDR                                                  = 32'h00003200;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_REG_FILE_SIZE                                                       = 32'h00000094;
+
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                              = 32'h00003200;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_CONTROL_REG_ADDR                                                    = 32'h00003204;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_STATUS_REG_OFFSET                                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_STATUS_REG_ADDR                                                     = 32'h00003208;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                            = 32'h0000000C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                              = 32'h0000320C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                             = 32'h00000010;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                               = 32'h00003210;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000014;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                           = 32'h00003214;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000018;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                           = 32'h00003218;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                            = 32'h0000321C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                         = 32'h00000020;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                           = 32'h00003220;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                         = 32'h00000024;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                           = 32'h00003224;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                            = 32'h00003228;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                          = 32'h0000002C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                            = 32'h0000322C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                   = 32'h00000030;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                     = 32'h00003230;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                   = 32'h00000034;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                     = 32'h00003234;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                    = 32'h00000038;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                      = 32'h00003238;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                         = 32'h0000323C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                         = 32'h00003240;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                       = 32'h00000044;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                         = 32'h00003244;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                       = 32'h00000048;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                         = 32'h00003248;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                       = 32'h0000004C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                         = 32'h0000324C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                       = 32'h00000050;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                         = 32'h00003250;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                   = 32'h00000054;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                     = 32'h00003254;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                    = 32'h00000058;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                      = 32'h00003258;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                 = 32'h0000005C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                   = 32'h0000325C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                               = 32'h00000060;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                 = 32'h00003260;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                            = 32'h00000064;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                              = 32'h00003264;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                       = 32'h00000068;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                         = 32'h00003268;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                 = 32'h0000006C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                   = 32'h0000326C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00003270;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000074;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                               = 32'h00003274;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000078;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00003278;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                             = 32'h0000007C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                               = 32'h0000327C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                 = 32'h00000080;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_IBI_PORT_REG_ADDR                                                   = 32'h00003280;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000084;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                 = 32'h00003284;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                           = 32'h00000088;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                             = 32'h00003288;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h0000008C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h0000328C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000090;
+localparam int unsigned I3C_CSR_3__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00003290;
+
+
+//==============================================================================
+// Register File: SoCMgmtIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                            = 32'h00003300;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                 = 32'h00000094;
+
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                      = 32'h00000000;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                        = 32'h00003300;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                     = 32'h00003304;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                      = 32'h00003308;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                       = 32'h0000000C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                         = 32'h0000330C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                            = 32'h00000010;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                              = 32'h00003310;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                      = 32'h00003314;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                      = 32'h00003318;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                       = 32'h0000001C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                         = 32'h0000331C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                         = 32'h00003320;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                 = 32'h00000024;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                   = 32'h00003324;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                 = 32'h00000028;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                   = 32'h00003328;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                            = 32'h0000002C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                              = 32'h0000332C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                              = 32'h00003330;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                       = 32'h00000034;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                         = 32'h00003334;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                     = 32'h00003338;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                         = 32'h0000333C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                         = 32'h00000040;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                           = 32'h00003340;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                      = 32'h00000044;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                        = 32'h00003344;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                 = 32'h00000048;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                   = 32'h00003348;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                     = 32'h0000004C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                       = 32'h0000334C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                          = 32'h00000050;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                            = 32'h00003350;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                       = 32'h00000054;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                         = 32'h00003354;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                      = 32'h00000058;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                        = 32'h00003358;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                         = 32'h0000335C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                   = 32'h00000060;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                     = 32'h00003360;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                      = 32'h00000064;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                        = 32'h00003364;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                         = 32'h00003368;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                   = 32'h0000006C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                     = 32'h0000336C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                         = 32'h00003370;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                   = 32'h00000074;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                     = 32'h00003374;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                        = 32'h00000078;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                          = 32'h00003378;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                         = 32'h0000007C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                           = 32'h0000337C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                     = 32'h00000080;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                       = 32'h00003380;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                         = 32'h00000084;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                           = 32'h00003384;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                         = 32'h00000088;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                           = 32'h00003388;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                 = 32'h0000008C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                   = 32'h0000338C;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                  = 32'h00000090;
+localparam int unsigned I3C_CSR_3__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                    = 32'h00003390;
+
+
+//==============================================================================
+// Register File: CtrlCfg
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                              = 32'h00003398;
+localparam int unsigned I3C_CSR_3__I3C_EC_CTRLCFG_REG_FILE_SIZE                                                   = 32'h00000008;
+
+localparam int unsigned I3C_CSR_3__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned I3C_CSR_3__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                          = 32'h00003398;
+localparam int unsigned I3C_CSR_3__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_3__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                      = 32'h0000339C;
+localparam int unsigned I3C_CSR_3__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                    = 32'h000002A0;
+localparam int unsigned I3C_CSR_3__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                      = 32'h000033A0;
+
+
+//==============================================================================
+// Memory: DAT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__DAT_MEM_BASE_ADDR                                                              = 32'h00003400;
+localparam int unsigned I3C_CSR_3__DAT_MEM_SIZE                                                                   = 32'h00000400;
+
+
+
+//==============================================================================
+// Memory: DCT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_3__DCT_MEM_BASE_ADDR                                                              = 32'h00003800;
+localparam int unsigned I3C_CSR_3__DCT_MEM_SIZE                                                                   = 32'h00000800;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[4]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_4__REG_MAP_BASE_ADDR                                                              = 32'h00004000;
+localparam int unsigned I3C_CSR_4__REG_MAP_SIZE                                                                   = 32'h00001000;
+
+
+
+
+//==============================================================================
+// Register File: I3CBase
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3CBASE_REG_FILE_BASE_ADDR                                                     = 32'h00004000;
+localparam int unsigned I3C_CSR_4__I3CBASE_REG_FILE_SIZE                                                          = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_4__I3CBASE_HCI_VERSION_REG_OFFSET                                                 = 32'h00000000;
+localparam int unsigned I3C_CSR_4__I3CBASE_HCI_VERSION_REG_ADDR                                                   = 32'h00004000;
+localparam int unsigned I3C_CSR_4__I3CBASE_HC_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_4__I3CBASE_HC_CONTROL_REG_ADDR                                                    = 32'h00004004;
+localparam int unsigned I3C_CSR_4__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_4__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                        = 32'h00004008;
+localparam int unsigned I3C_CSR_4__I3CBASE_HC_CAPABILITIES_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned I3C_CSR_4__I3CBASE_HC_CAPABILITIES_REG_ADDR                                               = 32'h0000400C;
+localparam int unsigned I3C_CSR_4__I3CBASE_RESET_CONTROL_REG_OFFSET                                               = 32'h00000010;
+localparam int unsigned I3C_CSR_4__I3CBASE_RESET_CONTROL_REG_ADDR                                                 = 32'h00004010;
+localparam int unsigned I3C_CSR_4__I3CBASE_PRESENT_STATE_REG_OFFSET                                               = 32'h00000014;
+localparam int unsigned I3C_CSR_4__I3CBASE_PRESENT_STATE_REG_ADDR                                                 = 32'h00004014;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_STATUS_REG_OFFSET                                                 = 32'h00000020;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_STATUS_REG_ADDR                                                   = 32'h00004020;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                          = 32'h00000024;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                            = 32'h00004024;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                            = 32'h00004028;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_FORCE_REG_OFFSET                                                  = 32'h0000002C;
+localparam int unsigned I3C_CSR_4__I3CBASE_INTR_FORCE_REG_ADDR                                                    = 32'h0000402C;
+localparam int unsigned I3C_CSR_4__I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000030;
+localparam int unsigned I3C_CSR_4__I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                            = 32'h00004030;
+localparam int unsigned I3C_CSR_4__I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_4__I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                            = 32'h00004034;
+localparam int unsigned I3C_CSR_4__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_4__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                   = 32'h00004038;
+localparam int unsigned I3C_CSR_4__I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                          = 32'h0000003C;
+localparam int unsigned I3C_CSR_4__I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                            = 32'h0000403C;
+localparam int unsigned I3C_CSR_4__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                     = 32'h00000040;
+localparam int unsigned I3C_CSR_4__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                       = 32'h00004040;
+localparam int unsigned I3C_CSR_4__I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                            = 32'h0000004C;
+localparam int unsigned I3C_CSR_4__I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                              = 32'h0000404C;
+localparam int unsigned I3C_CSR_4__I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                             = 32'h00000058;
+localparam int unsigned I3C_CSR_4__I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                               = 32'h00004058;
+localparam int unsigned I3C_CSR_4__I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                         = 32'h0000005C;
+localparam int unsigned I3C_CSR_4__I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                           = 32'h0000405C;
+localparam int unsigned I3C_CSR_4__I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned I3C_CSR_4__I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                               = 32'h00004060;
+localparam int unsigned I3C_CSR_4__I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                             = 32'h00000064;
+localparam int unsigned I3C_CSR_4__I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                               = 32'h00004064;
+localparam int unsigned I3C_CSR_4__I3CBASE_DEV_CTX_SG_REG_OFFSET                                                  = 32'h00000068;
+localparam int unsigned I3C_CSR_4__I3CBASE_DEV_CTX_SG_REG_ADDR                                                    = 32'h00004068;
+
+
+//==============================================================================
+// Register File: PIOControl
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__PIOCONTROL_REG_FILE_BASE_ADDR                                                  = 32'h00004080;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_REG_FILE_SIZE                                                       = 32'h00000034;
+
+localparam int unsigned I3C_CSR_4__PIOCONTROL_COMMAND_PORT_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_COMMAND_PORT_REG_ADDR                                               = 32'h00004080;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                            = 32'h00000004;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_RESPONSE_PORT_REG_ADDR                                              = 32'h00004084;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_TX_DATA_PORT_REG_ADDR                                               = 32'h00004088;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_RX_DATA_PORT_REG_ADDR                                               = 32'h00004088;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_IBI_PORT_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_IBI_PORT_REG_ADDR                                                   = 32'h0000408C;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h00004090;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00004094;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000018;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                 = 32'h00004098;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                           = 32'h0000001C;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                             = 32'h0000409C;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                          = 32'h00000020;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                            = 32'h000040A0;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                   = 32'h00000024;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                     = 32'h000040A4;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                   = 32'h00000028;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                     = 32'h000040A8;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                             = 32'h000040AC;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_CONTROL_REG_OFFSET                                              = 32'h00000030;
+localparam int unsigned I3C_CSR_4__PIOCONTROL_PIO_CONTROL_REG_ADDR                                                = 32'h000040B0;
+
+
+//==============================================================================
+// Register File: I3C_EC
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3C_EC_REG_FILE_BASE_ADDR                                                      = 32'h00004100;
+localparam int unsigned I3C_CSR_4__I3C_EC_REG_FILE_SIZE                                                           = 32'h000002A4;
+
+
+
+//==============================================================================
+// Register File: SecFwRecoveryIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                      = 32'h00004100;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                           = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                = 32'h00000000;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                  = 32'h00004100;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                     = 32'h00004104;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                     = 32'h00004108;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                   = 32'h0000000C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                     = 32'h0000410C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                   = 32'h00000010;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                     = 32'h00004110;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                    = 32'h00004114;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                  = 32'h00000018;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                    = 32'h00004118;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                  = 32'h0000001C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                    = 32'h0000411C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                  = 32'h00000020;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                    = 32'h00004120;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                  = 32'h00000024;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                    = 32'h00004124;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                  = 32'h00000028;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                    = 32'h00004128;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                             = 32'h0000412C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                              = 32'h00000030;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                = 32'h00004130;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                              = 32'h00000034;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                = 32'h00004134;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                   = 32'h00004138;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                  = 32'h0000413C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                              = 32'h00000040;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                = 32'h00004140;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                    = 32'h00000044;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                      = 32'h00004144;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                         = 32'h00000048;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                           = 32'h00004148;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                         = 32'h0000004C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                           = 32'h0000414C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                       = 32'h00000050;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                         = 32'h00004150;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                       = 32'h00000054;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                         = 32'h00004154;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                       = 32'h00000058;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                         = 32'h00004158;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                         = 32'h0000415C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                       = 32'h00000060;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                         = 32'h00004160;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                       = 32'h00000064;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                         = 32'h00004164;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                           = 32'h00000068;
+localparam int unsigned I3C_CSR_4__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                             = 32'h00004168;
+
+
+//==============================================================================
+// Register File: StdbyCtrlMode
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                        = 32'h00004180;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                             = 32'h00000044;
+
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                  = 32'h00000000;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                    = 32'h00004180;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                = 32'h00000004;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                  = 32'h00004184;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                              = 32'h00004188;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                           = 32'h0000000C;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                             = 32'h0000418C;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                    = 32'h00000010;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                      = 32'h00004190;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                   = 32'h00004194;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                            = 32'h00000018;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                              = 32'h00004198;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                            = 32'h0000419C;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                            = 32'h00000020;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                              = 32'h000041A0;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                  = 32'h00000024;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                    = 32'h000041A4;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                     = 32'h00000028;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                       = 32'h000041A8;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                             = 32'h0000002C;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                               = 32'h000041AC;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                     = 32'h00000030;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                       = 32'h000041B0;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET               = 32'h00000034;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                 = 32'h000041B4;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                       = 32'h00000038;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                         = 32'h000041B8;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                    = 32'h0000003C;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                      = 32'h000041BC;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                    = 32'h00000040;
+localparam int unsigned I3C_CSR_4__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                      = 32'h000041C0;
+
+
+//==============================================================================
+// Register File: TTI
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_REG_FILE_BASE_ADDR                                                  = 32'h00004200;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_REG_FILE_SIZE                                                       = 32'h00000094;
+
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                              = 32'h00004200;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_CONTROL_REG_ADDR                                                    = 32'h00004204;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_STATUS_REG_OFFSET                                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_STATUS_REG_ADDR                                                     = 32'h00004208;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                            = 32'h0000000C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                              = 32'h0000420C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                             = 32'h00000010;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                               = 32'h00004210;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000014;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                           = 32'h00004214;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000018;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                           = 32'h00004218;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                            = 32'h0000421C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                         = 32'h00000020;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                           = 32'h00004220;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                         = 32'h00000024;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                           = 32'h00004224;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                            = 32'h00004228;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                          = 32'h0000002C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                            = 32'h0000422C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                   = 32'h00000030;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                     = 32'h00004230;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                   = 32'h00000034;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                     = 32'h00004234;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                    = 32'h00000038;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                      = 32'h00004238;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                         = 32'h0000423C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                         = 32'h00004240;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                       = 32'h00000044;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                         = 32'h00004244;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                       = 32'h00000048;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                         = 32'h00004248;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                       = 32'h0000004C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                         = 32'h0000424C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                       = 32'h00000050;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                         = 32'h00004250;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                   = 32'h00000054;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                     = 32'h00004254;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                    = 32'h00000058;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                      = 32'h00004258;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                 = 32'h0000005C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                   = 32'h0000425C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                               = 32'h00000060;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                 = 32'h00004260;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                            = 32'h00000064;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                              = 32'h00004264;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                       = 32'h00000068;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                         = 32'h00004268;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                 = 32'h0000006C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                   = 32'h0000426C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00004270;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000074;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                               = 32'h00004274;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000078;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00004278;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                             = 32'h0000007C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                               = 32'h0000427C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                 = 32'h00000080;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_IBI_PORT_REG_ADDR                                                   = 32'h00004280;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000084;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                 = 32'h00004284;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                           = 32'h00000088;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                             = 32'h00004288;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h0000008C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h0000428C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000090;
+localparam int unsigned I3C_CSR_4__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00004290;
+
+
+//==============================================================================
+// Register File: SoCMgmtIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                            = 32'h00004300;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                 = 32'h00000094;
+
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                      = 32'h00000000;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                        = 32'h00004300;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                     = 32'h00004304;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                      = 32'h00004308;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                       = 32'h0000000C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                         = 32'h0000430C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                            = 32'h00000010;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                              = 32'h00004310;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                      = 32'h00004314;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                      = 32'h00004318;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                       = 32'h0000001C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                         = 32'h0000431C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                         = 32'h00004320;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                 = 32'h00000024;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                   = 32'h00004324;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                 = 32'h00000028;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                   = 32'h00004328;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                            = 32'h0000002C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                              = 32'h0000432C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                              = 32'h00004330;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                       = 32'h00000034;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                         = 32'h00004334;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                     = 32'h00004338;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                         = 32'h0000433C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                         = 32'h00000040;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                           = 32'h00004340;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                      = 32'h00000044;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                        = 32'h00004344;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                 = 32'h00000048;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                   = 32'h00004348;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                     = 32'h0000004C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                       = 32'h0000434C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                          = 32'h00000050;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                            = 32'h00004350;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                       = 32'h00000054;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                         = 32'h00004354;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                      = 32'h00000058;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                        = 32'h00004358;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                         = 32'h0000435C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                   = 32'h00000060;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                     = 32'h00004360;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                      = 32'h00000064;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                        = 32'h00004364;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                         = 32'h00004368;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                   = 32'h0000006C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                     = 32'h0000436C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                         = 32'h00004370;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                   = 32'h00000074;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                     = 32'h00004374;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                        = 32'h00000078;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                          = 32'h00004378;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                         = 32'h0000007C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                           = 32'h0000437C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                     = 32'h00000080;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                       = 32'h00004380;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                         = 32'h00000084;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                           = 32'h00004384;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                         = 32'h00000088;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                           = 32'h00004388;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                 = 32'h0000008C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                   = 32'h0000438C;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                  = 32'h00000090;
+localparam int unsigned I3C_CSR_4__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                    = 32'h00004390;
+
+
+//==============================================================================
+// Register File: CtrlCfg
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                              = 32'h00004398;
+localparam int unsigned I3C_CSR_4__I3C_EC_CTRLCFG_REG_FILE_SIZE                                                   = 32'h00000008;
+
+localparam int unsigned I3C_CSR_4__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned I3C_CSR_4__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                          = 32'h00004398;
+localparam int unsigned I3C_CSR_4__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_4__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                      = 32'h0000439C;
+localparam int unsigned I3C_CSR_4__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                    = 32'h000002A0;
+localparam int unsigned I3C_CSR_4__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                      = 32'h000043A0;
+
+
+//==============================================================================
+// Memory: DAT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__DAT_MEM_BASE_ADDR                                                              = 32'h00004400;
+localparam int unsigned I3C_CSR_4__DAT_MEM_SIZE                                                                   = 32'h00000400;
+
+
+
+//==============================================================================
+// Memory: DCT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_4__DCT_MEM_BASE_ADDR                                                              = 32'h00004800;
+localparam int unsigned I3C_CSR_4__DCT_MEM_SIZE                                                                   = 32'h00000800;
+
+
+
+//==============================================================================
+// Addresses for Address Map: i3c_csr[5]
+//==============================================================================
+
+
+localparam int unsigned I3C_CSR_5__REG_MAP_BASE_ADDR                                                              = 32'h00005000;
+localparam int unsigned I3C_CSR_5__REG_MAP_SIZE                                                                   = 32'h00001000;
+
+
+
+
+//==============================================================================
+// Register File: I3CBase
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3CBASE_REG_FILE_BASE_ADDR                                                     = 32'h00005000;
+localparam int unsigned I3C_CSR_5__I3CBASE_REG_FILE_SIZE                                                          = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_5__I3CBASE_HCI_VERSION_REG_OFFSET                                                 = 32'h00000000;
+localparam int unsigned I3C_CSR_5__I3CBASE_HCI_VERSION_REG_ADDR                                                   = 32'h00005000;
+localparam int unsigned I3C_CSR_5__I3CBASE_HC_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_5__I3CBASE_HC_CONTROL_REG_ADDR                                                    = 32'h00005004;
+localparam int unsigned I3C_CSR_5__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned I3C_CSR_5__I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR                                        = 32'h00005008;
+localparam int unsigned I3C_CSR_5__I3CBASE_HC_CAPABILITIES_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned I3C_CSR_5__I3CBASE_HC_CAPABILITIES_REG_ADDR                                               = 32'h0000500C;
+localparam int unsigned I3C_CSR_5__I3CBASE_RESET_CONTROL_REG_OFFSET                                               = 32'h00000010;
+localparam int unsigned I3C_CSR_5__I3CBASE_RESET_CONTROL_REG_ADDR                                                 = 32'h00005010;
+localparam int unsigned I3C_CSR_5__I3CBASE_PRESENT_STATE_REG_OFFSET                                               = 32'h00000014;
+localparam int unsigned I3C_CSR_5__I3CBASE_PRESENT_STATE_REG_ADDR                                                 = 32'h00005014;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_STATUS_REG_OFFSET                                                 = 32'h00000020;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_STATUS_REG_ADDR                                                   = 32'h00005020;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_STATUS_ENABLE_REG_OFFSET                                          = 32'h00000024;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_STATUS_ENABLE_REG_ADDR                                            = 32'h00005024;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_SIGNAL_ENABLE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR                                            = 32'h00005028;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_FORCE_REG_OFFSET                                                  = 32'h0000002C;
+localparam int unsigned I3C_CSR_5__I3CBASE_INTR_FORCE_REG_ADDR                                                    = 32'h0000502C;
+localparam int unsigned I3C_CSR_5__I3CBASE_DAT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000030;
+localparam int unsigned I3C_CSR_5__I3CBASE_DAT_SECTION_OFFSET_REG_ADDR                                            = 32'h00005030;
+localparam int unsigned I3C_CSR_5__I3CBASE_DCT_SECTION_OFFSET_REG_OFFSET                                          = 32'h00000034;
+localparam int unsigned I3C_CSR_5__I3CBASE_DCT_SECTION_OFFSET_REG_ADDR                                            = 32'h00005034;
+localparam int unsigned I3C_CSR_5__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_5__I3CBASE_RING_HEADERS_SECTION_OFFSET_REG_ADDR                                   = 32'h00005038;
+localparam int unsigned I3C_CSR_5__I3CBASE_PIO_SECTION_OFFSET_REG_OFFSET                                          = 32'h0000003C;
+localparam int unsigned I3C_CSR_5__I3CBASE_PIO_SECTION_OFFSET_REG_ADDR                                            = 32'h0000503C;
+localparam int unsigned I3C_CSR_5__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_OFFSET                                     = 32'h00000040;
+localparam int unsigned I3C_CSR_5__I3CBASE_EXT_CAPS_SECTION_OFFSET_REG_ADDR                                       = 32'h00005040;
+localparam int unsigned I3C_CSR_5__I3CBASE_INT_CTRL_CMDS_EN_REG_OFFSET                                            = 32'h0000004C;
+localparam int unsigned I3C_CSR_5__I3CBASE_INT_CTRL_CMDS_EN_REG_ADDR                                              = 32'h0000504C;
+localparam int unsigned I3C_CSR_5__I3CBASE_IBI_NOTIFY_CTRL_REG_OFFSET                                             = 32'h00000058;
+localparam int unsigned I3C_CSR_5__I3CBASE_IBI_NOTIFY_CTRL_REG_ADDR                                               = 32'h00005058;
+localparam int unsigned I3C_CSR_5__I3CBASE_IBI_DATA_ABORT_CTRL_REG_OFFSET                                         = 32'h0000005C;
+localparam int unsigned I3C_CSR_5__I3CBASE_IBI_DATA_ABORT_CTRL_REG_ADDR                                           = 32'h0000505C;
+localparam int unsigned I3C_CSR_5__I3CBASE_DEV_CTX_BASE_LO_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned I3C_CSR_5__I3CBASE_DEV_CTX_BASE_LO_REG_ADDR                                               = 32'h00005060;
+localparam int unsigned I3C_CSR_5__I3CBASE_DEV_CTX_BASE_HI_REG_OFFSET                                             = 32'h00000064;
+localparam int unsigned I3C_CSR_5__I3CBASE_DEV_CTX_BASE_HI_REG_ADDR                                               = 32'h00005064;
+localparam int unsigned I3C_CSR_5__I3CBASE_DEV_CTX_SG_REG_OFFSET                                                  = 32'h00000068;
+localparam int unsigned I3C_CSR_5__I3CBASE_DEV_CTX_SG_REG_ADDR                                                    = 32'h00005068;
+
+
+//==============================================================================
+// Register File: PIOControl
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__PIOCONTROL_REG_FILE_BASE_ADDR                                                  = 32'h00005080;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_REG_FILE_SIZE                                                       = 32'h00000034;
+
+localparam int unsigned I3C_CSR_5__PIOCONTROL_COMMAND_PORT_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_COMMAND_PORT_REG_ADDR                                               = 32'h00005080;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_RESPONSE_PORT_REG_OFFSET                                            = 32'h00000004;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_RESPONSE_PORT_REG_ADDR                                              = 32'h00005084;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_TX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_TX_DATA_PORT_REG_ADDR                                               = 32'h00005088;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_RX_DATA_PORT_REG_ADDR                                               = 32'h00005088;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_IBI_PORT_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_IBI_PORT_REG_ADDR                                                   = 32'h0000508C;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h00005090;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00005094;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000018;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_QUEUE_SIZE_REG_ADDR                                                 = 32'h00005098;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_ALT_QUEUE_SIZE_REG_OFFSET                                           = 32'h0000001C;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR                                             = 32'h0000509C;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_STATUS_REG_OFFSET                                          = 32'h00000020;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR                                            = 32'h000050A0;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_OFFSET                                   = 32'h00000024;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR                                     = 32'h000050A4;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_OFFSET                                   = 32'h00000028;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR                                     = 32'h000050A8;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_FORCE_REG_OFFSET                                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_INTR_FORCE_REG_ADDR                                             = 32'h000050AC;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_CONTROL_REG_OFFSET                                              = 32'h00000030;
+localparam int unsigned I3C_CSR_5__PIOCONTROL_PIO_CONTROL_REG_ADDR                                                = 32'h000050B0;
+
+
+//==============================================================================
+// Register File: I3C_EC
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3C_EC_REG_FILE_BASE_ADDR                                                      = 32'h00005100;
+localparam int unsigned I3C_CSR_5__I3C_EC_REG_FILE_SIZE                                                           = 32'h000002A4;
+
+
+
+//==============================================================================
+// Register File: SecFwRecoveryIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_REG_FILE_BASE_ADDR                                      = 32'h00005100;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_REG_FILE_SIZE                                           = 32'h0000006C;
+
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_OFFSET                                = 32'h00000000;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_REG_ADDR                                  = 32'h00005100;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_REG_ADDR                                     = 32'h00005104;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_OFFSET                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_REG_ADDR                                     = 32'h00005108;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_OFFSET                                   = 32'h0000000C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_REG_ADDR                                     = 32'h0000510C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_OFFSET                                   = 32'h00000010;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_REG_ADDR                                     = 32'h00005110;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_REG_ADDR                                    = 32'h00005114;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_OFFSET                                  = 32'h00000018;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_REG_ADDR                                    = 32'h00005118;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_OFFSET                                  = 32'h0000001C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_REG_ADDR                                    = 32'h0000511C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_OFFSET                                  = 32'h00000020;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_REG_ADDR                                    = 32'h00005120;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_OFFSET                                  = 32'h00000024;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_REG_ADDR                                    = 32'h00005124;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_OFFSET                                  = 32'h00000028;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_REG_ADDR                                    = 32'h00005128;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_OFFSET                           = 32'h0000002C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_REG_ADDR                             = 32'h0000512C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_OFFSET                              = 32'h00000030;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_REG_ADDR                                = 32'h00005130;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_OFFSET                              = 32'h00000034;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_REG_ADDR                                = 32'h00005134;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_OFFSET                                 = 32'h00000038;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_REG_ADDR                                   = 32'h00005138;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_REG_ADDR                                  = 32'h0000513C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_OFFSET                              = 32'h00000040;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_REG_ADDR                                = 32'h00005140;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_OFFSET                                    = 32'h00000044;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_HW_STATUS_REG_ADDR                                      = 32'h00005144;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_OFFSET                         = 32'h00000048;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_REG_ADDR                           = 32'h00005148;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_OFFSET                         = 32'h0000004C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_REG_ADDR                           = 32'h0000514C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_OFFSET                       = 32'h00000050;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_REG_ADDR                         = 32'h00005150;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_OFFSET                       = 32'h00000054;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_REG_ADDR                         = 32'h00005154;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_OFFSET                       = 32'h00000058;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_REG_ADDR                         = 32'h00005158;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_OFFSET                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_REG_ADDR                         = 32'h0000515C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_OFFSET                       = 32'h00000060;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_REG_ADDR                         = 32'h00005160;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_OFFSET                       = 32'h00000064;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_REG_ADDR                         = 32'h00005164;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_OFFSET                           = 32'h00000068;
+localparam int unsigned I3C_CSR_5__I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_REG_ADDR                             = 32'h00005168;
+
+
+//==============================================================================
+// Register File: StdbyCtrlMode
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_REG_FILE_BASE_ADDR                                        = 32'h00005180;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_REG_FILE_SIZE                                             = 32'h00000044;
+
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_OFFSET                                  = 32'h00000000;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_REG_ADDR                                    = 32'h00005180;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_OFFSET                                = 32'h00000004;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR                                  = 32'h00005184;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR                              = 32'h00005188;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_OFFSET                           = 32'h0000000C;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_REG_ADDR                             = 32'h0000518C;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_OFFSET                    = 32'h00000010;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_REG_ADDR                      = 32'h00005190;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_OFFSET                                 = 32'h00000014;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_REG_ADDR                                   = 32'h00005194;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_OFFSET                            = 32'h00000018;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_REG_ADDR                              = 32'h00005198;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_OFFSET                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_REG_ADDR                            = 32'h0000519C;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_OFFSET                            = 32'h00000020;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_REG_ADDR                              = 32'h000051A0;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_OFFSET                  = 32'h00000024;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_REG_ADDR                    = 32'h000051A4;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_OFFSET                     = 32'h00000028;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_REG_ADDR                       = 32'h000051A8;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_OFFSET                             = 32'h0000002C;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_REG_ADDR                               = 32'h000051AC;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_OFFSET                     = 32'h00000030;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_REG_ADDR                       = 32'h000051B0;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_OFFSET               = 32'h00000034;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_REG_ADDR                 = 32'h000051B4;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_OFFSET                       = 32'h00000038;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_REG_ADDR                         = 32'h000051B8;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_OFFSET                                    = 32'h0000003C;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_REG_ADDR                                      = 32'h000051BC;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_OFFSET                                    = 32'h00000040;
+localparam int unsigned I3C_CSR_5__I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_REG_ADDR                                      = 32'h000051C0;
+
+
+//==============================================================================
+// Register File: TTI
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_REG_FILE_BASE_ADDR                                                  = 32'h00005200;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_REG_FILE_SIZE                                                       = 32'h00000094;
+
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_EXTCAP_HEADER_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_EXTCAP_HEADER_REG_ADDR                                              = 32'h00005200;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_CONTROL_REG_OFFSET                                                  = 32'h00000004;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_CONTROL_REG_ADDR                                                    = 32'h00005204;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_STATUS_REG_OFFSET                                                   = 32'h00000008;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_STATUS_REG_ADDR                                                     = 32'h00005208;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_RESET_CONTROL_REG_OFFSET                                            = 32'h0000000C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_RESET_CONTROL_REG_ADDR                                              = 32'h0000520C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_QUEUE_STATUS_REG_OFFSET                                             = 32'h00000010;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR                                               = 32'h00005210;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000014;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR                                           = 32'h00005214;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_OFFSET                                         = 32'h00000018;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR                                           = 32'h00005218;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_IBI_QUEUE_DEPTH_REG_ADDR                                            = 32'h0000521C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_INTERRUPT_STATUS_REG_OFFSET                                         = 32'h00000020;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR                                           = 32'h00005220;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_INTERRUPT_ENABLE_REG_OFFSET                                         = 32'h00000024;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR                                           = 32'h00005224;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_INTERRUPT_FORCE_REG_OFFSET                                          = 32'h00000028;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR                                            = 32'h00005228;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CTRL_REG_OFFSET                                          = 32'h0000002C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR                                            = 32'h0000522C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_OFFSET                                   = 32'h00000030;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_INTR_STATUS_REG_ADDR                                     = 32'h00005230;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_OFFSET                                   = 32'h00000034;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_REG_ADDR                                     = 32'h00005234;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_OFFSET                                    = 32'h00000038;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_INTR_FORCE_REG_ADDR                                      = 32'h00005238;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE0_REG_ADDR                                         = 32'h0000523C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_OFFSET                                       = 32'h00000040;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE1_REG_ADDR                                         = 32'h00005240;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_OFFSET                                       = 32'h00000044;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR                                         = 32'h00005244;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_OFFSET                                       = 32'h00000048;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE3_REG_ADDR                                         = 32'h00005248;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_OFFSET                                       = 32'h0000004C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE4_REG_ADDR                                         = 32'h0000524C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_OFFSET                                       = 32'h00000050;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_TE5_REG_ADDR                                         = 32'h00005250;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_OFFSET                                   = 32'h00000054;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_REG_ADDR                                     = 32'h00005254;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_OFFSET                                    = 32'h00000058;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_REG_ADDR                                      = 32'h00005258;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_OFFSET                                 = 32'h0000005C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_REG_ADDR                                   = 32'h0000525C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_OFFSET                               = 32'h00000060;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_REG_ADDR                                 = 32'h00005260;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_OFFSET                            = 32'h00000064;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_REG_ADDR                              = 32'h00005264;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_OFFSET                       = 32'h00000068;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_REG_ADDR                         = 32'h00005268;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_OFFSET                 = 32'h0000006C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_REG_ADDR                   = 32'h0000526C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00005270;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_RX_DATA_PORT_REG_OFFSET                                             = 32'h00000074;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR                                               = 32'h00005274;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_OFFSET                                       = 32'h00000078;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR                                         = 32'h00005278;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TX_DATA_PORT_REG_OFFSET                                             = 32'h0000007C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR                                               = 32'h0000527C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_IBI_PORT_REG_OFFSET                                                 = 32'h00000080;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_IBI_PORT_REG_ADDR                                                   = 32'h00005280;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_QUEUE_SIZE_REG_OFFSET                                               = 32'h00000084;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_QUEUE_SIZE_REG_ADDR                                                 = 32'h00005284;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_OFFSET                                           = 32'h00000088;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_IBI_QUEUE_SIZE_REG_ADDR                                             = 32'h00005288;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_OFFSET                                          = 32'h0000008C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR                                            = 32'h0000528C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_OFFSET                                    = 32'h00000090;
+localparam int unsigned I3C_CSR_5__I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR                                      = 32'h00005290;
+
+
+//==============================================================================
+// Register File: SoCMgmtIf
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_REG_FILE_BASE_ADDR                                            = 32'h00005300;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_REG_FILE_SIZE                                                 = 32'h00000094;
+
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_OFFSET                                      = 32'h00000000;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_EXTCAP_HEADER_REG_ADDR                                        = 32'h00005300;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_REG_ADDR                                     = 32'h00005304;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_REG_ADDR                                      = 32'h00005308;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_OFFSET                                       = 32'h0000000C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_REC_INTF_CFG_REG_ADDR                                         = 32'h0000530C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_OFFSET                            = 32'h00000010;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_REG_ADDR                              = 32'h00005310;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_REG_ADDR                                      = 32'h00005314;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_REG_ADDR                                      = 32'h00005318;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_OFFSET                                       = 32'h0000001C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_PAD_CONF_REG_ADDR                                         = 32'h0000531C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_REG_ADDR                                         = 32'h00005320;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_OFFSET                                 = 32'h00000024;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_REG_ADDR                                   = 32'h00005324;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_OFFSET                                 = 32'h00000028;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_REG_ADDR                                   = 32'h00005328;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_R_REG_REG_OFFSET                                            = 32'h0000002C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR                                              = 32'h0000532C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_F_REG_REG_OFFSET                                            = 32'h00000030;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR                                              = 32'h00005330;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_OFFSET                                       = 32'h00000034;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR                                         = 32'h00005334;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_OFFSET                                   = 32'h00000038;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_REG_ADDR                                     = 32'h00005338;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_OFFSET                                       = 32'h0000003C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR                                         = 32'h0000533C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_OFFSET                                         = 32'h00000040;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR                                           = 32'h00005340;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_OFFSET                                      = 32'h00000044;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR                                        = 32'h00005344;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_OFFSET                                 = 32'h00000048;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR                                   = 32'h00005348;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_OFFSET                                     = 32'h0000004C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_REG_ADDR                                       = 32'h0000534C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_OFFSET                                          = 32'h00000050;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR                                            = 32'h00005350;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_OFFSET                                       = 32'h00000054;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR                                         = 32'h00005354;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_OFFSET                                      = 32'h00000058;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_REG_ADDR                                        = 32'h00005358;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_OFFSET                                       = 32'h0000005C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR                                         = 32'h0000535C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_OFFSET                                   = 32'h00000060;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_REG_ADDR                                     = 32'h00005360;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_OFFSET                                      = 32'h00000064;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR                                        = 32'h00005364;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_OFFSET                                       = 32'h00000068;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR                                         = 32'h00005368;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_OFFSET                                   = 32'h0000006C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_REG_ADDR                                     = 32'h0000536C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_OFFSET                                       = 32'h00000070;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR                                         = 32'h00005370;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_OFFSET                                   = 32'h00000074;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_REG_ADDR                                     = 32'h00005374;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_OFFSET                                        = 32'h00000078;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR                                          = 32'h00005378;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_OFFSET                                         = 32'h0000007C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR                                           = 32'h0000537C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_OFFSET                                     = 32'h00000080;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_REG_ADDR                                       = 32'h00005380;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_OFFSET                                         = 32'h00000084;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR                                           = 32'h00005384;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_OFFSET                                         = 32'h00000088;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR                                           = 32'h00005388;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_OFFSET                                 = 32'h0000008C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_REG_ADDR                                   = 32'h0000538C;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_OFFSET                                  = 32'h00000090;
+localparam int unsigned I3C_CSR_5__I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_REG_ADDR                                    = 32'h00005390;
+
+
+//==============================================================================
+// Register File: CtrlCfg
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__I3C_EC_CTRLCFG_REG_FILE_BASE_ADDR                                              = 32'h00005398;
+localparam int unsigned I3C_CSR_5__I3C_EC_CTRLCFG_REG_FILE_SIZE                                                   = 32'h00000008;
+
+localparam int unsigned I3C_CSR_5__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned I3C_CSR_5__I3C_EC_CTRLCFG_EXTCAP_HEADER_REG_ADDR                                          = 32'h00005398;
+localparam int unsigned I3C_CSR_5__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned I3C_CSR_5__I3C_EC_CTRLCFG_CONTROLLER_CONFIG_REG_ADDR                                      = 32'h0000539C;
+localparam int unsigned I3C_CSR_5__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_OFFSET                                    = 32'h000002A0;
+localparam int unsigned I3C_CSR_5__I3C_EC_TERMINATION_EXTCAP_HEADER_REG_ADDR                                      = 32'h000053A0;
+
+
+//==============================================================================
+// Memory: DAT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__DAT_MEM_BASE_ADDR                                                              = 32'h00005400;
+localparam int unsigned I3C_CSR_5__DAT_MEM_SIZE                                                                   = 32'h00000400;
+
+
+
+//==============================================================================
+// Memory: DCT
+//==============================================================================
+
+localparam int unsigned I3C_CSR_5__DCT_MEM_BASE_ADDR                                                              = 32'h00005800;
+localparam int unsigned I3C_CSR_5__DCT_MEM_SIZE                                                                   = 32'h00000800;
 
 
 
@@ -2081,6 +4146,21 @@ localparam int unsigned DCT_DCT_STRUCTURE_BCR_SHIFT                             
 
 localparam  bit [127:0] DCT_DCT_STRUCTURE_DYNAMIC_ADDRESS_MASK                                                    = 128'hFF000000000000000000000000;
 localparam int unsigned DCT_DCT_STRUCTURE_DYNAMIC_ADDRESS_SHIFT                                                   = 96;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
