@@ -62,7 +62,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // Capture shift for the read-series pipeline: returns the payload of the
     // PREVIOUS (priming) SERIES_DATA_INCR/NO_INCR shift.
     protected task series_capture(
-        j2a_target_t t,
+        dtp_j2a_target_t t,
         jtag_inst_reg_pkg::jtag_instruction_e instr,
         input int unsigned size,
         output bit [63:0]  observed
@@ -76,7 +76,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // series_write_read_incr
     // ------------------------------------------------------------------
     task run_series_write_read_incr();
-        j2a_target_t t = target_smc_axi();
+        dtp_j2a_target_t t = target_smc_axi();
         int unsigned size = 3;
         int unsigned stride = size_bytes(size);
         int unsigned beats = series_beats();
@@ -87,13 +87,13 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         int unsigned pl_depth, size_rd;
         int unsigned aw0, w0, ar0;
         int unsigned wb0;
-        j2a_status_e status;
+        dtp_j2a_status_e status;
 
         `uvm_info(get_type_name(), "=== SMC_AXI Series Write-Read Incrementing ===", UVM_LOW)
         reset_and_idle();
         base_addr = random_target_aligned_addr(t, size) & ~64'h3F;
 
-        series_ctrl_op(t, J2A_OP_WRITE, base_addr, size);
+        series_ctrl_op(t, DTP_J2A_OP_WRITE, base_addr, size);
         for (int unsigned idx = 0; idx < beats; idx++) begin
             data = {$urandom, $urandom} & data_mask(size);
             expected_q.push_back(data);
@@ -116,7 +116,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
 
         foreach (expected_q[idx]) begin
             addr = base_addr + idx * stride;
-            series_ctrl_op(t, J2A_OP_READ, addr, size);
+            series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
             sample_activity(t, aw0, w0, ar0);
             series_data_incr(t, '0, size);  // prime: launches the bus read
             wait_for_target_activity(t, aw0, w0, ar0, 1'b1,
@@ -133,7 +133,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         end
 
         read_series_ctrl(t, size, series_reset, addr_after, pl_depth, size_rd, status);
-        check_status("series_wr_rd_incr.final", status, J2A_SUCCESS);
+        check_status("series_wr_rd_incr.final", status, DTP_J2A_SUCCESS);
         emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
             "scenario=series_write_read_incr beats=%0d read_ops=%0d",
             beats, operation_count));
@@ -143,7 +143,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // series_write_read_incr_narrow
     // ------------------------------------------------------------------
     task run_series_write_read_incr_narrow();
-        j2a_target_t t = target_smc_axi();
+        dtp_j2a_target_t t = target_smc_axi();
         int unsigned size = 2;
         int unsigned stride = size_bytes(size);
         int unsigned beats = series_beats();
@@ -154,14 +154,14 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         int unsigned pl_depth, size_rd;
         int unsigned aw0, w0, ar0;
         int unsigned wb0;
-        j2a_status_e status;
+        dtp_j2a_status_e status;
 
         `uvm_info(get_type_name(),
             "=== SMC_AXI Series Write-Read 32-bit Incrementing at +4 ===", UVM_LOW)
         reset_and_idle();
         base_addr = (random_target_aligned_addr(t, 3) & ~64'h3F) + 64'd4;
 
-        series_ctrl_op(t, J2A_OP_WRITE, base_addr, size);
+        series_ctrl_op(t, DTP_J2A_OP_WRITE, base_addr, size);
         for (int unsigned idx = 0; idx < beats; idx++) begin
             data = {$urandom, $urandom} & data_mask(size);
             expected_q.push_back(data);
@@ -184,7 +184,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
 
         foreach (expected_q[idx]) begin
             addr = base_addr + idx * stride;
-            series_ctrl_op(t, J2A_OP_READ, addr, size);
+            series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
             sample_activity(t, aw0, w0, ar0);
             series_data_incr(t, '0, size);  // prime: launches the bus read
             wait_for_target_activity(t, aw0, w0, ar0, 1'b1,
@@ -201,7 +201,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         end
 
         read_series_ctrl(t, size, series_reset, addr_after, pl_depth, size_rd, status);
-        check_status("series_wr_rd_incr_narrow.final", status, J2A_SUCCESS);
+        check_status("series_wr_rd_incr_narrow.final", status, DTP_J2A_SUCCESS);
         emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
             "scenario=series_write_read_incr_narrow beats=%0d read_ops=%0d",
             beats, operation_count));
@@ -211,7 +211,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // series_write_read_no_incr
     // ------------------------------------------------------------------
     task run_series_write_read_no_incr();
-        j2a_target_t t = target_smc_axi();
+        dtp_j2a_target_t t = target_smc_axi();
         int unsigned size = 3;
         int unsigned beats = series_beats();
         bit [63:0] addr, addr_after, data, obs, expected;
@@ -219,7 +219,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         bit        series_reset;
         int unsigned pl_depth, size_rd;
         int unsigned aw0, w0, ar0;
-        j2a_status_e status;
+        dtp_j2a_status_e status;
 
         `uvm_info(get_type_name(), "=== SMC_AXI Series Write-Read No-Increment ===", UVM_LOW)
         reset_and_idle();
@@ -228,7 +228,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         for (int unsigned idx = 0; idx < beats; idx++)
             values_q.push_back({$urandom, $urandom} & data_mask(size));
 
-        series_ctrl_op(t, J2A_OP_WRITE, addr, size);
+        series_ctrl_op(t, DTP_J2A_OP_WRITE, addr, size);
         foreach (values_q[idx]) begin
             `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: series no-incr write addr=0x%08h data=0x%0h",
@@ -242,7 +242,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         // Every read beat returns the LAST value written to the fixed address.
         expected = values_q[$];
         for (int unsigned idx = 1; idx <= beats; idx++) begin
-            series_ctrl_op(t, J2A_OP_READ, addr, size);
+            series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
             sample_activity(t, aw0, w0, ar0);
             series_data_no_incr(t, '0, size);  // prime: launches the bus read
             wait_for_target_activity(t, aw0, w0, ar0, 1'b1,
@@ -263,7 +263,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
             `uvm_error("jtag2axi_data_chk", $sformatf(
                 "series_wr_rd_no_incr.addr_after: 0x%0h != fixed addr 0x%0h",
                 addr_after, addr))
-        check_status("series_wr_rd_no_incr.final", status, J2A_SUCCESS);
+        check_status("series_wr_rd_no_incr.final", status, DTP_J2A_SUCCESS);
         emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
             "scenario=series_write_read_no_incr beats=%0d read_ops=%0d",
             beats, operation_count));
@@ -273,7 +273,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // series_write_read_incr_with_error (*_DATA_WITH_ERROR_STATUS mode)
     // ------------------------------------------------------------------
     task run_series_write_read_incr_with_error();
-        j2a_target_t t = target_smc_axi();
+        dtp_j2a_target_t t = target_smc_axi();
         int unsigned size = 3;
         int unsigned stride = size_bytes(size);
         bit incs[4] = '{1'b1, 1'b0, 1'b1, 1'b1};
@@ -282,7 +282,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         bit        status_bit, unused_bit, series_reset;
         int unsigned pl_depth, size_rd;
         int unsigned aw0, w0, ar0;
-        j2a_status_e status;
+        dtp_j2a_status_e status;
 
         `uvm_info(get_type_name(),
             "=== SMC_AXI Series Write-Read With Error-Status Mode ===", UVM_LOW)
@@ -292,7 +292,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         // Write leg: the increment bit rides the with-status TDR MSB; the
         // second beat re-writes the held address (later value wins).
         addr = base_addr;
-        series_ctrl_op(t, J2A_OP_WRITE, base_addr, size);
+        series_ctrl_op(t, DTP_J2A_OP_WRITE, base_addr, size);
         foreach (incs[idx]) begin
             data = {$urandom, $urandom} & data_mask(size);
             `uvm_info(get_type_name(), $sformatf(
@@ -310,7 +310,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
         // checked), then a non-incrementing capture shift per beat.
         addr = base_addr;
         foreach (incs[idx]) begin
-            series_ctrl_op(t, J2A_OP_READ, addr, size);
+            series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
             sample_activity(t, aw0, w0, ar0);
             series_data_with_status(t, '0, size, incs[idx], unused_rdata, unused_bit);
             wait_for_target_activity(t, aw0, w0, ar0, 1'b1,
@@ -332,7 +332,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
             `uvm_error("jtag2axi_data_chk", $sformatf(
                 "series_wr_rd_status.addr_after: 0x%0h != expected 0x%0h",
                 addr_after, addr))
-        check_status("series_wr_rd_status.final", status, J2A_SUCCESS);
+        check_status("series_wr_rd_status.final", status, DTP_J2A_SUCCESS);
         emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
             "scenario=series_write_read_incr_with_error read_ops=%0d", operation_count));
     endtask
@@ -341,10 +341,10 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // read_random_ops
     // ------------------------------------------------------------------
     task run_read_random_ops();
-        j2a_target_t t = target_smc_axi();
+        dtp_j2a_target_t t = target_smc_axi();
         int unsigned size;
         bit [63:0] addr, data;
-        j2a_status_e status;
+        dtp_j2a_status_e status;
 
         `uvm_info(get_type_name(), "=== SMC_AXI_SINGLE_OP Randomized Reads ===", UVM_LOW)
         reset_and_idle();
@@ -370,14 +370,14 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // read_security_gating (+ the no-activity-scoped VPLAN variant)
     // ------------------------------------------------------------------
     task run_read_security_gating(bit no_activity_only);
-        j2a_target_t t = target_smc_axi();
+        dtp_j2a_target_t t = target_smc_axi();
         bit [63:0] addr = DefaultAxiAddr + 64'h500;
         bit [63:0] data;
         int unsigned base_aw, base_w, base_ar;
         int unsigned gate_aw, gate_w, gate_ar;
         int unsigned now_aw, now_w, now_ar;
         int unsigned rd_bursts_gate, wr_bursts_gate;
-        j2a_status_e status;
+        dtp_j2a_status_e status;
 
         `uvm_info(get_type_name(), no_activity_only ?
             "=== SMC_AXI Read Security Gating No-Activity ===" :
@@ -409,7 +409,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
             sample_activity(t, gate_aw, gate_w, gate_ar);
             rd_bursts_gate = read_bursts_now(t);
             wr_bursts_gate = write_bursts_now(t);
-            issue_single(t, J2A_OP_READ, addr + idx * 8);  // gated: no intent armed
+            issue_single(t, DTP_J2A_OP_READ, addr + idx * 8);  // gated: no intent armed
             wait_sys_cycles(8);
             sample_activity(t, now_aw, now_w, now_ar);
             expect_no_activity_evidence(t, gate_aw, gate_w, gate_ar,

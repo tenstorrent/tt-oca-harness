@@ -4,7 +4,10 @@
 // Debug-TDR helper base sequence for the DTP SV-UVM flow — the SV analogue
 // of the cocotb dtp_debug_tdr_base_test_seq. Layers TMP_STATUS, IC_RESET,
 // DEBUG_CONTROL, and CAPS TDR access/pack/decode helpers plus the
-// debug-observable sampling surface on top of the JTAG command library:
+// debug-observable sampling surface on top of the basic-JTAG family layer
+// (dtp_jtag_base_test_seq); the TDR accesses are dtp_jtag_read_tdr_seq /
+// dtp_jtag_write_tdr_seq operations started through the base virtual
+// sequence:
 //
 //   * DEBUG_CONTROL[4:0]: writable boot_stall/boot_stall_ovrd/
 //     cla_clock_stop_en/jtag_clock_stop bits plus the read-only
@@ -23,7 +26,7 @@
 // CHK-CAPS / CHK-CAPS-RO plus the shared TMP ids), so the group honors the
 // +DTP_JTAG_FAMILY_CHECKER_NEGATIVE falsifiability hook.
 
-class dtp_debug_tdr_base_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_debug_tdr_base_test_seq)
 
     // TDR geometry (standalone OSS DTP instantiation).
@@ -49,36 +52,18 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_cmd_lib_seq;
         ICR_SMC = 2
     } icr_port_e;
 
-    // The UVM harness system clock is fixed at 100 MHz (tb_top).
-    localparam time SysClkPeriod = 10ns;
-
     function new(string name = "dtp_debug_tdr_base_test_seq");
         super.new(name);
     endfunction
 
-    // --- system-domain helpers ---------------------------------------------
-    task wait_sys_cycles(int unsigned cycles = 4);
-        #(cycles * SysClkPeriod);
-    endtask
-
-    // Pulse rst_n_i without POR/TRST, preserving TAP accessibility.
-    task pulse_system_reset(int unsigned cycles = 5);
-        tb_vif.sys_rst_n <= 1'b0;
-        wait_sys_cycles(cycles);
-        tb_vif.sys_rst_n <= 1'b1;
-        wait_sys_cycles(cycles);
-    endtask
-
-    // --- generic TDR access --------------------------------------------------
+    // --- generic TDR access (one reusable operation each) ---------------------
     task read_tdr64(
         input  bit [IrWidth-1:0] instr,
         input  int unsigned      width,
         output bit [63:0]        observed,
         input  bit [63:0]        shift_value = '0
     );
-        load_ir(instr);
-        shift_dr(shift_value & bit_mask(width), width, observed);
-        observed &= bit_mask(width);
+        read_tdr(instr, width, observed, shift_value);
     endtask
 
     task write_tdr64(
@@ -86,9 +71,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_cmd_lib_seq;
         input int unsigned      width,
         input bit [63:0]        value
     );
-        bit [63:0] unused;
-        load_ir(instr);
-        shift_dr(value & bit_mask(width), width, unused);
+        write_tdr(instr, width, value);
     endtask
 
     // --- TMP_STATUS (read helper lives in the command library) --------------

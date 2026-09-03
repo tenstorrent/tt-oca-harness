@@ -12,13 +12,13 @@ class dtp_xtrig_axi_channel_skew_test extends dtp_xtrig_base_test;
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_xtrig_base_test_seq create_xtrig_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_xtrig_csr_test_seq seq = dtp_xtrig_csr_test_seq::type_id::create("seq");
         seq.scenario = "axi_channel_skew";
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_XTRIG_AXI_CHANNEL_SKEW_TEST_LOOPS";
     endfunction
 

@@ -20,7 +20,7 @@ class dtp_jtag2axi_series_corner_all_bridges_test extends dtp_jtag2axi_robustnes
         return "series_corner_all_bridges";
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_JTAG2AXI_SERIES_CORNER_ALL_BRIDGES_TEST_LOOPS";
     endfunction
 

@@ -42,7 +42,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
 
     // Final settled status for the summary; pass/fail is owned by the
     // inline checks and the scoreboard evidence.
-    j2a_status_e status = J2A_SUCCESS;
+    dtp_j2a_status_e status = DTP_J2A_SUCCESS;
     int unsigned operation_count = 0;
 
     // Address plan (mirrors the cocotb layout: 0x20-spaced error slots,
@@ -54,7 +54,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         super.new(name);
     endfunction
 
-    protected function j2a_target_t target();
+    protected function dtp_j2a_target_t target();
         case (target_name)
             "smc_otp": return target_smc_otp();
             "sep_otp": return target_sep_otp();
@@ -62,13 +62,13 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         endcase
     endfunction
 
-    protected function bit [63:0] slot_addr(j2a_target_t t, bit [63:0] base,
+    protected function bit [63:0] slot_addr(dtp_j2a_target_t t, bit [63:0] base,
                                             int unsigned idx);
         int unsigned spacing = (t.beat_bytes > 32) ? t.beat_bytes : 32;
         return base + idx * spacing;
     endfunction
 
-    protected function bit [63:0] rand_data(j2a_target_t t);
+    protected function bit [63:0] rand_data(dtp_j2a_target_t t);
         return {$urandom, $urandom} & bit_mask(t.data_width);
     endfunction
 
@@ -105,10 +105,10 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     // Single-op error flows.
     // ------------------------------------------------------------------
 
-    protected task expect_error_write(j2a_target_t t, bit [63:0] addr,
+    protected task expect_error_write(dtp_j2a_target_t t, bit [63:0] addr,
                                       bit [63:0] data, ocah_axi_resp_e resp,
                                       string context_s);
-        j2a_status_e op_status;
+        dtp_j2a_status_e op_status;
         bit [63:0] mem_before, mem_after;
         arm_target_error(t, addr, resp, 1'b0, 1'b1);
         mem_before = read_target_mem_int(t, addr, t.default_size);
@@ -129,10 +129,10 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         operation_count++;
     endtask
 
-    protected task expect_error_read(j2a_target_t t, bit [63:0] addr,
+    protected task expect_error_read(dtp_j2a_target_t t, bit [63:0] addr,
                                      bit [63:0] data, ocah_axi_resp_e resp,
                                      string context_s);
-        j2a_status_e op_status;
+        dtp_j2a_status_e op_status;
         bit [63:0] rdata;
         write_target_mem_int(t, addr, data, t.default_size);
         arm_target_error(t, addr, resp, 1'b1, 1'b0);
@@ -145,7 +145,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         operation_count++;
     endtask
 
-    protected task run_error_single_write(j2a_target_t t);
+    protected task run_error_single_write(dtp_j2a_target_t t);
         ocah_axi_resp_e responses[2] = '{OCAH_AXI_RESP_SLVERR, OCAH_AXI_RESP_DECERR};
         `uvm_info(get_type_name(),
                   $sformatf("%s SINGLE_OP write error", t.name), UVM_LOW)
@@ -160,10 +160,10 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
                                $sformatf("single_write_error#%0d", i + 1));
         end
         emit_error_nonvacuity("error_single_write", 2);
-        status = J2A_SUCCESS;
+        status = DTP_J2A_SUCCESS;
     endtask
 
-    protected task run_error_single_read(j2a_target_t t);
+    protected task run_error_single_read(dtp_j2a_target_t t);
         ocah_axi_resp_e responses[2] = '{OCAH_AXI_RESP_SLVERR, OCAH_AXI_RESP_DECERR};
         `uvm_info(get_type_name(),
                   $sformatf("%s SINGLE_OP read error", t.name), UVM_LOW)
@@ -178,14 +178,14 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
                               $sformatf("single_read_error#%0d", i + 1));
         end
         emit_error_nonvacuity("error_single_read", 2);
-        status = J2A_SUCCESS;
+        status = DTP_J2A_SUCCESS;
     endtask
 
     // ------------------------------------------------------------------
     // Series error flows (fault armed on one specific beat).
     // ------------------------------------------------------------------
 
-    protected task run_error_series_write(j2a_target_t t, bit increment,
+    protected task run_error_series_write(dtp_j2a_target_t t, bit increment,
                                           bit with_status);
         int unsigned size = t.default_size;
         int unsigned stride = increment ? t.beat_bytes : 0;
@@ -196,7 +196,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         bit sr_reset;
         bit [63:0] sr_addr;
         int unsigned sr_pl, sr_size;
-        j2a_status_e sr_status;
+        dtp_j2a_status_e sr_status;
         `uvm_info(get_type_name(), $sformatf(
             "%s series %s write error%s: base=0x%08h fault_beat=%0d resp=%s",
             t.name, increment ? "incr" : "no_incr",
@@ -204,7 +204,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
             UVM_LOW)
         reset_to_rti();
         arm_target_error(t, base + fault_idx * stride, resp, 1'b0, 1'b1);
-        series_ctrl_op(t, J2A_OP_WRITE, base, size);
+        series_ctrl_op(t, DTP_J2A_OP_WRITE, base, size);
         expected_addr = base;
         for (int unsigned idx = 0; idx < 3; idx++) begin
             bit [63:0] data = rand_data(t) & data_mask(size);
@@ -255,11 +255,11 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         end
         verify_target_recovery(t, RecoveryBase, 64'hCAFE_BABE_1234_5678, 1'b0,
                                "series_write_error");
-        status = J2A_SUCCESS;
+        status = DTP_J2A_SUCCESS;
         operation_count += 3;
     endtask
 
-    protected task run_error_series_read(j2a_target_t t, bit increment,
+    protected task run_error_series_read(dtp_j2a_target_t t, bit increment,
                                          bit with_status);
         int unsigned size = t.default_size;
         int unsigned stride = increment ? t.beat_bytes : 0;
@@ -269,7 +269,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         bit sr_reset;
         bit [63:0] sr_addr;
         int unsigned sr_pl, sr_size;
-        j2a_status_e sr_status;
+        dtp_j2a_status_e sr_status;
         `uvm_info(get_type_name(), $sformatf(
             "%s series %s read error%s: base=0x%08h fault_beat=%0d resp=%s",
             t.name, increment ? "incr" : "no_incr",
@@ -282,7 +282,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         for (int unsigned idx = 0; idx < 3; idx++) begin
             bit [63:0] addr = base + idx * stride;
             int unsigned aw0, w0, ar0;
-            series_ctrl_op(t, J2A_OP_READ, addr, size);
+            series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
             sample_activity(t, aw0, w0, ar0);
             `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/3: series read addr=0x%08h resp=%s",
@@ -317,7 +317,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         end
         verify_target_recovery(t, RecoveryBase + 64'h100,
                                64'hDEAD_BEEF_7654_3210, 1'b1, "series_read_error");
-        status = J2A_SUCCESS;
+        status = DTP_J2A_SUCCESS;
         operation_count += 3;
     endtask
 
@@ -325,7 +325,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     // Error-path security gating.
     // ------------------------------------------------------------------
 
-    protected task run_error_security_gating(j2a_target_t t);
+    protected task run_error_security_gating(dtp_j2a_target_t t);
         int unsigned size = t.default_size;
         bit [63:0] addr = slot_addr(t, ErrorBase + 64'h900, 1);
         bit [63:0] data = rand_data(t) & data_mask(size);
@@ -337,7 +337,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         // gate is repeatable, not a one-shot POR effect.
         for (int unsigned idx = 1; idx <= 2; idx++) begin
             string gate_ctx = $sformatf("error_gate.pass%0d", idx);
-            j2a_status_e op_status;
+            dtp_j2a_status_e op_status;
             int unsigned gb_aw, gb_w, gb_ar;
             int unsigned ga_aw, ga_w, ga_ar;
             `uvm_info(get_type_name(), $sformatf(
@@ -351,7 +351,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
             sample_activity(t, gb_aw, gb_w, gb_ar);
             // issue_single suppresses intent arming while the target is
             // gated (target_enabled()==0).
-            issue_single(t, J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
+            issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
             wait_sys_cycles(8);
             sample_activity(t, ga_aw, ga_w, ga_ar);
             expect_no_activity_evidence(t, gb_aw, gb_w, gb_ar,
@@ -371,7 +371,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
             // Restored error path: an ungated armed DECERR must report
             // through the JTAG status and the scoreboard as EXPECTED.
             arm_target_error(t, addr, OCAH_AXI_RESP_DECERR, 1'b0, 1'b1);
-            write_target_single_expect_status(t, addr, data ^ idx, J2A_DECERR,
+            write_target_single_expect_status(t, addr, data ^ idx, DTP_J2A_DECERR,
                                               op_status, size, full_wstrb(size),
                                               {gate_ctx, ".ungated_error"});
             verify_target_recovery(t, addr + 64'h400 + idx * t.beat_bytes,
@@ -379,7 +379,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
             operation_count++;
         end
         emit_error_nonvacuity("error_security_gating", 2);
-        status = J2A_SUCCESS;
+        status = DTP_J2A_SUCCESS;
     endtask
 
     // ------------------------------------------------------------------
@@ -387,7 +387,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     // ------------------------------------------------------------------
 
     task body();
-        j2a_target_t t = target();
+        dtp_j2a_target_t t = target();
         seed_scenario_rng();
         enable_all_debug();
         case (scenario)
