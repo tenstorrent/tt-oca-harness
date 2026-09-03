@@ -7,7 +7,9 @@
  * Tile-Link UL response integrity check
  */
 
-module tlul_rsp_intg_chk import tlul_pkg::*; #(
+module tlul_rsp_intg_chk
+  import tlul_pkg::*;
+#(
   parameter bit EnableRspDataIntgCheck = 0
 ) (
   // TL-UL interface
@@ -52,4 +54,4 @@ module tlul_rsp_intg_chk import tlul_pkg::*; #(
 
   `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2HRspMaxWidth)
 
-endmodule // tlul_rsp_intg_chk
+endmodule  // tlul_rsp_intg_chk

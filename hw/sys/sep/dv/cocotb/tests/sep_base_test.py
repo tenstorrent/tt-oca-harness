@@ -388,9 +388,14 @@ class sep_base_test(uvm_test):
     async def resense(self, *, hold_cycles: int = 20, max_cycles: int = 20_000) -> None:
         """Re-pulse rst_ni to trigger a fresh fuse-sense (clocks already running).
 
-        The OTP responder reloads its image on reset assertion, so a test can
-        regenerate the eFuse image between sense cycles and resense to pick up
-        the new contents.
+        This re-senses whatever the OTP bank currently holds. It does NOT reload
+        the image file: ``efuse_bank_model`` deposits the hex in a time-0
+        ``initial`` and a fuse holds its state across every reset (the bank
+        register field has no reset value), so rewriting ``out/sep_efuse.hex``
+        between senses changes only the golden, not the DUT. To change what the
+        DUT senses, either program the OTP bits for real -- W1S, so only a
+        superset is reachable -- or start a new leaf with the image staged at
+        t=0 by ``dv_sim_prestage.py``.
         """
         dut = cocotb.top
         self.logger.info("Re-sensing: pulsing rst_ni")

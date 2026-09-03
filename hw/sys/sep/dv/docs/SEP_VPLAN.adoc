@@ -468,7 +468,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_sec_dis_override_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
+|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-SENSE-GATED-RESET` requires that the match alone does NOT release the sense-gated reset.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_locked_field_access_irq_path_test>> and <<sep_efuse_token_match_fault_pic_test>> reach eFuse state, but their contract is the IRQ/PIC delivery path. They are graded there so each test has one owning bucket.
@@ -615,6 +615,10 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |PROVEN
 |`sep_efuse_rma_token_rand_test`
 
+|LC_STATE next state (shadow write-1-to-set)
+|PROVEN
+|`sep_lcc_lc_state_w1s_prod_test`, `sep_lcc_lc_state_w1s_prod_demote_test`, `sep_lcc_lc_state_w1s_rma_sip_test`, `sep_lcc_lc_state_w1s_rma_chiplet_test`, `sep_lcc_lc_state_w1s_prod_end_test`, `sep_lcc_lc_state_w1s_transient_test` — six leaves on one module, one sensed starting state each. The other writer of `LC_STATE`: the frontdoor shadow write, which the stitch walk (OTP program + re-sense) never exercises.
+
 |SPI-OT flash command set
 |PROVEN
 |`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the Phase-1 reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here.
@@ -645,7 +649,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |SEC_DIS override
 |PROVEN
-|`sep_sec_dis_override_test`
+|`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (issue 1462: release is a DTP TDR step).
 
 |eFuse set-only (anti-rollback)
 |PROVEN
@@ -1326,6 +1330,83 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 '''''
 
+[[sep_lcc_lc_state_w1s]]
+===== `sep_lcc_lc_state_w1s_*` (six leaves)
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, real fuse sense
+
+*VIP / Model*: ocah_axi_vip, LCC golden
+
+*Leaves*: `sep_lcc_lc_state_w1s_prod_test`, `sep_lcc_lc_state_w1s_prod_demote_test`, `sep_lcc_lc_state_w1s_rma_sip_test`, `sep_lcc_lc_state_w1s_rma_chiplet_test`, `sep_lcc_lc_state_w1s_prod_end_test`, `sep_lcc_lc_state_w1s_transient_test` — one module, one sensed starting state per leaf, selected by `+lc_start` and staged at t=0 by `cocotb/dv_sim_prestage.py`.
+
+*Objective*: Prove the next lifecycle state computed on the frontdoor shadow write. This is the second writer of the lifecycle state and the stitch walk does not reach it: that walk programs a one-time-programmable bit and re-senses, which never evaluates this logic. The contract is the specification's three rules — write-one-to-set, a don't-care low bit inside each return-material-authorisation state, and the two hardware-ordered token gates — from which the reachable destinations follow.
+
+*Why one leaf per starting state*: the one-time-programmable image is deposited at time zero and a fuse holds its state across every reset, so a test cannot re-sense its way to a different starting state; from one image only a write-one-to-set superset is reachable. Each starting state is therefore its own leaf, with the sensed value read off the device and required to match what the leaf asked for.
+
+*Test Procedure*:
+
+[arabic]
+. Sense the leaf's starting state from a real fuse image; require the sensed lifecycle value to be the one requested, and the security-disable override to be inactive so no feature-control check can pass by being forced to all-ones.
+. Present the return-material-authorisation tokens the cell needs, and require each to reach a match code before relying on it — an unmatched token would let a gate check pass for the wrong reason.
+. Write the lifecycle word write-one-to-set, and require both the differentially encoded lifecycle word and the controller's decoded feature-control output to match the specification-derived golden for the expected next state.
+. Re-check the observed step against the transition rules in value form, using the code the device returned rather than the one the test wrote.
+. On the demoted leaf, assert both demotion registers first and prove the demotion is visible in feature control before requiring the transition to succeed.
+. On the transient leaf, present the token and take no bus write at all; the same rules must apply.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-W1S-NO-CLEAR
+|A write of zero to the lifecycle word clears nothing. Write-one-to-set means a bit never returns to 0, so a controller that treated the write as an assignment fails here.
+|CHK-GATE-SIP
+|The system-in-package bit does not set without a matching token. The write is otherwise identical to the one that succeeds later in the same leaf, so the gate is the only difference between the two outcomes.
+|CHK-GATE-CHIP-ORD
+|The chiplet bit does not set from the production state even with the chiplet token *already matched*, because the system-in-package state is not yet established. This isolates the ordering requirement from the token requirement — with the token gate open, only the ordering gate can hold.
+|CHK-GATE-CHIP-TOK
+|The complementary half: from the system-in-package state, the chiplet bit does not set without a chiplet token match.
+|CHK-SIP-ADVANCE
+|With a matching token the production part advances to the system-in-package state, and feature control decodes the new state. Together with CHK-GATE-SIP this is an allow and a block observed under one image.
+|CHK-DEMOTE-OPEN
+|Both demotion registers read back asserted AND the decoded feature-control word matches the golden *with demotion applied*. This is what stops CHK-DEMOTE-NO-BLOCK from passing vacuously: a leaf that silently failed to demote would fail this check first.
+|CHK-DEMOTE-NO-BLOCK
+|The same authorized advance succeeds while both demotion groups are asserted. Demotion is volatile debug state and not a lifecycle term, so a demoted part must transition exactly as a non-demoted one does.
+|CHK-RMA-BIT0
+|The low bit sets inside the system-in-package state and, on its own leaf, inside the chiplet state. The specification writes these encodings with a don't-care low bit, so this is a move within one state rather than a transition out of it.
+|CHK-CHIP-ADVANCE
+|With the chiplet token matched and the system-in-package state established, the chiplet bit sets and feature control decodes the chiplet profile.
+|CHK-INVALID-REACH
+|A write whose result falls outside the named encodings lands there, reached from a state the same leaf advanced into legitimately. Feature control must then read exactly 0 — the fail-closed default. Under the pinned disable vectors no named state decodes to 0, so this discriminates rather than coinciding.
+|CHK-INVALID-TERM
+|From outside the named set, a write of every lifecycle bit with BOTH tokens matched changes nothing. This is the strongest available form of the end-of-life property: every gate that could open is open, and the state still does not move.
+|CHK-PROD-END-INVALID
+|From the terminal product state, the reachable destination is outside the named set — the specification's "the only permitted transition is to INVALID", proven rather than assumed.
+|CHK-TRANSIENT-INVALID
+|The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
+|CHK-UPPER-MERGE
+|The upper three bytes of the lifecycle word merge as ordinary set-only shadow bytes and do not disturb the lifecycle nibble, and the nibble's special handling does not leak into them. The pattern comes from the run seed, so this is not a fixed-constant check.
+|CHK-LEAF
+|Per-leaf closing line naming which walk ran, the sensed starting state, and the seed the tokens and upper-byte pattern came from.
+|===
+
+[NOTE]
+====
+The expected next state comes from `lc_state_next` in `cocotb/env/sep_lcc_golden.py`,
+which is derived from `hw/sys/sep/doc/lifecycle_controller.adoc` and not transcribed
+from the register logic. The chapter gives three rules and no destination table, and
+the golden states them the same way — a destination table would be a second, weaker
+statement of the same rule and would have to be re-derived every time the reachable
+set changed. See <<lcc-golden-from-spec>>.
+
+Randomization: the tokens and the upper-byte pattern come from the run seed
+(`cocotb/env/sep_lc_transition.py`, which reuses `SepRmaTokenCfg` so this walk and
+the token randomized-configuration test cannot drift). The cells within a leaf are
+fixed, so no contract is seed-selected and every checker runs every seed.
+====
+
 [[sep_dma_cpu_contention_test]]
 ===== `sep_dma_cpu_contention_test`
 
@@ -1397,7 +1478,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-ISOLATION
 |While the CPU reset is asserted, the main SEP reset stays high — and that observable is proven capable of reading 0, by asserting the main reset at the end of the test. Without that anchor a stuck-high read would have satisfied this row identically.
 |CHK-RELEASE
-|Releasing the input returns the CPU reset high — the path is not sticky.
+|Releasing the SEP input `wdt_rst_ni_i` returns `sep_cpu_reset_n` high. This is the pin path only. Closed-loop bite stickiness is outside this DUT.
 |===
 
 '''''
@@ -2613,7 +2694,7 @@ stall-duration / recovery stress are not exercised here.
 |CHK-WRITE-ALLOWED
 |The write-allowed bit gates the matched write in both directions, and the allowed write lands (confirmed by a CPU-side readback).
 |CHK-OWNERSHIP
-|The CPU-LSU reads the programmed rule at the filter CFG CSR. The external master completes DECERR on read and write of that address, and the denied write does not land. CFG stays outside every allow window (firmware must not allow-list CFG).
+|The CPU-LSU reads inbound CFG, outbound CFG[0], alias/AP/STEE remap bases, `SEP_GLOBAL_BASE_ADDR`, and `SEP_REGION_SIZE`. The external master completes DECERR on read and write of each address, and the denied write does not land. Those CSRs stay outside every allow window (firmware must not allow-list them). `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` share the window-0 (`SEP_SW_DEBUG`) 4 KB page, so they also prove the live window is START/END, not the page.
 |CHK-NONVAC
 |Allow and block were both observed under one lifecycle state.
 |CHK-SRC-ID
@@ -2642,7 +2723,7 @@ windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0, then the
 `allow_burst` deny/allow pair on AR and AW of scratch and the burst-to-single
 Lite split, then the same-page 4 KB granule, page-bound, and `FILTER_CONFIG.locked`
-on entry 15. `CHK-OWNERSHIP` keeps CFG outside every allow window. WRAP, FIXED and
+on entry 15. `CHK-OWNERSHIP` keeps inbound CFG, outbound CFG, the remap banks, and `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE` outside every allow window. WRAP, FIXED and
 `AxLEN>1` are not walked: the Lite bridges convert those bursts to singles, so the
 filter only ever sees `tx_len==0`.
 
@@ -4061,16 +4142,16 @@ both lock flavours of one seed-selected spare.
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
-*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
+*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. A match before sense-done must not release the sense-gated reset (`hw/ip/efuse/rtl/efuse_interface_controller.sv`, issue 1462).
 
 *Test Procedure*:
 
 [arabic]
 . A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
 . The comparator hashes the written `SEC_DISABLE_TOKEN_I` and compares it to the metal expected digest reconstructed from `SEP_SEC_DISABLE_TOKEN` (`hw/ip/efuse/rtl/efuse_token_processing.sv`, `hw/sys/sep/doc/token_processing.adoc`).
-. `tb_top` binds that parameter to SHA-256 of the all-zero 32-byte token so an AXI write of zeros matches.
-. Token `1` mismatches.
-. On match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group still gated by SECURE_TM=0).
+. After `release_no_cpu_reset`, write the all-zero token before `sep_fuse_sense_done_o`. Match must assert, and `sep_cpu_reset_n_o` must stay 0 while sense is still open (`ext_boot_seq_done_i` is already 1, so sense is the only held term).
+. Wait for sense-done. Token `1` mismatches.
+. On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group still gated by SECURE_TM=0).
 
 *Checkers*:
 
@@ -4079,6 +4160,8 @@ both lock flavours of one seed-selected spare.
 |Checker |Contract
 |CHK-DIGEST-BIND
 |Independent SHA-256 of the all-zero token equals the TB-bound digest.
+|CHK-SENSE-GATED-RESET
+|A match with `sep_fuse_sense_done_o=0` and `ext_boot_seq_done_i=1` leaves `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` at 0. `reset_n` carries no SEC_DIS term; the release is a separate DTP `sep_reset_n` TDR step.
 |CHK-MISMATCH
 |Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=0x2a`.
 |CHK-NO-OVERRIDE
@@ -4478,7 +4561,7 @@ constraint is not an open defect.
 |Topic |Contract
 
 |Inbound CFG allow-list (firmware constraint)
-|Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
+|Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle.
@@ -4504,7 +4587,7 @@ constraint is not an open defect.
 |The array behind the fuse-command interface is a simulation-only behavioural bank, not an OTP macro. Two properties the eFuse programming entries appear to establish are properties of that model rather than of hardware: write-one-to-set additivity is OR-only by construction, so a bank that overwrote instead of OR-ing cannot be represented and no-clobber is not a failable contract; and persistence across cold reset comes from the model having no reset on its storage. What is proven against real logic is that each program reached its addressed bit through the real programming path, and that the sense FSM re-reads the array after reset with the shadow tracking it.
 
 |JTAG MMR token-block access
-|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
+|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
 |RTL assertions are backend-dependent
 |What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA — the `ocah_axi_sva` protocol bind included — expand to nothing. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 
@@ -4532,6 +4615,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Three firmware tests evaluate several conditions and print a single pass line, so their rows do not fail independently of each other: `sep_spi_ot_dma_rx_test` (3 of 3 checkers), `sep_dma_cpu_contention_test` (5 of 5), `sep_mailbox_plic_test` (4 of 4). Firmware counters still gate the verdict.
 
 |Lifecycle codes with no owner
-|`sep_efuse_lcc_lc_state_stitch_test` walks four of the seven legal codes in `cocotb/env/sep_lcc_golden.py` (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`). `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` (`0x8`) are never programmed, so no `FEAT_CTRL` claim is made for them and no entry owns them.
+|Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |===

@@ -14,7 +14,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib.stages import _uvm_testname_override, _vcs_uvm_precompile_cmd  # noqa: E402
+from runlib.stages import (  # noqa: E402
+    _last_plusarg_wins,
+    _uvm_testname_override,
+    _vcs_uvm_precompile_cmd,
+)
 
 
 def make_args(define: list | None = None) -> Namespace:
@@ -85,6 +89,38 @@ class UvmTestnameOverride(unittest.TestCase):
 
     def test_prefix_must_match_exactly(self):
         self.assertEqual(_uvm_testname_override(["+UVM_TESTNAME_X=a"]), "")
+
+
+class LastPlusargWins(unittest.TestCase):
+    def test_later_scalar_wins(self):
+        self.assertEqual(
+            _last_plusarg_wins(["+FOO=1", "+BAR=2", "+FOO=3"]),
+            ["+BAR=2", "+FOO=3"],
+        )
+
+    def test_bare_flags_and_non_plusargs_kept(self):
+        self.assertEqual(
+            _last_plusarg_wins(["-sv", "+FOO", "+FOO=1", "+FOO=2"]),
+            ["-sv", "+FOO", "+FOO=2"],
+        )
+
+    def test_repeated_uvm_set_plusargs_are_kept(self):
+        rendered = [
+            "+uvm_set_type_override=src_a,dst_a",
+            "+FOO=1",
+            "+uvm_set_type_override=src_b,dst_b",
+            "+FOO=2",
+            "+uvm_set_verbosity=*,UVM_LOW",
+        ]
+        self.assertEqual(
+            _last_plusarg_wins(rendered),
+            [
+                "+uvm_set_type_override=src_a,dst_a",
+                "+uvm_set_type_override=src_b,dst_b",
+                "+FOO=2",
+                "+uvm_set_verbosity=*,UVM_LOW",
+            ],
+        )
 
 
 if __name__ == "__main__":

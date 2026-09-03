@@ -80,7 +80,7 @@ module prim_fair_rr_arb #(
     assign o_grant[0] = i_grant;
     assign o_data   = i_data[0];
     assign o_index    = '0;
-  // non-degenerate cases
+    // non-degenerate cases
   end else begin : gen_arbiter
     localparam int unsigned NumLevels = unsigned'($clog2(NumIn));
 
@@ -106,7 +106,7 @@ module prim_fair_rr_arb #(
 
       // lock arbiter decision in case we got at least one req and no acknowledge
       if (LockIn) begin : gen_lock
-        logic  lock_d, lock_q;
+        logic lock_d, lock_q;
         logic [NumIn-1:0] req_q;
 
         assign lock_d     = o_request & ~i_grant;
@@ -124,18 +124,21 @@ module prim_fair_rr_arb #(
           end
         end
 
-        `OCAH_ASSERT_IF(LockImplicationA, o_request && (!i_grant && !i_flush) |=> o_index == $past(o_index), LockIn, i_clk, (!i_reset_n || i_flush))
+        `OCAH_ASSERT_IF(LockImplicationA,
+                        o_request && (!i_grant && !i_flush) |=> o_index == $past(o_index), LockIn,
+                        i_clk, (!i_reset_n || i_flush))
         wire [NumIn-1:0] req_for_assertion_only = req_q & i_request;
-        `OCAH_ASSERT_IF(NoDeassertReqWhenLockedA, lock_d |=> req_for_assertion_only == req_q, LockIn, i_clk, (!i_reset_n || i_flush))
+        `OCAH_ASSERT_IF(NoDeassertReqWhenLockedA, lock_d |=> req_for_assertion_only == req_q,
+                        LockIn, i_clk, (!i_reset_n || i_flush))
 
         always_ff @(posedge i_clk) begin : p_req_regs
           if (!i_reset_n) begin
-            req_q  <= '0;
+            req_q <= '0;
           end else begin
             if (i_flush) begin
-              req_q  <= '0;
+              req_q <= '0;
             end else begin
-              req_q  <= req_d;
+              req_q <= req_d;
             end
           end
         end
@@ -144,9 +147,9 @@ module prim_fair_rr_arb #(
       end
 
       if (FairArb) begin : gen_fair_arb
-        logic [NumIn-1:0] upper_mask,  lower_mask;
-        idx_t             upper_idx,   lower_idx,   next_idx;
-        logic             upper_empty, lower_empty;
+        logic [NumIn-1:0] upper_mask, lower_mask;
+        idx_t upper_idx, lower_idx, next_idx;
+        logic upper_empty, lower_empty;
 
         for (genvar i = 0; i < NumIn; i++) begin : gen_mask
           assign upper_mask[i] = (i >  rr_q) ? req_d[i] : 1'b0;
@@ -181,12 +184,12 @@ module prim_fair_rr_arb #(
       // this holds the highest priority
       always_ff @(posedge i_clk) begin : p_rr_regs
         if (!i_reset_n) begin
-          rr_q   <= '0;
+          rr_q <= '0;
         end else begin
           if (i_flush) begin
-            rr_q   <= '0;
+            rr_q <= '0;
           end else begin
-            rr_q   <= rr_d;
+            rr_q <= rr_d;
           end
         end
       end
@@ -196,17 +199,17 @@ module prim_fair_rr_arb #(
 
     // arbiter tree
     for (genvar level = 0; unsigned'(level) < NumLevels; level++) begin : gen_levels
-      for (genvar l = 0; l < 2**level; l++) begin : gen_level
+      for (genvar l = 0; l < 2 ** level; l++) begin : gen_level
         // local select signal
         logic sel;
         // index calcs
-        localparam int unsigned Idx0 = 2**level-1+l;// current node
-        localparam int unsigned Idx1 = 2**(level+1)-1+l*2;
+        localparam int unsigned Idx0 = 2 ** level - 1 + l;  // current node
+        localparam int unsigned Idx1 = 2 ** (level + 1) - 1 + l * 2;
         //////////////////////////////////////////////////////////////
         // uppermost level where data is fed in from the inputs
-        if (unsigned'(level) == NumLevels-1) begin : gen_first_level
+        if (unsigned'(level) == NumLevels - 1) begin : gen_first_level
           // if two successive indices are still in the vector...
-          if (unsigned'(l) * 2 < NumIn-1) begin : gen_reduce
+          if (unsigned'(l) * 2 < NumIn - 1) begin : gen_reduce
             assign req_nodes[Idx0]   = req_d[l*2] | req_d[l*2+1];
 
             // arbitration: round robin
@@ -218,20 +221,20 @@ module prim_fair_rr_arb #(
             assign o_grant[l*2+1]      = gnt_nodes[Idx0] & (AxiVldRdy | req_d[l*2+1]) & sel;
           end
           // if only the first index is still in the vector...
-          if (unsigned'(l) * 2 == NumIn-1) begin : gen_first
+          if (unsigned'(l) * 2 == NumIn - 1) begin : gen_first
             assign req_nodes[Idx0]   = req_d[l*2];
             assign index_nodes[Idx0] = '0;// always zero in this case
             assign data_nodes[Idx0]  = i_data[l*2];
             assign o_grant[l*2]        = gnt_nodes[Idx0] & (AxiVldRdy | req_d[l*2]);
           end
           // if index is out of range, fill up with zeros (will get pruned)
-          if (unsigned'(l) * 2 > NumIn-1) begin : gen_out_of_range
+          if (unsigned'(l) * 2 > NumIn - 1) begin : gen_out_of_range
             assign req_nodes[Idx0]   = 1'b0;
             assign index_nodes[Idx0] = idx_t'('0);
             assign data_nodes[Idx0]  = DataType'('0);
           end
-        //////////////////////////////////////////////////////////////
-        // general case for other levels within the tree
+          //////////////////////////////////////////////////////////////
+          // general case for other levels within the tree
         end else begin : gen_other_levels
           assign req_nodes[Idx0]   = req_nodes[Idx1] | req_nodes[Idx1+1];
 
@@ -252,8 +255,10 @@ module prim_fair_rr_arb #(
 
     `OCAH_ASSERT(One_hot_grant_A, $onehot0(o_grant), i_clk, (!i_reset_n || i_flush))
     `OCAH_ASSERT(Grant_implies_grant_A, |o_grant |-> i_grant, i_clk, (!i_reset_n || i_flush))
-    `OCAH_ASSERT(Request_grant_chain_A, o_request |-> i_grant |-> |o_grant, i_clk, (!i_reset_n || i_flush))
-    `OCAH_ASSERT(Index_matches_grant_A, o_request |->  i_grant |-> o_grant[o_index], i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Request_grant_chain_A, o_request |-> i_grant |-> |o_grant, i_clk,
+                 (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Index_matches_grant_A, o_request |-> i_grant |-> o_grant[o_index], i_clk,
+                 (!i_reset_n || i_flush))
     `OCAH_ASSERT(Req_in_implies_req_out_A, |i_request |-> o_request, i_clk, (!i_reset_n || i_flush))
     `OCAH_ASSERT(Req_out_impl, o_request |-> |i_request, i_clk, (!i_reset_n || i_flush))
   end

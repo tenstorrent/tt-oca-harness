@@ -7,23 +7,28 @@
 // BYPASS delay reference point (CHK-BYPASS-DELAY) proving the inversion is
 // specific to INV_BYPASS.
 
-class dtp_jtag_inv_bypass_test_seq extends dtp_jtag_cmd_lib_seq;
-    `uvm_object_utils(dtp_jtag_inv_bypass_test_seq)
+class dtp_jtag_inv_bypass_test_seq extends dtp_jtag_base_test_seq;
+  `uvm_object_utils(dtp_jtag_inv_bypass_test_seq)
 
-    function new(string name = "dtp_jtag_inv_bypass_test_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag_inv_bypass_test_seq");
+    super.new(name);
+  endfunction
 
-    task body();
-        seed_scenario_rng();
-        attach_family_checker({"CHK-TAP-RESET-TLR", "CHK-INV-BYPASS",
-                               "CHK-BYPASS-DELAY", "CHK-SCAN-COUNT",
-                               "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN",
-                               "CHK-NONVAC"});
-        reset_to_tlr();
-        check_inverted_bypass_patterns(64);
-        check_bypass_delay(BYPASS_INSTR, 64'h0123_4567_89AB_CDEF);
-        finalize_family_checker();
-    endtask
+  task body();
+    seed_scenario_rng();
+    attach_family_checker({
+                          "CHK-TAP-RESET-TLR",
+                          "CHK-INV-BYPASS",
+                          "CHK-BYPASS-DELAY",
+                          "CHK-SCAN-COUNT",
+                          "CHK-SCAN-IR-LEN",
+                          "CHK-SCAN-DR-LEN",
+                          "CHK-NONVAC"
+                          });
+    reset_to_tlr();
+    check_inverted_bypass_patterns(64);
+    check_bypass_delay(BYPASS_INSTR, 64'h0123_4567_89AB_CDEF);
+    finalize_family_checker();
+  endtask
 
 endclass : dtp_jtag_inv_bypass_test_seq
