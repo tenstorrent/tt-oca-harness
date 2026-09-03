@@ -740,8 +740,11 @@ TCK inside the DTP. Each field is active-high (1 = path disabled).
 [cols="<25%,<75%",options="header"]
 |===
 |STAP |Disable Field
+|I/O STAP |`dbg_disable_i.stap_io`
 |SMC debug STAP |`dbg_disable_i.stap_smc`
 |SEP debug STAP |`dbg_disable_i.stap_sep`
+|Extra STAPs |`dbg_disable_i.stap_extra`
+|External STAP return path |`dbg_disable_i.stap_host`
 |===
 
 The full set of debug-disable-gated paths, including the iJTAG chains and the

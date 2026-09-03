@@ -95,6 +95,15 @@ Each field is active-high (1 = path disabled).
 
 |DFD SIB
 |`dbg_disable_i.dfd`
+
+|SMC fabric JTAG2AXI
+|`dbg_disable_i.smc_jtag2axi`
+
+|SMC OTP JTAG2AXI
+|`dbg_disable_i.smc_otp_jtag2axi`
+
+|SEP OTP JTAG2AXI
+|`dbg_disable_i.sep_otp_jtag2axi`
 |===
 
 ===== iJTAG Network

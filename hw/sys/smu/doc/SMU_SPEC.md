@@ -211,8 +211,8 @@ wire-OR/P2P protocols, and DTP↔SMC clock-stop handshake.
 
 ### Feature 7: Lifecycle and Security
 
-SEP drives `feat_ctrl` (debug gating), `security_disable`, and lifecycle state
-into SMC and DTP. Verification covers lifecycle/debug policy matrices, the
+SEP drives `dbg_disable` into DTP and `security_disable` and lifecycle state
+into SMC. Verification covers lifecycle/debug policy matrices, the
 security handoff, and fuse-sense handshake.
 
 ## Operating Modes
@@ -260,7 +260,7 @@ not stability-checked against in-flight transactions.
 
 The SEP lifecycle controller drives `dbg_disable_o` (`dbg_disable_t`) into DTP
 `dbg_disable_i` to gate debug (STAP selection, iJTAG SIB access, the SMC fabric
-JTAG2AXI bridge). The SMC and SEP OTP JTAG2AXI bridges are always enabled;
+JTAG2AXI bridge). The SMC and SEP OTP JTAG2AXI bridges remain enabled;
 fuse-controller access control is the enforcement point.
 SEP also drives `security_disable` into SMC and the lifecycle state (`lc_state_o`,
 8 bits; `SEP=0` → `8'hf0`). The 256-bit `SEP_SEC_DISABLE_TOKEN` is passed to SEP,
