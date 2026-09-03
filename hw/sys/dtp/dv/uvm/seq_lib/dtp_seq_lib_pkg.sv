@@ -3,17 +3,22 @@
 //
 // DTP SV-UVM sequence library package (`<DUT>_seq_lib_pkg` convention).
 //
-// dtp_jtag_base_test_seq issues ocah_jtag_item transactions on the shared
-// ocah_jtag_vip agent's sequencer (the SV analogue of the cocotb
-// dtp_jtag_base_test_seq): TAP reset, IR/DR scans, raw TMS walks, DTP-local
-// reset sequencing, scan-path checks, and the BYPASS latency check.
-// dtp_jtag_cmd_lib_seq layers the instruction-family evidence helpers on
-// top (per-pass ocah_jtag_checker, bypass/loopback/decoded-IR/TMP-status
-// checks, scan-builder cross-checks); the basic-JTAG scenario sequences
-// extend it. dtp_jtag2axi_base_test_seq carries the bridge helper layer
-// (single/series ops, responder backdoor, error arming); the JTAG2AXI
-// scenario sequences extend it. Pin-level driving lives in the VIP driver;
-// per-cycle FSM legality and closure live in the env's dtp_tap_fsm_checker.
+// Two tiers, one readable flow per scenario:
+//   * reusable operation sequences (`dtp_<if>_<op>_seq`): one DUT operation
+//     on one agent, built from the VIP sequence API, started by the scenario
+//     layer on the virtual sequencer's handle for that agent (JTAG operations
+//     on m_jtag_seqr, XTRIG CSR accesses on m_xtrig_seqr);
+//   * scenario virtual sequences (`dtp_<scenario>_test_seq`) on
+//     dtp_virtual_sequencer: dtp_base_test_seq carries the operation
+//     wrappers, the TAP-state tracking, the DTP-local checks, and the
+//     system-domain helpers; the family layers (basic JTAG, JTAG2AXI, debug
+//     TDR, scan network, cross-trigger) add their evidence helpers; the
+//     concrete scenarios extend a family layer and never a VIP sequence.
+// Pin-level driving lives in the VIP drivers; per-cycle FSM legality, scan
+// reconstruction, and the always-on scoreboard live in dtp_env_pkg.
+//
+// Include order is load-bearing: operations first, then the base virtual
+// sequence, then each family base before its scenarios.
 
 `timescale 1ns/1ps
 
@@ -22,14 +27,33 @@ package dtp_seq_lib_pkg;
     import uvm_pkg::*;
     `include "uvm_macros.svh"
 
-    import ocah_jtag_uvm_pkg::*;
-    import ocah_axi_uvm_pkg::*;   // shared AXI cfg/evidence handles
     import ocah_checker_uvm_pkg::*; // protocol-neutral named-evidence base
-    import jtag_tap_pkg::*;       // DUT one-hot tap_state_e for scan-path checks
+    import ocah_lib_pkg::*;         // shared framework bases, knobs, rng
+    import ocah_jtag_uvm_pkg::*;
+    import ocah_axi_uvm_pkg::*;     // shared AXI cfg/evidence handles
+    import jtag_tap_pkg::*;         // DUT one-hot tap_state_e for scan-path checks
     import jtag_inst_reg_pkg::*;
+    import dtp_env_pkg::*;          // DUT types, cfgs, virtual sequencer, models
 
+    // Reusable operations (one agent, one operation).
+    `include "dtp_jtag_op_seq.svh"
+    `include "dtp_jtag_tap_reset_seq.svh"
+    `include "dtp_jtag_tms_walk_seq.svh"
+    `include "dtp_jtag_goto_state_seq.svh"
+    `include "dtp_jtag_ir_scan_seq.svh"
+    `include "dtp_jtag_dr_scan_seq.svh"
+    `include "dtp_jtag_read_tdr_seq.svh"
+    `include "dtp_jtag_write_tdr_seq.svh"
+    `include "dtp_jtag2axi_single_op_seq.svh"
+    `include "dtp_jtag2axi_single_status_seq.svh"
+    `include "dtp_jtag2axi_series_ctrl_seq.svh"
+    `include "dtp_jtag2axi_series_data_seq.svh"
+    `include "dtp_axi_csr_write_seq.svh"
+    `include "dtp_axi_csr_read_seq.svh"
+
+    // Scenario layer: base virtual sequence and the basic-JTAG family.
+    `include "dtp_base_test_seq.svh"
     `include "dtp_jtag_base_test_seq.svh"
-    `include "dtp_jtag_cmd_lib_seq.svh"
 
     // Basic-JTAG instruction-family scenarios.
     `include "dtp_jtag_bypass_test_seq.svh"
@@ -55,7 +79,7 @@ package dtp_seq_lib_pkg;
 
     // JTAG2AXI bridge scenarios.
     `include "dtp_jtag2axi_base_test_seq.svh"
-    `include "dtp_jtag2axi_single_op_seq.svh"
+    `include "dtp_jtag2axi_single_write_read_test_seq.svh"
     `include "dtp_jtag2axi_smc_axi_wr_test_seq.svh"
     `include "dtp_jtag2axi_smc_axi_rd_test_seq.svh"
     `include "dtp_jtag2axi_error_test_seq.svh"
@@ -78,7 +102,6 @@ package dtp_seq_lib_pkg;
     `include "dtp_dbg_sep_otp_jtag2axi_caps_test_seq.svh"
 
     // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
-    `include "dtp_scan_ref_model.svh"
     `include "dtp_scan_base_test_seq.svh"
     `include "dtp_ijtag_scan_test_seq.svh"
     `include "dtp_stap_scan_test_seq.svh"

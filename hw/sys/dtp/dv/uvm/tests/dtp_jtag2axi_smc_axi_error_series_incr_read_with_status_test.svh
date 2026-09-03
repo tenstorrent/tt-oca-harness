@@ -16,18 +16,12 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test extends dtp_b
         super.new(name, parent);
     endfunction
 
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        m_env.m_smc_axi_cfg.require_checks = 1'b1;
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RESP");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-ERR-INJ");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RADDR");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RDATA");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-COMPLETION");
-        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-NONVAC");
+    virtual function void configure_test_cfg(dtp_test_cfg cfg);
+        super.configure_test_cfg(cfg);
+        cfg.require_axi_ids("smc_axi", '{"CHK-AXI-RESP", "CHK-AXI-ERR-INJ", "CHK-AXI-RADDR", "CHK-AXI-RDATA", "CHK-AXI-COMPLETION", "CHK-AXI-NONVAC"});
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_jtag2axi_error_test_seq seq = dtp_jtag2axi_error_test_seq::type_id::create(
             "smc_axi_error_series_incr_read_with_status_seq");
         seq.target_name = "smc_axi";
@@ -35,15 +29,15 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test extends dtp_b
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_JTAG2AXI_SMC_AXI_ERROR_SERIES_INCR_READ_WITH_STATUS_TEST_LOOPS";
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_JTAG2AXI_TEST_LOOPS";
     endfunction
 
-    virtual function void plumb_scenario_seq(dtp_jtag_base_test_seq seq);
+    virtual function void plumb_scenario_seq(ocah_sequence seq);
         dtp_jtag2axi_error_test_seq err_seq;
         super.plumb_scenario_seq(seq);
         if (!$cast(err_seq, seq))
@@ -52,7 +46,6 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test extends dtp_b
         err_seq.axi_cfg       = m_env.m_smc_axi_cfg;
         err_seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
         err_seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
-        err_seq.slave_seq     = m_env.m_smc_axi_slave_agent.seq;
     endfunction
 
 endclass : dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test

@@ -9,7 +9,7 @@
 // opcodes exercised, at least six distinct patterns, and at least one
 // observation whose delayed image differs from a direct passthrough.
 
-class dtp_jtag_bypass_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_jtag_bypass_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_jtag_bypass_test_seq)
 
     function new(string name = "dtp_jtag_bypass_test_seq");

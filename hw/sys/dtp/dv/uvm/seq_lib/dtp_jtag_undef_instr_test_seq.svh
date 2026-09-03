@@ -8,7 +8,7 @@
 // sweep. Mirrors the cocotb scenario, which checks inline without a family
 // evidence set (the delay compares fail the run directly).
 
-class dtp_jtag_undef_instr_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_jtag_undef_instr_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_jtag_undef_instr_test_seq)
 
     function new(string name = "dtp_jtag_undef_instr_test_seq");

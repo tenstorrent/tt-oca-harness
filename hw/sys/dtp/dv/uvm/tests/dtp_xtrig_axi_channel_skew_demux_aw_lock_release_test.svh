@@ -12,13 +12,13 @@ class dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test extends dtp_xtrig_ba
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_xtrig_base_test_seq create_xtrig_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_xtrig_csr_test_seq seq = dtp_xtrig_csr_test_seq::type_id::create("seq");
         seq.scenario = "axi_channel_skew_demux_aw_lock_release";
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_XTRIG_AXI_CHANNEL_SKEW_DEMUX_AW_LOCK_RELEASE_TEST_LOOPS";
     endfunction
 

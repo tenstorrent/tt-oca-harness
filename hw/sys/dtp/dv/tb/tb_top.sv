@@ -303,6 +303,15 @@ module dtp_uvm_top
         end
     end
 
+    // Reset-assertion counters: observables the scoreboard predictors
+    // re-baseline on (CSR shadow, TAP instruction) without an edge wait in
+    // class code. Both shapes count; the UVM harness mirrors them into
+    // dtp_tb_if.
+    logic [31:0] sys_rst_assert_count = '0;
+    logic [31:0] por_assert_count     = '0;
+    always @(negedge rst_n_i)      sys_rst_assert_count <= sys_rst_assert_count + 32'd1;
+    always @(negedge pwr_on_rst_ni) por_assert_count    <= por_assert_count + 32'd1;
+
     // Flat slave inputs (from AxiRam) -> DUT resp struct
     always_comb begin
         axi_smc_dbg_resp          = '{default: '0};
@@ -733,9 +742,10 @@ module dtp_uvm_top
     // ------------------------------------------------------------------
     import uvm_pkg::*;
 
-    // 100 MHz system clock; TCK is bit-banged by the sequence via the vif.
+    // System clock with the period the env publishes on dtp_tb_if from the
+    // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
     initial clk_i = 1'b0;
-    always #5ns clk_i = ~clk_i;
+    always #(u_tb_if.clk_period_ns * 0.5ns) clk_i = ~clk_i;
 
     ocah_jtag_if u_jtag_if ();
     dtp_tb_if    u_tb_if ();
@@ -748,10 +758,12 @@ module dtp_uvm_top
     assign u_jtag_if.tdo     = jtag_tdo;
     assign u_jtag_if.tdo_oen = jtag_tdo_oen;
 
-    // DTP-local resets (test-sequenced) and TAP-state observable.
-    assign rst_n_i           = u_tb_if.sys_rst_n;
-    assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
-    assign u_tb_if.tap_state = jtag_ptap_state;
+    // DTP-local resets (test-sequenced), reset counters, and TAP-state observable.
+    assign rst_n_i                      = u_tb_if.sys_rst_n;
+    assign pwr_on_rst_ni                = u_tb_if.por_rst_n;
+    assign u_tb_if.sys_rst_assert_count = sys_rst_assert_count;
+    assign u_tb_if.por_assert_count     = por_assert_count;
+    assign u_tb_if.tap_state            = jtag_ptap_state;
 
     // Decoded-IR and boundary-scan control observables: the
     // basic-JTAG instruction checks read these through dtp_tb_if.

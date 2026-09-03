@@ -12,13 +12,13 @@ class dtp_xtrig_rand_test extends dtp_xtrig_base_test;
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_xtrig_base_test_seq create_xtrig_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_xtrig_route_test_seq seq = dtp_xtrig_route_test_seq::type_id::create("seq");
         seq.scenario = "random";
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_XTRIG_RAND_TEST_LOOPS";
     endfunction
 
