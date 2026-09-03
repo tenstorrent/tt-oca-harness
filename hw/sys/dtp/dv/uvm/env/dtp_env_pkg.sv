@@ -3,15 +3,18 @@
 //
 // DTP SV-UVM environment package (`<DUT>_env_pkg` convention). Everything in
 // uvm/env/ is REUSABLE across tests: DUT constants and codecs, the two
-// configuration levels, the virtual sequencer, the reference models the
-// scoreboard and the scan scenarios predict from, the always-on scoreboard
-// and subscribers, and the environment that composes the shared VIPs.
+// configuration levels, the virtual sequencer, the expected items and the
+// plain models, one reference model per scoreboard feature, the always-on
+// scoreboard and subscribers, and the environment that composes the shared
+// VIPs.
 // Compiles before dtp_seq_lib_pkg, whose virtual sequences run on the
 // dtp_virtual_sequencer declared here.
 //
 // Include order is load-bearing: types first (every class reads them), then
 // the cfgs (the env cfg derives from the test cfg), the virtual sequencer,
-// the plain model classes, the subscribers and the scoreboard, the env last.
+// the expected items, the plain model classes, the reference models (they
+// hold the models and publish the items), the subscribers and the
+// scoreboard, the env last.
 
 `timescale 1ns / 1ps
 
@@ -32,12 +35,29 @@ package dtp_env_pkg;
   `include "dtp_env_cfg.svh"
   `include "dtp_virtual_sequencer.svh"
 
-  // Plain reference models (no UVM parent): iJTAG SIB gating, one
-  // downstream STAP TAP, the PTAP 3DCR + STAP chain, the CTM routing OR.
+  // Expected items the reference models publish.
+  `include "dtp_expected_item.svh"
+  `include "dtp_jtag2axi_status_item.svh"
+
+  // Plain models (no UVM parent): the PTAP instruction tracker, the XTRIG
+  // CSR shadow, the JTAG2AXI bridges, iJTAG SIB gating, one downstream
+  // STAP TAP, the PTAP 3DCR + STAP chain, the CTM routing OR.
+  `include "dtp_jtag_ir_model.svh"
+  `include "dtp_xtrig_csr_model.svh"
+  `include "dtp_jtag2axi_model.svh"
   `include "dtp_ijtag_sib_model.svh"
   `include "dtp_stap_ds_state.svh"
   `include "dtp_stap_3dcr_model.svh"
-  `include "dtp_xtrig_ctm_ref_model.svh"
+  `include "dtp_xtrig_ctm_model.svh"
+
+  // One reference model per scoreboard feature.
+  `include "dtp_ir_decode_ref_model.svh"
+  `include "dtp_idcode_ref_model.svh"
+  `include "dtp_bypass_ref_model.svh"
+  `include "dtp_xtrig_csr_ref_model.svh"
+  `include "dtp_xtrig_decode_ref_model.svh"
+  `include "dtp_jtag2axi_req_ref_model.svh"
+  `include "dtp_jtag2axi_status_ref_model.svh"
 
   `include "dtp_tap_fsm_checker.svh"
   `include "dtp_scan_window_monitor.svh"

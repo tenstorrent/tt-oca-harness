@@ -44,6 +44,7 @@ class dtp_test_cfg extends ocah_test_cfg;
   bit tap_checker_negative;      // +DTP_JTAG_TAP_CHECKER_NEGATIVE
   bit axi_scoreboard_negative;   // +DTP_AXI_SCOREBOARD_NEGATIVE
   bit xtrig_checker_negative;    // +DTP_XTRIG_CHECKER_NEGATIVE
+  bit jtag2axi_ref_model_negative;  // +DTP_J2A_REF_MODEL_NEGATIVE
 
   // --- bench topology -------------------------------------------------------
   // Bit i splices the shared JTAG slave device behind STAP host port i
@@ -77,6 +78,7 @@ class dtp_test_cfg extends ocah_test_cfg;
     tap_checker_negative    = ocah_knobs::is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE");
     axi_scoreboard_negative = ocah_knobs::is_set("DTP_AXI_SCOREBOARD_NEGATIVE");
     xtrig_checker_negative  = ocah_knobs::is_set("DTP_XTRIG_CHECKER_NEGATIVE");
+    jtag2axi_ref_model_negative = ocah_knobs::is_set("DTP_J2A_REF_MODEL_NEGATIVE");
   endfunction
 
   // Arm the aggregate JTAG recorder: zero checks or a missing ID fails.
@@ -85,7 +87,10 @@ class dtp_test_cfg extends ocah_test_cfg;
     foreach (ids[i]) jtag_policy.required_ids.push_back(ids[i]);
   endfunction
 
-  // Arm one passive AXI recorder by bridge name.
+  // Arm one passive AXI recorder by bridge name. A scenario that drives a
+  // bridge must also land the scoreboard's bridge features: every launched
+  // transaction paired with its JTAG request, and every status capture
+  // paired with the completions behind it.
   function void require_axi_ids(string target, string ids[$]);
     if (!axi_policy.exists(target)) begin
       dtp_evidence_policy_t p;
@@ -94,6 +99,8 @@ class dtp_test_cfg extends ocah_test_cfg;
     end
     axi_policy[target].require_checks = 1'b1;
     foreach (ids[i]) axi_policy[target].required_ids.push_back(ids[i]);
+    require_feature(DtpFeatureJtag2axiReq);
+    require_feature(DtpFeatureJtag2axiStatus);
   endfunction
 
   // Replace the default required scoreboard features (the cross-trigger

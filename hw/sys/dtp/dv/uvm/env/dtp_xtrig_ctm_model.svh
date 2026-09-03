@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// CTM routing reference model (the cocotb DtpCtmRefModel twin): the
+// CTM routing model (the cocotb DtpCtmRefModel twin): the
 // OR-of-selected-destinations behaviour of the RTL. CT_SRC[i].CT_DST_SELECT
 // selects which destination-input bits feed output/source port i; route()
 // returns the outputs a destination pulse reaches. Programmed by the XTRIG
 // scenario alongside the CSR writes and cross-checked on every route
-// (CHK-XTRIG-ROUTE-MODEL). Plain model class, built with new(); no reporting.
+// (CHK-XTRIG-ROUTE-MODEL). Plain model class held by the scenario, built
+// with new(); no reporting.
 
-class dtp_xtrig_ctm_ref_model;
+class dtp_xtrig_ctm_model;
 
   localparam int unsigned NumPorts = dtp_pkg::DEFAULT_NUM_CTP + dtp_pkg::DEFAULT_NUM_INT_CT;
   localparam bit [31:0] SelectMask = (32'd1 << NumPorts) - 1;
@@ -32,4 +33,4 @@ class dtp_xtrig_ctm_ref_model;
     return routed & SelectMask;
   endfunction
 
-endclass : dtp_xtrig_ctm_ref_model
+endclass : dtp_xtrig_ctm_model
