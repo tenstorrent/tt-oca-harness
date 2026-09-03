@@ -12,50 +12,53 @@
 // env/smc_env_cfg.py.
 
 class smc_test_cfg extends ocah_test_cfg;
-    `uvm_object_utils(smc_test_cfg)
+  `uvm_object_utils(smc_test_cfg)
 
-    // --- randomized timing --------------------------------------------------
-    rand int unsigned ref_clk_period_ns;
-    rand int unsigned smc_clk_period_ns;
-    rand int unsigned periph_clk_period_ns;
-    constraint c_ref    { ref_clk_period_ns inside {8, 10, 12}; }
-    constraint c_smc    { smc_clk_period_ns inside {4, 5, 6}; }
-    constraint c_periph { periph_clk_period_ns inside {8, 10, 12}; }
+  // --- randomized timing --------------------------------------------------
+  rand int unsigned ref_clk_period_ns;
+  rand int unsigned smc_clk_period_ns;
+  rand int unsigned periph_clk_period_ns;
+  constraint c_ref {ref_clk_period_ns inside {8, 10, 12};}
+  constraint c_smc {smc_clk_period_ns inside {4, 5, 6};}
+  constraint c_periph {periph_clk_period_ns inside {8, 10, 12};}
 
-    // --- bring-up and bounded waits (cocotb SmcEnvCfg parity) ----------------
-    // Ref-clock cycles after cold-reset release before the first pass.
-    int unsigned post_reset_settle_cycles = 500;
-    // smc-clock bound on the fuse-sense / warm-domain release wait
-    // (cocotb smc_base_test_seq.wait_fuse_sense_done max_cycles).
-    int unsigned fuse_sense_timeout_cycles = 200_000;
-    // SEP_IN master handshake watchdog, in smc-clock cycles per wait: the
-    // cocotb 50 us AXI timeout at the 5 ns nominal smc clock.
-    int unsigned axi_timeout_cycles = 10_000;
+  // --- bring-up and bounded waits (cocotb SmcEnvCfg parity) ----------------
+  // Ref-clock cycles after cold-reset release before the first pass.
+  int unsigned post_reset_settle_cycles = 500;
+  // smc-clock bound on the fuse-sense / warm-domain release wait
+  // (cocotb smc_base_test_seq.wait_fuse_sense_done max_cycles).
+  int unsigned fuse_sense_timeout_cycles = 200_000;
+  // SEP_IN master handshake watchdog, in smc-clock cycles per wait: the
+  // cocotb 50 us AXI timeout at the 5 ns nominal smc clock.
+  int unsigned axi_timeout_cycles = 10_000;
 
-    // --- negative-validation switch (must FAIL the run when set) -----------
-    bit csr_scoreboard_negative;   // +SMC_CSR_SCOREBOARD_NEGATIVE
+  // --- negative-validation switch (must FAIL the run when set) -----------
+  bit csr_scoreboard_negative;   // +SMC_CSR_SCOREBOARD_NEGATIVE
 
-    function new(string name = "smc_test_cfg");
-        super.new(name);
-    endfunction
+  function new(string name = "smc_test_cfg");
+    super.new(name);
+  endfunction
 
-    // Fill the knob-derived controls through the one knob accessor.
-    function void read_knobs();
-        csr_scoreboard_negative = ocah_knobs::is_set("SMC_CSR_SCOREBOARD_NEGATIVE");
-    endfunction
+  // Fill the knob-derived controls through the one knob accessor.
+  function void read_knobs();
+    csr_scoreboard_negative = ocah_knobs::is_set("SMC_CSR_SCOREBOARD_NEGATIVE");
+  endfunction
 
-    // Replace the required scoreboard features.
-    function void set_required_features(string features[$]);
-        required_features.delete();
-        foreach (features[i])
-            require_feature(features[i]);
-    endfunction
+  // Replace the required scoreboard features.
+  function void set_required_features(string features[$]);
+    required_features.delete();
+    foreach (features[i]) require_feature(features[i]);
+  endfunction
 
-    virtual function string convert2string();
-        return $sformatf(
-            "%s ref_clk_period_ns=%0d smc_clk_period_ns=%0d periph_clk_period_ns=%0d csr_negative=%0d",
-            super.convert2string(), ref_clk_period_ns, smc_clk_period_ns, periph_clk_period_ns,
-            csr_scoreboard_negative);
-    endfunction
+  virtual function string convert2string();
+    return $sformatf(
+        "%s ref_clk_period_ns=%0d smc_clk_period_ns=%0d periph_clk_period_ns=%0d csr_negative=%0d",
+        super.convert2string(),
+        ref_clk_period_ns,
+        smc_clk_period_ns,
+        periph_clk_period_ns,
+        csr_scoreboard_negative
+    );
+  endfunction
 
 endclass : smc_test_cfg

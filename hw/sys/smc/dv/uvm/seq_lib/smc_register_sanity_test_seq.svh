@@ -24,80 +24,79 @@
 // corrupts that prediction so the run must FAIL (see smc_scoreboard).
 
 class smc_register_sanity_test_seq extends smc_base_test_seq;
-    `uvm_object_utils(smc_register_sanity_test_seq)
+  `uvm_object_utils(smc_register_sanity_test_seq)
 
-    localparam string ChkCsrIdle     = "CHK-CSR-IDLE-VALUE";
-    localparam string ChkCsrReadback = "CHK-CSR-READBACK";
-    localparam string ChkCsrRandom   = "CHK-CSR-RANDOM-READBACK";
-    localparam string ChkCsrRestore  = "CHK-CSR-RESTORE";
-    localparam string ChkNonvac      = "CHK-NONVAC";
+  localparam string ChkCsrIdle = "CHK-CSR-IDLE-VALUE";
+  localparam string ChkCsrReadback = "CHK-CSR-READBACK";
+  localparam string ChkCsrRandom = "CHK-CSR-RANDOM-READBACK";
+  localparam string ChkCsrRestore = "CHK-CSR-RESTORE";
+  localparam string ChkNonvac = "CHK-NONVAC";
 
-    typedef struct {
-        string     name;
-        bit [63:0] addr;
-        bit [31:0] pattern;
-    } scratch_case_t;
+  typedef struct {
+    string     name;
+    bit [63:0] addr;
+    bit [31:0] pattern;
+  } scratch_case_t;
 
-    // Accesses per register and pass beyond the random patterns: one idle
-    // read, a directed write and readback, a restore write and readback; each
-    // random pattern adds a write and a readback.
-    localparam int unsigned FixedAccessesPerRegister = 5;
-    localparam int unsigned AccessesPerRandomPattern = 2;
+  // Accesses per register and pass beyond the random patterns: one idle
+  // read, a directed write and readback, a restore write and readback; each
+  // random pattern adds a write and a readback.
+  localparam int unsigned FixedAccessesPerRegister = 5;
+  localparam int unsigned AccessesPerRandomPattern = 2;
 
-    function new(string name = "smc_register_sanity_test_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "smc_register_sanity_test_seq");
+    super.new(name);
+  endfunction
 
-    // The cocotb scenario's registers and directed patterns.
-    function void scratch_cases(ref scratch_case_t cases[$]);
-        cases.delete();
-        cases.push_back('{"SCRATCH_COLD_0",      smc_scratch_cold_addr(0),      32'hA5A5_0001});
-        cases.push_back('{"SCRATCH_COLD_1",      smc_scratch_cold_addr(1),      32'h5A5A_0002});
-        cases.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), 32'hC0DE_0003});
-    endfunction
+  // The cocotb scenario's registers and directed patterns.
+  function void scratch_cases(ref scratch_case_t cases[$]);
+    cases.delete();
+    cases.push_back('{"SCRATCH_COLD_0", smc_scratch_cold_addr(0), 32'hA5A5_0001});
+    cases.push_back('{"SCRATCH_COLD_1", smc_scratch_cold_addr(1), 32'h5A5A_0002});
+    cases.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), 32'hC0DE_0003});
+  endfunction
 
-    task body();
-        scratch_case_t cases[$];
-        bit [31:0]     rand_pattern;
+  task body();
+    scratch_case_t cases[$];
+    bit [31:0]     rand_pattern;
 
-        seed_scenario_rng();
-        attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrIdle, ChkCsrReadback, ChkCsrRandom,
-                          ChkCsrRestore, ChkNonvac});
-        scratch_cases(cases);
-        `uvm_info(get_type_name(), $sformatf(
-            {"SMC SV-UVM register sanity (TC_SMC_P0_006): SEP_IN scratch CSR idle/write/",
-             "readback/restore on %0d registers; scenario_seed=%0d random_count=%0d"},
-            cases.size(), scenario_seed, random_count), UVM_LOW)
+    seed_scenario_rng();
+    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrIdle, ChkCsrReadback, ChkCsrRandom,
+                    ChkCsrRestore, ChkNonvac});
+    scratch_cases(cases);
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  {"SMC SV-UVM register sanity (TC_SMC_P0_006): SEP_IN scratch CSR idle/write/",
+                   "readback/restore on %0d registers; scenario_seed=%0d random_count=%0d"},
+                    cases.size(), scenario_seed, random_count), UVM_LOW)
 
-        wait_fuse_sense_done();
+    wait_fuse_sense_done();
 
-        foreach (cases[i])
-            csr_read_check(ChkCsrIdle, cases[i].addr, 32'h0, {cases[i].name, ".idle"});
+    foreach (cases[i]) csr_read_check(ChkCsrIdle, cases[i].addr, 32'h0, {cases[i].name, ".idle"});
 
-        foreach (cases[i]) begin
-            csr_write(cases[i].addr, cases[i].pattern, {cases[i].name, ".directed"});
-            csr_read_check(ChkCsrReadback, cases[i].addr, cases[i].pattern,
-                           {cases[i].name, ".directed"});
-        end
+    foreach (cases[i]) begin
+      csr_write(cases[i].addr, cases[i].pattern, {cases[i].name, ".directed"});
+      csr_read_check(ChkCsrReadback, cases[i].addr, cases[i].pattern, {cases[i].name, ".directed"});
+    end
 
-        foreach (cases[i]) begin
-            for (int unsigned r = 0; r < random_count; r++) begin
-                string label = $sformatf("%s.random%0d", cases[i].name, r);
-                rand_pattern = 32'(random_pattern(32));
-                csr_write(cases[i].addr, rand_pattern, label);
-                csr_read_check(ChkCsrRandom, cases[i].addr, rand_pattern, label);
-            end
-        end
+    foreach (cases[i]) begin
+      for (int unsigned r = 0; r < random_count; r++) begin
+        string label = $sformatf("%s.random%0d", cases[i].name, r);
+        rand_pattern = 32'(random_pattern(32));
+        csr_write(cases[i].addr, rand_pattern, label);
+        csr_read_check(ChkCsrRandom, cases[i].addr, rand_pattern, label);
+      end
+    end
 
-        foreach (cases[i]) begin
-            csr_write(cases[i].addr, 32'h0, {cases[i].name, ".restore"});
-            csr_read_check(ChkCsrRestore, cases[i].addr, 32'h0, {cases[i].name, ".restore"});
-        end
+    foreach (cases[i]) begin
+      csr_write(cases[i].addr, 32'h0, {cases[i].name, ".restore"});
+      csr_read_check(ChkCsrRestore, cases[i].addr, 32'h0, {cases[i].name, ".restore"});
+    end
 
-        check_evidence(ChkNonvac, "sep_in_csr_accesses", 64'(csr_accesses),
-                       64'(cases.size() * (FixedAccessesPerRegister
-                                           + AccessesPerRandomPattern * random_count)));
-        finalize_evidence();
-    endtask
+    check_evidence(
+        ChkNonvac, "sep_in_csr_accesses", 64'(csr_accesses),
+        64'(cases.size() * (FixedAccessesPerRegister + AccessesPerRandomPattern * random_count)));
+    finalize_evidence();
+  endtask
 
 endclass : smc_register_sanity_test_seq

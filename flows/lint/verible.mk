@@ -54,6 +54,7 @@ OCAH_VERIBLE_PARSER_EXCLUDES := \
 	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
+	hw/sys/smc/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 

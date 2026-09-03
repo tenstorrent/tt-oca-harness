@@ -675,10 +675,10 @@ module km_csr
   // CPL word n = <field>_enc_r[256+32n+31:256+32n] (upper 256 bits = ~value)
 
   // CHIPLET_UID (otp_lock_chiplet gates all 16 words)
-  assign hwif_in.OTP_CHIPLET_UID_VAL_0.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[ 31:  0];
-  assign hwif_in.OTP_CHIPLET_UID_VAL_1.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[ 63: 32];
-  assign hwif_in.OTP_CHIPLET_UID_VAL_2.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[ 95: 64];
-  assign hwif_in.OTP_CHIPLET_UID_VAL_3.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[127: 96];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_0.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[31:0];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_1.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[63:32];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_2.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[95:64];
+  assign hwif_in.OTP_CHIPLET_UID_VAL_3.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[127:96];
   assign hwif_in.OTP_CHIPLET_UID_VAL_4.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[159:128];
   assign hwif_in.OTP_CHIPLET_UID_VAL_5.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[191:160];
   assign hwif_in.OTP_CHIPLET_UID_VAL_6.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[223:192];
@@ -693,10 +693,10 @@ module km_csr
   assign hwif_in.OTP_CHIPLET_UID_CPL_7.value.next = otp_lock_chiplet ? '0 : chiplet_enc_r[511:480];
 
   // SIP_UID
-  assign hwif_in.OTP_SIP_UID_VAL_0.value.next = otp_lock_sip ? '0 : sip_enc_r[ 31:  0];
-  assign hwif_in.OTP_SIP_UID_VAL_1.value.next = otp_lock_sip ? '0 : sip_enc_r[ 63: 32];
-  assign hwif_in.OTP_SIP_UID_VAL_2.value.next = otp_lock_sip ? '0 : sip_enc_r[ 95: 64];
-  assign hwif_in.OTP_SIP_UID_VAL_3.value.next = otp_lock_sip ? '0 : sip_enc_r[127: 96];
+  assign hwif_in.OTP_SIP_UID_VAL_0.value.next = otp_lock_sip ? '0 : sip_enc_r[31:0];
+  assign hwif_in.OTP_SIP_UID_VAL_1.value.next = otp_lock_sip ? '0 : sip_enc_r[63:32];
+  assign hwif_in.OTP_SIP_UID_VAL_2.value.next = otp_lock_sip ? '0 : sip_enc_r[95:64];
+  assign hwif_in.OTP_SIP_UID_VAL_3.value.next = otp_lock_sip ? '0 : sip_enc_r[127:96];
   assign hwif_in.OTP_SIP_UID_VAL_4.value.next = otp_lock_sip ? '0 : sip_enc_r[159:128];
   assign hwif_in.OTP_SIP_UID_VAL_5.value.next = otp_lock_sip ? '0 : sip_enc_r[191:160];
   assign hwif_in.OTP_SIP_UID_VAL_6.value.next = otp_lock_sip ? '0 : sip_enc_r[223:192];
@@ -711,10 +711,10 @@ module km_csr
   assign hwif_in.OTP_SIP_UID_CPL_7.value.next = otp_lock_sip ? '0 : sip_enc_r[511:480];
 
   // SYS_UID
-  assign hwif_in.OTP_SYS_UID_VAL_0.value.next = otp_lock_sys ? '0 : sys_enc_r[ 31:  0];
-  assign hwif_in.OTP_SYS_UID_VAL_1.value.next = otp_lock_sys ? '0 : sys_enc_r[ 63: 32];
-  assign hwif_in.OTP_SYS_UID_VAL_2.value.next = otp_lock_sys ? '0 : sys_enc_r[ 95: 64];
-  assign hwif_in.OTP_SYS_UID_VAL_3.value.next = otp_lock_sys ? '0 : sys_enc_r[127: 96];
+  assign hwif_in.OTP_SYS_UID_VAL_0.value.next = otp_lock_sys ? '0 : sys_enc_r[31:0];
+  assign hwif_in.OTP_SYS_UID_VAL_1.value.next = otp_lock_sys ? '0 : sys_enc_r[63:32];
+  assign hwif_in.OTP_SYS_UID_VAL_2.value.next = otp_lock_sys ? '0 : sys_enc_r[95:64];
+  assign hwif_in.OTP_SYS_UID_VAL_3.value.next = otp_lock_sys ? '0 : sys_enc_r[127:96];
   assign hwif_in.OTP_SYS_UID_VAL_4.value.next = otp_lock_sys ? '0 : sys_enc_r[159:128];
   assign hwif_in.OTP_SYS_UID_VAL_5.value.next = otp_lock_sys ? '0 : sys_enc_r[191:160];
   assign hwif_in.OTP_SYS_UID_VAL_6.value.next = otp_lock_sys ? '0 : sys_enc_r[223:192];
@@ -729,10 +729,10 @@ module km_csr
   assign hwif_in.OTP_SYS_UID_CPL_7.value.next = otp_lock_sys ? '0 : sys_enc_r[511:480];
 
   // CLASS_KEY
-  assign hwif_in.OTP_CLASS_KEY_VAL_0.value.next = otp_lock_class_key ? '0 : class_key_enc_r[ 31:  0];
-  assign hwif_in.OTP_CLASS_KEY_VAL_1.value.next = otp_lock_class_key ? '0 : class_key_enc_r[ 63: 32];
-  assign hwif_in.OTP_CLASS_KEY_VAL_2.value.next = otp_lock_class_key ? '0 : class_key_enc_r[ 95: 64];
-  assign hwif_in.OTP_CLASS_KEY_VAL_3.value.next = otp_lock_class_key ? '0 : class_key_enc_r[127: 96];
+  assign hwif_in.OTP_CLASS_KEY_VAL_0.value.next = otp_lock_class_key ? '0 : class_key_enc_r[31:0];
+  assign hwif_in.OTP_CLASS_KEY_VAL_1.value.next = otp_lock_class_key ? '0 : class_key_enc_r[63:32];
+  assign hwif_in.OTP_CLASS_KEY_VAL_2.value.next = otp_lock_class_key ? '0 : class_key_enc_r[95:64];
+  assign hwif_in.OTP_CLASS_KEY_VAL_3.value.next = otp_lock_class_key ? '0 : class_key_enc_r[127:96];
   assign hwif_in.OTP_CLASS_KEY_VAL_4.value.next = otp_lock_class_key ? '0 : class_key_enc_r[159:128];
   assign hwif_in.OTP_CLASS_KEY_VAL_5.value.next = otp_lock_class_key ? '0 : class_key_enc_r[191:160];
   assign hwif_in.OTP_CLASS_KEY_VAL_6.value.next = otp_lock_class_key ? '0 : class_key_enc_r[223:192];
@@ -747,10 +747,10 @@ module km_csr
   assign hwif_in.OTP_CLASS_KEY_CPL_7.value.next = otp_lock_class_key ? '0 : class_key_enc_r[511:480];
 
   // SEP_CHIPLET_ID
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_0.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 31:  0];
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_1.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 63: 32];
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_2.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 95: 64];
-  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_3.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[127: 96];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_0.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[31:0];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_1.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[63:32];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_2.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[95:64];
+  assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_3.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[127:96];
   assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_4.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[159:128];
   assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_5.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[191:160];
   assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_6.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[223:192];
@@ -765,10 +765,10 @@ module km_csr
   assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_7.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[511:480];
 
   // SEP_SIP_ID
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_0.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 31:  0];
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_1.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 63: 32];
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_2.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 95: 64];
-  assign hwif_in.OTP_SEP_SIP_ID_VAL_3.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[127: 96];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_0.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[31:0];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_1.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[63:32];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_2.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[95:64];
+  assign hwif_in.OTP_SEP_SIP_ID_VAL_3.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[127:96];
   assign hwif_in.OTP_SEP_SIP_ID_VAL_4.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[159:128];
   assign hwif_in.OTP_SEP_SIP_ID_VAL_5.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[191:160];
   assign hwif_in.OTP_SEP_SIP_ID_VAL_6.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[223:192];
@@ -783,10 +783,10 @@ module km_csr
   assign hwif_in.OTP_SEP_SIP_ID_CPL_7.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[511:480];
 
   // SEP_SYS_ID
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_0.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 31:  0];
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_1.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 63: 32];
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_2.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 95: 64];
-  assign hwif_in.OTP_SEP_SYS_ID_VAL_3.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[127: 96];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_0.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[31:0];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_1.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[63:32];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_2.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[95:64];
+  assign hwif_in.OTP_SEP_SYS_ID_VAL_3.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[127:96];
   assign hwif_in.OTP_SEP_SYS_ID_VAL_4.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[159:128];
   assign hwif_in.OTP_SEP_SYS_ID_VAL_5.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[191:160];
   assign hwif_in.OTP_SEP_SYS_ID_VAL_6.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[223:192];

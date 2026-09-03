@@ -19,24 +19,24 @@
 // Include order is load-bearing: operations first, then the base virtual
 // sequence, then the scenarios.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 package smc_seq_lib_pkg;
 
-    import uvm_pkg::*;
-    `include "uvm_macros.svh"
+  import uvm_pkg::*;
+  `include "uvm_macros.svh"
 
-    import ocah_checker_uvm_pkg::*; // protocol-neutral named-evidence base
-    import ocah_lib_pkg::*;         // shared framework bases, knobs, rng
-    import ocah_axi_uvm_pkg::*;
-    import smc_env_pkg::*;          // DUT types, cfgs, virtual sequencer
+  import ocah_checker_uvm_pkg::*;  // protocol-neutral named-evidence base
+  import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
+  import ocah_axi_uvm_pkg::*;
+  import smc_env_pkg::*;  // DUT types, cfgs, virtual sequencer
 
-    // Reusable operations (one agent, one operation).
-    `include "smc_axi_csr_write_seq.svh"
-    `include "smc_axi_csr_read_seq.svh"
+  // Reusable operations (one agent, one operation).
+  `include "smc_axi_csr_write_seq.svh"
+  `include "smc_axi_csr_read_seq.svh"
 
-    // Scenario layer: the base virtual sequence, then the scenarios.
-    `include "smc_base_test_seq.svh"
-    `include "smc_register_sanity_test_seq.svh"
+  // Scenario layer: the base virtual sequence, then the scenarios.
+  `include "smc_base_test_seq.svh"
+  `include "smc_register_sanity_test_seq.svh"
 
 endpackage : smc_seq_lib_pkg

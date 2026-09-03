@@ -13,23 +13,23 @@
 // the cfgs (the env cfg derives from the test cfg), the virtual sequencer,
 // the reference models, the scoreboard, the env last.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 package smc_env_pkg;
 
-    import uvm_pkg::*;
-    `include "uvm_macros.svh"
+  import uvm_pkg::*;
+  `include "uvm_macros.svh"
 
-    import ocah_checker_uvm_pkg::*; // protocol-neutral named-evidence base
-    import ocah_lib_pkg::*;         // shared framework bases, knobs, rng
-    import ocah_axi_uvm_pkg::*;
+  import ocah_checker_uvm_pkg::*;  // protocol-neutral named-evidence base
+  import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
+  import ocah_axi_uvm_pkg::*;
 
-    `include "smc_types.svh"
-    `include "smc_test_cfg.svh"
-    `include "smc_env_cfg.svh"
-    `include "smc_virtual_sequencer.svh"
-    `include "smc_scratch_csr_ref_model.svh"
-    `include "smc_scoreboard.svh"
-    `include "smc_env.svh"
+  `include "smc_types.svh"
+  `include "smc_test_cfg.svh"
+  `include "smc_env_cfg.svh"
+  `include "smc_virtual_sequencer.svh"
+  `include "smc_scratch_csr_ref_model.svh"
+  `include "smc_scoreboard.svh"
+  `include "smc_env.svh"
 
 endpackage : smc_env_pkg

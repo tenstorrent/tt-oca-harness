@@ -13,24 +13,27 @@
 // scoreboard's finding. write() never blocks. The cocotb twin is
 // ocah_lib.OcahRefModel.
 
-class ocah_ref_model #(type OBS = uvm_object, type EXP = OBS) extends uvm_subscriber #(OBS);
-    `uvm_component_param_utils(ocah_ref_model #(OBS, EXP))
+class ocah_ref_model #(
+  type OBS = uvm_object,
+  type EXP = OBS
+) extends uvm_subscriber #(OBS);
+  `uvm_component_param_utils(ocah_ref_model#(OBS, EXP))
 
-    // Expected items, one per predicted transaction, in observation order.
-    uvm_analysis_port #(EXP) expected_ap;
+  // Expected items, one per predicted transaction, in observation order.
+  uvm_analysis_port #(EXP) expected_ap;
 
-    function new(string name = "ocah_ref_model", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "ocah_ref_model", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        expected_ap = new("expected_ap", this);
-    endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    expected_ap = new("expected_ap", this);
+  endfunction
 
-    // The stream handler; every concrete reference model overrides it. The
-    // base accepts and drops, so an unconnected base instance is inert.
-    virtual function void write(OBS t);
-    endfunction
+  // The stream handler; every concrete reference model overrides it. The
+  // base accepts and drops, so an unconnected base instance is inert.
+  virtual function void write(OBS t);
+  endfunction
 
 endclass : ocah_ref_model

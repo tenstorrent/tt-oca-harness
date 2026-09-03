@@ -15,14 +15,14 @@
 // ---------------------------------------------------------------------------
 localparam int unsigned SmcSepInAddrWidth = 56;
 localparam int unsigned SmcSepInDataWidth = 64;
-localparam int unsigned SmcSepInIdWidth   = 6;
+localparam int unsigned SmcSepInIdWidth = 6;
 localparam int unsigned SmcSepInBeatBytes = SmcSepInDataWidth / 8;
 
 // Every SMC CSR is a 32-bit register reached with a narrow single-beat
 // transfer on the 64-bit bus (AxSIZE = 2); the data rides the addressed
 // byte lanes, the same access shape the cocotb SmcSysAxiDriver issues.
 localparam int unsigned SmcCsrBytes = 4;
-localparam int unsigned SmcCsrSize  = 2;
+localparam int unsigned SmcCsrSize = 2;
 
 // Scoreboard feature names (smc_scoreboard predictors; test cfg policy).
 localparam string SmcFeatureScratchCsr = "scratch_csr";
@@ -40,32 +40,30 @@ localparam bit [63:0] SmcScratchColdWarmSize =
 
 // SCRATCH_COLD[idx] / SCRATCH_COLD_WARM[idx] absolute addresses.
 function automatic bit [63:0] smc_scratch_cold_addr(int unsigned idx);
-    return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(idx));
+  return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(idx));
 endfunction
 
 function automatic bit [63:0] smc_scratch_cold_warm_addr(int unsigned idx);
-    return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(idx));
+  return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(idx));
 endfunction
 
 // 1 when `addr` falls inside a scratch window; `warm` names the domain.
 function automatic bit smc_is_scratch_csr(bit [63:0] addr, output bit warm);
-    warm = 1'b0;
-    if (addr >= SmcScratchColdBase && addr < SmcScratchColdBase + SmcScratchColdSize)
-        return 1'b1;
-    if (addr >= SmcScratchColdWarmBase && addr < SmcScratchColdWarmBase + SmcScratchColdWarmSize) begin
-        warm = 1'b1;
-        return 1'b1;
-    end
-    return 1'b0;
+  warm = 1'b0;
+  if (addr >= SmcScratchColdBase && addr < SmcScratchColdBase + SmcScratchColdSize) return 1'b1;
+  if (addr >= SmcScratchColdWarmBase && addr < SmcScratchColdWarmBase + SmcScratchColdWarmSize) begin
+    warm = 1'b1;
+    return 1'b1;
+  end
+  return 1'b0;
 endfunction
 
 // A scratch CSR access the scratch_csr feature predicts and compares: an
 // OKAY single-beat transfer inside a scratch window (the narrow 32-bit CSR
 // access shape); anything else on the window is outside the contract.
 function automatic bit smc_is_scratch_csr_access(ocah_axi_item t, output bit warm);
-    if (!smc_is_scratch_csr(t.address, warm))
-        return 1'b0;
-    return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+  if (!smc_is_scratch_csr(t.address, warm)) return 1'b0;
+  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
 endfunction
 
 // ---------------------------------------------------------------------------
@@ -75,25 +73,25 @@ endfunction
 
 // CSR word address (4-byte aligned) of a bus address.
 function automatic bit [63:0] smc_csr_word_addr(bit [63:0] addr);
-    return addr & ~64'(SmcCsrBytes - 1);
+  return addr & ~64'(SmcCsrBytes - 1);
 endfunction
 
 // First byte lane of the CSR inside the beat (0 or 4 on the 64-bit bus).
 function automatic int unsigned smc_csr_lane(bit [63:0] addr);
-    return int'(smc_csr_word_addr(addr) % SmcSepInBeatBytes);
+  return int'(smc_csr_word_addr(addr) % SmcSepInBeatBytes);
 endfunction
 
 // Write strobes of one CSR access.
 function automatic bit [7:0] smc_csr_strb(bit [63:0] addr);
-    return 8'(8'h0F << smc_csr_lane(addr));
+  return 8'(8'h0F << smc_csr_lane(addr));
 endfunction
 
 // CSR value positioned on its lanes of the bus word.
 function automatic bit [63:0] smc_csr_to_bus(bit [63:0] addr, bit [31:0] data);
-    return 64'(data) << (8 * smc_csr_lane(addr));
+  return 64'(data) << (8 * smc_csr_lane(addr));
 endfunction
 
 // CSR value extracted from the bus word.
 function automatic bit [31:0] smc_csr_from_bus(bit [63:0] addr, bit [63:0] word);
-    return 32'(word >> (8 * smc_csr_lane(addr)));
+  return 32'(word >> (8 * smc_csr_lane(addr)));
 endfunction
