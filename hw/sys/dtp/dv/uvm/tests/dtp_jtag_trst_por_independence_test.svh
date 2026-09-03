@@ -15,23 +15,22 @@ class dtp_jtag_trst_por_independence_test extends dtp_base_test;
         super.new(name, parent);
     endfunction
 
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        m_env.jtag_require_checks = 1'b1;
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-STATE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-RESET-TLR");
+    virtual function void configure_test_cfg(dtp_test_cfg cfg);
+        super.configure_test_cfg(cfg);
+        cfg.require_jtag_ids('{"CHK-TAP-STATE", "CHK-TAP-RESET-TLR"});
+        cfg.require_feature(DtpFeatureIdcode);
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         return dtp_jtag_trst_por_independence_test_seq::type_id::create(
             "jtag_trst_por_independence_seq");
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_JTAG_TRST_POR_INDEPENDENCE_TEST_LOOPS";
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_BASIC_JTAG_TEST_LOOPS";
     endfunction
 

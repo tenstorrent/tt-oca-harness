@@ -13,15 +13,15 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test extends dtp_base_test;
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         return dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq::type_id::create("seq");
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_DBG_CTRL_CLK_STOP_RANDOM_CLOCK_STOP_TEST_LOOPS";
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_DEBUG_TDR_TEST_LOOPS";
     endfunction
 
