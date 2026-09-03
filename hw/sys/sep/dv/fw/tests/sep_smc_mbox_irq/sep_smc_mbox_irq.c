@@ -40,11 +40,17 @@ __attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_fail_loop(void) {
 
 /* SEP inbound filters over the whole mailbox channel region (must cover every inbound port so the
  * SMC's pops/W1C/readbacks reach the mailbox). filter0 secure, filter1 non-secure. */
-#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) /* 0x10A21000 */
-#define SEP_INBOUND_FILTER_STRIDE 0x20u
-#define SEP_FILTER_CONFIG_OFFSET 0x00u
-#define SEP_FILTER_START_OFFSET 0x08u
-#define SEP_FILTER_END_OFFSET 0x10u
+#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)
+#define SEP_INBOUND_FILTER_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+#define SEP_FILTER_CONFIG_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_FILTER_START_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_FILTER_END_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 
 /* SEP-local OUTBOUND mailbox WRITE_DATA for channel ch. */
 static inline uint32_t sep_mbox_wdata(uint32_t ch) {

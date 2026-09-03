@@ -37,22 +37,17 @@ cache_enabled = false
 rebuild = false
 cache_key_extra = []
 
-# One simulation define set for both frameworks: enabling SVAs for UVM (dropping DISABLE_ASSERT /
+# One simulation define set for both frameworks: enabling SVAs for UVM (dropping
 # COMMON_CELLS_ASSERTS_OFF) is a deliberate follow-up, not a silent difference between the flows.
 # Tool-specific fields use nested tool tables so every simulator follows the same naming rule:
 # target.tools.<tool>.flags.
 [target_defaults.default]
 defines = [
   "SIMULATION",
-  "NO_LIBCELL",
-  "DISABLE_ASSERT",
   "COMMON_CELLS_ASSERTS_OFF",
-  "INITIALIZE_MEMORY",
   "RANDOM=0",
   "RANDOMIZE_MEM_INIT",
   "RANDOMIZE_REG_INIT",
-  "RANDOMIZE_GARBAGE_ASSIGN",
-  "RANDOMIZE_INVALID_ASSIGN",
   "RANDOMIZE_DELAY=0.02",
 ]
 

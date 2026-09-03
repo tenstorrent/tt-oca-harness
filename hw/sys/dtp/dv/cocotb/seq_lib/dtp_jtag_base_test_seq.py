@@ -175,6 +175,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             self._expected_ir_widths.append(DTP_IR_WIDTH)
         return item
 
+    async def shift_ir(self, value: int, width: int, *, back_to_rti: bool = True):
+        """Shift a raw IR value, keeping the attached TAP checker in sync."""
+        item = await super().shift_ir(value, width, back_to_rti=back_to_rti)
+        if back_to_rti and self.tap_checker is not None:
+            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_ir_widths.append(width)
+        return item
+
     async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True):
         """Shift raw DR data, keeping the attached TAP checker in sync."""
         item = await super().shift_dr(value, width, back_to_rti=back_to_rti)

@@ -350,6 +350,7 @@ module sep
     edn_pkg::edn_rsp_t entropy_pool_edn_rsp;
     logic entropy_pool_low;
     logic entropy_pool_fill_stall;
+    logic entropy_pool_err;
     logic trng_entropy_clear;
 
     logic [31:1] nmi_vec;
@@ -374,9 +375,12 @@ module sep
     logic sep_reset_n; // Efuse sensing done signal (after JTAG override)
     logic sep_cpu_reset_n; // This is the reset signal for the CPU
     logic wdt_timer_rst_req; // This is the reset signal for the WDT timer (actitve high)
-    sep_pkg::sep_sw_rst_t sep_sw_rst_no; // Software-controllable resets from sep_reset_ctrl
     logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
     logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
+    // Isolation handshake and sequenced resets between sep_reset_ctrl and sep_crypto
+    sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req;
+    sep_pkg::sep_crypto_isolate_t sep_crypto_isolated;
+    sep_pkg::sep_sw_rst_t         sep_crypto_gated_rst_n;
 
     //////////////////
     // AXI Crossbar //
@@ -550,19 +554,21 @@ module sep
         sep_internal_interrupts[35]     = intr_abr_notif;
         // Entropy-pool FIFO: separate PIC lines so firmware can distinguish a
         // transient low-water condition (informational, pool draining faster than
-        // it fills) from a sustained EDN stall (fault, fill path not making progress).
+        // it fills) from a sustained EDN stall (fault, fill path not making progress)
+        // and a pool pointer-integrity fault
         sep_internal_interrupts[36]     = entropy_pool_low;
         sep_internal_interrupts[37]     = entropy_pool_fill_stall;
-        sep_internal_interrupts[38]     = token_match_fault;
+        sep_internal_interrupts[38]     = entropy_pool_err;
+        sep_internal_interrupts[39]     = token_match_fault;
         // Secure DMA bridge faults. Level-sensitive: both sources are latched in the DMA
         // wrapper and held until firmware writes DMA_BUS_ERR_CLEAR. An edge-triggered
         // gateway would miss them after a WDT CPU reset, which resets the CPU but not the
         // DMA, leaving the source already high before the gateway is armed.
-        sep_internal_interrupts[39]     = dma_reg_bus_err;
-        sep_internal_interrupts[40]     = dma_host_intg_err;
+        sep_internal_interrupts[40]     = dma_reg_bus_err;
+        sep_internal_interrupts[41]     = dma_host_intg_err;
         // Peripheral register-bridge faults share one source; firmware reads
         // PERIPH_BUS_ERR_STATUS to find which block faulted.
-        sep_internal_interrupts[41]     = |periph_bus_err;
+        sep_internal_interrupts[42]     = |periph_bus_err;
     end
 
     assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
@@ -847,12 +853,9 @@ module sep
         .km_unrecoverable_err_o                 (km_unrecoverable_err),
         .km_recoverable_err_o                   (km_recoverable_err),
 
-        .km_sw_rst_ni                           (sep_sw_rst_no.km),
-        .otbn_sw_rst_ni                         (sep_sw_rst_no.otbn),
-        .aes_sw_rst_ni                          (sep_sw_rst_no.aes),
-        .hmac_sw_rst_ni                         (sep_sw_rst_no.hmac),
-        .kmac_sw_rst_ni                         (sep_sw_rst_no.kmac),
-        .trng_sw_rst_ni                         (sep_sw_rst_no.trng),
+        .isolate_req_i                          (sep_crypto_isolate_req),
+        .isolated_o                             (sep_crypto_isolated),
+        .gated_rst_ni                           (sep_crypto_gated_rst_n),
 
         .lcc_demote_state_1_o                   (lcc_demote_state_1_o),
         .lcc_demote_state_2_o                   (lcc_demote_state_2_o),
@@ -953,6 +956,7 @@ module sep
         // Status / interrupts to the SEP PIC
         .pool_low_o               (entropy_pool_low),
         .fill_stall_o             (entropy_pool_fill_stall),
+        .pool_err_o               (entropy_pool_err),
         .fifo_level_o             ()
     );
 
@@ -1053,6 +1057,7 @@ module sep
 
     sep_reset_ctrl u_sep_reset_ctrl (
         .clk_i                      (clk_i),
+        .rst_ni                     (rst_ni),
         .wdt_rst_ni                 (wdt_rst_ni),
         .jtag_sep_reset_ctrl_i      (jtag_sep_reset_ctrl_i),
         .sep_intermediate_reset_ni  (sep_intermediate_reset_n),
@@ -1062,7 +1067,9 @@ module sep
         .test_en_i                  (test_en_i),
         .scan_rst_ni                (scan_rst_ni),
         .sep_cpu_reset_no           (sep_cpu_reset_n),
-        .sep_sw_rst_no              (sep_sw_rst_no)
+        .sep_crypto_isolate_req_o   (sep_crypto_isolate_req),
+        .sep_crypto_isolated_i      (sep_crypto_isolated),
+        .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n)
     );
 
     ////////////////

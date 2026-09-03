@@ -93,6 +93,12 @@ module sep_uvm_top
     // Which token comparator the inject hits. Default 0.
     //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
     input  wire logic [1:0] token_cmp_fault_sel_i,
+    // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
+    // broken codeword onto the host-adapter command-integrity decoder input
+    // (signed off -- software cannot emit a bad TL-UL user code). The checker
+    // still gates on a_valid, so a DMA-issued command is required. See the
+    // force block below.
+    input  wire logic dma_host_intg_inject_i,
 
     // ------------------------------------------------------------------
     // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -382,6 +388,11 @@ module sep_uvm_top
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
     output logic              secure_tm_o,
+    // OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
+    // both to 0; the fuse controller enforces access. Sliced here so cocotb
+    // can read them without a packed-struct field walk.
+    output logic              dbg_disable_smc_otp_jtag2axi_o,
+    output logic              dbg_disable_sep_otp_jtag2axi_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
     // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
@@ -451,8 +462,8 @@ module sep_uvm_top
         sep_straps_drive.test_straps.test_en = test_en_strap_i;
     end
 
-    // Outbound mailbox responder buses and CPU trace (the only DUT struct nets the
-    // wrapper flow still needs; the retired mem/efuse/spi responder buses are gone).
+    // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
+    // wrapper flow needs.
     sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_req_w;
     sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_resp_w;
     sep_cpu_trace_t    cpu_trace_w;
@@ -548,6 +559,31 @@ module sep_uvm_top
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
+
+    end
+
+    // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
+    // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
+    // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
+    // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
+    // output of hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv, so at that edge the
+    // guard sees reset active and arms an attempt whose body still sees the
+    // pre-reset value and therefore demands seed_en_q be high. It fires on every
+    // software reset whatever the DUT does.
+    //
+    // This holds the property off for the WHOLE RUN, not just that edge, so no
+    // in-reset cycle is checked in any test. Little is lost because of the flop at
+    // otbn_rnd.sv:205-213: seed_en_q is asynchronously cleared by the same rst_ni
+    // the property checks it against, and that flop is what stops a reseed request
+    // -- held high through reset by design -- from starting one. A reseed cannot
+    // begin mid-reset unless that flop's reset is broken, and its declaration is
+    // what guarantees it is not.
+    //
+    // The repair is upstream: the guard should sample as the body does. It belongs
+    // to a vendor bump, not to this tree.
+    initial begin
+        $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
+            .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
 `endif
 
@@ -555,6 +591,9 @@ module sep_uvm_top
     // lockstep_ctrl_i would reach the core as X under RV_LOCKSTEP_ENABLE.
     sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i = '0;
     sep_pkg::sep_lockstep_status_t lockstep_status_o;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
+    assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
+    assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
@@ -727,7 +766,7 @@ module sep_uvm_top
         .dmi_active                   (),
 
         .sep_cpu_trace                (cpu_trace_w),
-        // Direct reset-vector input (replaces the retired JTAG reset-vector TDR).
+        // Direct reset-vector input.
         .rst_vec                      (rst_vec_i),
         .jtag_id                      ('0),
 
@@ -761,7 +800,7 @@ module sep_uvm_top
 
         // New wrapper status/debug outputs: observability only, left open.
         .lc_state_o                   (),
-        .dbg_disable_o                (),
+        .dbg_disable_o                (dbg_disable_w),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
@@ -897,10 +936,9 @@ module sep_uvm_top
     //
     // The wrapper's macros have no runtime init (MemInitFile("")) and power up X
     // on VCS / 0 on Verilator -- both wrong for KM (parity) and OTBN (SECDED),
-    // whose valid power-up word is non-zero. Fill patterns + ECC/parity are ported
-    // from the retired responders (shims/mem/tb_{tcm,km,otbn}_responder.sv). Array
-    // paths verified against hw/top/sep_ip_integration.sv and the current
-    // sep_tcm_wrapper (TCM per-depth generate arms are now labeled gen_ram).
+    // whose valid power-up word is non-zero. Fill patterns include ECC/parity.
+    // Array paths are hw/top/sep_ip_integration.sv and sep_tcm_wrapper
+    // (TCM per-depth generate arms: gen_ram).
     // Backdoor writes into these DUT arrays need them public under Verilator
     // (sep_public_scope.vlt: prim_ram_1p.mem, prim_rom.mem, ram_16384x39.ram_core).
     // ------------------------------------------------------------------
@@ -957,10 +995,10 @@ module sep_uvm_top
 `endif
 
     // Image loads into the ROM/SRAM macros at t=0. Honor the plusarg first, else
-    // fall back to the CWD default filename (mirrors the retired tb_*_responder
-    // load order: tests that stage a committed hex into the sim CWD without a
-    // plusarg still get it -- e.g. sep_boot_rom_smoke_test relies on the default
-    // sep_boot_rom.hex). A missing default file leaves the default fill intact.
+    // the CWD default filename (tests that stage a committed hex into the sim
+    // CWD without a plusarg still get it -- e.g. sep_boot_rom_smoke_test relies
+    // on the default sep_boot_rom.hex). A missing default file leaves the
+    // default fill intact.
     // A named `+km_rom_hex` file must exist: $readmemh of an absent path leaves
     // the KM ROM empty and the firmware never posts ready.
     initial begin : backdoor_image_loads
@@ -1228,11 +1266,12 @@ module sep_uvm_top
     // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
-    assign trng_gated_rst_n_probe_o = `SEP_CORE.sep_crypto.u_sep_trng.trng_gated_rst_n;
+    assign trng_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_axi_isolated_probe_o = {
-        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.edn_isolated,
-        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.csrng_isolated,
-        `SEP_CORE.sep_crypto.u_sep_trng.u_axi_isolate.esrc_isolated
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
@@ -1376,6 +1415,32 @@ module sep_uvm_top
 `undef TOKEN_PROC
 
     // ------------------------------------------------------------------
+    // DMA host-path command-integrity inject.
+    // SIGNED OFF 2026-09-01 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // host_path_err is the OR of a fabric non-OKAY on a DMA transfer and a
+    // TL-UL command-integrity fail on a DMA-issued command. A legal
+    // descriptor can produce the fabric term; it cannot produce a broken
+    // command user code -- the engine always emits a matching pair. When
+    // dma_host_intg_inject_i=1, force the host-adapter checker input
+    // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
+    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
+    // frontdoor or the signed-off aggregate probe. Re-issue every clock
+    // (Verilator snapshots a force RHS). Release when the port drops.
+    // Default 0; outside the AXI ready/valid cones.
+`define DMA_HOST_CMD_INTG_DI \
+    `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma \
+        .gen_cmd_intg_check.u_cmd_intg_chk.u_chk.data_i
+    always @(posedge clk_i) begin
+        if (dma_host_intg_inject_i === 1'b1) begin
+            force `DMA_HOST_CMD_INTG_DI = '0;
+        end else begin
+            release `DMA_HOST_CMD_INTG_DI;
+        end
+    end
+`undef DMA_HOST_CMD_INTG_DI
+
+    // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
     // ------------------------------------------------------------------
     // The ESRC ring oscillators' `#delay` feedback is ignored under Verilator, so
@@ -1467,7 +1532,7 @@ module sep_uvm_top
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
     assign esrc_decor_bytes_o   = `SEP_ESRC.u_generator_complex.entropy_stream_uncompressed_o;
     // Raw 29-bit decorrelator shift register per lane. ff_stage and the sampled
-    // byte now share the full entropy-source rst_ni. decor_bytes_o still lags the
+    // byte share the full entropy-source rst_ni. decor_bytes_o lags the
     // true SR reset by a full divider period, so the golden cannot derive
     // the SR phase from decor_bytes_o alone. The scoreboard seeds its golden SR from
     // this exact state once shifting is live, then free-runs the CHK1..CHK5 chain.
@@ -1532,10 +1597,9 @@ module sep_uvm_top
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
 
-    // The KM/OTBN memory activity counters (were tb responder
-    // outputs) are re-derived from the wrapper-internal req nets. KM SRAM gnt=1
-    // and OTBN req=enable, so counting the request strobe matches the retired
-    // responders' semantics (km uses .req/.we; otbn uses .enable/.write).
+    // KM/OTBN memory activity counters from the wrapper-internal req nets.
+    // KM SRAM gnt=1 and OTBN req=enable, so a count of the request strobe is
+    // a count of accepted accesses (km uses .req/.we; otbn uses .enable/.write).
     logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q;
     logic [31:0] otbn_imem_req_cnt_q, otbn_imem_wr_cnt_q;
     logic [31:0] otbn_dmem_req_cnt_q, otbn_dmem_wr_cnt_q;

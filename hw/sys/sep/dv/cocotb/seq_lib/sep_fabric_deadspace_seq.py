@@ -135,7 +135,7 @@ def _ot_named(ip: str, base: int, alloc: int, names) -> frozenset[int]:
 
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width."""
-    esrc_base = 0x1091_6000
+    esrc_base = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
     return (
         DeadWindow(
             "secure_dma",

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, Timer
 from pyuvm import ConfigDB, uvm_test
 
 _COCOTB_ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +66,45 @@ class smu_base_test(uvm_test):
         cocotb.start_soon(
             Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, units="ns").start()
         )
+        # ESRC ring-oscillator sample clock, matching hw/sys/sep/dv's 3 ns. The
+        # entropy source samples its noise lanes on this clock, so any test that
+        # exercises entropy needs it running; with it static the source produces
+        # nothing however the stack is programmed.
+        #
+        # Started only under +esrc_noise_force, which is not a convenience: this
+        # clock is 3 ns against clk_smu's 10 ns, so leaving it on adds edges to
+        # every SEP=1 run, and it is useless on its own anyway -- the ring
+        # oscillators do not self-oscillate under Verilator, so a sample clock
+        # with no driven noise samples nothing. The two belong together, and both
+        # entropy-consuming sequences already assert the plusarg is present.
+        if cocotb.plusargs.get("esrc_noise_force") is not None:
+            cocotb.start_soon(
+                Clock(
+                    dut.entropy_rosc_sample_clk_i,
+                    self.cfg.entropy_clk_period_ns,
+                    units="ns",
+                ).start()
+            )
+
+    async def jtag_tap_reset(self, pulses: int = 8) -> None:
+        """Walk the primary TAP into Test-Logic-Reset with TMS high.
+
+        The DTP IC_RESET TDR powers up in a state that can assert SMC cold and
+        fuse overrides under Verilator two-state and VCS X-init; left alone it
+        holds the SEP in reset and no CPU ever fetches. Clearing it needs real
+        TCK edges with TMS high, which is why every wrapper test does this even
+        when it never touches JTAG again.
+        """
+        dut = cocotb.top
+        dut.jtag_tms.value = 1
+        dut.jtag_tdi.value = 0
+        for _ in range(pulses):
+            dut.jtag_tck.value = 0
+            await Timer(5, unit="ns")
+            dut.jtag_tck.value = 1
+            await Timer(5, unit="ns")
+        dut.jtag_tck.value = 0
+        await Timer(5, unit="ns")
 
     async def bring_up(self) -> None:
         """Apply the production wrapper power-good and cold-reset sequence."""
@@ -80,12 +119,24 @@ class smu_base_test(uvm_test):
         self.logger.info("Step 0: pre-drive resets high to arm async resets")
         dut.powergood_i.value = 1
         dut.rst_cold_ni.value = 1
+        # TRST follows cold reset, as it did when this TB tied trst_n to
+        # rst_cold_ni internally.
+        dut.jtag_tck.value = 0
+        dut.jtag_tms.value = 1
+        dut.jtag_trst.value = 1
+        dut.jtag_tdi.value = 0
+        # ESRC raw-noise stimulus starts quiet; a test that wants entropy drives
+        # it (see SmuEsrcNoiseDriver).
+        if hasattr(dut, "esrc_noise_ext_i"):
+            dut.esrc_noise_ext_i.value = 0
         self.start_clocks()
+        await self.jtag_tap_reset()
         await ClockCycles(dut.clk_ref_i, 2)
 
         self.logger.info("Step 1: assert power-good low and cold reset")
         dut.powergood_i.value = 0
         dut.rst_cold_ni.value = 0
+        dut.jtag_trst.value = 0
         await ClockCycles(dut.clk_ref_i, self.cfg.powergood_delay_cycles)
         self.pre_release_sep_reset = self.read_int(
             dut.sep_reset_n_o, "sep_reset_n_o during cold reset"
@@ -106,6 +157,10 @@ class smu_base_test(uvm_test):
 
         self.logger.info("Step 3: release cold reset and wait for resolved outputs")
         dut.rst_cold_ni.value = 1
+        dut.jtag_trst.value = 1
+        # Reload the TDR defaults with a real TRST->TCK sequence before any
+        # observer samples fuse/primary reset.
+        await self.jtag_tap_reset(16)
         # Extra settle so the TB JTAG TCK reload (after TRST rise) can clear
         # IC_RESET TDR overrides before observers sample fuse/primary reset.
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_cycles + 40)

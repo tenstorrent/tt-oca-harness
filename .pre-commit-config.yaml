@@ -50,3 +50,41 @@ repos:
         entry: uv --directory . run --locked tclint --no-check-style --style-line-length 100
         language: system
         files: '\.tcl$'
+
+      - id: codespell
+        name: Check spelling with codespell
+        # No filenames appended (see below): codespell's skip= glob patterns in
+        # pyproject.toml ([tool.codespell]) only prune directories it walks
+        # itself. Handed an explicit file argument -- which is what pre-commit
+        # would otherwise pass -- it checks that file regardless of skip=, so
+        # a skip-listed path (e.g. the vendored Metal HAL headers) would still
+        # get flagged the moment it's staged. Scanning from repo root every
+        # time keeps this consistent with `make ocah-lint-spelling`.
+        entry: uv --directory . run --locked codespell .
+        language: system
+        pass_filenames: false
+
+      - id: yamllint
+        name: Lint YAML with yamllint
+        entry: uv --directory . run --locked yamllint -c .yamllint.yml
+        language: system
+        files: '\.ya?ml$'
+
+      - id: tomllint
+        name: Check TOML syntax with tomllint
+        entry: uv --directory . run --locked tomllint
+        language: system
+        files: '\.toml$'
+        exclude: '^hw/ip/scrambler/dv/lint/scrambler\.toml$'
+
+      - id: shellcheck
+        name: Lint shell scripts with shellcheck
+        entry: uv --directory . run --locked shellcheck --severity=warning
+        language: system
+        files: '\.sh$'
+
+      - id: shfmt
+        name: Check shell formatting with shfmt
+        entry: uv --directory . run --locked shfmt -i 2 -d
+        language: system
+        files: '\.sh$'

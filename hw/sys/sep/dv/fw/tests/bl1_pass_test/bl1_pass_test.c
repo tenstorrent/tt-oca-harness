@@ -44,7 +44,7 @@ static inline uint32_t mmio_read32(uint32_t addr) {
 // ---------------------------------------------------------------------------
 // Scratch register virtual console (same protocol as rom_virt_console.h)
 // ---------------------------------------------------------------------------
-#define SCRATCH2_ADDR 0x10802010u
+#define SCRATCH2_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
 
 #define VCONSOLE_OP_ASCII (0u << 1)
 
@@ -164,13 +164,9 @@ static int bl1_test_locked_field_reads(void) {
     return 0; // Success - all reads returned expected value
 }
 
-// ---------------------------------------------------------------------------
-// Outbound filter configuration (self-contained, hardcoded addresses)
-// ---------------------------------------------------------------------------
-#define OBF_BASE 0x10A20000u
-#define OBF_CONFIG (OBF_BASE + 0x00u)
-#define OBF_START_ADDR (OBF_BASE + 0x08u)
-#define OBF_END_ADDR (OBF_BASE + 0x10u)
+#define OBF_CONFIG OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
+#define OBF_START_ADDR OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
+#define OBF_END_ADDR OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
 
 static inline void bl1_outbound_filter_init(void) {
     // START_ADDR = 0x0000000080000000

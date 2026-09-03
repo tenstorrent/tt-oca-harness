@@ -6,12 +6,18 @@
 // `scenario`:
 //
 //   stap_sel_{ds,smc,sep,extra}  configure and select one STAP through
-//       composed TAP_3DCR chain scans: forwarding proved by a temporal
-//       window (tdo_oen pulses, tms follows live TMS), then the port's
-//       direct disable stops forwarding and a gated 3DCR update is
-//       ignored (chain readback), selection resumes from stored state
-//       without reset, an unrelated STAP stays usable under the disable,
-//       and a fresh configuration recovers fully;
+//       composed TAP_3DCR chain scans and prove it end to end against the
+//       downstream ocah_jtag_vip TAP the bench splices behind every STAP
+//       host port: the downstream IDCODE and a written DS_TDR read back
+//       through the selected STAP (network-wide IR scans select the
+//       register), the port's direct disable freezes the downstream register
+//       in Test-Logic-Reset and blocks a gated 3DCR update, selection
+//       resumes without reset, an unrelated STAP's downstream stays usable
+//       while the target is gated, and a fresh configuration recovers fully.
+//       The host-port temporal windows (tdo_oen pulses, tms follows the live
+//       TMS or parks) corroborate the downstream evidence; on a bench without
+//       attached downstream TAPs the same flow runs against the wire
+//       loopbacks with the window and chain-readback evidence only;
 //   ext_stap_scan  the extended STAP host scan interface follows the PTAP
 //       3DCR select, its controls stay quiet under the stap_host disable
 //       (seeded gated attempt), and recover without reset;
@@ -20,8 +26,8 @@
 //       path, so PTAP readbacks use select=0);
 //   tms_hold       per-STAP (seeded order) TRST + SIB-open flow: the
 //       unselected port must never drive tdo_oen; the parked TMS polarity
-//       is logged only (full polarity checking needs a real STAP host
-//       behind the OSS loopback).
+//       is logged only (proving it needs the downstream TAP attached —
+//       follow-up to #1056).
 
 class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     `uvm_object_utils(dtp_stap_scan_test_seq)
@@ -70,6 +76,26 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                          {context_s, ".write_3dcr"}, unused);
     endtask
 
+    // Load DS_TDR in the downstream TAP behind `target`, write `value`, prove
+    // the device latched exactly it once, then read it back through the
+    // chain (`gate` is the disable mask in force, which shapes the chain).
+    protected task ds_write_and_readback(
+        int unsigned                          target,
+        bit [63:0]                            value,
+        sep_lifecycle_ctrl_pkg::dbg_disable_t gate,
+        string                                context_s,
+        string                                check_id = "CHK-DS-TDR-READBACK"
+    );
+        stap_ds_load_ir(target, StapDsTdrName, gate, {context_s, ".load_ir"});
+        stap_ds_seq[target].clear_updates();
+        stap_ds_write_tdr(target, value, gate, {context_s, ".write"});
+        void'(stap_ds_seq[target].check_last_update(StapDsTdrName, value,
+            $sformatf("%s stap=%s", context_s, stap_name(target))));
+        void'(stap_ds_seq[target].check_update_count(1, StapDsTdrName,
+            $sformatf("%s stap=%s", context_s, stap_name(target))));
+        stap_ds_read_tdr(target, gate, {context_s, ".read"}, check_id);
+    endtask
+
     protected task run_stap_select(int unsigned stap);
         sep_lifecycle_ctrl_pkg::dbg_disable_t gate = stap_gate_mask(stap);
         string prefix = stap_prefix(stap);
@@ -84,10 +110,23 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         dtp_stap_3dcr_state_t iso_pl[int];
         bit [63:0] captured, unused;
         dtp_stap_3dcr_state_t attempt;
+        bit downstream = ds_attached(stap);
+        dtp_stap_ds_reg_t tdr;
+        bit [63:0] v_select = '0, v_recover = '0, v_neighbor = '0;
         watch.push_back({prefix, "_tdo_oen"});
         watch.push_back({prefix, "_tms"});
         `uvm_info(get_type_name(), $sformatf(
-            "STAP selection: %s", stap_name(stap)), UVM_LOW)
+            "STAP selection: %s (downstream TAP %s)", stap_name(stap),
+            downstream ? "attached" : "absent"), UVM_LOW)
+        if (downstream) begin
+            bit [63:0] opcode;
+            if (!stap_model.ds[stap].opcode_of(StapDsTdrName, opcode))
+                `uvm_fatal(get_type_name(), {"downstream device has no ", StapDsTdrName})
+            tdr = stap_model.ds[stap].regs[opcode];
+            // Per-pass random downstream values: selected and recovery.
+            v_select  = random_pattern(tdr.width);
+            v_recover = random_pattern(tdr.width);
+        end
 
         // Step 1: configure and select via composed TAP_3DCR scans.
         stap_chain_flush({stap_name(stap), ".flush"});
@@ -101,6 +140,12 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                               {stap_name(stap), ".selected"});
         check_stap_chain_readback(captured, '0,
                                   {stap_name(stap), ".selected_readback"});
+        if (downstream) begin
+            // End-to-end: the downstream IDCODE (selected since TRST) returns
+            // through the spliced port, then a written DS_TDR reads back.
+            check_ds_idcode(stap, '0, {stap_name(stap), ".selected_idcode"});
+            ds_write_and_readback(stap, v_select, '0, {stap_name(stap), ".selected_tdr"});
+        end
 
         // Step 2: assert exactly the port's disable — forwarding stops and
         // a randomized deselecting 3DCR update attempt is ignored.
@@ -109,6 +154,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         `uvm_info(get_type_name(), $sformatf(
             "%s gated 3DCR update attempt config_hold=%0d",
             stap_name(stap), attempt.config_hold), UVM_LOW)
+        if (downstream)
+            stap_ds_seq[stap].clear_updates();
         start_scan_window(watch);
         iso_pl.delete();
         iso_pl[stap] = attempt;
@@ -121,10 +168,23 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                               {stap_name(stap), ".gated"});
         check_stap_chain_readback(captured, gate,
                                   {stap_name(stap), ".gated_readback"});
+        if (downstream) begin
+            // The gated port parks its host TMS high: the downstream TAP sits
+            // in Test-Logic-Reset (checked after the scan, which supplies the
+            // five parked TCKs), latched nothing, and still holds the value.
+            void'(stap_ds_seq[stap].check_update_count(0, StapDsTdrName,
+                {stap_name(stap), ".gated"}));
+            void'(stap_ds_seq[stap].check_register(StapDsTdrName, v_select,
+                {stap_name(stap), ".gated"}, "CHK-DS-TDR-HOLD"));
+            void'(stap_ds_seq[stap].check_state(OCAH_JTAG_TEST_LOGIC_RESET,
+                {stap_name(stap), ".gated"}, "CHK-DS-PARKED-TLR"));
+        end
 
         // Step 3: clear the disable without reset — selection resumes from
         // stored state.
         enable_all_debug();
+        if (downstream)
+            settle_stap_release();
         start_scan_window(watch);
         stap_chain_maintain('0, {stap_name(stap), ".resume"}, captured);
         stop_scan_window(edges, counts);
@@ -134,6 +194,13 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                               {stap_name(stap), ".resume"});
         check_stap_chain_readback(captured, '0,
                                   {stap_name(stap), ".resume_readback"});
+        if (downstream) begin
+            // Live splice and park-reset proven: the downstream answers IDCODE
+            // again; reloading DS_TDR reads the pre-gate value.
+            check_ds_idcode(stap, '0, {stap_name(stap), ".resume_idcode"});
+            stap_ds_load_ir(stap, StapDsTdrName, '0, {stap_name(stap), ".resume_load_ir"});
+            stap_ds_read_tdr(stap, '0, {stap_name(stap), ".resume_tdr"}, "CHK-DS-TDR-RESUME");
+        end
 
         // Step 4: with the disable re-asserted, an unrelated STAP stays
         // usable.
@@ -153,12 +220,28 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         active.push_back({stap_prefix(neighbor), "_tdo_oen"});
         start_scan_window({quiet, active});
         stap_chain_maintain(gate, {stap_name(stap), ".isolation_observe"},
-                            unused);
+                            captured);
         check_scan_window(quiet, active,
                           {stap_name(stap), ".isolation_window"});
+        check_stap_chain_readback(captured, gate,
+                                  {stap_name(stap), ".isolation_readback"});
+        if (downstream)
+            stap_ds_seq[stap].clear_updates();
+        if (ds_attached(neighbor)) begin
+            bit [63:0] n_opcode;
+            void'(stap_model.ds[neighbor].opcode_of(StapDsTdrName, n_opcode));
+            v_neighbor = random_pattern(stap_model.ds[neighbor].regs[n_opcode].width);
+            ds_write_and_readback(neighbor, v_neighbor, gate,
+                                  {stap_name(stap), ".isolation_neighbor"});
+        end
+        if (downstream)
+            void'(stap_ds_seq[stap].check_update_count(0, StapDsTdrName,
+                {stap_name(stap), ".isolation"}));
 
         // Step 5: full recovery with a fresh configuration.
         enable_all_debug();
+        if (downstream)
+            settle_stap_release();
         stap_chain_flush({stap_name(stap), ".recover_flush"});
         configure_stap(stap, '0, {stap_name(stap), ".recover"});
         start_scan_window(watch);
@@ -171,6 +254,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                               {stap_name(stap), ".recover"});
         check_stap_chain_readback(captured, '0,
                                   {stap_name(stap), ".recover_readback"});
+        if (downstream)
+            ds_write_and_readback(stap, v_recover, '0, {stap_name(stap), ".recover_tdr"});
 
         stap_chain_flush({stap_name(stap), ".cleanup"});
     endtask
@@ -299,13 +384,31 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         end
     endtask
 
+    // Per-pass evidence every STAP-selection pass must record (cocotb twin:
+    // dtp_stap_scan_test_seq.py); the CHK-DS-* and CHK-SLAVE-* IDs need an
+    // attached downstream TAP and are required only when the bench has one.
+    protected function void stap_sel_required_ids(int unsigned stap,
+                                                  ref string required[$]);
+        required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"};
+        if (stap_ds_attached[stap]) begin
+            required.push_back("CHK-DS-IDCODE");
+            required.push_back("CHK-DS-TDR-READBACK");
+            required.push_back("CHK-DS-TDR-HOLD");
+            required.push_back("CHK-DS-PARKED-TLR");
+            required.push_back("CHK-DS-TDR-RESUME");
+            required.push_back("CHK-SLAVE-DR-UPDATE");
+            required.push_back("CHK-SLAVE-DR-UPDATE-COUNT");
+        end
+    endfunction
+
     task body();
         string required[$];
         seed_scenario_rng();
         case (scenario)
-            "stap_sel_ds", "stap_sel_smc", "stap_sel_sep", "stap_sel_extra":
-                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN",
-                             "CHK-SCAN-CHAIN"};
+            "stap_sel_ds":    stap_sel_required_ids(int'(ST_IO), required);
+            "stap_sel_smc":   stap_sel_required_ids(int'(ST_SMC), required);
+            "stap_sel_sep":   stap_sel_required_ids(int'(ST_SEP), required);
+            "stap_sel_extra": stap_sel_required_ids(int'(ST_EXTRA0), required);
             "ext_stap_scan":
                 required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
             "config_hold":
@@ -318,6 +421,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         endcase
         // Scenario-owned Shift-x exits: skip the scan-count cross-check.
         attach_family_checker(required, 1'b0);
+        attach_downstream_taps();
         enable_all_debug();
         reset_to_tlr();
         case (scenario)

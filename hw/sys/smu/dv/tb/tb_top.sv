@@ -4,7 +4,7 @@
 // SMU OSS cocotb top — Phase-1 SEP=0.
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
 // cocotb BFMs. Macro/I3C/DTP CSR boundaries are idle (no TB placeholder
-// terminators); pulp axi_sim_mem terminates outbound SMN.
+// terminators); smu_axi_out_sim_slave terminates outbound SMN.
 //
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
@@ -230,31 +230,16 @@ module smu_uvm_top
     assign s_axi_rvalid             = smu_axi_in_resp.r_valid;
     assign smu_axi_in_req.r_ready   = s_axi_rready;
 
-    // External SMN AXI slave — pulp axi_sim_mem (SEP/SMC posture).
-    smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
-    smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
-
-    assign axi_out_mem_req[0] = smu_axi_out_req;
-    assign smu_axi_out_resp   = axi_out_mem_resp[0];
-
-    axi_sim_mem #(
-        .AddrWidth         (56),
-        .DataWidth         (64),
-        .IdWidth           (10),
-        .UserWidth         (12),
-        .NumPorts          (1),
-        .axi_req_t         (smu_axi_xbar_pkg::axi_out_req_t),
-        .axi_rsp_t         (smu_axi_xbar_pkg::axi_out_resp_t),
-        .WarnUninitialized (1'b0),
-        .UninitializedData ("zeros"),
-        .ClearErrOnAccess  (1'b1),
-        .ApplDelay         (1ns),
-        .AcqDelay          (3ns)
+    // External SMN AXI slave.
+    smu_axi_out_sim_slave #(
+        .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
+        .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
+        .AddrWidth  (56)
     ) u_axi_out_mem (
-        .clk_i     (clk_smu_i),
-        .rst_ni    (rst_cold_ni),
-        .axi_req_i (axi_out_mem_req),
-        .axi_rsp_o (axi_out_mem_resp)
+        .clk_i      (clk_smu_i),
+        .rst_ni     (rst_cold_ni),
+        .axi_req_i  (smu_axi_out_req),
+        .axi_resp_o (smu_axi_out_resp)
     );
 
     always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin

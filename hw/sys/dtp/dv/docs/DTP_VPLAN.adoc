@@ -14,8 +14,8 @@
 |Project |OCAH
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
-|Reference SPEC |`DTP_SPEC.adoc`
-|Reference CSR |`DTP_CSR.adoc`
+|Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned; includes the `jtag_intf_unit`, `jtag_ptap`, `jtag_stap`, and cross-trigger IP chapters)
+|Register sources |`hw/ip/cross_trigger/cross_trigger_port/regs/cross_trigger_port.rdl`, `hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl` (SystemRDL); JTAG TDR layouts in the `jtag_ptap` IP documentation
 |Open-source scenario-expanded test cases |151
 |===
 
@@ -71,7 +71,8 @@ selectable in the public testlists.
 |AXI4 SMC fabric debug |`ocah_axi_vip` `OcahAxiSlaveAgent`
 |AXI4-Lite SMC/SEP OTP debug |`ocah_axi_vip` AXI-Lite wrappers
 |AXI4-Lite XTRIG CSR |`ocah_axi_vip` `OcahAxiLiteMasterAgent`
-|Boundary scan / STAP loopbacks |OCAH-local scan responder in `env/`
+|Boundary scan loopback |OCAH-local scan responder in `env/`
+|STAP host ports |`ocah_jtag_vip` reactive slave devices (one downstream TAP per port, test-attached; wire loopback otherwise)
 |IEEE 1687 iJTAG SIB networks |OCAH-local iJTAG SIB model in `env/`
 |OCH CTP protocol |OCAH-local CTP BFM in `env/`
 |OCH CTM routing |OCAH-local CTM BFM and monitors in `env/`
@@ -234,10 +235,10 @@ selectable in the public testlists.
 |`dtp_ijtag_sib_random_test` |`dtp_ijtag_sib_random_test` |`ocah_jtag_vip`, OCAH-local iJTAG SIB model |Exhaustive/random SIB patterns
 |`dtp_ijtag_dft_test` |`dtp_ijtag_dft_test` |`ocah_jtag_vip`, OCAH-local iJTAG SIB model |DFT secure/non-secure access
 |`dtp_ijtag_dfd_test` |`dtp_ijtag_dfd_test` |`ocah_jtag_vip`, OCAH-local iJTAG SIB model |DFD access
-|`dtp_3dcr_stap_sel_ds_test` |`dtp_3dcr_stap_sel_ds_test` |`ocah_jtag_vip`, OCAH-local STAP model |Downstream STAP selection
-|`dtp_3dcr_stap_sel_smc_test` |`dtp_3dcr_stap_sel_smc_test` |`ocah_jtag_vip`, OCAH-local STAP model |SMC STAP selection
-|`dtp_3dcr_stap_sel_extra_test` |`dtp_3dcr_stap_sel_extra_test` |`ocah_jtag_vip`, OCAH-local STAP model |Extra STAP selection
-|`dtp_3dcr_stap_sel_sep_test` |`dtp_3dcr_stap_sel_sep_test` |`ocah_jtag_vip`, OCAH-local STAP model |SEP STAP selection
+|`dtp_3dcr_stap_sel_ds_test` |`dtp_3dcr_stap_sel_ds_test` |`ocah_jtag_vip` (master + downstream slave TAPs), OCAH-local STAP model |Downstream STAP selection with downstream TDR readback
+|`dtp_3dcr_stap_sel_smc_test` |`dtp_3dcr_stap_sel_smc_test` |`ocah_jtag_vip` (master + downstream slave TAPs), OCAH-local STAP model |SMC STAP selection with downstream TDR readback
+|`dtp_3dcr_stap_sel_extra_test` |`dtp_3dcr_stap_sel_extra_test` |`ocah_jtag_vip` (master + downstream slave TAPs), OCAH-local STAP model |Extra STAP selection with downstream TDR readback
+|`dtp_3dcr_stap_sel_sep_test` |`dtp_3dcr_stap_sel_sep_test` |`ocah_jtag_vip` (master + downstream slave TAPs), OCAH-local STAP model |SEP STAP selection with downstream TDR readback
 |`dtp_ext_stap_scan_test` |`dtp_ext_stap_scan_test` |`ocah_jtag_vip`, OCAH-local STAP model |Extended STAP scan
 |`dtp_3dcr_config_hold_test` |`dtp_3dcr_config_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |3DCR config hold
 |`dtp_3dcr_tms_hold_test` |`dtp_3dcr_tms_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |3DCR TMS hold
@@ -1759,7 +1760,7 @@ a. Confirm status is OKAY and the captured address equals `base+N*4`.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge all targeting one fixed address (no-incr mode)
-* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
+* Each beat reuses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2057,7 +2058,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4-Lite writes through the SMC OTP bridge all targeting one fixed 32-bit address (no-incr mode)
-* Each beat re-uses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
+* Each beat reuses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -2355,7 +2356,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4-Lite writes through the SEP OTP bridge all targeting one fixed 32-bit address (no-incr mode)
-* Each beat re-uses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
+* Each beat reuses the same address with fresh data, exercising write-over-write at one AXI-Lite subordinate location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -5064,44 +5065,46 @@ a. Verify the SIB stays closed and none of the DFD scan controls pulse across th
 
 *Source Module*: `dtp_3dcr_stap_sel_ds_test`
 
-*BFM / Model*: `ocah_jtag_vip`, OCAH-local STAP model
+*BFM / Model*: `ocah_jtag_vip` (primary TAP master and the downstream slave TAPs behind every STAP host port), OCAH-local STAP chain model
 
-*Objective*: Downstream STAP selection
+*Objective*: Downstream (I/O) STAP selection proved end to end against a downstream TAP
 
 *Test Coverage*:
 
-* TAP_3DCR (IR=0x0E) selects the downstream (I/O) STAP by writing 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
-* Configuration opens the DS SIB, writes the 3DCR, and closes the SIB in one DR scan so subsequent scans carry only a 1-bit SIB per STAP
-* The `TAP_3DCR` data register is the 2-bit PTAP 3DCR followed serially by the STAP SIB chain, so configuration uses composed full-chain scans; a selected I/O STAP additionally splices one extra flop into the chain through its TDI lockup latch
-* While selected, the I/O STAP forwards: its host `tdo_oen` pulses during shifts and its host `tms` follows the live TMS (temporal-window evidence); composed maintain scans read the chain state back against the reference model
-* `dbg_disable_i.stap_io = 1` stops forwarding (its `tdo_oen` never pulses and `tms` parks at the stored `tms_hold`), and a 3DCR update attempted while gated is ignored
-* The stored selection resumes, without any reset, once the disable clears; an unrelated STAP configured while the target stays gated keeps working
+* TAP_3DCR (IR=0x0E) selects the I/O STAP by writing 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1` through composed full-chain scans (the `TAP_3DCR` data register is the 2-bit PTAP 3DCR followed serially by the STAP SIB chain); a selected I/O STAP additionally splices one extra flop into the chain through its TDI lockup latch; every scan issued while a STAP is selected is composed over the full network, IR scans included, because the PTAP routes its instruction shift-out into the STAP chain
+* A behavioral downstream TAP (`ocah_jtag_vip` slave device: 5-bit IR, distinct IDCODE, one writable `DS_TDR` of a distinct width) is spliced behind every STAP host port; its IR and selected data register become chain segments the reference model predicts independently of the device engine
+* While selected, the downstream IDCODE reads back through the STAP, a network-wide IR scan selects `DS_TDR`, and a per-pass random value written through the chain reads back and is confirmed by the device's Update-DR record; the I/O host port forwards (`tdo_oen` pulses, `tms` follows the live TMS) as corroboration
+* `dbg_disable_i.stap_io = 1` stops forwarding, parks the host `tms` at the stored `tms_hold=1` so the downstream TAP sits in Test-Logic-Reset, blocks a 3DCR update attempted while gated, and leaves the downstream register unchanged with no Update-DR recorded
+* Once the disable clears, without any reset, the stored selection resumes: the downstream answers IDCODE again (park reset proven) and reloading `DS_TDR` returns the pre-gate value; an unrelated STAP's downstream TAP completes a full load/write/read cycle while the target stays gated and records no update; a fresh configuration recovers fully
 
 *Test Procedure*:
 
 [arabic]
 . Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the I/O STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
-. Run a state-maintaining chain scan inside a temporal window; verify the I/O host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
+. Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
+. Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
 . Assert `dbg_disable_i.stap_io = 1` and attempt a randomized deselecting 3DCR write:
 a. Verify `tdo_oen` never pulses and `tms` parks at the stored `tms_hold=1` across the whole gated window.
 b. Verify the chain readback shows the update was ignored (the STAP captures its masked `stap_sel` as 0 while the stored payload survives).
-. Clear the disable without reset; verify forwarding resumes from the stored selection (the gated write never landed).
-. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet (isolation).
-. Clear all disables, flush, and configure fresh; verify full recovery.
+c. Verify the downstream device recorded no Update-DR, still holds the written value (`CHK-DS-TDR-HOLD`), and sits in Test-Logic-Reset (`CHK-DS-PARKED-TLR`).
+. Clear the disable without reset; verify forwarding resumes from the stored selection, the downstream answers IDCODE again, and reloading `DS_TDR` reads back the pre-gate value (`CHK-DS-TDR-RESUME`).
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet, the neighbor's downstream TAP completes a load/write/read cycle, and the gated port's device records no update (isolation).
+. Clear all disables, flush (composed IR load parking the spliced downstream TAPs on BYPASS), and configure fresh; verify full recovery with a new `DS_TDR` write and readback.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_ds_select_chk` |Selected I/O STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
-|`stap_ds_readback_chk` |Composed chain readback matches the reference model in every state
-|`stap_ds_gate_chk` |With `dbg_disable_i.stap_io` asserted, forwarding stops and a gated 3DCR update is ignored
-|`stap_ds_isolation_chk` |An unrelated STAP stays usable while the I/O STAP is gated
-|`stap_ds_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
+|`stap_ds_select_chk` |Selected I/O STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS (`CHK-SCAN-WIN`)
+|`stap_ds_readback_chk` |Composed chain readback matches the reference model in every state (`CHK-SCAN-CHAIN`)
+|`stap_ds_downstream_chk` |Downstream IDCODE and `DS_TDR` read back through the selected STAP; the device's Update-DR record matches the write (`CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`)
+|`stap_ds_gate_chk` |With `dbg_disable_i.stap_io` asserted, forwarding stops, a gated 3DCR update is ignored, and the downstream register is frozen in Test-Logic-Reset (`CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`)
+|`stap_ds_isolation_chk` |An unrelated STAP and its downstream TAP stay usable while the I/O STAP is gated
+|`stap_ds_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The I/O STAP forwards only while selected and enabled, `dbg_disable_i.stap_io` alone gates it with stored state preserved and no delayed effect, and recovery needs no reset, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The I/O STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_io` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5110,42 +5113,46 @@ b. Verify the chain readback shows the update was ignored (the STAP captures its
 
 *Source Module*: `dtp_3dcr_stap_sel_smc_test`
 
-*BFM / Model*: `ocah_jtag_vip`, OCAH-local STAP model
+*BFM / Model*: `ocah_jtag_vip` (primary TAP master and the downstream slave TAPs behind every STAP host port), OCAH-local STAP chain model
 
-*Objective*: SMC STAP selection
+*Objective*: SMC STAP selection proved end to end against a downstream TAP
 
 *Test Coverage*:
 
-* TAP_3DCR (IR=0x0E) selects the SMC debug STAP via 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
-* Configuration opens the SMC SIB, writes the 3DCR, and closes the SIB in one DR scan to minimize subsequent chain length
-* Composed full-chain TAP_3DCR scans select the SMC debug STAP (`stap_sel=1`, `tms_hold=1`, `config_hold=1`)
-* While selected, the SMC host port forwards (`tdo_oen` pulses, `tms` follows the live TMS); maintain-scan readbacks match the reference model
-* `dbg_disable_i.stap_smc = 1` stops forwarding, parks `tms` at the stored `tms_hold`, and a gated 3DCR update is ignored
-* The stored selection resumes without any reset once the disable clears; a neighbor STAP configured while gated keeps working
+* TAP_3DCR (IR=0x0E) selects the SMC debug STAP by writing 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1` through composed full-chain scans (the `TAP_3DCR` data register is the 2-bit PTAP 3DCR followed serially by the STAP SIB chain); every scan issued while a STAP is selected is composed over the full network, IR scans included, because the PTAP routes its instruction shift-out into the STAP chain
+* A behavioral downstream TAP (`ocah_jtag_vip` slave device: 5-bit IR, distinct IDCODE, one writable `DS_TDR` of a distinct width) is spliced behind every STAP host port; its IR and selected data register become chain segments the reference model predicts independently of the device engine
+* While selected, the downstream IDCODE reads back through the STAP, a network-wide IR scan selects `DS_TDR`, and a per-pass random value written through the chain reads back and is confirmed by the device's Update-DR record; the SMC host port forwards (`tdo_oen` pulses, `tms` follows the live TMS) as corroboration
+* `dbg_disable_i.stap_smc = 1` stops forwarding, parks the host `tms` at the stored `tms_hold=1` so the downstream TAP sits in Test-Logic-Reset, blocks a 3DCR update attempted while gated, and leaves the downstream register unchanged with no Update-DR recorded
+* Once the disable clears, without any reset, the stored selection resumes: the downstream answers IDCODE again (park reset proven) and reloading `DS_TDR` returns the pre-gate value; an unrelated STAP's downstream TAP completes a full load/write/read cycle while the target stays gated and records no update; a fresh configuration recovers fully
 
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain, then configure the SMC STAP with composed scans (open its SIB, write its 3DCR).
-. Windowed maintain scan: verify SMC host `tdo_oen` pulses, `tms` follows the live TMS, and the chain readback matches the model.
-. Assert `dbg_disable_i.stap_smc = 1` and attempt a randomized deselecting 3DCR write; verify `tdo_oen` never pulses, `tms` parks at the stored `tms_hold=1`, and the readback shows the update was ignored.
-. Clear the disable without reset; verify forwarding resumes from the stored selection.
-. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet.
-. Clear all disables, flush, and configure fresh; verify full recovery.
+. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the SMC debug STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
+. Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
+. Assert `dbg_disable_i.stap_smc = 1` and attempt a randomized deselecting 3DCR write:
+a. Verify `tdo_oen` never pulses and `tms` parks at the stored `tms_hold=1` across the whole gated window.
+b. Verify the chain readback shows the update was ignored (the STAP captures its masked `stap_sel` as 0 while the stored payload survives).
+c. Verify the downstream device recorded no Update-DR, still holds the written value (`CHK-DS-TDR-HOLD`), and sits in Test-Logic-Reset (`CHK-DS-PARKED-TLR`).
+. Clear the disable without reset; verify forwarding resumes from the stored selection, the downstream answers IDCODE again, and reloading `DS_TDR` reads back the pre-gate value (`CHK-DS-TDR-RESUME`).
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet, the neighbor's downstream TAP completes a load/write/read cycle, and the gated port's device records no update (isolation).
+. Clear all disables, flush (composed IR load parking the spliced downstream TAPs on BYPASS), and configure fresh; verify full recovery with a new `DS_TDR` write and readback.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_smc_select_chk` |Selected SMC STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
-|`stap_smc_readback_chk` |Composed chain readback matches the reference model in every state
-|`stap_smc_gate_chk` |With `dbg_disable_i.stap_smc` asserted, forwarding stops and a gated 3DCR update is ignored
-|`stap_smc_isolation_chk` |An unrelated STAP stays usable while the SMC STAP is gated
-|`stap_smc_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
+|`stap_smc_select_chk` |Selected SMC debug STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS (`CHK-SCAN-WIN`)
+|`stap_smc_readback_chk` |Composed chain readback matches the reference model in every state (`CHK-SCAN-CHAIN`)
+|`stap_smc_downstream_chk` |Downstream IDCODE and `DS_TDR` read back through the selected STAP; the device's Update-DR record matches the write (`CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`)
+|`stap_smc_gate_chk` |With `dbg_disable_i.stap_smc` asserted, forwarding stops, a gated 3DCR update is ignored, and the downstream register is frozen in Test-Logic-Reset (`CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`)
+|`stap_smc_isolation_chk` |An unrelated STAP and its downstream TAP stay usable while the SMC debug STAP is gated
+|`stap_smc_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The SMC STAP forwards only while selected and enabled, `dbg_disable_i.stap_smc` alone gates it with stored state preserved, and recovery needs no reset, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The SMC debug STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_smc` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5154,41 +5161,46 @@ b. Verify the chain readback shows the update was ignored (the STAP captures its
 
 *Source Module*: `dtp_3dcr_stap_sel_extra_test`
 
-*BFM / Model*: `ocah_jtag_vip`, OCAH-local STAP model
+*BFM / Model*: `ocah_jtag_vip` (primary TAP master and the downstream slave TAPs behind every STAP host port), OCAH-local STAP chain model
 
-*Objective*: Extra STAP selection
+*Objective*: Extra STAP selection proved end to end against a downstream TAP
 
 *Test Coverage*:
 
-* TAP_3DCR (IR=0x0E) independently selects each extra STAP (e.g. Yayoi TAP) via 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
-* Configuration opens the extra STAP SIB, writes the 3DCR, and closes the SIB so the 3DCR is removed and only a 1-bit SIB remains in subsequent scans
-* While selected, `jtag_stap_extra_host_tap_ctrl_o[0]` forwards TAP control (`tdo_oen` pulses, `tms` follows the live TMS)
-* `dbg_disable_i.stap_extra = 1` gates the extra STAPs: forwarding stops, `tms` parks at the stored `tms_hold`, and a gated 3DCR update is ignored
-* The stored selection resumes without any reset once the disable clears; a neighbor STAP configured while gated keeps working
+* TAP_3DCR (IR=0x0E) selects the extra STAP by writing 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1` through composed full-chain scans (the `TAP_3DCR` data register is the 2-bit PTAP 3DCR followed serially by the STAP SIB chain); every scan issued while a STAP is selected is composed over the full network, IR scans included, because the PTAP routes its instruction shift-out into the STAP chain
+* A behavioral downstream TAP (`ocah_jtag_vip` slave device: 5-bit IR, distinct IDCODE, one writable `DS_TDR` of a distinct width) is spliced behind every STAP host port; its IR and selected data register become chain segments the reference model predicts independently of the device engine
+* While selected, the downstream IDCODE reads back through the STAP, a network-wide IR scan selects `DS_TDR`, and a per-pass random value written through the chain reads back and is confirmed by the device's Update-DR record; the `jtag_stap_extra_host_tap_ctrl_o[0]` port forwards (`tdo_oen` pulses, `tms` follows the live TMS) as corroboration
+* `dbg_disable_i.stap_extra = 1` stops forwarding, parks the host `tms` at the stored `tms_hold=1` so the downstream TAP sits in Test-Logic-Reset, blocks a 3DCR update attempted while gated, and leaves the downstream register unchanged with no Update-DR recorded
+* Once the disable clears, without any reset, the stored selection resumes: the downstream answers IDCODE again (park reset proven) and reloading `DS_TDR` returns the pre-gate value; an unrelated STAP's downstream TAP completes a full load/write/read cycle while the target stays gated and records no update; a fresh configuration recovers fully
 
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain, then configure extra STAP[0] with composed scans (open its SIB, write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`).
-. Windowed maintain scan: verify `jtag_stap_extra_host_tap_ctrl_o[0]` forwards (host `tdo_oen` pulses, `tms` follows) and the chain readback matches the model.
-. Assert `dbg_disable_i.stap_extra = 1` and attempt a randomized deselecting 3DCR write; verify forwarding stops, `tms` parks at the stored `tms_hold=1`, and the readback shows the update was ignored.
-. Clear the disable without reset; verify forwarding resumes from the stored selection.
-. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet.
-. Clear all disables, flush, and configure fresh; verify full recovery.
+. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the extra STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
+. Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
+. Assert `dbg_disable_i.stap_extra = 1` and attempt a randomized deselecting 3DCR write:
+a. Verify `tdo_oen` never pulses and `tms` parks at the stored `tms_hold=1` across the whole gated window.
+b. Verify the chain readback shows the update was ignored (the STAP captures its masked `stap_sel` as 0 while the stored payload survives).
+c. Verify the downstream device recorded no Update-DR, still holds the written value (`CHK-DS-TDR-HOLD`), and sits in Test-Logic-Reset (`CHK-DS-PARKED-TLR`).
+. Clear the disable without reset; verify forwarding resumes from the stored selection, the downstream answers IDCODE again, and reloading `DS_TDR` reads back the pre-gate value (`CHK-DS-TDR-RESUME`).
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet, the neighbor's downstream TAP completes a load/write/read cycle, and the gated port's device records no update (isolation).
+. Clear all disables, flush (composed IR load parking the spliced downstream TAPs on BYPASS), and configure fresh; verify full recovery with a new `DS_TDR` write and readback.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_extra_select_chk` |Selected extra STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
-|`stap_extra_readback_chk` |Composed chain readback matches the reference model in every state
-|`stap_extra_gate_chk` |With `dbg_disable_i.stap_extra` asserted, forwarding stops and a gated 3DCR update is ignored
-|`stap_extra_isolation_chk` |An unrelated STAP stays usable while the extra STAP is gated
-|`stap_extra_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
+|`stap_extra_select_chk` |Selected extra STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS (`CHK-SCAN-WIN`)
+|`stap_extra_readback_chk` |Composed chain readback matches the reference model in every state (`CHK-SCAN-CHAIN`)
+|`stap_extra_downstream_chk` |Downstream IDCODE and `DS_TDR` read back through the selected STAP; the device's Update-DR record matches the write (`CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`)
+|`stap_extra_gate_chk` |With `dbg_disable_i.stap_extra` asserted, forwarding stops, a gated 3DCR update is ignored, and the downstream register is frozen in Test-Logic-Reset (`CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`)
+|`stap_extra_isolation_chk` |An unrelated STAP and its downstream TAP stay usable while the extra STAP is gated
+|`stap_extra_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The extra STAP forwards only while selected and enabled, `dbg_disable_i.stap_extra` alone gates it with stored state preserved, and recovery needs no reset, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The extra STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_extra` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5197,41 +5209,46 @@ b. Verify the chain readback shows the update was ignored (the STAP captures its
 
 *Source Module*: `dtp_3dcr_stap_sel_sep_test`
 
-*BFM / Model*: `ocah_jtag_vip`, OCAH-local STAP model
+*BFM / Model*: `ocah_jtag_vip` (primary TAP master and the downstream slave TAPs behind every STAP host port), OCAH-local STAP chain model
 
-*Objective*: SEP STAP selection
+*Objective*: SEP STAP selection proved end to end against a downstream TAP
 
 *Test Coverage*:
 
-* TAP_3DCR (IR=0x0E) selects the SEP debug STAP via 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
-* Configuration opens the SEP SIB, writes the 3DCR, and closes the SIB in one DR scan to minimize subsequent chain length
-* While selected, the SEP host port forwards (`tdo_oen` pulses, `tms` follows the live TMS); maintain-scan readbacks match the reference model
-* `dbg_disable_i.stap_sep = 1` stops forwarding, parks `tms` at the stored `tms_hold`, and a gated 3DCR update is ignored
-* The stored selection resumes without any reset once the disable clears; a neighbor STAP configured while gated keeps working
+* TAP_3DCR (IR=0x0E) selects the SEP debug STAP by writing 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1` through composed full-chain scans (the `TAP_3DCR` data register is the 2-bit PTAP 3DCR followed serially by the STAP SIB chain); every scan issued while a STAP is selected is composed over the full network, IR scans included, because the PTAP routes its instruction shift-out into the STAP chain
+* A behavioral downstream TAP (`ocah_jtag_vip` slave device: 5-bit IR, distinct IDCODE, one writable `DS_TDR` of a distinct width) is spliced behind every STAP host port; its IR and selected data register become chain segments the reference model predicts independently of the device engine
+* While selected, the downstream IDCODE reads back through the STAP, a network-wide IR scan selects `DS_TDR`, and a per-pass random value written through the chain reads back and is confirmed by the device's Update-DR record; the SEP host port forwards (`tdo_oen` pulses, `tms` follows the live TMS) as corroboration
+* `dbg_disable_i.stap_sep = 1` stops forwarding, parks the host `tms` at the stored `tms_hold=1` so the downstream TAP sits in Test-Logic-Reset, blocks a 3DCR update attempted while gated, and leaves the downstream register unchanged with no Update-DR recorded
+* Once the disable clears, without any reset, the stored selection resumes: the downstream answers IDCODE again (park reset proven) and reloading `DS_TDR` returns the pre-gate value; an unrelated STAP's downstream TAP completes a full load/write/read cycle while the target stays gated and records no update; a fresh configuration recovers fully
 
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain, then configure the SEP STAP with composed scans (open its SIB, write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`).
-. Windowed maintain scan: verify SEP host `tdo_oen` pulses, `tms` follows the live TMS, and the chain readback matches the model.
-. Assert `dbg_disable_i.stap_sep = 1` and attempt a randomized deselecting 3DCR write; verify forwarding stops, `tms` parks at the stored `tms_hold=1`, and the readback shows the update was ignored.
-. Clear the disable without reset; verify forwarding resumes from the stored selection.
-. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet.
-. Clear all disables, flush, and configure fresh; verify full recovery.
+. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the SEP debug STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
+. Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
+. Assert `dbg_disable_i.stap_sep = 1` and attempt a randomized deselecting 3DCR write:
+a. Verify `tdo_oen` never pulses and `tms` parks at the stored `tms_hold=1` across the whole gated window.
+b. Verify the chain readback shows the update was ignored (the STAP captures its masked `stap_sel` as 0 while the stored payload survives).
+c. Verify the downstream device recorded no Update-DR, still holds the written value (`CHK-DS-TDR-HOLD`), and sits in Test-Logic-Reset (`CHK-DS-PARKED-TLR`).
+. Clear the disable without reset; verify forwarding resumes from the stored selection, the downstream answers IDCODE again, and reloading `DS_TDR` reads back the pre-gate value (`CHK-DS-TDR-RESUME`).
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet, the neighbor's downstream TAP completes a load/write/read cycle, and the gated port's device records no update (isolation).
+. Clear all disables, flush (composed IR load parking the spliced downstream TAPs on BYPASS), and configure fresh; verify full recovery with a new `DS_TDR` write and readback.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_sep_select_chk` |Selected SEP STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
-|`stap_sep_readback_chk` |Composed chain readback matches the reference model in every state
-|`stap_sep_gate_chk` |With `dbg_disable_i.stap_sep` asserted, forwarding stops and a gated 3DCR update is ignored
-|`stap_sep_isolation_chk` |An unrelated STAP stays usable while the SEP STAP is gated
-|`stap_sep_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
+|`stap_sep_select_chk` |Selected SEP debug STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS (`CHK-SCAN-WIN`)
+|`stap_sep_readback_chk` |Composed chain readback matches the reference model in every state (`CHK-SCAN-CHAIN`)
+|`stap_sep_downstream_chk` |Downstream IDCODE and `DS_TDR` read back through the selected STAP; the device's Update-DR record matches the write (`CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`)
+|`stap_sep_gate_chk` |With `dbg_disable_i.stap_sep` asserted, forwarding stops, a gated 3DCR update is ignored, and the downstream register is frozen in Test-Logic-Reset (`CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`)
+|`stap_sep_isolation_chk` |An unrelated STAP and its downstream TAP stay usable while the SEP debug STAP is gated
+|`stap_sep_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The SEP STAP forwards only while selected and enabled, `dbg_disable_i.stap_sep` alone gates it with stored state preserved, and recovery needs no reset, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The SEP debug STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_sep` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
 
@@ -6624,7 +6641,8 @@ temporary testlist aliases.
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|STAP/iJTAG scan chains are looped back (`scan_in <- scan_out`) in `tb_top` |Scan scenarios validate the DTP-side path plumbing, not an external iJTAG network |Attach an iJTAG network model behind the STAP when integration scenarios need one
+|iJTAG scan chains are looped back (`scan_in <- scan_out`) in `tb_top` |iJTAG scenarios validate the DTP-side SIB plumbing, not an external instrument network |Attach an iJTAG instrument model behind the SIBs when integration scenarios need one
+|The downstream STAP TAPs are behavioral `ocah_jtag_vip` devices (5-bit IR, IDCODE, one writable TDR) attached only by the STAP-selection scenarios |Other scan scenarios see the STAP host ports as wire loopbacks |Attach the devices in further scenarios (for example `dtp_3dcr_tms_hold_test`) as their evidence needs grow
 |The SV-UVM harness ties off the XTRIG CSR port, `xtrig_clk_stop_req`, and SEP OTP AXI-Lite |XTRIG and SEP-OTP scenarios run in the cocotb framework only |Extend the UVM harness as the SV-UVM flow grows beyond smoke
 |The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus |The `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
 |SV covergroups are not supported by Verilator |Functional coverage must be Python-side or commercial-sim |See `DTP_FCOV.adoc`
