@@ -3048,15 +3048,24 @@ def _coverage_design_dbs(
 ) -> list[Path]:
     """One design coverage database per build target that fed the merge.
 
+    Always resolved from the merge inputs' own targets, for two reasons.
+
     A single design database would project every leaf onto one elaboration. For
-    SEP that means the CPU-stub design: the full-CPU leaves would land on a
-    design with no real `sep_cpu`, and the denominator would be one target's
-    instead of the union's -- an error in the flattering direction. So resolve
-    the database per target, and take the target list from the merge inputs
-    rather than from the run's item order, which must never move the number.
+    SEP that means the full-CPU leaves landing on a design with no real
+    `sep_cpu`, and a denominator of one target's instead of the union's -- an
+    error in the flattering direction.
+
+    And the config this stage receives cannot answer the question at all: an
+    item-less stage runs against the untargeted config, whose `[defaults].target`
+    is `default` no matter which targets the run built. A stub-only SEP run built
+    `lsu_stub_all_live` and the merge then looked for `default`'s database, which
+    no stage had written. So the inputs are the authority, not this config and
+    not the run's item order, which must never move the number.
     """
 
-    if len(targets) <= 1:
+    if not targets:
+        # No target provenance at all: a legacy run directory whose leaves predate
+        # recorded targets. Fall back to the config-derived database.
         return [design_db] if design_db is not None else []
     target_cfgs = getattr(args, "_coverage_target_cfgs", None) or {}
     base_sim_cfg = getattr(args, "_coverage_base_sim_cfg", None)
@@ -3070,10 +3079,11 @@ def _coverage_design_dbs(
                     "cannot resolve a design coverage database for"
                 )
             # A replay (`--run-dir ... --stage cov_merge`) plans only the default
-            # target, so re-resolve the others from the untargeted config. Multi-target
-            # runs always scope the filelist per target, so force it here too and the
-            # build fingerprint matches the one the run compiled under.
-            cfg = targeted_sim_cfg(base_sim_cfg, target, force_target_filelist=True)
+            # target, so re-resolve the others from the untargeted config. Filelist
+            # scoping has to match what the run compiled under or the build
+            # fingerprint moves and the database path with it: a run whose leaves
+            # span targets scoped per target, a single-target run did not.
+            cfg = targeted_sim_cfg(base_sim_cfg, target, force_target_filelist=len(targets) > 1)
         db = _coverage_design_db(flow, root, cfg, tool_cov, args)
         if db is None:
             raise CoverageError(
@@ -3226,7 +3236,7 @@ def coverage_stage(
         dry_design_dbs: list[str] | None = None
         if phase == "merge" and "{design_db}" in " ".join(template):
             planned = sorted(getattr(args, "_coverage_target_cfgs", None) or {})
-            if len(planned) > 1:
+            if planned:
                 dry_design_dbs = [
                     str(candidate)
                     for candidate in _coverage_design_dbs(
