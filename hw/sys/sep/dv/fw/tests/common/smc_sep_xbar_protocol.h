@@ -78,7 +78,6 @@
 
 /* CLA node0 EAP CSR values (verbatim, matching the 004 real-CLA release; satisfies the SV
  * "Real CLA boot" liveness monitor at smc_chiplet_wrap_uvm_top.sv:805). */
-#define XBAR_CLA_CDFDCSR_EXPECT 0x8000000000000000ULL
 #define XBAR_CLA_CTRLSTATUS_EXPECT 0x60
 #define XBAR_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define XBAR_CLA_EAP1_RELEASE 0x144FBFC000ULL
