@@ -90,14 +90,15 @@ merges/reports through the `cov_merge`/`cov_report` stages. Under VCS that is
 toggle).
 
 ```bash
-python3 tools/dv/run_dv.py --dut sep --items cov_all --regress --cov --tool vcs \
+python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --sim-jobs 32 --build-jobs 32
 ```
 
-`cov_all` is the coverage set: every test the VPLAN grades, i.e. `all` minus the
-four `rom_fw` leaves, which exercise ROM firmware rather than ROM hardware and
-are the only tests on a third RTL target. Its `expected_count` fails the run when
-membership drifts from the class groups.
+`all` is the coverage set: every test the VPLAN grades, which is exactly `no_cpu`
++ `cpu`. Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third
+RTL target, firmware rather than hardware contracts -- so reaching those four
+means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
+drifts from the class groups.
 
 The set spans two build targets (`lsu_stub_all_live` and the full-CPU `default`),
 which merge into one database: `urg` accumulates by design hierarchy name, and
