@@ -23,6 +23,7 @@ if _dv_root_str not in sys.path:
 from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
+from env.dtp_scan_ref_model import STAP_ORDER
 
 
 class dtp_base_test(uvm_test):
@@ -34,6 +35,12 @@ class dtp_base_test(uvm_test):
     use_axi_scoreboard = False
     axi_checker_required_ids: tuple[str, ...] = ()
     axi_checker_stream_minimums: dict[str, int] | None = None
+
+    # Downstream STAP TAPs: the STAP host ports (env.dtp_scan_ref_model
+    # STAP_ORDER names) that get a reactive ocah_jtag_vip slave device spliced
+    # behind them for this test. Default empty keeps every port's wire
+    # loopback; the STAP-selection scenarios attach all four.
+    stap_ds_attach: tuple[str, ...] = ()
 
     # Every looped scenario runs at least this many passes by default. Each
     # pass gets its own scenario seed (base_seed + loop_idx), so directed
@@ -86,6 +93,10 @@ class dtp_base_test(uvm_test):
         self.cfg.axi_scoreboard_enabled = self.use_axi_scoreboard
         self.cfg.axi_checker_required_ids = set(self.axi_checker_required_ids)
         self.cfg.axi_checker_stream_minimums = dict(self.axi_checker_stream_minimums or {})
+        unknown = set(self.stap_ds_attach) - set(STAP_ORDER)
+        if unknown:
+            raise ValueError(f"unknown STAP name(s) in stap_ds_attach: {sorted(unknown)}")
+        self.cfg.stap_ds_attach = set(self.stap_ds_attach)
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.env = DtpEnv("env", self)
 
@@ -151,6 +162,12 @@ class dtp_base_test(uvm_test):
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0
+        # Downstream STAP TAP ports: the device TDO inputs idle low and each
+        # port's attach mux follows the test's stap_ds_attach selection
+        # (0 = wire loopback) for the whole run.
+        for stap in STAP_ORDER:
+            getattr(dut, f"jtag_stap_{stap}_tdi").value = 0
+            getattr(dut, f"jtag_stap_{stap}_ds_en").value = int(stap in self.cfg.stap_ds_attach)
         # Startup vector, driven while POR is still asserted: all eleven
         # active-high disables cleared so tests begin with full debug access
         # and assert the disables they gate explicitly. The DUT itself is

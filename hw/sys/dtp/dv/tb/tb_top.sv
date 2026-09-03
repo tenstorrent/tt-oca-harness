@@ -19,7 +19,12 @@
 // (jtag_tap_ctrlr in jtag_intf_unit), so the client port is the decoded
 // {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG pins.
 //
-// The STAP/iJTAG scan chains are looped back (scan_in = scan_out). The
+// The BSR/iJTAG scan chains are looped back (scan_in = scan_out). Each STAP
+// host port loops its TDO back onto its TDI by default; a per-port
+// jtag_stap_<x>_ds_en input instead splices the TB's downstream TAP
+// (jtag_stap_<x>_tdo out, jtag_stap_<x>_tdi in) behind the port, so the
+// STAP-selection scenarios prove forwarding against a real IEEE 1149.1
+// device (the UVM shape binds four ocah_jtag_vip slave agents there). The
 // functional ports are otherwise pin-exposed: the JTAG2AXI and SMC/SEP OTP
 // AXI-Lite managers are answered by AXI memory/RAM BFMs on flattened
 // struct <-> signal adapters, and the XTRIG CSR AXI-Lite, cross-trigger
@@ -96,7 +101,8 @@ module dtp_uvm_top
     logic dft_secure_scan_out;
     logic dft_scan_out;
 
-    // STAP TAP host ports: loop tdi <- tdo.
+    // STAP TAP host ports: tdi <- tdo loopback, or the attached downstream
+    // TAP's TDO when the port's ds_en is set.
     jtag_tap_ctrl_t stap_io_tap_ctrl;
     jtag_tap_ctrl_t stap_smc_tap_ctrl;
     jtag_tap_ctrl_t stap_sep_tap_ctrl;
@@ -106,6 +112,19 @@ module dtp_uvm_top
     logic stap_sep_tdo;
     logic stap_extra_tdo  [0:0];
     logic stap_extra_tdo_oen [0:0];
+    logic stap_io_host_tdi;
+    logic stap_smc_host_tdi;
+    logic stap_sep_host_tdi;
+    logic stap_extra_host_tdi [0:0];
+
+    assign jtag_stap_io_tdo     = stap_io_tdo;
+    assign jtag_stap_smc_tdo    = stap_smc_tdo;
+    assign jtag_stap_sep_tdo    = stap_sep_tdo;
+    assign jtag_stap_extra0_tdo = stap_extra_tdo[0];
+    assign stap_io_host_tdi      = jtag_stap_io_ds_en     ? jtag_stap_io_tdi     : stap_io_tdo;
+    assign stap_smc_host_tdi     = jtag_stap_smc_ds_en    ? jtag_stap_smc_tdi    : stap_smc_tdo;
+    assign stap_sep_host_tdi     = jtag_stap_sep_ds_en    ? jtag_stap_sep_tdi    : stap_sep_tdo;
+    assign stap_extra_host_tdi[0] = jtag_stap_extra0_ds_en ? jtag_stap_extra0_tdi : stap_extra_tdo[0];
 
     // IC_RESET default slice structs are one `{ovrd, val}` pair per slice in
     // this standalone OSS DTP instantiation. Flatten them for cocotb sampling.
@@ -434,27 +453,27 @@ module dtp_uvm_top
         .jtag_bsr_host_scan_in_i          (bsr_scan_out),
         .jtag_bsr_host_scan_out_o         (bsr_scan_out),
 
-        // I/O STAP host (loopback)
+        // I/O STAP host (loopback, or the downstream TAP when ds_en)
         .jtag_stap_io_host_tap_ctrl_o     (stap_io_tap_ctrl),
-        .jtag_stap_io_host_tdi_i          (stap_io_tdo),
+        .jtag_stap_io_host_tdi_i          (stap_io_host_tdi),
         .jtag_stap_io_host_tdo_o          (stap_io_tdo),
         .jtag_stap_io_host_tdo_oen_o      (jtag_stap_io_tdo_oen),
 
-        // SMC debug STAP host (loopback)
+        // SMC debug STAP host (loopback, or the downstream TAP when ds_en)
         .jtag_stap_smc_host_tap_ctrl_o    (stap_smc_tap_ctrl),
-        .jtag_stap_smc_host_tdi_i         (stap_smc_tdo),
+        .jtag_stap_smc_host_tdi_i         (stap_smc_host_tdi),
         .jtag_stap_smc_host_tdo_o         (stap_smc_tdo),
         .jtag_stap_smc_host_tdo_oen_o     (jtag_stap_smc_tdo_oen),
 
-        // SEP debug STAP host (loopback)
+        // SEP debug STAP host (loopback, or the downstream TAP when ds_en)
         .jtag_stap_sep_host_tap_ctrl_o    (stap_sep_tap_ctrl),
-        .jtag_stap_sep_host_tdi_i         (stap_sep_tdo),
+        .jtag_stap_sep_host_tdi_i         (stap_sep_host_tdi),
         .jtag_stap_sep_host_tdo_o         (stap_sep_tdo),
         .jtag_stap_sep_host_tdo_oen_o     (jtag_stap_sep_tdo_oen),
 
-        // Extra STAP hosts (loopback, 1 port by default)
+        // Extra STAP hosts (1 port by default; loopback or downstream TAP)
         .jtag_stap_extra_host_tap_ctrl_o  (stap_extra_tap_ctrl),
-        .jtag_stap_extra_host_tdi_i       (stap_extra_tdo),
+        .jtag_stap_extra_host_tdi_i       (stap_extra_host_tdi),
         .jtag_stap_extra_host_tdo_o       (stap_extra_tdo),
         .jtag_stap_extra_host_tdo_oen_o   (stap_extra_tdo_oen),
 
@@ -789,6 +808,44 @@ module dtp_uvm_top
     assign u_tb_if.jtag_stap_host_shift_en    = jtag_stap_host_shift_en;
     assign u_tb_if.jtag_stap_host_capture_en  = jtag_stap_host_capture_en;
     assign u_tb_if.jtag_stap_host_update_en   = jtag_stap_host_update_en;
+
+    // Downstream STAP TAPs (issue #1056): one ocah_jtag_if per STAP host
+    // port, wired from the port's forwarded tck/tms/trst_n and its TDO; the
+    // shared ocah_jtag_vip slave agent answers on tdo, routed back into the
+    // host TDI when the sequence sets dtp_tb_if.stap_<x>_ds_en (default 0
+    // keeps the wire loopback).
+    ocah_jtag_if u_stap_io_ds_if ();
+    ocah_jtag_if u_stap_smc_ds_if ();
+    ocah_jtag_if u_stap_sep_ds_if ();
+    ocah_jtag_if u_stap_extra0_ds_if ();
+
+    assign u_stap_io_ds_if.tck        = jtag_stap_io_tck;
+    assign u_stap_io_ds_if.tms        = jtag_stap_io_tms;
+    assign u_stap_io_ds_if.trst_n     = jtag_stap_io_trst_n;
+    assign u_stap_io_ds_if.tdi        = jtag_stap_io_tdo;
+    assign jtag_stap_io_tdi           = u_stap_io_ds_if.tdo;
+    assign jtag_stap_io_ds_en         = u_tb_if.stap_io_ds_en;
+
+    assign u_stap_smc_ds_if.tck       = jtag_stap_smc_tck;
+    assign u_stap_smc_ds_if.tms       = jtag_stap_smc_tms;
+    assign u_stap_smc_ds_if.trst_n    = jtag_stap_smc_trst_n;
+    assign u_stap_smc_ds_if.tdi       = jtag_stap_smc_tdo;
+    assign jtag_stap_smc_tdi          = u_stap_smc_ds_if.tdo;
+    assign jtag_stap_smc_ds_en        = u_tb_if.stap_smc_ds_en;
+
+    assign u_stap_sep_ds_if.tck       = jtag_stap_sep_tck;
+    assign u_stap_sep_ds_if.tms       = jtag_stap_sep_tms;
+    assign u_stap_sep_ds_if.trst_n    = jtag_stap_sep_trst_n;
+    assign u_stap_sep_ds_if.tdi       = jtag_stap_sep_tdo;
+    assign jtag_stap_sep_tdi          = u_stap_sep_ds_if.tdo;
+    assign jtag_stap_sep_ds_en        = u_tb_if.stap_sep_ds_en;
+
+    assign u_stap_extra0_ds_if.tck    = jtag_stap_extra0_tck;
+    assign u_stap_extra0_ds_if.tms    = jtag_stap_extra0_tms;
+    assign u_stap_extra0_ds_if.trst_n = jtag_stap_extra0_trst_n;
+    assign u_stap_extra0_ds_if.tdi    = jtag_stap_extra0_tdo;
+    assign jtag_stap_extra0_tdi       = u_stap_extra0_ds_if.tdo;
+    assign jtag_stap_extra0_ds_en     = u_tb_if.stap_extra0_ds_en;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
     // answers JTAG2AXI OTP traffic. The slave interface carries
@@ -1409,6 +1466,11 @@ module dtp_uvm_top
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "xtrig_master_vif", u_xtrig_master_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "xtrig_axil_vif", u_xtrig_axil_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_io_ds_vif", u_stap_io_ds_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_smc_ds_vif", u_stap_smc_ds_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_sep_ds_vif", u_stap_sep_ds_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_extra0_ds_vif",
+                                                  u_stap_extra0_ds_if);
         run_test();
     end
 `endif

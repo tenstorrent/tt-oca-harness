@@ -24,13 +24,14 @@ from pathlib import Path
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_hash_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # DMA copy + inline SHA-256 + a software SHA-256 over 256 bytes; the run loop
 # early-exits on fw_done, so this is just an upper bound.
 _MAX_RUN_CYCLES = 3_000_000
