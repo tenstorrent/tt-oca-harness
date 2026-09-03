@@ -237,9 +237,7 @@ async def watch_probe_liveness(dut=None) -> None:
     """
     dut = dut if dut is not None else cocotb.top
     clk = dut.clk_smc_i
-    missing = [
-        probe for probe in WATCHED_PROBES if not hasattr(dut, PROBE_SIGNALS[probe])
-    ]
+    missing = [probe for probe in WATCHED_PROBES if not hasattr(dut, PROBE_SIGNALS[probe])]
     if missing:
         # Dropping an absent handle would shrink the watched set silently: a
         # tb_top rename then fails later (or not at all) as "idle legs were
