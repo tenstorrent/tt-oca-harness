@@ -202,6 +202,12 @@ extensions to the MAJOR.MINOR.PATCH format.
 
 See the documentation on https://semver.org[semver] for more details.
 
+=== Conventions, Linting and CI
+
+For details on Coding Styles and Conventions, see xref:guidelines.adoc[Guidance].
+
+For details on linting and CI, please see xref:workflows.adoc#linting[Workflows].
+
 == Tracking Tasks and Bugs with GitHub
 
 === Working with Issues
