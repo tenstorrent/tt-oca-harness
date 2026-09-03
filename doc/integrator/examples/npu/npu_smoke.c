@@ -28,6 +28,16 @@
 #define NPU_INTR_DONE        (1u << 0)
 #define NPU_INTR_ERROR       (1u << 1)
 
+enum npu_smoke_result {
+    NPU_SMOKE_OK = 0,
+    NPU_SMOKE_ERR_INVALID_ARGUMENT = -1,
+    NPU_SMOKE_ERR_DESCRIPTOR_TIMEOUT = -2,
+    NPU_SMOKE_ERR_COMPLETION_TIMEOUT = -3,
+    NPU_SMOKE_ERR_DEVICE = -4,
+    NPU_SMOKE_ERR_SECURITY_RELEASE = -5,
+    NPU_SMOKE_ERR_INTERRUPT_TIMEOUT = -6,
+};
+
 static volatile uint32_t npu_irq_seen;
 static volatile uint32_t npu_last_error_cause;
 
@@ -91,7 +101,7 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
     uint32_t remaining = timeout;
 
     if (!platform_npu_security_release_confirmed()) {
-        return -5;
+        return NPU_SMOKE_ERR_SECURITY_RELEASE;
     }
 
     if (descriptor == NULL || descriptor_words == 0u ||
@@ -99,7 +109,7 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
         buffer_size > PLATFORM_NPU_DMA_SIZE ||
         buffer > PLATFORM_NPU_DMA_BASE + PLATFORM_NPU_DMA_SIZE - buffer_size ||
         buffer > UINT32_MAX) {
-        return -1;
+        return NPU_SMOKE_ERR_INVALID_ARGUMENT;
     }
 
     platform_dma_prepare(buffer, buffer_size);
@@ -108,7 +118,7 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
     npu_write(NPU_DMA_EXT_BASE, (uint32_t)buffer);
     npu_write(NPU_CTRL, NPU_CTRL_ENABLE);
     if (npu_push_descriptor(descriptor, descriptor_words, timeout) != 0) {
-        return -2;
+        return NPU_SMOKE_ERR_DESCRIPTOR_TIMEOUT;
     }
     npu_write(NPU_CTRL, NPU_CTRL_ENABLE | NPU_CTRL_START);
 
@@ -116,21 +126,21 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
         uint32_t status = npu_read(NPU_STATUS);
         if ((status & NPU_STATUS_ERROR) != 0u) {
             npu_last_error_cause = npu_read(NPU_ERR_CAUSE);
-            return -4;
+            return NPU_SMOKE_ERR_DEVICE;
         }
         if ((status & NPU_STATUS_DONE) != 0u) {
             platform_dma_complete(buffer, buffer_size);
             npu_write(NPU_INTR_STATE, NPU_INTR_DONE);
-            return 0;
+            return NPU_SMOKE_OK;
         }
     }
-    return -3;
+    return NPU_SMOKE_ERR_COMPLETION_TIMEOUT;
 }
 
 int npu_interrupt_route_smoke(uint32_t timeout)
 {
     if (!platform_npu_security_release_confirmed()) {
-        return -2;
+        return NPU_SMOKE_ERR_SECURITY_RELEASE;
     }
 
     npu_irq_seen = 0u;
@@ -143,11 +153,11 @@ int npu_interrupt_route_smoke(uint32_t timeout)
     while (timeout-- != 0u) {
         if ((npu_irq_seen & NPU_INTR_DONE) != 0u) {
             npu_write(NPU_INTR_ENABLE, 0u);
-            return 0;
+            return NPU_SMOKE_OK;
         }
     }
     npu_write(NPU_INTR_ENABLE, 0u);
-    return -1;
+    return NPU_SMOKE_ERR_INTERRUPT_TIMEOUT;
 }
 
 uint32_t npu_configuration_probe(void)

@@ -9,14 +9,13 @@
 :source-highlighter: highlight.js
 
 This chapter describes how to add adopter-owned IP to a chiplet containing the
-Open Chiplet Atlas Harness (OCAH). It covers management peripherals, security
-extensions, and application logic in the user subsystem.
-
-The distinction matters. An IP connected to an OCAH bus does not automatically
-become trusted, securely booted, lifecycle-controlled, or protected from other
-initiators. The integrator must define those properties and provide the fabric,
-firewalls, IOMMU, secure-boot handoff, and physical implementation needed to
-enforce them.
+Open Chiplet Atlas Harness (OCAH). It covers three distinct attachment classes:
+management peripherals, security extensions, and application logic in the user
+subsystem. Choosing the correct class matters because connecting an IP to an
+OCAH bus does not automatically make it trusted, securely booted,
+lifecycle-controlled, or protected from other initiators. The integrator must
+define those properties and provide the fabric, firewalls, IOMMU, secure-boot
+handoff, and physical implementation needed to enforce them.
 
 OCAH Phase 1 does not contain the general-purpose System Management Network
 (SMN), die-to-die fabric, or user-subsystem interconnect shown in the system
@@ -29,9 +28,13 @@ provides management and security services around that subsystem.
 [[user-ip-integration-model]]
 == Select the trust and attachment model
 
-First decide whether the IP is part of a management, security, or application
-trust domain. This determines the correct CSR, interrupt, data, boot, and debug
-paths. These classes are not interchangeable.
+First decide whether SMC firmware owns the IP as part of the management domain,
+SEP firmware owns it inside or in direct support of the security boundary, or
+application firmware or an OS owns it in the adopter application domain. An
+application-domain IP remains outside the OCAH trusted computing base unless a
+threat-model review explicitly places it inside. This classification determines
+the correct CSR, interrupt, data, boot, and debug paths; the classes are not
+interchangeable.
 
 .User IP attachment classes
 [cols="18%,22%,23%,20%,17%",options="header"]
@@ -183,14 +186,15 @@ subject to the SEP inbound filter, which is block-by-default after reset and
 must be opened deliberately by SEP firmware.
 
 Preserve the AXI ID, `PROT`, and user/source information carried by the packed
-SEP request type. If the subordinate uses another protocol or a narrower data
-path, verify burst conversion, byte strobes, ordering, response IDs, and error
-propagation at the adapter.
+SEP request type. When adapting to another protocol or a narrower data path,
+verify the adapter explicitly. Cover burst conversion, byte strobes, ordering,
+response IDs, and error propagation.
 
 === Apply SEP security policy
 
 Placing a block behind the SEP extension port only changes reachability; it
-does not prove the block trustworthy. The security design must additionally:
+does not prove that the block is trustworthy. The security design must
+additionally:
 
 * include executable or mutable extension state in the appropriate verified-
   boot and anti-rollback policy;
@@ -295,10 +299,10 @@ metadata. Bulk user data need not be part of verified boot, but it still needs
 runtime access control. A hardwired accelerator with no mutable executable
 state still requires identity/version checks and containment before release.
 
-Fail closed. Authentication, rollback, policy-lock, or firewall setup failure
-must leave the IP reset or bus-blocked and must produce a diagnosable security
-event. Application software must not be able to convert that failure into a
-release.
+The release sequence must fail closed: an authentication, rollback, policy-lock,
+or firewall setup failure must leave the IP reset or bus-blocked and must
+produce a diagnosable security event. Application software must not be able to
+convert that failure into a release.
 
 === Apply lifecycle and scan policy
 
@@ -312,11 +316,13 @@ Classify adopter IP state using the SEP lifecycle asset model:
 
 The SEP lifecycle architecture reserves adopter bits in its feature-control
 vector for additional debug, test, and functional gates. The bit-allocation
-convention is currently open, and the current SMU boundary exposes
-`lc_state_o` and `secure_tm_o` but not the complete feature-control vector. An
-IP that needs lifecycle-controlled enables therefore requires an explicitly
-reviewed extension to the integration wrapper and lifecycle/RDL allocation; it
-must not infer an ad-hoc debug authorization from `lc_state_o` alone.
+convention is currently open. The current SMU boundary exposes `lc_state_o`, an
+8-bit differential encoding of the four-bit lifecycle state, and `secure_tm_o`,
+a single-bit secure-test-mode indication, but not the complete feature-control
+vector. An IP that needs lifecycle-controlled enables therefore requires an
+explicitly reviewed extension to the integration wrapper and lifecycle/RDL
+allocation; it must not infer an ad-hoc debug authorization from `lc_state_o`
+alone.
 
 `secure_tm_o` indicates secure test mode; it is not a general functional-access
 authorization. Document how the IP's DTP/scan path, test enables, JTAG-visible
@@ -500,8 +506,11 @@ security violation from the trusted ingress must not depend on the NPU's own
 interrupt.
 
 |`clk_i`, `rst_ni`
-|Single NPU clock and active-low reset
-|Use an adopter clock/reset domain. The NPU contains no internal CDC.
+|Single NPU clock and asynchronous active-low reset
+|Use an adopter clock/reset domain. Assert `rst_ni` asynchronously and deassert
+it synchronously to `clk_i`. Meet the implementation technology's minimum reset
+pulse width; the NPU architecture does not prescribe a clock-cycle count. The
+NPU contains no internal CDC.
 
 |`security_release_i`
 |Trusted release into the example adapter

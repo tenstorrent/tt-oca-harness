@@ -79,8 +79,10 @@ module ocah_npu_fabric_adapter
   logic [31:0] npu_dma_araddr;
   logic        npu_rst_ni;
 
-  // Reset assertion remains asynchronous through rst_ni/security_release_i;
-  // the trusted controller must synchronize the rising release edge to clk_i.
+  // Either input may assert reset asynchronously. Both rising inputs must be
+  // synchronized to clk_i so npu_rst_ni deasserts synchronously. The rst_ni
+  // source must also meet the implementation technology's minimum reset pulse
+  // width; the NPU architecture does not prescribe a clock-cycle count.
   assign npu_rst_ni = rst_ni & security_release_i;
 
   // The NPU can issue only low-4-GiB physical addresses. These sized casts
