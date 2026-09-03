@@ -6,19 +6,14 @@ By contributing to this project, you agree that your contributions will be licen
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.adoc). By participating, you are expected to uphold this code.
 
 ## Getting Started
 
-Clone the repository and inspect the available build targets:
+For detailed documentation, please refer to the GitHub pages site generated as a
+deployment of this repository: [tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
 
-```bash
-git clone https://github.com/tenstorrent/tt-oca-harness.git
-cd tt-oca-harness
-make help
-```
-
-See the [README](README.md) for vendor import conventions, register-generation flows, and other repository-specific guidance.
+The Getting Started and Contributing Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-contributing/latest/index.html).
 
 ## Development Workflow
 
@@ -29,51 +24,6 @@ See the [README](README.md) for vendor import conventions, register-generation f
 
 Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/contributing/`](doc/contributing/).
 
-## Coding Conventions
-
-### License headers
-
-Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file's comment syntax.
-
-For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
-
-```systemverilog
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-```
-
-For Python, shell, Makefile, and YAML files:
-
-```makefile
-# SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-```
-
-For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
-
-```c
-/* SPDX-License-Identifier: Apache-2.0 */
-/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
-```
-
-For AsciiDoc (`.adoc`), use line comments:
-
-```asciidoc
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-```
-
-For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
-
-Generated register collateral under `hw/**/regs/gen/` is produced by the
-repository generation flows and carries the same SPDX Apache-2.0 header as
-hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
-
-### Vendored code
-
-Third-party RTL and tools are vendored under `vendor/` via Bender `vendor_package` entries. Do not hand-edit files under `vendor/*/upstream/`; use `patches/` and local overlays instead. See the README for the full vendor workflow.
-
-When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.
 
 ## Linting & CI
 
@@ -246,12 +196,6 @@ Installation uses pre-commit's standard local `.git/hooks/pre-commit`
 launcher. It does not change `core.hooksPath`, and no setup or checkout command
 installs it automatically. CI remains authoritative whether or not a
 contributor enables the hook.
-
-## Submitting Changes
-
-* Keep pull requests focused; unrelated changes belong in separate PRs.
-* Write clear commit messages that explain why a change is made.
-* Ensure relevant builds and checks pass before requesting review.
 
 ## Reporting Issues
 

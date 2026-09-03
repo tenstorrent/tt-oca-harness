@@ -65,6 +65,52 @@ memmap.adoc, index.adoc)
 * syn : logic synthesis constraints (optional)
 * lint : lint waiver files
 
+== Coding Conventions
+
+=== License headers
+
+Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file's comment syntax.
+
+For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
+
+```systemverilog
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For Python, shell, Makefile, and YAML files:
+
+```makefile
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
+
+```c
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+```
+
+For AsciiDoc (`.adoc`), use line comments:
+
+```asciidoc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
+
+Generated register collateral under `hw/**/regs/gen/` is produced by the
+repository generation flows and carries the same SPDX Apache-2.0 header as
+hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
+
+=== Vendored code
+
+Third-party RTL and tools are vendored under `vendor/` via Bender `vendor_package` entries. Do not hand-edit files under `vendor/*/upstream/`; use `patches/` and local overlays instead. See the README for the full vendor workflow.
+
+When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.
+
 === SystemVerilog Coding Guidelines
 
 The high level goals are:

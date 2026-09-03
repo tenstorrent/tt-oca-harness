@@ -142,6 +142,12 @@ Open a pull request against `main`. There is a default template which asks for:
 CI does not require those sections. Project taxonomy lives in issues, not PRs.
 Pull requests are typically reviewed weekly.
 
+==== Pull Request Guidance
+
+* Keep pull requests focused; unrelated changes belong in separate PRs.
+* Write clear commit messages that explain why a change is made.
+* Ensure relevant builds and checks pass before requesting review.
+
 === Continuous Integration
 
 [NOTE]
