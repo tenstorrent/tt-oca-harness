@@ -56,7 +56,7 @@ ocah-doc-contributing-clean:
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_CONTRIBUTING_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_CONTRIBUTING_ASSETS)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh" --clean
-	@rm -rf "$(OCAH_CONTRIBUTING_BUILD) $(OCAH_CONTRIBUTING_DIST)"
+	@rm -rf "$(OCAH_CONTRIBUTING_BUILD)" "$(OCAH_CONTRIBUTING_DIST)"
 	@echo "Cleaned Contributing Guide documentation build artifacts."
 
 OCAH_PHONY += \

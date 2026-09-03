@@ -15,7 +15,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -27,21 +27,21 @@ No reset; powers up with undefined value.
 valid signal to the KMAC core.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KEY_SHARE0[8] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KEY_SHARE1[8] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KEY_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description

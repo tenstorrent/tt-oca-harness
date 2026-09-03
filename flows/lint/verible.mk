@@ -4,8 +4,7 @@
 ifndef ocah_verible_mk
 ocah_verible_mk := 1
 
-OCAH_FORMAT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_FORMAT_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 
 # Filesystem scopes to lint and format.  The vendor root contributes only
 # hand-authored overlays; upstream and generated overlay files are excluded

@@ -39,7 +39,7 @@ PERIPH_DESTS = (
     ),
     (
         "I3C",
-        smc_addr("SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_BASE_ADDR"),
+        smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR", 0),
     ),
     (
         "AVSBus",

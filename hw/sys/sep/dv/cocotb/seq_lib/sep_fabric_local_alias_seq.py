@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import indexed_block_count, sym
+from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -39,7 +39,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 N_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
 IDX_START = 12
 PAGE = 1 << IDX_START
-VALID_HI = 1 << 31
+VALID_HI = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid") >> 32
 SRC_PAGES = (OUTFILT_BASE & ~(PAGE - 1), INFILT_BASE & ~(PAGE - 1))
 DEST_ADDR = CLOCK_GATE_CTRL
 DEST_MARKER = CLOCK_GATE_UNGATE

@@ -36,7 +36,6 @@ endif
 
 ifeq ($(SIM),vcs)
   COMPILE_ARGS += -f $(FILELIST)
-  COMPILE_ARGS += +define+INC_ASSERT
   COMPILE_ARGS += -sverilog -timescale=1ns/1ps -full64 +vcs+lic+wait
   COMPILE_ARGS += -lca +rad -kdb +nospecify
   ifeq ($(DEBUG),0)

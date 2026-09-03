@@ -19,7 +19,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -53,7 +53,7 @@
 | 0x124 - 0x14C | INTR_SRC_WR_VAL_0[11] | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -63,7 +63,7 @@
 | 0 | `DMA_DONE` | R | 0x0 a| DMA operation has been completed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -73,7 +73,7 @@
 | 0 | `DMA_DONE` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.dma_done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -83,7 +83,7 @@
 | 0 | `DMA_DONE` | W | 0x0 a| Write 1 to force !!INTR_STATE.dma_done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -91,7 +91,7 @@
 | 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SRC_ADDR_LO Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -99,7 +99,7 @@
 Must be aligned to the transfer width.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SRC_ADDR_HI Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -108,7 +108,7 @@ Must be aligned to the transfer width.
 Source and destination address must have the same alignment.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DST_ADDR_LO Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -117,7 +117,7 @@ Must be aligned to the transfer width.
 Source and destination address must have the same alignment.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DST_ADDR_HI Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -126,7 +126,7 @@ Must be aligned to the transfer width.
 Source and destination address must have the same alignment.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ADDR_SPACE_ID Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -135,21 +135,21 @@ Source and destination address must have the same alignment.
 | 3:0 | `SRC_ASID` | RW | 0x7 a| Target address space that the source address pointer refers to.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ENABLED_MEMORY_RANGE_BASE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `BASE` | RW | 0x0 a| Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ENABLED_MEMORY_RANGE_LIMIT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `LIMIT` | RW | 0x0 a| Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RANGE_VALID Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -157,7 +157,7 @@ Source and destination address must have the same alignment.
 | 0 | `RANGE_VALID` | RW | 0x0 a| Once set the enabled memory base and limit registers are valid.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RANGE_REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -168,7 +168,7 @@ Once this register is set to kMultiBitBool4False, it can only be set to kMultiBi
 Default Value = kMultiBitBool4True -> Unlocked at reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CFG_REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -177,7 +177,7 @@ Default Value = kMultiBitBool4True -> Unlocked at reset.
 This register is purely managed by hardware and only software readable.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TOTAL_DATA_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -189,7 +189,7 @@ Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled
 Works in conjunction with the TRANSFER_WIDTH register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHUNK_DATA_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -202,7 +202,7 @@ Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled
 Works in conjunction with the TRANSFER_WIDTH register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TRANSFER_WIDTH Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -215,7 +215,7 @@ This does not affect the wrap-around mechanism.
 Note that the value 3 for this register represents an invalid configuration that leads to an error.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CONTROL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -247,7 +247,7 @@ No explicit clearing necessary.
 | 3:0 | `OPCODE` | RW | 0x0 a| Defines the type of DMA operations.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SRC_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -260,7 +260,7 @@ All reads are done from the same address.
 When 1: Source address is incremented by transfer_width after each read.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DST_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -273,7 +273,7 @@ All writes are done to the same address.
 When 1: Destination address is incremented by transfer_width after each write.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -293,7 +293,7 @@ DMA engine clears this bit when operation is complete.
 This bit may be set as long as hardware handshake mode is active and triggered.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERROR_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -308,14 +308,14 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 0 | `SRC_ADDR_ERROR` | R | 0x0 a| Source address is invalid.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SHA2_DIGEST_0[16] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `DATA_0` | R | 0x0 a| SHA2 digest data
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HANDSHAKE_INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -323,7 +323,7 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 10:0 | `MASK` | RW | 0x7FF a| Enable bits for incoming handshake interrupt wires.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CLEAR_INTR_SRC Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -331,7 +331,7 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 10:0 | `SOURCE` | RW | 0x0 a| Source N needs interrupt cleared
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CLEAR_INTR_BUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -339,14 +339,14 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 10:0 | `BUS` | RW | 0x0 a| Bus selection bit for source N.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_SRC_ADDR_0[11] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `ADDR_0` | RW | 0x0 a| Destination address for interrupt source clearing write.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_SRC_WR_VAL_0[11] Register
 |===
 | Bits | Field | Access | Reset | Description
