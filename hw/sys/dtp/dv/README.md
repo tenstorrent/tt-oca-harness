@@ -183,17 +183,27 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
 Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
 with the bare `+define+UVM` (set by the `[frameworks.uvm]` overlay) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
-mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
-shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),
-`uvm/seq_lib/dtp_seq_lib_pkg.sv` (JTAG base sequence + scenarios, issuing
-`ocah_jtag_item`s on the agent sequencer), and `uvm/tests/dtp_tests.sv`
-(non-reusable tests, `include`d by tb_top). The pin-level JTAG interface and
+realizes the same component tree as the cocotb side with identical
+basenames, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
+`uvm/env/dtp_env_pkg.sv` (DUT types and codecs, `dtp_test_cfg` and the
+derived `dtp_env_cfg`, `dtp_virtual_sequencer`, the reference models, the
+always-on `dtp_scoreboard`, the `dtp_tap_fsm_checker` and
+`dtp_scan_window_monitor` subscribers, and `dtp_env`, which composes the
+shared `ocah_jtag_vip` and `ocah_axi_vip` SV-UVM environments and agents),
+`uvm/seq_lib/dtp_seq_lib_pkg.sv` (reusable operation sequences
+`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq` on the
+VIP sequence APIs, and the scenario virtual sequences on
+`dtp_base_test_seq`), and `uvm/tests/dtp_tests.sv` (thin tests on
+`dtp_base_test`, `include`d by tb_top). The pin-level JTAG interface and
 agent are the shared `hw/common/dv/vip/ocah_jtag_vip/` `interface/` and
-`uvm/` collateral; DTP-local resets/observables ride `tb/dtp_tb_if.sv`. The UVM library comes from the
-simulator (`-ntb_opts uvm`). `dtp_sanity_test` carries the full VPLAN 0.1
-semantics: deterministic 32-edge TAP FSM closure with an IEEE 1149.1
-reference model, BYPASS 1-TCK TDI-to-TDO latency, and clean scan-path
-returns, plus randomized TMS stress walks reproducible from `--seed`.
+`uvm/` collateral; DTP-local resets, observables, and the harness clock
+period ride `tb/dtp_tb_if.sv`. The test cfg randomizes the system-clock and
+TCK periods from `--seed` exactly as the cocotb env cfg does. The UVM
+library comes from the simulator (`-ntb_opts uvm`). `dtp_sanity_test`
+carries the full VPLAN 0.1 semantics: deterministic 32-edge TAP FSM closure
+with an IEEE 1149.1 reference model, BYPASS 1-TCK TDI-to-TDO latency, and
+clean scan-path returns, plus randomized TMS stress walks reproducible from
+`--seed`.
 
 The cocotb tests use deterministic random scenarios derived from `RANDOM_SEED`.
 Every looped scenario runs at least 16 passes by default
@@ -243,18 +253,27 @@ binding map carries both, and the same `--items` name selects either flow.
 To port a cocotb scenario:
 
 1. **Sequence** — add `uvm/seq_lib/<name>_seq.svh` mirroring the cocotb
-   `seq_lib/<name>_seq.py` semantics on the shared VIP stimulus API. Extend
-   `dtp_jtag_cmd_lib_seq` for instruction-family scenarios (per-pass family
-   evidence + scan-builder cross-checks) or `dtp_jtag2axi_base_test_seq` for
-   bridge scenarios (single/series ops, responder backdoor, error arming).
-   Start `body()` with `seed_scenario_rng()` so every pass replays from
-   `--seed`. Add the `` `include `` to `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
+   `seq_lib/<name>_seq.py` semantics as a virtual sequence on the family
+   layer that matches the scenario: `dtp_jtag_base_test_seq` for
+   instruction-family scenarios (per-pass family evidence + scan-builder
+   cross-checks), `dtp_jtag2axi_base_test_seq` for bridge scenarios
+   (single/series operations, responder backdoor, error arming),
+   `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, or
+   `dtp_xtrig_base_test_seq`. The scenario starts the reusable operations
+   (`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq`)
+   through the base wrappers and never a VIP driver or interface; a missing
+   operation becomes a new `_seq` on the VIP sequence API first. Start
+   `body()` with `seed_scenario_rng()` so every pass replays from `--seed`,
+   and read knobs from `test_cfg`. Add the `` `include `` to
+   `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
 2. **Test** — add `uvm/tests/<name>.svh` (file = class = scenario name)
    extending `dtp_base_test`: override `create_scenario_seq()` and the
-   loop-count plusarg name hooks, arm the checker evidence the scenario
-   owns (required `CHK-*` IDs; `jtag_require_checks` /
-   `cfg.require_checks`), and plumb scenario handles in
-   `plumb_scenario_seq()`. Add the `` `include `` to `uvm/tests/dtp_tests.sv`.
+   loop-count knob hooks (`specific_loops_knob`, `group_loops_knob`), declare
+   the scoreboard features and the required `CHK-*` IDs the scenario owns in
+   `configure_test_cfg()` (`cfg.require_feature`, `cfg.require_jtag_ids`,
+   `cfg.require_axi_ids`), and plumb scenario evidence handles in
+   `plumb_scenario_seq()` after `super`. Add the `` `include `` to
+   `uvm/tests/dtp_tests.sv`.
 3. **Testlist** — change the scenario's entry to
    `module = { cocotb = "<name>", uvm = "<name>" }`; the `uvm` value drives
    `+UVM_TESTNAME`.

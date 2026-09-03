@@ -87,11 +87,11 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         string                                check_id = "CHK-DS-TDR-READBACK"
     );
         stap_ds_load_ir(target, StapDsTdrName, gate, {context_s, ".load_ir"});
-        stap_ds_seq[target].clear_updates();
+        m_stap_ds_seq[target].clear_updates();
         stap_ds_write_tdr(target, value, gate, {context_s, ".write"});
-        void'(stap_ds_seq[target].check_last_update(StapDsTdrName, value,
+        void'(m_stap_ds_seq[target].check_last_update(StapDsTdrName, value,
             $sformatf("%s stap=%s", context_s, stap_name(target))));
-        void'(stap_ds_seq[target].check_update_count(1, StapDsTdrName,
+        void'(m_stap_ds_seq[target].check_update_count(1, StapDsTdrName,
             $sformatf("%s stap=%s", context_s, stap_name(target))));
         stap_ds_read_tdr(target, gate, {context_s, ".read"}, check_id);
     endtask
@@ -155,7 +155,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
             "%s gated 3DCR update attempt config_hold=%0d",
             stap_name(stap), attempt.config_hold), UVM_LOW)
         if (downstream)
-            stap_ds_seq[stap].clear_updates();
+            m_stap_ds_seq[stap].clear_updates();
         start_scan_window(watch);
         iso_pl.delete();
         iso_pl[stap] = attempt;
@@ -172,11 +172,11 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
             // The gated port parks its host TMS high: the downstream TAP sits
             // in Test-Logic-Reset (checked after the scan, which supplies the
             // five parked TCKs), latched nothing, and still holds the value.
-            void'(stap_ds_seq[stap].check_update_count(0, StapDsTdrName,
+            void'(m_stap_ds_seq[stap].check_update_count(0, StapDsTdrName,
                 {stap_name(stap), ".gated"}));
-            void'(stap_ds_seq[stap].check_register(StapDsTdrName, v_select,
+            void'(m_stap_ds_seq[stap].check_register(StapDsTdrName, v_select,
                 {stap_name(stap), ".gated"}, "CHK-DS-TDR-HOLD"));
-            void'(stap_ds_seq[stap].check_state(OCAH_JTAG_TEST_LOGIC_RESET,
+            void'(m_stap_ds_seq[stap].check_state(OCAH_JTAG_TEST_LOGIC_RESET,
                 {stap_name(stap), ".gated"}, "CHK-DS-PARKED-TLR"));
         end
 
@@ -226,7 +226,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         check_stap_chain_readback(captured, gate,
                                   {stap_name(stap), ".isolation_readback"});
         if (downstream)
-            stap_ds_seq[stap].clear_updates();
+            m_stap_ds_seq[stap].clear_updates();
         if (ds_attached(neighbor)) begin
             bit [63:0] n_opcode;
             void'(stap_model.ds[neighbor].opcode_of(StapDsTdrName, n_opcode));
@@ -235,7 +235,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                                   {stap_name(stap), ".isolation_neighbor"});
         end
         if (downstream)
-            void'(stap_ds_seq[stap].check_update_count(0, StapDsTdrName,
+            void'(m_stap_ds_seq[stap].check_update_count(0, StapDsTdrName,
                 {stap_name(stap), ".isolation"}));
 
         // Step 5: full recovery with a fresh configuration.

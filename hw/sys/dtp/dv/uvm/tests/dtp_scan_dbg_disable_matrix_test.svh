@@ -15,20 +15,18 @@ class dtp_scan_dbg_disable_matrix_test extends dtp_base_test;
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_dbg_disable_scan_matrix_test_seq seq =
             dtp_dbg_disable_scan_matrix_test_seq::type_id::create("seq");
-        int unsigned rows;
-        if ($value$plusargs("DTP_DBG_DISABLE_MULTI_HOT_ROWS=%d", rows))
-            seq.multi_hot_rows = rows;
+        seq.multi_hot_rows = test_cfg.scan_matrix_multi_hot_rows;
         return seq;
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_SCAN_DBG_DISABLE_MATRIX_TEST_LOOPS";
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_SCAN_TEST_LOOPS";
     endfunction
 
