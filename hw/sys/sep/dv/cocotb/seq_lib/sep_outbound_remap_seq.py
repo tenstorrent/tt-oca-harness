@@ -36,8 +36,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 )
 
 # och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
-AP_REGION_BASE = 0x1100_0000
-STEE_REGION_BASE = 0x1180_0000
+AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
+STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
 # sep_pkg::NUM_*_OUTPUT_REMAP_IDX_START / NUM_*_OUTPUT_REMAP_REGIONS
 IDX_START = 19
 N_REGIONS = 16
