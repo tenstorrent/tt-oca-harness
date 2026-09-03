@@ -60,24 +60,24 @@ loopback configuration. The register outputs feed back to the data inputs,
 allowing the register to retain its configuration across scan operations while
 still being scannable for updates.
 
-[width="100%",cols="<10%,<20%,<60%,<10%",options="header"]
+[width="100%",cols="2,2,1,7",options="header"]
 |===
-|Bit |Field |Description |Reset
+|Bit |Field |Reset |Description
 
 |2
 |TMS-Hold
-|Defines the parked TMS value when the STAP is disabled. When `stap_sel=0`, the host TMS output is driven with this static value rather than following the client TMS input.
 |0
+|Defines the parked TMS value when the STAP is disabled. When `stap_sel=0`, the host TMS output is driven with this static value rather than following the client TMS input.
 
 |1
 |Select (stap_sel)
-|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the STAP acts as a simple 3-bit TDR and the downstream TAP's TMS is held at the TMS-Hold value.
 |0
+|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the STAP acts as a simple 3-bit TDR and the downstream TAP's TMS is held at the TMS-Hold value.
 
 |0
 |Config-Hold
-|Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by `trst_n AND (config_hold OR scan_reset)`, protecting configuration when `config_hold=1`. TRST assertion always resets the register regardless of this bit.
 |0
+|Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by `trst_n AND (config_hold OR scan_reset)`, protecting configuration when `config_hold=1`. TRST assertion always resets the register regardless of this bit.
 |===
 
 ===== STAP Types
