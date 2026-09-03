@@ -77,8 +77,8 @@ OCAH_VERIBLE_SINGLE_FILE_EXCLUDES := \
 #
 # Exclusions cover build output, materialized third-party sources, nested
 # copied vendor trees, PeakRDL output, generated fabrics and CPU internals,
-# generated overlay output, OpenTitan-origin package stubs, and the two
-# individually generated package files in otherwise hand-authored trees.  The
+# OpenTitan-origin package stubs, and the individually generated overlay
+# files that ship pre-generated rather than built by this tree.  The
 ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
 	-not -path '*/build/*' \
 	-not -path '$(OCAH_ROOT)/vendor/*/*/upstream/*' \
@@ -91,8 +91,6 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '$(OCAH_ROOT)/vendor/pulp-platform/idma/overlay/target/rtl/*' \
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv' \
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv' \
-	-not -path '*/hw/sys/dtp/rtl/dtp_pkg.sv' \
-	-not -path '*/hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv' \
 	$(foreach file,$(OCAH_VERIBLE_SINGLE_FILE_EXCLUDES),-not -path '$(OCAH_ROOT)/$(file)')
 
 ocah_verible_check_files = @$(call ocah_verible_find,$(1)) -print -quit 2>/dev/null | grep -q . || { \
