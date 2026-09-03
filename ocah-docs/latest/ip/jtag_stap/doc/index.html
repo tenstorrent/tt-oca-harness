@@ -356,37 +356,37 @@ still being scannable for updates.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 10%;">
-<col style="width: 20%;">
-<col style="width: 60%;">
-<col style="width: 10%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 58.3335%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bit</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TMS-Hold</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Defines the parked TMS value when the STAP is disabled. When <code>stap_sel=0</code>, the host TMS output is driven with this static value rather than following the client TMS input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Defines the parked TMS value when the STAP is disabled. When <code>stap_sel=0</code>, the host TMS output is driven with this static value rather than following the client TMS input.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Select (stap_sel)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the STAP acts as a simple 3-bit TDR and the downstream TAP&#8217;s TMS is held at the TMS-Hold value.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the STAP acts as a simple 3-bit TDR and the downstream TAP&#8217;s TMS is held at the TMS-Hold value.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Config-Hold</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by <code>trst_n AND (config_hold OR scan_reset)</code>, protecting configuration when <code>config_hold=1</code>. TRST assertion always resets the register regardless of this bit.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by <code>trst_n AND (config_hold OR scan_reset)</code>, protecting configuration when <code>config_hold=1</code>. TRST assertion always resets the register regardless of this bit.</p></td>
 </tr>
 </tbody>
 </table>

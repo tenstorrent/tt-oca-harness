@@ -279,28 +279,28 @@ follows:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Write data to mailbox FIFO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x08</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read data from mailbox FIFO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">FIFO status (empty, full, threshold)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Error flags (write/read errors)</p></td>
 </tr>
 <tr>
@@ -335,14 +335,14 @@ follows:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x40</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">IRQP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt pending status</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x48</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTRL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Control register (FIFO flush)</p></td>
 </tr>
 </tbody>

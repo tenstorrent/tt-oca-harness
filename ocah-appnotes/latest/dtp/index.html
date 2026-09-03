@@ -1704,43 +1704,43 @@ information.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 58.3335%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">31:28</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">si_rev</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Silicon revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">27:12</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">part_num</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet model ID</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">11:1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">mfr_id</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JEDEC-assigned manufacturer ID, encoded into 11 bits</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">marker</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Marker bit, always 1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 </tr>
 </tbody>
 </table>
@@ -1772,56 +1772,56 @@ debug and control of the design.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cla_clock_stop</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when <em>cla_clock_stop_en</em> is set.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when <em>cla_clock_stop_en</em> is set.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">jtag_clock_stop</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When set, stops all clocks in the chiplet. This is wired to the functional clock gaters on all of the PLLs in the chiplet. This bit is active high.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When set, stops all clocks in the chiplet. This is wired to the functional clock gaters on all of the PLLs in the chiplet. This bit is active high.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cla_clock_stop_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When set, enables the CLAs to stop the clocks in the design. This bit indicates that an external debugger is connected and ready to do debug or scan dump operations after the CLA stops the clocks. This bit is intended to protect against unintentional CLA clock stops in the field due to incorrect CLA programming. This bit is active high.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When set, enables the CLAs to stop the clocks in the design. This bit indicates that an external debugger is connected and ready to do debug or scan dump operations after the CLA stops the clocks. This bit is intended to protect against unintentional CLA clock stops in the field due to incorrect CLA programming. This bit is active high.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">boot_stall_ovrd</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When set, overrides the boot stall signal to the internals of the part to use the value from boot_stall in this TDR instead. This bit is active high.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When set, overrides the boot stall signal to the internals of the part to use the value from boot_stall in this TDR instead. This bit is active high.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">boot_stall</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When boot_stall_override is set, the value in this bit is used for boot stall. This bit is active high: setting to 1 causes boot stall.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When boot_stall_override is set, the value in this bit is used for boot stall. This bit is active high: setting to 1 causes boot stall.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1853,154 +1853,133 @@ number and general configuration parameters for the DTP.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 58.3335%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
-<th class="tableblock halign-left valign-top"></th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">59:54</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">num_xtrig_int_ct</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The number of internal cross trigger signals.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">53:48</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">num_xtrig_ctp</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The number of Cross Trigger Ports.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">47:44</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">num_xtra_stap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The number of additional DTP STAP interfaces.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">43</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">stap_io_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The STAP interface for chiplet-to-chiplet connectivity is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">42</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">sep_dbg_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The SEP STAP interface enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">41</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc_dbg_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The SMC JTAG2AXI interface is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">40:33</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">num_smc_ic_rst</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The number of SMC IC_RESET override ports.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32:25</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">num_sep_ic_rst</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The number of SEP IC_RESET override ports.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24:17</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">num_ext_ic_rst</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The number of external IC_RESET override ports.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ic_rst_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The IC_RESET instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">tmp_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The TMP controller functionality and instructions are enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">runbist_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The RUNBIST instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">highz_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The HIGHZ instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">clamp_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The CLAMP instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">intest_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The INTEST instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">extest_pulse_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The EXTEST_PULSE instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">extest_train_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The EXTEST_TRAIN instruction is enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bsr_inst_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All mandatory boundary scan instructions are enabled.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">7:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">och_ver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The MAJOR version number of the DTP IP.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>
 </table>
@@ -2114,27 +2093,27 @@ i.e. it is an exact copy of the <em>RESET_N</em> signal.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 34%;">
-<col style="width: 33%;">
-<col style="width: 33%;">
+<col style="width: 30%;">
+<col style="width: 10%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top"><strong>Bit</strong></th>
-<th class="tableblock halign-left valign-top"><strong>Description</strong></th>
 <th class="tableblock halign-left valign-top"><strong>Reset</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Description</strong></th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bypass Escape</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Whenever this bit is set, the TMP controller will transition to the <em>PERSISTENCE_OFF</em> state when the TAP controller enters the <em>UPDATE_IR</em> state after the <em>BYPASS</em> instruction has been selected.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Whenever this bit is set, the TMP controller will transition to the <em>PERSISTENCE_OFF</em> state when the TAP controller enters the <em>UPDATE_IR</em> state after the <em>BYPASS</em> instruction has been selected.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TMP Status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">This bit is set when the TMP controller is in the Persistence-On state.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This bit is set when the TMP controller is in the Persistence-On state.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2161,27 +2140,27 @@ chain.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 34%;">
-<col style="width: 33%;">
-<col style="width: 33%;">
+<col style="width: 30%;">
+<col style="width: 10%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top"><strong>Bit</strong></th>
-<th class="tableblock halign-left valign-top"><strong>Description</strong></th>
 <th class="tableblock halign-left valign-top"><strong>Reset</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Description</strong></th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Config Hold</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When this bit is set, the PTAP TLR state does not reset this TDR, and it will hold its current state until TRST is asserted.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When this bit is set, the PTAP TLR state does not reset this TDR, and it will hold its current state until TRST is asserted.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Select</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When this bit is unset, the PTAP&#8217;s top-level STAP scan interface is completely bypassed.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When this bit is unset, the PTAP&#8217;s top-level STAP scan interface is completely bypassed.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2234,42 +2213,42 @@ its corresponding struct type when the matching enable parameter is set
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2*n+2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">reset_control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The controlled, active-low reset value driven while <em>reset_enable</em> is 0 (i.e. while JTAG override is active).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The controlled, active-low reset value driven while <em>reset_enable</em> is 0 (i.e. while JTAG override is active).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2*n+1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">reset_enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-LOW per IEEE 1149.1 §17: 1 (default) ⇒ JTAG override DISABLED (upstream reset passes through); 0 ⇒ JTAG override ENABLED (the port is driven by <em>reset_control</em>). The "enable" in the IEEE name refers to "enabling the controlled reset state", not the override mechanism.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-LOW per IEEE 1149.1 §17: 1 (default) ⇒ JTAG override DISABLED (upstream reset passes through); 0 ⇒ JTAG override ENABLED (the port is driven by <em>reset_control</em>). The "enable" in the IEEE name refers to "enabling the controlled reset state", not the override mechanism.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">reset_hold</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When 0, TLR will <strong>not</strong> reset the <em>reset_enable</em> and <em>reset_control</em> bits. TRST/POR will always reset all bits.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When 0, TLR will <strong>not</strong> reset the <em>reset_enable</em> and <em>reset_control</em> bits. TRST/POR will always reset all bits.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2328,56 +2307,49 @@ configuration parameters for the given JTAG2AXI debugging instrument.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 58.3335%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
-<th class="tableblock halign-left valign-top"></th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">13:12</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">rd_pl_depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">11:10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">wr_pl_depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The depth of the transaction write queue where 0 indicates only a single outstanding transaction allowed at any given time.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">9:7</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">data_size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The size of AxDATA in powers-of-2 bytes. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6:1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">addr_size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The size of AxADDR in bits.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bus_type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The type of the AXI bus. 0: AXI4 1: AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>
 </table>
@@ -2399,56 +2371,56 @@ instruction.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: addr_size</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: 8*(2**data_size)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">5 +: (2**data_size)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">wstrb</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: $bits(size)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">size</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">op</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don&#8217;t send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don&#8217;t send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2481,56 +2453,56 @@ more time efficient for these use cases.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">reset</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset the pending error flags reported in op.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset the pending error flags reported in op.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: addr_size</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address used for AXI access. In Update-DR the AXI transaction is issued.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address used for AXI access. In Update-DR the AXI transaction is issued.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">pl_depth</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2&#8217;b00: There are no pending transactions 2&#8217;b01: There is at least one pending transaction</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2&#8217;b00: There are no pending transactions 2&#8217;b01: There is at least one pending transaction</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(&#8230;&#8203;) +: $bits(size)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">size</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">op</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don&#8217;t do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous operations completed successfully and returned an OKAY status. 1: At least one previous operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don&#8217;t do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous operations completed successfully and returned an OKAY status. 1: At least one previous operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2572,28 +2544,28 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n-1:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data value to read/write. The read data is from the previous read access.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data value to read/write. The read data is from the previous read access.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2631,11 +2603,11 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
@@ -2650,9 +2622,9 @@ and Capture-DR returns the payload from those lanes.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n-1:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data value to read/write. The read data is from the previous read access.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data value to read/write. The read data is from the previous read access.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2690,35 +2662,35 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 8.3333%;">
+<col style="width: 50.0002%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">increment/status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n-1:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data value to read/write. The read data is from the previous read access.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data value to read/write. The read data is from the previous read access.</p></td>
 </tr>
 </tbody>
 </table>
@@ -3294,37 +3266,37 @@ still being scannable for updates.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 10%;">
-<col style="width: 20%;">
-<col style="width: 60%;">
-<col style="width: 10%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 8.3333%;">
+<col style="width: 58.3335%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bit</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TMS-Hold</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Defines the parked TMS value when the STAP is disabled. When <code>stap_sel=0</code>, the host TMS output is driven with this static value rather than following the client TMS input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Defines the parked TMS value when the STAP is disabled. When <code>stap_sel=0</code>, the host TMS output is driven with this static value rather than following the client TMS input.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Select (stap_sel)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the STAP acts as a simple 3-bit TDR and the downstream TAP&#8217;s TMS is held at the TMS-Hold value.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the STAP acts as a simple 3-bit TDR and the downstream TAP&#8217;s TMS is held at the TMS-Hold value.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Config-Hold</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by <code>trst_n AND (config_hold OR scan_reset)</code>, protecting configuration when <code>config_hold=1</code>. TRST assertion always resets the register regardless of this bit.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by <code>trst_n AND (config_hold OR scan_reset)</code>, protecting configuration when <code>config_hold=1</code>. TRST assertion always resets the register regardless of this bit.</p></td>
 </tr>
 </tbody>
 </table>
