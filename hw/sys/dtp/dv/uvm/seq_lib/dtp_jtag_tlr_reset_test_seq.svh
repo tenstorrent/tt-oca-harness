@@ -24,7 +24,7 @@
 // TMS-high walk out of the Shift states cross Shift -> Exit1, publishing
 // partial scans the sequence cannot count.
 
-class dtp_jtag_tlr_reset_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_jtag_tlr_reset_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_jtag_tlr_reset_test_seq)
 
     function new(string name = "dtp_jtag_tlr_reset_test_seq");
@@ -47,7 +47,7 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_jtag_cmd_lib_seq;
                     "CHK-NONVAC"};
         attach_family_checker(required);
 
-        if ($test$plusargs("DTP_JTAG_TAP_CHECKER_NEGATIVE")) begin
+        if (test_cfg.tap_checker_negative) begin
             expected_idcode ^= 32'h2;
             `uvm_warning(get_type_name(), $sformatf(
                 "NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",

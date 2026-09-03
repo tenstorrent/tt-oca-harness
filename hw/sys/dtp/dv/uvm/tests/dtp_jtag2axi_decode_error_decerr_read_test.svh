@@ -19,15 +19,15 @@ class dtp_jtag2axi_decode_error_decerr_read_test extends dtp_jtag2axi_robustness
         return "decode_error_decerr_read";
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_JTAG2AXI_DECODE_ERROR_DECERR_READ_TEST_LOOPS";
     endfunction
 
-    virtual function void add_required_axi_ids(ocah_axi_config cfg);
-        super.add_required_axi_ids(cfg);
-        cfg.required_ids.push_back("CHK-AXI-ERR-INJ");
-        cfg.required_ids.push_back("CHK-AXI-RADDR");
-        cfg.required_ids.push_back("CHK-AXI-RDATA");
+    virtual function void add_required_axi_ids(ref string ids[$]);
+        super.add_required_axi_ids(ids);
+        ids.push_back("CHK-AXI-ERR-INJ");
+        ids.push_back("CHK-AXI-RADDR");
+        ids.push_back("CHK-AXI-RDATA");
     endfunction
 
 endclass : dtp_jtag2axi_decode_error_decerr_read_test
