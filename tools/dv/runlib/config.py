@@ -120,6 +120,7 @@ ALL_PLACEHOLDERS = COMMON_PLACEHOLDERS | {
     "build_cov_dir",
     "cov_dir",
     "design_db",
+    "scope_file",
     "merged",
     "report",
     "inputs",
@@ -294,6 +295,7 @@ COVERAGE_TOOL_KEYS = {
     "parser",
     "policy_file",
     "report_cmd",
+    "scope_file",
     "sim_args",
     "test_args",
     "waiver_files",
@@ -554,6 +556,7 @@ def validate_coverage_tool_table(
         "merged_name",
         "parser",
         "policy_file",
+        "scope_file",
     ):
         if key in table and (
             not isinstance(table.get(key), str) or not str(table.get(key)).strip()

@@ -1531,8 +1531,11 @@ def _cocotb_build_info(
 
     wave_format = _wave_format(args, tool)
     cov = coverage_cfg(sim_cfg)
+    cov_scope_extra: list[str] = []
     if args.cov:
         tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
+        scope_file = _coverage_scope_file(flow, root, tool_cov)
+        cov_scope_extra = _coverage_scope_fingerprint_extra(scope_file)
         coverage_build_args = as_str_list(
             tool_cov.get("compile_args" if tool == "vcs" else "build_args"),
             f"coverage.{tool}.{'compile_args' if tool == 'vcs' else 'build_args'}",
@@ -1545,6 +1548,7 @@ def _cocotb_build_info(
                 "build_dir": str(base_build),
                 "build_cov_dir": str(base_build / "cov_build.vdb"),
                 "cov_dir": str(base_build / "coverage"),
+                "scope_file": str(scope_file or ""),
             },
         )
 
@@ -1579,6 +1583,7 @@ def _cocotb_build_info(
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
             *_bender_sources_fingerprint(root, build),
+            *cov_scope_extra,
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
         ],
@@ -1631,6 +1636,7 @@ def _cocotb_vcs_makefile(
     sim_build = build_info["sim_build"]
     module = catalog.tests[item].module if item else _first_cocotb_module(catalog)
 
+    vcs_cov_cfg = cov.get("vcs", {}) if isinstance(cov.get("vcs", {}), dict) else {}
     ctx = {
         "run_dir": str(item_dir),
         "results_dir": str(results_xml.parent),
@@ -1638,6 +1644,10 @@ def _cocotb_vcs_makefile(
         "cov_dir": str(cov_dir),
         "build_dir": str(sim_build),
         "build_cov_dir": str(sim_build / "cov_build.vdb"),
+        # The classic-make flow renders its own compile args, so the scope token has
+        # to be available here too or `-cm_hier {scope_file}` compiles as an empty
+        # path and the instrumentation silently covers everything.
+        "scope_file": str(_coverage_scope_file(flow, root, vcs_cov_cfg) or ""),
         "seed": str(seed),
         "tool": "vcs",
         "item": item or "",
@@ -3001,6 +3011,46 @@ def _coverage_supported_metrics(args: argparse.Namespace, tool: str) -> list[str
         else []
     )
     return [metric for metric in declared if metric in CANONICAL_METRICS]
+
+
+def _coverage_scope_file(
+    flow: Flow,
+    root: Path,
+    tool_cov: dict[str, Any],
+) -> Path | None:
+    """The instrumentation scope file named by `coverage.<tool>.scope_file`.
+
+    Compile-time scope, not report-time: `urg -hier` prunes the report pages but
+    leaves the headline score computed over the whole database, so a scope that
+    has to hold has to keep the out-of-scope hierarchy out of the database in the
+    first place (VCS `-cm_hier`).
+    """
+
+    configured = tool_cov.get("scope_file")
+    if configured is None:
+        return None
+    if not isinstance(configured, str) or not configured.strip():
+        raise ConfigError("coverage scope_file must be a non-empty string")
+    path = _repo_or_dut_path(root, flow, configured)
+    if not path.is_file():
+        raise ConfigError(f"coverage scope file does not exist: {path}")
+    return path
+
+
+def _coverage_scope_fingerprint_extra(scope_file: Path | None) -> list[str]:
+    """Fold the scope file's content into the build fingerprint.
+
+    The fingerprint covers sources, target, waves and the `cov` flag -- not the
+    compile args. Without this, editing the scope file leaves the fingerprint
+    unchanged, the cached build is reused, and the run reports coverage under the
+    OLD scope while the file on disk says something else. Coverage scope is the
+    one compile arg whose content changes what the number means, so it has to be
+    in the key.
+    """
+
+    if scope_file is None:
+        return []
+    return [f"cov_scope={_file_sha256(scope_file)}"]
 
 
 def _coverage_design_db(

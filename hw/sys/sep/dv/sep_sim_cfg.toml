@@ -127,6 +127,27 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
+[coverage.vcs]
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
+# the list rather than appending to it, then add the scope file.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only way
+# to keep the testbench out of the number is to keep it out of the database:
+# `-cm_hier` limits what gets instrumented. That also shrinks the per-leaf
+# databases and the sim time.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{scope_file}",
+]
+# Hashed into the build fingerprint, so editing the scope forces a rebuild
+# instead of silently reusing a build instrumented under the old scope.
+scope_file = "cov/config/vcs/sep_cov_scope.hier"
+
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage;
 # toggle instrumentation stays off for this DUT. On this model toggle points
