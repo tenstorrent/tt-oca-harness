@@ -10,6 +10,10 @@
  *
  * Register addresses and field layout come from the generated map (smc_addr.h
  * and the generated smc_cla.h, both reached through smc_reg_access.h).
+ *
+ * The CDFDCSR arm write is gone: dfd_top_cla_dst_apb has no such MMR, and
+ * smc_dfd_wrap ties i_cla_fuse_dis/i_cla_clk_dis/i_cla_clk_dis_ctrl low, so
+ * the block powers up enabled and CDBGCLACTRLSTATUS is the only gate left.
  */
 
 #ifndef SMC_CLA_BOOT_H
@@ -20,13 +24,9 @@
 
 #include "smc_reg_access.h"
 
-#define SMC_CLA_CDFDCSR_REG_ADDR SMC_TOP_SMC_CLA_CDFDCSR_BASE_ADDR
 #define SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR SMC_TOP_SMC_CLA_CDBGCLACTRLSTATUS_BASE_ADDR
 #define SMC_CLA_CDBGNODE0EAP0_REG_ADDR SMC_TOP_SMC_CLA_CDBGNODE0EAP0_BASE_ADDR
 #define SMC_CLA_CDBGNODE0EAP1_REG_ADDR SMC_TOP_SMC_CLA_CDBGNODE0EAP1_BASE_ADDR
-
-/* Arm the CLA data-flow domain (bit 63 of CDFDCSR). */
-#define SMC_CLA_CDFDCSR_ARM_VALUE (1ULL << 63)
 
 static inline uint64_t smu_sep_cla_field(uint64_t value, uint64_t mask, uint32_t shift) {
     return (value << shift) & mask;
@@ -59,7 +59,6 @@ static inline void smu_sep_program_real_cla_boot(void) {
      * park the SEP core. Fire only the run requests {1,4}; leaving [2]
      * deasserted keeps mpc_reset_run_req = 1 (Normal/run).
      */
-    write64_reg(SMC_CLA_CDFDCSR_REG_ADDR, SMC_CLA_CDFDCSR_ARM_VALUE);
     write64_reg(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR,
                 (uint64_t)SMC_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bm |
                     (uint64_t)SMC_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bm);

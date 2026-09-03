@@ -110,8 +110,10 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # SEC_DIS token-match override. RAND-NONE. Real fuse sense. tb_top binds
-# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. Zero matches and
-# opens FEAT_CTRL; token=1 mismatches and restores fail-closed PROD.
+# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. The first match
+# is before sense-done and must leave the sense-gated reset held. After
+# sense, zero opens FEAT_CTRL; token=1 mismatches and restores fail-closed
+# PROD.
 # Does not force sec_dis.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
