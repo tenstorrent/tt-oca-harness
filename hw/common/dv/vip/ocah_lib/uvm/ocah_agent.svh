@@ -7,10 +7,10 @@
 // unchanged. The cocotb twin is ocah_lib.OcahAgent.
 
 class ocah_agent extends uvm_agent;
-    `uvm_component_utils(ocah_agent)
+  `uvm_component_utils(ocah_agent)
 
-    function new(string name = "ocah_agent", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "ocah_agent", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
 endclass : ocah_agent

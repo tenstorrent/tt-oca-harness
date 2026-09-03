@@ -9,23 +9,23 @@
 // seq_lib/dtp_jtag2axi_single_status_seq.py.
 
 class dtp_jtag2axi_single_status_seq extends dtp_jtag_op_seq;
-    `uvm_object_utils(dtp_jtag2axi_single_status_seq)
+  `uvm_object_utils(dtp_jtag2axi_single_status_seq)
 
-    dtp_j2a_target_t target;
-    // Results.
-    dtp_j2a_status_e status = DTP_J2A_BUSY_OR_FULL;
-    bit [63:0]       rdata;
+  dtp_j2a_target_t target;
+  // Results.
+  dtp_j2a_status_e status = DTP_J2A_BUSY_OR_FULL;
+  bit [63:0]       rdata;
 
-    function new(string name = "dtp_jtag2axi_single_status_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag2axi_single_status_seq");
+    super.new(name);
+  endfunction
 
-    virtual task do_op();
-        bit zeros[] = new[dtp_j2a_single_op_len(target)];
-        bit rbits[];
-        foreach (zeros[i]) zeros[i] = 1'b0;
-        dr_scan_wide(zeros, rbits);
-        dtp_j2a_unpack_single_op(target, rbits, status, rdata);
-    endtask
+  virtual task do_op();
+    bit zeros[] = new[dtp_j2a_single_op_len(target)];
+    bit rbits[];
+    foreach (zeros[i]) zeros[i] = 1'b0;
+    dr_scan_wide(zeros, rbits);
+    dtp_j2a_unpack_single_op(target, rbits, status, rdata);
+  endtask
 
 endclass : dtp_jtag2axi_single_status_seq
