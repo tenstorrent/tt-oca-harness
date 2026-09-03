@@ -2,16 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Shared iJTAG/STAP scan helper base sequence — the SV analogue of the
-// cocotb dtp_scan_base_test_seq, layered on the JTAG command library with
-// the dtp_scan_ref_model classes:
+// cocotb dtp_scan_base_test_seq, layered on the basic-JTAG family layer with
+// the env's scan reference models (dtp_ijtag_sib_model, dtp_stap_3dcr_model):
 //
-//   * temporal scan-control windows: a forked sampler counts high samples
-//     of named dtp_tb_if observables once per TCK cycle, so a gated
-//     operation proves ZERO pulses over a whole scan and an enabled one
-//     proves the expected pulses occurred (post-scan snapshots cannot).
-//     Samples land on the falling TCK edge, where every control has
-//     settled — the same one-sample-per-cycle semantics as the cocotb
-//     post-edge ReadOnly monitor;
+//   * temporal scan-control windows: the env's dtp_scan_window_monitor
+//     counts high samples of named dtp_tb_if observables once per TCK cycle
+//     (on the JTAG monitor's falling-edge events, where every control has
+//     settled), so a gated operation proves ZERO pulses over a whole scan
+//     and an enabled one proves the expected pulses occurred (post-scan
+//     snapshots cannot);
 //   * iJTAG SIB programming (SELECT_IJTAG) with requested/gated/effective
 //     prediction from the SIB model and window-proved outcomes;
 //   * STAP/3DCR access: PTAP 3DCR read/write, composed TAP_3DCR chain
@@ -21,16 +20,17 @@
 //   * downstream STAP TAPs: the shared ocah_jtag_vip slave devices the
 //     bench splices behind the STAP host ports (test-attached), reached only
 //     through composed chain scans (network-wide IR scans included) and
-//     judged through each device's ocah_jtag_slave_sequence.
+//     judged through each device's ocah_jtag_slave_sequence on the virtual
+//     sequencer.
 //
 // Scenario checks land named family evidence (CHK-SCAN-WIN for the
 // temporal windows, CHK-SCAN-OBS for sampled observables, CHK-SCAN-CHAIN
 // for chain readbacks, CHK-DS-* for downstream readbacks), honoring
-// +DTP_JTAG_FAMILY_CHECKER_NEGATIVE. The scan scenarios navigate Shift-x
+// test_cfg.family_checker_negative. The scan scenarios navigate Shift-x
 // with sequence-owned exits, so tests attach the family checker with
 // use_scan_crosscheck=0.
 
-class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_scan_base_test_seq)
 
     localparam int unsigned Ptap3dcrWidth      = 2;
@@ -40,59 +40,36 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
     localparam int unsigned StapChainScanWidth = 64;
     localparam string       StapDsTdrName      = "DS_TDR";
 
-    // The UVM harness system clock is fixed at 100 MHz (tb_top).
-    localparam time SysClkPeriod = 10ns;
-
     dtp_stap_3dcr_model stap_model;
 
-    // Downstream STAP TAPs (plumbed by the test per pass, dtp_stap_e order):
-    // the slave sequence bound to each device, the device configuration the
-    // scan model is seeded from, and whether the port is attached (its host
-    // TDI takes the device's TDO instead of the wire loopback).
-    ocah_jtag_slave_sequence stap_ds_seq[DtpStapCount];
+    // Downstream STAP TAPs (dtp_stap_e order): the device configuration the
+    // scan model is seeded from and whether the port is attached (its host
+    // TDI takes the device's TDO instead of the wire loopback), both plumbed
+    // by the test; the slave sequence bound to each device comes from the
+    // virtual sequencer.
     ocah_jtag_slave_config   stap_ds_cfg[DtpStapCount];
     bit                      stap_ds_attached[DtpStapCount];
-
-    // Window-monitor state (one window at a time, mirroring cocotb usage).
-    protected string       m_win_signals[$];
-    protected int unsigned m_win_counts[string];
-    protected int unsigned m_win_edges;
-    protected process      m_win_proc;
+    protected ocah_jtag_slave_sequence m_stap_ds_seq[DtpStapCount];
 
     function new(string name = "dtp_scan_base_test_seq");
         super.new(name);
         stap_model = new();
     endfunction
 
-    // --- system helpers -------------------------------------------------------
-    task wait_sys_cycles(int unsigned cycles = 4);
-        #(cycles * SysClkPeriod);
-    endtask
-
     // Drive the full lifecycle disable vector, then settle through the
     // DUT's 2-stage TCK-domain synchronizers.
     task set_dbg_disable_full(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
-        tb_vif.dbg_disable <= d;
-        for (int unsigned i = 0; i < 4; i++)
-            step(1'b0);
-        wait_sys_cycles(4);
-        `uvm_info(get_type_name(), $sformatf("dbg_disable=0x%03h", d), UVM_MEDIUM)
+        set_dbg_disable(d);
     endtask
 
-    task enable_all_debug();
-        set_dbg_disable_full('0);
-    endtask
-
-    // --- generic TDR access ----------------------------------------------------
+    // --- generic TDR access (one reusable operation each) ----------------------
     task read_tdr64(
         input  bit [IrWidth-1:0] instr,
         input  int unsigned      width,
         output bit [63:0]        observed,
         input  bit [63:0]        shift_value = '0
     );
-        load_ir(instr);
-        shift_dr(shift_value & bit_mask(width), width, observed);
-        observed &= bit_mask(width);
+        read_tdr(instr, width, observed, shift_value);
     endtask
 
     task write_tdr64(
@@ -100,82 +77,24 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
         input int unsigned      width,
         input bit [63:0]        value
     );
-        bit [63:0] unused;
-        load_ir(instr);
-        shift_dr(value & bit_mask(width), width, unused);
+        write_tdr(instr, width, value);
     endtask
 
-    // --- observable sampling and temporal windows ------------------------------
-    function bit sample_scan_signal(string name);
-        case (name)
-            "jtag_dft_secure_select":     return tb_vif.jtag_dft_secure_select;
-            "jtag_dft_secure_shift_en":   return tb_vif.jtag_dft_secure_shift_en;
-            "jtag_dft_secure_capture_en": return tb_vif.jtag_dft_secure_capture_en;
-            "jtag_dft_secure_update_en":  return tb_vif.jtag_dft_secure_update_en;
-            "jtag_dft_select":            return tb_vif.jtag_dft_select;
-            "jtag_dft_shift_en":          return tb_vif.jtag_dft_shift_en;
-            "jtag_dft_capture_en":        return tb_vif.jtag_dft_capture_en;
-            "jtag_dft_update_en":         return tb_vif.jtag_dft_update_en;
-            "jtag_dfd_select":            return tb_vif.jtag_dfd_select;
-            "jtag_dfd_shift_en":          return tb_vif.jtag_dfd_shift_en;
-            "jtag_dfd_capture_en":        return tb_vif.jtag_dfd_capture_en;
-            "jtag_dfd_update_en":         return tb_vif.jtag_dfd_update_en;
-            "jtag_stap_io_tms":           return tb_vif.jtag_stap_io_tms;
-            "jtag_stap_io_tdo_oen":       return tb_vif.jtag_stap_io_tdo_oen;
-            "jtag_stap_smc_tms":          return tb_vif.jtag_stap_smc_tms;
-            "jtag_stap_smc_tdo_oen":      return tb_vif.jtag_stap_smc_tdo_oen;
-            "jtag_stap_sep_tms":          return tb_vif.jtag_stap_sep_tms;
-            "jtag_stap_sep_tdo_oen":      return tb_vif.jtag_stap_sep_tdo_oen;
-            "jtag_stap_extra0_tms":       return tb_vif.jtag_stap_extra0_tms;
-            "jtag_stap_extra0_tdo_oen":   return tb_vif.jtag_stap_extra0_tdo_oen;
-            "jtag_stap_host_select":      return tb_vif.jtag_stap_host_select;
-            "jtag_stap_host_shift_en":    return tb_vif.jtag_stap_host_shift_en;
-            "jtag_stap_host_capture_en":  return tb_vif.jtag_stap_host_capture_en;
-            "jtag_stap_host_update_en":   return tb_vif.jtag_stap_host_update_en;
-            default: begin
-                `uvm_fatal(get_type_name(), $sformatf(
-                    "unknown scan observable '%s'", name))
-                return 1'b0;
-            end
-        endcase
-    endfunction
-
+    // --- temporal windows (env dtp_scan_window_monitor) -------------------------
     // Begin counting high samples of the named observables once per TCK
     // cycle (falling edge, all controls settled).
-    task start_scan_window(string signals[$]);
-        if (m_win_proc != null)
-            `uvm_fatal(get_type_name(), "scan window monitor is already running")
-        m_win_signals = signals;
-        m_win_counts.delete();
-        foreach (signals[i])
-            m_win_counts[signals[i]] = 0;
-        m_win_edges = 0;
-        fork
-            begin
-                m_win_proc = process::self();
-                forever begin
-                    @(negedge jtag_vif.tck);
-                    m_win_edges++;
-                    foreach (m_win_signals[i])
-                        if (sample_scan_signal(m_win_signals[i]))
-                            m_win_counts[m_win_signals[i]]++;
-                end
-            end
-        join_none
-    endtask
+    function void start_scan_window(string signals[$]);
+        if (scan_window == null)
+            `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+        scan_window.start_window(signals);
+    endfunction
 
     // End the window; return the TCK-cycle count and per-signal high counts.
     function void stop_scan_window(output int unsigned edges,
                                    output int unsigned counts[string]);
-        if (m_win_proc == null)
-            `uvm_fatal(get_type_name(), "scan window monitor was never started")
-        m_win_proc.kill();
-        m_win_proc = null;
-        edges  = m_win_edges;
-        counts = m_win_counts;
-        foreach (counts[name])
-            `uvm_info(get_type_name(), $sformatf(
-                "scan window %s=%0d/%0d", name, counts[name], edges), UVM_MEDIUM)
+        if (scan_window == null)
+            `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+        scan_window.stop_window(edges, counts);
     endfunction
 
     // Quiet signals must never pulse inside the window; active ones must.
@@ -319,15 +238,16 @@ class dtp_scan_base_test_seq extends dtp_jtag_cmd_lib_seq;
     // attached ports is unaffected.
     function void attach_downstream_taps();
         for (int unsigned s = 0; s < DtpStapCount; s++) begin
+            m_stap_ds_seq[s] = p_sequencer.m_stap_ds_seq[s];
             if (!stap_ds_attached[s])
                 continue;
-            if (stap_ds_cfg[s] == null || stap_ds_seq[s] == null)
+            if (stap_ds_cfg[s] == null || m_stap_ds_seq[s] == null)
                 `uvm_fatal(get_type_name(), $sformatf(
-                    "STAP %s attached but its downstream handles were not plumbed",
+                    "STAP %s attached but its downstream device is not wired",
                     stap_name(s)))
             stap_model.attach(s, stap_ds_cfg[s]);
             if (m_family != null)
-                stap_ds_seq[s].evidence = m_family;
+                m_stap_ds_seq[s].evidence = m_family;
             `uvm_info(get_type_name(), $sformatf(
                 "downstream TAP behind STAP %s: idcode=0x%08h ir_width=%0d",
                 stap_name(s), stap_ds_cfg[s].idcode, stap_ds_cfg[s].ir_width), UVM_LOW)

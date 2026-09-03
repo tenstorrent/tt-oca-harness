@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP-local TB interface for the SV-UVM flow: system/power-on resets
-// (sequenced by the test) and the DUT-produced one-hot IEEE 1149.1 TAP state
-// used by the FSM reference-model checks. Deliberately separate from the
-// shared ocah_jtag_if, which carries generic JTAG pins only.
+// DTP-local TB interface for the SV-UVM flow: the harness clock period,
+// system/power-on resets (sequenced by the test), reset-assertion counters,
+// and the DUT-produced one-hot IEEE 1149.1 TAP state used by the FSM
+// reference-model checks. Deliberately separate from the shared
+// ocah_jtag_if, which carries generic JTAG pins only. The cocotb realization
+// exposes the same members as the DtpTbIf accessor over the top's ports.
 //
 // The JTAG2AXI additions carry the test-drivable lifecycle
 // debug disables, the SVA suppress knobs, and mirrors of the tb_top
@@ -15,9 +17,18 @@
 
 interface dtp_tb_if;
 
+    // System-clock period the harness clock generator reads, set by the env
+    // from dtp_env_cfg (the test cfg randomizes it from the runner seed).
+    int unsigned clk_period_ns = 10;
+
     // Driven by the TB (reset sequencing owned by the test/sequence).
     logic por_rst_n;
     logic sys_rst_n;
+
+    // Reset-assertion counters (driven by tb_top): the scoreboard predictors
+    // re-baseline the CSR shadow and the TAP instruction on them.
+    logic [31:0] sys_rst_assert_count;
+    logic [31:0] por_assert_count;
 
     // Driven by the DUT top (jtag_tap_pkg::tap_state_e, one-hot).
     logic [15:0] tap_state;

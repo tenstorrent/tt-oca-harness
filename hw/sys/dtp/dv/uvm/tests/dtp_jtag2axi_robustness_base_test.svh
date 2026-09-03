@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Shared base for the cross-bridge JTAG2AXI robustness tests: plumbs the
-// per-target handle bundles for all three bridges (smc_axi, smc_otp,
-// sep_otp) into the robustness sequence and arms the baseline evidence
-// contract on every port recorder, so a silent bridge fails at
-// finalization. Concrete tests name the scenario, the specific loops
-// plusarg, and any scenario-specific required evidence IDs.
+// Shared base for the cross-bridge JTAG2AXI robustness tests: arms the
+// baseline evidence contract on every bridge's passive recorder through the
+// test cfg (so a silent bridge fails at finalization) and plumbs the
+// per-target evidence bundles for all three bridges (smc_axi, smc_otp,
+// sep_otp) into the robustness sequence; the responders come from the
+// virtual sequencer. Concrete tests name the scenario, the specific loops
+// knob, and any scenario-specific required evidence IDs.
 
 class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
     `uvm_component_utils(dtp_jtag2axi_robustness_base_test)
@@ -22,22 +23,23 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
     endfunction
 
     // Baseline per-port evidence contract; concrete tests extend it with
-    // super.add_required_axi_ids(cfg) plus their scenario-specific IDs.
-    virtual function void add_required_axi_ids(ocah_axi_config cfg);
-        cfg.require_checks = 1'b1;
-        cfg.required_ids.push_back("CHK-AXI-RESP");
-        cfg.required_ids.push_back("CHK-AXI-COMPLETION");
-        cfg.required_ids.push_back("CHK-AXI-NONVAC");
+    // super.add_required_axi_ids(ids) plus their scenario-specific IDs.
+    virtual function void add_required_axi_ids(ref string ids[$]);
+        ids.push_back("CHK-AXI-RESP");
+        ids.push_back("CHK-AXI-COMPLETION");
+        ids.push_back("CHK-AXI-NONVAC");
     endfunction
 
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        add_required_axi_ids(m_env.m_smc_axi_cfg);
-        add_required_axi_ids(m_env.m_smc_otp_axi_cfg);
-        add_required_axi_ids(m_env.m_sep_otp_axi_cfg);
+    virtual function void configure_test_cfg(dtp_test_cfg cfg);
+        string ids[$];
+        super.configure_test_cfg(cfg);
+        add_required_axi_ids(ids);
+        cfg.require_axi_ids("smc_axi", ids);
+        cfg.require_axi_ids("smc_otp", ids);
+        cfg.require_axi_ids("sep_otp", ids);
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         dtp_jtag2axi_robustness_test_seq seq =
             dtp_jtag2axi_robustness_test_seq::type_id::create(
                 {scenario_name(), "_seq"});
@@ -45,11 +47,11 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
         return seq;
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_JTAG2AXI_TEST_LOOPS";
     endfunction
 
-    virtual function void plumb_scenario_seq(dtp_jtag_base_test_seq seq);
+    virtual function void plumb_scenario_seq(ocah_sequence seq);
         dtp_jtag2axi_robustness_test_seq rob_seq;
         super.plumb_scenario_seq(seq);
         if (!$cast(rob_seq, seq))
@@ -66,9 +68,6 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
         rob_seq.target_ref_models = '{m_env.m_smc_axi_env.m_ref_model,
                                       m_env.m_smc_otp_axi_env.m_ref_model,
                                       m_env.m_sep_otp_axi_env.m_ref_model};
-        rob_seq.target_slaves     = '{m_env.m_smc_axi_slave_agent.seq,
-                                      m_env.m_smc_otp_slave_agent.seq,
-                                      m_env.m_sep_otp_slave_agent.seq};
     endfunction
 
 endclass : dtp_jtag2axi_robustness_base_test

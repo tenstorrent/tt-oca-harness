@@ -11,15 +11,15 @@ class dtp_jtag_clamp_test extends dtp_base_test;
         super.new(name, parent);
     endfunction
 
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
+    virtual function ocah_sequence create_scenario_seq();
         return dtp_jtag_clamp_test_seq::type_id::create("seq");
     endfunction
 
-    virtual function string specific_loops_plusarg();
+    virtual function string specific_loops_knob();
         return "DTP_JTAG_CLAMP_TEST_LOOPS";
     endfunction
 
-    virtual function string group_loops_plusarg();
+    virtual function string group_loops_knob();
         return "DTP_BASIC_JTAG_TEST_LOOPS";
     endfunction
 

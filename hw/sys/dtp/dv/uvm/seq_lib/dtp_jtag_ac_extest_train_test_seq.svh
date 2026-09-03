@@ -6,7 +6,7 @@
 // patterns, and a final EXTEST loopback. Mirrors the cocotb
 // dtp_jtag_ac_extest_train_test_seq.
 
-class dtp_jtag_ac_extest_train_test_seq extends dtp_jtag_cmd_lib_seq;
+class dtp_jtag_ac_extest_train_test_seq extends dtp_jtag_base_test_seq;
     `uvm_object_utils(dtp_jtag_ac_extest_train_test_seq)
 
     function new(string name = "dtp_jtag_ac_extest_train_test_seq");
