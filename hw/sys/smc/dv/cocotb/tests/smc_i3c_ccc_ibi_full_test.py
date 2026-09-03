@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PyUVM I3C directed-SDR protocol test — DEFERRED.
+"""# deferred: needs_i3c_dat_dct
+SMC OSS PyUVM I3C directed-SDR protocol test — DEFERRED.
 
 TB I3C DAT/DCT prim_ram removed (no-placeholder policy). Re-enable when real
 DAT/DCT macros (or product-backed mem) are present. Not ported

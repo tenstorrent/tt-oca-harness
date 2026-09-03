@@ -229,16 +229,31 @@ async def watch_probe_liveness(dut=None) -> None:
     Only :data:`WATCHED_PROBES` are eligible: a probe that idles non-zero would
     be credited on the first edge, which would certify nothing and would turn the
     ledger into a rubber stamp.
+
+    A watched probe whose ``tb_top`` handle is missing raises immediately. The
+    previous ``hasattr`` drop removed that probe from the watched set, so an
+    RTL rename failed as an uncredited idle leg (or not at all) instead of
+    naming the absent signal.
     """
     dut = dut if dut is not None else cocotb.top
     clk = dut.clk_smc_i
+    missing = [
+        probe for probe in WATCHED_PROBES if not hasattr(dut, PROBE_SIGNALS[probe])
+    ]
+    if missing:
+        # Dropping an absent handle would shrink the watched set silently: a
+        # tb_top rename then fails later (or not at all) as "idle legs were
+        # booked on a probe no control credited", across every test that
+        # samples that class. Fail at the source instead.
+        detail = ", ".join(f"{p} ({PROBE_SIGNALS[p]})" for p in missing)
+        raise AssertionError(
+            f"watch_probe_liveness: {len(missing)} WATCHED_PROBES signal(s) "
+            f"are absent from the DUT and can never be credited: {detail}"
+        )
     pending = [
         (probe, getattr(dut, PROBE_SIGNALS[probe]), PROBE_SIGNALS[probe])
         for probe in WATCHED_PROBES
-        if hasattr(dut, PROBE_SIGNALS[probe])
     ]
-    if not pending:
-        return
     while pending:
         await RisingEdge(clk)
         still: list[tuple[str, object, str]] = []

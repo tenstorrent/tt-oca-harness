@@ -154,9 +154,11 @@ class SmcScoreboard(uvm_subscriber):
         """End-of-run resolution of every deferred idle leg (see ``_idle_leg``).
 
         A leg whose probe got credited anywhere in this run is exact-compared
-        now -- expiry of the deferral is not an escape hatch. A leg whose probe
-        was never observed at 1 is logged as OBSERVED-ONLY and explicitly not
-        counted as checked evidence.
+        now -- expiry of the deferral is not an escape hatch. A booked idle
+        ``== 0`` leg whose probe was never observed at 1 is an error: there is
+        no third outcome between "checked against a same-run control" and
+        "declared unbackable". GPIO vector fields with a stated expectation
+        are compared inline in ``_check_gpio`` and are not queued here.
         """
         unbacked: dict[str, int] = {}
         for probe, label, got, exp, item_str in self._pending_idle_legs:
@@ -596,12 +598,15 @@ class SmcScoreboard(uvm_subscriber):
                 f"{label} expected {SmcGpioItem.fmt_vec(exp)}, got "
                 f"{SmcGpioItem.fmt_vec(got)} ({item})"
             )
+            # Do not book a pending idle leg: the compare already ran. A
+            # check_phase raise for "compares did not happen" would be a false
+            # diagnostic on a passing vector check, which is worse than leaving
+            # the line OBSERVED-ONLY until prove_gpio_pad_bus_probe credits it.
             if probe_alive(probe):
                 self.idle_legs_checked += 1
                 checked.append(field)
             else:
-                self._pending_idle_legs.append((probe, label, got, exp, str(item)))
-                observed_only.append(f"{field}(pending)")
+                observed_only.append(f"{field}(compared; no liveness credit)")
         self.logger.info(
             "Scoreboard GPIO sample #%d: %s [checked: %s | OBSERVED-ONLY (NOT "
             "checked evidence): %s]",

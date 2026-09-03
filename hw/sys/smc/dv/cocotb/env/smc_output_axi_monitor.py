@@ -52,7 +52,11 @@ class SmcOutputAxiMonitor(uvm_component):
         # `smc_output_fabric_slverr_inject_test.py:55`, which sets
         # `mon.allow_slverr = True` explicitly: that opt-in only means something
         # if the default refuses SLVERR. A testcase that legitimately expects
-        # SYS_OUT SLVERR should opt in the same way.
+        # SYS_OUT SLVERR should opt in the same way. The enrolled opt-in is
+        # `smc_output_fabric_slverr_inject_test`; the `balanced_ip` 98/100
+        # Verilator figure in this branch's test plan was taken with this
+        # default, so no other enrolled test in that group produced a SYS_OUT
+        # SLVERR.
         self.allow_slverr = False
 
     def snapshot(self) -> dict[str, int]:

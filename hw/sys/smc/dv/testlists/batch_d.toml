@@ -19,6 +19,14 @@ tags = ["smoke", "ci", "batch_d", "canonical_top10", "canonical_top20", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_input_fabric_axi_wr_rd_test"
+module = "smc_input_fabric_axi_wr_rd_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "batch_d", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_local_fabric_csr_depth_test"
 module = "smc_local_fabric_csr_depth_test"
 seed = 1
@@ -260,6 +268,7 @@ tests = [
     "smc_efuse_chip_config_read_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
+    "smc_input_fabric_axi_wr_rd_test",
     "smc_avsbus_sanity_test",
     "smc_avsbus_status_depth_test",
     "smc_avsbus_clock_config_proxy_test",
