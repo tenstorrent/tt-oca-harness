@@ -506,38 +506,49 @@ module smc_uvm_top
     // known 0/1, then follow. An X/Z after cocotb has driven the port is a
     // testbench defect: latching the last good level would hide it, so it
     // fails here instead.
+    //
+    // $fatal, not $error: this is the safety net for the whole reset-hold
+    // change, and $error only prints on Xcelium and VCS -- the run would go
+    // green with the DUT on a stale reset level. It is also not a DUT finding
+    // that a scoreboard should weigh; the stimulus is wrong and nothing after
+    // it means anything.
+    //
+    // Each block is sensitive to its input alone rather than @(*). Under @(*)
+    // the *_driven flag it writes is also in its own inferred sensitivity
+    // list, which makes the block self-retriggering and draws UNOPTFLAT and
+    // LATCH from Verilator. The value latch on *_int is deliberate.
     logic rst_cold_n_int = 1'b0;
     logic rst_cold_n_driven = 1'b0;
-    always @(*) begin
+    always @(rst_cold_ni) begin
         if ((rst_cold_ni === 1'b0) || (rst_cold_ni === 1'b1)) begin
             rst_cold_n_int = rst_cold_ni;
             rst_cold_n_driven = 1'b1;
         end else if (rst_cold_n_driven) begin
-            $error("%0t: rst_cold_ni went %b after being driven; the DUT is running on the last known level",
+            $fatal(1, "%0t: rst_cold_ni went %b after being driven; the DUT would run on the last known level",
                    $time, rst_cold_ni);
         end
     end
 
     logic rst_cool_n_int = 1'b0;
     logic rst_cool_n_driven = 1'b0;
-    always @(*) begin
+    always @(rst_cool_ni) begin
         if ((rst_cool_ni === 1'b0) || (rst_cool_ni === 1'b1)) begin
             rst_cool_n_int = rst_cool_ni;
             rst_cool_n_driven = 1'b1;
         end else if (rst_cool_n_driven) begin
-            $error("%0t: rst_cool_ni went %b after being driven; the DUT is running on the last known level",
+            $fatal(1, "%0t: rst_cool_ni went %b after being driven; the DUT would run on the last known level",
                    $time, rst_cool_ni);
         end
     end
 
     logic powergood_int = 1'b0;
     logic powergood_driven = 1'b0;
-    always @(*) begin
+    always @(powergood_i) begin
         if ((powergood_i === 1'b0) || (powergood_i === 1'b1)) begin
             powergood_int = powergood_i;
             powergood_driven = 1'b1;
         end else if (powergood_driven) begin
-            $error("%0t: powergood_i went %b after being driven; the DUT is running on the last known level",
+            $fatal(1, "%0t: powergood_i went %b after being driven; the DUT would run on the last known level",
                    $time, powergood_i);
         end
     end
