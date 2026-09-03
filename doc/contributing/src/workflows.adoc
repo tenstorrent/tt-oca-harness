@@ -325,7 +325,7 @@ We use linters within the development of OCAH to perform static analysis
 on the codebase. The below rules will check code for errors and poor
 formatting. They also enforce a consistent code style.
 
-WARNING
+[WARNING]
 ====
 Some linting workflows are still WIP, the code has not yet been cleaned up.
 ====
@@ -439,11 +439,13 @@ make lint-make
 To constrain the output to a single file/subdirectory, use `MAKEFILE_PATH`.
 
 [NOTE]
+====
 Checkmake's `maxbodylength`/`phonydeclared`/`uniquetargets` rules have
 false-positive modes against conventions this repo relies on deliberately
 (long multi-step recipe bodies, the deferred `OCAH_PHONY +=` accumulator, and
 legitimate pattern-rule/`ifeq` target overloads) -- see `checkmake.ini` and
 `flows/lint/checkmake.mk`. Treat both as read-and-judge, not fix-on-sight.
+====
 
 ==== Shell Script Lint and Format with `shellcheck`
 
@@ -477,6 +479,7 @@ make lint-toml
 The variable `TOML_PATH` may be used to limit the files checked.
 
 [NOTE]
+====
 `lint-toml` (tomllint) checks TOML syntax only -- it carries no style rules
 and no autofix, unlike yamllint/markdownlint. It mainly guards the DV
 testlists and sim configs under `hw/**/dv/**/*.toml`, catching a malformed
@@ -484,6 +487,7 @@ file before the runner that reads it fails with a less legible error.
 `hw/ip/scrambler/dv/lint/scrambler.toml` is excluded: despite the extension,
 `slang-tidy` parses it with its own `Checks:`/`CheckConfigs:` grammar, not
 TOML.
+====
 
 ==== YAML file Lint with `yamllint`
 
@@ -498,11 +502,13 @@ The variable `YAML_PATH` may similarly be used to limit the files checked.
 === Documentation Files
 
 [NOTE]
+====
 `lint-spelling` (codespell) and `lint-markdown` (markdownlint) both offer
 autofix commands (`-fix` suffix); review the diff before committing, since
 either can rewrite a deliberate domain term (see `[tool.codespell]`'s
 `ignore-words-list` in `pyproject.toml`) or mangle non-prose content such as
 math notation or bit-range syntax that only looks like Markdown.
+====
 
 ==== Markdown Lint with `markdownlint`
 
