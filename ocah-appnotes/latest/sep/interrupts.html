@@ -184,10 +184,10 @@ tied to zero inside the core. Firmware programs source <code>N</code> by writing
 <div class="sect3">
 <h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.1. SEP CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
-<p>The PIC supports 255 external sources. Slots 1–42 are individually assigned to
+<p>The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 43–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 44–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -397,24 +397,35 @@ not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>39</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool pointer fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO read/write pointer integrity fault (fault). The pool&#8217;s
+pointer-integrity check is not built in the current configuration, so this
+source is tied to zero and never asserts; the slot is assigned anyway so that
+enabling the check later does not renumber the map. When live it is
+level-sensitive and holds until a <code>TRNG_ENTROPY_CLEAR</code> pool scrub resets the
+pointers; there is no write-one-to-clear, so firmware must mask the source or
+scrub the pool rather than acknowledge it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>40</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Token match fault</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse token comparator redundancy fault (fault). The OR of the three sticky
 <code>TOKEN_MATCH_FAULT</code> bits. Those bits are software-read-only and clear only on
-reset, so this source stays asserted. Firmware must mask PIC source 39 after
+reset, so this source stays asserted. Firmware must mask PIC source 40 after
 it has observed the fault; there is no write-one-to-clear, and an unmasked
 handler re-enters.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>40</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA register-path bus error</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">A CPU access to a Secure DMA register returned a TL-UL error response
 (unmapped or misaligned offset, or a RACL denial). The faulting access also
 received SLVERR synchronously. Latched and held until firmware writes
-<code>DMA_BUS_ERR_CLEAR.clr</code>; unlike PIC source 39 this source is clearable, so
+<code>DMA_BUS_ERR_CLEAR.clr</code>; unlike PIC source 40 this source is clearable, so
 firmware acknowledges it rather than masking it.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>42</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA host-path integrity/bus fault</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Either the fabric returned a non-OKAY AXI response to a DMA transfer, or a
 TL-UL command-integrity check failed on a command issued by the DMA. The
@@ -422,7 +433,7 @@ integrity case is a fault-detection event with no other reporting path.
 Cleared by the same <code>DMA_BUS_ERR_CLEAR.clr</code> write.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>42</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>43</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral register-bridge fault</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
 CSRNG, EDN and the watchdog timer. Read <code>PERIPH_BUS_ERR_STATUS</code> to identify
@@ -430,7 +441,7 @@ which block faulted, and clear that block&#8217;s bit in <code>PERIPH_BUS_ERR_CL
 clears are per-block so acknowledging one cannot discard another block&#8217;s fault.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[43–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[44–255]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
 </tr>
@@ -440,7 +451,9 @@ clears are per-block so acknowledging one cannot discard another block&#8217;s f
 <div class="sect3">
 <h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.2. Non-PIC Interrupt Paths</a></h4>
 <div class="paragraph">
-<p>Three CPU interrupt pins bypass the EL2 PIC entirely.</p>
+<p>Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
+own memory errors through a path that is neither a pin nor a PIC source; see
+<a href="#sep-memory-error-reporting">Memory ECC Errors</a>.</p>
 </div>
 <div class="sect4">
 <h5 id="nmi-watchdog-timer-bark"><a class="anchor" href="#nmi-watchdog-timer-bark"></a><a class="link" href="#nmi-watchdog-timer-bark">NMI — Watchdog Timer Bark</a></h5>
@@ -462,6 +475,161 @@ configuration register.</p>
 the SMU integration boundary. There is no external CLINT-style delivery path.
 The VeeR core contains independent internal timers that generate standard RISC-V
 <code>mip.MTIP</code> and <code>mip.MSIP</code> interrupts without requiring an external signal.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="sep-memory-error-reporting"><a class="anchor" href="#sep-memory-error-reporting"></a><a class="link" href="#sep-memory-error-reporting">Memory ECC Errors</a></h5>
+<div class="paragraph">
+<p>The ICCM and DCCM are SECDED-protected. Neither reaches the PIC: the core
+reports these errors itself, correctable ones as a local interrupt and
+uncorrectable ones as a synchronous trap. No PIC register affects either, and
+there is no PIC source to enable or mask.</p>
+</div>
+<div class="paragraph">
+<p>The SEP core is configured without an I-cache, so the I-cache parity counter
+<code>MICECT</code> (<code>0x7F0</code>) never increments. Only the two tightly-coupled-memory
+counters below are live.</p>
+</div>
+<div class="sect5">
+<h6 id="correctable-single-bit-errors"><a class="anchor" href="#correctable-single-bit-errors"></a><a class="link" href="#correctable-single-bit-errors">Correctable (single-bit) errors</a></h6>
+<div class="paragraph">
+<p>Hardware corrects the data and the access is retried, so no data is lost and no
+trap is taken. Each protected memory has a counter CSR:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 65%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">CSR</th>
+<th class="tableblock halign-left valign-top">Address</th>
+<th class="tableblock halign-left valign-top">Counts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MICCMECT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7F1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM single-bit corrections</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MDCCMECT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7F2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM single-bit corrections</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Bits <code>[26:0]</code> are the running count. Bits <code>[31:27]</code> hold a threshold exponent:
+the counter raises a request once the count reaches 2<sup>threshold</sup>. A written
+threshold above 26 is clamped to 26. The requests from both counters are ORed
+into <code>mip[30]</code> (<code>MCEIP</code>) and delivered when <code>mie[30]</code> (<code>MCEIE</code>) and
+<code>mstatus.MIE</code> are both set, with <code>mcause</code> = <code>0x8000_001E</code>.</p>
+</div>
+<div class="paragraph">
+<p>Firmware is expected to:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Program a threshold before enabling the interrupt.</strong> Counters and thresholds
+both reset to zero, and a zero threshold raises the request on the very first
+corrected error, so enabling <code>MCEIE</code> without programming a threshold delivers
+an interrupt on error one.</p>
+</li>
+<li>
+<p><strong>Enable</strong> <code>mie[30]</code>. It is clear at reset. Until firmware sets it, corrected
+errors are counted silently and nothing is delivered&#8201;&#8212;&#8201;which is the state
+today, as no SEP firmware enables it.</p>
+</li>
+<li>
+<p><strong>Clear the counter in the handler.</strong> Read both counters to attribute the
+error, then write the one that tripped. <code>MCEIP</code> is level-held and has no
+write-one-to-clear: it follows the threshold comparator directly, so returning
+without dropping the count below the threshold re-enters the handler
+immediately. To clear the count while keeping threshold <code>N</code>, write <code>N &lt;&lt; 27</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The threshold trades interrupt rate against detection latency. A low threshold
+reports a degrading SRAM early at the cost of an interrupt per error; a high one
+lets transient flips accumulate before firmware is told.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="uncorrectable-double-bit-errors"><a class="anchor" href="#uncorrectable-double-bit-errors"></a><a class="link" href="#uncorrectable-double-bit-errors">Uncorrectable (double-bit) errors</a></h6>
+<div class="paragraph">
+<p>These cannot be masked and have no enable bit. The access returned no valid
+data, so the core traps on the instruction that hit the error:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 35%;">
+<col style="width: 20%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top"><code>mcause</code></th>
+<th class="tableblock halign-left valign-top">Trap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction fetch from ICCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction access fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Load from DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0005</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Load access fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Store to DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0007</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Store access fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM access on the fast-interrupt path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF000_1000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NMI, taken through <code>SEP_NMI_VEC</code> like the watchdog bark</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>mcause</code> alone does not identify these as memory failures&#8201;&#8212;&#8201;a bad pointer and a
+failing SRAM both raise a load access fault. <code>MSCAUSE</code> (<code>0x7FF</code>) is what
+separates them: on an access fault, <code>mscause</code> = <code>1</code> means uncorrectable ECC.
+A handler that does not read <code>MSCAUSE</code> cannot distinguish a software bug from
+failing hardware.</p>
+</div>
+<div class="paragraph">
+<p>Firmware is expected to treat these as fatal for the affected context. The
+faulting access cannot be completed, and retrying it re-reads the same corrupted
+location, so the handler must not resume the trapping instruction. Reset or
+quarantine the affected memory rather than attempting recovery in place.</p>
+</div>
+<div class="paragraph">
+<p>An uncorrectable error on an externally initiated (DMA) access to either memory
+is not a CPU trap at all. It is returned as an error response on that
+transaction, and the initiator is responsible for reporting it.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="debug-bus-mirror"><a class="anchor" href="#debug-bus-mirror"></a><a class="link" href="#debug-bus-mirror">Debug bus mirror</a></h6>
+<div class="paragraph">
+<p>The ICCM and DCCM single- and double-bit error signals are also mirrored onto
+<code>ext_debug_bus_o[367:364]</code>, most significant first: ICCM single, ICCM double,
+DCCM single, DCCM double. These are single-cycle pulses with no latch and no
+handshake, provided for external trace and bring-up observability. They are not
+a delivery path, so software must not rely on sampling them; use the CSRs above.</p>
+</div>
 </div>
 </div>
 </div>

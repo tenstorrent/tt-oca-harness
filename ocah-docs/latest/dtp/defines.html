@@ -361,56 +361,7 @@ the intended use is commercial-VIP gate defines such as
 </div>
 </div>
 <div class="sect3">
-<h4 id="inherited-native-profile-defines-dtp-sources-do-not-consume"><a class="anchor" href="#inherited-native-profile-defines-dtp-sources-do-not-consume"></a><a class="link" href="#inherited-native-profile-defines-dtp-sources-do-not-consume">1.3. Inherited native-profile defines DTP sources do not consume</a></h4>
-<div class="paragraph">
-<p>The native profile also passes the following names on every DTP DV compile.
-No DTP RTL, DTP testbench, or DTP-compile-unit vendored source branches on
-them. They are part of the shared native-profile set applied to every DUT.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Define</th>
-<th class="tableblock halign-left valign-top">Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DISABLE_ASSERT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No DTP compile-unit source tests this name. Verilator assertion gating is
-<code>VERILATOR</code>, <code>ASSERTS_OFF</code>, and <code>COMMON_CELLS_ASSERTS_OFF</code> above.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NO_LIBCELL</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No DTP compile-unit source tests this name.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INITIALIZE_MEMORY</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No DTP compile-unit source tests this name.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOM=0</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIRRTL/Chisel simulation random seed. Unused by DTP (no Chisel-generated
-CPU in this compile).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_MEM_INIT</code>, <code>RANDOMIZE_REG_INIT</code>, <code>RANDOMIZE_GARBAGE_ASSIGN</code>,
-<code>RANDOMIZE_INVALID_ASSIGN</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIRRTL/Chisel register and memory initialization. Unused by DTP.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_DELAY=0.02</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIRRTL/Chisel simulation delay. Unused by DTP.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect3">
-<h4 id="bender-targets"><a class="anchor" href="#bender-targets"></a><a class="link" href="#bender-targets">1.4. Bender targets</a></h4>
+<h4 id="bender-targets"><a class="anchor" href="#bender-targets"></a><a class="link" href="#bender-targets">1.3. Bender targets</a></h4>
 <div class="paragraph">
 <p><code>hw/sys/dtp/dv/dtp_sim_cfg.toml</code> sets <code>bender_targets = ["dtp", "simulation"]</code>.
 Those are Bender target names, not preprocessor defines. <code>dtp</code> selects the DTP

@@ -387,12 +387,12 @@ vote would wave through as a match</p>
 attack. The fault forces the error code onto all six output bits, so
 every downstream feature gate fails closed, and it sets the sticky bit
 for that token in the <code>TOKEN_MATCH_FAULT</code> register. The three sticky bits are
-combined into a single interrupt to the SEP CPU on PIC source 39; see
+combined into a single interrupt to the SEP CPU on PIC source 40; see
 <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>
 for the full slot map. Firmware reads the register to identify which
 comparators faulted. The fault bits are software-read-only and clear only on
 reset, so a fault cannot be hidden by retrying with a valid token and the PIC
-source stays asserted. Firmware must mask PIC source 39 after it has observed
+source stays asserted. Firmware must mask PIC source 40 after it has observed
 the fault; there is no write-one-to-clear that drops the line, and an unmasked
 handler re-enters.</p>
 </div>

@@ -720,11 +720,14 @@ fan-out;</p>
 </li>
 <li>
 <p>endpoint <code>[2]</code> feeds the fabric-level entropy-pool FIFO (<code>u_entropy_fifo</code> in
-<code>sep.sv</code>) through <code>u_axis_edn_pool_s3c_scan</code>. The pool generates two
-dedicated interrupts: SEP IRQ 37 (<code>entropy_pool_low</code>, pool level below
-watermark) and IRQ 38 (<code>entropy_pool_fill_stall</code>, fill path not making
-progress). PIC source ids are assigned in <a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>,
-which is authoritative; quote it rather than restating the numbers here.</p>
+<code>sep.sv</code>) through <code>u_axis_edn_pool_s3c_scan</code>. The pool generates three
+dedicated interrupts on adjacent PIC slots: SEP IRQ 37
+(<code>entropy_pool_low</code>, pool level below watermark), IRQ 38
+(<code>entropy_pool_fill_stall</code>, fill path not making progress) and IRQ 39
+(<code>entropy_pool_err</code>, pool pointer integrity fault, inert in the current
+configuration). PIC source ids are assigned in
+<a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>, which is authoritative; quote it rather
+than restating the numbers here.</p>
 </li>
 </ul>
 </div>
