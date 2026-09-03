@@ -246,7 +246,7 @@ module tb_drbg
 
   // Allow cocotb to inject endpoint responses without masking the real EDN path by default.
   for (genvar i = 0; i < EDN_ENDPOINT_COUNT; i++) begin : gen_edn_endpoint_rsp_force
-    always @(*) begin
+    always_comb begin
       if (edn_endpoint_force_i[i]) begin
         force u_dut.edn_endpoint_rsp[i].edn_bus = edn_endpoint_bus_i[i];
         force u_dut.edn_endpoint_rsp[i].edn_fips = edn_endpoint_fips_i[i];

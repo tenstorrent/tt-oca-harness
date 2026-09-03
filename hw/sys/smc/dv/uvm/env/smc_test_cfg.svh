@@ -18,9 +18,9 @@ class smc_test_cfg extends ocah_test_cfg;
   rand int unsigned ref_clk_period_ns;
   rand int unsigned smc_clk_period_ns;
   rand int unsigned periph_clk_period_ns;
-  constraint c_ref {ref_clk_period_ns inside {8, 10, 12};}
-  constraint c_smc {smc_clk_period_ns inside {4, 5, 6};}
-  constraint c_periph {periph_clk_period_ns inside {8, 10, 12};}
+  constraint ref_c {ref_clk_period_ns inside {8, 10, 12};}
+  constraint smc_c {smc_clk_period_ns inside {4, 5, 6};}
+  constraint periph_c {periph_clk_period_ns inside {8, 10, 12};}
 
   // --- bring-up and bounded waits (cocotb SmcEnvCfg parity) ----------------
   // Ref-clock cycles after cold-reset release before the first pass.

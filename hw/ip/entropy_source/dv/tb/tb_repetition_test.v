@@ -75,7 +75,7 @@ module tb_repetition_test ();
   end
 
   // xoroshiro128+ high-quality PRNG
-  function [63:0] rotl64;
+  function automatic [63:0] rotl64;
     input [63:0] x;
     input [5:0] k;
     begin
@@ -100,7 +100,7 @@ module tb_repetition_test ();
   end
 
   // Data generation with failure injection and manual control
-  always @(*) begin
+  always_comb begin
     prng_data = xoro_result[31:0];
 
     if (manual_control) begin
@@ -180,7 +180,7 @@ module tb_repetition_test ();
   end
 
   // Task: Basic functionality test
-  task run_basic_functionality_test();
+  task automatic run_basic_functionality_test();
     integer random_trigger_count;
     integer i;
     reg last_status;
@@ -234,7 +234,7 @@ module tb_repetition_test ();
   endtask
 
   // Task: Enable/disable functionality test
-  task run_enable_disable_test();
+  task automatic run_enable_disable_test();
     begin
       $display("");
       $display("=== Phase 2: Enable/Disable Functionality Test ===");
@@ -282,7 +282,7 @@ module tb_repetition_test ();
   endtask
 
   // Task: Stuck-at failure detection test
-  task run_stuck_at_failure_test(input bit stuck_value, input logic [7:0] threshold);
+  task automatic run_stuck_at_failure_test(input bit stuck_value, input logic [7:0] threshold);
     begin
       $display("");
       $display("=== Phase %0d: Stuck-at-%0d Failure Detection Test ===", stuck_value ? 4 : 3,
@@ -329,7 +329,7 @@ module tb_repetition_test ();
   endtask
 
   // Task: Failure recovery test
-  task run_failure_recovery_test();
+  task automatic run_failure_recovery_test();
     begin
       $display("");
       $display("=== Phase 5: Failure Recovery Test ===");
@@ -385,7 +385,7 @@ module tb_repetition_test ();
   endtask
 
   // Task: Counter saturation test
-  task run_counter_saturation_test();
+  task automatic run_counter_saturation_test();
     begin
       $display("");
       $display("=== Phase 6: Counter Saturation Test ===");
@@ -420,7 +420,7 @@ module tb_repetition_test ();
   endtask
 
   // Task: Threshold boundary test
-  task run_threshold_boundary_test();
+  task automatic run_threshold_boundary_test();
     integer run_length;
     integer words_needed;
     integer remaining_bits;

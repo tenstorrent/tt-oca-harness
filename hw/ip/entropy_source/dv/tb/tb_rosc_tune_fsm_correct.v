@@ -57,7 +57,7 @@ module tb_rosc_tune_fsm_correct;
   );
 
   // Check state matches expected
-  task check_state;
+  task automatic check_state;
     input expected;
     input string description;
     begin

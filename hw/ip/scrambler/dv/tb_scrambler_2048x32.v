@@ -104,7 +104,7 @@ module tb_scrambler_2048x32;
 
     for (i = 0; i < MEM_DEPTH; i = i + 1) begin
       logical_addr = i[ADDR_WIDTH-1:0];
-      write_data = $random;
+      write_data = $urandom;
       expected_data[i] = write_data;
 
       #1;

@@ -114,7 +114,7 @@ module tb_health_test ();
   end
 
   // xoroshiro128+ high-quality PRNG
-  function [63:0] rotl64;
+  function automatic [63:0] rotl64;
     input [63:0] x;
     input [5:0] k;
     begin
@@ -139,7 +139,7 @@ module tb_health_test ();
   end
 
   // Data generation with failure injection
-  always @(*) begin
+  always_comb begin
     prng_data = xoro_result[31:0];
 
     case (test_select)
@@ -266,7 +266,7 @@ module tb_health_test ();
   end
 
   // Task: Individual enable/disable test
-  task run_individual_enable_test();
+  task automatic run_individual_enable_test();
     begin
       $display("");
       $display("=== Phase 1: Individual Enable/Disable Test ===");
@@ -312,7 +312,7 @@ module tb_health_test ();
   endtask
 
   // Task: Repetition test integration
-  task run_repetition_integration_test();
+  task automatic run_repetition_integration_test();
     begin
       $display("");
       $display("=== Phase 2: Repetition Test Integration ===");
@@ -357,7 +357,7 @@ module tb_health_test ();
   endtask
 
   // Task: APT integration test
-  task run_apt_integration_test();
+  task automatic run_apt_integration_test();
     begin
       $display("");
       $display("=== Phase 3: APT Integration Test ===");
@@ -433,7 +433,7 @@ module tb_health_test ();
   endtask
 
   // Task: Markov test integration
-  task run_markov_integration_test();
+  task automatic run_markov_integration_test();
     begin
       $display("");
       $display("=== Phase 4: Markov Test Integration ===");
@@ -504,7 +504,7 @@ module tb_health_test ();
   endtask
 
   // Task: Combined operation test
-  task run_combined_operation_test();
+  task automatic run_combined_operation_test();
     begin
       $display("");
       $display("=== Phase 5: Combined Operation Test ===");
@@ -552,7 +552,7 @@ module tb_health_test ();
   endtask
 
   // Task: Status bit mapping test
-  task run_status_mapping_test();
+  task automatic run_status_mapping_test();
     begin
       $display("");
       $display("=== Phase 6: Status Bit Mapping Test ===");

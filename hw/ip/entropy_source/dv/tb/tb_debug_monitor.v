@@ -268,7 +268,7 @@ module tb_debug_monitor ();
              (FREQ_DIV_WIDTH) + 1);
   end
 
-  always @(*) begin
+  always_comb begin
     if (u_debug_monitor.rst_ni) begin
       // Check signal selection binary decode is one-hot
       signal_decode_count = 0;

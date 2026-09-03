@@ -220,12 +220,12 @@ module avsbus_controller #(
     CommitWrite = 2'b00,
     HoldWrite   = 2'b01,
     Read        = 2'b11
-  } CmdType_t;
+  } cmd_type_t;
 
   typedef enum logic {
     AvsBus = 1'b0,
     ManufacturerSpec = 1'b1
-  } CmdGroup_t;
+  } cmd_group_t;
 
   typedef enum logic [3:0] {
     Voltage     = 4'b0000,
@@ -236,20 +236,20 @@ module avsbus_controller #(
     PowerMode   = 4'b0101,
     Status      = 4'b1110,
     Version     = 4'b1111
-  } CmdDataType_t;
+  } cmd_data_type_t;
 
   logic [1:0] CmdPreamble;
-  CmdType_t CmdType;
-  CmdGroup_t CmdGroup;
-  CmdDataType_t CmdDataType;
+  cmd_type_t CmdType;
+  cmd_group_t CmdGroup;
+  cmd_data_type_t CmdDataType;
   logic [3:0] CmdSelect;
   logic [15:0] CmdData;
   logic [2:0] CmdCRC;
 
   assign CmdPreamble = avs_mdata_transmit_frame[31:30];
-  assign CmdType = CmdType_t'(avs_mdata_transmit_frame[29:28]);
-  assign CmdGroup = CmdGroup_t'(avs_mdata_transmit_frame[27]);
-  assign CmdDataType = CmdDataType_t'(avs_mdata_transmit_frame[26:23]);
+  assign CmdType = cmd_type_t'(avs_mdata_transmit_frame[29:28]);
+  assign CmdGroup = cmd_group_t'(avs_mdata_transmit_frame[27]);
+  assign CmdDataType = cmd_data_type_t'(avs_mdata_transmit_frame[26:23]);
   assign CmdSelect = avs_mdata_transmit_frame[22:19];
   assign CmdData = avs_mdata_transmit_frame[18:3];
   assign CmdCRC = avs_mdata_transmit_frame[2:0];

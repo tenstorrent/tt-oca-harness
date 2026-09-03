@@ -65,7 +65,7 @@ module tb_repetition_test_byte_stream ();
   end
 
   // xoroshiro128+ high-quality PRNG
-  function [63:0] rotl64;
+  function automatic [63:0] rotl64;
     input [63:0] x;
     input [5:0] k;
     begin
@@ -90,7 +90,7 @@ module tb_repetition_test_byte_stream ();
   end
 
   // Data generation with failure injection
-  always @(*) begin
+  always_comb begin
     prng_data = xoro_result[7:0];
 
     if (inject_failure) begin

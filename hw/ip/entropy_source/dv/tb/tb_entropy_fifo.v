@@ -85,7 +85,7 @@ module tb_entropy_fifo ();
   end
 
   // Test result reporting
-  task report_test;
+  task automatic report_test;
     input integer test_number;
     input [255:0] test_name;
     input integer passed;
@@ -102,7 +102,7 @@ module tb_entropy_fifo ();
   endtask
 
   // Task to push data into FIFO
-  task push_fifo;
+  task automatic push_fifo;
     input [DATA_WIDTH-1:0] data;
     begin
       @(posedge clk_i);
@@ -118,7 +118,7 @@ module tb_entropy_fifo ();
   endtask
 
   // Task to pop data from FIFO
-  task pop_fifo;
+  task automatic pop_fifo;
     output [DATA_WIDTH-1:0] data;
     begin
       @(posedge clk_i);
@@ -134,7 +134,7 @@ module tb_entropy_fifo ();
   endtask
 
   // Task to wait for N clock cycles
-  task wait_cycles;
+  task automatic wait_cycles;
     input integer n;
     integer k;
     begin
@@ -385,7 +385,7 @@ module tb_entropy_fifo ();
 
     // Push random data
     for (i = 0; i < 100; i = i + 1) begin
-      push_fifo($random);
+      push_fifo($urandom);
     end
 
     // Pop all data

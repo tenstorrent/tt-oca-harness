@@ -290,7 +290,7 @@ module tb_entropy_top;
 
   generate
     for (gi = 0; gi < N_RO; gi++) begin : g_ro_inject
-      always @(*) begin
+      always_comb begin
         if (ro_inject_enable) begin
           // Force the noise_i input of each decorrelator with RO model output
           // Path: tb_entropy_top.dut.egen.g_ecmplx[i].gen_inst.dcor.noise_i
@@ -318,7 +318,7 @@ module tb_entropy_top;
   // This allows Suite 3 tests to inject controlled entropy patterns
   // without decorrelator/compressor variability
 
-  always @(*) begin
+  always_comb begin
     if (ro_cfg.word32_enable) begin
       // Force health test input with 32-bit word from RO model
       force dut.htst.entropy_i = ro_cfg.word32_data;

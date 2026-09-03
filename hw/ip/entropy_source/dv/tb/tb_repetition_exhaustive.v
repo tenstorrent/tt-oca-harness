@@ -65,7 +65,7 @@ module tb_repetition_exhaustive;
 
   // Function to create a pattern with exactly N consecutive bits of given value
   // followed by alternating pattern to break the sequence
-  function [31:0] create_pattern;
+  function automatic [31:0] create_pattern;
     input integer num_bits;  // Number of consecutive bits (1-32)
     input integer bit_val;  // 0 or 1
     integer k;
@@ -87,7 +87,7 @@ module tb_repetition_exhaustive;
   endfunction
 
   // Function to create random pattern with no runs exceeding max_run_length
-  function [31:0] create_safe_random;
+  function automatic [31:0] create_safe_random;
     input integer max_run_length;
     integer k;
     integer current_run;
@@ -95,7 +95,7 @@ module tb_repetition_exhaustive;
     begin
       create_safe_random = 32'h00000000;
       current_run = 0;
-      last_bit = $random & 1;
+      last_bit = $urandom & 1;
       create_safe_random[0] = last_bit;
 
       for (k = 1; k < 32; k = k + 1) begin
@@ -106,7 +106,7 @@ module tb_repetition_exhaustive;
           current_run = 1;
         end else begin
           // Random bit
-          create_safe_random[k] = $random & 1;
+          create_safe_random[k] = $urandom & 1;
           if (create_safe_random[k] == last_bit) begin
             current_run = current_run + 1;
           end else begin
