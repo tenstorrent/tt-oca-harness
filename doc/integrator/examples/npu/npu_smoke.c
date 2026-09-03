@@ -9,24 +9,24 @@
 
 #include "npu_platform.h"
 
-#define NPU_CTRL             0x000u
-#define NPU_STATUS           0x004u
-#define NPU_CFG_PE           0x008u
-#define NPU_DMA_EXT_BASE     0x014u
-#define NPU_LAYER_DESC_PUSH  0x018u
-#define NPU_LAYER_DESC_STS   0x01cu
-#define NPU_INTR_STATE       0x020u
-#define NPU_INTR_ENABLE      0x024u
-#define NPU_INTR_TEST        0x028u
-#define NPU_ERR_CAUSE        0x068u
+#define NPU_CTRL 0x000u
+#define NPU_STATUS 0x004u
+#define NPU_CFG_PE 0x008u
+#define NPU_DMA_EXT_BASE 0x014u
+#define NPU_LAYER_DESC_PUSH 0x018u
+#define NPU_LAYER_DESC_STS 0x01cu
+#define NPU_INTR_STATE 0x020u
+#define NPU_INTR_ENABLE 0x024u
+#define NPU_INTR_TEST 0x028u
+#define NPU_ERR_CAUSE 0x068u
 
-#define NPU_CTRL_ENABLE      (1u << 0)
-#define NPU_CTRL_START       (1u << 2)
-#define NPU_STATUS_DONE      (1u << 1)
-#define NPU_STATUS_ERROR     (1u << 2)
-#define NPU_DESC_FULL        (1u << 5)
-#define NPU_INTR_DONE        (1u << 0)
-#define NPU_INTR_ERROR       (1u << 1)
+#define NPU_CTRL_ENABLE (1u << 0)
+#define NPU_CTRL_START (1u << 2)
+#define NPU_STATUS_DONE (1u << 1)
+#define NPU_STATUS_ERROR (1u << 2)
+#define NPU_DESC_FULL (1u << 5)
+#define NPU_INTR_DONE (1u << 0)
+#define NPU_INTR_ERROR (1u << 1)
 
 enum npu_smoke_result {
     NPU_SMOKE_OK = 0,
@@ -41,47 +41,38 @@ enum npu_smoke_result {
 static volatile uint32_t npu_irq_seen;
 static volatile uint32_t npu_last_error_cause;
 
-static volatile uint32_t *npu_reg(uint32_t offset)
-{
+static volatile uint32_t *npu_reg(uint32_t offset) {
     return (volatile uint32_t *)(PLATFORM_NPU_CSR_BASE + offset);
 }
 
-static uint32_t npu_read(uint32_t offset)
-{
+static uint32_t npu_read(uint32_t offset) {
     return *npu_reg(offset);
 }
 
-static void npu_write(uint32_t offset, uint32_t value)
-{
+static void npu_write(uint32_t offset, uint32_t value) {
     *npu_reg(offset) = value;
 }
 
 // Replace these barriers and cache hooks with the adopter platform primitives.
-static void platform_dma_prepare(uintptr_t address, size_t length)
-{
+static void platform_dma_prepare(uintptr_t address, size_t length) {
     (void)address;
     (void)length;
-    __asm__ volatile ("" ::: "memory");
+    __asm__ volatile("" ::: "memory");
 }
 
-static void platform_dma_complete(uintptr_t address, size_t length)
-{
-    __asm__ volatile ("" ::: "memory");
+static void platform_dma_complete(uintptr_t address, size_t length) {
+    __asm__ volatile("" ::: "memory");
     (void)address;
     (void)length;
 }
 
-void npu_irq_handler(void)
-{
-    uint32_t state = npu_read(NPU_INTR_STATE) &
-                     (NPU_INTR_DONE | NPU_INTR_ERROR);
+void npu_irq_handler(void) {
+    uint32_t state = npu_read(NPU_INTR_STATE) & (NPU_INTR_DONE | NPU_INTR_ERROR);
     npu_irq_seen |= state;
-    npu_write(NPU_INTR_STATE, state);  // W1C
+    npu_write(NPU_INTR_STATE, state); // W1C
 }
 
-static int npu_push_descriptor(const uint32_t *words, size_t word_count,
-                               uint32_t timeout)
-{
+static int npu_push_descriptor(const uint32_t *words, size_t word_count, uint32_t timeout) {
     for (size_t word = 0; word < word_count; ++word) {
         uint32_t remaining = timeout;
         while ((npu_read(NPU_LAYER_DESC_STS) & NPU_DESC_FULL) != 0u) {
@@ -94,18 +85,15 @@ static int npu_push_descriptor(const uint32_t *words, size_t word_count,
     return 0;
 }
 
-int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
-                          uintptr_t buffer, size_t buffer_size,
-                          uint32_t timeout)
-{
+int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words, uintptr_t buffer,
+                          size_t buffer_size, uint32_t timeout) {
     uint32_t remaining = timeout;
 
     if (!platform_npu_security_release_confirmed()) {
         return NPU_SMOKE_ERR_SECURITY_RELEASE;
     }
 
-    if (descriptor == NULL || descriptor_words == 0u ||
-        buffer < PLATFORM_NPU_DMA_BASE ||
+    if (descriptor == NULL || descriptor_words == 0u || buffer < PLATFORM_NPU_DMA_BASE ||
         buffer_size > PLATFORM_NPU_DMA_SIZE ||
         buffer > PLATFORM_NPU_DMA_BASE + PLATFORM_NPU_DMA_SIZE - buffer_size ||
         buffer > UINT32_MAX) {
@@ -137,8 +125,7 @@ int npu_run_polling_smoke(const uint32_t *descriptor, size_t descriptor_words,
     return NPU_SMOKE_ERR_COMPLETION_TIMEOUT;
 }
 
-int npu_interrupt_route_smoke(uint32_t timeout)
-{
+int npu_interrupt_route_smoke(uint32_t timeout) {
     if (!platform_npu_security_release_confirmed()) {
         return NPU_SMOKE_ERR_SECURITY_RELEASE;
     }
@@ -160,7 +147,6 @@ int npu_interrupt_route_smoke(uint32_t timeout)
     return NPU_SMOKE_ERR_INTERRUPT_TIMEOUT;
 }
 
-uint32_t npu_configuration_probe(void)
-{
+uint32_t npu_configuration_probe(void) {
     return npu_read(NPU_CFG_PE);
 }
