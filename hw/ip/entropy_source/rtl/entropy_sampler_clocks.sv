@@ -71,7 +71,7 @@ module entropy_sampler_clocks #(
     .noise_o  (shared_ring_osc_clk)
   );
 
-  for (genvar i = 0; i < NRINGS; i++) begin : g_sampler_clk
+  for (genvar i = 0; i < NRINGS; i++) begin : gen_sampler_clk
     assign selected_clk[i] = sample_clk_select_i[i] ? shared_ring_osc_clk : sample_clk_i;
 
     entropy_ripple_divider #(
@@ -93,6 +93,6 @@ module entropy_sampler_clocks #(
         default: sample_clk_o[i] = sample_clk_divided[i][2];
       endcase
     end
-  end : g_sampler_clk
+  end : gen_sampler_clk
 
 endmodule

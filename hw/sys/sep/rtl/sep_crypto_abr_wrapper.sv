@@ -449,7 +449,7 @@ module sep_crypto_abr_wrapper
         abr_ctrl_pkg::SK_MEM_BANK_DATA_W     != SEP_CRYPTO_ABR_SK_DATA_W   ||
         abr_ctrl_pkg::SIG_Z_MEM_DATA_W       != SEP_CRYPTO_ABR_SIGZ_DATA_W ||
         abr_ctrl_pkg::PK_MEM_DATA_W          != SEP_CRYPTO_ABR_PK_DATA_W)
-    begin : g_abr_mem_data_width_check
+    begin : gen_abr_mem_data_width_check
     $error(
         {
           "abr_mem_req_t / abr_mem_rsp_t data widths no longer match the vendor ",
@@ -463,7 +463,7 @@ module sep_crypto_abr_wrapper
   // --- Byte strobes: exact, or a masked write lands on the wrong bytes. ---
   if (abr_ctrl_pkg::SIG_Z_MEM_WSTROBE_W != SEP_CRYPTO_ABR_SIGZ_WSTRB_W ||
         abr_ctrl_pkg::PK_MEM_WSTROBE_W    != SEP_CRYPTO_ABR_PK_WSTRB_W)
-    begin : g_abr_mem_wstrobe_width_check
+    begin : gen_abr_mem_wstrobe_width_check
     $error(
         {
           "abr_mem_req_t wstrobe widths no longer match the vendor memory geometry; ",
@@ -477,7 +477,7 @@ module sep_crypto_abr_wrapper
         abr_ctrl_pkg::SK_MEM_BANK_ADDR_W  != SEP_CRYPTO_ABR_SK_ADDR_W   ||
         abr_ctrl_pkg::SIG_Z_MEM_ADDR_W    != SEP_CRYPTO_ABR_SIGZ_ADDR_W ||
         abr_ctrl_pkg::PK_MEM_ADDR_W       != SEP_CRYPTO_ABR_PK_ADDR_W)
-    begin : g_abr_mem_addr_width_check
+    begin : gen_abr_mem_addr_width_check
     $error(
         {
           "abr_mem_req_t address widths no longer match the vendor memory geometry; ",
@@ -492,7 +492,7 @@ module sep_crypto_abr_wrapper
   if (SEP_CRYPTO_ABR_INST2_ADDR_W <  abr_params_pkg::ABR_MEM_INST0_ADDR_W ||
         SEP_CRYPTO_ABR_INST2_ADDR_W <  abr_params_pkg::ABR_MEM_INST1_ADDR_W ||
         SEP_CRYPTO_ABR_INST2_ADDR_W != abr_params_pkg::ABR_MEM_INST2_ADDR_W)
-    begin : g_abr_mem_coeff_addr_check
+    begin : gen_abr_mem_coeff_addr_check
     $error(
         {
           "abr_mem_ch_req_t addr field (SEP_CRYPTO_ABR_INST2_ADDR_W) must equal the ",

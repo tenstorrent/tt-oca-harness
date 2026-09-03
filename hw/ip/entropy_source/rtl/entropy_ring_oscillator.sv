@@ -39,7 +39,7 @@ module entropy_ring_oscillator #(
 
   // remaining buffer delay chain TOTAL_LENGTH-1
   generate
-    for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : g_dly
+    for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : gen_dly
       gbuff u_bf (
         .d_i (stage_o[i-1]),
         .z_o (stage_o[i])

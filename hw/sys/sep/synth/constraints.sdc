@@ -119,7 +119,7 @@ set entropy_gdffqb [lsort -dictionary [get_object_name [get_cells -hierarchical 
 
 # one generated clock per divider tap from each source, numbered in stamping order
 set entropy_tap_idx 0
-foreach entropy_tap_cell [lsearch -all -inline -glob $entropy_gdffqb {*egen/sclk/g_ecmplx*u_sample_clk_divider*u_div_ff}] {
+foreach entropy_tap_cell [lsearch -all -inline -glob $entropy_gdffqb {*egen/sclk/gen_ecmplx*u_sample_clk_divider*u_div_ff}] {
     set entropy_tap_pin [get_pins "${entropy_tap_cell}/q_o/Q"]
     create_generated_clock -add -name ENTROPY_SCLK_FROM_ROSC_${entropy_tap_idx}      -master_clock ENTROPY_ROSC_CLK  -divide_by 2 -source [get_ports "entropy_rosc_sample_clk_i"] $entropy_tap_pin
     create_generated_clock -add -name ENTROPY_SCLK_FROM_SHARED_RO_${entropy_tap_idx} -master_clock ENTROPY_SHARED_RO -divide_by 2 -source $entropy_shared_ro_pin $entropy_tap_pin

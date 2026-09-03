@@ -102,7 +102,7 @@ module Serial_Decorrelator_RefModel #(
   // Update logic
   genvar i;
   generate
-    for (i = 0; i < N; i++) begin : g_lane
+    for (i = 0; i < N; i++) begin : gen_lane
       always_ff @(posedge clk_i or negedge rstn_i) begin
         if (!rstn_i) begin
           sr[i] <= '0;

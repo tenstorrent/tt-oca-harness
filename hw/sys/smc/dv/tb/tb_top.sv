@@ -103,7 +103,7 @@ module smc_uvm_top
     assign tb_telemetry0_atready = tb_telemetry_atready[0];
     assign tb_telemetry0_afvalid = tb_telemetry_afvalid[0];
     assign tb_telemetry_afready[0] = tb_telemetry0_afready;
-    for (genvar tel_i = 1; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : g_tel_tie
+    for (genvar tel_i = 1; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : gen_tel_tie
         assign tb_telemetry_atdata[tel_i] = '0;
         assign tb_telemetry_atid[tel_i] = '0;
         assign tb_telemetry_atvalid[tel_i] = 1'b0;

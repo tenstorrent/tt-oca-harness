@@ -229,10 +229,10 @@ module efuse_token_processing #(
   // SEP_SEC_DISABLE_TOKEN encodes the real first-silicon value; PD can flip individual bits
   // by re-routing the per-bit IN tap from the LO rail to HI (or vice versa) at top metal.
   genvar g;
-  for (g = 0; g < 256; g++) begin : g_sec_disable_in_sel
-    if (SEP_SEC_DISABLE_TOKEN[g]) begin : g_hi
+  for (g = 0; g < 256; g++) begin : gen_sec_disable_in_sel
+    if (SEP_SEC_DISABLE_TOKEN[g]) begin : gen_hi
       assign sec_disable_rev_in_sel[g] = sec_disable_rev_hi[g];
-    end else begin : g_lo
+    end else begin : gen_lo
       assign sec_disable_rev_in_sel[g] = sec_disable_rev_lo[g];
     end
   end

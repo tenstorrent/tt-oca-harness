@@ -157,8 +157,8 @@ assign debug_entropy_stream_vld  = entropy_stream_vld;
 // Clock dividers from all decorrelator lanes (for synchronization verification)
 genvar debug_gi;
 generate
-  for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : g_debug_clk_divider
-    assign debug_clk_divider[debug_gi] = dut.egen.g_ecmplx[debug_gi].gen_inst.dcor.clk_divider;
+  for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : gen_debug_clk_divider
+    assign debug_clk_divider[debug_gi] = dut.egen.gen_ecmplx[debug_gi].gen_inst.dcor.clk_divider;
   end
 endgenerate
 
@@ -166,8 +166,8 @@ endgenerate
 // When autotune is enabled, this shows the FSM-controlled detune state, not the register value
 logic debug_detune[12];
 generate
-  for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : g_debug_detune
-    assign debug_detune[debug_gi] = dut.egen.g_ecmplx[debug_gi].gen_inst.detune;
+  for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : gen_debug_detune
+    assign debug_detune[debug_gi] = dut.egen.gen_ecmplx[debug_gi].gen_inst.detune;
   end
 endgenerate
 
@@ -247,7 +247,7 @@ logic debug_decor_fb_11;
 // Compute feedback bits based on current mode and shift direction
 // This replicates the feedback calculation from the decorrelator model for visibility
 generate
-  for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : g_debug_feedback
+  for (debug_gi = 0; debug_gi < 12; debug_gi++) begin : gen_debug_feedback
     always_comb begin
       logic [5:0] depth_eff;
       logic [2:0] mode;

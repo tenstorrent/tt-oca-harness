@@ -175,7 +175,7 @@ module ocah_axi_sva #(
               !aresetn)
 
   generate
-    if (!IS_LITE) begin : g_axi4_rules
+    if (!IS_LITE) begin : gen_axi4_rules
 
       // --------------------------------------------------------------
       // Address-channel burst legality, checked at the AW/AR handshake.
@@ -391,7 +391,7 @@ module ocah_axi_sva #(
       end
 `endif  // OCAH_INC_ASSERT
 
-    end else begin : g_lite_rules
+    end else begin : gen_lite_rules
 
       // --------------------------------------------------------------
       // AXI4-Lite response legality (IHI 0022 B1.1.1: EXOKAY undefined).

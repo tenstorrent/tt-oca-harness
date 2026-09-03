@@ -52,7 +52,7 @@ module tb_entropy_top;
   logic disable_clk_divider_check = 1'b0;
   genvar gi;
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_flat_bytes
+    for (gi = 0; gi < N_RO; gi++) begin : gen_flat_bytes
       assign entropy_bytes_flat[gi*8+:8] = entropy_bytes[gi];
     end
   endgenerate
@@ -103,7 +103,7 @@ module tb_entropy_top;
   logic [N_RO*8-1:0]    entropy_bytes_masked_flat;  // Flattened view for Python/waveforms
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_apply_byte_mask
+    for (gi = 0; gi < N_RO; gi++) begin : gen_apply_byte_mask
       assign entropy_bytes_masked[gi] = entropy_bytes[gi] & dut.reg_out.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
       assign entropy_bytes_masked_flat[gi*8 +: 8] = entropy_bytes_masked[gi];
     end
@@ -194,7 +194,7 @@ module tb_entropy_top;
   // (line 71) and verification checks below.
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_clk_divider_alias
+    for (gi = 0; gi < N_RO; gi++) begin : gen_clk_divider_alias
       assign rtl_clk_dividers[gi] = debug_clk_divider[gi];
     end
   endgenerate
@@ -207,7 +207,7 @@ module tb_entropy_top;
   // This shows the ACTUAL detune applied (FSM state when autotune enabled)
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_detune_alias
+    for (gi = 0; gi < N_RO; gi++) begin : gen_detune_alias
       assign rtl_detune[gi] = debug_detune[gi];
       // Also flatten into packed vector for cocotb access (cocotb can't access unpacked arrays)
       assign rtl_detune_flat[gi] = debug_detune[gi];
@@ -218,7 +218,7 @@ module tb_entropy_top;
   // (only check when not in reset and ROs are enabled, and checker not disabled)
   // NOTE: Checker disabled for tests that change divider on-the-fly (health tests)
   generate
-    for (gi = 1; gi < N_RO; gi++) begin : g_clk_divider_check
+    for (gi = 1; gi < N_RO; gi++) begin : gen_clk_divider_check
       always @(posedge apb.pclk) begin
         if (!disable_clk_divider_check && apb.presetn &&
             dut.reg_out.RING_OSC_ENABLE.ENABLE.value[gi] &&
@@ -244,8 +244,8 @@ module tb_entropy_top;
   logic [N_RO-1:0][7:0] dut_entropy_bytes;
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_dut_entropy_probe
-      assign dut_entropy_bytes[gi] = dut.egen.g_ecmplx[gi].gen_inst.dcor.entropy_byte_sample_o;
+    for (gi = 0; gi < N_RO; gi++) begin : gen_dut_entropy_probe
+      assign dut_entropy_bytes[gi] = dut.egen.gen_ecmplx[gi].gen_inst.dcor.entropy_byte_sample_o;
     end
   endgenerate
 
@@ -281,7 +281,7 @@ module tb_entropy_top;
   // RO Model Injection into DUT
   // ============================================================================
   // Force RO model outputs into DUT decorrelator inputs at:
-  // dut.egen.g_ecmplx[0-11].gen_inst.dcor.noise_i
+  // dut.egen.gen_ecmplx[0-11].gen_inst.dcor.noise_i
   // This allows testing with behavioral RO model instead of real ring oscillators
   //
   // Control: Set ro_inject_enable from cocotb to enable/disable injection
@@ -289,15 +289,15 @@ module tb_entropy_top;
   //   ro_inject_enable = 0: Use DUT's real ring oscillators
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_ro_inject
+    for (gi = 0; gi < N_RO; gi++) begin : gen_ro_inject
       always_comb begin
         if (ro_inject_enable) begin
           // Force the noise_i input of each decorrelator with RO model output
-          // Path: tb_entropy_top.dut.egen.g_ecmplx[i].gen_inst.dcor.noise_i
-          force dut.egen.g_ecmplx[gi].gen_inst.dcor.noise_i = ro_bits[gi];
+          // Path: tb_entropy_top.dut.egen.gen_ecmplx[i].gen_inst.dcor.noise_i
+          force dut.egen.gen_ecmplx[gi].gen_inst.dcor.noise_i = ro_bits[gi];
         end else begin
           // Release force to use DUT's real ring oscillators
-          release dut.egen.g_ecmplx[gi].gen_inst.dcor.noise_i;
+          release dut.egen.gen_ecmplx[gi].gen_inst.dcor.noise_i;
         end
       end
     end

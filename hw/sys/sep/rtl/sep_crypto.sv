@@ -509,7 +509,7 @@ module sep_crypto #(
   // IRQ and error/notif interrupts are held low.
 `ifdef SEP_ABR_EN
 `ifndef CALIPTRA
-  if (1) begin : g_sep_abr_en_requires_caliptra
+  if (1) begin : gen_sep_abr_en_requires_caliptra
     $error(
         {
           "SEP_ABR_EN is set but CALIPTRA is not: the vendored abr_top would be ",
@@ -988,7 +988,7 @@ module sep_crypto #(
   // $bits of the req/resp.
   // =========================================================================
 `ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
-  initial begin : g_km_efuse_axil_type_assertions
+  initial begin : gen_km_efuse_axil_type_assertions
     assert ($bits(km_intf_pkg::km_axil_req_t) == $bits(sep_efuse_pkg::efuse_axil_req_t))
     else $fatal(1, "KM_EFUSE_AXIL req width mismatch: km_axil_req_t != efuse_axil_req_t");
     assert ($bits(km_intf_pkg::km_axil_resp_t) == $bits(sep_efuse_pkg::efuse_axil_resp_t))

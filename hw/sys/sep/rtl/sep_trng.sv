@@ -116,7 +116,7 @@ module sep_trng #(
     .edn_bus_err_clr_i         (edn_bus_err_clr_i)
   );
 
-  if (NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT) begin : g_endpoint_width_check
+  if (NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT) begin : gen_endpoint_width_check
     $error("sep_trng: NUM_AXIS must equal SEP_CRYPTO_EDN_ENDPOINT_COUNT");
   end
 
