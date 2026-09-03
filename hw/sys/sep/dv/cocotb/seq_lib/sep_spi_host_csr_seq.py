@@ -17,67 +17,60 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import SPI_CONTROLLER, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-# --- register offsets (SEP spi_controller @ 0x10B0_0000; NUM_CS=1) ----------
 SPI_BASE = sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR")
-INTR_STATUS = SPI_BASE + 0x00  # W1C: ERROR, SPI_EVENT
-INTR_ENABLE = SPI_BASE + 0x04  # RW
-INTR_TEST = SPI_BASE + 0x08  # WO (write-1 sets INTR_STATUS)
-CTRL = SPI_BASE + 0x10  # RW
-STATUS = SPI_BASE + 0x14  # RO
-CFG = SPI_BASE + 0x18  # RW (single CONFIGOPTS)
-CSID = SPI_BASE + 0x1C  # RW
-CMD = SPI_BASE + 0x20  # WO (write strobes a command)
-RXDATA = SPI_BASE + 0x24  # RO (reading empty -> UNDERFLOW)
-TXDATA = SPI_BASE + 0x28  # WO (pushes TX FIFO)
-ERROR_ENABLE = SPI_BASE + 0x2C  # RW
-ERROR_STATUS = SPI_BASE + 0x30  # W1C
-EVENT_ENABLE = SPI_BASE + 0x34  # RW
+INTR_STATUS = SPI_CONTROLLER.addr("INTR_STATUS")
+INTR_ENABLE = SPI_CONTROLLER.addr("INTR_ENABLE")
+INTR_TEST = SPI_CONTROLLER.addr("INTR_TEST")
+CTRL = SPI_CONTROLLER.addr("CTRL")
+STATUS = SPI_CONTROLLER.addr("STATUS")
+CFG = SPI_CONTROLLER.addr("CFG")
+CSID = SPI_CONTROLLER.addr("CSID")
+CMD = SPI_CONTROLLER.addr("CMD")
+RXDATA = SPI_CONTROLLER.addr("RXDATA")
+TXDATA = SPI_CONTROLLER.addr("TXDATA")
+ERROR_ENABLE = SPI_CONTROLLER.addr("ERROR_ENABLE")
+ERROR_STATUS = SPI_CONTROLLER.addr("ERROR_STATUS")
+EVENT_ENABLE = SPI_CONTROLLER.addr("EVENT_ENABLE")
 
-# --- field masks (from the generated spi_controller_reg.h) ------------------
-CTRL_RX_WM = 0x0000_00FF
-CTRL_TX_WM = 0x0000_FF00
-# NOTE: the CTRL/STATUS bit values below are FIELD MASKS, not addresses -- several
-# coincidentally resemble SEP apertures (CTRL_OUTPUT_EN/ST_TXFULL == 0x2000_0000, the
-# retired SPI-mux aperture; ST_TXEMPTY == 0x1000_0000, the SEP SRAM base). Do not
-# "derive" them from the register map.
-CTRL_OUTPUT_EN = 0x2000_0000
-CTRL_SW_RST = 0x4000_0000
-CTRL_SPIEN = 0x8000_0000
+CTRL_RX_WM = SPI_CONTROLLER.field_mask("CTRL", "rx_watermark")
+CTRL_TX_WM = SPI_CONTROLLER.field_mask("CTRL", "tx_watermark")
+CTRL_OUTPUT_EN = SPI_CONTROLLER.field_mask("CTRL", "output_en")
+CTRL_SW_RST = SPI_CONTROLLER.field_mask("CTRL", "sw_rst")
+CTRL_SPIEN = SPI_CONTROLLER.field_mask("CTRL", "spien")
 
-ST_TXQD = 0x0000_00FF
-ST_RXQD = 0x0000_FF00
-ST_CMDQD = 0x000F_0000
-ST_RXWM = 0x0010_0000
-ST_BYTEORDER = 0x0040_0000
-ST_RXEMPTY = 0x0100_0000
-ST_RXFULL = 0x0200_0000
-ST_TXWM = 0x0400_0000
-ST_TXEMPTY = 0x1000_0000
-ST_TXFULL = 0x2000_0000
-ST_ACTIVE = 0x4000_0000
-ST_READY = 0x8000_0000
+ST_TXQD = SPI_CONTROLLER.field_mask("STATUS", "txqd")
+ST_RXQD = SPI_CONTROLLER.field_mask("STATUS", "rxqd")
+ST_CMDQD = SPI_CONTROLLER.field_mask("STATUS", "cmdqd")
+ST_RXWM = SPI_CONTROLLER.field_mask("STATUS", "rxwm")
+ST_BYTEORDER = SPI_CONTROLLER.field_mask("STATUS", "byteorder")
+ST_RXEMPTY = SPI_CONTROLLER.field_mask("STATUS", "rxempty")
+ST_RXFULL = SPI_CONTROLLER.field_mask("STATUS", "rxfull")
+ST_TXWM = SPI_CONTROLLER.field_mask("STATUS", "txwm")
+ST_TXEMPTY = SPI_CONTROLLER.field_mask("STATUS", "txempty")
+ST_TXFULL = SPI_CONTROLLER.field_mask("STATUS", "txfull")
+ST_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
+ST_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
 
-CFG_RW_MASK = 0xEFFF_FFFF  # CLKDIV|CSN*|FULLCYC|CPHA|CPOL (bit28 reserved)
+CFG_RW_MASK = SPI_CONTROLLER.mask32("CFG")
 # CTRL writable for the readback walk -- exclude SW_RST so the walk never holds
 # the core in reset; SPIEN/enable is covered by its own directed facet.
-CTRL_RW_MASK = CTRL_RX_WM | CTRL_TX_WM | CTRL_OUTPUT_EN | CTRL_SPIEN  # 0xA000_FFFF
-INTR_RW_MASK = 0x0000_0011  # ERROR(0x1), SPI_EVENT(0x10)
-ERR_EN_MASK = 0x0001_1111  # CMDBUSY/OVERFLOW/UNDERFLOW/CMDINVAL/CSIDINVAL
-EVT_EN_MASK = 0x0011_1111  # RXFULL/TXEMPTY/RXWM/TXWM/READY/IDLE
+CTRL_RW_MASK = CTRL_RX_WM | CTRL_TX_WM | CTRL_OUTPUT_EN | CTRL_SPIEN
+INTR_RW_MASK = SPI_CONTROLLER.mask32("INTR_ENABLE")
+ERR_EN_MASK = SPI_CONTROLLER.mask32("ERROR_ENABLE")
+EVT_EN_MASK = SPI_CONTROLLER.mask32("EVENT_ENABLE")
 
-# INTR / ERROR_STATUS bits
-INTR_ERROR = 0x1
-INTR_SPI_EVENT = 0x10
-ERR_CMDBUSY = 0x0000_0001
-ERR_OVERFLOW = 0x0000_0010
-ERR_UNDERFLOW = 0x0000_0100
-ERR_CMDINVAL = 0x0000_1000
-ERR_CSIDINVAL = 0x0001_0000
-ERR_ACCESSINVAL = 0x0010_0000
+INTR_ERROR = SPI_CONTROLLER.field_mask("INTR_STATUS", "error")
+INTR_SPI_EVENT = SPI_CONTROLLER.field_mask("INTR_STATUS", "spi_event")
+ERR_CMDBUSY = SPI_CONTROLLER.field_mask("ERROR_STATUS", "cmdbusy")
+ERR_OVERFLOW = SPI_CONTROLLER.field_mask("ERROR_STATUS", "overflow")
+ERR_UNDERFLOW = SPI_CONTROLLER.field_mask("ERROR_STATUS", "underflow")
+ERR_CMDINVAL = SPI_CONTROLLER.field_mask("ERROR_STATUS", "cmdinval")
+ERR_CSIDINVAL = SPI_CONTROLLER.field_mask("ERROR_STATUS", "csidinval")
+ERR_ACCESSINVAL = SPI_CONTROLLER.field_mask("ERROR_STATUS", "accessinval")
 CMD_FIFO_DEPTH = 4
 
 # spi_controller TX FIFO depth (spi_controller_data_fifos.sv TxDepth) -- writing
@@ -91,14 +84,14 @@ CMD_SPEED_RESERVED = 3 << 10  # SPEED=2'b11 -> CMDINVAL (test_speed/dir_inval)
 
 # --- documented reset values (golden for CHK-RESET) -------------------------
 RESET_VALUES = {
-    "INTR_STATUS": (INTR_STATUS, 0x0000_0000),
-    "INTR_ENABLE": (INTR_ENABLE, 0x0000_0000),
-    "CTRL": (CTRL, 0x0000_007F),  # RX_WATERMARK reset 0x7F
-    "CFG": (CFG, 0x0000_0000),
-    "CSID": (CSID, 0x0000_0000),
-    "ERROR_ENABLE": (ERROR_ENABLE, 0x0001_1111),
-    "ERROR_STATUS": (ERROR_STATUS, 0x0000_0000),
-    "EVENT_ENABLE": (EVENT_ENABLE, 0x0000_0000),
+    "INTR_STATUS": (INTR_STATUS, SPI_CONTROLLER.reset32("INTR_STATUS")),
+    "INTR_ENABLE": (INTR_ENABLE, SPI_CONTROLLER.reset32("INTR_ENABLE")),
+    "CTRL": (CTRL, SPI_CONTROLLER.reset32("CTRL")),
+    "CFG": (CFG, SPI_CONTROLLER.reset32("CFG")),
+    "CSID": (CSID, SPI_CONTROLLER.reset32("CSID")),
+    "ERROR_ENABLE": (ERROR_ENABLE, SPI_CONTROLLER.reset32("ERROR_ENABLE")),
+    "ERROR_STATUS": (ERROR_STATUS, SPI_CONTROLLER.reset32("ERROR_STATUS")),
+    "EVENT_ENABLE": (EVENT_ENABLE, SPI_CONTROLLER.reset32("EVENT_ENABLE")),
 }
 
 
