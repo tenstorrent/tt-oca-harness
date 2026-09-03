@@ -5,7 +5,7 @@
 // The library ships no hardware access of its own: it takes a table of function
 // pointers and calls back into the integrator for hashing, signature checks,
 // payload decryption and OTP reads. This header exposes the one table the ROM
-// populates. See tools/tt-boot-manifest/validators/oca/INTEGRATION.md.
+// populates. See tools/tt-oca-manifest/validators/oca/INTEGRATION.md.
 
 #pragma once
 

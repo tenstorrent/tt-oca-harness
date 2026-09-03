@@ -5,8 +5,8 @@ rom = (root/'hw/sys/sep/doc/rom.adoc').read_text()
 # gather all defined identifiers from ROM + validator sources
 srcs = []
 for pat in ['hw/sys/sep/bootrom/prod/include/*.h','hw/sys/sep/bootrom/prod/src/*.c',
-            'hw/sys/sep/bootrom/prod/tools/tt-boot-manifest/validators/oca/lib/*.h',
-            'hw/sys/sep/bootrom/prod/tools/tt-boot-manifest/validators/oca/lib/*.c']:
+            'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/validators/oca/lib/*.h',
+            'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/validators/oca/lib/*.c']:
     srcs += list(root.glob(pat))
 defined = set()
 for f in srcs:

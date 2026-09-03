@@ -12,7 +12,7 @@ SHELL := /usr/bin/env
 #
 # The manifest+BL1 images the ROM boots are built entirely from source in this
 # tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and packed by
-# the real tt-boot-manifest packer from the tools/tt-boot-manifest submodule,
+# the real tt-oca-manifest packer from the tools/tt-oca-manifest submodule,
 # using the configs/oca_*.yaml pairs -- see OCA_IMAGES below. The SMC-SRAM path
 # takes build/oca_smc_mem.hex, the same image rebased to the SMC-SRAM base.
 #
@@ -81,10 +81,10 @@ SRC_DIR   := src
 TOOLS_DIR := tools
 INCLUDE_DIR := include
 
-# The packer is the tt-boot-manifest repo, checked out as a submodule here rather
+# The packer is the tt-oca-manifest repo, checked out as a submodule here rather
 # than copied in, so it tracks the upstream repo as that grows. Defined this early
 # because the OCA validation library it also ships feeds CFLAGS and OBJS below.
-TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
+TT_OCA_MANIFEST_DIR := $(TOOLS_DIR)/tt-oca-manifest
 
 ELF      := $(BUILD_DIR)/boot_rom.elf
 VMEM     := $(BUILD_DIR)/boot_rom.vmem
@@ -94,7 +94,7 @@ DTCM_HEX := $(BUILD_DIR)/boot_rom.dtcm.hex
 INSERT_SHA256 := $(TOOLS_DIR)/insert-rom-sha256.py
 ELF_TO_VMEM   := $(TOOLS_DIR)/elf-to-vmem.py
 
-# --- manifest+BL1 SMC image (built from source, packed by tt-boot-manifest) ---
+# --- manifest+BL1 SMC image (built from source, packed by tt-oca-manifest) ---
 BL1_TEST_DIR := $(DV_ROOT)/fw/tests/bl1_pass_test
 BL1_TEST_BIN := $(BL1_TEST_DIR)/build/bl1_pass_test.bin
 # SMC-SRAM base the behavioral SMC responder loads the image at (see tb_top.sv
@@ -115,7 +115,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/oca_platform.o \
 	$(BUILD_DIR)/rsa_3072_app_otbn.o
 
-# --- OCA boot-manifest validation library (tt-boot-manifest submodule) --------
+# --- OCA boot-manifest validation library (tt-oca-manifest submodule) --------
 # The ROM does not hand-parse the OCA manifest; it links the vendor library and
 # supplies platform callbacks (src/oca_platform.c). Sources are globbed rather
 # than listed so a library that grows a translation unit does not silently drop
@@ -125,7 +125,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 # own lifecycle.c, which would otherwise overwrite this ROM's src/lifecycle.o.
 # That is also why NONFREE_BOOTCODE_SOURCES is the wrong hook for it -- that one
 # $(notdir)s every source into one flat namespace.
-OCA_LIB_DIR  := $(TT_BOOT_MANIFEST_DIR)/validators/oca/lib
+OCA_LIB_DIR  := $(TT_OCA_MANIFEST_DIR)/validators/oca/lib
 OCA_LIB_SRCS := $(wildcard $(OCA_LIB_DIR)/*.c)
 OCA_OBJ_DIR  := $(BUILD_DIR)/oca
 OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS))
@@ -328,8 +328,8 @@ $(OCA_LIB_OBJS): $(OCA_OBJ_DIR)/%.o: $(OCA_LIB_DIR)/%.c | $(OCA_OBJ_DIR)
 # A submodule nobody init'd yields an empty wildcard and a ROM that links without
 # a manifest parser at all. Fail loudly instead.
 ifeq ($(strip $(OCA_LIB_SRCS)),)
-$(error the tt-boot-manifest submodule is not checked out: no sources under $(OCA_LIB_DIR). \
-Run: git -C $(OCAH_ROOT) submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest)
+$(error the tt-oca-manifest submodule is not checked out: no sources under $(OCA_LIB_DIR). \
+Run: git -C $(OCAH_ROOT) submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest)
 endif
 
 # Generated OTBN application image, built out of tree by the shared fw engine.
@@ -379,14 +379,21 @@ $(BL1_TEST_BIN):
 	@echo "error: BL1 image is missing; run 'make toolchain-images' first" >&2
 	@exit 1
 
-# The packer is the tt-boot-manifest repo, checked out as a submodule here rather
+# The packer is the tt-oca-manifest repo, checked out as a submodule here rather
 # than copied in, so it tracks the upstream repo as that grows.
-TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
+TT_OCA_MANIFEST_DIR := $(TOOLS_DIR)/tt-oca-manifest
 
 # --no-project keeps this off the repo-root uv project: the root lockfile must
 # stay resolvable in a checkout where submodules were never init'd.
+#
+# NOTE on the name mismatch below: the submodule is tt-oca-manifest, but the
+# Python import package is still `tt_boot_manifest`. That is deliberate upstream
+# -- tt-oca-manifest's pyproject.toml renames only the *distribution*
+# (name = "tt-oca-manifest") and keeps package-dir {tt_boot_manifest = "src"} so
+# existing `python -m tt_boot_manifest.pack_images` callers are a drop-in. Do not
+# "fix" the module paths here to match the repo name; they would stop resolving.
 ifneq ($(shell command -v uv 2>/dev/null),)
-PACK_RUN := uv run --no-project --with-editable "$(TT_BOOT_MANIFEST_DIR)" \
+PACK_RUN := uv run --no-project --with-editable "$(TT_OCA_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
 else
 # uv-less fallback (e.g. the ocah-toolchain container, which carries the
@@ -397,18 +404,18 @@ else
 # prefixes still bind to the packer, not to a leading mkdir.
 PACK_SHIM := $(BUILD_DIR)/.pack-shim
 PACK_RUN = sh -c 'mkdir -p "$(PACK_SHIM)" && \
-	ln -sfn "$(abspath $(TT_BOOT_MANIFEST_DIR))/src" "$(PACK_SHIM)/tt_boot_manifest" && \
+	ln -sfn "$(abspath $(TT_OCA_MANIFEST_DIR))/src" "$(PACK_SHIM)/tt_boot_manifest" && \
 	PYTHONPATH="$(PACK_SHIM)" exec python3 -m tt_boot_manifest.pack_images "$$@"' tt-pack
 endif
 
 # A submodule nobody init'd is the likely failure here, and the packer's own error
 # for it ("No module named tt_boot_manifest") does not point at the cause.
 ensure-pack-deps:
-	@test -f "$(TT_BOOT_MANIFEST_DIR)/pyproject.toml" || { \
-	  echo "ERROR: the tt-boot-manifest submodule is not checked out."; \
-	  echo "       Expected: $(CURDIR)/$(TT_BOOT_MANIFEST_DIR)"; \
+	@test -f "$(TT_OCA_MANIFEST_DIR)/pyproject.toml" || { \
+	  echo "ERROR: the tt-oca-manifest submodule is not checked out."; \
+	  echo "       Expected: $(CURDIR)/$(TT_OCA_MANIFEST_DIR)"; \
 	  echo "       Run: git -C $(OCAH_ROOT) submodule update --init \\"; \
-	  echo "              hw/sys/sep/bootrom/prod/tools/tt-boot-manifest"; \
+	  echo "              hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"; \
 	  exit 1; }
 	@command -v uv >/dev/null || python3 -c 'import cryptography, ruamel.yaml, tomlkit, bitarray' 2>/dev/null || { \
 	  echo "ERROR: uv not found and the packer's Python deps are not importable."; \
@@ -485,7 +492,7 @@ $(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: OCA images need the ROM key 0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
-	  echo "       It ships in the tt-boot-manifest submodule, so this normally means"; \
+	  echo "       It ships in the tt-oca-manifest submodule, so this normally means"; \
 	  echo "       the submodule is stale; re-run git submodule update."; \
 	  exit 1; }
 	$(PACK_RUN) --config "$<" --out "$@" -v

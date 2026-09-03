@@ -43,7 +43,7 @@ timeout_sec = 3600
 tags = ["boot", "rom", "cpu", "subsystem"]
 run_modes = ["cpu"]
 # Boot ROM + manifest/BL1 images, both built entirely from source in the OSS
-# tree by hw/sys/sep/bootrom/prod/Makefile (prod ROM copy + tt-boot-manifest packer; no
+# tree by hw/sys/sep/bootrom/prod/Makefile (prod ROM copy + tt-oca-manifest packer; no
 # internal prebuilt blob). {repo_root} is expanded before backend dispatch so
 # the paths stay portable (independent-repo clean, no absolute/user paths).
 # NOTE: no +skip_fuse_sense -- the ROM's rom_lifecycle_policy needs a valid
@@ -53,7 +53,7 @@ run_modes = ["cpu"]
 # key above and [c_build.boot_rom] in sep_sim_cfg.toml), so a plain run_dv.py
 # invocation is self-contained. The one prerequisite it cannot do for you is the
 # manifest packer submodule, because a build step must not mutate git state:
-# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 # Paths stay absolute via {repo_root} rather than pointing at the staged copies,
 # so a --stage sim rerun reads the same images the c_compile stage produced.
 args = [
@@ -128,7 +128,7 @@ args = [
 # build_ot/ ROM and SECURE_DMA drain, NOT the PIO entry that happens to sit above
 # it here. Same ROM, same OpenTitan SPI transport, but
 # the flash carries the RSA-3072 PKCS#1 v1.5 signed image (make oca-images,
-# dev0 key from the tt-boot-manifest submodule, digest pinned in key_digests.c
+# dev0 key from the tt-oca-manifest submodule, digest pinned in key_digests.c
 # slot 0). That single swap turns on the whole crypto path -- version rollback,
 # key revocation, RSA-3072 modexp on OTBN, PKCS#1 unpad, payload hash -- which the
 # non-secure test never reaches (it prints SBOOT_OFF and skips straight past).
