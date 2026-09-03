@@ -38,7 +38,7 @@ smu_<scenario>_test
 |------|------|
 | `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
-| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only) |
+| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
 | `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
 | `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
@@ -274,5 +274,8 @@ seeds, and those run paths on the tracking GitHub issue.
 
 The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
 59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
-`cocotb/tests_deferred/`. `sep0_all` (53) is the SMU nightly group in
+`cocotb/tests_deferred/`. One body under `cocotb/tests/` is present but
+not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
+OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs; its
+docstring carries that reason. `sep0_all` (53) is the SMU nightly group in
 `.github/workflows/sim.yml`.
