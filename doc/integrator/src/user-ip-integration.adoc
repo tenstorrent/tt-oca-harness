@@ -13,9 +13,10 @@ Open Chiplet Atlas Harness (OCAH). It covers three distinct attachment classes:
 management peripherals, security extensions, and application logic in the user
 subsystem. Choosing the correct class matters because connecting an IP to an
 OCAH bus does not automatically make it trusted, securely booted,
-lifecycle-controlled, or protected from other initiators. The integrator must
-define those properties and provide the fabric, firewalls, IOMMU, secure-boot
-handoff, and physical implementation needed to enforce them.
+lifecycle-controlled, or protected from other initiators.
+[REQ-UIP-MOD-1] The integrator shall define those properties and provide the
+fabric, firewalls, IOMMU, secure-boot handoff, and physical implementation
+needed to enforce them.
 
 OCAH Phase 1 does not contain the general-purpose System Management Network
 (SMN), die-to-die fabric, or user-subsystem interconnect shown in the system
@@ -79,13 +80,15 @@ Before selecting a class, record:
 * where security and fatal faults are reported.
 
 The OCAH SMC and SEP inbound/outbound filters protect their own traffic paths.
-They do not automatically protect an IP attached to the adopter fabric. Use
-default-deny hardware policy at every new trust boundary and prevent less
-trusted software or the IP itself from rewriting or spoofing that policy.
+They do not automatically protect an IP attached to the adopter fabric.
+[REQ-UIP-MOD-2] The integrator shall use default-deny hardware policy at every
+new trust boundary and prevent less trusted software or the IP itself from
+rewriting or spoofing that policy.
 
-Do not connect an adopter DMA manager to `smu_axi_out_req_o`. That port is an
-OCAH *manager output*: it carries transactions initiated by the SMC or SEP to
-the adopter fabric. A user IP's DMA interface is another manager on that fabric.
+[REQ-UIP-MOD-3] The integrator shall not connect an adopter DMA manager to
+`smu_axi_out_req_o`. That port is an OCAH *manager output*: it carries
+transactions initiated by the SMC or SEP to the adopter fabric. A user IP's
+DMA interface is another manager on that fabric.
 
 [source,text]
 ----
@@ -106,7 +109,7 @@ a decode error.
 == Integrate an SMC-managed peripheral
 
 Use this model for product-specific control and status logic that SMC firmware
-must configure or monitor, such as a sensor, pad controller, or small management
+shall configure or monitor, such as a sensor, pad controller, or small management
 engine.
 
 === Allocate the SMC supplementary window
@@ -118,14 +121,14 @@ technology-specific GPIO, PLL, PVT, and eFuse SHIM blocks. Optional adopter IP
 belongs in the supplementary region beginning at local
 `BASE + 0x040_4000`.
 
-The downstream decoder must:
+The downstream decoder shall:
 
-* reserve a naturally aligned range large enough for the IP register map;
-* reject overlaps with mandatory blocks and other adopter allocations;
-* route both read and write channels to the same subordinate;
-* return `DECERR` for an unallocated address and propagate an IP error as
+* [REQ-UIP-SMC-1] reserve a naturally aligned range large enough for the IP register map;
+* [REQ-UIP-SMC-2] reject overlaps with mandatory blocks and other adopter allocations;
+* [REQ-UIP-SMC-3] route both read and write channels to the same subordinate;
+* [REQ-UIP-SMC-4] return `DECERR` for an unallocated address and propagate an IP error as
   `SLVERR`; and
-* keep the allocation in the chiplet address-map source of truth used by RTL,
+* [REQ-UIP-SMC-5] keep the allocation in the chiplet address-map source of truth used by RTL,
   firmware, verification, and documentation.
 
 The SMC `GLOBAL_BASE` and `REGION_SIZE` CSRs describe the complete SMC aperture;
@@ -150,73 +153,84 @@ for this reason.
 
 Assign each SMC-visible source a bit of SMU `ext_interrupts_i`, whose integration
 width is set by the `NUM_INT_TO_SMC` configuration parameter. The SMC
-synchronizes this vector into its clock domain. A source asynchronous to the SMC
-clock must hold the interrupt asserted until SMC firmware reads and clears the
-status register in the peripheral, using the peripheral-defined clear operation
-such as W1C. Masking the interrupt does not clear its source, and an un-stretched
-one-cycle pulse may be lost across this boundary.
+synchronizes this vector into its clock domain. Masking the interrupt does not
+clear its source, and an un-stretched one-cycle pulse may be lost across this
+boundary.
 
-Record the bit assignment in the platform interrupt map and use the same value
-in RTL, SMC firmware, and the verification environment. `sep_extintsrc_req_i`
-is a separate SEP interrupt input and must not be substituted for
-`ext_interrupts_i`.
+[REQ-UIP-SMC-6] A source asynchronous to the SMC clock shall hold the interrupt
+asserted until SMC firmware reads and clears the status register in the
+peripheral using the peripheral-defined clear operation such as W1C.
+
+[REQ-UIP-SMC-7] The integrator shall record the bit assignment in the platform
+interrupt map and use the same value in RTL, SMC firmware, and the verification
+environment.
+
+[REQ-UIP-SMC-8] `sep_extintsrc_req_i` is a separate SEP interrupt input and
+shall not be substituted for `ext_interrupts_i`.
 
 [[sep-security-extension-ip]]
 == Integrate a SEP security extension
 
 Use this model only for logic that SEP firmware must own as part of, or in
 direct support of, the chiplet security boundary. Examples include a
-security-policy engine or an adopter cryptographic service. Do not place an
-ordinary application accelerator here merely to make it appear trusted.
+security-policy engine or an adopter cryptographic service.
+[REQ-UIP-SEP-1] The integrator shall not place an ordinary application
+accelerator behind the SEP extension port merely to make it appear trusted.
 
 === Allocate the SEP external region
 
 `sep_external_req_o` and `sep_external_resp_i` expose the SEP local crossbar's
 32-bit-address, 64-bit-data AXI4 extension target at local addresses
 `0x2000_0000` through `0x3fff_ffff`. The first four bytes at `0x2000_0000` are
-intercepted by `sep.sv` for the eFuse SHIM, so an adopter decoder must not
-allocate any block overlapping `0x2000_0000`--`0x2000_0003`. Use
-`hw/sys/sep/dv/models/regs/sep_external.rdl` and the generated
-`OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR` and
+intercepted by `sep.sv` for the eFuse SHIM.
+[REQ-UIP-SEP-2] The adopter decoder shall not allocate any block overlapping
+`0x2000_0000`--`0x2000_0003`. Use `hw/sys/sep/dv/models/regs/sep_external.rdl`
+and the generated `OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR` and
 `OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_SIZE` constants in
 `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv` as the machine-readable source of
-truth; the map may evolve independently of this guide. Reserve naturally
-aligned, non-overlapping ranges in the remainder and return `DECERR` for holes.
+truth; the map may evolve independently of this guide.
+[REQ-UIP-SEP-3] The adopter decoder shall reserve naturally aligned,
+non-overlapping ranges in the remainder and return `DECERR` for holes.
 
 The port is a transaction path from SEP-local initiators to adopter
 subordinates. It is not a connection for an adopter IP's DMA manager. The SEP
 CPU LSU/debug paths, SEP DMA, and the filtered system-interface path have
 crossbar connectivity to the extension target. External system access remains
 subject to the SEP inbound filter, which is block-by-default after reset and
-must be opened deliberately by SEP firmware.
+shall be opened deliberately by SEP firmware.
 
-Preserve the AXI ID, `PROT`, and user/source information carried by the packed
-SEP request type. When adapting to another protocol or a narrower data path,
-verify the adapter explicitly. Cover burst conversion, byte strobes, ordering,
-response IDs, and error propagation.
+[REQ-UIP-SEP-4] The integrator shall preserve the AXI ID, `PROT`, and
+user/source information carried by the packed SEP request type.
+[REQ-UIP-SEP-5] When adapting to another protocol or a narrower data path, the
+integrator shall verify the adapter explicitly.
+[REQ-UIP-SEP-6] The integrator shall cover burst conversion, byte strobes,
+ordering, response IDs, and error propagation.
 
 === Apply SEP security policy
 
 Placing a block behind the SEP extension port only changes reachability; it
-does not prove that the block is trustworthy. The security design must
+does not prove that the block is trustworthy. The security design shall
 additionally:
 
-* include executable or mutable extension state in the appropriate verified-
+* [REQ-UIP-SEP-7] include executable or mutable extension state in the appropriate verified-
   boot and anti-rollback policy;
-* prevent non-secure or incorrectly identified initiators from reaching
+* [REQ-UIP-SEP-8] prevent non-secure or incorrectly identified initiators from reaching
   protected registers;
-* exclude roots, keys, and integrity-critical state from scan, and classify
+* [REQ-UIP-SEP-9] exclude roots, keys, and integrity-critical state from scan, and classify
   any secret-consuming state under the SEP scan policy;
-* define zeroization and reset behavior for sensitive state;
-* constrain any extension DMA manager independently at the adopter fabric; and
-* route integrity, tamper, and fatal errors to a security or safety handler
+* [REQ-UIP-SEP-10] define zeroization and reset behavior for sensitive state;
+* [REQ-UIP-SEP-11] constrain any extension DMA manager independently at the adopter fabric; and
+* [REQ-UIP-SEP-12] route integrity, tamper, and fatal errors to a security or safety handler
   that cannot be masked by application software.
 
-Assign each SEP-visible interrupt an allocated bit of
-`sep_extintsrc_req_i`. Synchronize an asynchronous source before the SEP
-boundary or retain it as a level until SEP firmware clears the peripheral
-status. Do not route it to SMU `ext_interrupts_i` unless SMC also has an
-independent management reason to receive the event.
+[REQ-UIP-SEP-13] The integrator shall assign each SEP-visible interrupt an
+allocated bit of `sep_extintsrc_req_i`.
+[REQ-UIP-SEP-14] The integrator shall synchronize an asynchronous source before
+the SEP boundary or retain it as a level until SEP firmware clears the
+peripheral status.
+[REQ-UIP-SEP-15] The integrator shall not route a SEP interrupt source to SMU
+`ext_interrupts_i` unless SMC also has an independent management reason to
+receive the event.
 
 [[application-owned-user-ip]]
 == Integrate an application-owned accelerator
@@ -227,82 +241,91 @@ and normal interrupt service for an accelerator.
 NOTE: Validation status: this section is integration guidance. OCAH Phase 1
 provides neither the application fabric/SMN nor an application-owned
 accelerator attachment, so the complete path described here has not been
-implemented or exercised in OCAH simulation. Adopters must record product-level
-RTL, CDC/RDC, simulation, firmware, and security-review evidence.
+implemented or exercised in OCAH simulation.
+[REQ-UIP-APP-1] Adopters shall record product-level RTL, CDC/RDC, simulation,
+firmware, and security-review evidence.
 
 === Connect control and DMA independently
 
 Place the CSR subordinate on the adopter's application CSR fabric. In a future
 full-harness integration this fabric may be the SMN shown in the OCAH system
-architecture; Phase 1 supplies no SMN RTL. Connect the DMA manager through a
-trusted ingress point to the adopter memory fabric as a peer of the application
-CPU and the OCAH outbound manager. The fabric must supply any required
-address-width, data-width, ID-width, clock-domain, security, and coherency
-adapters.
+architecture; Phase 1 supplies no SMN RTL. [REQ-UIP-APP-2] The integrator shall connect the DMA manager through a trusted
+ingress point to the adopter memory fabric as a peer of the application CPU and
+the OCAH outbound manager.
+[REQ-UIP-APP-3] The fabric shall supply any required address-width, data-width,
+ID-width, clock-domain, security, and coherency adapters.
 
 For a manager with an address width narrower than the fabric, zero-extend its
 addresses. Zero-extension restricts the manager to the low part of the physical
 address space; it is not address translation or security containment.
 
-Treat a third-party or application-owned DMA engine as untrusted by default.
-Place an IOMMU or equivalent address-and-permission firewall between it and
-memory, assign a non-spoofable stream/source identity at the trusted fabric
-ingress, and allow only the buffers and operations required for the current
-workload. An integration may omit that containment only when a threat-model
-review explicitly accepts the IP inside the relevant trust boundary or proves
-that the hardware connection cannot reach another asset.
+[REQ-UIP-APP-4] The integrator shall treat a third-party or application-owned
+DMA engine as untrusted by default.
+[REQ-UIP-APP-5] The integrator shall place an IOMMU or equivalent
+address-and-permission firewall between the DMA engine and memory, assign a
+non-spoofable stream/source identity at the trusted fabric ingress, and allow
+only the buffers and operations required for the current workload. An
+integration may omit that containment only when a threat-model review explicitly
+accepts the IP inside the relevant trust boundary or proves that the hardware
+connection cannot reach another asset.
 
-If the IP does not generate AXI `AxPROT` or fabric user/source fields, the
-trusted adapter must supply least-privilege values. Application IP normally
-originates non-secure, unprivileged data transactions (`AxPROT = 3'b010`). Do
-not let an untrusted IP assert secure privilege or choose its own authenticated
-source ID. Validate unsupported transaction types, including atomics and
-exclusive accesses, at the ingress.
+[REQ-UIP-APP-6] If the IP does not generate AXI `AxPROT` or fabric user/source
+fields, the trusted adapter shall supply least-privilege values. Application IP
+normally originates non-secure, unprivileged data transactions
+(`AxPROT = 3'b010`).
+[REQ-UIP-APP-7] The integrator shall not let an untrusted IP assert secure
+privilege or choose its own authenticated source ID.
+[REQ-UIP-APP-8] The integrator shall validate unsupported transaction types,
+including atomics and exclusive accesses, at the ingress.
 
-The system address map must define independently:
+The system address map shall define independently:
 
-* the CPU-visible CSR aperture;
-* the DMA-visible memory aperture;
-* whether the SMC or SEP can also reach the CSR aperture through
-  `smu_axi_out_req_o`; and
-* which initiators and security states are permitted by the adopter fabric;
-* the IOMMU/firewall context and non-spoofable source identity; and
-* which security policy registers become locked before the IP is released.
+* [REQ-UIP-APP-9] the CPU-visible CSR aperture;
+* [REQ-UIP-APP-10] the DMA-visible memory aperture;
+* [REQ-UIP-APP-11] whether the SMC or SEP can also reach the CSR aperture through
+  `smu_axi_out_req_o`;
+* [REQ-UIP-APP-12] which initiators and security states are permitted by the adopter fabric;
+* [REQ-UIP-APP-13] the IOMMU/firewall context and non-spoofable source identity; and
+* [REQ-UIP-APP-14] which security policy registers become locked before the IP is released.
 
 === Route application and management interrupts
 
 Route completion and recoverable work errors to the application interrupt
 controller. A separate fault signal, or an intentional duplicate of a retained
 level interrupt, may also be assigned to SMU `ext_interrupts_i` when SMC policy
-must log or recover the subsystem.
+shall log or recover the subsystem.
 
-Do not join two independently cleared interrupt controllers to a pulse. Define
-the ownership of status acknowledgement and masking so one handler cannot hide
-an event from the other.
+[REQ-UIP-APP-15] The integrator shall not join two independently cleared
+interrupt controllers to a pulse.
+[REQ-UIP-APP-16] The integrator shall define the ownership of status
+acknowledgement and masking so one handler cannot hide an event from the other.
 
 [[user-ip-security-lifecycle]]
 == Integrate secure boot, lifecycle, debug, and test
 
 === Establish a trusted release sequence
 
-Hold application IP in reset and keep its bus-master capability blocked while
-the chiplet root of trust is establishing policy. Before enabling transactions:
+[REQ-UIP-BOOT-1] The integrator shall hold application IP in reset and keep its
+bus-master capability blocked while the chiplet root of trust is establishing
+policy. Before enabling transactions:
 
 . SEP authenticates every executable or mutable configuration item required by
   the product threat model, checks its security version, and extends the
   measurement into attestation when required.
 . Trusted firmware configures the CSR firewall, DMA stream identity,
   IOMMU/firewall ranges, interrupt ownership, and fault routing.
-. Trusted firmware locks policy that application software and the IP must not
+. Trusted firmware locks policy that application software and the IP shall not
   change.
 . SMC completes the power, clock, reset, and isolation sequence.
 . The secure-management handoff records success before the application driver
   enables queues or DMA.
 
 OCAH does not provide a generic manifest loader or release API for arbitrary
-user IP. The adopter must extend the verified-boot policy and trusted firmware
-for the selected IP, or integrate an equivalent platform root-of-trust service,
-then verify that implementation as part of the product security case.
+user IP.
+[REQ-UIP-BOOT-2] The adopter shall extend the verified-boot policy and trusted
+firmware for the selected IP, or integrate an equivalent platform
+root-of-trust service, then verify that implementation as part of the product
+security case.
 
 The authenticated set is product-specific. For an accelerator it may include
 microcode, firmware, register presets, bitstreams, or integrity-sensitive model
@@ -310,10 +333,11 @@ metadata. Bulk user data need not be part of verified boot, but it still needs
 runtime access control. A hardwired accelerator with no mutable executable
 state still requires identity/version checks and containment before release.
 
-The release sequence must fail closed: an authentication, rollback, policy-lock,
-or firewall setup failure must leave the IP reset or bus-blocked and must
-produce a diagnosable security event. Application software must not be able to
-convert that failure into a release.
+[REQ-UIP-BOOT-3] The release sequence shall fail closed: an authentication,
+rollback, policy-lock, or firewall setup failure shall leave the IP reset or
+bus-blocked and shall produce a diagnosable security event.
+[REQ-UIP-BOOT-4] Application software shall not be able to convert that failure
+into a release.
 
 === Apply lifecycle and scan policy
 
@@ -332,13 +356,16 @@ convention is currently open. The current SMU boundary exposes `lc_state_o`, an
 a single-bit secure-test-mode indication, but not the complete feature-control
 vector. An IP that needs lifecycle-controlled enables therefore requires an
 explicitly reviewed extension to the integration wrapper and lifecycle/RDL
-allocation; it must not infer an ad-hoc debug authorization from `lc_state_o`
-alone.
+allocation.
+[REQ-UIP-BOOT-5] An IP that needs lifecycle-controlled enables shall not infer
+an ad-hoc debug authorization from `lc_state_o` alone.
 
 `secure_tm_o` indicates secure test mode; it is not a general functional-access
-authorization. Document how the IP's DTP/scan path, test enables, JTAG-visible
-registers, SRAM test, and secret zeroization behave in every production,
-development, RMA, and secure-test condition used by the product.
+authorization.
+[REQ-UIP-BOOT-6] The integrator shall document how the IP's DTP/scan path, test
+enables, JTAG-visible registers, SRAM test, and secret zeroization behave in
+every production, development, RMA, and secure-test condition used by the
+product.
 
 [[user-ip-clocks-resets-power]]
 == Integrate clocks, reset, and power
@@ -346,25 +373,26 @@ development, RMA, and secure-test condition used by the product.
 === Single-clock IP
 
 An IP may use an existing adopter functional clock when its timing target and
-power state match that domain. Generate an asynchronous-assert,
-synchronous-deassert reset for that clock. Do not use an SMC-domain reset output
-as a synchronous reset in an unrelated clock domain without a reset-domain
-adapter.
+power state match that domain.
+[REQ-UIP-CLK-1] The integrator shall generate an asynchronous-assert,
+synchronous-deassert reset for that clock.
+[REQ-UIP-CLK-2] The integrator shall not use an SMC-domain reset output as a
+synchronous reset in an unrelated clock domain without a reset-domain adapter.
 
 === Independent-clock IP
 
-When the user IP runs at a different frequency, place CDC logic at every
-boundary:
+When the user IP runs at a different frequency, the integrator shall place CDC
+logic at every boundary:
 
-* use an asynchronous AXI bridge or correctly sized channel FIFOs for the CSR
+* [REQ-UIP-CLK-3] use an asynchronous AXI bridge or correctly sized channel FIFOs for the CSR
   or DMA interface;
-* synchronize retained status levels;
-* transfer pulses with a toggle, handshake, or pulse stretcher;
-* constrain every asynchronous clock relationship; and
-* run static CDC and reset-domain-crossing analysis on the assembled SoC.
+* [REQ-UIP-CLK-4] synchronize retained status levels;
+* [REQ-UIP-CLK-5] transfer pulses with a toggle, handshake, or pulse stretcher;
+* [REQ-UIP-CLK-6] constrain every asynchronous clock relationship; and
+* [REQ-UIP-CLK-7] run static CDC and reset-domain-crossing analysis on the assembled SoC.
 
-An AXI register slice is not a CDC bridge. All five AXI channels must obey the
-same clocking contract.
+An AXI register slice is not a CDC bridge.
+[REQ-UIP-CLK-8] All five AXI channels shall obey the same clocking contract.
 
 === Power and isolation sequence
 
@@ -373,11 +401,11 @@ OCAH exposes the 32-bit vectors `ss_config_o`, `isolate_req_o`, and
 `smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o[31:0]`. The latter is a
 32-element unpacked array of reset-control structures, not a plain 32-bit
 vector; use the field definitions in `smc_reset_unit_pkg` when connecting it.
-These interfaces provide adopter-defined subsystem lifecycle control. The
-adopter must assign an index, translate the SMC's control structure into
-technology-specific reset and power-switch controls, insert isolation and
-retention cells, and define the completion condition. OCAH does not instantiate
-the user IP's power controller.
+These interfaces provide adopter-defined subsystem lifecycle control.
+[REQ-UIP-CLK-9] The adopter shall assign an index, translate the SMC's control
+structure into technology-specific reset and power-switch controls, insert
+isolation and retention cells, and define the completion condition. OCAH does
+not instantiate the user IP's power controller.
 
 Use this ordering for a switchable user domain:
 
@@ -399,32 +427,35 @@ Use this ordering for a switchable user domain:
 
 Reverse the dependencies when powering down: stop new work, drain or abort DMA,
 mask interrupts, isolate outputs, assert reset, stop the functional clock, and
-then remove power. Never remove power while an AXI transaction can still return
-a response.
+then remove power.
+[REQ-UIP-CLK-10] The integrator shall not remove power while an AXI transaction
+can still return a response.
 
 [[user-ip-software]]
 == Integrate software and firmware
 
 === Maintain one platform contract
 
-Software-visible allocations must be generated from, or checked against, the
-hardware address and interrupt maps. At minimum the platform contract records:
+[REQ-UIP-SW-1] Software-visible allocations shall be generated from, or checked
+against, the hardware address and interrupt maps. At minimum the platform
+contract shall record:
 
-* CSR base and span;
-* interrupt number, trigger type, polarity, and owner;
-* DMA address width and accessible ranges;
-* DMA stream/source identity, IOMMU context, and permission owner;
-* AXI security/privilege attributes and allowed CSR initiators;
-* coherency and cache-maintenance policy;
-* reset and power-domain index; and
-* IP configuration or ABI version, authenticated components, minimum security
+* [REQ-UIP-SW-2] CSR base and span;
+* [REQ-UIP-SW-3] interrupt number, trigger type, polarity, and owner;
+* [REQ-UIP-SW-4] DMA address width and accessible ranges;
+* [REQ-UIP-SW-5] DMA stream/source identity, IOMMU context, and permission owner;
+* [REQ-UIP-SW-6] AXI security/privilege attributes and allowed CSR initiators;
+* [REQ-UIP-SW-7] coherency and cache-maintenance policy;
+* [REQ-UIP-SW-8] reset and power-domain index; and
+* [REQ-UIP-SW-9] IP configuration or ABI version, authenticated components, minimum security
   versions, and secure-release indication.
 
 Use the generated `*_addr.h` and register headers under a block's
-`regs/gen/c/` directory when its register map is supplied as SystemRDL. An
-external IP without SystemRDL must supply an equivalent reviewed header. Do not
-infer register offsets from generated SystemVerilog or duplicate unexplained
-numeric addresses in multiple drivers.
+`regs/gen/c/` directory when its register map is supplied as SystemRDL.
+[REQ-UIP-SW-10] An external IP without SystemRDL shall supply an equivalent
+reviewed header.
+[REQ-UIP-SW-11] The integrator shall not infer register offsets from generated
+SystemVerilog or duplicate unexplained numeric addresses in multiple drivers.
 
 === Place initialization in the boot flow
 
@@ -439,33 +470,38 @@ status, and enables its SEP interrupt only after the relevant verified-boot
 stage succeeds.
 
 For an application-owned accelerator, trusted SEP/SMC firmware first performs
-the authenticated release and containment sequence. Application firmware or
-the OS driver must verify that secure release succeeded; it then validates the
-hardware/ABI version, allocates DMA-safe buffers through the assigned IOMMU
-context, clears stale status, registers the application interrupt handler, and
-enables work. A driver must not substitute its own version check for the secure
-boot decision.
+the authenticated release and containment sequence.
+[REQ-UIP-SW-12] Application firmware or the OS driver shall verify that secure
+release succeeded, then validate the hardware/ABI version, allocate DMA-safe
+buffers through the assigned IOMMU context, clear stale status, register the
+application interrupt handler, and enable work.
+[REQ-UIP-SW-13] A driver shall not substitute its own version check for the
+secure boot decision.
 
 === Handle DMA coherency
 
-If the user IP is not coherent with CPU caches, software must use uncached
-buffers or perform cache maintenance. Before starting device reads, clean CPU
-dirty lines and execute the platform's required write barrier. After device
-writes complete, execute the completion/read barrier and invalidate affected
-CPU cache lines before consuming results. The driver must also prevent buffers
-from being unmapped or reused while DMA is active.
+[REQ-UIP-SW-14] If the user IP is not coherent with CPU caches, software shall
+use uncached buffers or perform cache maintenance.
+[REQ-UIP-SW-15] Before starting device reads, the driver shall clean CPU dirty
+lines and execute the platform's required write barrier.
+[REQ-UIP-SW-16] After device writes complete, the driver shall execute the
+completion/read barrier and invalidate affected CPU cache lines before consuming
+results.
+[REQ-UIP-SW-17] The driver shall prevent buffers from being unmapped or reused
+while DMA is active.
 
 === Bound failures and recovery
 
-Every wait must have a timeout. On failure, capture the IP error registers and
-fabric response before clearing them. Recovery should progress from least to
-most disruptive:
+[REQ-UIP-SW-18] Every wait shall have a timeout.
+[REQ-UIP-SW-19] On failure, the driver shall capture the IP error registers and
+fabric response before clearing them.
+[OPT-UIP-SW-1] Recovery should progress from least to most disruptive:
 
-. stop new submissions and mask the IP interrupt;
-. acknowledge retained interrupt status;
-. request an IP-local soft reset, if supported;
-. assert the adopter subsystem reset after DMA has quiesced; and
-. power-cycle the domain only after isolation is asserted.
+. [OPT-UIP-SW-2] stop new submissions and mask the IP interrupt;
+. [OPT-UIP-SW-3] acknowledge retained interrupt status;
+. [OPT-UIP-SW-4] request an IP-local soft reset, if supported;
+. [OPT-UIP-SW-5] assert the adopter subsystem reset after DMA has quiesced; and
+. [OPT-UIP-SW-6] power-cycle the domain only after isolation is asserted.
 
 Document which state survives each reset. A soft reset that leaves a datapath
 or DMA engine in an error state is not a complete recovery mechanism.
@@ -513,7 +549,7 @@ outputs.
 |Retained level interrupts
 |Route to separate application interrupt sources. Optionally route the error
 level to an assigned SMU `ext_interrupts_i` bit for SMC fault handling; a fatal
-security violation from the trusted ingress must not depend on the NPU's own
+security violation from the trusted ingress shall not depend on the NPU's own
 interrupt.
 
 |`clk_i`, `rst_ni`
@@ -536,12 +572,14 @@ combinational AND gate. It contains no synchronizer: the caller is responsible
 for presenting both rising edges synchronously to `clk_i` so the combined NPU
 reset deasserts synchronously.
 
-The NPU's mutable executable/configuration surface must be established for the
-selected product configuration. If it loads microcode or other executable
-state, authenticate it and enforce a minimum security version before release.
-If descriptors or model metadata influence a security decision, authenticate
-those items under the corresponding policy. Ordinary application tensors can
-remain runtime data, protected by the IOMMU/firewall rather than measured boot.
+[REQ-UIP-EX-1] The NPU's mutable executable/configuration surface shall be
+established for the selected product configuration.
+[REQ-UIP-EX-2] If it loads microcode or other executable state, the integrator
+shall authenticate it and enforce a minimum security version before release.
+[REQ-UIP-EX-3] If descriptors or model metadata influence a security decision,
+the integrator shall authenticate those items under the corresponding policy.
+Ordinary application tensors can remain runtime data, protected by the
+IOMMU/firewall rather than measured boot.
 
 The complete adapter is in
 `doc/integrator/examples/npu/ocah_npu_fabric_adapter.sv`. The significant
@@ -575,21 +613,25 @@ map:
 |Error interrupt |Application IRQ 43 |Retained level; W1C at NPU `INTR_STATE[1]`
 |===
 
-The platform integration must replace these assignments and prove that the CPU
-and NPU observe the same physical buffer addresses. The stream/source identity,
-IOMMU context, and secure-release indication are platform security resources;
-they are deliberately not invented in the portable example header.
+[REQ-UIP-EX-4] The platform integration shall replace these assignments and prove
+that the CPU and NPU observe the same physical buffer addresses. The
+stream/source identity, IOMMU context, and secure-release indication are
+platform security resources; they are deliberately not invented in the portable
+example header.
 
 === Polling smoke path
 
-Run the example only after trusted firmware reports successful authentication,
-containment setup, policy lock, and NPU release. The application must not be
-able to manufacture that indication. The example `npu_smoke.c` accepts a valid
-NPU descriptor supplied by the test application. It clears stale state,
-programs the 32-bit DMA base, queues the descriptor, starts the NPU, and polls
-`STATUS.done` / `STATUS.error` with a bounded timeout. The example's `timeout`
-values count polling-loop iterations, not units of elapsed time. Replace them
-with a platform timer when the integration requires a wall-clock deadline.
+[REQ-UIP-EX-5] The integrator shall run the example only after trusted firmware
+reports successful authentication, containment setup, policy lock, and NPU
+release.
+[REQ-UIP-EX-6] The application shall not be able to manufacture that
+indication. The example `npu_smoke.c` accepts a valid NPU descriptor supplied
+by the test application. It clears stale state, programs the 32-bit DMA base,
+queues the descriptor, starts the NPU, and polls `STATUS.done` / `STATUS.error`
+with a bounded timeout. The example's `timeout` values count polling-loop
+iterations, not units of elapsed time.
+[REQ-UIP-EX-7] The integrator shall replace `timeout` values with a platform
+timer when the integration requires a wall-clock deadline.
 Passing the test requires:
 
 * successful CSR read and write transactions;
@@ -598,39 +640,43 @@ Passing the test requires:
 * no AXI `SLVERR` or `DECERR`; and
 * the expected output data after the required cache maintenance.
 
-Security negative tests must also prove that:
+Security negative tests shall also prove that:
 
-* the NPU remains reset or bus-blocked after failed authentication or policy
+* [REQ-UIP-EX-8] the NPU remains reset or bus-blocked after failed authentication or policy
   setup;
-* DMA immediately below and above the permitted range is rejected and reported;
-* the NPU cannot select a secure/privileged attribute or another stream ID;
-* application software cannot rewrite locked firewall policy; and
-* production lifecycle/debug policy prevents unauthorized register, JTAG, and
+* [REQ-UIP-EX-9] DMA immediately below and above the permitted range is rejected and reported;
+* [REQ-UIP-EX-10] the NPU cannot select a secure/privileged attribute or another stream ID;
+* [REQ-UIP-EX-11] application software cannot rewrite locked firewall policy; and
+* [REQ-UIP-EX-12] production lifecycle/debug policy prevents unauthorized register, JTAG, and
   scan access.
 
 === Interrupt smoke path
 
-Before enabling the CPU interrupt, clear NPU `INTR_STATE` with a write-one-to-
-clear value and install the handler. The handler records the state and clears
-the asserted bits. The test must still retain a timeout source independent of
-the NPU interrupt so a missing interrupt cannot sleep forever.
+[REQ-UIP-EX-13] Before enabling the CPU interrupt, the integrator shall clear
+NPU `INTR_STATE` with a write-one-to-clear value and install the handler. The
+handler records the state and clears the asserted bits.
+[REQ-UIP-EX-14] The test shall retain a timeout source independent of the NPU
+interrupt so a missing interrupt cannot sleep forever.
 
 Exercise both the real completion path and `INTR_TEST`: the former verifies
 work-to-interrupt integration, while the latter isolates interrupt routing from
-the compute and DMA paths. Do not count an `INTR_TEST` result as proof of DMA or
-descriptor execution.
+the compute and DMA paths.
+[REQ-UIP-EX-15] The integrator shall not count an `INTR_TEST` result as proof
+of DMA or descriptor execution.
 
 [[user-ip-integration-checklist]]
 == User IP integration checklist
 
-Record evidence beside every item. A schematic review or prose assertion is not
-substitute for the named RTL, static-analysis, simulation, or firmware result.
+[REQ-UIP-CHK-1] The integrator shall record evidence beside every item.
+[REQ-UIP-CHK-2] A schematic review or prose assertion is not a substitute for
+the named RTL, static-analysis, simulation, or firmware result.
 
-[cols="5%,31%,34%,30%",options="header"]
+[cols="5%,8%,23%,34%,30%",options="header"]
 |===
-|Done |Gate |Required evidence |NPU example evidence
+|Done |ID |Gate |Required evidence |NPU example evidence
 
 |[ ]
+|REQ-UIP-CHK-3
 |Trust and attachment class selected
 |Approved data-flow/trust-boundary diagram naming runtime owner, TCB status,
 CSR, DMA, interrupt, clock, reset, power, and security-policy owners
@@ -638,6 +684,7 @@ CSR, DMA, interrupt, clock, reset, power, and security-policy owners
 ports
 
 |[ ]
+|REQ-UIP-CHK-4
 |Assets and threats classified
 |Reviewed list of executable/configuration state, secrets, model/data assets,
 attackers, security objectives, and accepted residual risks
@@ -645,23 +692,27 @@ attackers, security objectives, and accepted residual risks
 data unless product policy says otherwise
 
 |[ ]
+|REQ-UIP-CHK-5
 |CSR aperture allocated without overlap
 |Machine-readable address-map check and positive/unmapped access test
 |4 KiB aperture; `npu_reg_top` decodes offsets `[11:0]`
 
 |[ ]
+|REQ-UIP-CHK-6
 |Protocol and width adapters reviewed
 |Interface assertions and tests for byte strobes, independent AXI channels,
 backpressure, and error responses
 |`npu_axi_csr_wrap`; OCAH packed `axi_lite_to_tlul` is not used
 
 |[ ]
+|REQ-UIP-CHK-7
 |Transaction identity and privilege fixed
 |RTL review and assertions proving the IP cannot spoof secure/privileged
 `AxPROT`, authenticated source/stream ID, or unsupported transaction types
 |Trusted adapter fixes `AxPROT=3'b010`; adopter ingress assigns the stream ID
 
 |[ ]
+|REQ-UIP-CHK-8
 |DMA containment and ranges proven
 |IOMMU/firewall configuration and lock evidence plus tests at the lowest/highest
 permitted address and rejected adjacent/protected addresses
@@ -669,30 +720,35 @@ permitted address and rejected adjacent/protected addresses
 by an adopter IOMMU/firewall
 
 |[ ]
+|REQ-UIP-CHK-9
 |Secure boot and release fail closed
 |Positive and negative tests for authentication, minimum security version,
 policy setup/lock, reset or bus block on failure, and secure handoff
 |NPU remains reset/bus-blocked until trusted firmware authorizes release
 
 |[ ]
+|REQ-UIP-CHK-10
 |Lifecycle, debug, and scan policy closed
 |Asset-class manifest, feature-control allocation, DTP/scan connectivity, and
 tests in production, development, RMA, and secure-test conditions
-|No roots or keys; adopter must allocate reviewed lifecycle gates before adding
+|No roots or keys; adopter shall allocate reviewed lifecycle gates before adding
 NPU debug/scan access
 
 |[ ]
+|REQ-UIP-CHK-11
 |Clock and reset crossings closed
 |Clock/reset specification, CDC/RDC reports, and reset assertions
 |One NPU clock; external CDC required if either fabric uses another clock
 
 |[ ]
+|REQ-UIP-CHK-12
 |Power and isolation sequence closed
 |UPF or equivalent intent, power-state simulation, and completion handshake
 test
 |Adopter-assigned subsystem index; quiesce DMA before reset or power-off
 
 |[ ]
+|REQ-UIP-CHK-13
 |Interrupt routing and ownership proven
 |Assigned interrupt/fault map; mask, trigger, acknowledgement, lost-interrupt,
 and unmaskable security-fault tests
@@ -700,12 +756,14 @@ and unmaskable security-fault tests
 `ext_interrupts_i`; trusted ingress reports containment violations
 
 |[ ]
+|REQ-UIP-CHK-14
 |Software platform contract generated or reviewed
 |Base/span, IRQ, DMA width/range, source identity, IOMMU context, security
 attributes, release state, cache policy, and ABI/security versions agree with RTL
 |`npu_platform.h` replaced and extended with adopter security resources
 
 |[ ]
+|REQ-UIP-CHK-15
 |Polling and interrupt smoke tests pass
 |Bounded positive tests plus timeout, IP error, fabric-error, containment, and
 unauthorized-access negative tests
@@ -713,23 +771,27 @@ unauthorized-access negative tests
 `INTR_TEST` separately verifies routing
 
 |[ ]
+|REQ-UIP-CHK-16
 |DMA coherency policy verified
 |Uncached mapping or cache clean/invalidate test on real platform
-|Reference range is uncached; production mapping must be confirmed
+|Reference range is uncached; production mapping shall be confirmed
 
 |[ ]
+|REQ-UIP-CHK-17
 |Recovery is repeatable
 |Error capture followed by soft-reset and subsystem-reset tests, then successful
 resubmission
 |Escalate to `rst_ni` if NPU soft reset cannot recover the PE state
 
 |[ ]
+|REQ-UIP-CHK-18
 |Example and dependency are reproducible
 |Pinned public dependency or in-tree model with an automated build and test
 |Current adapter is illustrative and does not pass this gate until the external
 NPU dependency is made publicly reproducible
 
 |[ ]
+|REQ-UIP-CHK-19
 |Integration sign-off complete
 |Lint, CDC/RDC, synthesis, constraints, simulation, firmware, threat-model,
 security, DFT, and documentation reviews archived against one RTL revision
