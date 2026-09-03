@@ -22,7 +22,8 @@ FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 # as an experimental line-wrap optimizer, and which crashes outright on at
 # least one file in this tree.
 OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length
-OCAH_LINT_VERIBLE_EXTRA_FLAGS ?=
+OCAH_LINT_VERIBLE_WAIVER_FILE := $(OCAH_FORMAT_DIR)/verible-lint.waiver
+OCAH_LINT_VERIBLE_EXTRA_FLAGS ?= --waiver_files=$(OCAH_LINT_VERIBLE_WAIVER_FILE)
 OCAH_FORMAT_VERIBLE_FLAGS ?= --flagfile=$(OCAH_FORMAT_DIR)/verible-format.flags
 OCAH_FORMAT_VERIBLE_EXTRA_FLAGS ?=
 

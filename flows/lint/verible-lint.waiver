@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Central waiver file for hand-authored Verible lint findings that a path
+# exclusion would be too coarse for, because the file is otherwise linted
+# normally and only one specific rule/line needs waiving. Loaded via
+# --waiver_files by ocah-lint-sv-verible; see
+# https://chipsalliance.github.io/verible/verilog_lint.html for the format.
+# --location matches the absolute path emitted by `find`, so every entry is
+# anchored with a leading `.*` and a trailing `\.sv$`/`\.v$`.
+
+# module-filename: intentional stub swaps. Each stub keeps the real module's
+# name so it can drop into the same instantiation/filelist slot; renaming
+# either the module or the file would break that substitution.
+waive --rule=module-filename --line=32 --location=".*hw/sys/sep/dv/shims/cpu/sep_cpu_stub\.sv$"
+waive --rule=module-filename --line=30 --location=".*hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub\.sv$"
+
+# module-filename: bundle file. OCAH4CORECluster_mem_swaps.sv carries six
+# CIRCT-style memory-macro modules; the rule checks only the last one against
+# the file name, but no single module name is meant to match a file that
+# intentionally bundles several.
+waive --rule=module-filename --line=178 --location=".*hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps\.sv$"
+
+# module-filename: the repo-wide `tb_top.sv` / `tb_wrapper_top.sv` convention
+# (dtp, sep, smc, smu, the three cross_trigger sub-blocks, ocah_axi_vip). The
+# file name is deliberately generic so every testbench directory exposes the
+# same path regardless of which block it drives; the module inside is named
+# for the block instead. dtp/sep/smc's copies fail single-file parsing
+# (conditional `ifndef` headers) and never reach this rule at all; these are
+# the ones that do parse standalone.
+waive --rule=module-filename --line=17 --location=".*hw/sys/smu/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --line=10 --location=".*hw/sys/smu/dv/tb/tb_wrapper_top\.sv$"
+waive --rule=module-filename --line=17 --location=".*hw/ip/cross_trigger/cross_trigger_matrix/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --line=19 --location=".*hw/ip/cross_trigger/cross_trigger_network/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --line=15 --location=".*hw/ip/cross_trigger/cross_trigger_port/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --line=25 --location=".*hw/common/dv/vip/ocah_axi_vip/dv/tb/tb_top\.sv$"
