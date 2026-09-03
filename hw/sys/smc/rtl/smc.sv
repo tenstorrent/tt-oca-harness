@@ -422,7 +422,7 @@ module smc #(
     .mbist_pass_i                           (mbist_pass_i),
     .mbist_abort_i                          (mbist_abort_i),
 
-    // AXI hang detector fault output. 
+    // AXI hang detector fault output.
     // The OR'd fault is routed into smc_peripherals peripheral_interrupts[31] so PLIC can see it.
     .axi_hang_irq_o                         (axi_hang_irq)
   );

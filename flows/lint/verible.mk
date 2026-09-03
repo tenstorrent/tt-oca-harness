@@ -4,7 +4,8 @@
 ifndef ocah_verible_mk
 ocah_verible_mk := 1
 
-include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
+OCAH_FORMAT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+include $(OCAH_FORMAT_DIR)/../common.mk
 
 # Filesystem scopes to lint and format.  The vendor root contributes only
 # hand-authored overlays; upstream and generated overlay files are excluded
@@ -13,7 +14,14 @@ OCAH_VERIBLE_PATHS ?= hw vendor
 LINT_PATH ?= $(OCAH_VERIBLE_PATHS)
 FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 
-OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style
+# parameter-name-style is deferred to issue #1051. line-length is disabled
+# outright: the port/parameter/net alignment mode below (preserve) never
+# wraps an aligned declaration regardless of its width, and Verible never
+# reflows comment text, so most violations are structurally unfixable; the
+# rest would need --try_wrap_long_lines, which the formatter's own docs flag
+# as an experimental line-wrap optimizer, and which crashes outright on at
+# least one file in this tree.
+OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length
 OCAH_LINT_VERIBLE_EXTRA_FLAGS ?=
 OCAH_FORMAT_VERIBLE_FLAGS ?= --flagfile=$(OCAH_FORMAT_DIR)/verible-format.flags
 OCAH_FORMAT_VERIBLE_EXTRA_FLAGS ?=
@@ -97,7 +105,8 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1)) -print -quit 2>/dev/n
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
 ## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
 ## install it or run via `./scripts/docker-run.sh eda-run make lint-sv-verible`.
-## parameter-name-style is deferred to issue #1051.
+## parameter-name-style is deferred to issue #1051; line-length is disabled
+## outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
 .PHONY: ocah-lint-sv-verible
 ocah-lint-sv-verible:
