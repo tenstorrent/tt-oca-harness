@@ -21,7 +21,6 @@ module sep_lifecycle_ctrl #(
     output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,
     output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,
     output logic lc_sigint_err_o,
-    output logic prod_dbg_active_o,
 
     input sep_pkg::sep_32_64_6_12_axi_req_t lifecycle_axi_req_i,
     output sep_pkg::sep_32_64_6_12_axi_resp_t lifecycle_axi_resp_o
@@ -187,8 +186,6 @@ module sep_lifecycle_ctrl #(
   assign demote_reg_2.demote = lifecycle_ctrl_hwif_out.DEMOTE_2.demote.value;
   assign demote_reg_2.lock   = lifecycle_ctrl_hwif_out.DEMOTE_2.lock.value;
   assign demote_reg_2.rsvd   = lifecycle_ctrl_hwif_out.DEMOTE_2.rsvd.value;
-
-  assign prod_dbg_active_o = demote_reg_1.demote | demote_reg_2.demote;
 
   sep_lifecycle_ctrl_reg u_sep_lifecycle_ctrl_reg (
         .clk(clk_i),

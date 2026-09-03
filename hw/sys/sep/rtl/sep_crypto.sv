@@ -69,7 +69,7 @@ module sep_crypto #(
     input  logic                               ext_boot_seq_done_i,
     output logic                               security_disable_o,       // To SMC
     output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
-    output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,    
+    output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
     output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
     output logic                               lc_sigint_err_o,
     output sep_efuse_pkg::efuse_map_t 		   shadow_regs_o,
@@ -95,13 +95,11 @@ module sep_crypto #(
     output logic                               km_unrecoverable_err_o,
     output logic                               km_recoverable_err_o,
 
-    // Software resets from SEP host (active-low, synchronized)
-    input  logic                               km_sw_rst_ni,
-    input  logic                               otbn_sw_rst_ni,
-    input  logic                               aes_sw_rst_ni,
-    input  logic                               hmac_sw_rst_ni,
-    input  logic                               kmac_sw_rst_ni,
-    input  logic                               trng_sw_rst_ni,
+    // Isolation handshake with sep_reset_ctrl
+    input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,
+    output sep_pkg::sep_crypto_isolate_t       isolated_o,
+    // Isolation-sequenced software resets from sep_reset_ctrl (active-low)
+    input  sep_pkg::sep_sw_rst_t               gated_rst_ni,
 
     output logic [1:0]                         lcc_demote_state_1_o, // To SMC
 
@@ -234,9 +232,6 @@ module sep_crypto #(
     edn_pkg::edn_req_t [sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT-1:0] pool_edn_req;
     edn_pkg::edn_rsp_t [sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT-1:0] pool_edn_rsp;
 
-    sep_pkg::sep_32_64_6_12_axi_req_t  [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_reqs;
-    sep_pkg::sep_32_64_6_12_axi_resp_t [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_resps;
-
     //=========================================================================
     // External TRNG / DRBG Entropy Source Muxing
     //=========================================================================
@@ -258,275 +253,139 @@ module sep_crypto #(
     drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
     drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_rsp;
 
-    ////////////////
-    // AXI4 Demux //
-    ////////////////
+    /////////////////////////////
+    // Crypto AXI Interconnect //
+    /////////////////////////////
 
-    logic otbn_write, otbn_read, hmac_write, hmac_read, aes_write, aes_read, kmac_write, kmac_read, fuse_write, fuse_read, lifecycle_write, lifecycle_read, km_write, km_read;
-    logic csrng_write, csrng_read, edn_write, edn_read;
-    logic entropy_src_write, entropy_src_read, trng_write, trng_read;
-    logic abr_write, abr_read;  // Adams Bridge PQC
-    logic aw_is_burst, ar_is_burst;
-    logic [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL-1:0] aw_select, ar_select;
+    sep_pkg::sep_32_32_axil_req_t
+        otbn_axil_isolated_req,
+        hmac_axil_isolated_req,
+        aes_axil_isolated_req,
+        kmac_axil_isolated_req;
+    sep_pkg::sep_32_32_axil_resp_t
+        otbn_axil_isolated_resp,
+        hmac_axil_isolated_resp,
+        aes_axil_isolated_resp,
+        kmac_axil_isolated_resp;
+    sep_pkg::sep_32_32_axil_req_t
+        otbn_key_axil_req,
+        aes_key_axil_req,
+        hmac_key_axil_req,
+        kmac_key_axil_req;
+    sep_pkg::sep_32_32_axil_resp_t
+        otbn_key_axil_resp,
+        aes_key_axil_resp,
+        hmac_key_axil_resp,
+        kmac_key_axil_resp;
+    sep_pkg::sep_32_32_axil_req_t
+        otbn_key_axil_isolated_req,
+        aes_key_axil_isolated_req,
+        hmac_key_axil_isolated_req,
+        kmac_key_axil_isolated_req;
+    sep_pkg::sep_32_32_axil_resp_t
+        otbn_key_axil_isolated_resp,
+        aes_key_axil_isolated_resp,
+        hmac_key_axil_isolated_resp,
+        kmac_key_axil_isolated_resp;
 
-    // check if the transaction is a burst transactions to reject all bursts commands to CSR space
-    assign aw_is_burst = (|sep_crypto_axi_req_i.aw.len);
-    assign ar_is_burst = (|sep_crypto_axi_req_i.ar.len);
+    km_intf_pkg::km_axil_req_t  abr_key_axil_req,  km_efuse_axil_req;
+    km_intf_pkg::km_axil_resp_t abr_key_axil_resp, km_efuse_axil_resp;
+    km_intf_pkg::km_axil_req_t  abr_key_axil_isolated_req,  km_efuse_axil_isolated_req;
+    km_intf_pkg::km_axil_resp_t abr_key_axil_isolated_resp, km_efuse_axil_isolated_resp;
+    km_intf_pkg::km_axil_req_t     km_mbox_axil_req;
+    km_intf_pkg::km_axil_resp_t    km_mbox_axil_resp;
+    sep_pkg::sep_32_32_axil_req_t  esrc_axil_isolated_req;
+    sep_pkg::sep_32_32_axil_resp_t esrc_axil_isolated_resp;
+    drbg_pkg::drbg_axil64_req_t    csrng_axil_isolated_req,  edn_axil_isolated_req;
+    drbg_pkg::drbg_axil64_resp_t   csrng_axil_isolated_resp, edn_axil_isolated_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  fuse_axi_req,  lifecycle_axi_req,  abr_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp, abr_axi_resp;
 
-    always_comb begin
-        otbn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::otbn_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::otbn_rule.end_addr);
-        otbn_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::otbn_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::otbn_rule.end_addr);
-
-        hmac_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::hmac_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::hmac_rule.end_addr);
-        hmac_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::hmac_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::hmac_rule.end_addr);
-
-        aes_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::aes_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::aes_rule.end_addr);
-        aes_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::aes_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::aes_rule.end_addr);
-
-        kmac_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::kmac_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::kmac_rule.end_addr);
-        kmac_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::kmac_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::kmac_rule.end_addr);
-
-        fuse_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::fuse_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::fuse_rule.end_addr);
-        fuse_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::fuse_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::fuse_rule.end_addr);
-
-        lifecycle_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::lifecycle_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::lifecycle_rule.end_addr);
-        lifecycle_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::lifecycle_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::lifecycle_rule.end_addr);
-
-        km_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::km_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::km_rule.end_addr);
-        km_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::km_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::km_rule.end_addr);
-
-        csrng_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::csrng_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::csrng_rule.end_addr);
-        csrng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::csrng_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::csrng_rule.end_addr);
-
-        edn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::edn_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::edn_rule.end_addr);
-        edn_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::edn_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::edn_rule.end_addr);
-
-        entropy_src_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::entropy_source_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::entropy_source_rule.end_addr);
-        entropy_src_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::entropy_source_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::entropy_source_rule.end_addr);
-
-        trng_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::trng_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::trng_rule.end_addr);
-        trng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::trng_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::trng_rule.end_addr);
-
-        abr_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::abr_rule.start_addr) &
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::abr_rule.end_addr);
-        abr_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::abr_rule.start_addr) &
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::abr_rule.end_addr);
-
-        // Port mapping follows sep_crypto_axi_port_e
-        if (aw_is_burst) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
-        end else if (abr_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
-        end else if (trng_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
-        end else if (entropy_src_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEntropySrc);
-        end else if (edn_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEdn);
-        end else if (csrng_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiCsrng);
-        end else if (km_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKm);
-        end else if (lifecycle_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiLifecycle);
-        end else if (fuse_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiFuse);
-        end else if (kmac_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKmac);
-        end else if (aes_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAes);
-        end else if (hmac_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiHmac);
-        end else if (otbn_write) begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiOtbn);
-        end else begin
-            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
-        end
-
-        if (ar_is_burst) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
-        end else if (abr_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
-        end else if (trng_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
-        end else if (entropy_src_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEntropySrc);
-        end else if (edn_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEdn);
-        end else if (csrng_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiCsrng);
-        end else if (km_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKm);
-        end else if (lifecycle_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiLifecycle);
-        end else if (fuse_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiFuse);
-        end else if (kmac_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKmac);
-        end else if (aes_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAes);
-        end else if (hmac_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiHmac);
-        end else if (otbn_read) begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiOtbn);
-        end else begin
-            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
-        end
-    end
-
-    axi_demux #(
-        .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .AtopSupport     (1'b0),
-        .aw_chan_t       (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-        .b_chan_t        (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-        .ar_chan_t       (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t),
-        .NoMstPorts      (sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST),
-        .MaxTrans        (4),
-        .AxiLookBits     (2),
-        .UniqueIds       (1'b0),
-        .SelHashIds      (1'b0),
-        .SpillAw         (1'b1),
-        .SpillW          (1'b1),
-        .SpillB          (1'b1),
-        .SpillAr         (1'b1),
-        .SpillR          (1'b1)
-    ) axi_demux (
-        .clk_i,
-        .rst_ni,
-        .test_i          (test_en_i),
-        .sel_hash_i      (2'h0),
-
-        .slv_req_i       (sep_crypto_axi_req_i),
-        .slv_aw_select_i (aw_select),
-        .slv_ar_select_i (ar_select),
-        .slv_resp_o      (sep_crypto_axi_resp_o),
-        .mst_reqs_o      (sep_crypto_axi_reqs),
-        .mst_resps_i     (sep_crypto_axi_resps)
+    sep_crypto_axi_interconnect u_sep_crypto_axi_interconnect (
+        .clk_i                        (clk_i),
+        .rst_ni                       (rst_ni),
+        .test_en_i                    (test_en_i),
+        .sep_crypto_axi_req_i         (sep_crypto_axi_req_i),
+        .sep_crypto_axi_resp_o        (sep_crypto_axi_resp_o),
+        .isolate_req_i                (isolate_req_i),
+        .isolated_o                   (isolated_o),
+        .otbn_axil_isolated_req_o     (otbn_axil_isolated_req),
+        .otbn_axil_isolated_resp_i    (otbn_axil_isolated_resp),
+        .hmac_axil_isolated_req_o     (hmac_axil_isolated_req),
+        .hmac_axil_isolated_resp_i    (hmac_axil_isolated_resp),
+        .aes_axil_isolated_req_o      (aes_axil_isolated_req),
+        .aes_axil_isolated_resp_i     (aes_axil_isolated_resp),
+        .kmac_axil_isolated_req_o     (kmac_axil_isolated_req),
+        .kmac_axil_isolated_resp_i    (kmac_axil_isolated_resp),
+        .otbn_key_axil_req_i          (otbn_key_axil_req),
+        .otbn_key_axil_resp_o         (otbn_key_axil_resp),
+        .aes_key_axil_req_i           (aes_key_axil_req),
+        .aes_key_axil_resp_o          (aes_key_axil_resp),
+        .hmac_key_axil_req_i          (hmac_key_axil_req),
+        .hmac_key_axil_resp_o         (hmac_key_axil_resp),
+        .kmac_key_axil_req_i          (kmac_key_axil_req),
+        .kmac_key_axil_resp_o         (kmac_key_axil_resp),
+        .abr_key_axil_req_i           (abr_key_axil_req),
+        .abr_key_axil_resp_o          (abr_key_axil_resp),
+        .km_efuse_axil_req_i          (km_efuse_axil_req),
+        .km_efuse_axil_resp_o         (km_efuse_axil_resp),
+        .otbn_key_axil_isolated_req_o (otbn_key_axil_isolated_req),
+        .otbn_key_axil_isolated_resp_i(otbn_key_axil_isolated_resp),
+        .aes_key_axil_isolated_req_o  (aes_key_axil_isolated_req),
+        .aes_key_axil_isolated_resp_i (aes_key_axil_isolated_resp),
+        .hmac_key_axil_isolated_req_o (hmac_key_axil_isolated_req),
+        .hmac_key_axil_isolated_resp_i(hmac_key_axil_isolated_resp),
+        .kmac_key_axil_isolated_req_o (kmac_key_axil_isolated_req),
+        .kmac_key_axil_isolated_resp_i(kmac_key_axil_isolated_resp),
+        .abr_key_axil_isolated_req_o  (abr_key_axil_isolated_req),
+        .abr_key_axil_isolated_resp_i (abr_key_axil_isolated_resp),
+        .km_efuse_axil_isolated_req_o (km_efuse_axil_isolated_req),
+        .km_efuse_axil_isolated_resp_i(km_efuse_axil_isolated_resp),
+        .km_mbox_axil_req_o           (km_mbox_axil_req),
+        .km_mbox_axil_resp_i          (km_mbox_axil_resp),
+        .esrc_axil_isolated_req_o     (esrc_axil_isolated_req),
+        .esrc_axil_isolated_resp_i    (esrc_axil_isolated_resp),
+        .csrng_axil_isolated_req_o    (csrng_axil_isolated_req),
+        .csrng_axil_isolated_resp_i   (csrng_axil_isolated_resp),
+        .edn_axil_isolated_req_o      (edn_axil_isolated_req),
+        .edn_axil_isolated_resp_i     (edn_axil_isolated_resp),
+        .ext_trng_axil_req_o          (ext_trng_axil_req_o),
+        .ext_trng_axil_resp_i         (ext_trng_axil_resp_i),
+        .fuse_axi_req_o               (fuse_axi_req),
+        .fuse_axi_resp_i              (fuse_axi_resp),
+        .lifecycle_axi_req_o          (lifecycle_axi_req),
+        .lifecycle_axi_resp_i         (lifecycle_axi_resp),
+        .abr_axi_req_o                (abr_axi_req),
+        .abr_axi_resp_i               (abr_axi_resp)
     );
 
-    axi_err_slv #(
-        .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
-        .Resp       (axi_pkg::RESP_DECERR),
-        .ATOPs      (1'b0),
-        .MaxTrans   (1)
-    ) axi_err_slv (
-        .clk_i,
-        .rst_ni,
-        .test_i     (test_en_i),
-        .slv_req_i  (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiErrSlv]),
-        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiErrSlv])
-    );
-
-
-    //////////////////////////
-    // SW Reset AXI Isolate //
-    //////////////////////////
-
-    // Isolated AXI ports and sequenced resets for the accelerator wrappers
-    sep_pkg::sep_32_64_6_12_axi_req_t  hmac_axi_isolated_req,  otbn_axi_isolated_req,
-                                       aes_axi_isolated_req,   kmac_axi_isolated_req;
-    sep_pkg::sep_32_64_6_12_axi_resp_t hmac_axi_isolated_resp, otbn_axi_isolated_resp,
-                                       aes_axi_isolated_resp,  kmac_axi_isolated_resp;
-    logic hmac_gated_rst_n, otbn_gated_rst_n, aes_gated_rst_n, kmac_gated_rst_n;
-
-    sep_crypto_axi_isolate #(
-        .ADDR_WIDTH  (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .DATA_WIDTH  (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .ID_WIDTH    (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .USER_WIDTH  (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-        .NUM_PENDING (4),
-        .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t)
-    ) u_sep_crypto_axi_isolate (
-        .clk_i              (clk_i),
-        .rst_ni             (rst_ni),
-
-        .hmac_sw_rst_req_ni (hmac_sw_rst_ni),
-        .hmac_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiHmac]),
-        .hmac_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiHmac]),
-        .hmac_mst_req_o     (hmac_axi_isolated_req),
-        .hmac_mst_resp_i    (hmac_axi_isolated_resp),
-        .hmac_gated_rst_no  (hmac_gated_rst_n),
-
-        .otbn_sw_rst_req_ni (otbn_sw_rst_ni),
-        .otbn_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn]),
-        .otbn_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiOtbn]),
-        .otbn_mst_req_o     (otbn_axi_isolated_req),
-        .otbn_mst_resp_i    (otbn_axi_isolated_resp),
-        .otbn_gated_rst_no  (otbn_gated_rst_n),
-
-        .aes_sw_rst_req_ni  (aes_sw_rst_ni),
-        .aes_slv_req_i      (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAes]),
-        .aes_slv_resp_o     (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAes]),
-        .aes_mst_req_o      (aes_axi_isolated_req),
-        .aes_mst_resp_i     (aes_axi_isolated_resp),
-        .aes_gated_rst_no   (aes_gated_rst_n),
-
-        .kmac_sw_rst_req_ni (kmac_sw_rst_ni),
-        .kmac_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiKmac]),
-        .kmac_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKmac]),
-        .kmac_mst_req_o     (kmac_axi_isolated_req),
-        .kmac_mst_resp_i    (kmac_axi_isolated_resp),
-        .kmac_gated_rst_no  (kmac_gated_rst_n)
-    );
-
-    // Internal entropy complex: coordinated reset/isolation, conversion, ESRC,
-    // and DRBG. Source muxes and post-mux adapters remain below.
+    // Internal entropy complex: coordinated reset/isolation, ESRC, and DRBG.
+    // Source muxes and post-mux adapters remain below.
     sep_trng #(
         .NUM_AXIS (EXT_TRNG_NUM_AXIS)
     ) u_sep_trng (
-        .clk_i,
-        .rst_ni,
-        .test_en_i,
-        .trng_sw_rst_req_ni (trng_sw_rst_ni),
-        .entropy_rosc_sample_clk_i,
-        .esrc_axi_req_i            (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
-        .esrc_axi_resp_o           (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
-        .csrng_axi_req_i           (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiCsrng]),
-        .csrng_axi_resp_o          (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiCsrng]),
-        .edn_axi_req_i             (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEdn]),
-        .edn_axi_resp_o            (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEdn]),
+        .clk_i                     (clk_i),
+        .rst_ni                    (gated_rst_ni.trng),
+        .entropy_rosc_sample_clk_i (entropy_rosc_sample_clk_i),
+        .esrc_axil_req_i           (esrc_axil_isolated_req),
+        .esrc_axil_resp_o          (esrc_axil_isolated_resp),
+        .csrng_axil_req_i          (csrng_axil_isolated_req),
+        .csrng_axil_resp_o         (csrng_axil_isolated_resp),
+        .edn_axil_req_i            (edn_axil_isolated_req),
+        .edn_axil_resp_o           (edn_axil_isolated_resp),
         .drbg_axis_req_o           (drbg_int_axis_req),
         .drbg_axis_rsp_i           (drbg_int_axis_rsp),
         .csrng_alert_rx_i          (crypto_alert_rx[8:7]),
         .csrng_alert_tx_o          (crypto_alert_tx[8:7]),
         .edn_alert_rx_i            (crypto_alert_rx[10:9]),
         .edn_alert_tx_o            (crypto_alert_tx[10:9]),
-        .entropy_source_irq_o,
-        .intr_cs_cmd_req_done_o,
-        .intr_cs_entropy_req_o,
-        .intr_cs_hw_inst_exc_o,
-        .intr_cs_fatal_err_o,
-        .intr_edn_cmd_req_done_o,
-        .intr_edn_fatal_err_o,
+        .entropy_source_irq_o      (entropy_source_irq_o),
+        .intr_cs_cmd_req_done_o    (intr_cs_cmd_req_done_o),
+        .intr_cs_entropy_req_o     (intr_cs_entropy_req_o),
+        .intr_cs_hw_inst_exc_o     (intr_cs_hw_inst_exc_o),
+        .intr_cs_fatal_err_o       (intr_cs_fatal_err_o),
+        .intr_edn_cmd_req_done_o   (intr_edn_cmd_req_done_o),
+        .intr_edn_fatal_err_o      (intr_edn_fatal_err_o),
         .trng_reset_active_o       (trng_reset_active),
         .csrng_bus_err_o           (csrng_bus_err_o),
         .csrng_bus_err_clr_i       (csrng_bus_err_clr_i),
@@ -541,17 +400,13 @@ module sep_crypto #(
     // HMAC Wrapper //
     //////////////////
 
-    // HMAC key bus AXI-Lite signals — driven by Key Manager hmac_req_o
-    sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req;
-    sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp;
-
     hmac_wrapper hmac_wrapper_s3c_scan (
-        .clk_i,
-        .rst_ni                  (hmac_gated_rst_n),
-        .hmac_axi_req_i          (hmac_axi_isolated_req),
-        .hmac_axi_resp_o         (hmac_axi_isolated_resp),
-        .hmac_key_axil_req_i     (hmac_key_axil_req),
-        .hmac_key_axil_resp_o    (hmac_key_axil_resp),
+        .clk_i                   (clk_i),
+        .rst_ni                  (gated_rst_ni.hmac),
+        .hmac_axil_req_i         (hmac_axil_isolated_req),
+        .hmac_axil_resp_o        (hmac_axil_isolated_resp),
+        .hmac_key_axil_req_i     (hmac_key_axil_isolated_req),
+        .hmac_key_axil_resp_o    (hmac_key_axil_isolated_resp),
         .intr_hmac_done_o        (intr_hmac_done_o),
         .intr_fifo_empty_o       (intr_hmac_fifo_empty_o),
         .intr_hmac_err_o         (intr_hmac_err_o),
@@ -567,17 +422,13 @@ module sep_crypto #(
     // OTBN Wrapper //
     //////////////////
 
-    // OTBN key bus AXI-Lite signals — driven by Key Manager otbn_req_o
-    sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req;
-    sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp;
-
     sep_crypto_otbn_wrapper sep_crypto_otbn_wrapper_s3c_scan (
         .clk_i,
-        .rst_ni                       (otbn_gated_rst_n),
-        .otbn_axi_req_i               (otbn_axi_isolated_req),
-        .otbn_axi_resp_o              (otbn_axi_isolated_resp),
-        .otbn_key_axil_req_i          (otbn_key_axil_req),
-        .otbn_key_axil_resp_o         (otbn_key_axil_resp),
+        .rst_ni                       (gated_rst_ni.otbn),
+        .otbn_axil_req_i              (otbn_axil_isolated_req),
+        .otbn_axil_resp_o             (otbn_axil_isolated_resp),
+        .otbn_key_axil_req_i          (otbn_key_axil_isolated_req),
+        .otbn_key_axil_resp_o         (otbn_key_axil_isolated_resp),
         .edn_rnd_req_o                (crypto_edn_req[2]),
         .edn_rnd_rsp_i                (crypto_edn_rsp[2]),
         .edn_urnd_req_o               (crypto_edn_req[3]),
@@ -598,17 +449,13 @@ module sep_crypto #(
     // AES Wrapper //
     /////////////////
 
-    // AES key bus AXI-Lite signals — driven by Key Manager aes_req_o
-    sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req;
-    sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp;
-
     aes_wrapper aes_wrapper_s3c_scan (
-        .clk_i,
-        .rst_ni              (aes_gated_rst_n),
-        .aes_axi_req_i       (aes_axi_isolated_req),
-        .aes_axi_resp_o      (aes_axi_isolated_resp),
-        .aes_key_axil_req_i  (aes_key_axil_req),
-        .aes_key_axil_resp_o (aes_key_axil_resp),
+        .clk_i               (clk_i),
+        .rst_ni              (gated_rst_ni.aes),
+        .aes_axil_req_i      (aes_axil_isolated_req),
+        .aes_axil_resp_o     (aes_axil_isolated_resp),
+        .aes_key_axil_req_i  (aes_key_axil_isolated_req),
+        .aes_key_axil_resp_o (aes_key_axil_isolated_resp),
         .edn_req_o           (crypto_edn_req[0]),
         .edn_rsp_i           (crypto_edn_rsp[0]),
         .alert_rx_i          (crypto_alert_rx[4:3]),
@@ -623,17 +470,13 @@ module sep_crypto #(
     // KMAC Wrapper //
     //////////////////
 
-    // KMAC key bus AXI-Lite signals — driven by Key Manager kmac_req_o
-    sep_pkg::sep_32_32_axil_req_t  kmac_key_axil_req;
-    sep_pkg::sep_32_32_axil_resp_t kmac_key_axil_resp;
-
     kmac_wrapper kmac_wrapper_s3c_scan (
-        .clk_i,
-        .rst_ni                  (kmac_gated_rst_n),
-        .kmac_axi_req_i          (kmac_axi_isolated_req),
-        .kmac_axi_resp_o         (kmac_axi_isolated_resp),
-        .kmac_key_axil_req_i     (kmac_key_axil_req),
-        .kmac_key_axil_resp_o    (kmac_key_axil_resp),
+        .clk_i                   (clk_i),
+        .rst_ni                  (gated_rst_ni.kmac),
+        .kmac_axil_req_i         (kmac_axil_isolated_req),
+        .kmac_axil_resp_o        (kmac_axil_isolated_resp),
+        .kmac_key_axil_req_i     (kmac_key_axil_isolated_req),
+        .kmac_key_axil_resp_o    (kmac_key_axil_isolated_resp),
         .edn_req_o               (crypto_edn_req[1]),
         .edn_rsp_i               (crypto_edn_rsp[1]),
         .intr_kmac_done_o        (intr_kmac_done_o),
@@ -650,10 +493,6 @@ module sep_crypto #(
     //////////////////////////
     // Adams Bridge Wrapper //
     //////////////////////////
-
-    // ABR key bus AXI-Lite signals — driven by Key Manager abr_req_o
-    km_intf_pkg::km_axil_req_t  abr_key_axil_req;
-    km_intf_pkg::km_axil_resp_t abr_key_axil_resp;
 
     // ML-KEM shared-key IRQ (driven by the wrapper; consumed by the Key Manager).
     logic abr_mlkem_sharedkey_irq;
@@ -684,46 +523,20 @@ module sep_crypto #(
     end
 `endif
 
-    // Break the B-channel combinational loop between the sep_crypto demux's
-    // round-robin B arbiter and the VeeR axi4_to_ahb bridge inside the ABR wrapper.
-    
-    sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_cut;
-    sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_cut;
-
-    axi_cut #(
-        .Bypass     (1'b1),   // AW/W/AR/R: combinational passthrough
-        .BypassB    (1'b0),   // B: registered - this is what cuts the loop
-        .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .w_chan_t   (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-        .b_chan_t   (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-        .ar_chan_t  (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .r_chan_t   (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
-    ) u_abr_b_cut (
-        .clk_i,
-        .rst_ni     (sep_reset_ni),
-        .slv_req_i  (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
-        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
-        .mst_req_o  (abr_axi_req_cut),
-        .mst_resp_i (abr_axi_resp_cut)
-    );
-
     // Same package parameters feed the ABR SRAM instances in sep_ip_integration;
     // abr_top and its memories must be configured identically.
     sep_crypto_abr_wrapper #(
         .MASKING_EN   (sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN),
         .SRAM_LATENCY (sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY)
     ) u_sep_crypto_abr_wrapper_s3c_scan (
-        .clk_i,
+        .clk_i                 (clk_i),
         .rst_ni                (sep_reset_ni),
-        // Control/status path: ABR AXI aperture off the sep_crypto demux, via the
-        // B-channel cut above.
-        .abr_axi_req_i         (abr_axi_req_cut),
-        .abr_axi_resp_o        (abr_axi_resp_cut),
+        // Control/status path: ABR AXI aperture off the crypto interconnect
+        .abr_axi_req_i         (abr_axi_req),
+        .abr_axi_resp_o        (abr_axi_resp),
         // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
-        .abr_key_axil_req_i    (abr_key_axil_req),
-        .abr_key_axil_resp_o   (abr_key_axil_resp),
+        .abr_key_axil_req_i    (abr_key_axil_isolated_req),
+        .abr_key_axil_resp_o   (abr_key_axil_isolated_resp),
         // AB internal SRAMs (tech macros in sep_ip_integration; threaded up)
         .abr_mem_req_o         (abr_mem_req_o),
         .abr_mem_rsp_i         (abr_mem_rsp_i),
@@ -748,11 +561,11 @@ module sep_crypto #(
         .ATOPs      (1'b0),
         .MaxTrans   (1)
     ) u_abr_axi_err_slv (
-        .clk_i,
-        .rst_ni,
+        .clk_i      (clk_i),
+        .rst_ni     (rst_ni),
         .test_i     (test_en_i),
-        .slv_req_i  (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
-        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr])
+        .slv_req_i  (abr_axi_req),
+        .slv_resp_o (abr_axi_resp)
     );
 
     // (2) Terminate the KM's private ABR key bus with DECERR. The key CSR block
@@ -764,10 +577,10 @@ module sep_crypto #(
         .axil_req_t     (km_intf_pkg::km_axil_req_t),
         .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
     ) u_abr_key_err_slv (
-        .clk_i,
+        .clk_i       (clk_i),
         .rst_ni      (sep_reset_ni),
-        .axil_req_i  (abr_key_axil_req),
-        .axil_resp_o (abr_key_axil_resp)
+        .axil_req_i  (abr_key_axil_isolated_req),
+        .axil_resp_o (abr_key_axil_isolated_resp)
     );
 
     // (3) No ABR memory requester; hold the request struct quiescent.
@@ -789,13 +602,6 @@ module sep_crypto #(
     ////////////////////
     // Fuse Wrapper   //
     ////////////////////
-
-    logic prod_dbg_active;
-
-    // Key Manager eFuse AXI-Lite master bus — driven by key_manager efuse_req_o,
-    // consumed by sep_efuse_wrapper's km_efuse_axil_req_i port.
-    km_intf_pkg::km_axil_req_t  km_efuse_axil_req;
-    km_intf_pkg::km_axil_resp_t km_efuse_axil_resp;
 
     ///////////////////////////////
     // eFuse leg / SHIM merge    //
@@ -838,10 +644,8 @@ module sep_crypto #(
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
         .test_i      (test_en_i),
-        .slv_reqs_i  ({efuse_shim_axi_req_i,
-                       sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiFuse]}),
-        .slv_resps_o ({efuse_shim_axi_resp_o,
-                       sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiFuse]}),
+        .slv_reqs_i  ({efuse_shim_axi_req_i, fuse_axi_req}),
+        .slv_resps_o ({efuse_shim_axi_resp_o, fuse_axi_resp}),
         .mst_req_o   (efuse_mux_axi_req),
         .mst_resp_i  (efuse_mux_axi_resp)
     );
@@ -886,15 +690,14 @@ module sep_crypto #(
         .fuse_sense_done_o                     (fuse_sense_done_o),
 
         .secure_tm_o                           (secure_tm_o),
-        .prod_dbg_active_i                     (prod_dbg_active),
 
         // DTP JTAG to AXI-Lite bus
         .axil_sep_otp_jtag_req_i               (axil_sep_otp_jtag_req_i),
         .axil_sep_otp_jtag_resp_o              (axil_sep_otp_jtag_resp_o),
 
         // Key Manager AXI-Lite manager interface
-        .km_efuse_axil_req_i                   (km_efuse_axil_req),
-        .km_efuse_axil_resp_o                  (km_efuse_axil_resp),
+        .km_efuse_axil_req_i                   (km_efuse_axil_isolated_req),
+        .km_efuse_axil_resp_o                  (km_efuse_axil_isolated_resp),
 
         .sep_efuse_axi_req_i                   (efuse_merged_axi_req),
         .sep_efuse_axi_resp_o                  (efuse_merged_axi_resp),
@@ -917,22 +720,21 @@ module sep_crypto #(
     sep_lifecycle_ctrl #(
         .LC_STATE_WIDTH(sep_pkg::LC_STATE_BIT_WIDTH)
     ) u_sep_lifecycle_ctrl (
-        .clk_i(clk_i),
-        .reset_n_i(rst_ni),
-        .test_en_i(test_en_i),
+        .clk_i                (clk_i),
+        .reset_n_i            (rst_ni),
+        .test_en_i            (test_en_i),
 
-        .security_disable_i(security_disable_o), // From efuse wrapper
-        .secure_tm_i(secure_tm_o), // From efuse wrapper
-        .shadow_regs_i(shadow_regs_o), // From efuse wrapper
-        .feat_ctrl_o(feat_ctrl_o),
-        .dbg_disable_o(dbg_disable_o),
-        .lcc_demote_state_1_o(lcc_demote_state_1_o),
-        .lcc_demote_state_2_o(lcc_demote_state_2_o),
-        .lc_sigint_err_o(lc_sigint_err_o),
-        .prod_dbg_active_o(prod_dbg_active),
+        .security_disable_i   (security_disable_o), // From efuse wrapper
+        .secure_tm_i          (secure_tm_o),        // From efuse wrapper
+        .shadow_regs_i        (shadow_regs_o),      // From efuse wrapper
+        .feat_ctrl_o          (feat_ctrl_o),
+        .dbg_disable_o        (dbg_disable_o),
+        .lcc_demote_state_1_o (lcc_demote_state_1_o),
+        .lcc_demote_state_2_o (lcc_demote_state_2_o),
+        .lc_sigint_err_o      (lc_sigint_err_o),
 
-        .lifecycle_axi_req_i(sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiLifecycle]),
-        .lifecycle_axi_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiLifecycle])
+        .lifecycle_axi_req_i  (lifecycle_axi_req),
+        .lifecycle_axi_resp_o (lifecycle_axi_resp)
     );
 
     //=========================================================================
@@ -1028,142 +830,6 @@ module sep_crypto #(
         .data_o (km_otp_data.sep_sys_id)
     );
 
-
-    //=========================================================================
-    // Key Manager AXI4-64 to AXI-Lite-32 Conversion (demux port [7])
-    //=========================================================================
-    // Two-stage conversion following the AES/KMAC wrapper pattern:
-    //   Stage 1: axi_dw_converter  (64-bit AXI4 -> 32-bit AXI4)
-    //   Stage 2: axi_to_axi_lite   (32-bit AXI4 -> 32-bit AXI-Lite)
-
-    // 32-bit AXI4 intermediate types for KM data width conversion
-    localparam int unsigned KM_AXI32_DATA_WIDTH = 32;
-    localparam int unsigned KM_AXI32_STRB_WIDTH = KM_AXI32_DATA_WIDTH / 8;
-
-    typedef logic [KM_AXI32_DATA_WIDTH-1:0] km_axi32_data_t;
-    typedef logic [KM_AXI32_STRB_WIDTH-1:0] km_axi32_strb_t;
-
-    `AXI_TYPEDEF_ALL(km_axi32,
-                     sep_pkg::sep_32_64_6_12_axi_addr_t,
-                     sep_pkg::sep_32_64_6_12_axi_id_t,
-                     km_axi32_data_t,
-                     km_axi32_strb_t,
-                     sep_pkg::sep_32_64_6_12_axi_user_t)
-
-    km_axi32_req_t  km_axi32_req;
-    km_axi32_resp_t km_axi32_resp;
-
-    // Stage 1: AXI Data Width Converter (64-bit -> 32-bit)
-    axi_dw_converter #(
-        .AxiMaxReads         (8),
-        .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),  // 64-bit input
-        .AxiMstPortDataWidth (KM_AXI32_DATA_WIDTH),                // 32-bit output
-        .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (km_axi32_w_chan_t),
-        .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-        .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-        .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (km_axi32_r_chan_t),
-        .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (km_axi32_req_t),
-        .axi_mst_resp_t      (km_axi32_resp_t),
-        .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
-    ) u_km_axi_dw_converter (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiKm]),
-        .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKm]),
-        .mst_req_o (km_axi32_req),
-        .mst_resp_i(km_axi32_resp)
-    );
-
-    // Stage 2: AXI to AXI-Lite Conversion (32-bit AXI4 -> 32-bit AXI-Lite)
-    // Note: axi_to_axi_lite outputs km_axil_req_t directly so that the KM
-    //       mailbox port connection requires no type cast.
-    km_intf_pkg::km_axil_req_t  km_mbox_axil_req;
-    km_intf_pkg::km_axil_resp_t km_mbox_axil_resp;
-
-    axi_to_axi_lite #(
-        .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-        .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-        .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-        .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (km_axi32_req_t),
-        .full_resp_t     (km_axi32_resp_t),
-        .lite_req_t      (km_intf_pkg::km_axil_req_t),
-        .lite_resp_t     (km_intf_pkg::km_axil_resp_t)
-    ) u_km_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (test_en_i),
-        .slv_req_i   (km_axi32_req),
-        .slv_resp_o  (km_axi32_resp),
-        .mst_req_o   (km_mbox_axil_req),
-        .mst_resp_i  (km_mbox_axil_resp)
-    );
-
-
-    //=========================================================================
-    // TRNG AXI-Lite passthrough — demux port [sep_crypto_pkg::SepCryptoAxiTrng]
-    //=========================================================================
-    // 64b AXI → 32b AXI → 32b AXI-Lite → ext_trng_axil_* (to sep_ip_integration)
-
-    km_axi32_req_t  trng_axi32_req;
-    km_axi32_resp_t trng_axi32_resp;
-
-    axi_dw_converter #(
-        .AxiMaxReads         (8),
-        .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .AxiMstPortDataWidth (KM_AXI32_DATA_WIDTH),
-        .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (km_axi32_w_chan_t),
-        .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-        .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-        .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (km_axi32_r_chan_t),
-        .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (km_axi32_req_t),
-        .axi_mst_resp_t      (km_axi32_resp_t),
-        .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
-    ) u_trng_axi_dw_converter (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .slv_req_i (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiTrng]),
-        .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiTrng]),
-        .mst_req_o (trng_axi32_req),
-        .mst_resp_i(trng_axi32_resp)
-    );
-
-    axi_to_axi_lite #(
-        .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-        .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-        .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-        .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (km_axi32_req_t),
-        .full_resp_t     (km_axi32_resp_t),
-        .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
-        .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
-    ) u_trng_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (test_en_i),
-        .slv_req_i   (trng_axi32_req),
-        .slv_resp_o  (trng_axi32_resp),
-        .mst_req_o   (ext_trng_axil_req_o),
-        .mst_resp_i  (ext_trng_axil_resp_i)
-    );
-
-
     //=========================================================================
     // Entropy Source Mux Logic
     //=========================================================================
@@ -1248,7 +914,7 @@ module sep_crypto #(
     //=========================================================================
     //
     // Connections:
-    //   - Mailbox slave port    <- demux port [7] via AXI4-64 to AXI-Lite-32 conversion
+    //   - Mailbox slave port    <- crypto interconnect via AXI4-64 to AXI-Lite-32 conversion
     //   - Crypto key bus master <- OTBN/AES/KMAC wrapper key ports
     //   - ROM/SRAM interfaces   <- exposed at sep_crypto top level (hard macros)
     //   - DRBG AXI-Stream       <- muxed from u_drbg_s3c_scan edn_axis_o[0] or ext_trng[0]
@@ -1265,9 +931,9 @@ module sep_crypto #(
         .cold_rst_ni         (sep_reset_ni),
         // Warm reset: SEP KM sub-component software reset CSR bit triggers a
         // partial synchronous reset of the KM CPU and volatile state only.
-        .warm_rst_ni         (km_sw_rst_ni),
+        .warm_rst_ni         (gated_rst_ni.km),
 
-        // Mailbox AXI-Lite slave (from demux port [7] via conversion)
+        // Mailbox AXI-Lite slave (from the crypto interconnect, via conversion)
         .mbox_sep_req_i      (km_mbox_axil_req),
         .mbox_sep_resp_o     (km_mbox_axil_resp),
 
