@@ -12,12 +12,13 @@ CSR responder and source-select register remain outside the reset domain. The
 new JTAG reset pair is exercised to hold and release the same coordinated reset.
 
 When software clears SW_RESET_N.trng_sw_rst_n, the coordinator stops accepting
-new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three AXI
-ports, and asserts the shared reset only after every port reports isolated.
+new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three
+converted AXI-Lite paths, and asserts the shared reset only after every path
+reports isolated.
 Buffered post-mux and pool entropy is cleared with the reset. While held, new
 CSR accesses receive DECERR. Setting trng_sw_rst_n releases the internal blocks,
-keeps their ports isolated for one release cycle, and then restores normal CSR
-traffic; firmware must reconfigure ESRC, CSRNG, and EDN before using entropy.
+releases their isolation, and restores normal CSR traffic; firmware must
+reconfigure ESRC, CSRNG, and EDN before using entropy.
 """
 
 from __future__ import annotations
@@ -145,7 +146,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         for _ in range(1_000):
             if int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0:
                 assert int(cocotb.top.trng_axi_isolated_probe_o.value) == 0x7, (
-                    "shared TRNG reset asserted before all three AXI ports isolated"
+                    "shared TRNG reset asserted before all three AXI-Lite paths isolated"
                 )
                 break
             await ClockCycles(cocotb.top.clk_i, 1)
@@ -158,6 +159,10 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await with_timeout(event.wait(), 10_000, "ns")
             drain_responses.append(event.data)
         drain_codes = [worst_resp(getattr(response, "resp", None)) for response in drain_responses]
+        # Return credits for accesses that drained without DECERR.
+        self.env.axi_monitor.release_expected_decerr(
+            3 - sum(1 for code in drain_codes if code == 3)
+        )
         assert all(code in (0, 3) for code in drain_codes), (
             f"in-flight TRNG CSR accesses returned unexpected responses {drain_codes}"
         )
@@ -170,9 +175,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
 
         # Once the coordinated reset is active, each internal CSR isolate must
         # reject new traffic without forwarding it into the reset domain.
-        # The two 32-bit DRBG register probes are unaligned to the 64-bit SEP
-        # bus and therefore each return two DECERR beats.
-        self.env.axi_monitor.arm_expected_decerr(6)
+        self.env.axi_monitor.arm_expected_decerr(3)
         for name, addr in (
             ("esrc", ESRC_COMPONENT_ID),
             ("csrng", CSRNG_INTR_ENABLE),
@@ -183,6 +186,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
                 f"{name} CSR did not return DECERR while TRNG was isolated"
             )
 
+        self.env.axi_monitor.arm_expected_decerr(1)
         ext_csr_during = await self._read(EXT_TRNG_CSR, expect_error=True)
         assert ext_csr_during.resp_code == ext_csr_before.resp_code, (
             "internal TRNG reset changed the external TRNG CSR response"
@@ -191,20 +195,27 @@ class sep_trng_reset_recovery_test(sep_base_test):
             "internal TRNG reset changed the external source selection"
         )
 
-        # Prove the JTAG override owns the same coordinated reset request. The
-        # override outranks the CSR, so releasing the SW bit underneath it must
-        # not bring the domain back; dropping the override returns ownership to
-        # software.
+        # JTAG overrides the final reset after the isolation sequence.
+        # Release software reset underneath it and prove isolation clears while
+        # the final reset remains asserted.
         jtag_reset = cocotb.top.jtag_trng_rst_hold_i
         jtag_reset.value = 1
         await resets.release("trng")
-        await ClockCycles(cocotb.top.clk_i, 20)
-        self.env.axi_monitor.arm_expected_decerr(1)
-        jtag_held = await self._read(ESRC_COMPONENT_ID, expect_error=True)
-        assert jtag_held.resp_code == 3, "JTAG override did not hold TRNG in reset"
+        for _ in range(1_000):
+            assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0, (
+                "software release bypassed the final JTAG TRNG reset override"
+            )
+            if int(cocotb.top.trng_axi_isolated_probe_o.value) == 0:
+                break
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError("TRNG isolation did not clear during JTAG reset")
 
         jtag_reset.value = 0
         await ClockCycles(cocotb.top.clk_i, 4)
+        assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 1, (
+            "TRNG reset did not release after the final JTAG override cleared"
+        )
 
         held = await resets.read_back()
         for consumer in ("km", "otbn", "aes", "kmac"):
