@@ -822,7 +822,7 @@ module smu_wrapper_uvm_top (
       w  = {sep_itcm_buf[off+3], sep_itcm_buf[off+2],
                   sep_itcm_buf[off+1], sep_itcm_buf[off]};
       fw = (w == 32'h0) ? '0 : {sep_tcm_ecc32(w), w};
-      case (off[3:2])
+      unique case (off[3:2])
         2'd0: `SEP_BD_ICCM(0)[off[17:4]] = fw;
         2'd1: `SEP_BD_ICCM(1)[off[17:4]] = fw;
         2'd2: `SEP_BD_ICCM(2)[off[17:4]] = fw;

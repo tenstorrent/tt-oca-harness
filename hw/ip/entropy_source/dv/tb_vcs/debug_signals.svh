@@ -268,7 +268,7 @@ generate
         3'd1: begin  // DECOR_7
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: feedback from sr[29-depth_eff]
-            case (debug_gi)
+            unique case (debug_gi)
               0:  debug_decor_fb_0  = debug_decor_sr_0[29-depth_eff];
               1:  debug_decor_fb_1  = debug_decor_sr_1[29-depth_eff];
               2:  debug_decor_fb_2  = debug_decor_sr_2[29-depth_eff];
@@ -284,7 +284,7 @@ generate
             endcase
           end else begin
             // SHIFT_LEFT: feedback from sr[depth_eff-1]
-            case (debug_gi)
+            unique case (debug_gi)
               0:  debug_decor_fb_0  = debug_decor_sr_0[depth_eff-1];
               1:  debug_decor_fb_1  = debug_decor_sr_1[depth_eff-1];
               2:  debug_decor_fb_2  = debug_decor_sr_2[depth_eff-1];
@@ -301,7 +301,7 @@ generate
           end
         end
         3'd2: begin  // BYPASS: no feedback
-          case (debug_gi)
+          unique case (debug_gi)
             0:  debug_decor_fb_0  = 1'b0;
             1:  debug_decor_fb_1  = 1'b0;
             2:  debug_decor_fb_2  = 1'b0;
@@ -319,7 +319,7 @@ generate
         3'd3: begin  // LFSR_29
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: fb = sr[28] ^ sr[1]
-            case (debug_gi)
+            unique case (debug_gi)
               0:  debug_decor_fb_0  = debug_decor_sr_0[28]  ^ debug_decor_sr_0[1];
               1:  debug_decor_fb_1  = debug_decor_sr_1[28]  ^ debug_decor_sr_1[1];
               2:  debug_decor_fb_2  = debug_decor_sr_2[28]  ^ debug_decor_sr_2[1];
@@ -335,7 +335,7 @@ generate
             endcase
           end else begin
             // SHIFT_LEFT: fb = sr[0] ^ sr[27]
-            case (debug_gi)
+            unique case (debug_gi)
               0:  debug_decor_fb_0  = debug_decor_sr_0[0]  ^ debug_decor_sr_0[27];
               1:  debug_decor_fb_1  = debug_decor_sr_1[0]  ^ debug_decor_sr_1[27];
               2:  debug_decor_fb_2  = debug_decor_sr_2[0]  ^ debug_decor_sr_2[27];
@@ -354,7 +354,7 @@ generate
         3'd4: begin  // LFSR_7
           if (shift_dir == 1'b0) begin
             // SHIFT_RIGHT: fb = sr[6] ^ sr[5]
-            case (debug_gi)
+            unique case (debug_gi)
               0:  debug_decor_fb_0  = debug_decor_sr_0[6]  ^ debug_decor_sr_0[5];
               1:  debug_decor_fb_1  = debug_decor_sr_1[6]  ^ debug_decor_sr_1[5];
               2:  debug_decor_fb_2  = debug_decor_sr_2[6]  ^ debug_decor_sr_2[5];
@@ -370,7 +370,7 @@ generate
             endcase
           end else begin
             // SHIFT_LEFT: fb = sr[0] ^ sr[1]
-            case (debug_gi)
+            unique case (debug_gi)
               0:  debug_decor_fb_0  = debug_decor_sr_0[0]  ^ debug_decor_sr_0[1];
               1:  debug_decor_fb_1  = debug_decor_sr_1[0]  ^ debug_decor_sr_1[1];
               2:  debug_decor_fb_2  = debug_decor_sr_2[0]  ^ debug_decor_sr_2[1];
@@ -387,7 +387,7 @@ generate
           end
         end
         default: begin  // Invalid mode - set feedback to 0
-          case (debug_gi)
+          unique case (debug_gi)
             0:  debug_decor_fb_0  = 1'b0;
             1:  debug_decor_fb_1  = 1'b0;
             2:  debug_decor_fb_2  = 1'b0;

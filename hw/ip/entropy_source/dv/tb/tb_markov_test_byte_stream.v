@@ -107,7 +107,7 @@ module tb_markov_test_byte_stream ();
     prng_data = xoro_result[7:0];
 
     if (inject_failure) begin
-      case (failure_type)
+      unique case (failure_type)
         2'b00: entropy_i = 8'h55; // Alternating pattern (01010101)
         2'b01: entropy_i = 8'hF0; // Block pattern (11110000)
         2'b10: entropy_i = 8'h00; // Stuck-at-0

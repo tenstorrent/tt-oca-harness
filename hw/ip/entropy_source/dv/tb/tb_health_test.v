@@ -157,7 +157,7 @@ module tb_health_test ();
       2'd2: begin  // APT test failure
         if (inject_failure) begin
           // Create high- and low-one-count bias patterns.
-          case (failure_pattern[1:0])
+          unique case (failure_pattern[1:0])
             2'b00: entropy_i = 32'h00000000;
             2'b01: entropy_i = 32'hFFFFFFFF;
             2'b10: entropy_i = 32'hAAAAAAAA;
@@ -179,7 +179,7 @@ module tb_health_test ();
       end
       2'd3: begin  // Markov test failure
         if (inject_failure) begin
-          case (failure_pattern[1:0])
+          unique case (failure_pattern[1:0])
             2'b00: entropy_i = 32'h55555555; // Alternating pattern (01010101...)
             2'b01: entropy_i = 32'hFFFF0000; // Correlated pattern (blocks)
             2'b10: entropy_i = 32'h00000000; // Stuck-at-0

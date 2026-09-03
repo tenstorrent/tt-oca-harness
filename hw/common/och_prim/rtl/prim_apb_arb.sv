@@ -214,7 +214,7 @@ module prim_apb_arb #(
     mask_ptr_nxt    = mask_ptr_r;
     update_arb      = 1'b0;
 
-    case (apb_state_r)
+    unique case (apb_state_r)
       IDLE: begin
         for (int i = 0; i < MASTER_SUM_NUM; i++) begin
           if (mst_sel_arb[i] == 1'b1) begin  // one hot array

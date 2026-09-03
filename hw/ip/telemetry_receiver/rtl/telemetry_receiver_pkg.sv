@@ -60,7 +60,7 @@ package telemetry_receiver_pkg;
 
   typedef struct packed {
     logic                                         last_packet;
-    telemetry_block_t [0:NUM_BLOCKS_PER_PACKET-1] blocks;
+    telemetry_block_t [NUM_BLOCKS_PER_PACKET-1:0] blocks;
   } telemetry_packet_t;
 
   typedef logic [TELEMETRY_COUNTER_WIDTH-1:0] telemetry_counter_val_t;
