@@ -68,8 +68,8 @@ bender_targets = [
   "sep_el2",
   "smu_wrapper",
 ]
-# Prepend SEP prim_assert shim so `include "prim_assert.sv" resolves to the
-# SYNTHESIS-gated ASSUME/COVER macros (see smu_sim_cfg.toml).
+# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
+# (see smu_sim_cfg.toml).
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
@@ -217,7 +217,6 @@ args = [
 description = "Fallback: OSS wrapper no-SEP profile"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
-  "SYNTHESIS",
   "SMU_NO_SEP",
   "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
@@ -235,7 +234,6 @@ flags = [
 description = "OSS smu_wrapper with NoSepCfg and SEP=0"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
-  "SYNTHESIS",
   "SMU_NO_SEP",
   "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
@@ -253,7 +251,6 @@ flags = [
 description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
 defines = [
-  "SYNTHESIS",
   "SMU_SEP_RTL",
   "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
