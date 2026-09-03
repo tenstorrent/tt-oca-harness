@@ -214,5 +214,5 @@
 |`lcc_demote_state_2_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 2. |External lifecycle logic |N/A
 |`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A
 |`clk_sep_wdt_i` |`logic` |Input |1 |SEP watchdog timer clock passthrough. |Low-frequency clock source |N/A
-|`secure_tm_req_i` |`logic` |Input |- |Secure test mode request (GPIO 14, strap TEST_EN), passthrough to SEP. |GPIO padring / tie-off |N/A
+|`secure_tm_req_i` |`logic` |Input |- |Secure test mode request, passthrough to SEP. |GPIO padring / tie-off |N/A
 |===

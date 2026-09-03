@@ -455,8 +455,6 @@ module sep_uvm_top
             (jtag_trng_rst_hold_i === 1'b1);
     end
 
-    // TEST_EN reaches the DUT directly on secure_tm_req_i (see the sep.sv port); the
-    // sep_straps_t struct and its idle-0 driver are gone with the strap flatten.
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
     // wrapper flow needs.
     sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_req_w;

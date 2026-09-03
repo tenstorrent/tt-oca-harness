@@ -29,8 +29,6 @@ module sep_efuse_wrapper
     input  logic                               test_en_i,
     input  logic                               scan_rst_ni,
 
-	// GPIO 14, strap TEST_EN. Distinct from test_en_i above, which is the DFT scan
-	// enable; this one requests secure test mode and is latched into secure_tm below.
 	input  logic                               secure_tm_req_i,
 	input  logic                               ext_boot_seq_done_i,
 

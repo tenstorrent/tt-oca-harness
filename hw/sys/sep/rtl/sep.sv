@@ -178,12 +178,6 @@ module sep
         input  logic smc_fuse_sense_done_i,
         output logic sep_fuse_sense_done_o,
 
-        /////////
-        // Straps //
-        /////////
-
-        // GPIO 14, strap TEST_EN. Requests secure test mode; sep_efuse_wrapper latches
-        // it into secure_tm (see secure_tm_o below and hw/sys/sep/doc/test_mode.adoc).
         input logic secure_tm_req_i,
 
         ///////////////////

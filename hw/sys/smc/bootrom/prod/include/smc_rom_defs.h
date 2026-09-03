@@ -21,8 +21,6 @@
  * Register Address Definitions
  * These are extracted from registers/smc_top_regs.h to avoid complex includes in assembly
  */
-/* Straps moved out of the core reset_unit (was 0xC000_2090) into the smc_external
- * supplementary window, because strap capture is adopter-owned. */
 #define SMC_STRAPS_LO_REG_ADDR 0xC0405800            /* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR */
 #define SMC_STRAPS_HI_REG_ADDR 0xC0405804            /* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR */
 #define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR 0xC000BAFC /* SMC_EFUSE_MAP_RESERVED_0__REG_ADDR */

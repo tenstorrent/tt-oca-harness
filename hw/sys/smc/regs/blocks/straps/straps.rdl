@@ -5,18 +5,7 @@
 `define STRAPS_RDL_DEFINED
 
 // Captured GPIO strap values, presented to firmware as two read-only words.
-//
-// The straps themselves are latched at cold reset by the adopter's padring
-// (gpio_shim.sv, one prim_latch_n per bonded pin) and aggregated into a
-// smc_pkg::NUM_BONDED_GPIO-wide bus. Because that capture is adopter-owned, this
-// block lives in the smc_external adopter window rather than in the SMC core:
-// it is instantiated by the supplementary region of smc_external, not by smc.rdl.
-// Integrations that do not implement it leave the range decoding to a DECERR
-// slave, exactly as the per-pad gpio_ctrl block is handled.
-//
-// Bit N of the concatenated {STRAPS_HI, STRAPS_LO} word is the value latched on
-// GPIO N. Consumers must not assume a bit is meaningful unless it is listed
-// below -- unassigned GPIOs still latch their pad value here.
+
 addrmap straps {
 
     desc = "Captured GPIO strap values (adopter padring capture)";

@@ -65,7 +65,6 @@ module sep_crypto #(
     // Efuse intermediate reset
 	output logic 							   sep_intermediate_reset_no,
     // Efuse signals
-    // GPIO 14, strap TEST_EN -> secure test mode request (pass-through to efuse wrapper)
     input  logic                               secure_tm_req_i,
     input  logic                               ext_boot_seq_done_i,
     output logic                               security_disable_o,       // To SMC

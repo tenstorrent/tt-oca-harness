@@ -347,8 +347,6 @@ module smu #(
     // SEP WDT clock (passthrough from smu_wrapper)
     input  logic  clk_sep_wdt_i,
 
-    // SEP secure test mode request: GPIO 14, strap TEST_EN. Latched into secure_tm
-    // inside sep_efuse_wrapper; see hw/sys/sep/doc/test_mode.adoc.
     input  logic                  secure_tm_req_i,
 
     // I3C DAT/DCT memory interfaces
