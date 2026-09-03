@@ -63,7 +63,7 @@ class SmcAxiMonitor(uvm_component):
         #   * AXIL extension (0xC040_0000) → u_axil_extension_err_slv,
         #   * stale catalog holes around 0xC003_A000.
         # PLL/PVT are NOT listed: pll_wrap/pvt_wrap return OKAY + 0.
-        # I3C wraps (0xC000_5000) use i3ccore_stub → SLVERR (not flagged here).
+        # I3C wraps (0xC000_5000) are a real core and answer OKAY.
         self.expected_decerr_ranges: list[tuple[int, int]] = [
             (0xC000_4440, 0xC000_5000),  # GPIO_CTRL / POC-PBIAS (integration err_slv)
             (0xC000_F000, 0xC000_F800),  # DTP CSR TB terminator
