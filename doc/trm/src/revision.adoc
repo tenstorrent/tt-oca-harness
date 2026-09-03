@@ -168,4 +168,9 @@ resetting the full entropy complex, scrubs post-mux adapters and the fabric
 entropy pool, and requires full TRNG reinitialization before entropy resumes.
 Outstanding consumer requests stall until fresh entropy is available.
 SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
+|0.5.28 |2026-08-31 |Ben Melton |Documented the IC_RESET TDR as three slices
+(SMC, SEP, external) with the external ports adopter-defined.
+|0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
+with the current four-core hardware ROM interface, 128 KiB linker map, macro
+configuration, and response endianness control.
 |=======================================================================

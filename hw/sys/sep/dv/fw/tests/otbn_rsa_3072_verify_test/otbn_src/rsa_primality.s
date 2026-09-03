@@ -14,7 +14,7 @@
  * Perform the Fermat primality test.
  *
  * This function calculates w^(p-1) mod p for some random witness w and a prime
- * candidate. If w is not divisble by p and p is prime, then w^(p-1) mod p = 1.
+ * candidate. If w is not divisible by p and p is prime, then w^(p-1) mod p = 1.
  * The only composite numbers that pass this test are pseudoprimes which need
  * be sieved out by an additional primality test (see miller_rabin_test).
  *
@@ -64,7 +64,7 @@ fermat_test:
   bn.xor  w2, w2, w3
   bn.sid  x8, 0(x12)
 
-  # Generate a witness w as the exponentation base point.
+  # Generate a witness w as the exponentiation base point.
   # dmem[r0] <= w
   la  x16, r0
   la  x17, rsa_n
@@ -174,7 +174,7 @@ miller_rabin_test:
   # FIPS 186-5 to reach an error probability of less than 2^100 for
   # RSA-{2048,3072,4096}.
   loopi 4, 33
-    # Generate a witness w as the exponentation base point.
+    # Generate a witness w as the exponentiation base point.
     # dmem[r0] <= w
     la  x16, r0
     la  x17, rsa_n

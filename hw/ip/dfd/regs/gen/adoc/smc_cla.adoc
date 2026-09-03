@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -110,7 +110,7 @@
 | 0x8FF4 | TrScratchpadHi | RW a| Scratchpad register for DV
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgMuxSel Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -127,7 +127,7 @@
 | 1:0 | `Dbmmode` | RW | 0x0 a| Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDfdCsr Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -136,21 +136,21 @@
 | 0 | `DfdMmrLock` | RW | 0x1 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Timestamp Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Timestamp` | RW | 0x0 a| Timestamp value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TimestampSync Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `TimestampSync` | RW | 0x0 a| TimestampSync value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TimeStampConfig Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -159,15 +159,15 @@
 | 0 | `TsSync` | RW | 0x0 a| TS Sync
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstcontrol Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:27 | `Reserved` | - | - a| Reserved
-| 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)
+| 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compression), 2'b0 (No Compression)
 | 23:20 | `Trdstsyncmax` | RW | 0x0 a| When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
 | 19:18 | `Reserved` | - | - a| Reserved
-| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
+| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other values not NA.
 | 15 | `Trdstinhibitsrc` | R | 0x0 a| -
 | 14 | `Reserved` | - | - a| Reserved
 | 13 | `Trdstinststallena` | R | 0x0 a| -
@@ -183,7 +183,7 @@
 | 0 | `Trdstactive` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstimpl Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -198,7 +198,7 @@
 | 3:0 | `Trdstvermajor` | R | 0x1 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstinstfeatures Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -211,20 +211,20 @@
 | 0 | `Trdstinstnoaddrdiff` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgDebugTraceCfg Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:22 | `Reserved` | - | - a| Reserved
 | 21 | `FrameClosureMode` | RW | 0x1 a| Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.
-| 20 | `FrameModeEnable` | RW | 0x1 a| Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
+| 20 | `FrameModeEnable` | RW | 0x1 a| Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
 | 19:16 | `Reserved` | - | - a| Reserved
 | 15:12 | `FrameLenghtInBytes` | RW | 0x2 a| Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.
 | 11:4 | `TraceFrameFillByte` | RW | 0x81 a| Use "Filler Packet" to align a stream of trace packets within a frame boundary.
 | 3:0 | `TraceSourceId` | RW | 0x0 a| Trace Source ID (FIXME: Base Address, Tool Issue)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaCounter0Cfg Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -236,7 +236,7 @@
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaCounter1Cfg Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -248,7 +248,7 @@
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaCounter2Cfg Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -260,7 +260,7 @@
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaCounter3Cfg Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -272,7 +272,7 @@
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode0Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -281,8 +281,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -291,7 +291,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode0Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -300,8 +300,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -310,7 +310,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode1Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -319,8 +319,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -329,7 +329,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode1Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -338,8 +338,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -348,7 +348,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode2Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -357,8 +357,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -367,7 +367,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode2Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -376,8 +376,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -386,7 +386,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode3Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -395,8 +395,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -405,7 +405,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode3Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -414,8 +414,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -424,46 +424,46 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalEdgeDetectCfg Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:14 | `Reserved` | - | - a| Reserved
-| 13 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
+| 13 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge
 | 12:7 | `Signal1Select` | RW | 0x0 a| Define which signal to select for edge detection.
-| 6 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
+| 6 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge
 | 5:0 | `Signal0Select` | RW | 0x0 a| Define which signal to select for edge detection.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgEapStatus Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -487,7 +487,7 @@
 | 0 | `Node0Eap0` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaCtrlStatus Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -501,161 +501,161 @@
 | 1:0 | `CurrentNode` | R | 0x0 a| Read the current node.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgRsvd0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value of reserved register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgRsvd1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value of reserved register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgRsvd2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value of reserved register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgTransitionMask Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgTransitionFromValue Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgTransitionToValue Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgOnesCountMask Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgOnesCountValue Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgAnyChange Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Mask` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode0Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode0Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode1Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode1Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode2Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode2Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode3Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode3Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaTimeMatch Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `TimeMatchVal` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode0Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -665,8 +665,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -675,7 +675,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode0Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -685,8 +685,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -695,7 +695,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode1Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -705,8 +705,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -715,7 +715,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode1Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -725,8 +725,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -735,7 +735,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode2Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -745,8 +745,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -755,7 +755,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode2Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -765,8 +765,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -775,7 +775,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode3Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -785,8 +785,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -795,7 +795,7 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgNode3Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -805,8 +805,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -815,63 +815,63 @@
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode0Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode0Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode1Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode1Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode2Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode2Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode3Eap2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalSnapshotNode3Eap3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgSignalDelayMuxSel Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -886,7 +886,7 @@
 | 1:0 | `Muxselseg0` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaTimestampsync Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -894,7 +894,7 @@
 | 62:0 | `Timestamp` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CDbgClaXtriggerTimestretch Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -903,21 +903,21 @@
 | 7:0 | `Xtrigger0Stretch` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CrScratchpad Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Data` | RW | 0xBFBFBFBFBFBFBFBF a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Scratch Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `Data` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trfunnelcontrol Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -928,7 +928,7 @@
 | 0 | `Trfunnelactive` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trfunnelimpl Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -938,7 +938,7 @@
 | 3:0 | `Trfunnelvermajor` | R | 0x1 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trfunneldisinput Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -946,7 +946,7 @@
 | 15:0 | `Trfunneldisinput` | RW | 0x0 a| Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramcontrol Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -960,7 +960,7 @@
 | 0 | `Trramactive` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramimpl Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -974,7 +974,7 @@
 | 3:0 | `Trramvermajor` | R | 0x1 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramstartlow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -982,14 +982,14 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramstarthigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trramstarthigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramlimitlow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -997,14 +997,14 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramlimithigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trramlimithigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramwplow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1013,14 +1013,14 @@
 | 0 | `Trramwrap` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramwphigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trramwphigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramrplow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1028,21 +1028,21 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramrphigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trramrphigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trramdata Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trramdata` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trcustomramsmemlimitlow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1050,7 +1050,7 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramcontrol Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1064,7 +1064,7 @@
 | 0 | `Trdstramactive` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramimpl Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1078,7 +1078,7 @@
 | 3:0 | `Trdstramvermajor` | R | 0x1 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramstartlow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1086,14 +1086,14 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramstarthigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trdstramstarthigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramlimitlow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1101,14 +1101,14 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramlimithigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trdstramlimithigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramwplow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1117,14 +1117,14 @@
 | 0 | `Trdstramwrap` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramwphigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trdstramwphigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramrplow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1132,21 +1132,21 @@
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramrphigh Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trdstramrphigh` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .Trdstramdata Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Trdstramdata` | R | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TrClusterFuseCfgLow Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1165,7 +1165,7 @@
 | 7:0 | `ScHarvestStrap` | RW | 0x0 a| 1 bit / 4 ways (total 8 bit /32 ways possible) 1: enable 0: disabled
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TrClusterFuseCfgHi Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -1180,28 +1180,28 @@
 | 0 | `Core4Enable` | RW | 0x0 a| Physical Core4 availability
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TrScratchLo Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Data` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TrScratchHi Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Data` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TrScratchpadLo Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Data` | RW | 0xEFEFEFEF a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TrScratchpadHi Register
 |===
 | Bits | Field | Access | Reset | Description

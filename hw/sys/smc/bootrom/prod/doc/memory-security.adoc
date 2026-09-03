@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[memory-and-security]]
+== Memory and security
+
+=== Image and SRAM layout
+
+.ROM-visible memory regions
+[cols="2,2,4",options="header"]
+|===
+|Range |Size |Use
+
+|`0xC0040000`--`0xC005FFFF`
+|128 KiB
+|Executable ROM image. Unused bytes are filled with `EBREAK`.
+
+|`0xC0060000`--`0xC015FFFF`
+|1 MiB
+|SMC SRAM used for initialized data, TLS, BSS, stacks, heap, status buffers, and externally loaded data.
+|===
+
+The linker places `.data`, TLS, `.bss`, stacks, and heap upward from the SRAM base.
+The global OCCP request buffer and the large read-response workspace are ordinary `.bss` objects; they do not occupy a separately fixed high-address window.
+
+Two `smc_ring_buffer_t` objects are addressed downward from the exclusive SRAM end, `0xC0160000`.
+The SEP ring buffer is the last object in SRAM, and the SMC ring buffer immediately precedes it:
+
+[listing]
+----
+SMC_STATUS_BUFFER_ADDR = 0xC0160000 - 2 * sizeof(smc_ring_buffer_t)
+SEP_STATUS_BUFFER_ADDR = 0xC0160000 -     sizeof(smc_ring_buffer_t)
+----
+
+Each structure contains three 32-bit metadata fields and 512 32-bit entries.
+The code also defines `0xC0066400` through `0xC015AFFF` as the SEP-safe region published in scratch registers 13 and 14.
+
+[[memory-access-policy]]
+=== OCCP memory-access policy
+
+All read, write, execute, and authenticate handlers reject a zero-length policy check, arithmetic wraparound, or an access overlapping `0xC0060000` through `0xC00663FF`.
+That fixed 25 KiB range protects ROM-owned writable state regardless of lifecycle.
+Read, write, execute, and authenticate addresses must also be 32-bit aligned; execute and authenticate addresses must be nonzero.
+
+In a secure lifecycle state, the complete access must lie in `0xC0066400` through `0xC015FFFF`.
+In another valid lifecycle state, the policy function allows addresses outside SRAM as long as they do not overlap the protected ROM-owned SRAM range.
+
+`ExecuteImage` adds a lifecycle check and is rejected in secure states.
+`AuthenticateImage` uses the common policy check, then converts the address to an SRAM-relative offset for scratch register 8.
+Both boot-command handlers validate an eight-byte range beginning at the
+supplied address, so the complete range must satisfy the policy.
+The offset helper accepts only `0xC0066400` through `0xC015FFFF`; if a non-secure request supplies another otherwise permitted address, it writes the invalid marker `0xFFFFFFFF`.
+The current command handler still sets `MANIFEST_READY` after that marker is written.
+
+The access policy does not reserve the status ring buffers from OCCP memory commands.
+
+=== Lifecycle handling
+
+The lifecycle register is `CHIP_CONFIG.LC_STATE` at `0xC000290C`.
+The ROM reads all eight bits as a differential encoding:
+
+[listing]
+----
+raw[7:4] == ~raw[3:0]
+----
+
+An encoding mismatch is invalid.
+For a valid encoding, the low nibble selects the policy:
+
+.Lifecycle values used by the ROM
+[cols="1,2,3",options="header"]
+|===
+|Low nibble |Classification |ROM policy
+
+|`0x0`
+|Test/development
+|Non-secure
+
+|`0x1`
+|Production
+|Secure
+
+|`0x2`--`0x3`
+|RMA SoP
+|Non-secure
+
+|`0x4`--`0x7`
+|RMA chiplet
+|Non-secure
+
+|`0x8`
+|Production end
+|Secure
+
+|`0x9`--`0xF`
+|Invalid
+|Record an error and remain in `wfi`
+|===
+
+This classification affects OCCP address bounds and `ExecuteImage`.
+It does not select different interface maps or role-specific boot flows.

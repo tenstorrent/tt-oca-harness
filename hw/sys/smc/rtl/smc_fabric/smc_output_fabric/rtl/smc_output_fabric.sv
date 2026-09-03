@@ -119,7 +119,7 @@ module smc_output_fabric
             .snoop_r_ready_i (axi_req_i.r_ready),
             .snoop_r_last_i	 (axi_resp_o.r.last),
 
-            .kick_i			 (~fabric_cg_en_i), // continously kick to keep clock awake when not gating
+            .kick_i			 (~fabric_cg_en_i), // continuously kick to keep clock awake when not gating
 
             .test_clk_en_i	 (test_en_i),
             .hysteresis_i	 (cg_hysteresis_i),
@@ -332,7 +332,7 @@ module smc_output_fabric
 		.snoop_r_ready_i (axi_remapped_to_filter_req.r_ready),
 		.snoop_r_last_i	 (axi_remapped_to_filter_resp.r.last),
 
-		.kick_i			 (~filter_axi_cg_en_i), // continously kick to keep clock awake when not gating
+		.kick_i			 (~filter_axi_cg_en_i), // continuously kick to keep clock awake when not gating
 
 		.test_clk_en_i	 (test_en_i),
 		.hysteresis_i	 (cg_hysteresis_i),

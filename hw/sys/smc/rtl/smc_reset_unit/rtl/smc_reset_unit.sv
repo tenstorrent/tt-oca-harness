@@ -249,7 +249,7 @@ module smc_reset_unit (
 	// JTAG Reset Control //
 	////////////////////////
 
-	// jtag_reset_ctrl_i constains both an override bit and a reset value, both are on TCKCLK
+	// jtag_reset_ctrl_i contains both an override bit and a reset value, both are on TCKCLK
 
 	prim_rst_mux2_hf_n u_fuse_reset_ovrd_mux (
 		.rst0_ni (fuse_reset_ni),
