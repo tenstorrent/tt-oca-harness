@@ -58,13 +58,23 @@ so the bare DUT name selects the wrapper-based TB.
 ```
 hw/sys/smc/dv/
 ├── cocotb/                 # PyUVM env, seq_lib, tests
+├── uvm/                    # SV-UVM env, seq_lib, tests (--framework uvm, VCS)
 ├── models/                 # pll/pvt PeakRDL wraps (adopter placeholders)
-├── tb/                     # tb_top.sv, verilator_stubs/
+├── tb/                     # tb_top.sv (cocotb + UVM shapes), smc_tb_signal_list.svh,
+│                           # smc_tb_if.sv, verilator_stubs/
 ├── testlists/
 ├── assets/
 ├── docs/                   # VPLAN, test-development, porting, execution guides
-└── smc_sim_cfg.toml
+└── smc_sim_cfg.toml        # both frameworks: [frameworks.cocotb] + [frameworks.uvm]
 ```
+
+`tb/tb_top.sv` is ONE module with two shapes: the cocotb pin port list by
+default, and under the bare `+define+UVM` (set by the native profile's
+`[frameworks.uvm]` overlay) a self-contained SV-UVM harness that `include`s
+`uvm/tests/smc_tests.sv`. Every TB signal is declared once in
+`tb/smc_tb_signal_list.svh`. The SV-UVM realization is described in
+`docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
 ## Run
 
