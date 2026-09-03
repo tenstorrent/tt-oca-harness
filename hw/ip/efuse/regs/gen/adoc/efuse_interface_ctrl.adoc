@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -14,7 +14,7 @@
 | 0x18 | EFUSE_PROGRAM_REQ_TIMEOUT | RW a| Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_INTERFACE_CTRL_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -30,7 +30,7 @@
 | 0 | `efuse_sense_done` | R | - a| Indicates if the eFuse state machine has completed
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_PROGRAM_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -46,7 +46,7 @@
 | 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to program
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_READ_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -61,21 +61,21 @@
 | 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to read
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_PROGRAM_INTERFACE_READ_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `dout` | R | 0x0 a| Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_READ_INTERFACE_READ_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `dout` | R | 0x0 a| Read Data from eFuse through READ interface.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_READ_REQ_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -84,7 +84,7 @@
 | 27:0 | `read_req_timeout_cycles` | RW | 0x800000 a| Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EFUSE_PROGRAM_REQ_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
