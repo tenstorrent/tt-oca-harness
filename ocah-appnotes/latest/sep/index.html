@@ -8969,10 +8969,13 @@ the same kind of key path as every other accelerator, one mastered by the Key
 Manager.</p>
 </div>
 <div class="paragraph">
-<p>The 13-channel working SRAM is brought out of the wrapper as packed
-<code>abr_mem_req_t</code> / <code>abr_mem_rsp_t</code> structs and instantiated in
-<code>sep_ip_integration</code>, following the OTBN convention of keeping technology macros
-at the integration level.</p>
+<p>The working SRAM is brought out of the wrapper as packed
+<code>abr_mem_req_t</code> / <code>abr_mem_rsp_t</code> structs. Word-write channels are <code>we</code> / <code>re</code> /
+address / data; <code>sig_z</code> and <code>pk</code> also carry one-bit-per-byte <code>wstrobe</code>.
+<code>SEP_ABR_SRAM_LATENCY</code> is the macros' native registered-read latency (default 1).
+<code>SEP_ABR_MASKING_EN</code> (default 1) selects Adams Bridge 2-share DOM: thirteen 1R1W
+macros versus nine, plus a second NTT. That choice changes ABR internal behavior
+(sequencing, SCA, memory topology), not merely throughput.</p>
 </div>
 <div class="paragraph">
 <p>ABR has no alert channel&#8201;&#8212;&#8201;it is the only crypto accelerator that reports faults

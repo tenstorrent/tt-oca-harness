@@ -3580,6 +3580,18 @@ public key accelerator instruction and data memories respectively.
 <code>km_rom_mem</code> and <code>km_sram_mem</code> connect to the Key Manager&#8217;s dedicated ROM and
 SRAM macros.</p>
 </div>
+<div class="paragraph">
+<p><code>abr_mem</code> connects the Adams Bridge working SRAM. On an idle cycle (<code>re</code> low),
+ABR expects the channel&#8217;s read data to return 0 the following cycle.
+<code>SEP_ABR_SRAM_LATENCY</code> must equal the macros' native registered-read latency
+(default 1). Word-write channels are full-word <code>we</code> / <code>re</code> / address / data.
+<code>sig_z</code> and <code>pk</code> carry one-bit-per-byte <code>wstrobe</code>; map those to the macros'
+byte-write enables. <code>SEP_ABR_MASKING_EN</code> (default 1) selects 2-share DOM:
+thirteen 1R1W macros versus nine, plus a second NTT. This changes ABR internal
+behavior (sequencing, SCA, memory topology), not merely throughput. Give the
+same value to SEP and to the SRAM instances. When it is 0, do not instantiate
+the four masked coefficient banks; their response fields read as 0.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="cryptographic-subsystem-connections"><a class="anchor" href="#cryptographic-subsystem-connections"></a><a class="link" href="#cryptographic-subsystem-connections">2.5.5. Cryptographic Subsystem Connections</a></h4>
@@ -4779,6 +4791,16 @@ parameter with its default value.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_WR_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric write pipeline depth</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_ABR_SRAM_LATENCY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ABR 1R1W registered-read latency, in clocks</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_ABR_MASKING_EN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge 2-share DOM masking</p></td>
 </tr>
 </tbody>
 </table>
