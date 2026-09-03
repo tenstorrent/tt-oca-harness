@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_inbound_filter - SEP_SMU_024 firmware-owned inbound rule0.
+ * sep_smu_inbound_filter - firmware-owned inbound rule0.
  *
  * After real fuse-sense, program SEP GLOBAL_BASE/REGION_SIZE and inbound
  * filter rule 0 (config 0x53113, START=END=A_ext). Filter CSRs are
  * write-only from the CPU (a read stalls); publish the programmed values
  * on cold scratch and park. Cocotb confirms the stored rule via passive
- * field_storage leaves (same policy as SEP_SMU_016).
+ * field_storage leaves (same policy as the OTP status reference read).
  */
 
 #include <stdint.h>

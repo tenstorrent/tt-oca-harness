@@ -8,7 +8,7 @@
 #include "sep_smu_axi_extension_decode_protocol.h"
 
 /*
- * SEP_SMU_007  smu_sep_axi_extension_decode  -- SMC pad-arm firmware.
+ * smu_sep_axi_extension_decode -- SMC pad-arm firmware.
  *
  * Cadence xSPI reaches the SMU-TB flash model through smc_ip_integration
  * GPIO 2nd-HW-function override (GPIO 0-10 DQ/CS/CLK/DQS, GPIO 54 mem_rebar).

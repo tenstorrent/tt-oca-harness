@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_fuse_sense - SEP_SMU_010 firmware consumer of two fuse-sense CSRs.
+ * sep_smu_fuse_sense - firmware consumer of two fuse-sense CSRs.
  *
  * First instruction stream after boot reads 0x10A30140 / 0x10930400 /
  * 0x10A30150 (capture the pre-completion window if the CPU is already live),

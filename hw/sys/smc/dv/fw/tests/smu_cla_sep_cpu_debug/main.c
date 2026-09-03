@@ -8,7 +8,7 @@
 #include "smu_cla_sep_cpu_debug_protocol.h"
 
 /*
- * SEP_SMU_022  smu_cla_sep_cpu_debug_control_test  --  SMC (producer) firmware.
+ * smu_cla_sep_cpu_debug_control_test -- SMC (producer) firmware.
  *
  * Real SMC firmware fires CLA node0-EAP single custom actions toward the live
  * SEP CPU and posts an ARMED marker before each so the DV scoreboard can open

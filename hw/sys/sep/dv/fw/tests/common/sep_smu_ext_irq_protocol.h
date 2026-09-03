@@ -1,12 +1,22 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_008  smu_sep_external_irq_test  -- shared protocol contract.
+ * smu_sep_external_irq_test -- shared protocol contract for the SMU wrapper
+ * interrupt pin.
  *
- * Card OWNER-CORRECTION named PIC source 35 under NUM_INTERNAL_IRQS=34.
- * This RTL has NUM_INTERNAL_IRQS=38, so wrapper pin bit0 concatenates to
- * sep_interrupts[38] -> EL2 PIC source 39. The exact producer is still pin
- * bit0; the source ID is the concat mapping, not a hedged candidate window.
+ * sep.sv concatenates the wrapper pin vector directly above the internal
+ * slots, so wrapper bit N drives sep_interrupts[NUM_INTERNAL_IRQS + N], and
+ * EL2 numbers PIC sources from 1. The source ID is that mapping, not a hedged
+ * candidate window.
+ *
+ * SEP_NUM_INTERNAL_IRQS mirrors sep_pkg::NUM_INTERNAL_IRQS, which C cannot
+ * read. It has moved twice already (34 -> 38 -> 43), and each move slides the
+ * wrapper pin onto a different source: at 43, the stale 39 addresses the eFuse
+ * token comparator fault instead. Arming the wrong source is not a visible
+ * failure -- the pin pulse lands on a source nobody enabled, no ISR runs, and
+ * the test waits forever. run_ext_irq() therefore bounds that wait and reports
+ * which source did go pending, so the next parameter change fails with the
+ * number it should have used rather than with a timeout.
  */
 #ifndef SEP_SMU_EXT_IRQ_PROTOCOL_H
 #define SEP_SMU_EXT_IRQ_PROTOCOL_H
@@ -15,14 +25,29 @@
 #define IRQ008_SMC_ENTRY 0x00000000C00601B2ULL
 #define IRQ008_FW_POLL_LIMIT 4000000
 
+#define SEP_NUM_INTERNAL_IRQS 43
+#define SEP_PIC_TOTAL_SOURCES 255
+
 #define IRQ008_PIN_BIT 0
-#define IRQ008_PIC_SOURCE 39
+#define IRQ008_PIC_SOURCE (SEP_NUM_INTERNAL_IRQS + IRQ008_PIN_BIT + 1)
+
+_Static_assert(IRQ008_PIC_SOURCE > SEP_NUM_INTERNAL_IRQS,
+               "wrapper pin must map above the internal IRQ slots");
+_Static_assert(IRQ008_PIC_SOURCE <= SEP_PIC_TOTAL_SOURCES,
+               "wrapper pin source exceeds the EL2 PIC source range");
+
+/* Bound on the wait for the armed pulse, in mcycle. */
+#define IRQ008_ISR_WAIT_MCYCLE 200000
+
 #define IRQ008_MEIPL 1
 #define IRQ008_MEIGWCTRL 0x2
 #define IRQ008_DISABLED_MCYCLE 256
 #define IRQ008_POST_ISR_MCYCLE 32
 
 #define IRQ008_S0_FAIL 0x00820FA1
+/* Published when the armed pulse never reached the expected source; the low
+ * byte carries whichever source was pending instead, 0xFF for none. */
+#define IRQ008_WRONG_SOURCE 0x00820F00
 #define IRQ008_BRINGUP_OK 0x00820000
 #define IRQ008_DISABLED_ARMED 0x00820001
 #define IRQ008_DISABLED_CLEAN 0x00820002

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_otp_status - SEP_SMU_019 firmware reference read of eFuse STATUS.
+ * sep_smu_otp_status - firmware reference read of eFuse STATUS.
  *
  * After fuse-sense, read 0x10930400, require bit0 (sense-done)=1, publish the
  * full 32-bit value on cold scratch7 and OTP019_PUBLISH on scratch6. Cocotb

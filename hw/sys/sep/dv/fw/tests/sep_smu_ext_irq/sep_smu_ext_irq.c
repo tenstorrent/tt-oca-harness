@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_ext_irq - SEP_SMU_008 wrapper pin bit0 through EL2 PIC.
+ * sep_smu_ext_irq - SMU wrapper interrupt pin bit0 through the EL2 PIC.
  *
- * Frontdoor-brings SMC, arms exactly PIC source 39 (pin bit0 with
- * NUM_INTERNAL_IRQS=38), proves a disabled pulse does not trap, then an
- * enabled pulse claims 39, waits 32 mcycle, MEIGWCLR, no-refire, pass_loop.
+ * Frontdoor-brings SMC, arms exactly the one PIC source the wrapper pin maps
+ * to, proves a disabled pulse does not trap, then an enabled pulse claims that
+ * same source, waits 32 mcycle, MEIGWCLR, no-refire, pass_loop.
  */
 
 #include <stdint.h>
@@ -54,10 +54,30 @@ __attribute__((used, noinline)) void ext_irq_disabled_armed(void) {
     } while ((uint32_t)(now - start) < IRQ008_DISABLED_MCYCLE);
 }
 
-__attribute__((used, noinline)) void ext_irq_armed(void) {
+/* Bounded so a pin that lands on a source nobody armed fails with a number
+ * instead of hanging. Returns 0 when the ISR ran, -1 on expiry. */
+__attribute__((used, noinline)) int ext_irq_armed(void) {
+    uint32_t start;
+    uint32_t now;
+    __asm__ volatile("csrr %0, mcycle" : "=r"(start));
     while (g_isr_count == 0u) {
-        __asm__ volatile("" ::: "memory");
+        __asm__ volatile("csrr %0, mcycle" : "=r"(now));
+        if ((uint32_t)(now - start) >= IRQ008_ISR_WAIT_MCYCLE) {
+            return -1;
+        }
     }
+    return 0;
+}
+
+/* Whichever source is pending, or 0xFF if none. Names the source the pin
+ * actually reached when SEP_NUM_INTERNAL_IRQS has drifted from the RTL. */
+static uint32_t first_pending_source(void) {
+    for (uint32_t src = 1u; src <= SEP_PIC_TOTAL_SOURCES; src++) {
+        if (pic_source_pending(src) != 0u) {
+            return src;
+        }
+    }
+    return 0xFFu;
 }
 
 __attribute__((used, noinline, noreturn)) void sep_smu_ext_irq_pass_loop(void) {
@@ -158,7 +178,15 @@ static int run_ext_irq(void) {
     }
 
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), IRQ008_ARMED);
-    ext_irq_armed();
+    if (ext_irq_armed() != 0) {
+        /* The pin fired somewhere else: SEP_NUM_INTERNAL_IRQS no longer
+         * matches sep_pkg::NUM_INTERNAL_IRQS. Publish the source that did go
+         * pending so the correct constant is readable from the run. */
+        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(9), first_pending_source());
+        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3),
+                              IRQ008_WRONG_SOURCE | (first_pending_source() & 0xFFu));
+        return -23;
+    }
     if (g_isr_count != 1u) {
         return -19;
     }

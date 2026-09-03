@@ -37,6 +37,8 @@
 
 /* s0 : SMC status/progress + per-action ARMED markers (cocotb opens an observation window on
  * each). */
+/* Scratch value before the SMC producer has published anything. */
+#define CLADBG_STATUS_PRISTINE 0x00000000
 #define CLADBG_INIT_RELEASE_OK 0x00500000
 #define CLADBG_ACT0_ARMED 0x00500001    /* action[0] debug-halt fired (busy SEP)   */
 #define CLADBG_ACT1_ARMED 0x00500002    /* action[1] debug-run fired               */

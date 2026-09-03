@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_009  smu_lifecycle_security_handoff_test  -- shared protocol.
+ * smu_lifecycle_security_handoff_test -- shared protocol.
  *
  * Producer is real SEP eFuse/LCC (no Force). Demote CSRs are W1S. This image
  * sequences PROD blocked, DEMOTE_1, then DEMOTE_2 (d2-alone PVT is not claimed;
@@ -43,10 +43,15 @@
 #define LC009_PVT_OBS_ENABLE 0x1u
 
 #define LC009_S0_FAIL 0x00920FA1u
+/* Shadow LC_STATE was not PROD, so the demote scenario could not run.
+ * Distinct from S0_FAIL: nothing malfunctioned, the image was wrong. */
+#define LC009_NOT_PROD_FAIL 0x00920FA2u
 #define LC009_BRINGUP_OK 0x00920000u
 #define LC009_PVT_EN 0x00920001u
 #define LC009_ARMED 0x00920002u
 #define LC009_DEMOTE1 0x00920003u
+/* For the DEMOTE_2 image. This one stops after DEMOTE_1 so the checker
+ * still has a DEMOTE_1-only run to grade. */
 #define LC009_DEMOTE2 0x00920004u
 #define LC009_PASS 0x0092000Fu
 #define LC009_SMC_FAIL 0x009CFFEEu

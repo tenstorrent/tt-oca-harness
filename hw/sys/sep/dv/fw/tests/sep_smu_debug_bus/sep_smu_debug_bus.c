@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_debug_bus - SEP_SMU_017 retire-trace producer.
+ * sep_smu_debug_bus - retire-trace producer for smu_sep_debug_bus_test.
  *
  * Frontdoor-brings the dedicated SMC DFD-arm image, publishes SEP_WAIT
  * through alias scratch3, parks at debug_bus_wait_for_go polling GO, then
@@ -40,14 +40,14 @@ static int run_debug_bus(void) {
 
     sep_smc_open_window();
     if (sep_smc_bringup_from_sram((uint32_t)DBG017_SMC_ENTRY, DBG017_SMC_IMAGE_FIRST_WORD,
-                                  DBG017_FW_POLL_LIMIT) != 0) {
+                                  DBG017_HANDSHAKE_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DBG017_S0_FAIL);
         return -11;
     }
 
     /* Card S3: SMC must clear scratch2/3 first. Wait for PH_CLEARED so a
      * late SMC start cannot wipe SEP_WAIT. */
-    if (sep_smc_scratch_wait(DBG017_PHASE_ALIAS, DBG017_PH_CLEARED, DBG017_FW_POLL_LIMIT) != 0) {
+    if (sep_smc_scratch_wait(DBG017_PHASE_ALIAS, DBG017_PH_CLEARED, DBG017_HANDSHAKE_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DBG017_S0_FAIL);
         return -15;
     }

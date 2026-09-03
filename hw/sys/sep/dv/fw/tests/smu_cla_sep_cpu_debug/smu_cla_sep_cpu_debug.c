@@ -44,10 +44,18 @@ static int run_cla_debug_consumer(void) {
      * must be re-opened, but pulsing SMC reset would rewind the producer firmware. */
     sep_smc_open_window();
     {
+        /* Bring up only from a pristine scratch. The previous enumerated list
+         * of "already running" tokens omitted CLADBG_INIT_RELEASE_OK, and a
+         * 32-bit scratch read after IC_RESET can return X in the unused half,
+         * so an unlisted or unresolved value fell through to bring-up --
+         * pulsing SMC reset and rewinding the producer mid-test, which is the
+         * exact failure this guard exists to prevent.
+         *
+         * Skipping bring-up when it was in fact needed costs a bounded
+         * busy_poll expiry and a -3 fail; rewinding the producer corrupts the
+         * run silently. Treat anything not pristine as already running. */
         uint32_t s0 = READ_REG(CLADBG_STATUS_ALIAS_ADDR);
-        if (s0 == CLADBG_ACT0_ARMED || s0 == CLADBG_ACT1_ARMED || s0 == CLADBG_ACT2_ARMED ||
-            s0 == CLADBG_ACT5_ARMED || s0 == CLADBG_A3_BUSY_ARMED || s0 == CLADBG_A3_BUSY_HELD ||
-            s0 == CLADBG_A3_IDLE_ARMED || s0 == CLADBG_DONE) {
+        if (s0 != CLADBG_STATUS_PRISTINE) {
             goto busy_poll;
         }
     }

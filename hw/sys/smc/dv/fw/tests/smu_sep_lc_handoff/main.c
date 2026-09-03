@@ -8,7 +8,7 @@
 #include "sep_smu_lc_handoff_protocol.h"
 
 /*
- * SEP_SMU_009  smu_lifecycle_security_handoff  -- SMC PVT-arm firmware.
+ * smu_lifecycle_security_handoff -- SMC PVT-arm firmware.
  *
  * Programs COMBINED_PVT process-clock observation (card sequence from
  * combined_pvt_sanity) plus dedicated-pad hw2_ovrd clear, then publishes

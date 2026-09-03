@@ -4,7 +4,7 @@
 #define SEP_SMU_INBOUND_FILTER_PROTOCOL_H
 
 /*
- * SEP_SMU_024 firmware <-> cocotb contract.
+ * smu_sep_inbound_filter_test firmware <-> cocotb contract.
  *
  * Cold scratch4 = published A_ext[31:0]
  * Cold scratch5 = written FILTER_CONFIG[31:0] (0x53113)

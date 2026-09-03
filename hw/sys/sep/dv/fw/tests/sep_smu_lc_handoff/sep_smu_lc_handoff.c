@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_lc_handoff - SEP_SMU_009 PROD eFuse + DEMOTE_1 consumer setup.
+ * sep_smu_lc_handoff - PROD eFuse + DEMOTE_1 consumer setup.
  *
  * Frontdoor-brings the dedicated SMC PVT-arm image, waits for PVT_EN, parks
  * in a bounded blocked window, then writes LCC DEMOTE_1.demote=1 and
@@ -71,9 +71,14 @@ static int run_lc_handoff(void) {
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_ARMED);
     lc_handoff_blocked_window();
 
+    /* The demote path only exists in PROD, and the default OTP image is not
+     * PROD (0xF0). Publishing LC009_PASS here would emit the same token as a
+     * run that actually demoted -- the SMU checker catches it later on
+     * CHK-LCC-SOURCE, but a scenario that did not run must not report the
+     * success token of the one that did. */
     if (lc != LC009_LC_PROD_ENC) {
-        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_PASS);
-        return 0;
+        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_NOT_PROD_FAIL);
+        return -15;
     }
 
     WRITE_REG(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, LC009_DEMOTE_RAW);
@@ -86,15 +91,9 @@ static int run_lc_handoff(void) {
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_DEMOTE1);
     lc_handoff_demote_window();
 
-    WRITE_REG(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, LC009_DEMOTE_RAW);
-    rb = READ_REG(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR) & 0x3u;
-    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(10), rb);
-    if ((rb & 0x1u) == 0u) {
-        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_S0_FAIL);
-        return -14;
-    }
-    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_DEMOTE2);
-    lc_handoff_demote_window();
+    /* DEMOTE_2 is a separate scenario in the checker and needs its own image.
+     * Writing it here made every run of this image a DEMOTE_1+DEMOTE_2 run,
+     * so the DEMOTE_1-only case the checker documents was never produced. */
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC009_PASS);
     return 0;
 }

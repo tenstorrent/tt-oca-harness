@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_005  smu_sep_wdt_reset_to_smc_test  --  shared protocol contract.
+ * smu_sep_wdt_reset_to_smc_test -- shared protocol contract.
  *
  * Included by SEP firmware and parsed by the cocotb checker. Plain integer/hex
  * #defines only. Thresholds match the VPLAN card (bark 0x200, bite 0x400).

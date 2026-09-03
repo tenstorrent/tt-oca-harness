@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_017  smu_sep_debug_bus_test  -- shared protocol contract.
+ * smu_sep_debug_bus_test -- shared protocol contract.
  *
  * Handshake (card S3): SMC clears scratch2/3 and publishes PH_CLEARED on
  * scratch4; SEP waits for PH_CLEARED, then publishes SEP_WAIT on scratch3 and
@@ -24,7 +24,14 @@
 
 #define DBG017_SMC_IMAGE_FIRST_WORD 0x41014081
 #define DBG017_SMC_ENTRY 0x00000000C00601B2ULL
-#define DBG017_FW_POLL_LIMIT 512
+/* Cross-CPU waits: SMC bring-up, PH_CLEARED, SEP_WAIT, GO_SEEN. These cross a
+ * reset and a second CPU's startup, so they need the same budget every other
+ * dual-firmware protocol here uses. The previous 512 could expire before the
+ * peer had run at all -- the SMC image delays 1024 iterations before it
+ * publishes PH_CLEARED, which SEP was waiting 512 polls for. A tight bound
+ * belongs on a same-CPU sample, not on a handshake; give one its own constant
+ * if a sample ever needs it. */
+#define DBG017_HANDSHAKE_POLL_LIMIT 4000000
 
 #define DBG017_SEP_WAIT 0x017A0001u
 #define DBG017_GO 0x01760001u

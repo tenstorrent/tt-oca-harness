@@ -9,7 +9,7 @@
 #include "sep_debug_bus_symbols.h"
 
 /*
- * SEP_SMU_017  smu_sep_debug_bus  -- SMC DFD-arm (CONSUMER) firmware.
+ * smu_sep_debug_bus -- SMC DFD-arm (CONSUMER) firmware.
  *
  * Card S3: clear scratch2/3, publish PH_CLEARED, then wait for SEP_WAIT.
  * Programs DFX L3/L2 DBM + DFD CDbgMuxSel + CLA mask/match (bogus negative,
@@ -79,7 +79,7 @@ int main(void) {
     SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_CLEARED);
     SMC_FENCE();
 
-    SMC_WAIT_EQ(DBG017_SMC_SCRATCH3, DBG017_SEP_WAIT, DBG017_FW_POLL_LIMIT, ok);
+    SMC_WAIT_EQ(DBG017_SMC_SCRATCH3, DBG017_SEP_WAIT, DBG017_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
 
     SMC_WR64(CLA_DFDCSR, DBG017_CDFDCSR_ARM);
@@ -148,7 +148,7 @@ int main(void) {
     SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_GO);
     SMC_FENCE();
 
-    SMC_WAIT_EQ(DBG017_SMC_SCRATCH3, DBG017_GO_SEEN, DBG017_FW_POLL_LIMIT, ok);
+    SMC_WAIT_EQ(DBG017_SMC_SCRATCH3, DBG017_GO_SEEN, DBG017_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
     /* Marker PC crosses a 3FF CDC + DFX/DFD mux before CLA. Tight 512-poll
      * loops finish before the match flop sees 0x07d8; always-on dump after an
