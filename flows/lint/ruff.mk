@@ -4,8 +4,7 @@
 ifndef ocah_lint_ruff_mk
 ocah_lint_ruff_mk := 1
 
-OCAH_LINT_RUFF_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_RUFF_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # Paths to lint or format, relative to the repository root. These are the
 # first-party Python roots; generated, vendored, and transient paths are

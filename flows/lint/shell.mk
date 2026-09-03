@@ -4,8 +4,7 @@
 ifndef ocah_lint_shell_mk
 ocah_lint_shell_mk := 1
 
-OCAH_LINT_SHELL_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_SHELL_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # shellcheck-py/shfmt-py wrap the real Go/Haskell binaries in a PyPI wheel
 # (same idea as this repo's existing clang-format dependency), so both are

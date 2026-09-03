@@ -4,8 +4,7 @@
 ifndef ocah_lint_mypy_mk
 ocah_lint_mypy_mk := 1
 
-OCAH_LINT_MYPY_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_MYPY_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # Paths to type-check, relative to the repository root. Mirrors ruff.mk's
 # PYTHON_PATH; excluded/generated paths are configured in [tool.mypy] instead.

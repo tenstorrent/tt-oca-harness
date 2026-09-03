@@ -4,8 +4,7 @@
 ifndef ocah_verible_mk
 ocah_verible_mk := 1
 
-OCAH_FORMAT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_FORMAT_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 
 # Path to lint, scoped by filesystem or by block. Not named PATH=,
 # which would override the shell's own command-search PATH.

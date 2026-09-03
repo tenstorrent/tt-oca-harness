@@ -15,7 +15,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -25,7 +25,7 @@
 | 0x1104 | KPV_SCRAMBLER_CTRL | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WORD[16] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -33,7 +33,7 @@
 Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL[64] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -61,14 +61,14 @@ Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
 set, so sealing a slot write-locks it without a separate write here.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KPV_SCRAMBLER_KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `key` | RW | - a| Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KPV_SCRAMBLER_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
