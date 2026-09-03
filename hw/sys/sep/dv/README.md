@@ -81,6 +81,46 @@ The contracts themselves:
 * [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) — verification plan: per-test
   contracts and checkers, naming rules, VIP policy, iconic feature scorecard.
 
+## Code coverage
+
+`--cov` instruments the build, writes one native database per test leaf, and
+merges/reports through the `cov_merge`/`cov_report` stages. Under VCS that is
+`-cm line+cond+tgl+fsm+branch+assert` merged by `urg`; `[coverage.verilator]` in
+`sep_sim_cfg.toml` configures the Verilator form (line/expression/user, no
+toggle).
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items cov_all --regress --cov --tool vcs \
+  --sim-jobs 32 --build-jobs 32
+```
+
+`cov_all` is the coverage set: every test the VPLAN grades, i.e. `all` minus the
+four `rom_fw` leaves, which exercise ROM firmware rather than ROM hardware and
+are the only tests on a third RTL target. Its `expected_count` fails the run when
+membership drifts from the class groups.
+
+The set spans two build targets (`lsu_stub_all_live` and the full-CPU `default`),
+which merge into one database: `urg` accumulates by design hierarchy name, and
+the merge takes one design database per participating target, so the real
+`sep_cpu` subtree is graded by the full-CPU leaves alone instead of being
+projected onto the stub design. Two builds of the *same* target still cannot be
+merged — a stale database mixed with a fresh one is refused.
+
+What the resulting number is not:
+
+* **Not functional coverage.** These are code metrics only. No SV covergroups
+  exist in the cocotb env, so "did we exercise the interesting scenarios" stays
+  with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
+* **Not a DUT-only figure.** No coverage policy, exclusions, or waivers are
+  configured, so the testbench, the AXI SVA module, vendor sources, and the
+  shims are all in the denominator. Do not quote the percentage as "SEP DUT
+  coverage" until coverage scoping exists.
+* **Not a read on assertions.** Assertion coverage counts elaborated assertions
+  only, and SEP gates those through the `prim_assert` shim. Confirm assertions
+  are live before reading that column.
+* **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
+  test contributes one sample. Pin seeds for any number that gets cited.
+
 ## Two run modes
 
 The run mode selects who owns the CPU master buses. The entries below are

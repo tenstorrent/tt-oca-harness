@@ -60,12 +60,14 @@ from .config import (
     selected_run_target,
     sim_global_args,
     target_flags,
+    targeted_sim_cfg,
 )
 from .coverage import (
     CANONICAL_METRICS,
     CoverageError,
     artifact_ready,
     coverage_artifact_path,
+    coverage_input_targets,
     discover_coverage_inputs,
     load_manifest,
     new_manifest,
@@ -3035,6 +3037,52 @@ def _coverage_design_db(
     return Path(rendered)
 
 
+def _coverage_design_dbs(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    tool_cov: dict[str, Any],
+    args: argparse.Namespace,
+    targets: list[str],
+    design_db: Path | None,
+) -> list[Path]:
+    """One design coverage database per build target that fed the merge.
+
+    A single design database would project every leaf onto one elaboration. For
+    SEP that means the CPU-stub design: the full-CPU leaves would land on a
+    design with no real `sep_cpu`, and the denominator would be one target's
+    instead of the union's -- an error in the flattering direction. So resolve
+    the database per target, and take the target list from the merge inputs
+    rather than from the run's item order, which must never move the number.
+    """
+
+    if len(targets) <= 1:
+        return [design_db] if design_db is not None else []
+    target_cfgs = getattr(args, "_coverage_target_cfgs", None) or {}
+    base_sim_cfg = getattr(args, "_coverage_base_sim_cfg", None)
+    resolved: list[Path] = []
+    for target in targets:
+        cfg = target_cfgs.get(target)
+        if cfg is None:
+            if not isinstance(base_sim_cfg, dict):
+                raise CoverageError(
+                    f"coverage inputs name build target `{target}`, which this invocation "
+                    "cannot resolve a design coverage database for"
+                )
+            # A replay (`--run-dir ... --stage cov_merge`) plans only the default
+            # target, so re-resolve the others from the untargeted config. Multi-target
+            # runs always scope the filelist per target, so force it here too and the
+            # build fingerprint matches the one the run compiled under.
+            cfg = targeted_sim_cfg(base_sim_cfg, target, force_target_filelist=True)
+        db = _coverage_design_db(flow, root, cfg, tool_cov, args)
+        if db is None:
+            raise CoverageError(
+                f"coverage.vcs.design_artifact resolved to nothing for target `{target}`"
+            )
+        resolved.append(db)
+    return resolved
+
+
 def _coverage_auxiliary_files(
     flow: Flow,
     root: Path,
@@ -3171,6 +3219,20 @@ def coverage_stage(
 
     if args.dry_run:
         dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
+        # A dry run has no discovered inputs to take the target list from, so use the
+        # targets this invocation planned. Rendering the real per-target design database
+        # list matters here: the printed command is the only place a caller can see
+        # whether the merge anchors on one elaboration or on every participating one.
+        dry_design_dbs: list[str] | None = None
+        if phase == "merge" and "{design_db}" in " ".join(template):
+            planned = sorted(getattr(args, "_coverage_target_cfgs", None) or {})
+            if len(planned) > 1:
+                dry_design_dbs = [
+                    str(candidate)
+                    for candidate in _coverage_design_dbs(
+                        flow, root, sim_cfg, tool_cov, args, planned, design_db
+                    )
+                ]
         policy_args = [
             *native_policy_args(policy, tool=tool, phase=phase),
             *_legacy_coverage_policy_args(
@@ -3181,7 +3243,10 @@ def coverage_stage(
             ),
         ]
         return run_subprocess(
-            [*render_tokens(template, ctx, dry_inputs), *policy_args],
+            [
+                *render_tokens(template, ctx, dry_inputs, design_dbs=dry_design_dbs),
+                *policy_args,
+            ],
             root,
             log_path,
             True,
@@ -3208,11 +3273,26 @@ def coverage_stage(
                 f"coverage was requested but no usable inputs were found under "
                 f"{repo_rel(root, run_dir)}"
             )
+        design_dbs: list[Path] | None = None
         if "{design_db}" in " ".join(template):
-            if design_db is None or not artifact_ready(design_db):
+            design_dbs = _coverage_design_dbs(
+                flow,
+                root,
+                sim_cfg,
+                tool_cov,
+                args,
+                coverage_input_targets(discovery.inputs),
+                design_db,
+            )
+            if not design_dbs:
                 raise CoverageError(
                     f"required design coverage database is missing or empty: {design_db}"
                 )
+            for candidate in design_dbs:
+                if not artifact_ready(candidate):
+                    raise CoverageError(
+                        f"required design coverage database is missing or empty: {candidate}"
+                    )
         manifest = new_manifest(
             flow=flow.name,
             tool=tool,
@@ -3244,12 +3324,22 @@ def coverage_stage(
                 {"path": repo_rel(root, path), "sha256": _file_sha256(path)} for path in waivers
             ],
         }
-        if design_db is not None:
-            manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
+        if design_dbs:
+            manifest["artifacts"]["design_db"] = repo_rel(root, design_dbs[0])
+            manifest["artifacts"]["design_dbs"] = [
+                repo_rel(root, candidate) for candidate in design_dbs
+            ]
         write_json(manifest_path, manifest)
         input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
         argv = [
-            *render_tokens(template, ctx, input_paths),
+            *render_tokens(
+                template,
+                ctx,
+                input_paths,
+                design_dbs=(
+                    None if design_dbs is None else [str(candidate) for candidate in design_dbs]
+                ),
+            ),
             *native_policy_args(policy, tool=tool, phase="merge"),
             *_legacy_coverage_policy_args(
                 tool=tool,

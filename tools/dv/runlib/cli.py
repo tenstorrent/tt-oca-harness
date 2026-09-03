@@ -1527,6 +1527,18 @@ def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
             if cov_stage in available and cov_stage not in requested:
                 requested.append(cov_stage)
 
+    # An explicit --stage set suppresses that append, so --cov with a simulation stage
+    # and no coverage stage instruments the build, writes per-leaf databases, and stops:
+    # no merge, no report, exit 0. Say so instead, and name the stages to add. Coverage
+    # stages alone are a legitimate replay (`--run-dir <dir> --stage cov_merge`).
+    if args.cov and args.stage:
+        cov_stages = [stage for stage in ("cov_merge", "cov_report") if stage in available]
+        if cov_stages and not any(stage in requested for stage in cov_stages):
+            raise ConfigError(
+                "--cov collects coverage but the requested stages would never merge or "
+                "report it; add " + " ".join(f"--stage {stage}" for stage in cov_stages)
+            )
+
     missing = [stage for stage in requested if stage not in available]
     if missing:
         raise ConfigError(f"flow `{flow.name}` does not define stage(s): {', '.join(missing)}")
@@ -1931,6 +1943,13 @@ def run_flow(
         target: targeted_sim_cfg(sim_cfg, target, force_target_filelist=multi_target)
         for target in build_targets
     }
+
+    # The coverage merge needs one design database per participating target, and it
+    # runs as an item-less stage that would otherwise only see target_cfgs[build_targets[0]].
+    # Hand it the whole per-target map plus the untargeted config, so a coverage
+    # replay into an existing run dir can resolve targets this invocation did not plan.
+    setattr(args, "_coverage_target_cfgs", target_cfgs)
+    setattr(args, "_coverage_base_sim_cfg", sim_cfg)
 
     def sim_cfg_for_item(item: str | None) -> dict[str, Any]:
         if item is not None:

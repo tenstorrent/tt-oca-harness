@@ -103,23 +103,41 @@ class CoverageDiscovery:
     selection_source: str
 
 
+def _expand_dir_list(rendered: list[str], paths: list[str]) -> list[str]:
+    """Expand a path list, repeating a preceding `-dir` flag for each entry."""
+
+    if rendered and rendered[-1] == "-dir":
+        rendered.pop()
+        expanded: list[str] = []
+        for path in paths:
+            expanded.extend(["-dir", path])
+        return expanded
+    return list(paths)
+
+
 def render_tokens(
     values: list[str],
     context: dict[str, str],
     inputs: list[str] | None = None,
+    design_dbs: list[str] | None = None,
 ) -> list[str]:
-    """Render a coverage argv list without invoking a shell."""
+    """Render a coverage argv list without invoking a shell.
+
+    `{inputs}` and `{design_db}` both expand to a whole path list. When either
+    follows a `-dir` flag the flag is repeated per path, which is how `urg`
+    takes more than one database. `design_dbs` carries one design database per
+    participating build target; leave it unset to render `{design_db}` from the
+    single-valued context entry.
+    """
 
     rendered: list[str] = []
     input_paths = inputs or []
     for token in values:
         if token == "{inputs}":
-            if rendered and rendered[-1] == "-dir":
-                rendered.pop()
-                for path in input_paths:
-                    rendered.extend(["-dir", path])
-                continue
-            rendered.extend(input_paths)
+            rendered.extend(_expand_dir_list(rendered, input_paths))
+            continue
+        if token == "{design_db}" and design_dbs is not None:
+            rendered.extend(_expand_dir_list(rendered, design_dbs))
             continue
         value = token
         for key, replacement in context.items():
@@ -245,25 +263,54 @@ def _coverage_input_from_fragment(
 
 
 def _validate_compatibility(inputs: list[CoverageInput]) -> None:
+    """Refuse merges that mix builds, allowing one merge per build target.
+
+    A multi-target run is a legitimate merge: `urg` accumulates by design
+    hierarchy name, so the shared hierarchy sums across targets and a subtree
+    that only one target elaborates (SEP's real `sep_cpu`, absent from the
+    CPU-stub target) contributes from its own target alone. What is never
+    legitimate is mixing two *builds of the same target*, i.e. a stale database
+    merged with a fresh one, so the build-fingerprint check stays armed inside
+    each target group.
+
+    Provenance completeness is checked across all inputs first: an input with no
+    recorded target cannot be attributed to a group, so a mix of attributed and
+    unattributed inputs is refused rather than partitioned.
+    """
+
+    if not inputs:
+        return
     targets = {entry.target for entry in inputs if entry.target}
-    fingerprints = {entry.build_fingerprint for entry in inputs if entry.build_fingerprint}
-    if len(targets) > 1:
-        raise CoverageCompatibilityError(
-            "coverage inputs span incompatible targets: " + ", ".join(sorted(targets))
-        )
-    if len(fingerprints) > 1:
-        raise CoverageCompatibilityError(
-            "coverage inputs span incompatible build fingerprints: "
-            + ", ".join(sorted(fingerprints))
-        )
-    if inputs and any(entry.target is None for entry in inputs) and targets:
+    if targets and any(entry.target is None for entry in inputs):
         raise CoverageCompatibilityError(
             "coverage input target provenance is incomplete; refusing a mixed-provenance merge"
         )
-    if inputs and any(entry.build_fingerprint is None for entry in inputs) and fingerprints:
-        raise CoverageCompatibilityError(
-            "coverage build fingerprints are incomplete; refusing a mixed-provenance merge"
-        )
+    groups: dict[str | None, list[CoverageInput]] = {}
+    for entry in inputs:
+        groups.setdefault(entry.target, []).append(entry)
+    for target, entries in sorted(groups.items(), key=lambda item: item[0] or ""):
+        scope = f" for target `{target}`" if target else ""
+        fingerprints = {entry.build_fingerprint for entry in entries if entry.build_fingerprint}
+        if len(fingerprints) > 1:
+            raise CoverageCompatibilityError(
+                f"coverage inputs span incompatible build fingerprints{scope}: "
+                + ", ".join(sorted(fingerprints))
+            )
+        if fingerprints and any(entry.build_fingerprint is None for entry in entries):
+            raise CoverageCompatibilityError(
+                f"coverage build fingerprints are incomplete{scope}; "
+                "refusing a mixed-provenance merge"
+            )
+
+
+def coverage_input_targets(inputs: list[CoverageInput]) -> list[str]:
+    """The build targets that contribute to a merge, in a stable order.
+
+    Sorted by name on purpose: the design database set must not depend on the
+    order the run happened to schedule its items in.
+    """
+
+    return sorted({entry.target for entry in inputs if entry.target})
 
 
 def discover_coverage_inputs(
@@ -656,6 +703,10 @@ def new_manifest(
     waiver_files: list[str],
 ) -> dict[str, Any]:
     first = discovery.inputs[0] if discovery.inputs else None
+    targets = coverage_input_targets(discovery.inputs)
+    fingerprints = sorted(
+        {entry.build_fingerprint for entry in discovery.inputs if entry.build_fingerprint}
+    )
     return {
         "schema_version": 2,
         "generated_at": datetime.now(UTC).isoformat(),
@@ -664,8 +715,16 @@ def new_manifest(
         "parser": parser,
         "status": "PENDING",
         "supported_metrics": supported_metrics,
-        "target": first.target if first else None,
-        "build_fingerprint": first.build_fingerprint if first else None,
+        # `target`/`build_fingerprint` stay single-valued for a single-target merge
+        # and go null for a multi-target one: naming one of several targets there
+        # would make the report look like it graded that target alone. The full
+        # sets live in `targets`/`build_fingerprints`.
+        "target": (
+            targets[0] if len(targets) == 1 else (first.target if first and not targets else None)
+        ),
+        "build_fingerprint": (fingerprints[0] if len(fingerprints) == 1 else None),
+        "targets": targets,
+        "build_fingerprints": fingerprints,
         **discovery_payload(discovery),
         "exclusions": exclude_files,
         "waivers": waiver_files,
