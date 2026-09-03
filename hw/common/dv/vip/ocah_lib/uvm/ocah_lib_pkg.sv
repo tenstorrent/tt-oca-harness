@@ -12,7 +12,8 @@
 // Include order is load-bearing: knobs and rng have no dependencies; the two
 // cfg bases precede the test; the item precedes the sequence; the scoreboard
 // and the subscriber compose ocah_checker (imported from ocah_checker_uvm_pkg);
-// the env and the test come last because they reference the others.
+// the reference model precedes the scoreboard it feeds; the env and the test
+// come last because they reference the others.
 //
 // Deliberately absent: a report server or report catcher (the pass banner
 // and the step formats are methods on ocah_test and ocah_sequence), and a
@@ -38,6 +39,7 @@ package ocah_lib_pkg;
     `include "ocah_monitor.svh"
     `include "ocah_agent.svh"
     `include "ocah_subscriber.svh"
+    `include "ocah_ref_model.svh"
     `include "ocah_scoreboard.svh"
     `include "ocah_env.svh"
     `include "ocah_test.svh"

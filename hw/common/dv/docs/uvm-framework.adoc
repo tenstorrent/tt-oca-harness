@@ -78,11 +78,14 @@ flow:
   sequences (`<dut>_<if>_<op>_seq`, extending the VIP sequence) on the handle
   each step needs. A scenario never touches a driver or a VIP virtual
   interface.
-. *The scoreboard is mandatory.* Every bench has a `<dut>_scoreboard` fed by
-  VIP monitor streams and TB-interface observables, with one predictor per
-  feature; it runs in every test and a required feature with zero
-  comparisons fails the run. Sequence-level evidence supplements it and never
-  replaces it.
+. *The scoreboard is mandatory and compares only.* Every bench has a
+  `<dut>_scoreboard` fed per feature by two streams: the VIP monitor stream
+  the feature is observed on and the `expected_ap` of that feature's
+  `<dut>_<feature>_ref_model` (on `ocah_ref_model`), which predicts from
+  configuration and the observed stimulus and never compares. The scoreboard
+  pairs, compares, counts, and emits evidence; it runs in every test and a
+  required feature with zero comparisons fails the run. Sequence-level
+  evidence supplements it and never replaces it.
 . *The bare `UVM` define.* The SV-UVM shape of the shared testbench top is
   gated on `ifdef UVM` — nothing else. The define is owned by the `native`
   profile's `[frameworks.uvm]` overlay; a DUT config never sets it, and no
