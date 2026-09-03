@@ -919,6 +919,9 @@ scratchpad RAM, cache tag and data arrays), and trace memory instances.
 components: SEP memory macros (TCM, scratch SRAM, boot ROM, OTBN IMEM/DMEM,
 Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
 
+The public wrappers do not attach an IEEE 1687 instrument network to the DTP
+DFD host port. See <<dtp-dfd-ijtag>>.
+
 ===== Wrapper Clock and PLL Architecture
 
 The `smu_wrapper.sv` (and `smc_wrapper.sv`) reference accepts `BP_REFCLK` at
@@ -1314,7 +1317,14 @@ wired internally within the SMU.
 |`jtag_stap_host_scan_out_o` |output |1 |SMU external port
 |===
 
+[[dtp-dfd-ijtag]]
 ===== DFD iJTAG Interface
+
+The DTP DFD host port is an adopter-owned IEEE 1687 client attachment.
+Public `hw/top/` wrappers leave these ports at the SMU boundary; they do not
+attach an instrument network, because the open PLL and PVT models have no TDR
+instruments. When the chain is unused, tie `jtag_dfd_host_scan_in_i` to
+`jtag_dfd_host_scan_out_o`.
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
