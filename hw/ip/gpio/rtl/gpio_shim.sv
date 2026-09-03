@@ -206,6 +206,12 @@ module gpio_shim
 
     assign pad2core_o = pad2core_muxed;
 
+    // Electrical-attribute ownership, ranked to match the data/enable mux in
+    // gpio.sv: hardware LSIO request, then the CSR plane, then software-forced LSIO.
+    logic lsio_pin, lsio_sw;
+    assign lsio_pin = ext_intf_sel_i && ~reg_lsio_disable_i;
+    assign lsio_sw  = reg_lsio_sel_i && ~reg_lsio_disable_i;
+
     always_comb begin
         gpio_ctrl_o.gpio_drive_strength = 3'b010; // default taken from RDL
         gpio_ctrl_o.gpio_pull_en = ENABLE_PULL;
@@ -219,13 +225,19 @@ module gpio_shim
             gpio_ctrl_o.gpio_pull_sel = USE_PULL_UP;
             gpio_ctrl_o.gpio_sps = 1'b0;
             gpio_ctrl_o.gpio_glitch_filter_enable = 1'b1;
-        end else if (reg__config_enable) begin
+        end else if (lsio_pin) begin // LSIO HW determines settings
+            gpio_ctrl_o.gpio_drive_strength = ext_drive_strength_i;
+            gpio_ctrl_o.gpio_pull_en = ext_pull_en_i;
+            gpio_ctrl_o.gpio_pull_sel = ext_pull_sel_i;
+            gpio_ctrl_o.gpio_sps = 1'b0; // maintain default
+            gpio_ctrl_o.gpio_glitch_filter_enable = ~ext_gf_disable_i;
+        end else if (reg__config_enable) begin // CSR interface determines settings
             gpio_ctrl_o.gpio_drive_strength = reg__drive_strength;
             gpio_ctrl_o.gpio_pull_en = reg__pull_enable;
             gpio_ctrl_o.gpio_pull_sel = reg__pull_select;
             gpio_ctrl_o.gpio_sps = 1'b0; // maintain default
             gpio_ctrl_o.gpio_glitch_filter_enable = reg__schmitt_select;
-        end else if ((ext_intf_sel_i || reg_lsio_sel_i) && ~reg_lsio_disable_i) begin
+        end else if (lsio_sw) begin // software-forced LSIO
             gpio_ctrl_o.gpio_drive_strength = ext_drive_strength_i;
             gpio_ctrl_o.gpio_pull_en = ext_pull_en_i;
             gpio_ctrl_o.gpio_pull_sel = ext_pull_sel_i;
