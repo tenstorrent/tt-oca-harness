@@ -1,7 +1,7 @@
 # OCAH containers
 
 `tools/docker/Dockerfile` builds the one locally-built image, `ocah-toolchain`,
-which carries **both** the RISC-V DV firmware toolchain and everything the SEP
+which carries **both** the RISC-V DV firmware toolchain and everything the OCAH
 virtual platform needs to build and run `sep-vp`. Docs and EDA use **pulled**
 public images. `scripts/docker-run.sh` is the shared front door: each
 subcommand picks an image.
@@ -9,7 +9,7 @@ subcommand picks an image.
 | Need | Image | How you get it | `docker-run.sh` |
 |------|--------|----------------|-----------------|
 | DV firmware (`riscv64-unknown-elf-gcc`, picolibc) | `ocah-toolchain` | **Build** from `tools/docker/Dockerfile` | `build`, `run`, `shell`, `verify` |
-| SEP virtual platform (`g++`, cmake, Boost/OpenSSL, runner Python) | `ocah-toolchain` (same image) | **Build** from `tools/docker/Dockerfile` | `vp-build`, `vp-run`, `vp-shell`, `vp-verify` |
+| OCAH virtual platform (`g++`, cmake, Boost/OpenSSL, runner Python) | `ocah-toolchain` (same image) | **Build** from `tools/docker/Dockerfile` | `vp-build`, `vp-run`, `vp-shell`, `vp-verify` |
 | Docs HTML | `docker.io/antora/antora:3.1.10` | Pull | `doc-html` |
 | Docs PDF | digest-pinned `docker.io/asciidoctor/docker-asciidoctor` | Pull (see [Pinned image digests](#pinned-image-digests)) | `doc-pdf` |
 | EDA (yosys + PDKs; also slang/verible in-container) | [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools) | Pull | `eda-run`, `eda-shell` |
@@ -69,7 +69,7 @@ podman and docker installed, pin the engine with `OCAH_ENGINE=docker` (or
 
 ## Virtual platform (`sep-vp`)
 
-The same image also builds and runs the SEP virtual platform, for hosts with no
+The same image also builds and runs the OCAH virtual platform, for hosts with no
 usable native C++20 toolchain. On top of the firmware packages it carries `g++`,
 `cmake`, autotools, Boost (`iostreams`, `program_options`, `log`) and OpenSSL
 dev libraries, and the runner's Python (`pexpect`, `pytest`, `yaml`, `toml`,

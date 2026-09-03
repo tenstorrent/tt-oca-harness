@@ -1,5 +1,5 @@
 # =============================================================================
-# SEP Virtual Platform build (CI-aligned)
+# OCAH Virtual Platform build (CI-aligned)
 #
 # Mirrors tt-oca-harness-model/.github/workflows/ci-rhel8.yml: resolves or builds the
 # SystemC, Boost, OpenSSL, and CCI dependencies (system installs are used when
@@ -292,7 +292,7 @@ DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 # Help
 # =============================================================================
 help:
-	@echo "SEP Virtual Platform build (mirrors tt-oca-harness-model CI)"
+	@echo "OCAH Virtual Platform build (mirrors tt-oca-harness-model CI)"
 	@echo ""
 	@echo "Primary targets:"
 	@echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"

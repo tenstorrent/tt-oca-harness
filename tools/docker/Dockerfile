@@ -5,25 +5,25 @@
 # ocah-toolchain: the one OCAH build/run image. It carries two toolchains:
 #
 #   1. RISC-V bare-metal (picolibc) for the DV firmware and the SEP boot ROM.
-#   2. A native C++20 toolchain plus the SEP virtual platform's dependencies,
+#   2. A native C++20 toolchain plus the OCAH virtual platform's dependencies,
 #      so virtual_platform/ can BUILD and RUN sep-vp in here on hosts with no
 #      usable native compiler.
 #
-# Build the image (from tt-oca/):
+# Build the image (from tt-oca-harness/):
 #   docker build -t ocah-toolchain tools/docker
 #   ./scripts/docker-run.sh build
 #
-# Build firmware (from tt-oca/):
+# Build firmware (from tt-oca-harness/):
 #   docker run --rm -v "$PWD":/work:Z -w /work ocah-toolchain \
 #       make ocah-dv-fw-libs TARGET=sep
 #   ./scripts/docker-run.sh run make ocah-dv-fw-libs TARGET=sep
 #
-# Build and run the SEP virtual platform (from tt-oca/):
+# Build and run the OCAH virtual platform (from tt-oca-harness/):
 #   make -C virtual_platform vp      VP_CONTAINER=1
 #   make -C virtual_platform vp-test VP_CONTAINER=1
 #   ./scripts/docker-run.sh vp-shell
 #
-# Build docs with pulled public images (from tt-oca/):
+# Build docs with pulled public images (from tt-oca-harness/):
 #   ./scripts/docker-run.sh doc-html trm
 #   ./scripts/docker-run.sh doc-pdf trm
 #

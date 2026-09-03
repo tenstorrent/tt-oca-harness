@@ -159,7 +159,7 @@ All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
-That one image also carries the SEP virtual platform's toolchain (g++, cmake, Boost,
+That one image also carries the OCAH virtual platform's toolchain (g++, cmake, Boost,
 OpenSSL, the runner's Python), so `make -C virtual_platform vp VP_CONTAINER=1` builds and
 runs `sep-vp` in it. The `vp-*` subcommands are aliases onto the same image.
 

@@ -1,6 +1,6 @@
 # OCAH Virtual Platform
 
-The integrated SEP virtual platform: the [`tt-oca-harness-model`](https://github.com/tenstorrent/tt-oca-harness-model)
+The integrated OCAH virtual platform: the [`tt-oca-harness-model`](https://github.com/tenstorrent/tt-oca-harness-model)
 SystemC simulator as a submodule, a Makefile that builds its `sep-vp` executable (and the
 SystemC/Boost/OpenSSL/CCI dependencies it needs), and the `sepvp` Python runner + pytest
 harness for running SEP firmware — including the production boot ROM from
