@@ -1,5 +1,5 @@
 # =============================================================================
-# SEP Virtual Platform build (CI-aligned)
+# OCAH Virtual Platform build (CI-aligned)
 #
 # Mirrors tt-oca-harness-model/.github/workflows/ci-rhel8.yml: resolves or builds the
 # SystemC, Boost, OpenSSL, and CCI dependencies (system installs are used when
@@ -40,7 +40,7 @@ VP_ENV_TAG ?= $(if $(or $(wildcard /run/.containerenv /.dockerenv),$(OCAH_IN_CON
 VP_TAG_SUFFIX := $(if $(VP_ENV_TAG),-$(VP_ENV_TAG),)
 
 # VP_CONTAINER=1 (opt-in; native stays the default): run the requested goals
-# inside the ocah-vp-toolchain image via scripts/docker-run.sh vp-run — for
+# inside the ocah-toolchain image via scripts/docker-run.sh vp-run — for
 # hosts whose only capability is running containers. The container-built
 # sep-vp links the container's glibc and must also RUN in the container, which
 # this forwarding covers for vp-test/boot-run/fw-run/smoke too.
@@ -62,7 +62,7 @@ _FWD_GOALS := $(or $(MAKECMDGOALS),help)
 _FWD_FIRST := $(firstword $(_FWD_GOALS))
 .PHONY: $(_FWD_GOALS)
 $(_FWD_FIRST):
-	@echo "[VP] VP_CONTAINER=1: running '$(_FWD_GOALS)' in the ocah-vp-toolchain container..."
+	@echo "[VP] VP_CONTAINER=1: running '$(_FWD_GOALS)' in the ocah-toolchain container..."
 	"$(DOCKER_RUN)" vp-run make -C "$(VP_DIR)" $(_FWD_GOALS) \
 	  VP_ENV_TAG=ctr VP_CONTAINER=0 PYTHON=/usr/bin/python3 \
 	  $(if $(PYTEST_ARGS),PYTEST_ARGS="$(PYTEST_ARGS)") \
@@ -292,7 +292,7 @@ DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 # Help
 # =============================================================================
 help:
-	@echo "SEP Virtual Platform build (mirrors tt-oca-harness-model CI)"
+	@echo "OCAH Virtual Platform build (mirrors tt-oca-harness-model CI)"
 	@echo ""
 	@echo "Primary targets:"
 	@echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"
@@ -320,7 +320,7 @@ help:
 	@echo ""
 	@echo "Key variables (override on the command line):"
 	@echo "  CXX=$(CXX)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
-	@echo "  VP_CONTAINER=1 (build AND run in the ocah-vp-toolchain container — no native"
+	@echo "  VP_CONTAINER=1 (build AND run in the ocah-toolchain container — no native"
 	@echo "    toolchain needed; artifacts land in local-ctr/ and vp/build-ctr)"
 	@echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
 	@echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
