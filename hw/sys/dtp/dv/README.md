@@ -22,7 +22,7 @@ Tests inherit `dtp_base_test` (env build + clock/reset + `start_seq` helper);
 sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test has
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
-- `docs/` — public verification plan, TB architecture, register/coverage notes.
+- `docs/` — public verification plan, TB architecture, and functional-coverage plan. The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
 - `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, shared by the cocotb and SV-UVM flows) and `dtp_tb_if`.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
@@ -41,15 +41,35 @@ protocol BFMs behind a stable API:
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
-| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM) / DUT-local `DtpFlatAxiLiteMaster` (cocotb) | The SV-UVM flow drives the CSR port through the shared VIP master (channel-skew and RREADY-hold operations included); the cocotb flattened-fixture master stays local pending the same migration. |
+| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM / `OcahAxiLiteMasterAgent`, cocotb) | Both flows drive the CSR port through the shared VIP master; the channel-skew, RREADY-hold, and partial-strobe operations live on its sequence APIs. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
-| STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
+| STAP / 3DCR | DUT-local `DtpStap3dcrModel` over **`ocah_jtag_vip`** slave devices | Composed TAP_3DCR chain model (PTAP 3DCR, per-STAP SIB/3DCR, network-wide IR scans); the STAP host ports loop back by default, and the STAP-selection scenarios splice a shared `ocah_jtag_vip` reactive TAP behind every port (see "Downstream STAP TAPs"). |
 | CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCH routing policy; promote only after parameterization and independent reuse. |
 
 The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
+
+### Downstream STAP TAPs
+
+Each STAP host port (`jtag_stap_{io,smc,sep,extra0}_host_*`) exposes three TB
+signals: `jtag_stap_<x>_tdo` (the host TDO, i.e. the downstream TAP's TDI),
+`jtag_stap_<x>_tdi` (the downstream TAP's TDO back into the host TDI), and
+`jtag_stap_<x>_ds_en`. With `ds_en=0` (the default for every scenario) the
+port's TDI is its own TDO: the wire loopback. With `ds_en=1` the bench splices
+a reactive `ocah_jtag_vip` slave device behind the port (cocotb:
+`env/dtp_stap_ds_agent.py`; SV-UVM: four `ocah_jtag_slave_agent`s in
+`dtp_env`), one IEEE 1149.1 TAP per port with a 5-bit IR, a distinct IDCODE,
+and one writable `DS_TDR` of a distinct width. The four
+`dtp_3dcr_stap_sel_*_test` scenarios attach all four ports (test attribute
+`stap_ds_attach` / `stap_ds_attach_mask()`) and prove selection, gating,
+isolation, and recovery end to end: the downstream IDCODE and a written
+`DS_TDR` read back through the selected STAP, the register stays frozen while
+the port is gated (the downstream TAP parks in Test-Logic-Reset), and recovery
+is checked against real downstream state. Once a STAP is selected every scan
+is composed over the full network, IR scans included, because the PTAP routes
+its instruction shift-out into the STAP chain.
 
 ## Simulation defines
 
@@ -163,17 +183,27 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
 Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
 with the bare `+define+UVM` (set by the `[frameworks.uvm]` overlay) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
-mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
-shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),
-`uvm/seq_lib/dtp_seq_lib_pkg.sv` (JTAG base sequence + scenarios, issuing
-`ocah_jtag_item`s on the agent sequencer), and `uvm/tests/dtp_tests.sv`
-(non-reusable tests, `include`d by tb_top). The pin-level JTAG interface and
+realizes the same component tree as the cocotb side with identical
+basenames, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
+`uvm/env/dtp_env_pkg.sv` (DUT types and codecs, `dtp_test_cfg` and the
+derived `dtp_env_cfg`, `dtp_virtual_sequencer`, the reference models, the
+always-on `dtp_scoreboard`, the `dtp_tap_fsm_checker` and
+`dtp_scan_window_monitor` subscribers, and `dtp_env`, which composes the
+shared `ocah_jtag_vip` and `ocah_axi_vip` SV-UVM environments and agents),
+`uvm/seq_lib/dtp_seq_lib_pkg.sv` (reusable operation sequences
+`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq` on the
+VIP sequence APIs, and the scenario virtual sequences on
+`dtp_base_test_seq`), and `uvm/tests/dtp_tests.sv` (thin tests on
+`dtp_base_test`, `include`d by tb_top). The pin-level JTAG interface and
 agent are the shared `hw/common/dv/vip/ocah_jtag_vip/` `interface/` and
-`uvm/` collateral; DTP-local resets/observables ride `tb/dtp_tb_if.sv`. The UVM library comes from the
-simulator (`-ntb_opts uvm`). `dtp_sanity_test` carries the full VPLAN 0.1
-semantics: deterministic 32-edge TAP FSM closure with an IEEE 1149.1
-reference model, BYPASS 1-TCK TDI-to-TDO latency, and clean scan-path
-returns, plus randomized TMS stress walks reproducible from `--seed`.
+`uvm/` collateral; DTP-local resets, observables, and the harness clock
+period ride `tb/dtp_tb_if.sv`. The test cfg randomizes the system-clock and
+TCK periods from `--seed` exactly as the cocotb env cfg does. The UVM
+library comes from the simulator (`-ntb_opts uvm`). `dtp_sanity_test`
+carries the full VPLAN 0.1 semantics: deterministic 32-edge TAP FSM closure
+with an IEEE 1149.1 reference model, BYPASS 1-TCK TDI-to-TDO latency, and
+clean scan-path returns, plus randomized TMS stress walks reproducible from
+`--seed`.
 
 The cocotb tests use deterministic random scenarios derived from `RANDOM_SEED`.
 Every looped scenario runs at least 16 passes by default
@@ -223,18 +253,27 @@ binding map carries both, and the same `--items` name selects either flow.
 To port a cocotb scenario:
 
 1. **Sequence** — add `uvm/seq_lib/<name>_seq.svh` mirroring the cocotb
-   `seq_lib/<name>_seq.py` semantics on the shared VIP stimulus API. Extend
-   `dtp_jtag_cmd_lib_seq` for instruction-family scenarios (per-pass family
-   evidence + scan-builder cross-checks) or `dtp_jtag2axi_base_test_seq` for
-   bridge scenarios (single/series ops, responder backdoor, error arming).
-   Start `body()` with `seed_scenario_rng()` so every pass replays from
-   `--seed`. Add the `` `include `` to `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
+   `seq_lib/<name>_seq.py` semantics as a virtual sequence on the family
+   layer that matches the scenario: `dtp_jtag_base_test_seq` for
+   instruction-family scenarios (per-pass family evidence + scan-builder
+   cross-checks), `dtp_jtag2axi_base_test_seq` for bridge scenarios
+   (single/series operations, responder backdoor, error arming),
+   `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, or
+   `dtp_xtrig_base_test_seq`. The scenario starts the reusable operations
+   (`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq`)
+   through the base wrappers and never a VIP driver or interface; a missing
+   operation becomes a new `_seq` on the VIP sequence API first. Start
+   `body()` with `seed_scenario_rng()` so every pass replays from `--seed`,
+   and read knobs from `test_cfg`. Add the `` `include `` to
+   `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
 2. **Test** — add `uvm/tests/<name>.svh` (file = class = scenario name)
    extending `dtp_base_test`: override `create_scenario_seq()` and the
-   loop-count plusarg name hooks, arm the checker evidence the scenario
-   owns (required `CHK-*` IDs; `jtag_require_checks` /
-   `cfg.require_checks`), and plumb scenario handles in
-   `plumb_scenario_seq()`. Add the `` `include `` to `uvm/tests/dtp_tests.sv`.
+   loop-count knob hooks (`specific_loops_knob`, `group_loops_knob`), declare
+   the scoreboard features and the required `CHK-*` IDs the scenario owns in
+   `configure_test_cfg()` (`cfg.require_feature`, `cfg.require_jtag_ids`,
+   `cfg.require_axi_ids`), and plumb scenario evidence handles in
+   `plumb_scenario_seq()` after `super`. Add the `` `include `` to
+   `uvm/tests/dtp_tests.sv`.
 3. **Testlist** — change the scenario's entry to
    `module = { cocotb = "<name>", uvm = "<name>" }`; the `uvm` value drives
    `+UVM_TESTNAME`.
@@ -290,7 +329,12 @@ An overlay is three adopter-owned files, kept outside this repository
    observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
    2-bit ID). The stock scenario, evidence arming, and looped runner are
    inherited unchanged, so the in-repo `CHK-*` checkers and the vendor
-   monitor run side by side on the same traffic.
+   monitor run side by side on the same traffic. Select the overlay class
+   per run with `--plusarg +UVM_TESTNAME=<overlay class>` on the stock
+   `--items` name: the runner emits the testlist-mapped test name only when
+   none is supplied, and a `+uvm_set_type_override` cannot swap the test
+   itself because the simulator-shipped UVM library applies command-line
+   factory overrides only after `run_test()` has created the test.
 3. **Vendor package compile unit** — the vendor library analyzed into the
    same work library before `dtp_uvm_compile.f`, then both tops elaborated
    (`dtp_uvm_top` plus the wiring top).

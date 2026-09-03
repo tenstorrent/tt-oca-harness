@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 // Testbench wrapper for entropy_source using APB interface
 module tb_entropy_top;
@@ -13,7 +13,7 @@ module tb_entropy_top;
   apb_intf #(
     .ADDR_WIDTH(12),
     .DATA_WIDTH(32)
-  ) apb();
+  ) apb ();
 
   // Other DUT IO
   logic rosc_sample_clk;
@@ -24,7 +24,7 @@ module tb_entropy_top;
 
   // Optional RO jitter model configuration and outputs (exposed to cocotb)
   // 12-channel RO model to match DUT
-  ro_cfg_if #(.N(N_RO)) ro_cfg();
+  ro_cfg_if #(.N(N_RO)) ro_cfg ();
   logic [N_RO-1:0] ro_bits;
   logic [N_RO-1:0] ro_vlds;
   // RO model injection control (exposed to cocotb)
@@ -33,7 +33,7 @@ module tb_entropy_top;
   // NOTE: Power-on default below; actual runtime default from test_config.py (ROConfig.inject_model = 1)
   logic ro_inject_enable = 1'b1;  // Power-on fallback (avoids X propagation)
   // Decorrelator configuration (exposed to cocotb)
-  decor_cfg_if decor_cfg();
+  decor_cfg_if decor_cfg ();
   // Decorrelator outputs (for reference model)
   logic [N_RO-1:0][7:0] entropy_bytes;
   logic                 entropy_bytes_vld;
@@ -53,14 +53,16 @@ module tb_entropy_top;
   genvar gi;
   generate
     for (gi = 0; gi < N_RO; gi++) begin : g_flat_bytes
-      assign entropy_bytes_flat[gi*8 +: 8] = entropy_bytes[gi];
+      assign entropy_bytes_flat[gi*8+:8] = entropy_bytes[gi];
     end
   endgenerate
 
   // RO jitter model array - 12 channels to match DUT
   // Enable is connected directly to DUT's ring_osc_enable signal,
   // so the model automatically follows DUT register state
-  RO_Jitter_Array #(.N(N_RO)) u_ro_model (
+  RO_Jitter_Array #(
+    .N(N_RO)
+  ) u_ro_model (
     .clk_i   (apb.pclk),
     .rstn_i  (apb.presetn),  // Use system reset to properly initialize counters
     .enable_i(dut.reg_out.RING_OSC_ENABLE.ENABLE.value),  // Auto-sync with DUT enable state
@@ -74,7 +76,10 @@ module tb_entropy_top;
   //       It is NOT the actual RTL design.
   // Synchronized with RTL clock dividers (uses lane 0, verified all lanes match)
   // Sampling timing determined entirely by probing RTL divider, no fixed period parameter
-  Serial_Decorrelator_RefModel #(.N(N_RO), .DEPTH(29)) u_decorrelator_refmodel (
+  Serial_Decorrelator_RefModel #(
+    .N(N_RO),
+    .DEPTH(29)
+  ) u_decorrelator_refmodel (
     .clk_i (apb.pclk),
     .rstn_i(apb.presetn),
     .bit_i (ro_bits),
@@ -111,7 +116,7 @@ module tb_entropy_top;
   // Provides golden data for verifying DUT's entropy_stream output
 
   // Compressor configuration interface (exposed to cocotb)
-  compressor_cfg_if compressor_cfg();
+  compressor_cfg_if compressor_cfg ();
 
   // Compressor outputs
   logic [31:0] compressed_word;
@@ -219,8 +224,8 @@ module tb_entropy_top;
             dut.reg_out.RING_OSC_ENABLE.ENABLE.value[gi] &&
             dut.reg_out.RING_OSC_ENABLE.ENABLE.value[0]) begin
           if (rtl_clk_dividers[gi] != rtl_clk_dividers[0]) begin
-            $warning("[TB] Clock divider mismatch: lane[%0d]=0x%02X, lane[0]=0x%02X",
-                     gi, rtl_clk_dividers[gi], rtl_clk_dividers[0]);
+            $warning("[TB] Clock divider mismatch: lane[%0d]=0x%02X, lane[0]=0x%02X", gi,
+                     rtl_clk_dividers[gi], rtl_clk_dividers[0]);
           end
         end
       end
@@ -316,7 +321,7 @@ module tb_entropy_top;
   always @(*) begin
     if (ro_cfg.word32_enable) begin
       // Force health test input with 32-bit word from RO model
-      force dut.htst.entropy_i       = ro_cfg.word32_data;
+      force dut.htst.entropy_i = ro_cfg.word32_data;
       force dut.htst.entropy_valid_i = ro_cfg.word32_valid;
     end else begin
       // Release force to allow normal operation
@@ -338,26 +343,26 @@ module tb_entropy_top;
   end
 
 `ifdef FSDB_DUMP
-// FSDB waveform dump (enabled via +define+FSDB_DUMP)
-// FSDB file location can be overridden with FSDB_FILE plusarg
-initial begin
-  string fsdb_file;
-  if (!$value$plusargs("FSDB_FILE=%s", fsdb_file)) begin
-    fsdb_file = "sim/tb_entropy_top.fsdb";
+  // FSDB waveform dump (enabled via +define+FSDB_DUMP)
+  // FSDB file location can be overridden with FSDB_FILE plusarg
+  initial begin
+    string fsdb_file;
+    if (!$value$plusargs("FSDB_FILE=%s", fsdb_file)) begin
+      fsdb_file = "sim/tb_entropy_top.fsdb";
+    end
+    $fsdbDumpfile(fsdb_file);
+    $fsdbDumpvars(0, tb_entropy_top);
   end
-  $fsdbDumpfile(fsdb_file);
-  $fsdbDumpvars(0, tb_entropy_top);
-end
 `elsif VCD_DUMP
-// Optional VCD dump fallback
-initial begin
-  string vcd_file;
-  if (!$value$plusargs("VCD_FILE=%s", vcd_file)) begin
-    vcd_file = "sim/tb_entropy_top.vcd";
+  // Optional VCD dump fallback
+  initial begin
+    string vcd_file;
+    if (!$value$plusargs("VCD_FILE=%s", vcd_file)) begin
+      vcd_file = "sim/tb_entropy_top.vcd";
+    end
+    $dumpfile(vcd_file);
+    $dumpvars(0, tb_entropy_top);
   end
-  $dumpfile(vcd_file);
-  $dumpvars(0, tb_entropy_top);
-end
 `endif
 
 

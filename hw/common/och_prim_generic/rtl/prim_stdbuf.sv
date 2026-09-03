@@ -6,10 +6,10 @@
 //
 //--------------------------------------------------
 module prim_stdbuf #(
-    parameter bit DONT_TOUCH = 1
+  parameter bit DONT_TOUCH = 1
 ) (
-    input  i_A,
-    output o_Y
+  input  i_A,
+  output o_Y
 );
 
   assign o_Y = i_A;

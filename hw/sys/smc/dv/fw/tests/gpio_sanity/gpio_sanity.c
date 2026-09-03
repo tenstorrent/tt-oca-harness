@@ -334,7 +334,7 @@ void test_write_filter(void) {
         read_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
 
     if (read_data_unchanged ==
-        gpio_intf_1.w) { // if they are equal then the write occured and the filter did not work
+        gpio_intf_1.w) { // if they are equal then the write occurred and the filter did not work
         write_scratch(2, gpio_intf_1.w);
         write_scratch(3, read_data_unchanged);
         fail_gpio(0xBAD00153u, "write filter failed to block write");

@@ -561,10 +561,10 @@ class I3CController:
             self.h.log.error(f"private_write: transfer error, err_status={err_status}")
             return False, resp, rx_data
 
-        # Validate resp_data_length is 0 (all bytes have been recieved)
+        # Validate resp_data_length is 0 (all bytes have been received)
         if resp_data_length != 0:
             self.h.log.warning(
-                "private_write: response descriptor data_length is not 0. This means you have not recieved all bytes"
+                "private_write: response descriptor data_length is not 0. This means you have not received all bytes"
             )
 
         # Wait for target RX descriptor to be ready (RX_DESC_THLD_STAT)

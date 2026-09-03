@@ -218,7 +218,7 @@ def longest_path(funcs: dict[str, Func], root: str):
             cycles.append(name)
             return (0, [f"{name} (CYCLE)"])
         on_stack.add(name)
-        best_child = (0, [])
+        best_child: tuple[int, list[str]] = (0, [])
         for callee in f.calls:
             d, p = visit(callee)
             if d > best_child[0]:

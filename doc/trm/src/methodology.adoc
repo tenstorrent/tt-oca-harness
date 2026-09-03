@@ -507,7 +507,7 @@ Cryptographic components will have an additional private key block
 accessible via a 64-bit AXI4-lite link. Only the key manager will be
 able to write to individual component's key blocks. The separate key bus
 enables a design in which the CPU software never has direct access to
-the secret key data, whether intentionally or inadvertantly. As this is
+the secret key data, whether intentionally or inadvertently. As this is
 a write only interface, we will not implement the read address and read
 data channels. This will be done by tying off the applicable pins. for
 key distribution from the key manager to various cipher blocks and is
@@ -635,7 +635,7 @@ This section highlights a few of the most important aspects as well as a
 few deviations from the OpenTitan rules. If there is a conflict between
 the two, the specification here takes precedence.
 
-* Use four spaces for indentation, rather than two for new files
+* Use two spaces for indentation, matching the lowRISC style guide.
 * Use all upper case letters to name enums, constants (localparam), and
 parameters instead of UpperCamelCase.
 * As stated in the lowRISC guidelines, SystemVerilog Interfaces can be

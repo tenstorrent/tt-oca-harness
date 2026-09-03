@@ -29,13 +29,14 @@ from pathlib import Path
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "mailbox_plic_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "mailbox_plic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "mailbox_plic_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Arm + trigger + ISR + a 256-iteration quiet window; the run loop early-exits on
 # fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 2_000_000

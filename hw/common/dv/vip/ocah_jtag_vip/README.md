@@ -143,7 +143,7 @@ ocah_jtag_vip/
 | `ocah_jtag_slave_config` | Slave device configuration: IDCODE, IR width, register map (`add_reg`), `drive_tdo_oen` |
 | `ocah_jtag_slave_driver` | Reactive TAP device responder: capture/shift/update per IEEE 1149.1, Update-DR latches recorded in `updates` |
 | `ocah_jtag_slave_monitor` | Slave-side passive observer (same `ocah_jtag_event` stream as the master monitor) |
-| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count` |
+| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count`, `check_register` (a value still held, independent of the update history), `check_state` (the device's TAP controller state) |
 | `ocah_jtag_slave_agent` | Slave bundle (reactive: no sequencer — the external host supplies all stimulus) |
 
 `sva/ocah_jtag_sva.sv` is the pin-level protocol assertion module (X-hygiene,
@@ -189,8 +189,11 @@ through the `_slave_sequence` API. The protocol engine
 (`OcahJtagSlaveEngine`) holds no simulator handles and is validated
 standalone against the master-side reference model by
 `cocotb/examples/example_slave_selftest.py` (runnable with plain Python).
-No DUT integration consumes the slave side yet; DUT host-port testbenches
-(STAP/BSR loopback replacements) are the intended first consumers.
+The DTP testbench is the first consumer: its STAP-selection scenarios splice
+one slave device behind each `jtag_stap_*_host` port (cocotb
+`hw/sys/dtp/dv/cocotb/env/dtp_stap_ds_agent.py`, SV-UVM `dtp_env`) and judge
+selection, gating, and recovery through `check_last_update`,
+`check_update_count`, `check_register`, and `check_state`.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 

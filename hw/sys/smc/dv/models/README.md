@@ -7,6 +7,7 @@ Behavioral / reference / simulation stand-ins for `--dut smc`
 | Path | Role |
 |------|------|
 | `pll_wrap.sv` / `pvt_wrap.sv` / `regs/` | PeakRDL wraps pulled by Bender `smc_wrapper` |
+| `axil_okay_slv.sv` | AXI-Lite OKAY terminator behind `pll_wrap` / `pvt_wrap` (pulp `axi_err_slv` rejects `RESP_OKAY` on every simulator but Verilator) |
 
 SYS_OUT AXI slave is pulp `axi_sim_mem` in `tb/tb_top.sv` (SEP rom_boot style).
 On `--dut smc`, I3C DAT/DCT and DTP CSR boundaries are **not**

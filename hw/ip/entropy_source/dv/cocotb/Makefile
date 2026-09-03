@@ -51,12 +51,10 @@ DUT      = tb_entropy_source
 TOPLEVEL = $(DUT)
 MODULE   = test_entropy_source
 
-COMPILE_ARGS += +define+USE_PROTECTED_FILE
-COMPILE_ARGS += +define+MVLS_VOLTAGE_MODEL
 COMPILE_ARGS += -lca +rad -kdb +nospecify
 COMPILE_ARGS += -debug_access+r+w+cbk -debug_access+thread+class+cbkd+dmpt+dmpf+idents_db
-COMPILE_ARGS += -l vcs.log +define+NO_LIBCELL +define+DISABLE_ASSERT +define+USE_VERILOG_MEM_ARRAY
-COMPILE_ARGS += +define+VCS -assert svaext +define+LOADMEM +define+SOTP_SET_PWR_ON=50 +define+SOTP_PRG_CNT_CHECK=0
+COMPILE_ARGS += -l vcs.log
+COMPILE_ARGS += +define+VCS -assert svaext
 COMPILE_ARGS += +lint=TFIPC-L +lint=PCWM
 # TODO # COMPILE_ARGS += -f $(OCH_ROOT)/hw/comp/entropy_source/tb_vcs/entropy_source.f
 

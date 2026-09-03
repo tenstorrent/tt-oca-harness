@@ -22,8 +22,8 @@ paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
-  # External SMN AXI: pulp axi_sim_mem (SEP/SMC posture).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # External SMN AXI boundary terminator.
+  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_bender.f"
@@ -45,9 +45,8 @@ common_bender_targets = [
 # none of its files (padring/pad/SPI/DLL-PHY sim models, OTBN tracer) are in
 # the SMU SEP=0 `smu_uvm_top` hierarchy. Mirrors smu_wrapper_sim_cfg.toml.
 bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
-# Prepend SEP prim_assert shim so `include "prim_assert.sv" resolves to the
-# SYNTHESIS-gated ASSUME/COVER macros (upstream OT leaves ASSUME live under
-# VERILATOR and breaks on sha3pad `##[1:$]`).
+# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
+# (upstream OT leaves ASSUME live under VERILATOR and breaks on sha3pad `##[1:$]`).
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
@@ -147,10 +146,6 @@ args = [
 [targets.default]
 description = "SMU Phase-1 SEP=0 cocotb target — primary backend is VCS"
 build_dir = "hw/sys/smu/dv/build/cocotb"
-defines = [
-  # Match SMC OSS: no-op assertion/cover blocks that confuse commercial sims.
-  "SYNTHESIS",
-]
 
 [targets.default.tools.vcs]
 flags = [

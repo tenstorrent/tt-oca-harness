@@ -233,11 +233,13 @@ SmcEnv
 ....
 hw/sys/smc/dv/
 ├── cocotb/                 # PyUVM env / seq_lib / tests
+├── uvm/                    # SV-UVM env / seq_lib / tests (--framework uvm)
 ├── models/{mem,regs}/      # TB responders + pll/pvt PeakRDL wraps
-├── tb/                     # tb_top.sv, verilator_stubs/
+├── tb/                     # tb_top.sv (both shapes), smc_tb_signal_list.svh,
+│                           # smc_tb_if.sv, verilator_stubs/
 ├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
-├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper)
+├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper), both frameworks
 └── docs/                   # index.adoc, SMC_TB_ARCH, SMC_VPLAN, SMC_FCOV
 ....
 
@@ -247,6 +249,13 @@ hw/sys/smc/dv/
 `tb/tb_top.sv` instantiates `hw/top/smc_wrapper.sv` as `smc_uvm_top`. PLL, PVT,
 eFuse, pads and CPU memory live inside the wrapper. The TB still provides the
 SYS_OUT AXI responder, the I3C DAT/DCT responders, and the DTP CSR err_slv.
+
+The module has two shapes selected by the bare `UVM` define. Every TB signal
+is declared exactly once in `tb/smc_tb_signal_list.svh` and expanded by the
+`SMC_TB_IN*`/`SMC_TB_OUT` macros: without the define it is the pin-level ANSI
+port list below, which cocotb drives and samples; with it the same list
+becomes internal TB signals and the harness block at the end of the module
+takes over (see <<sv-uvm-realization>>).
 
 [cols=",",options="header",]
 |===
@@ -261,7 +270,8 @@ SYS_OUT AXI responder, the I3C DAT/DCT responders, and the DTP CSR err_slv.
 |GPIO |DV-only `tb_gpio_ext_drive_en/value`
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
-|Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i`, power-good, `rst_cold_ni`
+|Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i`, power-good, `rst_cold_ni`;
+the UVM harness generates the clocks and sequences the resets through `smc_tb_if`
 |Scan / test |Ties `test_mode_i` to `1'b0` and `scan_rst_n_i` to `1'b1`
 |===
 
@@ -325,11 +335,18 @@ and an optional byte-level golden (`expected_bytes` vs `observed_bytes`).
 |post-reset settle |`SmcEnvCfg.post_reset_settle_cycles` |500 cycles; the reset stretcher is 255
 |JTAG TCK / TRST |`SmcJtagTap` / `cocotbext.jtag` |CPU TAP domain
 |AXI completion bound |`SmcEnvCfg.axi_timeout_ns` |50,000 ns default
+|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` (SV-UVM) |`tb_top.sv` harness `always` blocks, periods from `smc_tb_if` |`smc_test_cfg` draws the three periods from the runner seed over the cocotb choice sets
+|power-good / `rst_cold_ni` / `rst_cool_ni` (SV-UVM) |`smc_base_test.bring_up()` through `smc_tb_if` |Same ladder as `_bring_up()`; the pad defaults are harness tie-offs
+|post-reset settle (SV-UVM) |`smc_test_cfg.post_reset_settle_cycles` |500 ref cycles
+|AXI completion bound (SV-UVM) |`smc_test_cfg.axi_timeout_cycles` |10,000 smc-clock cycles per handshake, the SEP_IN master driver's watchdog
 |===
 
 `_bring_up()` is the power-good plus cold-reset sequence: it drives idle-safe
 pad defaults (i2c/i3c/jtag/spi/telemetry/avsbus/octs), starts the three clocks,
 asserts power-good, releases `rst_cold_ni`, settles, then sets `cfg.reset_done`.
+The SV-UVM base test walks the same ladder in `bring_up()` through `smc_tb_if`
+once before the first scenario pass; the harness generates the clocks and ties
+the pad stimulus off at the same idle values (see <<sv-uvm-realization>>).
 
 [[stimulus-strategy]]
 === Stimulus Strategy
@@ -458,6 +475,9 @@ run_modes = ["smoke"]
 [cols=",,",options="header",]
 |===
 |Check Type |Component |Description
+|Scratch CSR readback (SV-UVM) |`smc_scratch_csr_ref_model` into `smc_scoreboard`, feature `scratch_csr` |Always on: the reference model rebuilds a strobed write shadow, cleared on cold reset, and publishes the expected value of every OKAY `SCRATCH_COLD*` read; the scoreboard pairs it with the SEP_IN monitor's observed read; a required feature with zero comparisons fails; `+SMC_CSR_SCOREBOARD_NEGATIVE` corrupts the prediction so the run must FAIL
+|Scenario evidence (SV-UVM) |`smc_base_test_seq` over `ocah_checker` |Named `CHK-*` lines with required IDs per scenario, finalized once per pass (`CHECKER_SUMMARY name=smc_csr`)
+|SEP_IN protocol (SV-UVM) |`ocah_axi_sva` in the harness |AXI4 rule checker on the flat `s_axi_*` nets, gated by `smc_tb_if.axi_sva_en`
 |SAMPLE idle / resolvable |`SmcScoreboard` |i2c/reset/clk/irq/gpio/axil items: no X/Z, type idle invariants
 |AXI response |`SmcScoreboard._check_sys_axi` |OKAY by default; `expected_resp` / `expected` when set
 |Negative-path AXI |`expect_error` via `csr_read_err_signature` |Fails on OKAY and on timeout
@@ -509,6 +529,94 @@ wrongly-OKAY blocked access fails structurally, not just in a sequence assert.
 golden==observed regression-locks; where a value is not RDL-traceable, label it
 a regression-lock with its real source.
 
+[[sv-uvm-realization]]
+=== SystemVerilog UVM Realization (`--framework uvm`)
+
+The SV-UVM realization runs through the same native runner: `smc_sim_cfg.toml`
+declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
+testlist; `build/uvm/` build tree), and `--dut smc --framework uvm` selects it
+on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
+carry both implementations in their testlist `module` binding map
+(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
+entry error at selection unless `--skip-unimplemented` is passed. The
+framework conventions and the bring-up walkthrough this realization follows
+are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
+reference bench is DTP.
+
+There is exactly ONE testbench top module: `smc_uvm_top` in `tb/tb_top.sv`,
+shared between both realizations. The bare `+define+UVM` (set by the native
+profile's `[frameworks.uvm]` overlay) switches its shape: without it the
+module exposes the cocotb pin port list; with it the ports become internal TB
+signals and an in-module harness adds the three clocks (periods from
+`smc_tb_if`), the shared AXI VIP interface instances on the SEP_IN ingress,
+the protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
+idle value `smc_base_test._bring_up` uses, the `uvm_config_db` publication of
+every virtual interface, and `run_test()`. The class library mirrors the
+cocotb conventions under `uvm/` with identical basenames, one class per file,
+on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
+
+[arabic]
+. `hw/common/dv/vip/ocah_lib/uvm/ocah_lib_pkg.sv` — the shared framework
+  bases every SMC class extends (test, env, sequence, sequencer, scoreboard,
+  the two cfg bases, knob and seed accessors, pattern helpers).
+. `hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv` — the shared
+  SV-UVM AXI VIP (items, configs, master driver and sequence API, passive
+  monitor, agents, environments) with its interface, SVA, and coverage
+  collateral. The SEP_IN AXI4 ingress is the first driven interface: the
+  active `ocah_axi_master_env` issues the traffic and a monitor-only passive
+  `ocah_axi_env` feeds the SMC scoreboard.
+. `tb/smc_tb_if.sv` — the SMC-local TB interface: harness clock periods,
+  power-good and the cold/cool reset pins, the reset-unit outputs, the
+  fuse-sense / warm-domain release observables, the cold-reset assertion
+  counter, the SVA enable.
+. `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
+  windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
+  for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,
+  `smc_virtual_sequencer`, `smc_scratch_csr_ref_model`, `smc_scoreboard`, and
+  `smc_env`.
+. `uvm/seq_lib/smc_seq_lib_pkg.sv` — the reusable operation sequences
+  (`smc_axi_csr_write_seq`, `smc_axi_csr_read_seq`) and the scenario
+  virtual sequences on `smc_base_test_seq`.
+. `uvm/tests/` — thin test classes named exactly like the scenario;
+  `uvm/tests/smc_tests.sv` is the include manifest `include`d by `tb_top.sv`
+  under `ifdef UVM (`+UVM_TESTNAME` selects the class).
+
+Compile order is explicit and load-bearing: the library and VIP layers come
+from their manifests (`ocah_lib/uvm/sources.toml`,
+`ocah_axi_vip/uvm/sources.toml`, listed in
+`[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
+sources), then the TB collateral both flows compile (the SYS_OUT
+`axi_sim_mem` responder and `smc_cpu_mem_dv`), `smc_tb_if`, the generated SMC
+address map, `smc_env_pkg`, `smc_seq_lib_pkg`, and `tb_top.sv` last.
+
+The scoreboard is always on and compares only. Each feature has its own
+reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
+subscribes to the SEP_IN monitor stream, rebuilds a shadow of the
+`SCRATCH_COLD` and `SCRATCH_COLD_WARM` registers from the strobed writes it
+observes (zero after a cold reset), and publishes one expected item per OKAY
+scratch read on `expected_ap`; the scoreboard's `scratch_csr` feature pairs it
+in order with the observed read, and a test that requires the feature fails
+when it recorded no comparison. `+SMC_CSR_SCOREBOARD_NEGATIVE` corrupts the
+reference model's prediction so the run must FAIL, proving the mandatory
+scoreboard gates pass/fail end to end. Scenario
+sequences add named `CHK-*` evidence through the shared `ocah_checker`
+(`CHECKER_SUMMARY name=smc_csr`), finalized per pass with required IDs.
+
+Logical item names stay framework-neutral and match the VPLAN scenarios, and
+the UVM class name equals the scenario name (testlist
+`name = "smc_register_sanity_test"`,
+`module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }`),
+so `--items <name>` selects the same scenario in either realization. The
+first bound scenario is `smc_register_sanity_test` (TC_SMC_P0_006): SEP_IN
+idle-read, directed and seeded-random write/readback, and restore of
+`SCRATCH_COLD[0..1]` and `SCRATCH_COLD_WARM[0]` after the warm-domain
+release, with the non-vacuity count of real CSR accesses as evidence. Every looped UVM test runs at least 16
+scenario passes (`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed`
++ pass index, with the loop knobs `+SMC_<TEST>_LOOPS`, `+SMC_<GROUP>_LOOPS`,
+`+SMC_TEST_LOOPS`, and `+SMC_RANDOM_COUNT` resolved specific-first. `UVM TEST
+PASSED` is emitted only in the base test's `report_phase` when the global
+UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
+
 [[sec-2-running-tests]]
 === Build and Run
 
@@ -541,6 +649,13 @@ python3 $PY --dut smc --items all --tag smoke --stage sim
 python3 $PY --dut smc --items all --tag smoke --tool vcs --cov
 python3 $PY --dut smc --items all --stage sim --regress
 python3 $PY --dut smc --items all
+
+# SV-UVM realization (VCS; see <<sv-uvm-realization>>)
+python3 $PY --dut smc --framework uvm --build-only --skip-unimplemented
+python3 $PY --dut smc --framework uvm --items smc_register_sanity_test --seed 1
+python3 $PY --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 $PY --dut smc --framework uvm --items smc_register_sanity_test \
+  --plusarg +SMC_CSR_SCOREBOARD_NEGATIVE   # must FAIL
 ----
 
 [[full-smoke]]
@@ -639,9 +754,9 @@ test needs. The canonical set is cumulative:
 [cols=",,",options="header",]
 |======================================================================================================================================================================================
 |Tier |Goal |State at last sign-off
-|`TOP-6` |minimum CI smoke with real stimulus |all six implemented, Verilator PASS
-|`TOP-10` |high-value functional breadth |all ten have active CSR/precheck coverage and Verilator PASS; protocol-complete #8/#9/#10 still need VIP/responder work
-|`TOP-20` |minimal full-breadth target |all twenty have active CSR/precheck coverage and Verilator PASS; several are bounded unavailable/blocked-window checks until deeper infra lands
+|`TOP-6` |minimum CI smoke with real stimulus |live `canonical_top6` has five real-DUT members. `smc_i3c_to_fabric_test` is HCI_VERSION decode only and is not in this group
+|`TOP-10` |high-value functional breadth |live `canonical_top10` has eight members. Protocol-complete I3C/sideband still need VIP work
+|`TOP-20` |minimal full-breadth target |live `canonical_top20` has seventeen members. Several other paths stay bounded until deeper infra lands
 |======================================================================================================================================================================================
 
 Do not add a test to a `canonical_top*` group until it has active stimulus and at
@@ -780,7 +895,8 @@ tripped `axi_err_slv.gen_assert_atops_unsupported` because the `tb_top` request
 assigns never initialized the 6-bit `atop_t` field, so X propagated into the
 outbound filter's `axi_err_slv` — instantiated with `.ATOPs(1'b0)` — where the
 `assume` property `slv_req_i.aw_valid |-> slv_req_i.aw.atop == '0` fatal-fires.
-Verilator hid it via `+define+DISABLE_ASSERT`. Fix: drive `.aw.atop = '0` on
+Verilator did not fire it: concurrent SVA in that bind is withheld under
+`VERILATOR`. Fix: drive `.aw.atop = '0` on
 `sep_axi_in_req`, `sys_axi_in_req`, and `jtag_axi_in_req`. A one-time `--rebuild`
 is required for the change to take effect; afterwards `canonical_top20` reached
 20/20 on Xcelium.

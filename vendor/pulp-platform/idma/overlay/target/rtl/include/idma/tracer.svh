@@ -29,7 +29,7 @@
 
 // The tracer for the rw_axi iDMA
 `define IDMA_TRACER_RW_AXI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_rw_axi \
         automatic bit first_iter = 1; \
@@ -103,7 +103,7 @@
 
 // The tracer for the r_init_rw_axi iDMA
 `define IDMA_TRACER_R_INIT_RW_AXI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_init_rw_axi \
         automatic bit first_iter = 1; \
@@ -182,7 +182,7 @@
 
 // The tracer for the r_obi_w_axi iDMA
 `define IDMA_TRACER_R_OBI_W_AXI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_obi_w_axi \
         automatic bit first_iter = 1; \
@@ -257,7 +257,7 @@
 
 // The tracer for the r_axi_w_obi iDMA
 `define IDMA_TRACER_R_AXI_W_OBI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_axi_w_obi \
         automatic bit first_iter = 1; \
@@ -332,7 +332,7 @@
 
 // The tracer for the rw_axi_rw_axis iDMA
 `define IDMA_TRACER_RW_AXI_RW_AXIS(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_rw_axi_rw_axis \
         automatic bit first_iter = 1; \
@@ -412,7 +412,7 @@
 
 // The tracer for the r_axi_w_axis iDMA
 `define IDMA_TRACER_R_AXI_W_AXIS(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_axi_w_axis \
         automatic bit first_iter = 1; \
@@ -486,7 +486,7 @@
 
 // The tracer for the r_axis_w_axi iDMA
 `define IDMA_TRACER_R_AXIS_W_AXI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_axis_w_axi \
         automatic bit first_iter = 1; \
@@ -561,7 +561,7 @@
 
 // The tracer for the r_init_rw_obi iDMA
 `define IDMA_TRACER_R_INIT_RW_OBI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_init_rw_obi \
         automatic bit first_iter = 1; \
@@ -642,7 +642,7 @@
 
 // The tracer for the r_obi_rw_init_w_axi iDMA
 `define IDMA_TRACER_R_OBI_RW_INIT_W_AXI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_obi_rw_init_w_axi \
         automatic bit first_iter = 1; \
@@ -728,7 +728,7 @@
 
 // The tracer for the r_axi_rw_init_rw_obi iDMA
 `define IDMA_TRACER_R_AXI_RW_INIT_RW_OBI(__backend_inst, __out_f) \
-`ifndef SYNTHESYS \
+`ifndef SYNTHESIS \
 `ifndef VERILATOR \
     initial begin : inital_tracer_r_axi_rw_init_rw_obi \
         automatic bit first_iter = 1; \

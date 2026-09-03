@@ -383,59 +383,76 @@ localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_BASE_ADDR = 64'hC0039000;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_SIZE = 64'h2C0;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR = 64'hC003A000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_SIZE = 64'h500;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_BASE_ADDR = 64'hC003A000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_SIZE = 64'h6000;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_BASE_ADDR = 64'hC003A000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A000 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_SIZE = 64'h1000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_STRIDE = 64'h1000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_TOTAL_SIZE = 64'h6000;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003A000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A000 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_SIZE = 64'h6C;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_BASE_ADDR = 64'hC003B000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A080 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_SIZE = 64'h34;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_BASE_ADDR = 64'hC003B000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A100 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SIZE = 64'h2A4;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003B000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A100 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_SIZE = 64'h6C;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_BASE_ADDR = 64'hC003C000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A180 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_SIZE = 64'h44;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_BASE_ADDR = 64'hC003C000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A200 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_SIZE = 64'h94;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003C000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A300 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SIZE = 64'h94;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_BASE_ADDR = 64'hC003D000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A398 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_SIZE = 64'h8;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_BASE_ADDR = 64'hC003D000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DAT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A400 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DAT_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DAT_SIZE = 64'h400;
 
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003D000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_BASE_ADDR = 64'hC003E000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_BASE_ADDR = 64'hC003E000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003E000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_BASE_ADDR = 64'hC003F000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_BASE_ADDR = 64'hC003F000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003F000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DCT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A800 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DCT_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DCT_SIZE = 64'h800;
 
 localparam longint unsigned SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR = 64'hC0040000;
 localparam longint unsigned SMC_TOP_SPM_ROM_MEMORY_SIZE = 64'h20000;
@@ -444,7 +461,7 @@ localparam longint unsigned SMC_TOP_SPM_MEMORY_BASE_ADDR = 64'hC0060000;
 localparam longint unsigned SMC_TOP_SPM_MEMORY_SIZE = 64'h100000;
 
 localparam longint unsigned SMC_TOP_SMC_CLA_BASE_ADDR = 64'hC0160000;
-localparam longint unsigned SMC_TOP_SMC_CLA_SIZE = 64'h8FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_SIZE = 64'h4000;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_BASE_ADDR = 64'hC0400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h400000;
@@ -1652,109 +1669,767 @@ function automatic longint unsigned SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADD
     return 64'hC00392A0 + (DUMMY_ROM_NULL_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_NUM = 64'h4;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGMUXSEL_BASE_ADDR = 64'hC0160198;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDFDCSR_BASE_ADDR = 64'hC01601A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_TIMESTAMP_BASE_ADDR = 64'hC0160200;
-localparam longint unsigned SMC_TOP_SMC_CLA_TIMESTAMPSYNC_BASE_ADDR = 64'hC0160208;
-localparam longint unsigned SMC_TOP_SMC_CLA_TIMESTAMPCONFIG_BASE_ADDR = 64'hC0160210;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTCONTROL_BASE_ADDR = 64'hC0161000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTIMPL_BASE_ADDR = 64'hC0161004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTINSTFEATURES_BASE_ADDR = 64'hC0161008;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGDEBUGTRACECFG_BASE_ADDR = 64'hC01611A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER0CFG_BASE_ADDR = 64'hC0163100;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER1CFG_BASE_ADDR = 64'hC0163108;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER2CFG_BASE_ADDR = 64'hC0163110;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER3CFG_BASE_ADDR = 64'hC0163118;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP0_BASE_ADDR = 64'hC0163120;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP1_BASE_ADDR = 64'hC0163128;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP0_BASE_ADDR = 64'hC0163130;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP1_BASE_ADDR = 64'hC0163138;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP0_BASE_ADDR = 64'hC0163140;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP1_BASE_ADDR = 64'hC0163148;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP0_BASE_ADDR = 64'hC0163150;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP1_BASE_ADDR = 64'hC0163158;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK0_BASE_ADDR = 64'hC0163160;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH0_BASE_ADDR = 64'hC0163168;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK1_BASE_ADDR = 64'hC0163170;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH1_BASE_ADDR = 64'hC0163178;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALEDGEDETECTCFG_BASE_ADDR = 64'hC0163180;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGEAPSTATUS_BASE_ADDR = 64'hC0163188;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACTRLSTATUS_BASE_ADDR = 64'hC0163190;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD0_BASE_ADDR = 64'hC0163198;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD1_BASE_ADDR = 64'hC01631A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD2_BASE_ADDR = 64'hC01631A8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONMASK_BASE_ADDR = 64'hC01631B0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONFROMVALUE_BASE_ADDR = 64'hC01631B8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONTOVALUE_BASE_ADDR = 64'hC01631C0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTMASK_BASE_ADDR = 64'hC01631C8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTVALUE_BASE_ADDR = 64'hC01631D0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGANYCHANGE_BASE_ADDR = 64'hC01631D8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0_BASE_ADDR = 64'hC01631E0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1_BASE_ADDR = 64'hC01631E8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0_BASE_ADDR = 64'hC01631F0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1_BASE_ADDR = 64'hC01631F8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0_BASE_ADDR = 64'hC0163200;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1_BASE_ADDR = 64'hC0163208;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0_BASE_ADDR = 64'hC0163210;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1_BASE_ADDR = 64'hC0163218;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMEMATCH_BASE_ADDR = 64'hC0163220;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK2_BASE_ADDR = 64'hC0163228;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH2_BASE_ADDR = 64'hC0163230;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK3_BASE_ADDR = 64'hC0163238;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH3_BASE_ADDR = 64'hC0163240;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP2_BASE_ADDR = 64'hC0163248;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP3_BASE_ADDR = 64'hC0163250;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP2_BASE_ADDR = 64'hC0163258;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP3_BASE_ADDR = 64'hC0163260;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP2_BASE_ADDR = 64'hC0163268;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP3_BASE_ADDR = 64'hC0163270;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP2_BASE_ADDR = 64'hC0163278;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP3_BASE_ADDR = 64'hC0163280;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2_BASE_ADDR = 64'hC0163288;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3_BASE_ADDR = 64'hC0163290;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2_BASE_ADDR = 64'hC0163298;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3_BASE_ADDR = 64'hC01632A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2_BASE_ADDR = 64'hC01632A8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3_BASE_ADDR = 64'hC01632B0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2_BASE_ADDR = 64'hC01632B8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3_BASE_ADDR = 64'hC01632C0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALDELAYMUXSEL_BASE_ADDR = 64'hC01632C8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMPSYNC_BASE_ADDR = 64'hC01632D0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLAXTRIGGERTIMESTRETCH_BASE_ADDR = 64'hC01632D8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CRSCRATCHPAD_BASE_ADDR = 64'hC01633F0;
-localparam longint unsigned SMC_TOP_SMC_CLA_SCRATCH_BASE_ADDR = 64'hC01633F8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELCONTROL_BASE_ADDR = 64'hC0164000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELIMPL_BASE_ADDR = 64'hC0164004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELDISINPUT_BASE_ADDR = 64'hC0164008;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMCONTROL_BASE_ADDR = 64'hC0165000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMIMPL_BASE_ADDR = 64'hC0165004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMSTARTLOW_BASE_ADDR = 64'hC0165010;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMSTARTHIGH_BASE_ADDR = 64'hC0165014;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMLIMITLOW_BASE_ADDR = 64'hC0165018;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMLIMITHIGH_BASE_ADDR = 64'hC016501C;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMWPLOW_BASE_ADDR = 64'hC0165020;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMWPHIGH_BASE_ADDR = 64'hC0165024;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMRPLOW_BASE_ADDR = 64'hC0165028;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMRPHIGH_BASE_ADDR = 64'hC016502C;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRRAMDATA_BASE_ADDR = 64'hC0165040;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRCUSTOMRAMSMEMLIMITLOW_BASE_ADDR = 64'hC0165E00;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMCONTROL_BASE_ADDR = 64'hC0166000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMIMPL_BASE_ADDR = 64'hC0166004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMSTARTLOW_BASE_ADDR = 64'hC0166010;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMSTARTHIGH_BASE_ADDR = 64'hC0166014;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMLIMITLOW_BASE_ADDR = 64'hC0166018;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMLIMITHIGH_BASE_ADDR = 64'hC016601C;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMWPLOW_BASE_ADDR = 64'hC0166020;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMWPHIGH_BASE_ADDR = 64'hC0166024;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMRPLOW_BASE_ADDR = 64'hC0166028;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMRPHIGH_BASE_ADDR = 64'hC016602C;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMDATA_BASE_ADDR = 64'hC0166040;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRCLUSTERFUSECFGLOW_BASE_ADDR = 64'hC0167FF8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRCLUSTERFUSECFGHI_BASE_ADDR = 64'hC0167FFC;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRSCRATCHLO_BASE_ADDR = 64'hC0168FE8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRSCRATCHHI_BASE_ADDR = 64'hC0168FEC;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRSCRATCHPADLO_BASE_ADDR = 64'hC0168FF0;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRSCRATCHPADHI_BASE_ADDR = 64'hC0168FF4;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A000 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A004 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_CONTROLLER_DEVICE_ADDR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A008 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_CONTROLLER_DEVICE_ADDR_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CAPABILITIES_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A00C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CAPABILITIES_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_RESET_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A010 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_RESET_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_PRESENT_STATE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A014 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_PRESENT_STATE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A020 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A024 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_SIGNAL_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A028 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_SIGNAL_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A02C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DAT_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A030 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DAT_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DCT_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A034 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DCT_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_RING_HEADERS_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A038 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_RING_HEADERS_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_PIO_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A03C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_PIO_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_EXT_CAPS_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A040 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_EXT_CAPS_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INT_CTRL_CMDS_EN_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A04C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_INT_CTRL_CMDS_EN_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_NOTIFY_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A058 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_NOTIFY_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_DATA_ABORT_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A05C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_DATA_ABORT_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_LO_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A060 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_LO_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_HI_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A064 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_HI_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_SG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A068 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_SG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A080 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A084 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_TX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A088 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_TX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A088 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_IBI_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A08C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_IBI_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A090 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_DATA_BUFFER_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A094 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_DATA_BUFFER_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A098 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_ALT_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A09C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_ALT_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A0A0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A0A4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A0A8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A0AC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A0B0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A100 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A104 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A108 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A10C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A110 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A114 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A118 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A11C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A120 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A124 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A128 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A12C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A130 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A134 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A138 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A13C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A140 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_HW_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A144 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_HW_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A148 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A14C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A150 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A154 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A158 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A15C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A160 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A164 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A168 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A180 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A184 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A188 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A18C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A190 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A194 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A198 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A19C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1A0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1A4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1A8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1AC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1B0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1B4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1B8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1BC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A1C0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A200 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A204 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A208 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RESET_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A20C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RESET_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A210 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DESC_QUEUE_DEPTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A214 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DESC_QUEUE_DEPTH_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_QUEUE_DEPTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A218 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_QUEUE_DEPTH_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_DEPTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A21C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_DEPTH_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A220 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A224 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A228 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_FORCE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A22C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A230 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A234 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A238 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A23C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE0_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A240 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE1_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A244 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE2_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A248 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE3_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE4_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A24C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE4_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE5_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A250 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE5_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A254 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A258 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A25C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A260 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A264 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A268 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A26C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DESC_QUEUE_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A270 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DESC_QUEUE_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A274 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DESC_QUEUE_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A278 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DESC_QUEUE_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A27C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A280 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_PORT_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A284 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A288 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A28C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A290 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A300 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A304 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A308 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_CFG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A30C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_CFG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A310 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A314 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A318 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_CONF_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A31C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_CONF_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A320 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A324 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A328 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_R_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A32C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_R_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_F_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A330 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_F_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A334 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A338 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_DAT_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A33C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_DAT_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A340 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A344 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A348 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A34C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A350 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A354 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_OD_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A358 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A35C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A360 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A364 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A368 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A36C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A370 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A374 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_DS_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A378 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_DS_OD_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A37C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A380 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_AVAL_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A384 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_AVAL_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_IDLE_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A388 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_IDLE_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A38C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A390 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A398 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_CONTROLLER_CONFIG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A39C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_CONTROLLER_CONFIG_NUM = 64'h6;
+function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC003A3A0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_NUM = 64'h6;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMCONTROL_BASE_ADDR = 64'hC0160000;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMIMPL_BASE_ADDR = 64'hC0160004;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMSTARTLOW_BASE_ADDR = 64'hC0160010;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMSTARTHIGH_BASE_ADDR = 64'hC0160014;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMLIMITLOW_BASE_ADDR = 64'hC0160018;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMLIMITHIGH_BASE_ADDR = 64'hC016001C;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMWPLOW_BASE_ADDR = 64'hC0160020;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMWPHIGH_BASE_ADDR = 64'hC0160024;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMRPLOW_BASE_ADDR = 64'hC0160028;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMRPHIGH_BASE_ADDR = 64'hC016002C;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMDATA_BASE_ADDR = 64'hC0160040;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSINKSCRATCHLO_BASE_ADDR = 64'hC0160FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSINKSCRATCHHI_BASE_ADDR = 64'hC0160FFC;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELCONTROL_BASE_ADDR = 64'hC0161000;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELIMPL_BASE_ADDR = 64'hC0161004;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELDISINPUT_BASE_ADDR = 64'hC0161008;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELSCRATCHLO_BASE_ADDR = 64'hC0161FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELSCRATCHHI_BASE_ADDR = 64'hC0161FFC;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER0CFG_BASE_ADDR = 64'hC0162100;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER1CFG_BASE_ADDR = 64'hC0162108;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER2CFG_BASE_ADDR = 64'hC0162110;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER3CFG_BASE_ADDR = 64'hC0162118;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP0_BASE_ADDR = 64'hC0162120;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP1_BASE_ADDR = 64'hC0162128;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP0_BASE_ADDR = 64'hC0162130;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP1_BASE_ADDR = 64'hC0162138;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP0_BASE_ADDR = 64'hC0162140;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP1_BASE_ADDR = 64'hC0162148;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP0_BASE_ADDR = 64'hC0162150;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP1_BASE_ADDR = 64'hC0162158;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK0LO_BASE_ADDR = 64'hC0162160;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH0LO_BASE_ADDR = 64'hC0162168;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK1LO_BASE_ADDR = 64'hC0162170;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH1LO_BASE_ADDR = 64'hC0162178;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALEDGEDETECTCFG_BASE_ADDR = 64'hC0162180;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGEAPSTATUS_BASE_ADDR = 64'hC0162188;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACTRLSTATUS_BASE_ADDR = 64'hC0162190;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGMUXSELLO_BASE_ADDR = 64'hC0162198;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD1_BASE_ADDR = 64'hC01621A0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD2_BASE_ADDR = 64'hC01621A8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONMASKLO_BASE_ADDR = 64'hC01621B0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONFROMVALUELO_BASE_ADDR = 64'hC01621B8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONTOVALUELO_BASE_ADDR = 64'hC01621C0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTMASKLO_BASE_ADDR = 64'hC01621C8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTVALUE_BASE_ADDR = 64'hC01621D0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGANYCHANGELO_BASE_ADDR = 64'hC01621D8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0LO_BASE_ADDR = 64'hC01621E0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1LO_BASE_ADDR = 64'hC01621E8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0LO_BASE_ADDR = 64'hC01621F0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1LO_BASE_ADDR = 64'hC01621F8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0LO_BASE_ADDR = 64'hC0162200;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1LO_BASE_ADDR = 64'hC0162208;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0LO_BASE_ADDR = 64'hC0162210;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1LO_BASE_ADDR = 64'hC0162218;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMEMATCH_BASE_ADDR = 64'hC0162220;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK2LO_BASE_ADDR = 64'hC0162228;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH2LO_BASE_ADDR = 64'hC0162230;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK3LO_BASE_ADDR = 64'hC0162238;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH3LO_BASE_ADDR = 64'hC0162240;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP2_BASE_ADDR = 64'hC0162248;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP3_BASE_ADDR = 64'hC0162250;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP2_BASE_ADDR = 64'hC0162258;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP3_BASE_ADDR = 64'hC0162260;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP2_BASE_ADDR = 64'hC0162268;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP3_BASE_ADDR = 64'hC0162270;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP2_BASE_ADDR = 64'hC0162278;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP3_BASE_ADDR = 64'hC0162280;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2LO_BASE_ADDR = 64'hC0162288;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3LO_BASE_ADDR = 64'hC0162290;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2LO_BASE_ADDR = 64'hC0162298;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3LO_BASE_ADDR = 64'hC01622A0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2LO_BASE_ADDR = 64'hC01622A8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3LO_BASE_ADDR = 64'hC01622B0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2LO_BASE_ADDR = 64'hC01622B8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3LO_BASE_ADDR = 64'hC01622C0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALDELAYMUXSEL_BASE_ADDR = 64'hC01622C8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLAXTRIGGERTIMESTRETCH_BASE_ADDR = 64'hC01622D8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMP_BASE_ADDR = 64'hC01622F0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMPSYNC_BASE_ADDR = 64'hC01622F8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMPCONFIG_BASE_ADDR = 64'hC0162300;
+localparam longint unsigned SMC_TOP_SMC_CLA_CRSCRATCHPAD_BASE_ADDR = 64'hC01623F0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK0HI_BASE_ADDR = 64'hC0162400;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH0HI_BASE_ADDR = 64'hC0162408;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK1HI_BASE_ADDR = 64'hC0162410;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH1HI_BASE_ADDR = 64'hC0162418;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK2HI_BASE_ADDR = 64'hC0162420;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH2HI_BASE_ADDR = 64'hC0162428;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK3HI_BASE_ADDR = 64'hC0162430;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH3HI_BASE_ADDR = 64'hC0162438;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGMUXSELHI_BASE_ADDR = 64'hC0162440;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONMASKHI_BASE_ADDR = 64'hC0162448;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONFROMVALUEHI_BASE_ADDR = 64'hC0162450;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONTOVALUEHI_BASE_ADDR = 64'hC0162458;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTMASKHI_BASE_ADDR = 64'hC0162460;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGANYCHANGEHI_BASE_ADDR = 64'hC0162468;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0HI_BASE_ADDR = 64'hC0162470;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1HI_BASE_ADDR = 64'hC0162478;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0HI_BASE_ADDR = 64'hC0162480;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1HI_BASE_ADDR = 64'hC0162488;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0HI_BASE_ADDR = 64'hC0162490;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1HI_BASE_ADDR = 64'hC0162498;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0HI_BASE_ADDR = 64'hC01624A0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1HI_BASE_ADDR = 64'hC01624A8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2HI_BASE_ADDR = 64'hC01624B0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3HI_BASE_ADDR = 64'hC01624B8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2HI_BASE_ADDR = 64'hC01624C0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3HI_BASE_ADDR = 64'hC01624C8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2HI_BASE_ADDR = 64'hC01624D0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3HI_BASE_ADDR = 64'hC01624D8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2HI_BASE_ADDR = 64'hC01624E0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3HI_BASE_ADDR = 64'hC01624E8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGLFSR_BASE_ADDR = 64'hC01624F0;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGLFSRMASK_BASE_ADDR = 64'hC01624F8;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTIMESTAMPCAPTURE_BASE_ADDR = 64'hC0162500;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0LO_BASE_ADDR = 64'hC0162508;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0MASKLO_BASE_ADDR = 64'hC0162510;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1LO_BASE_ADDR = 64'hC0162518;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1MASKLO_BASE_ADDR = 64'hC0162520;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2LO_BASE_ADDR = 64'hC0162528;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2MASKLO_BASE_ADDR = 64'hC0162530;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3LO_BASE_ADDR = 64'hC0162538;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3MASKLO_BASE_ADDR = 64'hC0162540;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0HI_BASE_ADDR = 64'hC0162548;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0MASKHI_BASE_ADDR = 64'hC0162550;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1HI_BASE_ADDR = 64'hC0162558;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1MASKHI_BASE_ADDR = 64'hC0162560;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2HI_BASE_ADDR = 64'hC0162568;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2MASKHI_BASE_ADDR = 64'hC0162570;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3HI_BASE_ADDR = 64'hC0162578;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3MASKHI_BASE_ADDR = 64'hC0162580;
+localparam longint unsigned SMC_TOP_SMC_CLA_SCRATCH_BASE_ADDR = 64'hC0162FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTCONTROL_BASE_ADDR = 64'hC0163000;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTIMPL_BASE_ADDR = 64'hC0163004;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTINSTFEATURES_BASE_ADDR = 64'hC0163008;
+localparam longint unsigned SMC_TOP_SMC_CLA_CDBGDEBUGTRACECFG_BASE_ADDR = 64'hC01631A0;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSCRATCHLO_BASE_ADDR = 64'hC0163FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSCRATCHHI_BASE_ADDR = 64'hC0163FFC;
 function automatic longint unsigned SMC_TOP_SMC_CLUSTER_PLIC_PRIORITY_BASE_ADDR(input int unsigned PRIORITY_idx);
     return 64'hC4000000 + (PRIORITY_idx * 64'h4);
 endfunction

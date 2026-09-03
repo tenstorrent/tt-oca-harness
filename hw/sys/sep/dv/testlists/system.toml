@@ -169,7 +169,9 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # of the scratch window, then entry 15 same-page allow_burst=1 granule,
 # page-bound, and FILTER_CONFIG.locked. Distinct from
 # `sep_lcc_uvm_inbound_filter_gating_test` (global sep_debug skip gate). no_cpu + ext SMN master; REAL PROD fuse sense.
-# CHK-OWNERSHIP keeps CFG outside every allow window (firmware must not allow-list CFG).
+# CHK-OWNERSHIP keeps inbound CFG, outbound CFG, remap banks, and
+# SEP_GLOBAL_BASE_ADDR / SEP_REGION_SIZE outside every allow window
+# (firmware must not allow-list them).
 name = "sep_fabric_inbound_filter_rule_matrix_test"
 module = "system.sep_fabric_inbound_filter_rule_matrix_test"
 seed = 1
@@ -203,6 +205,11 @@ args = ["+skip_fuse_sense"]
 # sep_irq_ip_to_aggregator_test): host injects each CSRNG/EDN INTR_TEST and watches
 # the mapped aggregate bit (tb_top sep_internal_interrupts_probe_o, observation-only
 # XMR mirror) go 0->1->0, plus the IP INTR_STATE RW1C contract and one-hot isolation.
+# Then one through-adapter SLVERR on the DMA register hole and on the
+# HMAC, KMAC and OTBN CSR gaps. Those latch DMA_BUS_ERR_STATUS /
+# PERIPH_BUS_ERR_STATUS and bits 39 / 41; each matching CLEAR write returns
+# them. This leaf does not start a DMA transfer, so it does not prove
+# host_path_err / bit 40.
 # no_cpu (host drives AXI); +skip_fuse_sense (INTR_TEST is independent of OTP/entropy).
 name = "sep_irq_ip_to_aggregator_test"
 module = "system.sep_irq_ip_to_aggregator_test"

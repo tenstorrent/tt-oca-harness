@@ -190,6 +190,166 @@ jobs:
         if: always()
         run: make ocah-format-python-check
 
+  # Report-only: mypy currently surfaces ~600 pre-existing findings across
+  # hw/'s Python once third-party stub noise is filtered (see
+  # flows/lint/mypy.mk); fail-level: none until that backlog is cleared.
+  lint-python-mypy:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Type-check Python sources (mypy)
+        run: make ocah-lint-python-mypy 2>&1 | tee lint_mypy.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_mypy.log
+          efm: '%f:%l: %m'
+          # warning, not error: for github-check/-pr-check reporters, `level`
+          # (not `fail-level`) is what the reviewdog check run's own PASS/FAIL
+          # status is keyed on. `error` maps to "failure" regardless of
+          # fail-level: none, which only controls reviewdog's own exit code
+          # (i.e. whether *this* Actions job fails). warning/info map to
+          # "neutral", which is what report-only actually requires here.
+          level: warning
+          name: lint-python-mypy
+          fail-level: none
+
+  lint-spelling:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Check spelling (codespell)
+        run: make ocah-lint-spelling 2>&1 | tee lint_spelling.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_spelling.log, efm: '%f:%l: %m', level: error, name: lint-spelling }
+
+  lint-yaml:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Lint YAML sources (yamllint)
+        run: make ocah-lint-yaml 2>&1 | tee lint_yaml.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_yaml.log, efm: '%f:%l:%c: %m', level: error, name: lint-yaml }
+
+  lint-toml:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Check TOML syntax (tomllint)
+        run: make ocah-lint-toml 2>&1 | tee lint_toml.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_toml.log, efm: '%f:%l:%c: %m', level: error, name: lint-toml }
+
+  lint-markdown:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Lint Markdown sources (markdownlint)
+        run: make ocah-lint-markdown 2>&1 | tee lint_markdown.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_markdown.log
+          # Two patterns - NOT comma-joined in a single -efm value (see the
+          # efm input's description for why). Column is present for most
+          # rules but absent for a few (e.g. MD025), hence both forms.
+          efm: |
+            %f:%l:%c error %m
+            %f:%l error %m
+            %-G%.%#
+          level: error
+          name: lint-markdown
+
+  # checkmake is a Go binary with no PyPI wheel; fetched here from a pinned
+  # release the same way lint-sv-slang fetches slang (see flows/lint/checkmake.mk).
+  lint-make:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install checkmake
+        run: |
+          curl -fsSL -o checkmake https://github.com/checkmake/checkmake/releases/download/v0.3.2/checkmake-v0.3.2.linux.amd64
+          chmod +x checkmake
+          echo "$GITHUB_WORKSPACE" >> "$GITHUB_PATH"
+      - name: Lint Makefiles (checkmake)
+        run: make ocah-lint-make 2>&1 | tee lint_make.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_make.log
+          efm: '%f:%l: %m'
+          # warning, not error: see the matching comment on lint-python-mypy
+          # above -- `level` (not `fail-level`) drives this check run's own
+          # PASS/FAIL status for github-check/-pr-check reporters.
+          level: warning
+          name: lint-make
+          # Report-only: maxbodylength/phonydeclared/uniquetargets all have
+          # false-positive modes against conventions this repo relies on
+          # deliberately (see flows/lint/checkmake.mk).
+          fail-level: none
+
+  lint-shell:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Lint shell scripts (shellcheck)
+        run: make ocah-lint-shell OCAH_LINT_SHELLCHECK_EXTRA_FLAGS="-f gcc" 2>&1 | tee lint_shell.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_shell.log, efm: '%f:%l:%c: %m', level: warning, name: lint-shell }
+      - name: Check shell formatting (shfmt)
+        if: always()
+        run: make ocah-format-shell-check
+
   format-c:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -237,23 +397,30 @@ jobs:
       - name: Check Tcl formatting (tclfmt)
         run: make ocah-format-tcl-check
 
-  # Temporarily disabled: ~25k pre-existing style findings still make the
-  # reviewdog GitHub Check fail even with fail-level: none. Re-enable once
-  # the hw/ style backlog is cleaned up.
-  # lint-sv-verible:
-  #   needs: setup-tools
-  #   runs-on: ubuntu-latest
-  #   permissions: { contents: read, checks: write, pull-requests: write }
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #     - name: Install Verible
-  #       uses: chipsalliance/verible-actions-common/install-verible@main
-  #       with: { verible_version: v0.0-4080-ga0a8d8eb }
-  #     - name: Lint SystemVerilog style (verible-verilog-lint)
-  #       run: make ocah-lint-sv-verible 2>&1 | tee lint_sv_verible.log || true
-  #     - uses: ./.github/actions/reviewdog-report
-  #       with: { log-file: lint_sv_verible.log, efm: '%f:%l:%c: %m', level: error, name: lint-sv-verible, fail-level: none }
+  # Report-only while the classified first-party style backlog remains.
+  lint-sv-verible:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Verible
+        uses: chipsalliance/verible-actions-common/install-verible@main
+        with: { verible_version: v0.0-4080-ga0a8d8eb }
+      - name: Lint SystemVerilog style (verible-verilog-lint)
+        run: make ocah-lint-sv-verible 2>&1 | tee lint_sv_verible.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_sv_verible.log
+          efm: |
+            %f:%l:%c-%*\d: %m
+            %f:%l:%c: %m
+            %-G%.%#
+          level: warning
+          name: lint-sv-verible
+          fail-level: none
 
   lint-sv-slang:
     needs: [diff-class, setup-tools]

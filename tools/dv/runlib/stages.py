@@ -1241,10 +1241,57 @@ def _render_run_test_args(
     ctx = {"seed": str(seed)}
     if repo_root is not None:
         ctx["repo_root"] = str(repo_root)
-    return [
-        *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
-        *_render_list(list(test.args or []), ctx),
-    ]
+    return _last_plusarg_wins(
+        [
+            *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
+            *_render_list(list(test.args or []), ctx),
+        ]
+    )
+
+
+def _plusarg_key(arg: str) -> str | None:
+    if arg.startswith("+") and "=" in arg:
+        return arg.split("=", 1)[0]
+    return None
+
+
+def _last_plusarg_wins(rendered: list[str]) -> list[str]:
+    """Return a new list where a later scalar `+key=value` wins.
+
+    A testlist entry is more specific than the run mode it runs under, so when
+    both set the same plusarg the entry is meant to override. `$value$plusargs`
+    returns the *first* match, so leaving both on the command line hands the win
+    to the run mode and the entry's value never reaches the design -- an
+    override that reads as effective and is not. Whether that is visible depends
+    on the simulator, because nothing reports the discarded one.
+
+    Only scalar `+key=value` forms are collapsed. Bare flags, non-plusarg
+    arguments, and every `+uvm_set_*` occurrence keep their relative order:
+    UVM consumes each `+uvm_set_type_override=` / `+uvm_set_config_*` /
+    `+uvm_set_verbosity=` / `+uvm_set_severity=` independently, so two
+    type overrides share a key and collapsing them would drop one.
+
+    Each drop is printed. Silently discarding an argument the config author
+    wrote is the same class of problem as the one this function exists to fix:
+    the command line stops matching the config and nothing says so.
+    """
+    final_at: dict[str, int] = {}
+    for index, arg in enumerate(rendered):
+        key = _plusarg_key(arg)
+        if key is None or key.startswith("+uvm_set_"):
+            continue
+        final_at[key] = index
+    kept: list[str] = []
+    for index, arg in enumerate(rendered):
+        key = _plusarg_key(arg)
+        if key is not None and key in final_at and final_at[key] != index:
+            print(
+                f"PLUSARG: dropping {arg} -- overridden by {rendered[final_at[key]]}",
+                flush=True,
+            )
+            continue
+        kept.append(arg)
+    return kept
 
 
 def _firmware_target(test: TestEntry | None, item: str | None) -> str:
@@ -2305,6 +2352,17 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
         )
     else:
         print(f"# cocotb {{payload['tool']}} build skipped: pre-built during elaborate", flush=True)
+        # `runner.build()` is what normally populates the runner's source
+        # lists, and Xcelium's `_test_command` concatenates all three to decide
+        # whether any VHDL source needs `-vhpi`. On the pre-built path build()
+        # never runs, so those attributes are absent and `test()` raises with an
+        # AttributeError before the simulator is ever launched. Only the missing
+        # ones are filled, so a cocotb version that does set them keeps its own
+        # values. Empty is the correct value here: this flow compiles from a
+        # file list rather than from runner sources, and has no VHDL.
+        for _src_attr in ("_sources", "_vhdl_sources", "_verilog_sources"):
+            if not hasattr(runner, _src_attr):
+                setattr(runner, _src_attr, [])
 
     runner.test(
         hdl_toplevel=payload["top_module"],
@@ -2359,6 +2417,45 @@ _VCS_UVM_LIB = "uvm-1.2"
 def _vcs_uvm_lib(vcs_cfg: dict[str, Any]) -> str:
     lib = str(vcs_cfg.get("uvm_lib", "")).strip()
     return lib or _VCS_UVM_LIB
+
+
+def _uvm_testname_override(extra_args: list[str]) -> str:
+    """Return the +UVM_TESTNAME= value supplied in extra_args, or '' when absent.
+
+    UVM takes the FIRST +UVM_TESTNAME occurrence, and the simulator-shipped
+    uvm-1.2 library applies command-line factory overrides only after
+    run_test() has created the test component, so +uvm_set_type_override
+    cannot swap the test itself. Selecting a factory-registered subclass of a
+    testlist scenario therefore comes through +UVM_TESTNAME: when the caller
+    supplies one, the runner must not emit its testlist-mapped name ahead of
+    it.
+    """
+    for arg in extra_args:
+        if arg.startswith("+UVM_TESTNAME="):
+            return arg[len("+UVM_TESTNAME=") :]
+    return ""
+
+
+def _vcs_uvm_precompile_cmd(
+    vcs_cfg: dict[str, Any], compile_target: dict[str, Any], args: argparse.Namespace
+) -> str:
+    """The UVM-library precompile line for the split vlogan -> vcs flow.
+
+    Carries the same defines as the user-source analysis: size-changing defines
+    (e.g. UVM_PACKER_MAX_BYTES) must agree across every analysis step of one
+    work library, or consumers of the precompiled uvm_pkg see a mismatched
+    packer geometry. Tokens are shell-quoted because the line is embedded in a
+    `bash -c` script (define values may carry quotes).
+    """
+    return " ".join(
+        [
+            "vlogan",
+            "-full64",
+            "-ntb_opts",
+            shlex.quote(_vcs_uvm_lib(vcs_cfg)),
+            *(shlex.quote(d) for d in _vcs_defines(compile_target, args)),
+        ]
+    )
 
 
 def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
@@ -2511,7 +2608,7 @@ def vcs_analyze(
         argv = [
             "bash",
             "-c",
-            f'set -euo pipefail\nvlogan -full64 -ntb_opts {_vcs_uvm_lib(vcs_cfg)}\nexec "$@"',
+            f'set -euo pipefail\n{_vcs_uvm_precompile_cmd(vcs_cfg, info["compile_target"], args)}\nexec "$@"',
             "vcs-analyze",
             *analyze_argv,
         ]
@@ -2613,16 +2710,17 @@ def vcs_sim(
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
-    argv = [str(simv)]
-    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")):
-        argv.append(f"+UVM_TESTNAME={uvm_test}")
-    argv.append(f"+ntb_random_seed={seed}")
-    argv += [
+    extra_args = [
         *sim_global_args(sim_cfg),
         *_render_run_test_args(run_mode, test, seed, root),
         *(args.sim_arg or []),
         *(args.plusarg or []),
     ]
+    argv = [str(simv)]
+    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _uvm_testname_override(extra_args):
+        argv.append(f"+UVM_TESTNAME={uvm_test}")
+    argv.append(f"+ntb_random_seed={seed}")
+    argv += extra_args
     if args.cov:
         tool_cov = coverage_cfg(sim_cfg).get("vcs", {})
         if not isinstance(tool_cov, dict):

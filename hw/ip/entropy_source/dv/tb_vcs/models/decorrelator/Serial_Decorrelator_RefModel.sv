@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 //==============================================================================
 // DECORRELATOR REFERENCE MODEL (TESTBENCH ONLY - NOT FOR SYNTHESIS)
@@ -78,8 +78,8 @@ module Serial_Decorrelator_RefModel #(
 
   // Sample pulse generation (synchronized with RTL clk_divider for ALL modes)
   // RTL outputs when clk_divider == SAMPLE_PERIOD-1 (e.g., 63 for ÷64, 7 for ÷8)
-  logic              sample_pulse_d, sample_pulse_q;
-  logic [7:0]        rtl_clk_divider_q;
+  logic sample_pulse_d, sample_pulse_q;
+  logic [7:0] rtl_clk_divider_q;
 
   // Mode register and effective config
   // NOTE: Defaults come from test_config.py via decor_cfg interface
@@ -105,7 +105,7 @@ module Serial_Decorrelator_RefModel #(
     for (i = 0; i < N; i++) begin : g_lane
       always_ff @(posedge clk_i or negedge rstn_i) begin
         if (!rstn_i) begin
-          sr[i]     <= '0;
+          sr[i] <= '0;
         end else begin
           if (vld_i[i]) begin
             // Determine effective mode for this lane: bypass_mask overrides mode_i
@@ -118,21 +118,21 @@ module Serial_Decorrelator_RefModel #(
             if (shift_dir_q == 1'b0) begin
               // SHIFT_RIGHT: sr[i][DEPTH-1] is newest, sr[i][0] is oldest
               unique case (lane_mode)
-                3'd0,            // DECOR_29: XOR feedback from oldest bit
-                3'd1: begin      // DECOR_7: XOR feedback from tap DEPTH-depth_eff
+                3'd0,  // DECOR_29: XOR feedback from oldest bit
+                3'd1: begin  // DECOR_7: XOR feedback from tap DEPTH-depth_eff
                   logic fb;
-                  fb   = sr[i][DEPTH-depth_eff];
+                  fb = sr[i][DEPTH-depth_eff];
                   sr[i] <= {(bit_i[i] ^ fb), sr[i][DEPTH-1:1]};
                 end
-                3'd2: begin      // BYPASS: no feedback, raw shift
+                3'd2: begin  // BYPASS: no feedback, raw shift
                   sr[i] <= {bit_i[i], sr[i][DEPTH-1:1]};
                 end
-                3'd3: begin      // LFSR_29: x^29 + x^2 + 1, feedback from [28] and [1]
+                3'd3: begin  // LFSR_29: x^29 + x^2 + 1, feedback from [28] and [1]
                   logic fb29;
                   fb29 = sr[i][DEPTH-1] ^ sr[i][1] ^ bit_i[i];
                   sr[i] <= {fb29, sr[i][DEPTH-1:1]};
                 end
-                3'd4: begin      // LFSR_7: x^7 + x^6 + 1, feedback uses bits [6] and [5]
+                3'd4: begin  // LFSR_7: x^7 + x^6 + 1, feedback uses bits [6] and [5]
                   logic fb7;
                   fb7 = sr[i][6] ^ sr[i][5] ^ bit_i[i];
                   sr[i] <= {fb7, sr[i][DEPTH-1:1]};
@@ -145,21 +145,21 @@ module Serial_Decorrelator_RefModel #(
             end else begin
               // SHIFT_LEFT: sr[i][0] is newest, sr[i][DEPTH-1] is oldest
               unique case (lane_mode)
-                3'd0,            // DECOR_29: XOR feedback from oldest bit
-                3'd1: begin      // DECOR_7: XOR feedback from tap depth_eff-1
+                3'd0,  // DECOR_29: XOR feedback from oldest bit
+                3'd1: begin  // DECOR_7: XOR feedback from tap depth_eff-1
                   logic fb;
-                  fb   = sr[i][depth_eff-1];
+                  fb = sr[i][depth_eff-1];
                   sr[i] <= {sr[i][DEPTH-2:0], (bit_i[i] ^ fb)};
                 end
-                3'd2: begin      // BYPASS: no feedback, raw shift
+                3'd2: begin  // BYPASS: no feedback, raw shift
                   sr[i] <= {sr[i][DEPTH-2:0], bit_i[i]};
                 end
-                3'd3: begin      // LFSR_29: x^29 + x^2 + 1, feedback from [0] and [27]
+                3'd3: begin  // LFSR_29: x^29 + x^2 + 1, feedback from [0] and [27]
                   logic fb29;
                   fb29 = sr[i][0] ^ sr[i][DEPTH-2] ^ bit_i[i];
                   sr[i] <= {sr[i][DEPTH-2:0], fb29};
                 end
-                3'd4: begin      // LFSR_7: x^7 + x^6 + 1, feedback uses bits [0] and [1]
+                3'd4: begin  // LFSR_7: x^7 + x^6 + 1, feedback uses bits [0] and [1]
                   logic fb7;
                   fb7 = sr[i][0] ^ sr[i][1] ^ bit_i[i];
                   sr[i] <= {sr[i][DEPTH-2:0], fb7};

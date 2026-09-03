@@ -59,7 +59,7 @@
 |`xtrig_ctm_src_ack_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
 |`xtrig_ctm_dst_req_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests. |Cross trigger network |Tie to '0 if unused
 |`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode. |Cross trigger network |N/A
-|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests (SMU external ports [7:0]; port [0] reserved for SMC internally). |Clock stop requestors |Tie to '0 if unused
+|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests (SMU external ports [7:0]; port [0] reserved for SMC internally). |Clock stop requesters |Tie to '0 if unused
 
 |`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output. |GPIO pad ring |N/A
 |`xtrig_ctp_req_out_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output enable. |GPIO pad ring |N/A
@@ -102,10 +102,10 @@
 |`cat_therm_i` |`logic` |Input |1 |CAT thermal sensor input. |CAT thermal sensor |Tie to '0 if unused
 
 |`lsio_interface_select_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |LSIO interface selection. |GPIO padring |N/A
-|`gpio_in_i` |`logic` |Input |`[NUM_GPIO_WRAPS-1:0]` |GPIO input data from external pins. |External GPIO pins |N/A
-|`gpio_out_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output data to external pins. |External GPIO pins |N/A
-|`gpio_in_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO input enable control. |GPIO padring |N/A
-|`gpio_out_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output enable control. |GPIO padring |N/A
+|`pad2core_i` |`logic` |Input |`[NUM_GPIO_WRAPS-1:0]` |GPIO input data from pad ring to core. |GPIO padring → SMU |N/A
+|`core2pad_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output data from core to pad ring. |SMU → GPIO padring |N/A
+|`pad2core_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO pad-to-core path enable. |SMU → GPIO padring |N/A
+|`core2pad_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO core-to-pad path enable. |SMU → GPIO padring |N/A
 |`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin. |GPIO pin |N/A
 
 |`clk_telemetry_i` |`logic` |Input |1 |Telemetry clock domain for ATB data collection. |Telemetry clock source |N/A
@@ -145,7 +145,7 @@
 |`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |Subsystems |32'hFFFFFFFF
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Subsystems |N/A
 |`ss_reset_ctrl_o` |`smc_reset_unit_pkg::reset_ctrl_t` |Output |`[31:0]` |Subsystem reset control output array. |Subsystems |N/A
-|`sync_irq_o` |`logic` |Output |1 |Synchronized interrupt output. |External systems |N/A
+|`sync_irq_o` |`logic` |Output |1 |Software-controlled global synchronisation bit (`SYNC_REG.sync` in the SMC reset unit). Not an interrupt aggregate output. |External systems |N/A
 |`gpio_interrupt_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Passed through from SMC. Software reads GPIO status registers to identify the interrupt source. |SMC → external consumers |N/A, leave floating if unused
 |`uart_interrupt_o` |`logic` |Output |`[NUM_UART-1:0]` |Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Passed through from SMC. |SMC → external consumers |N/A, leave floating if unused
 

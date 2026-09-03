@@ -33,7 +33,7 @@
 // Primary JTAG TAP pins (cocotb drives them raw; UVM via ocah_jtag_if)
 `DTP_TB_IN(logic, jtag_tck)
 `DTP_TB_IN(logic, jtag_tms)
-`DTP_TB_IN(logic, jtag_trst)   // active-low TAP reset
+`DTP_TB_IN(logic, jtag_trst)  // active-low TAP reset
 `DTP_TB_IN(logic, jtag_tdi)
 `DTP_TB_OUT(logic, jtag_tdo)
 `DTP_TB_OUT(logic, jtag_tdo_oen)
@@ -83,6 +83,24 @@
 `DTP_TB_OUT(logic, jtag_stap_extra0_tck)
 `DTP_TB_OUT(logic, jtag_stap_extra0_trst_n)
 `DTP_TB_OUT(logic, jtag_stap_extra0_tdo_oen)
+
+// Downstream STAP TAP attachment (issue #1056). Per STAP host port: the
+// host TDO (the downstream TAP's TDI), the downstream TAP's TDO back into
+// the host TDI, and the attach enable. With ds_en=0 the host TDI is the
+// port's own TDO (wire loopback, the default); with ds_en=1 a reactive
+// ocah_jtag_vip slave device answers behind the port.
+`DTP_TB_OUT(logic, jtag_stap_io_tdo)
+`DTP_TB_IN(logic, jtag_stap_io_tdi)
+`DTP_TB_IN(logic, jtag_stap_io_ds_en)
+`DTP_TB_OUT(logic, jtag_stap_smc_tdo)
+`DTP_TB_IN(logic, jtag_stap_smc_tdi)
+`DTP_TB_IN(logic, jtag_stap_smc_ds_en)
+`DTP_TB_OUT(logic, jtag_stap_sep_tdo)
+`DTP_TB_IN(logic, jtag_stap_sep_tdi)
+`DTP_TB_IN(logic, jtag_stap_sep_ds_en)
+`DTP_TB_OUT(logic, jtag_stap_extra0_tdo)
+`DTP_TB_IN(logic, jtag_stap_extra0_tdi)
+`DTP_TB_IN(logic, jtag_stap_extra0_ds_en)
 
 // DEBUG_CONTROL / IC_RESET observables and CLA clock-stop stimulus.
 `DTP_TB_IN(logic [DEFAULT_NUM_CLK_STOP_REQ-1:0], xtrig_clk_stop_req)
