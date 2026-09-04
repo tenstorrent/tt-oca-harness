@@ -300,6 +300,7 @@ tests = [
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_boundary_signals_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_state_fault_inject_test",
 ]
 
 [[groups]]

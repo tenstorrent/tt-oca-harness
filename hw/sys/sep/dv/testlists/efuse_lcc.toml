@@ -137,6 +137,17 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# Frontdoor RMA-SIP hashes drive both latch-enable events. The testbench force
+# reaches only the otherwise tied-low digest test_en input for scan-freeze.
+name = "sep_efuse_digest_latch_fault_test"
+module = "efuse.sep_efuse_digest_latch_fault_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
 # Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
 # write-lock and read-lock every seed. RANDCFG: which SPARE0..7 fields carry
 # write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.

@@ -95,6 +95,9 @@ module sep_uvm_top
     // Which token comparator the inject hits. Default 0.
     //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
     input  wire logic [1:0] token_cmp_fault_sel_i,
+    // RMA_SIP digest test-enable inject. The production test input is tied
+    // low in this testbench, so the latch-freeze path has no frontdoor.
+    input  wire logic       token_digest_test_en_inject_i,
     // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
     // broken codeword onto the host-adapter command-integrity decoder input
     // (signed off -- software cannot emit a bad TL-UL user code). The checker
@@ -390,6 +393,13 @@ module sep_uvm_top
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
     output logic              secure_tm_o,
+    output logic [255:0]      token_digest_sticky_o,
+    output logic              token_digest_valid_o,
+    output logic              token_digest_test_en_o,
+    output logic              token_digest_latch_en_pre_o,
+    output logic              token_digest_valid_en_pre_o,
+    output logic              token_digest_latch_en_o,
+    output logic              token_digest_valid_en_o,
     // OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
     // both to 0; the fuse controller enforces access. Sliced here so cocotb
     // can read them without a packed-struct field walk.
@@ -1361,6 +1371,7 @@ module sep_uvm_top
 `define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
 `define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
 `define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
+`define DIGEST_SIP `TOKEN_PROC.u_sha256_rma_sip_token
     logic [2:0] token_cmp_force_p, token_cmp_force_n;
     logic       token_cmp_do_force;
     always_comb begin
@@ -1416,6 +1427,26 @@ module sep_uvm_top
             release `CMP_SEC.match_n;
         end
     end
+    // The production DFT input is tied low at this TB boundary. Use the same
+    // clock-reissued force/release convention as the signed-off comparator
+    // hook to reach the digest latch's scan-freeze gate. Token commands and
+    // digest capture remain frontdoor; only this otherwise unreachable input
+    // is forced.
+    assign token_digest_sticky_o = `DIGEST_SIP.sha_digest_sticky_n0_scan;
+    assign token_digest_valid_o = `DIGEST_SIP.digest_vld_sticky_n0_scan;
+    assign token_digest_test_en_o = `DIGEST_SIP.test_en_i;
+    assign token_digest_latch_en_pre_o = `DIGEST_SIP.digest_latch_en_pre;
+    assign token_digest_valid_en_pre_o = `DIGEST_SIP.vld_latch_en_pre;
+    assign token_digest_latch_en_o = `DIGEST_SIP.digest_latch_en;
+    assign token_digest_valid_en_o = `DIGEST_SIP.vld_latch_en;
+    always @(posedge clk_i) begin
+        if (token_digest_test_en_inject_i === 1'b1) begin
+            force `DIGEST_SIP.test_en_i = 1'b1;
+        end else begin
+            release `DIGEST_SIP.test_en_i;
+        end
+    end
+`undef DIGEST_SIP
 `undef CMP_SIP
 `undef CMP_CHIP
 `undef CMP_SEC

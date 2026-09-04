@@ -288,6 +288,7 @@ tests = [
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_otp_clock_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_state_fault_inject_test",
     # --- gpio (9) ---
     "smc_5agent_observability_test",
     "smc_gpio_filter_access_sep_test",

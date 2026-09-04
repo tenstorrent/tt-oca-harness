@@ -503,6 +503,21 @@ class smc_base_test(uvm_test):
         # DFT test_en defaults deasserted (functional mode).
         if hasattr(dut, "tb_test_en_i"):
             dut.tb_test_en_i.value = 0
+        for name in (
+            "tb_zeroer_state_inject_en",
+            "tb_efuse_program_state_inject_en",
+            "tb_efuse_read_state_inject_en",
+        ):
+            if hasattr(dut, name):
+                getattr(dut, name).value = 0
+        for name in (
+            "tb_zeroer_state_inject",
+            "tb_efuse_program_state_inject",
+            "tb_efuse_read_state_inject",
+            "tb_efuse_read_error_inject",
+        ):
+            if hasattr(dut, name):
+                getattr(dut, name).value = 0
         if hasattr(dut, "tb_cpu_jtag_tck"):
             dut.tb_cpu_jtag_tck.value = 0
             dut.tb_cpu_jtag_tms.value = 1

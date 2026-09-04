@@ -183,6 +183,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "rma_token",
     },
+    "sep_efuse_digest_latch_fault_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+    },
     # Set-only shadow OR-merge. Sensed ones come from SepEfuseSetOnlyCfg(seed);
     # see _set_only_fixed() so the t=0 hex matches the test golden.
     "sep_efuse_set_only_monotonicity_test": {
