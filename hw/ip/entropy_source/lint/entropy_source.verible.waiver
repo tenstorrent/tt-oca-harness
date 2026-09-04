@@ -4,8 +4,3 @@
 # This APB VIP is scheduled to fold into the shared VIP rather than be
 # renamed in place.
 waive --rule=interface-name-style --regex="interface apb_intf " --location=".*hw/ip/entropy_source/dv/tb_vcs/apb_vip/apb_intf\.sv$"
-
-# This technology-model bundle intentionally contains several cell modules,
-# and its behavioral jitter model requires the four-state result of $random.
-waive --rule=module-filename --regex="module gdffsync " --location=".*hw/ip/entropy_source/rtl/gcells\.sv$"
-waive --rule=invalid-system-task-function --regex="assign metasig = dfe_o & \$random" --location=".*hw/ip/entropy_source/rtl/gcells\.sv$"
