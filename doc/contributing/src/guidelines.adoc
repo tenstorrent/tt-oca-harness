@@ -92,8 +92,8 @@ For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 ```
 
-For AsciiDoc (`.adoc`), use line comments. Documentation and images are licensed
-under CC-BY-4.0, not Apache-2.0:
+For AsciiDoc (`.adoc`), use line comments. Documentation and images are
+licensed under CC-BY-4.0:
 
 ```asciidoc
 // SPDX-License-Identifier: CC-BY-4.0

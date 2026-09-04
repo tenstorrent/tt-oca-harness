@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // Runtime accessibility patches for gaps in the stock antora-ui-default
 // markup that can't be fixed via CSS alone -- these three elements are
 // rendered without any accessible name or keyboard focusability in the
