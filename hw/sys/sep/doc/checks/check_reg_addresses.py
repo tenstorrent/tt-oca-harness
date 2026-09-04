@@ -15,8 +15,9 @@ pre-insertion addresses, so each documented address named the *previous*
 register -- the documented BL1_VERSION address was CHIPLET_PUBK_REVOKE's. A spec
 address that is one slot low reads the neighbouring fuse.
 """
-import re
+
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[5]
@@ -29,14 +30,23 @@ RDL_BLOCKS = {"sep_efuse_map": "SEP_EFUSE_MAP"}
 
 # Prefixes stripped so doc shorthand (`LC_STATE`) matches the full symbol
 # (SEP_EFUSE_MAP_LC_STATE).
-PREFIXES = ("SEP_EFUSE_MAP_", "SEP_CPU_CTRL_", "SEP_RESET_CTRL_",
-            "SEP_SCRATCH_", "SEP_LIFECYCLE_CTRL_")
+PREFIXES = (
+    "SEP_EFUSE_MAP_",
+    "SEP_CPU_CTRL_",
+    "SEP_RESET_CTRL_",
+    "SEP_SCRATCH_",
+    "SEP_LIFECYCLE_CTRL_",
+)
 
 
 def load_header():
     text = HEADER.read_text()
-    return {m.group(1): int(m.group(2), 16) for m in re.finditer(
-        r"#define\s+OCH_SEP_TOP_([A-Z0-9_]+)_BASE_ADDR\s+(0x[0-9A-Fa-f]+)", text)}
+    return {
+        m.group(1): int(m.group(2), 16)
+        for m in re.finditer(
+            r"#define\s+OCH_SEP_TOP_([A-Z0-9_]+)_BASE_ADDR\s+(0x[0-9A-Fa-f]+)", text
+        )
+    }
 
 
 def check_rdl_vs_header(gen):
@@ -54,8 +64,10 @@ def check_rdl_vs_header(gen):
             continue
         # `TYPE  INSTANCE  @0xOFFSET;`
         for m in re.finditer(
-                r"^\s+[A-Za-z][A-Za-z0-9_]*\s+([A-Z][A-Z0-9_]*)\s*@\s*(0x[0-9A-Fa-f]+)\s*;",
-                rdl.read_text(), re.M):
+            r"^\s+[A-Za-z][A-Za-z0-9_]*\s+([A-Z][A-Z0-9_]*)\s*@\s*(0x[0-9A-Fa-f]+)\s*;",
+            rdl.read_text(),
+            re.M,
+        ):
             inst, off = m.group(1), int(m.group(2), 16)
             sym = f"{prefix}_{inst}"
             if sym not in gen:
@@ -63,10 +75,13 @@ def check_rdl_vs_header(gen):
             checked += 1
             if gen[sym] != base + off:
                 problems += 1
-                print(f"  STALE HEADER  {sym}: rdl @{off:#x} -> {base + off:#010x}, "
-                      f"header {gen[sym]:#010x}")
-    print(f"stage 1: {checked} RDL instantiations checked against sep_addr.h, "
-          f"{problems} out of sync")
+                print(
+                    f"  STALE HEADER  {sym}: rdl @{off:#x} -> {base + off:#010x}, "
+                    f"header {gen[sym]:#010x}"
+                )
+    print(
+        f"stage 1: {checked} RDL instantiations checked against sep_addr.h, {problems} out of sync"
+    )
     return problems
 
 
@@ -76,7 +91,7 @@ def check_docs(gen):
     for k, v in gen.items():
         for pre in PREFIXES:
             if k.startswith(pre):
-                short.setdefault(k[len(pre):], v)
+                short.setdefault(k[len(pre) :], v)
 
     total = problems = 0
     for f in sorted(DOCS.glob("*.adoc")):
@@ -91,8 +106,7 @@ def check_docs(gen):
                 total += 1
                 if short[name] != int(addr, 16):
                     problems += 1
-                    print(f"  MISMATCH  {f.name}:{i}  {name}: "
-                          f"doc {addr}, map {short[name]:#010x}")
+                    print(f"  MISMATCH  {f.name}:{i}  {name}: doc {addr}, map {short[name]:#010x}")
     print(f"stage 2: {total} name+address pairs in the docs, {problems} stale")
     return problems
 

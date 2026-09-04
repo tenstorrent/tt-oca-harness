@@ -3,7 +3,8 @@
 Mechanical checks for `hw/sys/sep/doc/`. Each one cross-references the specification against
 a generated or source-of-truth artifact, so it catches the failure the prose reviews miss. 
 
-Paths are currently absolute to the repo so they may require parameterization before wiring into CI.
+Each script derives the repository root from its own location, so it runs from any checkout
+and from any working directory.
 
 | Script | Checks | Source of truth |
 |---|---|---|
