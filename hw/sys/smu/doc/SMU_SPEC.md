@@ -76,6 +76,8 @@ the top-level `smu` parameter list.
 | `SMC_OTP_RD/WR_PL_DEPTH`, `SMC_RD/WR_PL_DEPTH` | `3` | JTAG2AXI pipeline depths (SEP OTP RD/WR forced to `2'h3`). |
 | `XTRIG_INT_CT_MODE` | config-dependent | Per internal-CT mode fed to DTP as `{Cfg.XTRIG_INT_CT_MODE, 2'b00}` (bits `[1:0]=0` for SMC pulse-sync). |
 | `SEP_KM_LATCHED_MEM_RDATA` | `1'b1` | SEP KM latched read-data behavior. |
+| `SEP_ABR_SRAM_LATENCY` | `1` | ABR 1R1W registered-read latency, in clocks. |
+| `SEP_ABR_MASKING_EN` | `1'b1` | Adams Bridge 2-share DOM masking. |
 
 `NoSepCfg` is field-identical to `DefaultCfg`; the SEP/no-SEP distinction is
 carried by the separate `SEP` parameter, not by the `Cfg` struct.

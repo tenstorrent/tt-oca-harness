@@ -22,63 +22,63 @@
 //-----------------------------------------------------------------------------
 
 module scrambler
-    import scrambler_pkg::*;
+  import scrambler_pkg::*;
 #(
-    parameter int unsigned ADDR_WIDTH = 10,
-    parameter int unsigned DATA_WIDTH = 32, // ONLY 32-bit SUPPORTED
-    parameter int unsigned BYTE_WISE  = 0
+  parameter int unsigned ADDR_WIDTH = 10,
+  parameter int unsigned DATA_WIDTH = 32, // ONLY 32-bit SUPPORTED
+  parameter int unsigned BYTE_WISE  = 0
 ) (
-    input  logic [ADDR_WIDTH-1:0]   addr_i,
-    /* verilator lint_off UNUSEDSIGNAL */
-    input  logic [DATA_WIDTH/8-1:0] byte_mask_i,
-    /* verilator lint_on UNUSEDSIGNAL */
-    input  logic [31:0]             scrambler_key_i,
-    output logic [ADDR_WIDTH-1:0]   scrambled_addr_o,
-    input  logic [DATA_WIDTH-1:0]   write_data_i,
-    output logic [DATA_WIDTH-1:0]   scrambled_write_data_o,
-    input  logic [DATA_WIDTH-1:0]   scrambled_read_data_i,
-    output logic [DATA_WIDTH-1:0]   read_data_o
+  input  logic [ADDR_WIDTH-1:0]   addr_i,
+  /* verilator lint_off UNUSEDSIGNAL */
+  input  logic [DATA_WIDTH/8-1:0] byte_mask_i,
+  /* verilator lint_on UNUSEDSIGNAL */
+  input  logic [31:0]             scrambler_key_i,
+  output logic [ADDR_WIDTH-1:0]   scrambled_addr_o,
+  input  logic [DATA_WIDTH-1:0]   write_data_i,
+  output logic [DATA_WIDTH-1:0]   scrambled_write_data_o,
+  input  logic [DATA_WIDTH-1:0]   scrambled_read_data_i,
+  output logic [DATA_WIDTH-1:0]   read_data_o
 );
 
-    logic [31:0] round_key;
-    logic [31:0] after_key_xor;
-    logic [31:0] after_sbox;
-    logic [31:0] after_iplayer;
-    logic [31:0] after_ibox;
+  logic [31:0] round_key;
+  logic [31:0] after_key_xor;
+  logic [31:0] after_sbox;
+  logic [31:0] after_iplayer;
+  logic [31:0] after_ibox;
 
-    scrambler_addr_tweak #(
-        .ADDR_WIDTH(ADDR_WIDTH)
-    ) u_addr_tweak (
-        .addr_i         (addr_i),
-        .scrambler_key_i(scrambler_key_i),
-        .round_key_o    (round_key)
-    );
+  scrambler_addr_tweak #(
+    .ADDR_WIDTH(ADDR_WIDTH)
+  ) u_addr_tweak (
+    .addr_i         (addr_i),
+    .scrambler_key_i(scrambler_key_i),
+    .round_key_o    (round_key)
+  );
 
-    // Address scramble: select function based on ADDR_WIDTH (generate if-else
-    // prunes inactive branches to avoid out-of-range slice warnings).
-    if      (ADDR_WIDTH == 6) begin : gen_addr_6
-        assign scrambled_addr_o = addr_scramble6 (addr_i, scrambler_key_i[5:0]);
-    end else if (ADDR_WIDTH == 7) begin : gen_addr_7
-        assign scrambled_addr_o = addr_scramble7 (addr_i, scrambler_key_i[6:0]);
-    end else if (ADDR_WIDTH == 8) begin : gen_addr_8
-        assign scrambled_addr_o = addr_scramble8 (addr_i, scrambler_key_i[7:0]);
-    end else if (ADDR_WIDTH == 9) begin : gen_addr_9
-        assign scrambled_addr_o = addr_scramble9 (addr_i, scrambler_key_i[8:0]);
-    end else if (ADDR_WIDTH == 10) begin : gen_addr_10
-        assign scrambled_addr_o = addr_scramble10(addr_i, scrambler_key_i[9:0]);
-    end else if (ADDR_WIDTH == 11) begin : gen_addr_11
-        assign scrambled_addr_o = addr_scramble11(addr_i, scrambler_key_i[10:0]);
-    end else if (ADDR_WIDTH == 12) begin : gen_addr_12
-        assign scrambled_addr_o = addr_scramble12(addr_i, scrambler_key_i[11:0]);
-    end else if (ADDR_WIDTH == 13) begin : gen_addr_13
-        assign scrambled_addr_o = addr_scramble13(addr_i, scrambler_key_i[12:0]);
-    end else begin : gen_addr_passthrough
-        assign scrambled_addr_o = addr_i;
-    end
+  // Address scramble: select function based on ADDR_WIDTH (generate if-else
+  // prunes inactive branches to avoid out-of-range slice warnings).
+  if (ADDR_WIDTH == 6) begin : gen_addr_6
+    assign scrambled_addr_o = addr_scramble6(addr_i, scrambler_key_i[5:0]);
+  end else if (ADDR_WIDTH == 7) begin : gen_addr_7
+    assign scrambled_addr_o = addr_scramble7(addr_i, scrambler_key_i[6:0]);
+  end else if (ADDR_WIDTH == 8) begin : gen_addr_8
+    assign scrambled_addr_o = addr_scramble8(addr_i, scrambler_key_i[7:0]);
+  end else if (ADDR_WIDTH == 9) begin : gen_addr_9
+    assign scrambled_addr_o = addr_scramble9(addr_i, scrambler_key_i[8:0]);
+  end else if (ADDR_WIDTH == 10) begin : gen_addr_10
+    assign scrambled_addr_o = addr_scramble10(addr_i, scrambler_key_i[9:0]);
+  end else if (ADDR_WIDTH == 11) begin : gen_addr_11
+    assign scrambled_addr_o = addr_scramble11(addr_i, scrambler_key_i[10:0]);
+  end else if (ADDR_WIDTH == 12) begin : gen_addr_12
+    assign scrambled_addr_o = addr_scramble12(addr_i, scrambler_key_i[11:0]);
+  end else if (ADDR_WIDTH == 13) begin : gen_addr_13
+    assign scrambled_addr_o = addr_scramble13(addr_i, scrambler_key_i[12:0]);
+  end else begin : gen_addr_passthrough
+    assign scrambled_addr_o = addr_i;
+  end
 
-    // Scramble
-    assign after_key_xor = write_data_i ^ round_key;
-    assign after_sbox = {sbox4(after_key_xor[31:28]),
+  // Scramble
+  assign after_key_xor = write_data_i ^ round_key;
+  assign after_sbox = {sbox4(after_key_xor[31:28]),
                          sbox4(after_key_xor[27:24]),
                          sbox4(after_key_xor[23:20]),
                          sbox4(after_key_xor[19:16]),
@@ -87,26 +87,30 @@ module scrambler
                          sbox4(after_key_xor[7:4]),
                          sbox4(after_key_xor[3:0])};
 
-    if (BYTE_WISE == 0) begin : gen_scramble_word
-        assign scrambled_write_data_o = perm32(after_sbox);
-    end else begin : gen_scramble_bytewise
-        assign scrambled_write_data_o = {perm8(after_sbox[31:24]),
-                                         perm8(after_sbox[23:16]),
-                                         perm8(after_sbox[15:8]),
-                                         perm8(after_sbox[7:0])};
-    end
+  if (BYTE_WISE == 0) begin : gen_scramble_word
+    assign scrambled_write_data_o = perm32(after_sbox);
+  end else begin : gen_scramble_bytewise
+    assign scrambled_write_data_o = {
+      perm8(after_sbox[31:24]),
+      perm8(after_sbox[23:16]),
+      perm8(after_sbox[15:8]),
+      perm8(after_sbox[7:0])
+    };
+  end
 
-    // Descramble
-    if (BYTE_WISE == 0) begin : gen_descramble_word
-        assign after_iplayer = iperm32(scrambled_read_data_i);
-    end else begin : gen_descramble_bytewise
-        assign after_iplayer = {iperm8(scrambled_read_data_i[31:24]),
-                                iperm8(scrambled_read_data_i[23:16]),
-                                iperm8(scrambled_read_data_i[15:8]),
-                                iperm8(scrambled_read_data_i[7:0])};
-    end
+  // Descramble
+  if (BYTE_WISE == 0) begin : gen_descramble_word
+    assign after_iplayer = iperm32(scrambled_read_data_i);
+  end else begin : gen_descramble_bytewise
+    assign after_iplayer = {
+      iperm8(scrambled_read_data_i[31:24]),
+      iperm8(scrambled_read_data_i[23:16]),
+      iperm8(scrambled_read_data_i[15:8]),
+      iperm8(scrambled_read_data_i[7:0])
+    };
+  end
 
-    assign after_ibox = {ibox4(after_iplayer[31:28]),
+  assign after_ibox = {ibox4(after_iplayer[31:28]),
                          ibox4(after_iplayer[27:24]),
                          ibox4(after_iplayer[23:20]),
                          ibox4(after_iplayer[19:16]),
@@ -115,6 +119,6 @@ module scrambler
                          ibox4(after_iplayer[7:4]),
                          ibox4(after_iplayer[3:0])};
 
-    assign read_data_o = after_ibox ^ round_key;
+  assign read_data_o = after_ibox ^ round_key;
 
 endmodule
