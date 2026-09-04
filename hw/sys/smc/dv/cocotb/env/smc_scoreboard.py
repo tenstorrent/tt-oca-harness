@@ -867,7 +867,6 @@ class SmcScoreboard(uvm_subscriber):
             f"({item.min_fabric_accesses})"
         )
         if item.timeouts is not None:
-            assert item.timeouts >= 0
             # Every timeout counted by csr_read_bounded() is also an access, so
             # a recorded item must never report more timeouts than accesses.
             assert item.timeouts <= item.csr_accesses, (

@@ -86,3 +86,9 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
             _HI,
             self.hi_ok,
         )
+
+        # Reconcile the accesses the scoreboard actually saw against the count
+        # this body constructs: 3 pattern writes + 3 readbacks. Without it a
+        # body that stopped after the writes still produced a clean run,
+        # because the three exact compares it never reached cannot complain.
+        self.assert_all_reachable(len(_PATTERNS) * 2, "SPM_MEM_BOUNDARY")

@@ -136,8 +136,6 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         self._ensure_model_region()
         await self._program_output_fabric_pass_all()
 
-        start_writes = int(cocotb.top.tb_output_axi_write_count.value)
-        start_reads = int(cocotb.top.tb_output_axi_read_count.value)
         # Preload DUT + golden via scoreboard update_golden (U1-3).
         await self._write_bytes(DMA_DST_ADDR, DMA_DST_POISON, update_golden=True)
         await self._write_bytes(DMA_SRC_ADDR, DMA_PAYLOAD, update_golden=True)
@@ -149,12 +147,27 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
             == DMA_DST_POISON
         )
 
+        # Baselined here, after every preload and golden-verify access, so the
+        # deltas below are the DMA's own traffic plus the one post-copy read
+        # this sequence issues.
+        start_writes = int(cocotb.top.tb_output_axi_write_count.value)
+        start_reads = int(cocotb.top.tb_output_axi_read_count.value)
+
         baseline_done = await self.csr_read("DMA_DONE_0_BASELINE", DMA_CTRL_DONE_0)
         await self._program_dma()
+        # This read IS the launch, not an observation: idma_generated.sv gates
+        # the register response on the arbiter (`read_happens && arb_ready`) and
+        # submits the programmed descriptor. Nothing else may read NEXT_ID here
+        # -- a second read would start a second, unprogrammed transfer.
         self.start_id = await self.csr_read("DMA_NEXT_ID_0_START", DMA_CTRL_NEXT_ID_0)
-        assert self.start_id != 0, "DMA command was not accepted"
-
         self.done_id = await self._wait_done(baseline_done)
+        # The id that completed is the id this launch was given. A test that the
+        # id is merely non-zero would hold on any run: `next_id_i` is a
+        # free-running allocation counter.
+        assert self.done_id == self.start_id, (
+            f"DMA completed id {self.done_id}, but this sequence launched id "
+            f"{self.start_id}; DONE advanced for some other transfer"
+        )
         # Predict DMA outcome in golden *before* the post-copy read so the
         # scoreboard check is DUT vs prediction (not golden==golden).
         self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
@@ -164,8 +177,24 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         )
         write_count = int(cocotb.top.tb_output_axi_write_count.value)
         read_count = int(cocotb.top.tb_output_axi_read_count.value)
-        assert write_count >= start_writes + 3, "DMA write did not reach output responder"
-        assert read_count >= start_reads + 3, "DMA read did not reach output responder"
-        assert self.env.scoreboard.memory_model_checks_seen >= 3
+        # Exact, because every access after the baseline above is accounted for:
+        # the DMA contributes one destination write and one source read, and this
+        # sequence contributes the single post-copy verification read.
+        assert write_count == start_writes + 1, (
+            f"DMA write did not reach the output responder: B responses went "
+            f"{start_writes} -> {write_count}, expected exactly one more"
+        )
+        assert read_count == start_reads + 2, (
+            f"DMA read did not reach the output responder: R beats went "
+            f"{start_reads} -> {read_count}, expected exactly two more (DMA source "
+            f"read + this sequence's post-copy read)"
+        )
+        # Self-check on this sequence's own golden verification, NOT evidence
+        # about the DMA: all three checks are raised by `check_golden=True` reads
+        # issued here. The DMA proof is `actual == DMA_PAYLOAD` above.
+        assert self.env.scoreboard.memory_model_checks_seen == 3, (
+            f"sequence issued {self.env.scoreboard.memory_model_checks_seen} golden "
+            f"checks, expected its own 3"
+        )
         self.checked_bytes = len(DMA_PAYLOAD)
         self.model_checks = self.env.scoreboard.memory_model_checks_seen
