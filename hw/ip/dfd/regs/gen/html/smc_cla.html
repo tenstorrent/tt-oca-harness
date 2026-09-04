@@ -88,7 +88,7 @@
 <tr><td>0x22F0</td><td><a href="#CDbgClaTimestamp">CDbgClaTimestamp</a></td><td>R</td><td>64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.</td></tr>
 <tr><td>0x22F8</td><td><a href="#CDbgClaTimestampSync">CDbgClaTimestampSync</a></td><td>RW</td><td>Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.</td></tr>
 <tr><td>0x2300</td><td><a href="#CDbgClaTimestampConfig">CDbgClaTimestampConfig</a></td><td>RW</td><td>Timestamp configuration register. Controls resync behavior and debug marker.</td></tr>
-<tr><td>0x23F0</td><td><a href="#CrScratchpad">CrScratchpad</a></td><td>RW</td><td>Scratchpad register for DV</td></tr>
+<tr><td>0x2308</td><td><a href="#CDbgClaTimestampOffset">CDbgClaTimestampOffset</a></td><td>RW</td><td>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.</td></tr>
 <tr><td>0x2400</td><td><a href="#CDbgSignalMask0Hi">CDbgSignalMask0Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
 <tr><td>0x2408</td><td><a href="#CDbgSignalMatch0Hi">CDbgSignalMatch0Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
 <tr><td>0x2410</td><td><a href="#CDbgSignalMask1Hi">CDbgSignalMask1Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
@@ -121,7 +121,7 @@
 <tr><td>0x24E8</td><td><a href="#CDbgSignalSnapshotNode3Eap3Hi">CDbgSignalSnapshotNode3Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap3 Trigger is met.</td></tr>
 <tr><td>0x24F0</td><td><a href="#CDbgLfsr">CDbgLfsr</a></td><td>RW</td><td>LFSR value.</td></tr>
 <tr><td>0x24F8</td><td><a href="#CDbgLfsrMask">CDbgLfsrMask</a></td><td>RW</td><td>LFSR programming mask.</td></tr>
-<tr><td>0x2500</td><td><a href="#CDbgTimestampCapture">CDbgTimestampCapture</a></td><td>R</td><td>LFSR value.</td></tr>
+<tr><td>0x2500</td><td><a href="#CDbgTimestampCapture">CDbgTimestampCapture</a></td><td>R</td><td>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.</td></tr>
 <tr><td>0x2508</td><td><a href="#CDbgCompare0Lo">CDbgCompare0Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
 <tr><td>0x2510</td><td><a href="#CDbgCompare0MaskLo">CDbgCompare0MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
 <tr><td>0x2518</td><td><a href="#CDbgCompare1Lo">CDbgCompare1Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
@@ -852,7 +852,8 @@
 <h3 id="CDbgClaTimestamp">CDbgClaTimestamp</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Timestamp</td><td>R</td><td>0x0</td><td>Current timestamp value</td></tr>
+<tr><td>63:8</td><td>TimestampUpper</td><td>R</td><td>0x0</td><td>Current timestamp value (upper 56 bits)</td></tr>
+<tr><td>7:0</td><td>TimestampLower</td><td>R</td><td>0x0</td><td>Current timestamp value (lower 8 bits)</td></tr>
 </table>
 <h3 id="CDbgClaTimestampSync">CDbgClaTimestampSync</h3>
 <table>
@@ -862,16 +863,16 @@
 <h3 id="CDbgClaTimestampConfig">CDbgClaTimestampConfig</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:11</td><td>Rsvd1</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>10</td><td>TsSyncRaw</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the value from TimestampSync register to be written into the Timestamp register</td></tr>
-<tr><td>9</td><td>TsSyncOffset</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the offset value from TimestampSync + the current timestamp value to be written into the Timestamp register</td></tr>
+<tr><td>63:10</td><td>Rsvd1</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>TsCapture</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register</td></tr>
 <tr><td>8:1</td><td>DebugMarker</td><td>RW</td><td>0x0</td><td>Debug marker output value</td></tr>
-<tr><td>0</td><td>TsCapture</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the value from the timestamp register to be written into the TimestampSync register</td></tr>
+<tr><td>0</td><td>Resync</td><td>RW</td><td>0x0</td><td>When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.</td></tr>
 </table>
-<h3 id="CrScratchpad">CrScratchpad</h3>
+<h3 id="CDbgClaTimestampOffset">CDbgClaTimestampOffset</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Data</td><td>RW</td><td>0xBFBFBFBFBFBFBFBF</td><td>-</td></tr>
+<tr><td>63:56</td><td>Rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>Offset</td><td>RW</td><td>0x0</td><td>Timestamp offset value</td></tr>
 </table>
 <h3 id="CDbgSignalMask0Hi">CDbgSignalMask0Hi</h3>
 <table>

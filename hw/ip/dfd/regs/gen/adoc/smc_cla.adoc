@@ -83,7 +83,7 @@
 | 0x22F0 | CDbgClaTimestamp | R a| 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
 | 0x22F8 | CDbgClaTimestampSync | RW a| Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.
 | 0x2300 | CDbgClaTimestampConfig | RW a| Timestamp configuration register. Controls resync behavior and debug marker.
-| 0x23F0 | CrScratchpad | RW a| Scratchpad register for DV
+| 0x2308 | CDbgClaTimestampOffset | RW a| Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.
 | 0x2400 | CDbgSignalMask0Hi | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
 | 0x2408 | CDbgSignalMatch0Hi | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
 | 0x2410 | CDbgSignalMask1Hi | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
@@ -116,7 +116,7 @@
 | 0x24E8 | CDbgSignalSnapshotNode3Eap3Hi | R a| debug Bus Value when Node3 Eap3 Trigger is met.
 | 0x24F0 | CDbgLfsr | RW a| LFSR value.
 | 0x24F8 | CDbgLfsrMask | RW a| LFSR programming mask.
-| 0x2500 | CDbgTimestampCapture | R a| LFSR value.
+| 0x2500 | CDbgTimestampCapture | R a| Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.
 | 0x2508 | CDbgCompare0Lo | RW a| Value for arithmetic comparison.
 | 0x2510 | CDbgCompare0MaskLo | RW a| Value to mask the arithmetic comparison.
 | 0x2518 | CDbgCompare1Lo | RW a| Value for arithmetic comparison.
@@ -998,7 +998,8 @@
 .CDbgClaTimestamp Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Timestamp` | R | 0x0 a| Current timestamp value
+| 63:8 | `TimestampUpper` | R | 0x0 a| Current timestamp value (upper 56 bits)
+| 7:0 | `TimestampLower` | R | 0x0 a| Current timestamp value (lower 8 bits)
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -1012,18 +1013,18 @@
 .CDbgClaTimestampConfig Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:11 | `Rsvd1` | RW | 0x0 a| Reserved
-| 10 | `TsSyncRaw` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the value from TimestampSync register to be written into the Timestamp register
-| 9 | `TsSyncOffset` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the offset value from TimestampSync + the current timestamp value to be written into the Timestamp register
+| 63:10 | `Rsvd1` | RW | 0x0 a| Reserved
+| 9 | `TsCapture` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register
 | 8:1 | `DebugMarker` | RW | 0x0 a| Debug marker output value
-| 0 | `TsCapture` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the value from the timestamp register to be written into the TimestampSync register
+| 0 | `Resync` | RW | 0x0 a| When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.
 |===
 
 [cols="1,3,1,1,6", options="header"]
-.CrScratchpad Register
+.CDbgClaTimestampOffset Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Data` | RW | 0xBFBFBFBFBFBFBFBF a| -
+| 63:56 | `Rsvd0` | RW | 0x0 a| Reserved
+| 55:0 | `Offset` | RW | 0x0 a| Timestamp offset value
 |===
 
 [cols="1,3,1,1,6", options="header"]
