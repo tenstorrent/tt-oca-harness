@@ -196,9 +196,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_dtp_context_diagram_relates_external_chiplet_and_internal_blocks(self) -> None:
         root = Path(__file__).resolve().parents[3]
-        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(
-            encoding="utf-8"
-        )
+        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(encoding="utf-8")
 
         for label in (
             "External debug / test",
@@ -217,7 +215,9 @@ class RepositoryContractTests(unittest.TestCase):
         source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
 
         self.assertNotIn("!Debug security !`dbg_disable_i`", source)
-        self.assertIn("!Lifecycle policy !Active-high, per-path debug and test disable controls", source)
+        self.assertIn(
+            "!Lifecycle policy !Active-high, per-path debug and test disable controls", source
+        )
 
     def test_dtp_points_to_current_status_and_uses_full_size_resources(self) -> None:
         root = Path(__file__).resolve().parents[3]
