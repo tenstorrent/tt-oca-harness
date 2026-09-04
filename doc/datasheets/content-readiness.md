@@ -40,13 +40,16 @@ tree. The following items remain open or need an explicit owner decision.
 |---|---|---|---|
 |Before publication |Whether to claim IEEE 1149.1-2013 and IEEE 1687-2014 compliance |`hw/sys/dtp/doc/overview.adoc` says “compliant”; there is no identified certification or compliance report. |Keep “implements” in the beta sheet, or attach an approved compliance matrix and review owner. |
 |Before publication |Supported TCK operating range |`doc/integrator/src/index.adoc` says 10–50 MHz. `hw/sys/dtp/synth/constraints.sdc` contains a 10 ns reference period but explicitly says it is documentation-level SDC, not signoff. |Publish one qualified integration limit with STA/test evidence, or retain the current no-frequency-claim wording. |
-|Before publication |Authoritative security-control interface name and polarity |Current `hw/sys/dtp/rtl/dtp.sv` exposes active-high `dbg_disable_i`; `hw/sys/dtp/doc/port_table.adoc` still describes the obsolete `feat_ctrl_i` contract and opposite enable-style semantics. |Correct the port documentation and confirm the public lifecycle/CDC contract. |
-|Before publication |Release configuration: standalone DTP defaults versus the SMU-instantiated configuration |DTP has local defaults; `hw/sys/smu/rtl/smu.sv` overrides SEP-related slices, extra STAP count, ID/version fields, and other options from the SMU configuration. |Name the configuration summarized by the sheet and provide a generated or reviewed parameter manifest. |
+|Before publication |Release configuration beyond top-level trigger counts |`dtp_pkg.sv` fixes the DTP boundary at 16 CTPs, 10 internal trigger interfaces, and nine clock-stop inputs. The default SMU uses two internal trigger interfaces and one clock-stop input for SMC, exposing eight of each at its external boundary. SMU also overrides SEP-related slices, extra STAP count, ID/version fields, and other options. |Name the complete configuration summarized by the sheet and provide a generated or reviewed parameter manifest. |
 |Before publication |Meaning and supported range of JTAG-to-AXI pipeline-depth fields |Top-level comments call the values pipeline depth; detailed PTAP documentation describes pending requests/responses as `pl_depth + 1` and special read marker behavior. |Add an integrator-facing definition and confirm which values are verified for each bridge. |
 |Before publication |External protocol name and revision for cross-trigger signaling |The overview names “OCH Cross Trigger v1.0”; no public conformance reference is linked from the DTP source. |Link the governing protocol or describe only the implemented pulse and four-phase signal behavior. |
 |Before publication |Verification baseline represented by the beta statement |The PyUVM tree and VPLAN cover all major blocks and include checker-negative modes; SV-UVM coverage is a subset. |Pin the statement to a release regression and publish its pass/skip/known-failure summary. |
 |Can follow beta |Maximum JTAG-to-AXI throughput/latency and cross-trigger latency |No portable characterization is identified. |Measure per named configuration and clock assumptions when selection-level performance data is needed. |
 |Can follow beta |Frequency, area, power, and silicon results |No implementation-specific signoff package is identified. |Add only with process, libraries, constraints, memories, tool versions, and corner conditions. |
+
+Resolved during initial review: `hw/sys/dtp/doc/port_table.adoc` now matches the
+RTL's active-high `dbg_disable_i` interface and records the TCK-domain
+synchronization performed inside DTP.
 
 ## SEP
 
