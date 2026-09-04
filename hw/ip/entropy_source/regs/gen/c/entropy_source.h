@@ -270,17 +270,17 @@ typedef union {
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bp 4
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bw 4
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_reset 0x0
-#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bm 0x700
+#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bm 0xf00
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bp 8
-#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bw 3
+#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bw 4
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t BUSY :1;
         uint32_t :3;
         uint32_t INPUT_COUNT :4;
-        uint32_t OUTPUT_COUNT :3;
-        uint32_t :21;
+        uint32_t OUTPUT_COUNT :4;
+        uint32_t :20;
     } f;
     uint32_t w;
 } entropy_source__SHA256_STATUS_t;
