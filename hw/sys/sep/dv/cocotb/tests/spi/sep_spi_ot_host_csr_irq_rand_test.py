@@ -196,8 +196,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 await self.spi.wr(addr, target | probe)
                 rb2 = await self.spi.rd(addr)
                 assert (rb2 & probe) == 0, (
-                    f"CHK-REG-RW {name} unimplemented bits hold storage: "
-                    f"0x{rb2 & probe:08x}"
+                    f"CHK-REG-RW {name} unimplemented bits hold storage: 0x{rb2 & probe:08x}"
                 )
                 assert (rb2 & wmask) == target, (
                     f"CHK-REG-RW {name} writable bits disturbed by an "
@@ -383,9 +382,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._sw_rst_pulse()
         await self.spi.wr(TXDATA, 0xDEAD_BEEF)
         st = await self.spi.rd(STATUS)
-        assert (st & ST_TXQD) == 1, (
-            f"one TXDATA write left TXQD={st & ST_TXQD} (0x{st:08x})"
-        )
+        assert (st & ST_TXQD) == 1, f"one TXDATA write left TXQD={st & ST_TXQD} (0x{st:08x})"
         await self.spi.wr(CMD, CMD_DIR_TX)
 
     async def _poll_drain(self, budget: int) -> int:

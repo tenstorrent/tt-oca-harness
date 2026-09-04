@@ -383,7 +383,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |ocah_axi_vip
 |OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
 |`sep_locked_field_access_irq_path_test`
-|no_cpu, +skip_fuse_sense
+|no_cpu, real fuse sense
 |ocah_axi_vip
 |Stage the spare field's lock bits in the OTP image (same spare-slot geometry as <<sep_efuse_program_lock_matrix_test>>), sense at `LC_PROD`, then access the *shadow* aperture.
 |`sep_efuse_token_match_fault_pic_test`
@@ -4540,7 +4540,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |45
 |Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |47 in-scope: 44 PROVEN, 3 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |53 in-scope: 50 PROVEN, 3 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
 |===
 

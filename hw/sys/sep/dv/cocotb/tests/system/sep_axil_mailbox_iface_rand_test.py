@@ -106,8 +106,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         resp, data = await self.mb.rd_write_data()
         assert resp == RESP_OKAY, f"WRITE_DATA read resp={resp}, expected OKAY"
         assert (data & 0xFFFF_FFFF) == WRITE_DATA_RD_SENTINEL, (
-            f"WRITE_DATA read data=0x{data:016x}, expected constant "
-            f"0x{WRITE_DATA_RD_SENTINEL:08x}"
+            f"WRITE_DATA read data=0x{data:016x}, expected constant 0x{WRITE_DATA_RD_SENTINEL:08x}"
         )
         await self._check_status("after-wdata-read")
         self.logger.info(
