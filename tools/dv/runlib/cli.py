@@ -1966,8 +1966,7 @@ def run_flow(
                 "per-test `target` selection is supported for simulation flows only; "
                 f"formal item(s) set target: {', '.join(explicit_targets)}"
             )
-    else:
-        validate_target_plan(sim_cfg, build_targets)
+    validate_target_plan(sim_cfg, build_targets)
     if args.cov and len(build_targets) > 1:
         raise ConfigError(
             "coverage merge accepts one build target; this selection plans "

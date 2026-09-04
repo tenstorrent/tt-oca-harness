@@ -2558,6 +2558,7 @@ def _vcs_resolve_build(
         {
             "tool": "vcs",
             "target": target_name,
+            "repo_root": str(root),
             "build_dir": str(build_dir),
             "build_cov_dir": str(build_dir / "cov_build.vdb"),
             "cov_dir": str(build_dir / "coverage"),

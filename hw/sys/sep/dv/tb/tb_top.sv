@@ -1144,7 +1144,7 @@ module sep_uvm_top
 `ifndef SEP_CPU_STUB
     `ifdef VERILATOR
     initial if (!$test$plusargs("cpu_boot"))
-        $fatal(1, "no_cpu test on the full-CPU Verilator build: select target=lsu_stub_all_live");
+        $fatal(1, "no_cpu test on the full-CPU Verilator build: select target=lsu_stub_all_live or pass +cpu_boot");
     `else
     initial if (!$test$plusargs("cpu_boot")) begin
         force `SEP_CORE.sep_cpu.lsu_axi_req      = lsu_req_drive;
