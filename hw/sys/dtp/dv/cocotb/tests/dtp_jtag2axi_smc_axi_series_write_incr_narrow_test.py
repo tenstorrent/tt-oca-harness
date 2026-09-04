@@ -28,9 +28,9 @@ class dtp_jtag2axi_smc_axi_series_write_incr_narrow_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_smc_axi_wr_test_seq,
             "series_write_incr_narrow",
-            specific_env="DTP_JTAG2AXI_SMC_AXI_SERIES_WRITE_INCR_NARROW_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_AXI_SERIES_WRITE_INCR_NARROW_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="series_write_incr_narrow",
         )
         for seq in sequences:

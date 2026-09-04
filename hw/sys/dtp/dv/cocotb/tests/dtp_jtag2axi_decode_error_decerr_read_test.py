@@ -35,9 +35,9 @@ class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "decode_error_decerr_read",
-            specific_env="DTP_JTAG2AXI_DECODE_ERROR_DECERR_READ_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_DECODE_ERROR_DECERR_READ_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="decode_error_decerr_read",
         )
         for seq in sequences:

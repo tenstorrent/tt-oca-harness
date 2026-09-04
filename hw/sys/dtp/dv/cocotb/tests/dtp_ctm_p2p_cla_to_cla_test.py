@@ -14,6 +14,6 @@ class dtp_ctm_p2p_cla_to_cla_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "ctm_p2p_cla_to_cla",
             scenario="ctm_p2p_cla_to_cla",
-            specific_env="DTP_CTM_P2P_CLA_TO_CLA_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_CTM_P2P_CLA_TO_CLA_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )
