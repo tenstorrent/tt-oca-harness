@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Generic testbench top name: the module identifies the driven block.
+waive --rule=module-filename --regex="module dtp_uvm_top" --location=".*hw/sys/dtp/dv/tb/tb_top\.sv$"

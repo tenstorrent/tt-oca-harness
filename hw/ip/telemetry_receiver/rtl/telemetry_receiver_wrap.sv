@@ -8,28 +8,29 @@
 
 
 module telemetry_receiver_wrap #(
-  parameter int unsigned NUM_TELEMETRY_RECEIVERS                                                       = 3,
-  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH                                               = 8, // Must be greater than or equal to 2
+  parameter int unsigned NUM_TELEMETRY_RECEIVERS         = 3,
+  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8,  // Must be greater than or equal to 2
   parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4},
 
   parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,
   parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,
 
-  localparam int unsigned NUM_REG_MAPS = NUM_TELEMETRY_RECEIVERS + 1, // +1 for error slave
-  localparam type telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],
+  localparam int unsigned NUM_REG_MAPS                             = NUM_TELEMETRY_RECEIVERS + 1,  // +1 for error slave
+  localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],
+
   localparam telemetry_receiver_wrap_reg_map_select_t UNDEFINED_REG_MAP =
-        telemetry_receiver_wrap_reg_map_select_t'(NUM_REG_MAPS - 1)
+        telemetry_receiver_wrap_reg_map_select_t'(NUM_REG_MAPS-1)
 ) (
   // Global Interface
-  input  logic                                                                  clk_i,
-  input  logic                                                                  rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
-  input  logic                                                                  clk_telemetry_i,
-  input  logic                                                                  rst_telemetry_ni,
+  input  logic clk_telemetry_i,
+  input  logic rst_telemetry_ni,
 
   // AXI4-Lite Register Interface
-  input  telemetry_receiver_wrap_pkg::axil_req_t                                                             axil_req_i,
-  output telemetry_receiver_wrap_pkg::axil_resp_t                                                            axil_resp_o,
+  input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i,
+  output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o,
 
   // ATB Telemetry Interface
   input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i,
@@ -40,10 +41,10 @@ module telemetry_receiver_wrap #(
   input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afready_i,
 
   // Interrupt Interface
-  output logic [NUM_TELEMETRY_RECEIVERS-1:0]                                    telemetry_receiver_irq_o,
+  output logic [NUM_TELEMETRY_RECEIVERS-1:0] telemetry_receiver_irq_o,
 
   // Debug Interface (4 bits per receiver: see telemetry_receiver.sv for field definitions)
-  output logic [NUM_TELEMETRY_RECEIVERS-1:0][3:0]                               telemetry_receiver_debug_o
+  output logic [NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_receiver_debug_o
 );
 
   `include "axi/assign.svh"

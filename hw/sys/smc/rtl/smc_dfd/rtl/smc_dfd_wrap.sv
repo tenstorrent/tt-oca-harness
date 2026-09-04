@@ -8,62 +8,62 @@
 
 
 module smc_dfd_wrap #(
-  parameter  logic [22:0]  BASE_ADDR       = 0,
-  parameter  int unsigned  NUM_INPUT_LANES = 64,
+  parameter logic [22:0] BASE_ADDR       = 0,
+  parameter int unsigned NUM_INPUT_LANES = 64,
   // Width of the reference tick accounting counters. Bounds how far clk_gated_i may fall behind
   // clk_ref_i before ticks are lost; 2**REF_CNT_W ref cycles of slack.
-  parameter  int unsigned REF_CNT_W = 8,
-  localparam int unsigned LANE_WIDTH      = 16
+  parameter int unsigned REF_CNT_W  = 8,
+  localparam int unsigned LANE_WIDTH = 16
 ) (
-  input  logic                                                                     clk_smc_i,
-  input  logic                                                                     clk_ref_i,
-  input  logic                                                                     rst_primary_ni,
+  input  logic clk_smc_i,
+  input  logic clk_ref_i,
+  input  logic rst_primary_ni,
 
-  input  smc_pkg::smc_dfd_apb_req_t                                                apb_smc_dfd_reg_req_i,
-  output smc_pkg::smc_dfd_apb_resp_t                                               apb_smc_dfd_reg_resp_o,
+  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,
+  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,
 
-  input  smc_pkg::dfd_enable_t                                                     dfd_enables_i,
+  input  smc_pkg::dfd_enable_t dfd_enables_i,
 
-  output logic                                                                     external_action_debug_interrupt_o,
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]                         external_action_custom_o,
+  output logic                                             external_action_debug_interrupt_o,
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,
 
-  output smc_pkg::xtrigger_t                                                       xtrigger_ss_o,
-  input  smc_pkg::xtrigger_t                                                       xtrigger_ss_i,
-  input  logic                                                                     tdr_dbg_ctrl_clock_stop_en_i,
-  output logic                                                                     tdr_dbg_ctrl_clocks_stopped_by_cla_o,
+  output smc_pkg::xtrigger_t xtrigger_ss_o,
+  input  smc_pkg::xtrigger_t xtrigger_ss_i,
+  input  logic               tdr_dbg_ctrl_clock_stop_en_i,
+  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-  input  tt_dbm_pkg::DbgMuxSelMmr_s                                                dbg_mux_sel_csr_i,
-  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0]                                    debug_bus_i,
-  output logic [7:0]                                                               debug_marker_o,
+  input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,
+  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0] debug_bus_i,
+  output logic [7:0]                            debug_marker_o,
 
   // Trace sink RAMs live outside the DFD block (EXTERNAL_SINK_MEM = 1).
-  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]             trace_mem_req_o,
-  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]            trace_mem_resp_i,
+  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
+  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
 
   // DFT
-  input  logic                                                                     test_en_i
+  input  logic test_en_i
 );
 
   /////////////////////////
   // Signal Declarations //
   /////////////////////////
 
-  logic                                                             external_action_toggle_gpio_o;
+  logic external_action_toggle_gpio_o;
 
-  smc_pkg::xtrigger_t                                               smc_xtrigger_out_o;
+  smc_pkg::xtrigger_t smc_xtrigger_out_o;
 
-  logic                                                             smc_action_halt_clock_o;
+  logic smc_action_halt_clock_o;
 
-  logic                                                             time_tick;
-  logic                                                             rst_ref_n;
+  logic time_tick;
+  logic rst_ref_n;
   logic [REF_CNT_W-1:0] ref_cnt, ref_cnt_gray_q;
   logic [REF_CNT_W-1:0] ref_cnt_gray, ref_cnt_gray_sync;
   logic [REF_CNT_W-1:0] ref_cnt_sync, tick_cnt;
 
-  logic [LANE_WIDTH*16-1:0]                                         debug_bus_l2;
-  logic [LANE_WIDTH*32-1:0]                                         debug_bus_l3;
+  logic [LANE_WIDTH*16-1:0] debug_bus_l2;
+  logic [LANE_WIDTH*32-1:0] debug_bus_l3;
 
-  logic                                                             clk_gated_i;
+  logic clk_gated_i;
 
   //////////////////
   // Clock Gating //

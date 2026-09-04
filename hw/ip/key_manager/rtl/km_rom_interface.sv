@@ -26,31 +26,31 @@ module km_rom_interface
   parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH
 ) (
   // Clock and Reset
-  input  logic   clk_i,
-  input  logic   rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // PicoRV32 native memory interface (input from CPU)
-  input  logic   mem_valid_i,     // Memory request valid
-  output logic        mem_ready_o,     // Memory ready (data available)
-  input  logic [31:0] mem_addr_i,      // Byte address
-  input  logic [31:0] mem_wdata_i,     // Write data (unused, ROM is read-only)
-  input  logic [3:0] mem_wstrb_i,     // Write strobe (unused, ROM is read-only)
-  input  logic [3:0] mem_rstrb_i,     // Read strobe (byte lanes consumed by CPU)
-  output logic [31:0] mem_rdata_o,     // Read data
+  input  logic        mem_valid_i,  // Memory request valid
+  output logic        mem_ready_o,  // Memory ready (data available)
+  input  logic [31:0] mem_addr_i,  // Byte address
+  input  logic [31:0] mem_wdata_i,  // Write data (unused, ROM is read-only)
+  input  logic [3:0]  mem_wstrb_i,  // Write strobe (unused, ROM is read-only)
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU)
+  output logic [31:0] mem_rdata_o,  // Read data
 
   // PicoRV32 look-ahead interface (for prefetching)
-  input  logic   mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid)
-  input  logic [31:0] mem_la_addr_i,   // Look-ahead address
-  input  logic [3:0] mem_la_rstrb_i,  // Look-ahead read strobe
+  input  logic        mem_la_read_i,  // Look-ahead read signal (1 cycle before mem_valid)
+  input  logic [31:0] mem_la_addr_i,  // Look-ahead address
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe
 
   // ROM memory interface (exposed at subsystem boundary)
   output km_rom_mem_req_t rom_mem_req_o,
   input  km_rom_mem_rsp_t rom_mem_rsp_i,
 
   // Parity error output (to KMCSR)
-  output logic        parity_error_o,    // Parity error detected (pulse)
+  output logic parity_error_o,  // Parity error detected (pulse)
   // ROM write error output (to KMCSR)
-  output logic        rom_write_err_o    // ROM write attempt detected (pulse)
+  output logic rom_write_err_o  // ROM write attempt detected (pulse)
 );
 
   `include "prim_assert.sv"
