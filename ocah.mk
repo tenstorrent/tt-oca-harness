@@ -55,6 +55,7 @@ include $(OCAH_ROOT)/flows/lint/ruff.mk
 include $(OCAH_ROOT)/flows/lint/mypy.mk
 include $(OCAH_ROOT)/flows/lint/codespell.mk
 include $(OCAH_ROOT)/flows/lint/markdownlint.mk
+include $(OCAH_ROOT)/flows/lint/vale.mk
 include $(OCAH_ROOT)/flows/lint/yamllint.mk
 include $(OCAH_ROOT)/flows/lint/tomllint.mk
 include $(OCAH_ROOT)/flows/lint/checkmake.mk

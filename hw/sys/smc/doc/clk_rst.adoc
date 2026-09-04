@@ -35,7 +35,7 @@ timing foundation for operations that require consistent, predictable
 timing behavior.
 
 System timers, including the Core Local Interruptor (CLINT) and
-specialized system timer OCTS (On-Chip Time Synchronization), operate
+specialized system timer OCTS (Open Chiplet Time Synchronization), operate
 within this reference domain.
 
 This clock is used as reference clock for PLL control and frequency
