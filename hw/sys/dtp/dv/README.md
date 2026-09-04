@@ -186,8 +186,10 @@ cocotb ported shape to the self-contained SV-UVM shape. The class library
 realizes the same component tree as the cocotb side with identical
 basenames, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 `uvm/env/dtp_env_pkg.sv` (DUT types and codecs, `dtp_test_cfg` and the
-derived `dtp_env_cfg`, `dtp_virtual_sequencer`, the reference models, the
-always-on `dtp_scoreboard`, the `dtp_tap_fsm_checker` and
+derived `dtp_env_cfg`, `dtp_virtual_sequencer`, one `dtp_<feature>_ref_model`
+per scoreboard feature publishing expected items over TLM, the plain models
+they hold, the always-on `dtp_scoreboard` that pairs expected with observed
+and predicts nothing, the `dtp_tap_fsm_checker` and
 `dtp_scan_window_monitor` subscribers, and `dtp_env`, which composes the
 shared `ocah_jtag_vip` and `ocah_axi_vip` SV-UVM environments and agents),
 `uvm/seq_lib/dtp_seq_lib_pkg.sv` (reusable operation sequences
@@ -299,6 +301,13 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_extest_tes
 python3 tools/dv/run_dv.py --dut dtp --framework uvm \
   --items dtp_jtag2axi_smc_axi_error_single_write_test \
   --plusarg +DTP_AXI_SCOREBOARD_NEGATIVE
+
+# Bridge reference-model negative validation: the jtag2axi_req reference
+# model predicts corrupted addresses, so the scoreboard's pairing with the
+# observed bus transactions must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_axi_single_write_read_test \
+  --plusarg +DTP_J2A_REF_MODEL_NEGATIVE
 ```
 
 PASS/FAIL is classified by the global parser registry in
