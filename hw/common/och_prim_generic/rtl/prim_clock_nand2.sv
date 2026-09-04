@@ -18,12 +18,11 @@ module prim_clock_nand2 #(
 `ifndef SYNTHESIS
   if (SIM_DELAY) begin : gen_sim_delay
     assign #1 o_Y = ~(i_A2 & i_A1);
-  end else begin : gen_no_delay
+  end else
+`endif
+  begin : gen_no_delay
     assign o_Y = ~(i_A2 & i_A1);
   end
-`else
-  assign o_Y = ~(i_A2 & i_A1);
-`endif
 
 endmodule
 

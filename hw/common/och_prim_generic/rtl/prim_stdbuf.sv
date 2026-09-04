@@ -18,10 +18,9 @@ module prim_stdbuf #(
 `ifndef SYNTHESIS
   if (SIM_DELAY) begin : gen_sim_delay
     assign #1 o_Y = i_A;
-  end else begin : gen_no_delay
+  end else
+`endif
+  begin : gen_no_delay
     assign o_Y = i_A;
   end
-`else
-  assign o_Y = i_A;
-`endif
 endmodule

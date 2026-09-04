@@ -19,10 +19,9 @@ module prim_stdmux2 #(
 `ifndef SYNTHESIS
   if (SIM_DELAY) begin : gen_sim_delay
     assign #1 o_Y = i_SEL ? i_I1 : i_I0;
-  end else begin : gen_no_delay
+  end else
+`endif
+  begin : gen_no_delay
     assign o_Y = i_SEL ? i_I1 : i_I0;
   end
-`else
-  assign o_Y = i_SEL ? i_I1 : i_I0;
-`endif
 endmodule
