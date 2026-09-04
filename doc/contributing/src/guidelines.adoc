@@ -109,9 +109,13 @@ For JavaScript (`.js`), use line comments:
 
 For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
 
-Generated register collateral under `hw/**/regs/gen/` is produced by the
-repository generation flows and carries the same SPDX Apache-2.0 header as
-hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
+The CC-BY-4.0 AsciiDoc header above is for hand-authored documentation. Generated
+register collateral under `hw/**/regs/gen/` -- including its `.adoc` and `.html`
+tables -- is a mechanical rendering of the Apache-2.0-licensed SystemRDL source it
+is generated from, not hand-authored documentation, so it keeps the Apache-2.0
+header across every emitted extension (`.sv`, `.c`, `.py`, `.adoc`, `.html`, ...)
+rather than switching to CC-BY-4.0 by file extension. `tools/regs/stamp_spdx.py`
+stamps this header uniformly; do not hand-edit it into CC-BY-4.0.
 
 === Vendored code
 
