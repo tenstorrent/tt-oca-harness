@@ -47,17 +47,12 @@ module prim_jtag_sib_mux_post
   );
 
   if (SAFE_SELECT) begin : gen_safe_select
-    logic tck_n;
-    prim_clock_inv u_tck_inv (
-      .clk_i      (client_scan_ctrl_i.tck),
-      .scanmode_i (1'b0),
-      .clk_no     (tck_n)
-    );
     prim_flop #(
       .Width(1),
-      .ResetValue('0)
+      .ResetValue('0),
+      .Negedge(1'b1)
     ) u_sib_en_flop (
-      .clk_i  (tck_n),
+      .clk_i  (client_scan_ctrl_i.tck),
       .rst_ni (client_scan_ctrl_i.rst_n),
       .d_i    (sib_en_masked),
       .q_o    (sib_en_out)
