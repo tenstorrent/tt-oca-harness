@@ -25,7 +25,6 @@
 
 #define CSR_MEIHAP 0xFC8
 #define PIC_TOKEN_FAULT 40u
-#define FAULT_SEC_DISABLE 0x00010000u
 #define READY_MARKER 0xE9050040u
 #define SCRATCH_READY 0u
 #define ISR_WAIT_ITERS 200000
@@ -90,23 +89,37 @@ int main(void) {
         sep_mbx_puts("CHK-PIC-CLAIM PASS: ISR claim id == 40\n");
     }
 
-    if ((g_fault & FAULT_SEC_DISABLE) == 0) {
+    if ((g_fault & EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm) == 0) {
         sep_mbx_puts("FAIL: TOKEN_MATCH_FAULT secure-disable bit not set\n");
         errors++;
     } else {
         sep_mbx_puts("CHK-PIC-FAULT PASS: SEC_DISABLE sticky bit set\n");
     }
 
-    {
+    if (g_isr_count == 0) {
+        /* The mask claim needs a delivered interrupt to have been masked. With
+         * no delivery the quiet window below is quiet for the wrong reason. */
+        sep_mbx_puts("FAIL: CHK-PIC-MASK not evaluated; no ISR was delivered\n");
+        errors++;
+    } else {
         uint32_t before = g_isr_count;
+        /* TOKEN_MATCH_FAULT is software-read-only and clears only on reset, so
+         * the source must still be REQUESTING while masked. Without this the
+         * quiet window also passes on a design whose request dropped by itself
+         * or whose sticky latch never held. */
+        uint32_t still_pending = pic_source_pending(PIC_TOKEN_FAULT);
         for (i = 0; i < STORM_CHECK_ITERS; i++) {
             __asm__ volatile("nop");
         }
-        if (g_isr_count != before) {
+        if (!still_pending) {
+            sep_mbx_puts("FAIL: PIC 40 stopped requesting; mask window proves nothing\n");
+            errors++;
+        } else if (g_isr_count != before) {
             sep_mbx_puts("FAIL: PIC 40 re-entered after mask\n");
             errors++;
         } else {
-            sep_mbx_puts("CHK-PIC-MASK PASS: meie[40] mask stopped re-entry\n");
+            sep_mbx_puts("CHK-PIC-MASK PASS: source 40 still requesting, meie[40] "
+                         "mask stopped re-entry\n");
         }
     }
 
