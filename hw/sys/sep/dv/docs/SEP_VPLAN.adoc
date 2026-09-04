@@ -3587,7 +3587,7 @@ both lock flavours of one seed-selected spare.
 |CHK-ERROR-CODE
 |A redundancy fault writes `6'b111111` on every match-status bit.
 |CHK-STICKY
-|A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq38 asserted (`sw=r` until reset).
+|A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq39 asserted (`sw=r` until reset).
 |CHK-IRQ-38
 |`sep_internal_interrupts[39]` (PIC source 40) asserts with the sticky bit.
 |CHK-WHICH-TOKEN
@@ -3623,7 +3623,7 @@ both lock flavours of one seed-selected spare.
 |===
 |Checker |Contract
 |CHK-PIC-CLAIM
-|ISR `meihap` claim id is 39.
+|ISR `meihap` claim id is 40.
 |CHK-PIC-FAULT
 |`TOKEN_MATCH_FAULT` secure-disable bit is set.
 |CHK-PIC-MASK
