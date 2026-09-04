@@ -371,6 +371,8 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
+    // The production SEP debug-bus output, exposed read-only for lane-packing checks.
+    output logic [383:0]      ext_debug_bus_o,
     // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
     // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
     // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
@@ -838,7 +840,7 @@ module sep_uvm_top
         .sep_region_size_o            (),
 
         // External debug bus
-        .ext_debug_bus_o              (),
+        .ext_debug_bus_o              (ext_debug_bus_o),
 
         // CPU lockstep control/status
         .lockstep_ctrl_i              (lockstep_ctrl_i),
