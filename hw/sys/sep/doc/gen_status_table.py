@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Generate the SEP_MSG_* status-code table for rom.adoc from the ROM header.
 
 The header is the single source of truth for status codes: the boot ROM compiles

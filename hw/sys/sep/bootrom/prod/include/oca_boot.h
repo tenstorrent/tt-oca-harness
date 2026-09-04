@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-//
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // OCA boot-manifest load and validation for the SEP boot ROM.
 //
 // Replaces the previous bespoke ("Grendel") manifest_load.c + manifest_crypto.c.

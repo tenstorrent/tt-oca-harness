@@ -11,8 +11,8 @@
 //
 // for i = 1,2,... with L = key_bits (128 for AES-128-CBC, 256 for AES-256-CBC).
 //
-// This code implments a soft version of the KDF function used in the OCAH Key
-// Manager. The OCA manifest carries a 64-byte kdf_inputand wraps it in the Key 
+// This code implements a soft version of the KDF function used in the OCAH Key
+// Manager. The OCA manifest carries a 64-byte kdf_input and wraps it in the Key
 // Manager's defined 192-byte expanded block. Reference implementation:
 // validators/oca/test/openssl_crypto.c derive_payload_key(); producer side
 // src/oca/encryption.py; known-answer tests tests/test_oca_kdf_kat.py.
@@ -23,7 +23,7 @@
 // future 384-bit class key would otherwise silently truncate.
 
 // Note that the output for a 128-bit key request is not just a truncation of
-// a 256-bit key request. The requested length is part of the KDF input data 
+// a 256-bit key request. The requested length is part of the KDF input data
 // and thus forces the output values of the HMAC function to be totally different
 
 #include "kdf.h"

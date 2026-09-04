@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-//
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // SEP platform binding for the OCA boot-manifest validation library.
 //
 // Each callback is a thin adapter over a driver the ROM already had, so the
@@ -94,7 +95,7 @@ static oca_result_t plat_sha256(const uint8_t *msg, size_t msg_len, uint8_t out_
     if (msg == NULL || out_digest == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
-    
+
     // plat_sha256() deliberately does NOT confirm entropy: the HMAC core needs
     // no EDN reseed (the KDF runs on it with the chain absent), and this
     // callback runs on every boot including unsigned ones, so requiring entropy
@@ -128,10 +129,10 @@ static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
     }
 
     // Entropy is confirmed on entry to each callback that drives an
-    // entropy-dependent engine. It is a prerequisite of the OTBN engine, 
-    // not a intialization step inside it, so it is established early in the
-    // signature verification call rather than rediscovered by the driver
-    // Does not return on failure,but does fail the secure boot process
+    // entropy-dependent engine. It is a prerequisite of the OTBN engine,
+    // not an initialization step inside it, so it is established early in the
+    // signature verification call rather than rediscovered by the driver.
+    // Does not return on failure, but does fail the secure boot process.
     ENTROPY_PREREQ();
 
     // RSA-3072 PKCS#1 v1.5 / SHA-256 only. ECDSA P-256 (0x05) is a valid OCA
@@ -203,8 +204,8 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
         return OCA_FAIL_INVALID_ARG;
     }
 
-    // Confirmed entropy source is functional on entry, as in every crypto callback. 
-    // The cipher on AES, whose masking PRNG reseeds off EDN before the core will 
+    // Confirmed entropy source is functional on entry, as in every crypto callback.
+    // The cipher on AES, whose masking PRNG reseeds off EDN before the core will
     // report STATUS.IDLE otherwise
     ENTROPY_PREREQ();
 

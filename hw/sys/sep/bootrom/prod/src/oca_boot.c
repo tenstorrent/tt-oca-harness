@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-//
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // OCA boot-manifest load and validation.
 //
 // The division of labour with the vendored library is deliberate and is the
