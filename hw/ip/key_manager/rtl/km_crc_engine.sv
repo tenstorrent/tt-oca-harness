@@ -8,15 +8,15 @@
  */
 
 module km_crc_engine (
-  input logic        clk_i,
-  input logic        rst_ni,
-  input logic        start_i,
-  input logic [1:0]  mode_i,
-  input logic [31:0] state_i,
-  input logic [31:0] data_i,
-  output logic            busy_o,
-  output logic            done_o,
-  output logic [31:0]     result_o
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  input  logic [1:0]  mode_i,
+  input  logic [31:0] state_i,
+  input  logic [31:0] data_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic [31:0] result_o
 );
 
   `include "prim_assert.sv"

@@ -143,8 +143,8 @@ module smu_axi_out_sim_slave #(
       end else if (wr_active && axi_req_i.w_valid) begin
         // store is an associative array, not a fixed-size register: Verilator
         // rejects a nonblocking assignment into a dynamically-sized variable,
-        // so this one commit stays blocking unlike its sibling state updates.
-        store[wr_addr[AddrWidth-1:3]] = wr_merged;  // verilog_lint: waive always-ff-non-blocking
+        // so this assignment stays blocking unlike its sibling state updates.
+        store[wr_addr[AddrWidth-1:3]] = wr_merged;
         if (axi_req_i.w.last) begin
           wr_active <= 1'b0;
           b_pending <= 1'b1;
