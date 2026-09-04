@@ -28,12 +28,9 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
             Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
         )
 
-        dut.powergood_i.value = 0
-        dut.rst_cold_ni.value = 0
         dut.ext_boot_seq_done_i.value = 0
         dut.jtag_tck.value = 0
-        dut.jtag_tms.value = 0
-        dut.jtag_trst.value = 0
+        dut.jtag_tms.value = 1
         dut.jtag_tdi.value = 0
         if hasattr(dut, "xtrig_ctm_dst_req"):
             dut.xtrig_ctm_dst_req.value = 0
@@ -53,6 +50,11 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
             "s_axi_rready",
         ):
             getattr(dut, name).value = 0
+
+        await self.arm_async_resets()
+        dut.powergood_i.value = 0
+        dut.rst_cold_ni.value = 0
+        dut.jtag_trst.value = 0
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood (boot gate ext_boot_seq_done_i=0)")
