@@ -337,6 +337,8 @@ def _rerun_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None)
     if args is not None:
         if getattr(args, "run_mode", None):
             command.extend(["--run-mode", str(args.run_mode)])
+        if getattr(args, "target", None):
+            command.extend(["--target", str(args.target)])
         if getattr(args, "waves", None):
             command.extend(["--waves", str(args.waves)])
         if getattr(args, "waves_on_fail", None):
