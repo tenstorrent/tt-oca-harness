@@ -16,7 +16,11 @@ module prim_flop #(
 );
 
   if (Negedge) begin : gen_negedge
-    always_ff @(negedge clk_i or negedge rst_ni) begin
+    // Capture on falling clk_i via posedge of the inverted pin so a parked-low
+    // clock is not at the capturing level while rst_ni is asserted.
+    logic clk_n;
+    assign clk_n = ~clk_i;
+    always_ff @(posedge clk_n or negedge rst_ni) begin
       if (!rst_ni) begin
         q_o <= ResetValue;
       end else begin
