@@ -21,7 +21,7 @@ OUT.
 |Enrolled nightly |`sep0_all` = 53 (`--dut smu`)
 |PR smoke |`smoke` = 4 (includes `smu_ext_boot_seq_gate_test`, not in `sep0_all`)
 |Evidence map |`cocotb/env/smu_evidence_map.py` `TEST_EVIDENCE`
-|Deferred catalog |`testlists/deferred.toml` (123 names; disposition in #488)
+|Deferred catalog |`docs/SMU_DEFERRED_DISPOSITION.adoc` (disposition in #488)
 |===
 
 [[smu-feature-confirmation]]
@@ -133,7 +133,7 @@ v0.5.0 nightly denominator.
 [[smu-out-and-wrapper]]
 === OUT, wrapper, and missing commercial names
 
-* Every `testlists/deferred.toml` name is OUT for this subset. #488 is the
+* Every name in `docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset. #488 is the
   per-row disposition; do not imply those features are done because a
   `TEST_EVIDENCE` row still exists for catalog continuity.
 * `--dut smu_wrapper` (`smu_wrapper_elaboration_no_sep_test`,

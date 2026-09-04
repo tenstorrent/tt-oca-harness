@@ -4,12 +4,13 @@
 [[smc-deferred-disposition]]
 == SMC deferred and OUT disposition
 
-This table is the v0.5.0 source of truth for every named `[[tests]]` entry in
-`testlists/deferred.toml`. The file is not included by `testlists/all.toml`.
-Nothing here is enrolled PASS. `rg -c '^name = "'` on that file is 66 because
-it also counts the three inventory groups (`deferred_tb_policy`,
-`deferred_nightly_tier_a`, `deferred_nightly_remainder`); those groups are not
-tests.
+This table is the v0.5.0 source of truth for every name that was catalogued in
+the removed `testlists/deferred.toml` ledger; with that file gone, this document
+is the record. Nothing here is enrolled PASS. The count differs from the old
+ledger's 66 `name =` lines because those also counted three inventory groups
+(`deferred_tb_policy`, `deferred_nightly_tier_a`, `deferred_nightly_remainder`),
+which are not tests. The blocker for each surviving body lives in its own
+docstring; `hw/sys/smc/dv/README.md` tabulates the ones under `cocotb/tests/`.
 
 Buckets:
 

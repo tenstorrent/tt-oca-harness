@@ -80,8 +80,8 @@ of every run.
 
 Sequences drive the DUT through its real pins and buses. There is no Force and
 no deposit on any enrolled test: the 2026-07-29 policy is that a body which
-needs one is not reportable as PASS and lives under `cocotb/tests_deferred/`
-with its entry in `testlists/deferred.toml`.
+needs one is not reportable as PASS and lives under `cocotb/tests_deferred/`,
+not enrolled.
 
 [[smu-checking-strategy]]
 === Checking Strategy
@@ -130,9 +130,8 @@ its module, tags and timeout. `testlists/all.toml` holds the `[[groups]]`, each
 naming the tests it contains. A test is selectable by its own name or by any
 group it belongs to.
 
-`testlists/deferred.toml` is the non-enrolled inventory. Its entries are named
-so the catalog stays complete, and they are not default-included; nothing in it
-is reportable as a PASS.
+`cocotb/tests_deferred/` holds the non-enrolled bodies. They are not
+default-included and none of them is reportable as a PASS.
 
 === Build and Run
 
