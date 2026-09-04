@@ -1,23 +1,31 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Each pair here is a wrong expansion of one of this repo's own acronyms
-# that has actually shown up in-tree -- most plausibly from an AI assistant
-# free-associating a plausible-sounding phrase for a three/four-letter
-# acronym it was never told the meaning of, the same way it would misspell
-# an uncommon word. The right-hand side is quoted, not invented: DFD is
-# "Design-for-Debug" per hw/sys/smc/doc/dfd.adoc (the block that owns it);
-# OCA is "Open Chiplet Atlas" per README.md, NOTICE, and every antora.yml
-# title in doc/ -- both confirmed by grep before being added here. Add a
-# pair only once you've grepped the repo for its right-hand side and found
-# it stated somewhere, not from memory: this file is only useful if every
-# entry in it is more trustworthy than the AI it's meant to catch.
-extends: substitution
-message: "Use '%s', not '%s' -- this repo defines the acronym differently."
-ignorecase: true
+# Flags any spelled-out expansion of a tracked acronym that doesn't match
+# the one this repo actually defines it as -- not just the specific wrong
+# phrasings already caught in-tree (an earlier version of this rule was a
+# plain substitution blocklist of those; see git history). The canonical
+# map and the phrase-matching logic live in
+# styles/config/scripts/AcronymDefinitions.tengo, so this catches a *novel*
+# wrong expansion too, e.g. an AI assistant free-associating a
+# plausible-sounding phrase for a three/four-letter acronym it was never
+# told the meaning of, the same way it might misspell an uncommon word.
+#
+# Right-hand sides are quoted, not invented -- confirm with grep before
+# adding an acronym, and cite the source in the script's `canonical` map
+# comment or here:
+#   DFD  = "Design-for-Debug"                    per hw/sys/smc/doc/dfd.adoc
+#   OCA  = "Open Chiplet Atlas"                   per README.md, NOTICE, doc/**/antora.yml
+#   OCCP = "Open Chiplet Communication Protocol"  per hw/sys/smc/bootrom/prod/doc/index.adoc
+#   OCTS = "Open Chiplet Time Synchronization"    per hw/ip/system_timer_octs/regs/system_timer_octs.rdl
+#
+# Adding an acronym means editing the Tengo script's `canonical` map, not
+# this file -- there's no YAML-only extension point for "the answer is X,
+# flag anything else," which is why this extends `script` instead of the
+# lower-effort `substitution` extends every other rule in this repo's Vale
+# config uses.
+extends: script
+message: "%s"
 level: error
-swap:
-  'Debug Forensics Dump': Design-for-Debug
-  'Design Forensics Dump': Design-for-Debug
-  'debug-for-design': Design-for-Debug
-  'Open Chiplet Architecture': Open Chiplet Atlas
+scope: raw
+script: AcronymDefinitions.tengo

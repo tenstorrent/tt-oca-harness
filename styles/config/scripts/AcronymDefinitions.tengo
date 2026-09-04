@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Checks that this repo's own acronyms expand to the one phrase each is
+// actually defined as, wherever the document spells the expansion out --
+// "<Phrase> (ACRONYM)" or "ACRONYM (<Phrase>)" -- instead of only blocking
+// the specific wrong phrasings already found in-tree. See styles/OCAH/
+// Acronyms.yml for the canonical map and how each entry was sourced.
+//
+// Tengo's regex support (Go's RE2) has no lookaround, so the phrase-match
+// pattern below just grabs the run of hyphen/space-joined words immediately
+// before or after the acronym; a joining word (an article, "for", "of") is
+// allowed mid-phrase but the run must start with a capitalized word so it
+// doesn't wander back across an unrelated earlier sentence.
+
+text := import("text")
+
+canonical := {
+  DFD:  "design-for-debug",
+  OCA:  "open chiplet atlas",
+  OCCP: "open chiplet communication protocol",
+  OCTS: "open chiplet time synchronization"
+}
+
+matches := []
+
+canonicalize := func(phrase) {
+  // A phrase that line-wrapped in the source carries the hard newline the
+  // capture crossed; collapse any run of whitespace back to one space
+  // before comparing.
+  collapsed := text.trim_space(text.re_replace("\\s+", phrase, " "))
+  lower := text.to_lower(collapsed)
+  if text.has_prefix(lower, "the ") {
+    lower = text.trim_space(text.trim_prefix(lower, "the "))
+  }
+  return lower
+}
+
+flag := func(begin, end, acr, phrase) {
+  expected := canonical[acr]
+  if canonicalize(phrase) != expected {
+    display := text.trim_space(text.re_replace("\\s+", phrase, " "))
+    matches = append(matches, {
+      begin: begin,
+      end: end,
+      message: "'" + display + "' (" + acr + ") -- this repo defines " +
+        acr + " as \"" + expected + "\", not \"" + display + "\"."
+    })
+  }
+}
+
+// A run of Title Case words, optionally joined by a handful of lowercase
+// linking words (as in "Design-for-Debug"), anchored to start on a
+// capitalized word so it can't wander back into ordinary sentence prose
+// (e.g. "This is the Open Chiplet Atlas (OCA) standard" must not capture
+// "This is the Open Chiplet Atlas" -- "is" isn't Title Case or a linking
+// word, so the run stops there and the match retries starting at "Open").
+// AsciiDoc/Markdown prose wraps at ~80 columns, so the words of a phrase
+// routinely split across a line break -- the separator class has to match
+// a hard newline, not just a space or hyphen.
+linking_word := "for|of|the|and|on|in|to"
+word := "(?:[A-Z][A-Za-z]*|" + linking_word + ")"
+phrase_pattern := "[A-Z][A-Za-z]*(?:[-\\s]" + word + "){0,6}"
+
+for acr, expected in canonical {
+  // "<Phrase> (ACRONYM)"
+  forward := text.re_find("(" + phrase_pattern + ")\\s*\\(" + acr + "\\)", scope, -1)
+  if !is_undefined(forward) {
+    for m in forward {
+      flag(m[0].begin, m[0].end, acr, m[1].text)
+    }
+  }
+
+  // "ACRONYM (<Phrase>)"
+  reverse := text.re_find("\\b" + acr + "\\s*\\((" + phrase_pattern + ")\\)", scope, -1)
+  if !is_undefined(reverse) {
+    for m in reverse {
+      flag(m[0].begin, m[0].end, acr, m[1].text)
+    }
+  }
+}
