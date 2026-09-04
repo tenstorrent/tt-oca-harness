@@ -33,22 +33,22 @@ module km_sram_interface
   parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS
 ) (
   // Clock and Reset
-  input  logic   clk_i,
-  input  logic   rst_ni,
+  input  logic clk_i,
+  input  logic rst_ni,
 
   // PicoRV32 native memory interface (input from CPU)
-  input  logic   mem_valid_i,      // Memory request valid
-  output logic        mem_ready_o,      // Memory ready (data available)
-  input  logic [31:0] mem_addr_i,       // Byte address
-  input  logic [31:0] mem_wdata_i,      // Write data
-  input  logic [3:0] mem_wstrb_i,      // Write strobe (non-zero = write)
-  input  logic [3:0] mem_rstrb_i,      // Read strobe (byte lanes consumed by CPU)
-  output logic [31:0] mem_rdata_o,      // Read data
+  input  logic        mem_valid_i,  // Memory request valid
+  output logic        mem_ready_o,  // Memory ready (data available)
+  input  logic [31:0] mem_addr_i,  // Byte address
+  input  logic [31:0] mem_wdata_i,  // Write data
+  input  logic [3:0]  mem_wstrb_i,  // Write strobe (non-zero = write)
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU)
+  output logic [31:0] mem_rdata_o,  // Read data
 
   // PicoRV32 look-ahead interface (for prefetching)
-  input  logic   mem_la_read_i,    // Look-ahead read signal (1 cycle before mem_valid)
-  input  logic [31:0] mem_la_addr_i,    // Look-ahead address
-  input  logic [3:0] mem_la_rstrb_i,   // Look-ahead read strobe
+  input  logic        mem_la_read_i,  // Look-ahead read signal (1 cycle before mem_valid)
+  input  logic [31:0] mem_la_addr_i,  // Look-ahead address
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe
 
   // SRAM memory interface (exposed at subsystem boundary)
   output km_sram_mem_req_t sram_mem_req_o,

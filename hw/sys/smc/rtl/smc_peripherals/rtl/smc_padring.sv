@@ -4,102 +4,102 @@
 // SMC Padring
 
 module smc_padring #(
-  parameter int unsigned      MAX_TRANS           = 1,
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0]    ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Size per GPIO instance (32 bytes)
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR = 32'h00000000      // Base address for all GPIO intfs
+  parameter int unsigned                   MAX_TRANS                 = 1,
+  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Size per GPIO instance (32 bytes)
+  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000  // Base address for all GPIO intfs
 
 ) (
-  input  logic                                clk_i,
-  input  logic                                rst_primary_ni,
-  input  logic                                rst_cold_stable_smc_clk_ni,
+  input  logic clk_i,
+  input  logic rst_primary_ni,
+  input  logic rst_cold_stable_smc_clk_ni,
 
   // Test Interface
-  input  logic                                test_en_i,
-  input  logic                                scan_rst_ni,
+  input  logic test_en_i,
+  input  logic scan_rst_ni,
 
   // AXI-Lite Register Interface
-  input  gpio_pkg::gpio_axil_req_t            axil_req_i,
-  output gpio_pkg::gpio_axil_resp_t           axil_resp_o,
+  input  gpio_pkg::gpio_axil_req_t  axil_req_i,
+  output gpio_pkg::gpio_axil_resp_t axil_resp_o,
 
   // SPI
-  input  logic                                spi_enable_i,
-  input  logic                                spi_clk_i,                  // Serial bir-rate clock
-  input  logic [7:0]                          spi_txd_i,                  // Transmit Data Signal
-  input  logic                                spi_cs_n_i,                 // Chip Select Signal
-  input  logic                                spi_cs_oe_n_i,              // chip select output enable
-  input  logic                                spi_cs_ie_n_i,
-  input  logic                                spi_clk_ie_n_i,
-  input  logic                                spi_clk_oe_n_i,
-  input  logic                                spi_dqs_ie_n_i,
-  input  logic                                spi_dqs_oe_n_i,
-  input  logic [7:0]                          spi_dq_ie_n_i,
-  input  logic [7:0]                          spi_dq_oe_n_i,
-  output logic [7:0]                          spi_rxd_o,                  // Receive Data Signal
-  output logic                                spi_rxds_o,                 // Read Data strobe in DDR mode of operation
-  input  logic                                spi_mem_rebar_oepad_i,
-  input  logic                                spi_mem_rebar_opad_i,
-  input  logic                                spi_mem_rebar_iepad_i,
-  output logic                                spi_mem_rebar_ipad_o,
+  input  logic       spi_enable_i,
+  input  logic       spi_clk_i,  // Serial bir-rate clock
+  input  logic [7:0] spi_txd_i,  // Transmit Data Signal
+  input  logic       spi_cs_n_i,  // Chip Select Signal
+  input  logic       spi_cs_oe_n_i,  // chip select output enable
+  input  logic       spi_cs_ie_n_i,
+  input  logic       spi_clk_ie_n_i,
+  input  logic       spi_clk_oe_n_i,
+  input  logic       spi_dqs_ie_n_i,
+  input  logic       spi_dqs_oe_n_i,
+  input  logic [7:0] spi_dq_ie_n_i,
+  input  logic [7:0] spi_dq_oe_n_i,
+  output logic [7:0] spi_rxd_o,  // Receive Data Signal
+  output logic       spi_rxds_o,  // Read Data strobe in DDR mode of operation
+  input  logic       spi_mem_rebar_oepad_i,
+  input  logic       spi_mem_rebar_opad_i,
+  input  logic       spi_mem_rebar_iepad_i,
+  output logic       spi_mem_rebar_ipad_o,
 
   // UART
-  input  logic [smc_config_pkg::NUM_UART-1:0]     uart_enable_i,
-  output logic [smc_config_pkg::NUM_UART-1:0]     uart_rx_o,
-  input  logic [smc_config_pkg::NUM_UART-1:0]     uart_tx_i,
-  input  logic [smc_config_pkg::NUM_UART-1:0]     uart_rts_n_i,
-  output logic [smc_config_pkg::NUM_UART-1:0]     uart_cts_n_o,
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_i,
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_rx_o,
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_tx_i,
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_rts_n_i,
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_cts_n_o,
 
   // System Timer OCTS
-  input  logic                                chiplet_is_primary_i,
-  input  logic                                timer_sync_load_i,
-  input  logic                                timer_cnt_credit_i,
-  output logic                                timer_sync_load_o,
-  output logic                                timer_cnt_credit_o,
-  input  logic                                timer_gpio_enable_i,
+  input  logic chiplet_is_primary_i,
+  input  logic timer_sync_load_i,
+  input  logic timer_cnt_credit_i,
+  output logic timer_sync_load_o,
+  output logic timer_cnt_credit_o,
+  input  logic timer_gpio_enable_i,
 
   // Boot Stall
-  output logic                                boot_stall_o,
+  output logic boot_stall_o,
 
   // I3C
-  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_enable_i,
-  output logic [smc_config_pkg::NUM_I3C-1:0]          i3c_scl_o,
-  output logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_o,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_scl_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_scl_oen_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_oen_i,              // Output enable for SDA IO pad (active low)
-  input  logic [smc_config_pkg::NUM_I3C-1:0]          i3c_sda_pp_i,               // Push-pull - output enable for SDA IO pad
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_enable_i,
+  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_o,
+  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_o,
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_i,
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_oen_i,
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_i,
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_oen_i,  // Output enable for SDA IO pad (active low)
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_pp_i,  // Push-pull - output enable for SDA IO pad
 
   // I2C
-  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_enable_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_master_enable_i,
-  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_scl_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_sda_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_n_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_alert_n_o,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_scl_oen_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_sda_oen_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_n_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0]          i2c_smbus_alert_oe_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_master_enable_i,
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_n_o,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_oen_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_oen_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_oe_i,
 
   // AVS
-  input  logic                                avs_enable_i,
-  input  logic                                avs_clock_i,
-  input  logic                                avs_mdata_i,
-  output logic                                avs_sdata_o,
+  input  logic avs_enable_i,
+  input  logic avs_clock_i,
+  input  logic avs_mdata_i,
+  output logic avs_sdata_o,
 
   // Reset Unit signals
-  input  logic                                rst_cool_ni,
-  output logic                                isolate_req_pin_o,
+  input  logic rst_cool_ni,
+  output logic isolate_req_pin_o,
 
   // GPIO Data Signals (to external GPIO macros via gpio_shim instances)
-  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       lsio_interface_select_o,
-  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_o,
-  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_en_o,
-  input   logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       pad2core_i,
-  output  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       pad2core_en_o,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,
+  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,
 
   // GPIO Interrupts - only bonded GPIOs can be used for interrupts
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]      gpio_interrupt_o
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_interrupt_o
 
 );
 
