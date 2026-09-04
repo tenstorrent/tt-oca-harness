@@ -115,6 +115,12 @@ class RepositoryContractTests(unittest.TestCase):
 
         self.assertEqual(validate_source(root / "doc/datasheets/template.adoc"), [])
 
+    def test_dtp_source_and_release_pdf_are_present(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+
+        self.assertEqual(validate_source(root / "doc/datasheets/src/dtp.adoc"), [])
+        self.assertEqual(validate_pdf(root / "doc/datasheets/dist/ocah-dtp-datasheet.pdf"), [])
+
 
 if __name__ == "__main__":
     unittest.main()
