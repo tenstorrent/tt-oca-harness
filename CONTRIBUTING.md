@@ -87,6 +87,12 @@ Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching
 jobs share `bender`, Verilator, and reviewdog artifacts; jobs report through
 `.github/actions/reviewdog-report`.
 
+`.github/workflows/sim.yml` is the pull-request and push smoke gate;
+`.github/workflows/regress.yml` runs the nightly and weekly regression tiers on
+a schedule. Both call the composite action `.github/actions/dv-run`, so the
+toolchain, run, gate, and upload steps have one source and each workflow owns
+only its matrix and tier policy.
+
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
 child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still

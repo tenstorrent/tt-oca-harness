@@ -178,9 +178,10 @@ so the map cannot drift away from what the test does.
 |`sep0_p4_all` |55 |
 |===
 
-`sep0_all` is the group `.github/workflows/sim.yml` runs as the SMU nightly,
-with three reseeds per test. `smoke` is what pull requests run. `smoke` is not a
-subset of `sep0_all`.
+`sep0_all` is the group `.github/workflows/regress.yml` runs as the SMU
+nightly (one seed per test) and weekly (three seeds per test). `smoke` is what
+pull requests run (`.github/workflows/sim.yml`). `smoke` is not a subset of
+`sep0_all`.
 
 [[smu-known-limitations]]
 === Known Limitations
