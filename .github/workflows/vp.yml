@@ -295,11 +295,15 @@ jobs:
   # comments in virtual_platform/Makefile. The model splits them across two
   # jobs and builds Whisper twice, which is an artifact of its job layout.
   #
-  # Container leg only. The container is the path that needs nothing of the
-  # host, and it is what this was verified on; a native leg would also have to
-  # install a C++20 toolchain and both dev libraries for a second time, for
-  # signal the model's own non-container CI already provides. Adding one is a
-  # reasonable follow-up, not a prerequisite.
+  # Container leg only, unlike the sep-vp job above. Not because the native
+  # path is unproven -- it has since been run end to end under a gcc-toolset
+  # (both suites green, and it is the leg that actually exercises the
+  # from-source static PIC Boost, since RHEL 8's own Boost and OpenSSL are too
+  # old) -- but to keep this job to one build of the SEP peripheral tree and
+  # one Whisper. Adding a native leg here is cheap on ubuntu-latest, where
+  # Boost and OpenSSL resolve to /usr exactly as they do in the image, and it
+  # would buy coverage of native-only faults; worth doing, but a deliberate
+  # follow-up rather than part of landing this.
   # ---------------------------------------------------------------------------
   smc-smu-vp:
     name: smc-vp + smu-vp (container)
