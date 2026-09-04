@@ -8,6 +8,9 @@ import pyuvm
 from seq_lib.smc_hang_detector_sanity_test_seq import smc_hang_detector_sanity_test_seq
 from smc_base_test import smc_base_test
 
+# Poison (3) + per-source (7) + OR (3): every `_await_irqs` call in the body.
+_EXPECTED_IRQ_LEGS = 13
+
 
 @pyuvm.test()
 class smc_hang_detector_sanity_test(smc_base_test):
@@ -18,7 +21,10 @@ class smc_hang_detector_sanity_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_hang_detector_sanity_test_seq("hang_detector_sanity_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.poison_ok and seq.per_source_ok and seq.or_ok, (
-            f"hang detector incomplete poison={seq.poison_ok} "
-            f"per_source={seq.per_source_ok} or={seq.or_ok}"
+        # A quantity the run measured, not three flags the sequence sets to True
+        # on its way past. Every leg that fails raises inside `_await_irqs`, so
+        # the value this catches is a leg that never ran at all.
+        assert seq.irq_legs_handshaked == _EXPECTED_IRQ_LEGS, (
+            f"hang detector completed {seq.irq_legs_handshaked} irq handshakes, "
+            f"expected {_EXPECTED_IRQ_LEGS}"
         )
