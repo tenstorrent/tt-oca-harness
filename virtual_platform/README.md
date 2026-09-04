@@ -162,3 +162,8 @@ Boost and OpenSSL are also too old, so both get built from source into
 
 The `sepvp` runner's design — status channels, overlay `.ini` generation, fuse maps —
 is documented in [`sepvp/README.md`](sepvp/README.md).
+
+Running the SMC production boot ROM on `smc-vp` needs a different setup from the
+firmware suites (the ROM image is preloaded into the modeled ROM rather than
+loaded as an ELF, and its console is a scratch register rather than a UART):
+see [`RUNNING_THE_SMC_BOOT_ROM.md`](RUNNING_THE_SMC_BOOT_ROM.md).

@@ -802,6 +802,37 @@ vp-clean:
 # =============================================================================
 # SMC / SMU configure + build (opt-in; the Whisper-enabled tree)
 # =============================================================================
+# The environment this tree's CMake needs. It has to be present for the BUILD
+# steps too, not just the configure: `WHISPER_HOME` is read via $(ENV) at
+# configure time and decides whether the smc/smu targets are generated at all,
+# and CMake re-runs its own configure during a build whenever any CMakeLists.txt
+# in the project changes -- a model uprev, or an edit to any of the ~20 SEP/SMC
+# peripherals this tree pulls in. Such a re-configure inherits the *build*
+# step's environment, so without this the targets silently vanish and the build
+# fails with the confusing
+#     make[1]: *** No rule to make target 'smc-vp'.  Stop.
+# BOOST_DIR is here for the same reason (smc/cpu_cluster requires it).
+SMC_CMAKE_ENV = \
+  SYSTEMC_HOME=$(SYSTEMC_HOME) CCI_HOME=$(CCI_HOME) \
+  BOOST_ROOT=$(BOOST_ROOT) BOOST_DIR=$(BOOST_ROOT) OPENSSL_ROOT=$(OPENSSL_ROOT) \
+  WHISPER_HOME=$(WHISPER_HOME)
+
+# Build one target in the SMC/SMU tree, and turn the one failure mode that is
+# genuinely confusing into an actionable message. If the tree was reconfigured
+# without WHISPER_HOME (see above) the target simply does not exist, and make
+# says only "No rule to make target 'smc-vp'" -- which reads like a typo in
+# this Makefile rather than a stale build tree.
+define SMC_BUILD_TARGET
+if ! $(SMC_CMAKE_ENV) $(MAKE) -C $(SMC_BUILD_DIR) -j$(NPROC) $(1); then
+  if ! $(SMC_CMAKE_ENV) $(MAKE) -C $(SMC_BUILD_DIR) help 2>/dev/null | grep -qx "\.\.\. $(1)"; then
+    echo "[VP] ERROR: $(SMC_BUILD_DIR) has no '$(1)' target." >&2
+    echo "[VP]   Its CMake cache was regenerated without WHISPER_HOME, so the" >&2
+    echo "[VP]   smc and smu platforms were skipped (vp/platform/CMakeLists.txt)." >&2
+    echo "[VP]   Fix: make smc-clean   (wipes the tree and reconfigures)" >&2
+  fi
+  exit 1
+fi
+endef
 $(SMC_DEP_STAMP): FORCE
 	@if [ "$$(cat '$@' 2>/dev/null)" != '$(SMC_CONFIG_SIG)' ]; then
 	  printf '%s' '$(SMC_CONFIG_SIG)' > '$@'
@@ -832,9 +863,7 @@ $(SMC_BUILD_DIR)/Makefile: $(SMC_DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL
 	echo "[VP] Configuring smc-vp/smu-vp via configure_vp.sh..."
 	$(DEPS_INFO)
 	cd $(VP_SRC_DIR)
-	SYSTEMC_HOME=$(SYSTEMC_HOME) CCI_HOME=$(CCI_HOME) \
-	BOOST_ROOT=$(BOOST_ROOT) BOOST_DIR=$(BOOST_ROOT) OPENSSL_ROOT=$(OPENSSL_ROOT) \
-	WHISPER_HOME=$(WHISPER_HOME) \
+	$(SMC_CMAKE_ENV) \
 	VP_BOOST_MIN=$(BOOST_MIN) BUILD_DIR=$(SMC_BUILD_DIR) \
 	CMAKE_BUILD_TYPE=Release CMAKE_CXX_STANDARD=$(CXX_STD) \
 	  ./configure_vp.sh -- -DSMC_CXX_STANDARD=$(CXX_STD) -DBOOST_DIR=$(BOOST_ROOT) \
@@ -842,7 +871,7 @@ $(SMC_BUILD_DIR)/Makefile: $(SMC_DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL
 	# The gate is silent when it declines, so assert rather than trust: a tree
 	# without these targets fails much later with "No rule to make target".
 	for t in smc-vp smu-vp; do
-	  if ! $(MAKE) -C $(SMC_BUILD_DIR) help 2>/dev/null | grep -qx "\.\.\. $$t"; then
+	  if ! $(SMC_CMAKE_ENV) $(MAKE) -C $(SMC_BUILD_DIR) help 2>/dev/null | grep -qx "\.\.\. $$t"; then
 	    echo "[VP] ERROR: configure produced no '$$t' target in $(SMC_BUILD_DIR)." >&2
 	    echo "[VP]   WHISPER_HOME=$(WHISPER_HOME) was not accepted by vp/platform/CMakeLists.txt." >&2
 	    exit 1
@@ -854,14 +883,14 @@ $(SMC_BUILD_DIR)/Makefile: $(SMC_DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL
 # tracking (a pulled model change would be silently skipped).
 smc-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
 	@echo "[VP] Building smc-vp (incremental, via CMake)..."
-	$(MAKE) -C $(SMC_BUILD_DIR) -j$(NPROC) smc-vp
+	$(call SMC_BUILD_TARGET,smc-vp)
 	echo "[VP] Built: $(SMC_VP_BIN)"
 
 # This target produces TWO artifacts: the executable and the cluster DSO it
 # loads at run time. They must travel together (see SMU_CLUSTER_LIB above).
 smu-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
 	@echo "[VP] Building smu-vp + libsmc_cluster_smu.so (incremental, via CMake)..."
-	$(MAKE) -C $(SMC_BUILD_DIR) -j$(NPROC) smu-vp
+	$(call SMC_BUILD_TARGET,smu-vp)
 	echo "[VP] Built: $(SMU_VP_BIN)"
 	echo "[VP]        $(SMU_CLUSTER_LIB)   (companion; copy/upload it alongside)"
 
