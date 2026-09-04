@@ -16,7 +16,7 @@
 # Canonical expansions:
 #   DFD  = "Design-for-Debug"                     per hw/sys/smc/doc/dfd.adoc
 #   OCA  = "Open Chiplet Atlas"                    per README.md, NOTICE, doc/**/antora.yml
-#   OCCP = "Open Chiplet Communication Protocol"   per hw/sys/smc/bootrom/prod/doc/index.adoc
+#   OCCP = "Open Chiplet Configuration Protocol"   per hw/sys/smc/bootrom/prod/doc/index.adoc
 #   OCTS = "Open Chiplet Time Synchronization"     per hw/ip/system_timer_octs/regs/system_timer_octs.rdl
 #   SMC  = "System Management Controller"          per doc/trm/src/architecture.adoc
 #   SEP  = "Security Processor"                    per doc/programmer/src/index.adoc

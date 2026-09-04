@@ -43,7 +43,7 @@ hierarchy, hardware-assisted time synchronization, FuSa/RAS, and debug/test
 
 |Protocol
 |Inter-chiplet communication protocols including AXI, CHI, and the Open
-Chiplet Communication Protocol (OCCP)
+Chiplet Configuration Protocol (OCCP)
 
 |Transport
 |UCIe and BoW for high-speed die-to-die links; I3C/I2C as auxiliary

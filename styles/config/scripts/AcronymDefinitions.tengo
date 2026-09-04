@@ -18,7 +18,7 @@ text := import("text")
 canonical := {
   DFD:  "design-for-debug",
   OCA:  "open chiplet atlas",
-  OCCP: "open chiplet communication protocol",
+  OCCP: "open chiplet configuration protocol",
   OCTS: "open chiplet time synchronization",
   SMC:  "system management controller",
   SEP:  "security processor",
