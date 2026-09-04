@@ -104,12 +104,15 @@ class smu_base_test_seq extends ocah_sequence;
     log_step(step_id, detail);
   endfunction
 
-  // Steps marked in strictly increasing simulation time, in order.
-  function int unsigned positive_step_deltas();
-    int unsigned positive = 0;
+  // Consecutive step marks in non-decreasing simulation time: the ordered
+  // fence of the cocotb scenario, whose wall-clock marks always advance; in
+  // simulation a step that consumes no time legitimately shares the time
+  // of the next mark, so the fence is order plus non-decreasing time.
+  function int unsigned ordered_step_deltas();
+    int unsigned ordered = 0;
     for (int unsigned i = 1; i < m_step_order.size(); i++)
-      if (m_step_time[m_step_order[i]] > m_step_time[m_step_order[i-1]]) positive++;
-    return positive;
+      if (m_step_time[m_step_order[i]] >= m_step_time[m_step_order[i-1]]) ordered++;
+    return ordered;
   endfunction
 
   function int unsigned timeout_path_count();

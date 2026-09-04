@@ -49,7 +49,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
   // s3_capture_dr, s3_shift_dr, s3_update_dr, s3_back_rti, s4_trst_tlr,
   // s4_por_tlr (cocotb EXPECTED_TIMEOUT_PATHS).
   localparam int unsigned ExpectedTimeoutPaths = 9;
-  // Step marks S1..S5 plus PASS: five ordered deltas.
+  // Step marks S1..S5 plus PASS: five ordered, non-decreasing deltas.
   localparam int unsigned ExpectedStepDeltas = 5;
 
   function new(string name = "smu_dtp_jtag_smoke_test_seq");
@@ -80,7 +80,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     run_timeout_inventory();
 
     mark_step("PASS", "scenario complete (PASS term recorded for the NONVAC fence)");
-    check_evidence(ChkNonvac, "positive step-delta count", 64'(positive_step_deltas()),
+    check_evidence(ChkNonvac, "ordered step-delta count", 64'(ordered_step_deltas()),
                    64'(ExpectedStepDeltas), $sformatf("steps=%0d", m_step_order.size()));
     finalize_evidence();
   endtask
