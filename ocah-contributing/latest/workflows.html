@@ -226,6 +226,15 @@
 <li>
 <p>More details on Yosys/Synthesis once finalised - Port local PDK usage from <code>lowrisc/container-testing</code></p>
 </li>
+<li>
+<p>Register Generation User Guide Page?</p>
+</li>
+<li>
+<p>DV FW sections reference source files frequently, how necessary is this?</p>
+</li>
+<li>
+<p>Linters are still WIP - code is not clean yet</p>
+</li>
 </ul>
 </div>
 </td>
@@ -238,15 +247,11 @@
 </div>
 </div>
 <div class="sect1">
-<h2 id="build-with-bender-and-make"><a class="anchor" href="#build-with-bender-and-make"></a><a class="link" href="#build-with-bender-and-make">1. Build with Bender and Make</a></h2>
+<h2 id="build-with-bender"><a class="anchor" href="#build-with-bender"></a><a class="link" href="#build-with-bender">1. Build with Bender</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Bender is used for managing IP dependencies and managing builds.</p>
-</div>
-<div class="paragraph">
-<p>Makefiles will be used for build automation. We have previously
-considered other flow such as Bazel but are hesitant to take on extra
-complexity.</p>
+<p>Bender is used for managing IP dependencies and managing builds.
+Makefiles are used for build automation.</p>
 </div>
 <div class="paragraph">
 <p>To initialise or update the Bender-generated file list, run the following
@@ -257,10 +262,217 @@ command:</p>
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make generate_filelist</code></pre>
 </div>
 </div>
+<div class="sect2">
+<h3 id="third-party-vendor-package-imports-with-bender"><a class="anchor" href="#third-party-vendor-package-imports-with-bender"></a><a class="link" href="#third-party-vendor-package-imports-with-bender">1.1. Third-party (vendor) package imports with Bender</a></h3>
+<div class="paragraph">
+<p>External IP is materialized under <code>vendor/</code> via Bender&#8217;s <code>vendor_package</code> feature. If a
+vendored tree is also consumed as a Bender package, the root <code>dependencies:</code> entry points
+at the local package root under <code>vendor/</code>; direct third-party <code>git:</code> dependencies are not
+used.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="ground-rules"><a class="anchor" href="#ground-rules"></a><a class="link" href="#ground-rules">1.2. Ground rules</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Import only what OCAH uses.</strong> Every <code>vendor_package</code> entry carries a narrowly scoped
+include/<code>mapping:</code> list and uses <code>exclude_from_upstream:</code> to document intentionally
+omitted upstream paths. Whole-repository imports are prohibited.</p>
+</li>
+<li>
+<p><strong>Commit vendored sources.</strong> Materialized files under <code>vendor/</code> are committed so every
+revision is self-contained and reproducible without network access.</p>
+</li>
+<li>
+<p><strong>Pin every upstream entry.</strong> <code>rev:</code> must be a full commit hash or an immutable tag;
+mutable refs such as branch names are prohibited.</p>
+</li>
+<li>
+<p><strong>Resolve vendored packages locally.</strong> Packages with hand-authored manifests under
+<code>vendor/</code> are pinned via <code>Bender.local</code> so transitive users resolve the committed copy.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="filesystem-layout"><a class="anchor" href="#filesystem-layout"></a><a class="link" href="#filesystem-layout">1.3. Filesystem layout</a></h3>
+<div class="paragraph">
+<p>Vendored packages preserve upstream GitHub org/repo casing under
+<code>vendor/&lt;GitHubOrg&gt;/&lt;GitHubRepo&gt;/</code>. Bender materializes selected upstream files into
+<code>upstream/</code> (wiped and refreshed by <code>bender vendor init</code>), then applies local patches.
+Patch files live in the sibling <code>patches/</code> directory so they survive a refresh:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">vendor/lowRISC/opentitan/
+  patches/
+    0001-some_change.patch     ← NNNN-&lt;snake_case&gt;.patch, applied in filename order
+  upstream/                    ← target_dir (refreshed by bender vendor init)
+    hw/ip/otbn/{data,rtl}/      ← selected register + RTL sources
+    util/reggen/                ← selected reggen modules only</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="bender-yml-vendor_package-template"><a class="anchor" href="#bender-yml-vendor_package-template"></a><a class="link" href="#bender-yml-vendor_package-template">1.4. Bender.yml <code>vendor_package</code> template</a></h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">vendor_package:
+  - name: &lt;descriptive-name&gt;
+    target_dir: vendor/&lt;GitHubOrg&gt;/&lt;GitHubRepo&gt;/upstream
+    upstream: { git: "&lt;upstream-url&gt;", rev: "&lt;full-commit-hash-or-tag&gt;" }
+    exclude_from_upstream:
+      - "&lt;unused/path/relative/to/upstream/root&gt;"
+    mapping:
+      - { from: "&lt;upstream/file/or/dir&gt;", to: "&lt;local/file/or/dir&gt;", patch_dir: "&lt;local/patch/scope&gt;" }
+    patch_dir: "vendor/&lt;GitHubOrg&gt;/&lt;GitHubRepo&gt;/patches"</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="authoring-a-patch"><a class="anchor" href="#authoring-a-patch"></a><a class="link" href="#authoring-a-patch">1.5. Authoring a patch</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Materialize/refresh the vendor tree: <code>bender vendor init</code></p>
+</li>
+<li>
+<p>Edit files under <code>vendor/&lt;GitHubOrg&gt;/&lt;GitHubRepo&gt;/upstream/</code>.</p>
+</li>
+<li>
+<p>Stage: <code>git add vendor/&lt;GitHubOrg&gt;/&lt;GitHubRepo&gt;/</code></p>
+</li>
+<li>
+<p>Generate the patch (Bender prompts for a message): <code>bender vendor patch</code></p>
+</li>
+<li>
+<p>Rename to the numbering convention:
+<code>mv vendor/&#8230;&#8203;/patches/&lt;auto-name&gt;.patch vendor/&#8230;&#8203;/patches/&lt;NNNN&gt;-&lt;description&gt;.patch</code></p>
+</li>
+<li>
+<p>Commit both the patched source and the new <code>.patch</code> file.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>bender vendor init</code> re-fetches the pinned commit, copies the selected files, excludes
+<code>exclude_from_upstream:</code> paths, and re-applies all patches from <code>patch_dir</code> in
+lexicographic order.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="simulation-and-testing"><a class="anchor" href="#simulation-and-testing"></a><a class="link" href="#simulation-and-testing">2. Simulation and Testing</a></h2>
+<h2 id="register-generation"><a class="anchor" href="#register-generation"></a><a class="link" href="#register-generation">2. Register generation</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Register collateral is generated from per-block SystemRDL under <code>hw/{ip,sys}/&lt;name&gt;/regs/</code>.
+HJSON-backed OpenTitan blocks are first exported to RDL via
+<code>tools/regs/reggen_wrapper.py</code> using the vendored OpenTitan reggen modules. Run
+<code>make regen-regs</code> to regenerate; committed generated output always corresponds to the
+RDL sources. The flow lives in <code>hw/common/regs/</code> (discovery, classification, and rules).</p>
+</div>
+<div class="paragraph">
+<p>TODO - README implied the desire for a dedicated page on this?</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dv-firmware"><a class="anchor" href="#dv-firmware"></a><a class="link" href="#dv-firmware">3. DV Firmware</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Per-subsystem DV firmware libraries (runtime <strong>drivers</strong>, not tests) are built via
+<code>make dv-fw-libs [TARGET=key_manager|sep|smc]</code> (alias of <code>ocah-dv-fw-libs</code>). Each
+subsystem owns a <code>fw.mk</code> + <code>toolchain.mk</code> under <code>hw/{ip,sys}/&lt;name&gt;/dv/fw/</code> and builds
+as an independent recursive sub-make so the target CPUs (PicoRV32/KM, VeeR EL2/SEP,
+Rocket/SMC) never share ISA/ABI/libc flag state.</p>
+</div>
+<div class="paragraph">
+<p>The RISC-V toolchain is provided by the project container or selected via
+<code>RISCV_TOOLCHAIN</code>. The build flow lives in <code>hw/common/dv/fw/</code>.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-dv-test-firmware"><a class="anchor" href="#smc-dv-test-firmware"></a><a class="link" href="#smc-dv-test-firmware">3.1. SMC DV test firmware</a></h3>
+<div class="paragraph">
+<p>C test images are built via the standard dispatcher:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make dv-fw-tests TARGET=smc
+make dv-fw-tests TARGET=smc TEST=version_id   # one test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each subsystem&#8217;s tests link against one of that subsystem&#8217;s <strong>link modes</strong> —
+memory targets discovered from <code>link/modes/*.ld</code> (e.g. SMC: <code>sram</code>, <code>rom</code>; SEP:
+<code>tcm</code>; KM: <code>vrom</code>) — and output artifacts fold the mode into their name
+(<code>&lt;test&gt;.&lt;mode&gt;.elf</code>, e.g. <code>version_id.sram.elf</code>). A test uses its subsystem&#8217;s
+default mode unless it overrides <code>FW_TEST_MODE_&lt;test&gt;</code>; see <code>hw/common/dv/fw/compile.mk</code>
+for the full mechanism.</p>
+</div>
+<div class="paragraph">
+<p>Most SMC tests default to <code>sram</code> mode. The OCCP master BFM tests (<code>occp_sanity</code>,
+<code>occp_master</code>) are declared <code>rom</code>-mode in <code>hw/sys/smc/dv/fw/fw.mk</code> because they
+exercise the I3C master path and must run from the ROM address space. They link
+against the open-source weak <code>I3C_GetDriverInstance</code> stub (returns <code>NULL</code>) so
+the build is self-contained.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-boot-rom"><a class="anchor" href="#smc-boot-rom"></a><a class="link" href="#smc-boot-rom">3.2. SMC boot ROM</a></h3>
+<div class="paragraph">
+<p><code>hw/sys/smc/bootrom/</code> holds two independent ROM firmware trees:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>dummy/</code> — the lightweight DV stub used today. Its only job is to boot from
+the ROM address (<code>0xc0040000</code>), write <code>TEST_ROM_PASS</code> (<code>0x77777777</code>) to <code>scratch_0</code>,
+and spin in <code>wfi</code> so the testbench can load real firmware into SRAM. It builds as
+one <code>rom</code>-mode test named <code>dummy</code> (source <code>rom.c</code>) on top of the same generalized
+firmware engine as the SMC DV tests above, reusing `hw/sys/smc/dv/fw/&#8217;s drivers,
+toolchain settings, and link scripts.</p>
+</li>
+<li>
+<p><code>prod/</code> — self-contained production boot ROM with its own includes and drivers
+(not shared with <code>dv/fw/</code>). It implements the OCCP target-side protocol and uses weak
+stubs so the open tree links cleanly; the nonfree drivers override them at link time
+via <code>NONFREE_DRIVER_SOURCES</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Build the dummy ROM with its standalone Makefile:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># From the repo root (OCAH_ROOT resolved automatically):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make -C hw/sys/smc/bootrom/dummy</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Outputs land under <code>hw/sys/smc/bootrom/dummy/build/tests/dummy/</code> (e.g.
+<code>dummy.rom.elf</code>, <code>dummy.rom.bin</code>, <code>dummy.rom.hex</code>, plus <code>.preload.hex</code> /
+<code>.spi</code> variants from the shared SMC post-process step).</p>
+</div>
+<div class="paragraph">
+<p>Build the production ROM from the same container (self-contained Makefile, not
+the shared <code>compile.mk</code> engine):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make -C hw/sys/smc/bootrom/prod</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="simulation-and-testing"><a class="anchor" href="#simulation-and-testing"></a><a class="link" href="#simulation-and-testing">4. Simulation and Testing</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>We will use open source tools as much as possible and hence will focus
@@ -268,7 +480,7 @@ on using Verilator for unit tests. Verilator has comprehensive
 SystemVerilog (SV) support and is widely used in industry.</p>
 </div>
 <div class="sect2">
-<h3 id="testbench-and-test-sequence"><a class="anchor" href="#testbench-and-test-sequence"></a><a class="link" href="#testbench-and-test-sequence">2.1. Testbench and Test Sequence</a></h3>
+<h3 id="testbench-and-test-sequence"><a class="anchor" href="#testbench-and-test-sequence"></a><a class="link" href="#testbench-and-test-sequence">4.1. Testbench and Test Sequence</a></h3>
 <div class="paragraph">
 <p>Most components use Cocotb Python tests. The DTP also has a nonfree UVM
 test workflow using VCS. The testbench is run and configured using a Python
@@ -380,7 +592,7 @@ flag to see usage.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="visual-debugging-and-waveform-viewer"><a class="anchor" href="#visual-debugging-and-waveform-viewer"></a><a class="link" href="#visual-debugging-and-waveform-viewer">2.2. Visual Debugging and Waveform Viewer</a></h3>
+<h3 id="visual-debugging-and-waveform-viewer"><a class="anchor" href="#visual-debugging-and-waveform-viewer"></a><a class="link" href="#visual-debugging-and-waveform-viewer">4.2. Visual Debugging and Waveform Viewer</a></h3>
 <div class="paragraph">
 <p>When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
 travelling between components. For this, a wave trace may be generated and inspected. To
@@ -404,7 +616,7 @@ different program, the program suggested may be overridden with <code>--wave-vie
 </div>
 </div>
 <div class="sect2">
-<h3 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">2.3. References</a></h3>
+<h3 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">4.3. References</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -428,7 +640,7 @@ different program, the program suggested may be overridden with <code>--wave-vie
 </div>
 </div>
 <div class="sect1">
-<h2 id="synthesis"><a class="anchor" href="#synthesis"></a><a class="link" href="#synthesis">3. Synthesis</a></h2>
+<h2 id="synthesis"><a class="anchor" href="#synthesis"></a><a class="link" href="#synthesis">5. Synthesis</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>OCAH is designed around open-source workflows. For this reason, we have chosen to
@@ -463,17 +675,31 @@ used for synthesis may be selected with <code>TECH</code>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">4. Linting</a></h2>
+<h2 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">6. Linting</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>We use linters within the development of OCAH to perform static analysis
 on the codebase. The below rules will check code for errors and poor
 formatting. They also enforce a consistent code style.</p>
 </div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Some linting workflows are still WIP, the code has not yet been cleaned up.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="sect2">
-<h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">4.1. Verilog</a></h3>
+<h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">6.1. Verilog</a></h3>
 <div class="sect3">
-<h4 id="style-and-lint-checking-with-verible"><a class="anchor" href="#style-and-lint-checking-with-verible"></a><a class="link" href="#style-and-lint-checking-with-verible">4.1.1. Style and Lint checking with Verible</a></h4>
+<h4 id="style-and-lint-checking-with-verible"><a class="anchor" href="#style-and-lint-checking-with-verible"></a><a class="link" href="#style-and-lint-checking-with-verible">6.1.1. Style and Lint checking with Verible</a></h4>
 <div class="paragraph">
 <p>To run the verible linter on all SystemVerilog files, use the following command:</p>
 </div>
@@ -500,7 +726,7 @@ respectively, for each rule.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="linting-with-verilator"><a class="anchor" href="#linting-with-verilator"></a><a class="link" href="#linting-with-verilator">4.1.2. Linting with Verilator</a></h4>
+<h4 id="linting-with-verilator"><a class="anchor" href="#linting-with-verilator"></a><a class="link" href="#linting-with-verilator">6.1.2. Linting with Verilator</a></h4>
 <div class="paragraph">
 <p>Verilator structurally lints each discovered hardware block as its own top:</p>
 </div>
@@ -515,7 +741,7 @@ further constrain the printed warnings, also use <code>VERILATOR_LINT_PATH</code
 </div>
 </div>
 <div class="sect3">
-<h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">4.1.3. Style and Lint checking with Slang</a></h4>
+<h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">6.1.3. Style and Lint checking with Slang</a></h4>
 <div class="paragraph">
 <p>To run the slang linter on all SystemVerilog files, use the following command:</p>
 </div>
@@ -531,9 +757,9 @@ further constrain the printed warnings, also use <code>SLANG_LINT_PATH</code>.</
 </div>
 </div>
 <div class="sect2">
-<h3 id="cc"><a class="anchor" href="#cc"></a><a class="link" href="#cc">4.2. C/C++</a></h3>
+<h3 id="cc"><a class="anchor" href="#cc"></a><a class="link" href="#cc">6.2. C/C++</a></h3>
 <div class="sect3">
-<h4 id="style-and-format-with-clang-format"><a class="anchor" href="#style-and-format-with-clang-format"></a><a class="link" href="#style-and-format-with-clang-format">4.2.1. Style and Format with Clang-Format</a></h4>
+<h4 id="style-and-format-with-clang-format"><a class="anchor" href="#style-and-format-with-clang-format"></a><a class="link" href="#style-and-format-with-clang-format">6.2.1. Style and Format with Clang-Format</a></h4>
 <div class="paragraph">
 <p>The C/C++ Firmware files included in each component are checked and formatted with
 <code>clang-format</code>. This may be managed by <code>uv</code>, or <code>OCAH_CLANG_FORMAT_SKIP_UV=1</code>
@@ -554,12 +780,11 @@ path for files to check and format may be alternatively constrained with <code>F
 </div>
 </div>
 <div class="sect2">
-<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">4.3. Python</a></h3>
+<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">6.3. Python</a></h3>
 <div class="sect3">
-<h4 id="lint-and-format-with-ruff"><a class="anchor" href="#lint-and-format-with-ruff"></a><a class="link" href="#lint-and-format-with-ruff">4.3.1. Lint and Format with <code>ruff</code></a></h4>
+<h4 id="lint-and-format-with-ruff"><a class="anchor" href="#lint-and-format-with-ruff"></a><a class="link" href="#lint-and-format-with-ruff">6.3.1. Lint and Format with <code>ruff</code></a></h4>
 <div class="paragraph">
-<p>Ruff lints and formats first-party Python while excluding generated register
-models, vendored sources, submodules, <code>nonfree/</code>, and build output.</p>
+<p>Ruff checks first-party Python under tools/, scripts/, hw/, and .github/. Generated register models, vendored sources, submodules, nonfree/, and build output are excluded.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -579,12 +804,17 @@ make format-python</code></pre>
 <div class="paragraph">
 <p>Pass <code>PYTHON_PATH=&lt;path&gt;</code> to restrict any command to part of the tree.</p>
 </div>
+<div class="paragraph">
+<p>CI uses only the non-modifying <code>lint-python</code> and <code>format-python-check</code> commands.</p>
+</div>
 </div>
 <div class="sect3">
-<h4 id="lint-with-mypy"><a class="anchor" href="#lint-with-mypy"></a><a class="link" href="#lint-with-mypy">4.3.2. Lint with <code>mypy</code></a></h4>
+<h4 id="lint-with-mypy"><a class="anchor" href="#lint-with-mypy"></a><a class="link" href="#lint-with-mypy">6.3.2. Lint with <code>mypy</code></a></h4>
 <div class="paragraph">
 <p>MyPy also lints first-party Python while excluding generated register
-models, vendored sources, submodules, <code>nonfree/</code>, and build output.</p>
+models, vendored sources, submodules, <code>nonfree/</code>, and build output. It starts
+from a lenient config (see <code>pyproject.toml</code>) with hundreds of pre-existing findings
+across the tree.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -597,9 +827,9 @@ models, vendored sources, submodules, <code>nonfree/</code>, and build output.</
 </div>
 </div>
 <div class="sect2">
-<h3 id="build-system-and-helper-scripts"><a class="anchor" href="#build-system-and-helper-scripts"></a><a class="link" href="#build-system-and-helper-scripts">4.4. Build System and Helper Scripts</a></h3>
+<h3 id="build-system-and-helper-scripts"><a class="anchor" href="#build-system-and-helper-scripts"></a><a class="link" href="#build-system-and-helper-scripts">6.4. Build System and Helper Scripts</a></h3>
 <div class="sect3">
-<h4 id="makefile-lint-with-checkmake"><a class="anchor" href="#makefile-lint-with-checkmake"></a><a class="link" href="#makefile-lint-with-checkmake">4.4.1. Makefile Lint with <code>checkmake</code></a></h4>
+<h4 id="makefile-lint-with-checkmake"><a class="anchor" href="#makefile-lint-with-checkmake"></a><a class="link" href="#makefile-lint-with-checkmake">6.4.1. Makefile Lint with <code>checkmake</code></a></h4>
 <div class="paragraph">
 <p>To lint all <code>Makefile</code> and <code>.mk</code> files used within OCAH, run</p>
 </div>
@@ -611,9 +841,27 @@ models, vendored sources, submodules, <code>nonfree/</code>, and build output.</
 <div class="paragraph">
 <p>To constrain the output to a single file/subdirectory, use <code>MAKEFILE_PATH</code>.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Checkmake&#8217;s <code>maxbodylength</code>/<code>phonydeclared</code>/<code>uniquetargets</code> rules have
+false-positive modes against conventions this repo relies on deliberately
+(long multi-step recipe bodies, the deferred <code>OCAH_PHONY +=</code> accumulator, and
+legitimate pattern-rule/<code>ifeq</code> target overloads)&#8201;&#8212;&#8201;see <code>checkmake.ini</code> and
+<code>flows/lint/checkmake.mk</code>. Treat both as read-and-judge, not fix-on-sight.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect3">
-<h4 id="shell-script-lint-and-format-with-shellcheck"><a class="anchor" href="#shell-script-lint-and-format-with-shellcheck"></a><a class="link" href="#shell-script-lint-and-format-with-shellcheck">4.4.2. Shell Script Lint and Format with <code>shellcheck</code></a></h4>
+<h4 id="shell-script-lint-and-format-with-shellcheck"><a class="anchor" href="#shell-script-lint-and-format-with-shellcheck"></a><a class="link" href="#shell-script-lint-and-format-with-shellcheck">6.4.2. Shell Script Lint and Format with <code>shellcheck</code></a></h4>
 <div class="paragraph">
 <p>To lint all shell scripts used within OCAH, run</p>
 </div>
@@ -639,9 +887,9 @@ make format-shell-check</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuration-files"><a class="anchor" href="#configuration-files"></a><a class="link" href="#configuration-files">4.5. Configuration Files</a></h3>
+<h3 id="configuration-files"><a class="anchor" href="#configuration-files"></a><a class="link" href="#configuration-files">6.5. Configuration Files</a></h3>
 <div class="sect3">
-<h4 id="toml-file-lint-with-tomllint"><a class="anchor" href="#toml-file-lint-with-tomllint"></a><a class="link" href="#toml-file-lint-with-tomllint">4.5.1. TOML file Lint with <code>tomllint</code></a></h4>
+<h4 id="toml-file-lint-with-tomllint"><a class="anchor" href="#toml-file-lint-with-tomllint"></a><a class="link" href="#toml-file-lint-with-tomllint">6.5.1. TOML file Lint with <code>tomllint</code></a></h4>
 <div class="paragraph">
 <p>TOML File syntax may be checked by running</p>
 </div>
@@ -653,9 +901,29 @@ make format-shell-check</code></pre>
 <div class="paragraph">
 <p>The variable <code>TOML_PATH</code> may be used to limit the files checked.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>lint-toml</code> (tomllint) checks TOML syntax only&#8201;&#8212;&#8201;it carries no style rules
+and no autofix, unlike yamllint/markdownlint. It mainly guards the DV
+testlists and sim configs under <code>hw/<strong>/dv/</strong>/*.toml</code>, catching a malformed
+file before the runner that reads it fails with a less legible error.
+<code>hw/ip/scrambler/dv/lint/scrambler.toml</code> is excluded: despite the extension,
+<code>slang-tidy</code> parses it with its own <code>Checks:</code>/<code>CheckConfigs:</code> grammar, not
+TOML.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect3">
-<h4 id="yaml-file-lint-with-yamllint"><a class="anchor" href="#yaml-file-lint-with-yamllint"></a><a class="link" href="#yaml-file-lint-with-yamllint">4.5.2. YAML file Lint with <code>yamllint</code></a></h4>
+<h4 id="yaml-file-lint-with-yamllint"><a class="anchor" href="#yaml-file-lint-with-yamllint"></a><a class="link" href="#yaml-file-lint-with-yamllint">6.5.2. YAML file Lint with <code>yamllint</code></a></h4>
 <div class="paragraph">
 <p>YAML File syntax may be checked by running</p>
 </div>
@@ -670,9 +938,27 @@ make format-shell-check</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="documentation-files"><a class="anchor" href="#documentation-files"></a><a class="link" href="#documentation-files">4.6. Documentation Files</a></h3>
+<h3 id="documentation-files"><a class="anchor" href="#documentation-files"></a><a class="link" href="#documentation-files">6.6. Documentation Files</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>lint-spelling</code> (codespell) and <code>lint-markdown</code> (markdownlint) both offer
+autofix commands (<code>-fix</code> suffix); review the diff before committing, since
+either can rewrite a deliberate domain term (see <code>[tool.codespell]&#8217;s
+`ignore-words-list</code> in <code>pyproject.toml</code>) or mangle non-prose content such as
+math notation or bit-range syntax that only looks like Markdown.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="sect3">
-<h4 id="markdown-lint-with-markdownlint"><a class="anchor" href="#markdown-lint-with-markdownlint"></a><a class="link" href="#markdown-lint-with-markdownlint">4.6.1. Markdown Lint with <code>markdownlint</code></a></h4>
+<h4 id="markdown-lint-with-markdownlint"><a class="anchor" href="#markdown-lint-with-markdownlint"></a><a class="link" href="#markdown-lint-with-markdownlint">6.6.1. Markdown Lint with <code>markdownlint</code></a></h4>
 <div class="paragraph">
 <p>To check the markdown files within the OCAH Directories, run</p>
 </div>
@@ -694,7 +980,7 @@ make format-shell-check</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="spell-checking-with-codespell"><a class="anchor" href="#spell-checking-with-codespell"></a><a class="link" href="#spell-checking-with-codespell">4.6.2. Spell-Checking with Codespell</a></h4>
+<h4 id="spell-checking-with-codespell"><a class="anchor" href="#spell-checking-with-codespell"></a><a class="link" href="#spell-checking-with-codespell">6.6.2. Spell-Checking with Codespell</a></h4>
 <div class="paragraph">
 <p>To check the spelling of all documentation files, run the following</p>
 </div>
@@ -717,9 +1003,9 @@ make format-shell-check</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="synthesis-scripts"><a class="anchor" href="#synthesis-scripts"></a><a class="link" href="#synthesis-scripts">4.7. Synthesis Scripts</a></h3>
+<h3 id="synthesis-scripts"><a class="anchor" href="#synthesis-scripts"></a><a class="link" href="#synthesis-scripts">6.7. Synthesis Scripts</a></h3>
 <div class="sect3">
-<h4 id="tcl-script-style-lint-and-format-with-tclint"><a class="anchor" href="#tcl-script-style-lint-and-format-with-tclint"></a><a class="link" href="#tcl-script-style-lint-and-format-with-tclint">4.7.1. TCL Script Style, Lint and Format with Tclint</a></h4>
+<h4 id="tcl-script-style-lint-and-format-with-tclint"><a class="anchor" href="#tcl-script-style-lint-and-format-with-tclint"></a><a class="link" href="#tcl-script-style-lint-and-format-with-tclint">6.7.1. TCL Script Style, Lint and Format with Tclint</a></h4>
 <div class="paragraph">
 <p>To lint the TCL scripts (used to automate the synthesis workflow) in the repository,
 we use the package <code>tclint</code>. This may be managed by <code>uv</code> - run <code>uv sync</code> to install,
@@ -747,22 +1033,154 @@ be checked with <code>make format-tcl-check</code>:</p>
 <p>The search path for script files may be overridden with <code>TCL_PATH</code>.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="optional-pre-commit-checks"><a class="anchor" href="#optional-pre-commit-checks"></a><a class="link" href="#optional-pre-commit-checks">4.7.2. Optional Pre-Commit Checks</a></h4>
+</div>
+<div class="sect2">
+<h3 id="optional-pre-commit-checks"><a class="anchor" href="#optional-pre-commit-checks"></a><a class="link" href="#optional-pre-commit-checks">6.8. Optional Pre-Commit Checks</a></h3>
 <div class="paragraph">
-<p>The optional pre-commit hook runs check-only Ruff, clang-format, tclfmt, and
-tclint operations on staged files. Enable it explicitly with
-<code>make hooks-install</code>; use <code>make hooks-uninstall</code> to remove it. The installation
-writes the standard local Git hook, does not change <code>core.hooksPath</code>, and is
-never performed by repository setup or checkout flows. See
-<code>CONTRIBUTING.md</code> for all hook commands.</p>
+<p>The repository provides optional, check-only hooks for staged Python, C/C++,
+Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
+Ruff, clang-format, tclfmt, tclint, codespell, yamllint, tomllint, shellcheck,
+and shfmt from the locked uv environment, plus Git&#8217;s whitespace/conflict-marker
+check. The hooks do not modify or stage files. <code>mypy</code>, <code>markdownlint</code>, and
+<code>checkmake</code> are deliberately left out of this bundle&#8201;&#8212;&#8201;they are slow, need a
+separate Node.js toolchain, or ship as a standalone binary rather than a
+uv-managed package&#8201;&#8212;&#8201;and stay CI-only; see the CI job table above for their
+local commands.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make hooks-install    # explicit opt-in for this clone
+make hooks-run        # check currently staged files without installing
+make hooks-run-all    # check every eligible tracked file
+make hooks-uninstall</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>To manually run a set of pre-commit checks, use <code>make hooks-run</code> or <code>make hooks-run-all</code>.</p>
+<p>Installation uses pre-commit&#8217;s standard local <code>.git/hooks/pre-commit</code>
+launcher. It does not change <code>core.hooksPath</code>, and no setup or checkout command
+installs it automatically. CI remains authoritative whether or not a
+contributor enables the hook.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linting-and-ci"><a class="anchor" href="#linting-and-ci"></a><a class="link" href="#linting-and-ci">6.9. Linting and CI</a></h3>
+<div class="paragraph">
+<p><code>.github/workflows/lint.yml</code> runs <code>lint-sv-slang</code>, <code>lint-sv-verilator</code>,
+<code>lint-python</code>, <code>lint-python-mypy</code>, <code>format-c</code>, <code>lint-tcl</code>, <code>lint-spelling</code>,
+<code>lint-yaml</code>, <code>lint-toml</code>, <code>lint-markdown</code>, <code>lint-make</code>, <code>lint-shell</code>, and
+<code>regen-regs</code> on pull requests and pushes to <code>main</code> (<code>lint-sv-verible</code> is
+temporarily disabled). Setup jobs share <code>bender</code>, Verilator, and reviewdog
+artifacts; jobs report through <code>.github/actions/reviewdog-report</code>.</p>
+</div>
+<div class="paragraph">
+<p>Documentation-only diffs (every changed path is under <code>doc/</code>, an Antora playbook,
+or a <code>.md</code> / <code>.adoc</code> / image) skip lint, Verilator smoke, and the nonfree GitLab
+child. The required <code>verilator-smoke (dtp)</code> / <code>(sep)</code> and GitLab checks still
+report success. <code>scripts/ci/diff_class.py --self-test</code> checks the classifier.
+Scheduled and manually dispatched pipelines always run in full.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">CI job</th>
+<th class="tableblock halign-left valign-top">Reviewdog check(s)</th>
+<th class="tableblock halign-left valign-top">Local command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-sv-slang</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-sv-slang/smu</code>, <code>lint-sv-slang/aou</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make lint-slang-all BLOCK=smu</code> / <code>BLOCK=aou-rtl</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-sv-verilator</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-sv-verilator/&lt;block&gt;</code> for <code>aou-rtl</code>, <code>dtp</code>, <code>sep</code>, <code>smc</code>, and <code>smu</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make lint-verilator-all [BLOCK=&lt;block&gt;]</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-sv-verible</code> (disabled in CI)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-sv-verible</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make lint-sv-verible</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-python</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-python</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make lint-python</code> and <code>make format-python-check</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-python-mypy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-python-mypy</code> (report-only)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-python-mypy</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>format-c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>format-c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make format-c-check</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-tcl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-tcl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make lint-tcl</code> and <code>make format-tcl-check</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-spelling</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-spelling</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-spelling</code> and <code>make ocah-lint-spelling-fix</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-yaml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-yaml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-yaml</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-toml</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-markdown</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-markdown</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-markdown</code> and <code>make ocah-lint-markdown-fix</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-make</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-make</code> (report-only)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-make</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-shell</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-shell</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make ocah-lint-shell</code>, <code>make ocah-format-shell</code>, and <code>make ocah-format-shell-check</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>regen-regs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">— (job fails on a dirty tree)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make regen-regs regen-regs-adoc regen-regs-html</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>regen-regs</code> gate regenerates every register block&#8217;s collateral from the RDLs
+and fails if the working tree changes, so the committed <code>**/regs/gen/</code> outputs
+(SystemVerilog, C headers, Python, RAL, IP-XACT, AsciiDoc, HTML) always match a
+fresh run. It is peakrdl-only (no bender or <code>nonfree/</code>), so a plain checkout
+reproduces it. To fix a failure, run the local command above and commit the
+result:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">make regen-regs regen-regs-adoc regen-regs-html
+git status --porcelain   # expect no output</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">4.7.3. References</a></h4>
+<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">6.9.1. References</a></h4>
 <div class="ulist">
 <ul>
 <li>

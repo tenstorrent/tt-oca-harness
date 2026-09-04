@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>OCAH development guidelines :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -208,11 +208,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
+<h1 class="page">OCAH development guidelines</h1>
 <div class="sect1">
-<h2 id="ocah-development-guidelines"><a class="anchor" href="#ocah-development-guidelines"></a><a class="link" href="#ocah-development-guidelines">1. OCAH development guidelines</a></h2>
+<h2 id="standards"><a class="anchor" href="#standards"></a><a class="link" href="#standards">1. Standards</a></h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="standards"><a class="anchor" href="#standards"></a><a class="link" href="#standards">1.1. Standards</a></h3>
 <div class="paragraph">
 <p>The OCAH design will follow industry or FOSS standards where appropriate:</p>
 </div>
@@ -251,8 +250,10 @@ Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
 SystemVerilog RTL.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="development-tools"><a class="anchor" href="#development-tools"></a><a class="link" href="#development-tools">1.2. Development Tools</a></h3>
+</div>
+<div class="sect1">
+<h2 id="development-tools"><a class="anchor" href="#development-tools"></a><a class="link" href="#development-tools">2. Development Tools</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>We aim primarily to use open source tools for the development of OCAH in
 order to eliminate commercial dependencies and enabling open-sourcing
@@ -282,8 +283,10 @@ tapeout. This includes:</p>
 </ul>
 </div>
 </div>
-<div class="sect2">
-<h3 id="component-directory-organization"><a class="anchor" href="#component-directory-organization"></a><a class="link" href="#component-directory-organization">1.3. Component Directory Organization</a></h3>
+</div>
+<div class="sect1">
+<h2 id="component-directory-organization"><a class="anchor" href="#component-directory-organization"></a><a class="link" href="#component-directory-organization">3. Component Directory Organization</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>All components will have a uniform directory structure which has the
 following elements:</p>
@@ -316,8 +319,71 @@ memmap.adoc, index.adoc)</p>
 </ul>
 </div>
 </div>
+</div>
+<div class="sect1">
+<h2 id="coding-conventions"><a class="anchor" href="#coding-conventions"></a><a class="link" href="#coding-conventions">4. Coding Conventions</a></h2>
+<div class="sectionbody">
 <div class="sect2">
-<h3 id="systemverilog-coding-guidelines"><a class="anchor" href="#systemverilog-coding-guidelines"></a><a class="link" href="#systemverilog-coding-guidelines">1.4. SystemVerilog Coding Guidelines</a></h3>
+<h3 id="license-headers"><a class="anchor" href="#license-headers"></a><a class="link" href="#license-headers">4.1. License headers</a></h3>
+<div class="paragraph">
+<p>Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file&#8217;s comment syntax.</p>
+</div>
+<div class="paragraph">
+<p>For SystemVerilog (<code>.sv</code>, <code>.svh</code>, <code>.v</code>, <code>.vh</code>) and SystemRDL (<code>.rdl</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For Python, shell, Makefile, and YAML files:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-makefile hljs" data-lang="makefile"># SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For C and C++ (<code>.c</code>, <code>.h</code>, <code>.cpp</code>, <code>.hpp</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-c hljs" data-lang="c">/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For AsciiDoc (<code>.adoc</code>), use line comments:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-asciidoc hljs" data-lang="asciidoc">// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For shell and Python scripts that begin with a <code>#!</code> shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.</p>
+</div>
+<div class="paragraph">
+<p>Generated register collateral under <code>hw/**/regs/gen/</code> is produced by the
+repository generation flows and carries the same SPDX Apache-2.0 header as
+hand-authored files (emitted by the generators / <code>tools/regs/stamp_spdx.py</code>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="vendored-code"><a class="anchor" href="#vendored-code"></a><a class="link" href="#vendored-code">4.2. Vendored code</a></h3>
+<div class="paragraph">
+<p>Third-party RTL and tools are vendored under <code>vendor/</code> via Bender <code>vendor_package</code> entries. Do not hand-edit files under <code>vendor/*/upstream/</code>; use <code>patches/</code> and local overlays instead. See the README for the full vendor workflow.</p>
+</div>
+<div class="paragraph">
+<p>When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="systemverilog-coding-guidelines"><a class="anchor" href="#systemverilog-coding-guidelines"></a><a class="link" href="#systemverilog-coding-guidelines">4.3. SystemVerilog Coding Guidelines</a></h3>
 <div class="paragraph">
 <p>The high level goals are:</p>
 </div>
@@ -397,7 +463,7 @@ computational elements</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rtl-code-comments"><a class="anchor" href="#rtl-code-comments"></a><a class="link" href="#rtl-code-comments">1.5. RTL Code Comments</a></h3>
+<h3 id="rtl-code-comments"><a class="anchor" href="#rtl-code-comments"></a><a class="link" href="#rtl-code-comments">4.4. RTL Code Comments</a></h3>
 <div class="paragraph">
 <p>Include a description of the purpose and overall function of the module
 in the header.</p>
