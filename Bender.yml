@@ -754,6 +754,7 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_generator_complex.sv
       - hw/ip/entropy_source/rtl/entropy_health_test.sv
       - hw/ip/entropy_source/rtl/entropy_noise_source.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
       - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
       - hw/ip/entropy_source/rtl/entropy_ripple_divider.sv
       - hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
