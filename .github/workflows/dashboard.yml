@@ -14,7 +14,7 @@ run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard data
 # into the normalized dashboard data contracts and publishes them for
 # consumption. Rendering is deliberately NOT done here — the website pipeline
 # that renders the dashboard is owned externally and consumes the published
-# data. The documentation deploy (doc.yml) is not triggered by this workflow.
+# data.
 #
 # Two access patterns carry identical content:
 #   - workflow artifact `dv-dashboard-data` (90-day retention): the per-run

@@ -1198,9 +1198,7 @@ Operational rules:
   computed from the native leaf records, because the normalized dashboard
   schema collapses those statuses into `FAIL`.
 * Nothing dashboard-related is published to `gh-pages`; the docs deploy and
-  the dashboard pipeline do not interact, and a dashboard publication does
-  not trigger a documentation redeploy. The documentation build stages
-  whatever the data branch holds at build time.
+  the dashboard pipeline do not interact.
 * An email digest is sent per weekly publication when the
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's

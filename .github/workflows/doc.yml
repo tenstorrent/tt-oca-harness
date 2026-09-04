@@ -29,6 +29,11 @@ on:
       - 'uv.lock'
       - '.github/workflows/doc.yml'
   workflow_dispatch:
+  # Republish after each dashboard data publication so the verification
+  # dashboard reflects the latest nightly.
+  workflow_run:
+    workflows: [dashboard]
+    types: [completed]
 
 permissions:
   contents: write
@@ -97,10 +102,12 @@ jobs:
           make ocah-doc-integrator-pdf
         continue-on-error: true
 
-      # The dashboard data staged above is whatever the data branch held at
-      # build time; a dashboard publication does not trigger a redeploy.
+      # Only a successful dashboard run redeploys.
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_run' &&
+           github.event.workflow_run.conclusion == 'success')
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
