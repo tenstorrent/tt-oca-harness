@@ -33,7 +33,6 @@ tampering visible next to the assertion it justifies.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
@@ -80,10 +79,14 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
     max_run_cycles = 3_000_000
 
     required_markers = (
-        "BOOT_SPI", "MANIFEST_SRC=0x00001000", _MANIFEST_ERR, _ALL_FAILED,
+        "BOOT_SPI",
+        "MANIFEST_SRC=0x00001000",
+        _MANIFEST_ERR,
+        _ALL_FAILED,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _MANIFEST_OK, _PAYLOAD_OK,
+        _MANIFEST_OK,
+        _PAYLOAD_OK,
     )
 
     @staticmethod

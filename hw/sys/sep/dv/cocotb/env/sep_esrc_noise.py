@@ -25,7 +25,6 @@ right here.
 
 from __future__ import annotations
 
-import cocotb
 from cocotb.triggers import ClockCycles
 
 from env.sep_noise_golden import SepNoiseGolden
@@ -35,10 +34,14 @@ from env.sep_noise_golden import SepNoiseGolden
 DEFAULT_INTERVAL = 8
 
 
-async def esrc_noise_task(dut, *, mode: str = "unbiased",
-                          seed_base: int = 0x1234_5678,
-                          interval: int = DEFAULT_INTERVAL,
-                          logger=None):
+async def esrc_noise_task(
+    dut,
+    *,
+    mode: str = "unbiased",
+    seed_base: int = 0x1234_5678,
+    interval: int = DEFAULT_INTERVAL,
+    logger=None,
+):
     """Drive `esrc_noise_ext_i` with reproducible pseudo-random noise, forever.
 
     Runs until the test ends (start with `cocotb.start_soon`). `seed_base` makes
@@ -53,8 +56,9 @@ async def esrc_noise_task(dut, *, mode: str = "unbiased",
     gen = SepNoiseGolden()
     gen.configure(mode, seed_base=seed_base)
     if logger:
-        logger.info("ESRC noise: mode=%s seed_base=0x%08x every %d cycles",
-                    mode, seed_base, interval)
+        logger.info(
+            "ESRC noise: mode=%s seed_base=0x%08x every %d cycles", mode, seed_base, interval
+        )
 
     while True:
         dut.esrc_noise_ext_i.value = gen.step_all()

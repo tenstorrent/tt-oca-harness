@@ -44,10 +44,10 @@ import os
 from pathlib import Path
 
 import cocotb
-from env.sep_esrc_noise import esrc_noise_task
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test

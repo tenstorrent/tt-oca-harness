@@ -43,19 +43,25 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from env.sep_efuse_image import SepEfuseImage
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-ENCRYPTED_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build",
-                                     "oca_encrypted_boot.bin")
+ENCRYPTED_FLASH_IMAGE = os.path.join(
+    _SEP_ROOT, "bootrom", "prod", "build", "oca_encrypted_boot.bin"
+)
 
 # The 32-byte secret 00 01 02 ... 1f, as 8 x 32-bit OTP words: word[0] holds
 # bits[31:0], so each word is four consecutive secret bytes read little-endian.
 _CLASS_KEY_WORDS = [
-    0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C,
-    0x13121110, 0x17161514, 0x1B1A1918, 0x1F1E1D1C,
+    0x03020100,
+    0x07060504,
+    0x0B0A0908,
+    0x0F0E0D0C,
+    0x13121110,
+    0x17161514,
+    0x1B1A1918,
+    0x1F1E1D1C,
 ]
 
 # Printed by plat_decrypt_payload() once the AES engine has drained and the
@@ -83,7 +89,10 @@ class sep_rom_oca_encrypted_boot_test(sep_rom_ot_secure_boot_test):
     # DECRYPTED bytes matched, so it is what rules out a wrong-key derivation.
     required_markers = sep_rom_ot_secure_boot_test.required_markers + (_DECRYPT_OK,)
     forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
-        _DECRYPT_NO_SECRET, _DECRYPT_KEY_EMPTY, _KDF_FAIL, _AES_DEC_FAIL,
+        _DECRYPT_NO_SECRET,
+        _DECRYPT_KEY_EMPTY,
+        _KDF_FAIL,
+        _AES_DEC_FAIL,
     )
 
     def build_efuse_image(self) -> SepEfuseImage:

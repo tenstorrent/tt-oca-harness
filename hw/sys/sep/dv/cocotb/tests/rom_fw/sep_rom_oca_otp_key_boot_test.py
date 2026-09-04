@@ -33,17 +33,21 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from env.sep_efuse_image import SepEfuseImage
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-OTP_KEY_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build",
-                                   "oca_otp_key_boot.bin")
+OTP_KEY_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_otp_key_boot.bin")
 
 _CHIPLET_PUBK_HASH0_WORDS = [
-    0x63CA71A7, 0xC2F5A837, 0x94C96E1A, 0xA03A7E64,
-    0xD2A7FD9C, 0xBB617D03, 0x2B03DFEC, 0xF6508284,
+    0x63CA71A7,
+    0xC2F5A837,
+    0x94C96E1A,
+    0xA03A7E64,
+    0xD2A7FD9C,
+    0xBB617D03,
+    0x2B03DFEC,
+    0xF6508284,
 ]
 
 # plat_is_key_authorized() refuses an all-zero OTP bank rather than treating it
@@ -66,7 +70,8 @@ class sep_rom_oca_otp_key_boot_test(sep_rom_ot_secure_boot_test):
     # parent: same marker, but reached through the OTP branch rather than the ROM
     # digest table.
     forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
-        _PUBK_OTP_EMPTY, _PUBK_UNAUTHORIZED,
+        _PUBK_OTP_EMPTY,
+        _PUBK_UNAUTHORIZED,
     )
 
     def build_efuse_image(self) -> SepEfuseImage:
