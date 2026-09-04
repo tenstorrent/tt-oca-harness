@@ -184,26 +184,21 @@ file before the runner that reads it fails with a less legible error.
 TOML.
 
 `lint-vale` (Vale) checks `.adoc`/`.md` prose against
-`styles/OCAH/Acronyms.yml`, which flags any spelled-out expansion of a
-tracked acronym that doesn't match the one phrase this repo actually
-defines it as -- most plausibly an AI assistant free-associating a
-plausible-sounding phrase for a three/four-letter acronym it was never told
-the meaning of (an early instance: DFD written out as "Debug Forensics
-Dump" in a couple of places instead of the "Design-for-Debug" that
-`hw/sys/smc/doc/dfd.adoc` actually defines it as). The check is a `script`
-rule (`styles/config/scripts/AcronymDefinitions.tengo`) rather than a
-`substitution` blocklist, so it catches a *novel* wrong expansion too, not
-just the specific phrasings already found; the trade-off is that adding an
-acronym means editing the Tengo script's `canonical` map, not just adding a
-YAML line. Each entry's correct side is a direct quote from somewhere
-in-tree, not a guess -- see that script's header comment and
+`styles/OCAH/Acronyms.yml`, which tracks a small set of this repo's own
+acronyms and the one phrase each is canonically defined as. The check is a
+`script` rule (`styles/config/scripts/AcronymDefinitions.tengo`): it finds
+a spelled-out expansion of a tracked acronym anywhere in the document and
+flags a mismatch regardless of how it's worded, rather than matching
+against a fixed list of known-wrong strings. Adding an acronym means
+editing the Tengo script's `canonical` map, not just adding a YAML line.
+Each entry's correct expansion is a direct quote from somewhere in-tree,
+not a guess -- see that script's header comment and
 `styles/OCAH/Acronyms.yml` before adding to it. It has no autofix; a
-finding names the acronym's one correct expansion, but applying it is a
-manual edit, same as `lint-toml`. Vale's built-in case-exact vocabulary
-check (`Vale.Terms`) was tried and dropped for now: this repo casually
-lowercases these acronyms inside test/config names and running prose often
-enough that it flagged over a hundred non-issues against ~5 real ones, which
-isn't the low-noise bar the rest of this table holds to.
+finding names the acronym's correct expansion, but applying it is a manual
+edit, same as `lint-toml`. Vale's built-in case-exact vocabulary check
+(`Vale.Terms`) is not in use: this repo's casual acronym lowercasing in
+code and prose produces too much noise relative to genuine findings to
+meet the low-noise bar the rest of this table holds to.
 
 ### Optional pre-commit checks
 

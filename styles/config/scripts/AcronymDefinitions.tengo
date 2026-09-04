@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Checks that this repo's own acronyms expand to the one phrase each is
-// actually defined as, wherever the document spells the expansion out --
-// "<Phrase> (ACRONYM)" or "ACRONYM (<Phrase>)" -- instead of only blocking
-// the specific wrong phrasings already found in-tree. See styles/OCAH/
-// Acronyms.yml for the canonical map and how each entry was sourced.
+// canonically defined as, wherever the document spells the expansion out:
+// "<Phrase> (ACRONYM)" or "ACRONYM (<Phrase>)". A mismatch is flagged
+// regardless of how the wrong expansion is worded. See styles/OCAH/
+// Acronyms.yml for the canonical map and how each entry is sourced.
 //
 // Tengo's regex support (Go's RE2) has no lookaround, so the phrase-match
 // pattern below just grabs the run of hyphen/space-joined words immediately
