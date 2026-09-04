@@ -390,9 +390,7 @@ class RuntimeSelectionDefenses(unittest.TestCase):
                 "lsu_stub_all_live": {"build_dir": "build/stub"},
             },
         }
-        by_item, ordered = target_plan(
-            catalog, sim_cfg, ["t_stub", "t_cpu"], override="default"
-        )
+        by_item, ordered = target_plan(catalog, sim_cfg, ["t_stub", "t_cpu"], override="default")
         self.assertEqual(by_item, {"t_stub": "default", "t_cpu": "default"})
         self.assertEqual(ordered, ["default"])
 
