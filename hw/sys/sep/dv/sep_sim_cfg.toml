@@ -177,7 +177,11 @@ compile_args = [
 # Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
 # and the costliest sim instrumentation. Replaces the simulator-default
 # `--coverage`.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile (measured on SMC).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 [frameworks.cocotb]
 # Flow-first layout: cocotb env/seq_lib/tests live under cocotb/ (room for a

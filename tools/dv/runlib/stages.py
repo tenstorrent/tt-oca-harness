@@ -2157,6 +2157,10 @@ def cocotb_sim(
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
     env["RANDOM_SEED"] = str(seed)
+    # The directory the model was elaborated into. A coverage run builds under
+    # <tool>/coverage, so a test that records which model it simulated must
+    # read this rather than assume the plain <tool> path.
+    env["OCAH_SIM_BUILD_DIR"] = str(sim_build)
     env = apply_option_env(
         options,
         env,
