@@ -6,75 +6,82 @@
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 z" fill="#484848"/>
     </marker>
+    <marker id="arrow-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+      <path d="M8,0 L0,4 L8,8 z" fill="#484848"/>
+    </marker>
     <style>
       .title { font: 700 24px sans-serif; fill: #103525; }
-      .label { font: 700 18px sans-serif; fill: #103525; }
-      .text { font: 15px sans-serif; fill: #484848; }
-      .small { font: 13px sans-serif; fill: #484848; }
-      .box { fill: #f8f4eb; stroke: #103525; stroke-width: 2; rx: 10; }
+      .label { font: 700 17px sans-serif; fill: #103525; }
+      .text { font: 14px sans-serif; fill: #484848; }
+      .small { font: 12px sans-serif; fill: #484848; }
+      .chiplet { fill: #ffffff; stroke: #77736b; stroke-width: 2; stroke-dasharray: 8 5; rx: 12; }
+      .dtp { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; rx: 10; }
       .core { fill: #ffffff; stroke: #937027; stroke-width: 2; rx: 8; }
-      .external { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; stroke-dasharray: 7 5; rx: 8; }
+      .external { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; rx: 8; }
       .line { fill: none; stroke: #484848; stroke-width: 2; marker-end: url(#arrow); }
-      .both { fill: none; stroke: #484848; stroke-width: 2; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .both { fill: none; stroke: #484848; stroke-width: 2; marker-start: url(#arrow-start); marker-end: url(#arrow); }
+      .bus { fill: none; stroke: #484848; stroke-width: 2; }
     </style>
   </defs>
 
-  <text class="title" x="500" y="30" text-anchor="middle">DTP integration boundary</text>
+  <text class="title" x="500" y="27" text-anchor="middle">DTP in an OCAH multi-chiplet system</text>
 
-  <rect class="external" x="15" y="62" width="165" height="100"/>
-  <text class="label" x="97" y="93" text-anchor="middle">JTAG pads</text>
-  <text class="text" x="97" y="120" text-anchor="middle">TCK, TMS, TDI, TDO</text>
-  <text class="text" x="97" y="144" text-anchor="middle">TRST_N</text>
+  <rect class="external" x="15" y="125" width="175" height="145"/>
+  <text class="label" x="102" y="158" text-anchor="middle">External debug / test</text>
+  <text class="text" x="102" y="190" text-anchor="middle">JTAG controller</text>
+  <text class="text" x="102" y="216" text-anchor="middle">scan equipment</text>
+  <text class="text" x="102" y="242" text-anchor="middle">trigger endpoints</text>
 
-  <rect class="box" x="225" y="52" width="470" height="185"/>
-  <text class="label" x="460" y="80" text-anchor="middle">JTAG interface unit</text>
-  <rect class="core" x="250" y="100" width="105" height="105"/>
-  <text class="label" x="302" y="145" text-anchor="middle">PTAP</text>
-  <text class="small" x="302" y="171" text-anchor="middle">instructions</text>
-  <text class="small" x="302" y="190" text-anchor="middle">and TDRs</text>
-  <rect class="core" x="385" y="100" width="130" height="105"/>
-  <text class="label" x="450" y="137" text-anchor="middle">Scan fabric</text>
-  <text class="small" x="450" y="163" text-anchor="middle">BSR · iJTAG</text>
-  <text class="small" x="450" y="183" text-anchor="middle">STAP · DFT · DFD</text>
-  <rect class="core" x="545" y="100" width="125" height="105"/>
-  <text class="label" x="607" y="137" text-anchor="middle">Debug control</text>
-  <text class="small" x="607" y="163" text-anchor="middle">JTAG-to-AXI</text>
-  <text class="small" x="607" y="183" text-anchor="middle">reset · clock stop</text>
+  <rect class="chiplet" x="220" y="48" width="550" height="405"/>
+  <text class="label" x="245" y="77">OCAH chiplet</text>
 
-  <rect class="external" x="755" y="52" width="225" height="185"/>
-  <text class="label" x="867" y="82" text-anchor="middle">Adopter connections</text>
-  <text class="text" x="775" y="115">AXI4 → SMC fabric</text>
-  <text class="text" x="775" y="142">AXI4-Lite → SMC/SEP OTP</text>
-  <text class="text" x="775" y="169">scan chains and STAPs</text>
-  <text class="text" x="775" y="196">boot stall and reset-control outputs</text>
-  <text class="text" x="775" y="220">lifecycle debug-disable policy</text>
+  <rect class="dtp" x="245" y="94" width="500" height="174"/>
+  <text class="label" x="495" y="121" text-anchor="middle">Debug and Test Ports (DTP)</text>
+  <rect class="core" x="270" y="140" width="210" height="96"/>
+  <text class="label" x="375" y="175" text-anchor="middle">JTAG Interface Unit</text>
+  <text class="small" x="375" y="199" text-anchor="middle">TAP · scan · JTAG-to-AXI</text>
+  <text class="small" x="375" y="219" text-anchor="middle">boot · reset · clock controls</text>
+  <rect class="core" x="510" y="140" width="210" height="96"/>
+  <text class="label" x="615" y="175" text-anchor="middle">Cross Trigger Network</text>
+  <text class="small" x="615" y="199" text-anchor="middle">trigger routing · CTPs</text>
+  <text class="small" x="615" y="219" text-anchor="middle">clock-stop aggregation</text>
 
-  <path class="both" d="M180 112 H225"/>
-  <path class="both" d="M695 144 H755"/>
+  <rect class="core" x="245" y="310" width="112" height="76"/>
+  <text class="label" x="301" y="343" text-anchor="middle">SMC</text>
+  <text class="small" x="301" y="367" text-anchor="middle">fabric · OTP</text>
+  <rect class="core" x="374" y="310" width="112" height="76"/>
+  <text class="label" x="430" y="343" text-anchor="middle">SEP</text>
+  <text class="small" x="430" y="367" text-anchor="middle">OTP · scan</text>
+  <rect class="core" x="503" y="310" width="112" height="76"/>
+  <text class="label" x="559" y="343" text-anchor="middle">Adopter IP</text>
+  <text class="small" x="559" y="367" text-anchor="middle">when connected</text>
+  <rect class="core" x="632" y="310" width="112" height="76"/>
+  <text class="label" x="688" y="340" text-anchor="middle">Clock / reset</text>
+  <text class="small" x="688" y="364" text-anchor="middle">and local triggers</text>
 
-  <rect class="box" x="225" y="285" width="470" height="145"/>
-  <text class="label" x="460" y="315" text-anchor="middle">Cross-trigger network</text>
-  <rect class="core" x="250" y="335" width="120" height="67"/>
-  <text class="label" x="310" y="365" text-anchor="middle">CT ports</text>
-  <text class="small" x="310" y="387" text-anchor="middle">sync + protocol</text>
-  <rect class="core" x="400" y="335" width="120" height="67"/>
-  <text class="label" x="460" y="365" text-anchor="middle">CT matrix</text>
-  <text class="small" x="460" y="387" text-anchor="middle">CSR routing</text>
-  <rect class="core" x="550" y="335" width="120" height="67"/>
-  <text class="label" x="610" y="365" text-anchor="middle">Clock stop</text>
-  <text class="small" x="610" y="387" text-anchor="middle">registered output</text>
+  <text class="small" x="495" y="425" text-anchor="middle">Adopter supplies pads, policy, clocks, resets, scan chains, and permitted mappings</text>
 
-  <rect class="external" x="15" y="292" width="165" height="115"/>
-  <text class="label" x="97" y="322" text-anchor="middle">Trigger endpoints</text>
-  <text class="text" x="97" y="352" text-anchor="middle">external CTP I/O</text>
-  <text class="text" x="97" y="378" text-anchor="middle">local sources/sinks</text>
+  <rect class="chiplet" x="805" y="86" width="180" height="300"/>
+  <text class="label" x="895" y="118" text-anchor="middle">Peer OCAH chiplet</text>
+  <rect class="dtp" x="829" y="145" width="132" height="76"/>
+  <text class="label" x="895" y="177" text-anchor="middle">DTP</text>
+  <text class="small" x="895" y="201" text-anchor="middle">JTAG + triggers</text>
+  <rect class="core" x="829" y="264" width="132" height="76"/>
+  <text class="label" x="895" y="296" text-anchor="middle">Internal functions</text>
+  <text class="small" x="895" y="320" text-anchor="middle">management · IP</text>
 
-  <rect class="external" x="755" y="292" width="225" height="115"/>
-  <text class="label" x="867" y="322" text-anchor="middle">Management integration</text>
-  <text class="text" x="867" y="352" text-anchor="middle">32-bit AXI4-Lite CSR</text>
-  <text class="text" x="867" y="378" text-anchor="middle">clock-stop request/output</text>
-
-  <path class="both" d="M180 350 H225"/>
-  <path class="both" d="M695 350 H755"/>
-  <path class="line" d="M610 285 V238"/>
+  <path class="both" d="M190 184 H270"/>
+  <text class="small" x="228" y="173" text-anchor="middle">JTAG / scan</text>
+  <path class="both" d="M190 236 H510"/>
+  <text class="small" x="228" y="251" text-anchor="middle">triggers</text>
+  <path class="both" d="M720 188 H829"/>
+  <text class="small" x="774" y="176" text-anchor="middle">cross-trigger</text>
+  <path class="both" d="M480 188 H510"/>
+  <path class="both" d="M375 236 V286"/>
+  <path class="bus" d="M301 286 H688"/>
+  <path class="line" d="M301 286 V310"/>
+  <path class="line" d="M430 286 V310"/>
+  <path class="line" d="M559 286 V310"/>
+  <path class="line" d="M688 286 V310"/>
+  <path class="both" d="M895 221 V264"/>
 </svg>

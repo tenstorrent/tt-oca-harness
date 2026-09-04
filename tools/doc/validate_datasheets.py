@@ -9,9 +9,9 @@ from pathlib import Path
 
 REQUIRED_SECTIONS = (
     "highlights",
-    "integration-fit",
+    "system-role",
     "overview",
-    "architecture",
+    "system-context",
     "at-a-glance",
     "capabilities",
     "interfaces-and-configuration",

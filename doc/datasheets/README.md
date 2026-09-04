@@ -12,8 +12,11 @@ datasheets expose highlights, architecture, stable specifications, features,
 integration dependencies, verification status, and deliverables.
 
 The OCAH structure deliberately replaces procurement-oriented “Target
-Applications” and process-oriented “Technologies” panels with “Integration fit”
-and “Integration dependencies”. Claims must distinguish:
+Applications” and process-oriented “Technologies” panels with “System role”
+and “Integration dependencies”. Each sheet uses the same system-context visual
+grammar: external equipment on the left, the OCAH chiplet and subsystem
+internals in the center, and peer chiplets on the right. Claims must
+distinguish:
 
 - an architectural capability evidenced by RTL;
 - a value in the checked-in reference configuration;
