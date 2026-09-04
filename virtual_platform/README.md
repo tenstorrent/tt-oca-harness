@@ -1,10 +1,52 @@
 # OCAH Virtual Platform
 
 The integrated OCAH virtual platform: the [`tt-oca-harness-model`](https://github.com/tenstorrent/tt-oca-harness-model)
-SystemC simulator as a submodule, a Makefile that builds its `sep-vp` executable (and the
-SystemC/Boost/OpenSSL/CCI dependencies it needs), and the `sepvp` Python runner + pytest
-harness for running SEP firmware — including the production boot ROM from
-`hw/sys/sep/bootrom/prod` — on the functional model.
+SystemC simulator as a submodule, a Makefile that builds its three VP executables (and the
+dependencies they need), and the `sepvp` Python runner + pytest harness for running SEP
+firmware — including the production boot ROM from `hw/sys/sep/bootrom/prod` — on the
+functional model.
+
+## The three executables
+
+| Target | Builds | Tree | Extra dependency |
+|---|---|---|---|
+| `make vp` | `sep-vp` — the SEP subsystem | `tt-oca-harness-model/vp/build` | — |
+| `make smc-vp` | `smc-vp` — the SMC subsystem | `.../vp/build_smc` | Whisper ISS |
+| `make smu-vp` | `smu-vp` + `libsmc_cluster_smu.so` — SMC and SEP together in one process | `.../vp/build_smc` | Whisper ISS |
+
+`sep-vp` is the default and needs nothing new. **`smc-vp` and `smu-vp` are opt-in**:
+asking for either builds the [Whisper ISS](https://github.com/tenstorrent/whisper)
+(pinned at `WHISPER_REV`) into `local/` first, which `make vp` never does. They live
+in a second build tree because `WHISPER_HOME` is read at *configure* time and decides
+whether the SMC and SMU platforms are generated at all, so one tree cannot serve both
+cases. Both are gated on that single switch upstream, so they always come together and
+share the tree.
+
+`smu-vp` is the only configuration that runs the SMC and SEP subsystems concurrently,
+and its tests pass only when *both* halves report PASS — so it is where cross-subsystem
+regressions show up.
+
+```bash
+make smc-vp                       # builds Whisper on first use, then smc-vp
+make smu-vp                       # same tree, adds smu-vp + its companion .so
+make smc-test                     # the model's SMC firmware suite  (15 tests)
+make smu-test                     # the model's SMU firmware suite  (5 tests)
+make smc-test SMC_ARGS=smc-wdt-test        # one test
+make smu-test SMU_ARGS=smu-link-test       # one test
+make deps-info                    # where every prefix resolves, Whisper included
+```
+
+SMC/SMU testing goes through the model's own `sw/{smc,smu}-vp-tests` runners, which
+these targets wrap with our resolved prefixes; the `sepvp` package is SEP-specific and
+does not drive them.
+
+> **`smu-vp` has a companion artifact.** `libsmc_cluster_smu.so` (the SMC CPU cluster,
+> repackaged so Whisper's symbols stay local to it and the SEP side can link its own
+> VeeR-ISS fork) is built beside the target, *not* into `bin/`. `smu-vp` bakes that
+> build-tree path into its RUNPATH, so it runs in place with no `LD_LIBRARY_PATH` — but
+> anything that copies, uploads or caches `smu-vp` must carry the `.so` too, or the copy
+> will silently bind to the build tree and then fail once that tree is gone.
+> `make env` puts its directory on `LD_LIBRARY_PATH` for exactly this reason.
 
 ## Layout
 
@@ -57,7 +99,10 @@ Requirements:
 - **A RISC-V cross toolchain** for the firmware builds: on PATH, or point
   `RISCV_TOOLCHAIN=<prefix>` at an install (its `bin/` is prepended). Optional — the
   ROM/DV builds fall back to the container (below), and firmware-dependent tests skip
-  cleanly without it.
+  cleanly without it. The SMC/SMU suites auto-detect a prefix and are happy with
+  `riscv64-unknown-elf-`; override with `RISCV_PREFIX=` if yours is named differently.
+- **For `smc-vp`/`smu-vp` only**: `git` and network access for the Whisper checkout.
+  No extra system packages, and no second RISC-V toolchain.
 - `uv` for the Python environment, and network access (or a pre-seeded `downloads/`)
   for the dependency tarballs.
 
@@ -67,9 +112,9 @@ The boot ROM and DV-engine firmware compile against picolibc, which bare
 riscv-gnu-toolchain installs typically lack; those builds fall back automatically to
 the `ocah-toolchain` container via `scripts/docker-run.sh run-here` (build it once
 with `./scripts/docker-run.sh build`; see `tools/docker/README.md`). That is the
-same image the containerized flow below uses. On hosts where rootless podman's
-`--userns=keep-id` fails, extract the image rootfs once and set
-`OCAH_TOOLCHAIN_ROOTFS=<dir>` to use the engine-less bubblewrap backend instead.
+same image the containerized flow below uses. If a container will not start on your
+host at all, extract the image rootfs once and set `OCAH_TOOLCHAIN_ROOTFS=<dir>` to
+use the engine-less bubblewrap backend instead.
 
 ## Containerized build & run
 
@@ -83,16 +128,24 @@ apt Boost/OpenSSL, the RISC-V firmware toolchain and the runner's Python (see
 make -C virtual_platform vp VP_CONTAINER=1        # deps (SystemC/CCI) + sep-vp
 make -C virtual_platform vp-test VP_CONTAINER=1   # pytest suites, in-container
 make -C virtual_platform boot-run VP_CONTAINER=1 BOOT_ARGS="--boot primary"
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1   # the SMC/SMU pair
+make -C virtual_platform smc-test VP_CONTAINER=1        # and their suites
+make -C virtual_platform smu-test VP_CONTAINER=1
 ./scripts/docker-run.sh vp-shell      # interactive shell, repo bound 1:1
 ```
 
-A container-built `sep-vp` links the container's glibc and cannot run on older
+The same image carries everything `smc-vp` and `smu-vp` need — no extra packages —
+and builds the Whisper archives too.
+
+A container-built VP links the container's glibc and cannot run on older
 hosts, so `VP_CONTAINER=1` routes the run/test targets into the container too.
-Artifacts are partitioned per environment (`local-ctr/`, `tt-oca-harness-model/vp/build-ctr`)
-and never mix with a native build. Where rootless podman's `--userns=keep-id`
-fails, extract the image rootfs and set `OCAH_TOOLCHAIN_ROOTFS=<dir>` for the
-engine-less bubblewrap backend; on a host with both engines installed,
-`OCAH_ENGINE=docker` (or `podman`) pins which one is used.
+Artifacts are partitioned per environment (`local-ctr/`,
+`tt-oca-harness-model/vp/build-ctr`, `.../vp/build_smc-ctr`) and never mix with a
+native build — which matters for `libsmc_cluster_smu.so` and the Whisper archives
+as much as for the binaries. If no container will start on your host, extract the
+image rootfs and set `OCAH_TOOLCHAIN_ROOTFS=<dir>` for the engine-less bubblewrap
+backend; on a host with both engines installed, `OCAH_ENGINE=docker` (or `podman`)
+pins which one is used.
 
 `.github/workflows/vp.yml` runs both flows — a native build on the runner and a
 `VP_CONTAINER=1` build in this image — on every PR that touches the VP, plus
