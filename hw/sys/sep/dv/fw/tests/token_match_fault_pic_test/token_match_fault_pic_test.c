@@ -12,7 +12,8 @@
  * Checks:
  *   CHK-PIC-CLAIM  : ISR claim id == 40
  *   CHK-PIC-FAULT  : TOKEN_MATCH_FAULT secure-disable bit set
- *   CHK-PIC-MASK   : after mask, the ISR does not re-enter
+ *   CHK-PIC-MASK   : after mask, the ISR does not re-enter, and
+ *                    source 40 is still pending at both ends of the quiet window
  */
 
 #include <stdint.h>
@@ -103,16 +104,16 @@ int main(void) {
         errors++;
     } else {
         uint32_t before = g_isr_count;
-        /* TOKEN_MATCH_FAULT is software-read-only and clears only on reset, so
-         * the source must still be REQUESTING while masked. Without this the
-         * quiet window also passes on a design whose request dropped by itself
-         * or whose sticky latch never held. */
-        uint32_t still_pending = pic_source_pending(PIC_TOKEN_FAULT);
+        /* TOKEN_MATCH_FAULT is software-read-only and clears only on reset.
+         * Sample meip at both ends of the quiet window so a request that
+         * drops during the window fails. */
+        uint32_t pending_before = pic_source_pending(PIC_TOKEN_FAULT);
         for (i = 0; i < STORM_CHECK_ITERS; i++) {
             __asm__ volatile("nop");
         }
-        if (!still_pending) {
-            sep_mbx_puts("FAIL: PIC 40 stopped requesting; mask window proves nothing\n");
+        uint32_t pending_after = pic_source_pending(PIC_TOKEN_FAULT);
+        if (!pending_before || !pending_after) {
+            sep_mbx_puts("FAIL: PIC 40 not requesting across the mask window\n");
             errors++;
         } else if (g_isr_count != before) {
             sep_mbx_puts("FAIL: PIC 40 re-entered after mask\n");
