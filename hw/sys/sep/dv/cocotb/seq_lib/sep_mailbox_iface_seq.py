@@ -77,6 +77,25 @@ class SepMbox(SepAxiRegDriver):
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata
 
+    async def push32(self, byte_off: int, value: int) -> int:
+        """Write 4 bytes into WRITE_DATA at ``byte_off`` (0 or 4).
+
+        A sub-word beat on the 64-bit push register. Every register in this
+        block owns a whole 8-byte decode range, so +0x04 addresses the SAME
+        register as +0x00 rather than a separately addressable high word.
+        Returns the AXI resp_code.
+        """
+        seq = SepAxiAccessSeq(
+            f"mbox_push32_{byte_off:#x}",
+            op=SepAxiOp.WRITE,
+            addr=OUTBOUND_BASE + WRITE_DATA + byte_off,
+            wdata=value,
+            length=4,
+            size=2,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code
+
     async def rd_write_data(self) -> tuple[int, int]:
         """Read the write-only WRITE_DATA register. Returns (resp, data)."""
         seq = SepAxiAccessSeq(

@@ -95,6 +95,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self._chk_64b_status_threshold()
         await self._chk_write_full_error()
         await self._chk_flush()
+        await self._chk_subword_push()
         # No CHK-ALL summary: it asserted nothing, and every facet above already
         # logs its own PASS line. A plan row keyed on a bare summary string would
         # record coverage with no checker behind it.
@@ -220,6 +221,72 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         irqs2 = await self.mb.rd_csr(IRQS)
         assert (irqs2 & IRQ_EIRQ) == 0, f"write-full IRQS.eirq not W1C-cleared (0x{irqs2:08x})"
         self.logger.info("CHK-ERR-WR-IRQ PASS: write-full -> IRQS.eirq set + W1C -> 0")
+
+    async def _chk_subword_push(self) -> None:
+        """CHK-SUBWORD-PUSH: a 4-byte beat is a whole push, not half a word.
+
+        This facet discriminates between two readings of the mailbox, which
+        predict different DUT behaviour:
+
+        * the architecture note in `doc/fabric.adoc` describes each 64-bit
+          mailbox word as two 32-bit words the host addresses separately, so
+          a beat at +0x00 followed by one at +0x04 would assemble ONE entry;
+        * the RTL gives every register a whole 8-byte decode range
+          (`axi_lite_mailbox.sv:269-272`) and zeroes each non-strobed byte
+          (`:302`), so each beat is its own push and +0x04 addresses the same
+          register -- TWO entries, each half zeroed.
+
+        STATUS carries no exact depth, so occupancy is read through the write
+        threshold: with WIRQT programmed to 1, `write_level_above` is set only
+        once occupancy exceeds 1. It must therefore be CLEAR after the first
+        beat and SET after the second. One assembled entry leaves it clear.
+        """
+        await self.mb.flush_write()
+        self.gold.flush()
+        subword_wirqt = 1
+        await self.mb.wr_csr(WIRQT, subword_wirqt)
+
+        st = await self.mb.rd_csr(STATUS)
+        assert (st & ST_WLVL_ABOVE) == 0, (
+            f"write_level_above set on an empty TX FIFO with WIRQT="
+            f"{subword_wirqt} (STATUS=0x{st:08x})"
+        )
+
+        assert await self.mb.push32(0, 0xAAAA_AAAA) == RESP_OKAY, (
+            "4-byte WRITE_DATA beat at +0x00 did not return OKAY"
+        )
+        st_lo = await self.mb.rd_csr(STATUS)
+        assert (st_lo & ST_WLVL_ABOVE) == 0, (
+            f"occupancy already above WIRQT={subword_wirqt} after ONE 4-byte beat "
+            f"(STATUS=0x{st_lo:08x}) -- a single beat pushed more than one entry"
+        )
+
+        # The discriminating access.
+        assert await self.mb.push32(4, 0xBBBB_BBBB) == RESP_OKAY, (
+            "4-byte WRITE_DATA beat at +0x04 did not return OKAY -- the push "
+            "register does not answer sub-word beats with an error"
+        )
+        st_hi = await self.mb.rd_csr(STATUS)
+        assert st_hi & ST_WLVL_ABOVE, (
+            f"write_level_above clear after two 4-byte beats with WIRQT="
+            f"{subword_wirqt} "
+            f"(STATUS=0x{st_hi:08x}): occupancy is 1, so the two beats were "
+            f"assembled into a single 64-bit entry. The decode in "
+            f"axi_lite_mailbox.sv gives each register a whole 8-byte range, so "
+            f"each beat should be its own push and occupancy should be 2"
+        )
+        self.logger.info(
+            "CHK-SUBWORD-PUSH PASS: 4-byte beats at +0x00 and +0x04 both OKAY and "
+            "each pushed an entry (occupancy > WIRQT=%d); +0x04 is the same register, "
+            "not a separately addressable high word",
+            subword_wirqt,
+        )
+
+        # Leave the FIFO and the threshold as the other facets expect.
+        await self.mb.flush_write()
+        self.gold.flush()
+        await self.mb.wr_csr(WIRQT, self.cfg_mb.wirqt)
+        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)
 
     async def _chk_flush(self) -> None:
         """CHK-FLUSH: CTRL.wflush drains the TX FIFO -> STATUS not-full; then the
