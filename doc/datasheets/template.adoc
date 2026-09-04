@@ -10,10 +10,18 @@
 :product-long-name: Product long name
 :revnumber: Initial version
 :revdate: 2026
+:copyright-year: 2026
+:copyright-holder: Tenstorrent USA, Inc.
 :icons: font
 
+[cols="60,40",frame=none,grid=none,stripes=none]
+|===
+a|
 [.datasheet-brand]
 OPEN CHIPLET ARCHITECTURE HARNESS
+a|
+image::../../ui-supplemental/img/tt_logo_color-yellow-black.png[Tenstorrent,pdfwidth=1.65in,align=right]
+|===
 
 [.datasheet-title]
 {product-short-name}
