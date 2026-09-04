@@ -2025,10 +2025,9 @@ The define also zeroes the RMA and security-disable token and digest bits in
 X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
-Three models it enables make simulation deliberately non-deterministic:
-`gdffsync` in the entropy source injects metastability on the second
-synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
-equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the

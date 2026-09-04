@@ -85,10 +85,9 @@ set_dont_touch [get_cells -hierarchical -filter "ref_name =~ entropy_ring_oscill
 
 # Prevent optimization of individual ring oscillator cells
 # These must maintain their structure for proper oscillation
-set_dont_touch [get_cells -hierarchical -filter "ref_name =~ gnand2"]
-set_dont_touch [get_cells -hierarchical -filter "ref_name =~ gbuff"]
-set_dont_touch [get_cells -hierarchical -filter "ref_name =~ gmux2"]
-set_dont_touch [get_cells -hierarchical -filter "ref_name =~ ginv"]
+set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_clock_nand2"]
+set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_stdbuf"]
+set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_stdmux2"]
 
 # Break timing paths on ring oscillator feedback loops
 # The feedback path creates a combinational loop which is intentional
@@ -124,22 +123,21 @@ set_max_fanout 12 [get_nets -hierarchical -filter "name =~ *sclk/shared_ring_osc
 set_dont_touch [get_cells -hierarchical -filter "ref_name =~ entropy_ripple_divider"]
 
 # Prevent optimization of generic cells used in ripple dividers
-# These are already marked dont_touch above for ring oscillators, but reiterate for clarity
-# set_dont_touch [get_cells -hierarchical -filter "ref_name =~ gdffqb"]
+# set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_dffrxq"]
 
 # Break timing paths on ripple divider feedback loops
 # Each toggle flip-flop has D connected to QB (intentional feedback)
-# Pattern: ripple_divider instance -> stage generate block -> flip-flop -> d_i pin
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/d_i"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/d_i"]
+# Pattern: ripple_divider instance -> stage generate block -> flip-flop -> i_D pin
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/i_D"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/i_D"]
 
 # Break timing paths on ripple chain connections
 # Each stage's Q output clocks the next stage (asynchronous ripple)
-# Pattern: stage[N]/q_o -> stage[N+1]/cp_i
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/q_o"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/q_o"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/cp_i"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/cp_i"]
+# Pattern: stage[N]/o_Q -> stage[N+1]/i_CK
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/o_Q"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/o_Q"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/i_CK"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/i_CK"]
 
 # Break timing on divided clock outputs
 # These outputs are used as clock sources (not data) and should not have timing checks
@@ -155,14 +153,14 @@ set_false_path -from [get_pins -hierarchical -filter "name =~ *u_sample_clk_divi
 # METASTABLE SAMPLING CONSTRAINTS
 #------------------------------------------------------------------------------
 
-# The sampling flip-flop (smpl) intentionally captures metastable events
+# The sampling flip-flop (u_smpl) intentionally captures metastable events
 # from the asynchronous ring oscillator - this is the entropy source
 # Disable timing checks on the data input to the sampling flip-flop
-set_false_path -to [get_pins -hierarchical -filter "name =~ */nsrc/smpl/d_i"]
+set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_smpl/i_D"]
 
-# First stage of synchronizer (sync0) receives potentially metastable data
+# First stage of synchronizer (u_sync0) receives potentially metastable data
 # Break input timing path to allow metastability to settle
-set_false_path -to [get_pins -hierarchical -filter "name =~ */nsrc/sync0/d_i"]
+set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_sync0/i_D"]
 
 # Note: sync1 (second synchronizer stage) has normal timing constraints
 # This allows checking that the synchronized output meets timing
