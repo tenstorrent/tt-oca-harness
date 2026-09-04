@@ -3,7 +3,7 @@
 """smu_dtp_otp_sep0_err_slv_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
 Was: OTP Force + hier AXIL Force. Use smu_lcc_helpers + SEP=1 eFuse LCC when available.
-See testlists/deferred.toml (needs_real_lcc, sep1).
+Not ported (needs_real_lcc, sep1).
 """
 
 from __future__ import annotations
@@ -19,5 +19,5 @@ class smu_dtp_otp_sep0_err_slv_test(smu_base_test):
     async def run_scenario(self) -> None:
         raise AssertionError(
             "smu_dtp_otp_sep0_err_slv_test deferred: OTP Force + hier AXIL Force removed. "
-            "See testlists/deferred.toml (needs_real_lcc, sep1)."
+            "Not ported (needs_real_lcc, sep1)."
         )

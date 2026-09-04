@@ -486,6 +486,21 @@ run_modes = ["smoke"]
 |Non-vacuity |`SmcScoreboard.check_phase` |Total evidence `> 0`
 |Regression parsing |Global DV parser |Positive cocotb evidence in `results.xml`
 |===
+RTL and vendor-IP SVA participate only on commercial simulators, matching
+SEP. OpenTitan / PeakRDL / OCAH assertion macros compile and run under
+VCS and Xcelium (`SYNTHESIS` is not set on the SMC target). The shared
+native profile still defines `COMMON_CELLS_ASSERTS_OFF`, so PULP
+`common_cells` inline asserts stay off on every backend. Under Verilator
+those macros expand to nothing (`VERILATOR` plus the target's
+`ASSERTS_OFF`). A checker is still the whole of the proof on Verilator.
+
+`tb_top` holds `rst_cold_ni` / `rst_cool_ni` / `powergood_i` at a known idle
+until cocotb drives them, so PeakRDL immediate asserts do not sample Z at
+time 0. `prim_rom.noXOnCsI` uses `disable iff ('0)` and sees X on `req_i`
+until the TileLink converter leaves reset; a named `$assertoff` covers that
+window and `$asserton` re-arms after cold-reset release. Other named
+`$assertoff` scopes are added only after a commercial run shows a class
+that is not a DUT contract.
 
 [[coverage-strategy]]
 === Coverage Strategy
@@ -895,8 +910,10 @@ tripped `axi_err_slv.gen_assert_atops_unsupported` because the `tb_top` request
 assigns never initialized the 6-bit `atop_t` field, so X propagated into the
 outbound filter's `axi_err_slv` — instantiated with `.ATOPs(1'b0)` — where the
 `assume` property `slv_req_i.aw_valid |-> slv_req_i.aw.atop == '0` fatal-fires.
-Verilator did not fire it: concurrent SVA in that bind is withheld under
-`VERILATOR`. Fix: drive `.aw.atop = '0` on
+Verilator hid it: the SMC target used to define `SYNTHESIS`, which compiles
+those SVA macros out (the unused profile define `DISABLE_ASSERT` does not),
+and concurrent SVA in that bind is withheld under `VERILATOR`. Fix: drive
+`.aw.atop = '0` on
 `sep_axi_in_req`, `sys_axi_in_req`, and `jtag_axi_in_req`. A one-time `--rebuild`
 is required for the change to take effect; afterwards `canonical_top20` reached
 20/20 on Xcelium.

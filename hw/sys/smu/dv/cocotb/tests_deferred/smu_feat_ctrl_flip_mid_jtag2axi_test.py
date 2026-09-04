@@ -4,7 +4,7 @@
 
 Was Force-based JTAG2AXI / feat_ctrl ungating under SEP=0. Use
 smu_lcc_helpers + SEP=1 eFuse LCC when available (#3538).
-See testlists/deferred.toml (needs_real_lcc, sep1).
+Not ported (needs_real_lcc, sep1).
 """
 
 from __future__ import annotations
@@ -21,5 +21,5 @@ class smu_feat_ctrl_flip_mid_jtag2axi_test(smu_base_test):
         raise AssertionError(
             "smu_feat_ctrl_flip_mid_jtag2axi_test deferred: Force ungating removed. "
             "Needs SEP=1 (gen_no_sep ties feat_ctrl='0'); use eFuse→LCC + smu_lcc_helpers. "
-            "See testlists/deferred.toml (needs_real_lcc, sep1)."
+            "Not ported (needs_real_lcc, sep1)."
         )
