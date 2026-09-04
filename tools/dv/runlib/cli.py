@@ -1509,9 +1509,13 @@ def validate_coverage_tool(
     allowed = coverage_tools(sim_cfg)
     if not allowed or tool in allowed:
         return
+    # One ordering for both halves of the message: naming a tool in the suggestion
+    # that is not the first one listed sends the reader to a different backend
+    # than the one they just read.
+    listed = sorted(allowed)
     raise ConfigError(
-        f"{flow.path}: --cov is restricted to {', '.join(sorted(allowed))} for this DUT, "
-        f"but the run selects `{tool}`; re-run with --tool {allowed[0]}"
+        f"{flow.path}: --cov is restricted to {', '.join(listed)} for this DUT, "
+        f"but the run selects `{tool}`; re-run with --tool {listed[0]}"
     )
 
 

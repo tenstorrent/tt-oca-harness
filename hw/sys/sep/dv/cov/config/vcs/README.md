@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+
 # SEP VCS coverage scope
 
 `sep_cov_scope.hier` is passed to VCS at compile time as `-cm_hier` plus

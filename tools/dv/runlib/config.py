@@ -730,7 +730,9 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
         if tools_allow is not None and (
             not isinstance(tools_allow, list)
             or not tools_allow
-            or not all(isinstance(entry, str) and entry for entry in tools_allow)
+            # `.strip()`: an entry that is only whitespace can never match a `--tool`
+            # value, so it would silently make `--cov` unusable rather than fail here.
+            or not all(isinstance(entry, str) and entry.strip() for entry in tools_allow)
         ):
             raise ConfigError(
                 f"{flow.path}: [coverage].tools must be a non-empty list of simulator names"
@@ -1391,7 +1393,9 @@ def coverage_tools(sim_cfg: dict[str, Any]) -> list[str]:
     value = coverage_cfg(sim_cfg).get("tools")
     if not isinstance(value, list):
         return []
-    return [entry for entry in value if isinstance(entry, str) and entry]
+    # Stripped so a stray space in the TOML (`" vcs "`) still matches the `--tool`
+    # value instead of quietly matching nothing and blocking every `--cov` run.
+    return [entry.strip() for entry in value if isinstance(entry, str) and entry.strip()]
 
 
 def tool_coverage_cfg(sim_cfg: dict[str, Any], tool: str) -> dict[str, Any]:

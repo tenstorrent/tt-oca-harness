@@ -406,8 +406,14 @@ class CoverageToolAllowlist(unittest.TestCase):
         cfg = {"coverage": {"tools": ["vcs"]}}
         validate_coverage_tool(cfg, "verilator", self.args(cov=False), self.flow)
 
+    def test_padded_entry_still_matches_the_tool(self):
+        # A stray space in the TOML must not silently match nothing and block every
+        # --cov run; the entry is stripped on read.
+        cfg = {"coverage": {"tools": [" vcs "], "vcs": {}}}
+        validate_coverage_tool(cfg, "vcs", self.args(), self.flow)
+
     def test_malformed_allowlist_is_rejected(self):
-        for bad in ([], "vcs", [""], [1]):
+        for bad in ([], "vcs", [""], ["   "], [1]):
             with self.subTest(bad=bad):
                 dut = make_dut({"coverage": {"tools": bad}})
                 with self.assertRaises(ConfigError):
