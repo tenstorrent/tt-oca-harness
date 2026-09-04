@@ -94,7 +94,6 @@ endmodule
 // Synchronizer
 // Two cascaded flip-flops with optional
 // metastable behavior in simulation
-// verilog_lint: waive module-filename
 module gdffsync (
   input  logic d_i,
   input  logic cp_i,
@@ -118,7 +117,7 @@ module gdffsync (
     .q_o   (dfe_o)
   );
   // 2nd flip-flop randomly goes metastable on HL|LH edges
-  assign metasig = dfe_o & $random;  // verilog_lint: waive invalid-system-task-function
+  assign metasig = dfe_o & $random;
   assign df1_i = metasig ^ df0_o;
   gdff u_df1 (
     .d_i   (df1_i),

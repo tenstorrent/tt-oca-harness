@@ -37,10 +37,16 @@ endif
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
 OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
-OCAH_LINT_VERIBLE_WAIVER_FILE := $(OCAH_FORMAT_DIR)/verible-lint.waiver
-OCAH_LINT_VERIBLE_EXTRA_FLAGS ?= --waiver_files=$(OCAH_LINT_VERIBLE_WAIVER_FILE)
+OCAH_VERIBLE_EMPTY :=
+OCAH_VERIBLE_SPACE := $(OCAH_VERIBLE_EMPTY) $(OCAH_VERIBLE_EMPTY)
+OCAH_VERIBLE_COMMA := ,
+OCAH_LINT_VERIBLE_WAIVER_FILES := $(shell find $(OCAH_ROOT)/hw $(OCAH_ROOT)/vendor \
+	-type f -path '*/lint/*.verible.waiver' -not -path '*/upstream/*' | sort)
+OCAH_LINT_VERIBLE_EXTRA_FLAGS ?= $(if $(OCAH_LINT_VERIBLE_WAIVER_FILES),\
+	--waiver_files=$(subst $(OCAH_VERIBLE_SPACE),$(OCAH_VERIBLE_COMMA),$(strip $(OCAH_LINT_VERIBLE_WAIVER_FILES))))
 OCAH_FORMAT_VERIBLE_FLAGS ?= --flagfile=$(OCAH_FORMAT_DIR)/verible-format.flags
 OCAH_FORMAT_VERIBLE_EXTRA_FLAGS ?=
+OCAH_SV_DECLARATION_SPACING_CHECK := $(OCAH_ROOT)/scripts/ci/check_sv_declaration_spacing.py
 
 # These files consume macros defined by their compilation unit. The pinned
 # Verible release cannot supply that context to a one-file lint/format command.
@@ -62,9 +68,9 @@ OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 
 # These valid files use conditional module headers, escaped hierarchical
 # references, wildcard syntax, or macro-generated member selections that the
-# pinned single-file parser rejects. Slang compilation below remains
+# formatter cannot process or reparse reliably. Slang compilation remains
 # authoritative for their syntax.
-OCAH_VERIBLE_PARSER_EXCLUDES := \
+OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
 	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
 	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
@@ -74,18 +80,31 @@ OCAH_VERIBLE_PARSER_EXCLUDES := \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 
+# Lint parses these three conditional-header/integration files even though the
+# formatter's output reparse does not. Keep their lint findings visible.
+OCAH_VERIBLE_LINT_PARSER_EXCLUDES := \
+	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
+	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
+	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
+	hw/sys/sep/dv/tb/tb_top.sv \
+	hw/sys/sep/rtl/sep_tcm_wrapper.sv
+
 # The formatter fails its own convergence/output-reparse checks on these two
 # files even though lint and compilation accept them.
 OCAH_VERIBLE_CONVERGENCE_EXCLUDES := \
 	hw/common/sync.sv \
 	hw/ip/efuse/rtl/efuse_shadow_regs.sv
 
-# Lint and format intentionally share this inventory. Keeping failed
-# single-file parses out of both avoids presenting parser cascades as style
-# findings; correctness-oriented compilation and elaboration still cover them.
-OCAH_VERIBLE_SINGLE_FILE_EXCLUDES := \
+# Lint and format share the base inventory but not every exclusion. Lint keeps
+# files that it can parse even when the formatter cannot converge or reparse
+# its own output.
+OCAH_VERIBLE_LINT_EXCLUDES := \
 	$(OCAH_VERIBLE_CONTEXT_EXCLUDES) \
-	$(OCAH_VERIBLE_PARSER_EXCLUDES) \
+	$(OCAH_VERIBLE_LINT_PARSER_EXCLUDES)
+
+OCAH_VERIBLE_FORMAT_EXCLUDES := \
+	$(OCAH_VERIBLE_CONTEXT_EXCLUDES) \
+	$(OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES) \
 	$(OCAH_VERIBLE_CONVERGENCE_EXCLUDES)
 
 # Shared first-party, hand-maintained .sv/.svh/.v inventory for lint and
@@ -114,9 +133,9 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv' \
-	$(foreach file,$(OCAH_VERIBLE_SINGLE_FILE_EXCLUDES),-not -path '$(OCAH_ROOT)/$(file)')
+	$(foreach file,$(2),-not -path '$(OCAH_ROOT)/$(file)')
 
-ocah_verible_check_files = @$(call ocah_verible_find,$(1)) -print -quit 2>/dev/null | grep -q . || { \
+ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/dev/null | grep -q . || { \
 	echo "error: no hand-maintained .sv/.svh/.v files under $(1)" >&2; \
 	exit 1; \
 }
@@ -133,8 +152,8 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1)) -print -quit 2>/dev/n
 .PHONY: ocah-lint-sv-verible
 ocah-lint-sv-verible:
 	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh eda-run make lint-sv-verible)
-	$(call ocah_verible_check_files,$(LINT_PATH))
-	@$(call ocah_verible_find,$(LINT_PATH)) -print0 2>/dev/null | \
+	$(call ocah_verible_check_files,$(LINT_PATH),$(OCAH_VERIBLE_LINT_EXCLUDES))
+	@$(call ocah_verible_find,$(LINT_PATH),$(OCAH_VERIBLE_LINT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 verible-verilog-lint \
 			--rules="$(OCAH_LINT_VERIBLE_RULES)" \
 			$(OCAH_LINT_VERIBLE_EXTRA_FLAGS)
@@ -142,6 +161,17 @@ ocah-lint-sv-verible:
 OCAH_PHONY += ocah-lint-sv-verible
 
 ## @section Format (verible)
+
+## Check hand-maintained SystemVerilog for tabs and padding immediately inside
+## declaration dimensions. These forms are preserved by the formatter and
+## otherwise reintroduce unstable or right-justified alignment.
+## @param FORMAT_PATH=hw/sys/smu Optional path(s) to scope the check; default hw vendor
+## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
+.PHONY: ocah-check-sv-declaration-spacing
+ocah-check-sv-declaration-spacing:
+	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
+	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
+		xargs -0 python3 $(OCAH_SV_DECLARATION_SPACING_CHECK)
 
 ## Format SystemVerilog sources in place with verible-verilog-format.
 ## Requires `verible-verilog-format` on PATH; otherwise install it or run via
@@ -151,8 +181,8 @@ OCAH_PHONY += ocah-lint-sv-verible
 .PHONY: ocah-format-sv
 ocah-format-sv:
 	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv)
-	$(call ocah_verible_check_files,$(FORMAT_PATH))
-	@$(call ocah_verible_find,$(FORMAT_PATH)) -print0 2>/dev/null | \
+	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
+	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 verible-verilog-format \
 			$(OCAH_FORMAT_VERIBLE_FLAGS) \
 			$(OCAH_FORMAT_VERIBLE_EXTRA_FLAGS) \
@@ -162,10 +192,10 @@ ocah-format-sv:
 ## @param FORMAT_PATH=hw/sys/smu Optional path(s) to scope the check; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv-check
-ocah-format-sv-check:
+ocah-format-sv-check: ocah-check-sv-declaration-spacing
 	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv-check)
-	$(call ocah_verible_check_files,$(FORMAT_PATH))
-	@$(call ocah_verible_find,$(FORMAT_PATH)) -print0 2>/dev/null | \
+	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
+	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 sh -c '\
 			output="$$(verible-verilog-format \
 				$(OCAH_FORMAT_VERIBLE_FLAGS) \
@@ -178,6 +208,6 @@ ocah-format-sv-check:
 			fi; \
 			exit $$status' sh
 
-OCAH_PHONY += ocah-format-sv ocah-format-sv-check
+OCAH_PHONY += ocah-check-sv-declaration-spacing ocah-format-sv ocah-format-sv-check
 
 endif

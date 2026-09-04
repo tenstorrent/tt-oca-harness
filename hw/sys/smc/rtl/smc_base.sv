@@ -4,114 +4,115 @@
 // System Management Controller Base
 
 module smc_base #(
-  parameter bit                               NO_ADDR_REMAP           = 1'b1,
+  parameter bit NO_ADDR_REMAP = 1'b1,
 
-  parameter smc_pkg::smc_cpu_config_e         SMC_CPU_CONFIG          = smc_pkg::SMC_1CORE,
+  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_1CORE,
 
-  localparam int unsigned NUM_CPU_CORES       = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES              : smc_1core_cpu_pkg::NUM_CPU_CORES,
-  localparam int unsigned NUM_CPU_INTERRUPTS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS         : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
-  localparam int unsigned NUM_EXT_INTERRUPTS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS         : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS
+  localparam int unsigned NUM_CPU_CORES      = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES : smc_1core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_EXT_INTERRUPTS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS
 
 ) (
   // Clocks from PLLs
-  input  logic                                                               clk_smc_i,
-  input  logic                                                               clk_ref_i,
+  input  logic clk_smc_i,
+  input  logic clk_ref_i,
 
   // Resets
-  input  logic                                                               rst_primary_smc_clk_ni,
+  input  logic rst_primary_smc_clk_ni,
 
   // AXI Input
-  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t                            sys_axi_in_req_i,
-  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t                           sys_axi_in_resp_o,
+  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,
+  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,
 
-  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t                              jtag_axi_in_req_i,
-  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t                             jtag_axi_in_resp_o,
+  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t  jtag_axi_in_req_i,
+  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t jtag_axi_in_resp_o,
 
-  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t                            sep_axi_in_req_i,
-  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t                           sep_axi_in_resp_o,
+  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,
+  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,
 
-  input  smc_pkg::smc_axil_56_64_req_t                                       axil_log_engine_req_i,
-  output smc_pkg::smc_axil_56_64_resp_t                                      axil_log_engine_resp_o,
+  input  smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_i,
+  output smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_o,
 
   // AXI Output
-  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t                           output_axi_req_o,
-  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t                          output_axi_resp_i,
+  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  output_axi_req_o,
+  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t output_axi_resp_i,
 
   // Consolidated AXI-Lite interface for all peripherals
-  output smc_pkg::smc_axil_32_32_req_t                                       axil_peripherals_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t                                      axil_peripherals_resp_i,
+  output smc_pkg::smc_axil_32_32_req_t  axil_peripherals_req_o,
+  input  smc_pkg::smc_axil_32_32_resp_t axil_peripherals_resp_i,
 
   // WDT
-  output logic                                                               wdt_first_timeout_o,
+  output logic wdt_first_timeout_o,
 
   // Mailbox interrupts
-  output logic [smc_pkg::NUM_MAILBOXES-1:0]                                  ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_o,
 
   // External interrupts
-  input  logic [NUM_EXT_INTERRUPTS-1:0]                                      ext_interrupts_i,
-  input  logic [31:0]                                                        peripheral_interrupts_i,
+  input  logic [NUM_EXT_INTERRUPTS-1:0] ext_interrupts_i,
+  input  logic [31:0]                   peripheral_interrupts_i,
 
   // CPU wrapper bridge ports (outputs to smc_cpu_wrapper)
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t                             cpu_axi_front_port_req_o,
-  input  wire smc_pkg::smc_local_32_64_8_12_axi_resp_t                       cpu_axi_front_port_resp_i,
-  output logic [NUM_CPU_INTERRUPTS-1:0]                                      cpu_interrupts_o,
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t       cpu_axi_front_port_req_o,
+  input  wire smc_pkg::smc_local_32_64_8_12_axi_resp_t cpu_axi_front_port_resp_i,
+  output logic [NUM_CPU_INTERRUPTS-1:0]                cpu_interrupts_o,
 
   // CPU wrapper bridge ports (inputs from smc_cpu_wrapper)
-  input  wire smc_pkg::smc_cpu_mmio_axi_req_t                                cpu_axi_mmio_port_req_i,
-  output      smc_pkg::smc_cpu_mmio_axi_resp_t                               cpu_axi_mmio_port_resp_o,
-  input  wire logic [NUM_CPU_CORES-1:0][57:0]                                cpu_wb_reg_pc_i,
-  input  wire logic [NUM_CPU_CORES-1:0]                                      cpu_wdt_timeout_cluster_i,
-  input  wire logic                                                          cpu_cluster_ded_i,
-  input  wire logic                                                          wdt_second_timeout_i,
+  input  wire smc_pkg::smc_cpu_mmio_axi_req_t cpu_axi_mmio_port_req_i,
+  output smc_pkg::smc_cpu_mmio_axi_resp_t     cpu_axi_mmio_port_resp_o,
+  input  wire logic [NUM_CPU_CORES-1:0][57:0] cpu_wb_reg_pc_i,
+  input  wire logic [NUM_CPU_CORES-1:0]       cpu_wdt_timeout_cluster_i,
+  input  wire logic                           cpu_cluster_ded_i,
+  input  wire logic                           wdt_second_timeout_i,
 
   // SMC address window from smc_base_config (in u_internal_regs)
-  output smc_pkg::smc_axi_addr_t                                             smc_global_base_o,
-  output logic [31:0]                                                        smc_region_size_o,
+  output smc_pkg::smc_axi_addr_t smc_global_base_o,
+  output logic [31:0]            smc_region_size_o,
 
   // Peripheral clock-gate enables from smc_base_config (consumed at smc top)
-  output logic                                                               cg_ctrl_i3c_cg_en_o,
-  output logic                                                               cg_ctrl_avs_cg_en_o,
-  output logic                                                               cg_ctrl_i2c_cg_en_o,
-  output logic                                                               cg_ctrl_uart_cg_en_o,
-  output logic                                                               cg_ctrl_tel_cg_en_o,
+  output logic cg_ctrl_i3c_cg_en_o,
+  output logic cg_ctrl_avs_cg_en_o,
+  output logic cg_ctrl_i2c_cg_en_o,
+  output logic cg_ctrl_uart_cg_en_o,
+  output logic cg_ctrl_tel_cg_en_o,
 
   // Debug
-  input  logic [511:0]                                                       ext_debug_bus_i,
-  input  logic [16:0]                                                        avsbus_cur_state_debug_i,
-  input  logic [8:0]                                                         system_timer_octs_credits_debug_i,
-  input  logic                                                               system_timer_octs_credits_left_debug_i,
-  input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0]            telemetry_debug_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0][3:0]                            i2c_debug_i,
-  input  logic [9:0]                                                         efuse_debug_i,
+  input  logic [511:0] ext_debug_bus_i,
+  input  logic [16:0]  avsbus_cur_state_debug_i,
+  input  logic [8:0]   system_timer_octs_credits_debug_i,
+  input  logic         system_timer_octs_credits_left_debug_i,
+
+  input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_debug_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0][3:0]                 i2c_debug_i,
+  input  logic [9:0]                                              efuse_debug_i,
 
   // DFD signals
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]                   cla_ext_action_custom_o,
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,
 
-  output smc_pkg::xtrigger_t                                                 xtrigger_ss_o,
-  input  wire smc_pkg::xtrigger_t                                            xtrigger_ss_i,
+  output smc_pkg::xtrigger_t      xtrigger_ss_o,
+  input  wire smc_pkg::xtrigger_t xtrigger_ss_i,
 
   // TDR debug control signals
-  input  wire logic                                                          tdr_dbg_ctrl_clock_stop_en_i,
-  output      logic                                                          tdr_dbg_ctrl_clocks_stopped_by_cla_o,
+  input  wire logic tdr_dbg_ctrl_clock_stop_en_i,
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-  output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req_o,
+  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
   input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
 
   // Test mode
-  input  logic                                                               test_en_i,
-  input  logic                                                               scan_rst_ni,
+  input  logic test_en_i,
+  input  logic scan_rst_ni,
 
   // indicators for DFT status
-  input  logic                                                               mem_repair_done_i,
-  input  logic                                                               mem_repair_success_i,
-  input  logic                                                               mem_repair_abort_i,
-  input  logic                                                               mbist_done_i,
-  input  logic                                                               mbist_pass_i,
-  input  logic                                                               mbist_abort_i,
+  input  logic mem_repair_done_i,
+  input  logic mem_repair_success_i,
+  input  logic mem_repair_abort_i,
+  input  logic mbist_done_i,
+  input  logic mbist_pass_i,
+  input  logic mbist_abort_i,
 
   // AXI hang detector OR'd fault output to safety island. Config now comes
   // from the smc_base_config register block inside u_internal_regs.
-  output logic                                                               axi_hang_irq_o
+  output logic axi_hang_irq_o
 );
 
   /////////////////////////
