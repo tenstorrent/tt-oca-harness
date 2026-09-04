@@ -14,7 +14,7 @@
 // drives +UVM_TESTNAME.
 
 `include "uvm_macros.svh"
-import ocah_lib_pkg::*;      // ocah_test base and the ocah_sequence hook type
+import ocah_lib_pkg::*;  // ocah_test base and the ocah_sequence hook type
 import dtp_env_pkg::*;
 import dtp_seq_lib_pkg::*;
 

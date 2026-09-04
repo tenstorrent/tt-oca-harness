@@ -7,16 +7,16 @@
 // cocotb twin is seq_lib/dtp_jtag_goto_state_seq.py.
 
 class dtp_jtag_goto_state_seq extends dtp_jtag_op_seq;
-    `uvm_object_utils(dtp_jtag_goto_state_seq)
+  `uvm_object_utils(dtp_jtag_goto_state_seq)
 
-    ocah_jtag_tap_state_e target_state = OCAH_JTAG_RUN_TEST_IDLE;
+  ocah_jtag_tap_state_e target_state = OCAH_JTAG_RUN_TEST_IDLE;
 
-    function new(string name = "dtp_jtag_goto_state_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag_goto_state_seq");
+    super.new(name);
+  endfunction
 
-    virtual task do_op();
-        goto_state(target_state);
-    endtask
+  virtual task do_op();
+    goto_state(target_state);
+  endtask
 
 endclass : dtp_jtag_goto_state_seq

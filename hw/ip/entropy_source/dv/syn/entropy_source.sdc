@@ -117,7 +117,7 @@ set_max_fanout 12 [get_nets -hierarchical -filter "name =~ *sclk/shared_ring_osc
 #
 # Locations:
 # - Debug monitor: dbg/u_ripple_divider (1 instance for signal monitoring)
-# - Sampler clocks: egen/sclk/g_ecmplx[*]/u_sample_clk_divider (12 instances for sample clock division)
+# - Sampler clocks: egen/sclk/gen_ecmplx[*]/u_sample_clk_divider (12 instances for sample clock division)
 
 # Prevent optimization of ripple divider instances
 # Structure must be preserved for proper ripple operation

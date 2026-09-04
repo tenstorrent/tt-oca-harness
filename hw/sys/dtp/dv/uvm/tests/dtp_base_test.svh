@@ -26,140 +26,138 @@
 // dtp_test_cfg (read_knobs). The pass banner comes from ocah_test.
 
 class dtp_base_test extends ocah_test;
-    `uvm_component_utils(dtp_base_test)
+  `uvm_component_utils(dtp_base_test)
 
-    dtp_test_cfg test_cfg;
-    dtp_env_cfg  env_cfg;
-    dtp_env      m_env;
+  dtp_test_cfg test_cfg;
+  dtp_env_cfg  env_cfg;
+  dtp_env      m_env;
 
-    function new(string name = "dtp_base_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "dtp_base_test", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        test_cfg = dtp_test_cfg::type_id::create("test_cfg");
-        test_cfg.seed         = base_seed();
-        test_cfg.random_count = random_count();
-        test_cfg.read_knobs();
-        test_cfg.stap_ds_attach_mask = stap_ds_attach_mask();
-        configure_test_cfg(test_cfg);
-        // The one draw before run_phase: the bench-level dimensions (clock
-        // and TCK periods) come from the runner seed through srandom(), so a
-        // run replays from the seed alone.
-        test_cfg.srandom(test_cfg.seed);
-        if (!test_cfg.randomize())
-            `uvm_fatal(get_type_name(), "dtp_test_cfg randomize() failed")
-        `uvm_info(get_type_name(), {"test cfg: ", test_cfg.convert2string()}, UVM_LOW)
-        env_cfg = dtp_env_cfg::from_test_cfg(test_cfg);
-        uvm_config_db#(dtp_test_cfg)::set(this, "*", "test_cfg", test_cfg);
-        uvm_config_db#(dtp_env_cfg)::set(this, "*", "env_cfg", env_cfg);
-        m_env = dtp_env::type_id::create("m_env", this);
-    endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    test_cfg = dtp_test_cfg::type_id::create("test_cfg");
+    test_cfg.seed         = base_seed();
+    test_cfg.random_count = random_count();
+    test_cfg.read_knobs();
+    test_cfg.stap_ds_attach_mask = stap_ds_attach_mask();
+    configure_test_cfg(test_cfg);
+    // The one draw before run_phase: the bench-level dimensions (clock
+    // and TCK periods) come from the runner seed through srandom(), so a
+    // run replays from the seed alone.
+    test_cfg.srandom(test_cfg.seed);
+    if (!test_cfg.randomize()) `uvm_fatal(get_type_name(), "dtp_test_cfg randomize() failed")
+    `uvm_info(get_type_name(), {"test cfg: ", test_cfg.convert2string()}, UVM_LOW)
+    env_cfg = dtp_env_cfg::from_test_cfg(test_cfg);
+    uvm_config_db#(dtp_test_cfg)::set(this, "*", "test_cfg", test_cfg);
+    uvm_config_db#(dtp_env_cfg)::set(this, "*", "env_cfg", env_cfg);
+    m_env = dtp_env::type_id::create("m_env", this);
+  endfunction
 
-    // ------------------------------------------------------------------
-    // Configuration hooks.
-    // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // Configuration hooks.
+  // ------------------------------------------------------------------
 
-    // Scenario tests add their required scoreboard features and the
-    // required evidence IDs of the recorders they exercise.
-    virtual function void configure_test_cfg(dtp_test_cfg cfg);
-    endfunction
+  // Scenario tests add their required scoreboard features and the
+  // required evidence IDs of the recorders they exercise.
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+  endfunction
 
-    // Downstream STAP TAP attachment (cocotb dtp_base_test.stap_ds_attach
-    // parity): bit i selects the STAP host port in dtp_stap_ds_name() order
-    // (io, smc, sep, extra0) that gets the shared ocah_jtag_vip slave device
-    // spliced behind it for this test. Default: every port keeps its wire
-    // loopback; the STAP-selection scenarios attach all four.
-    virtual function bit [DtpStapCount-1:0] stap_ds_attach_mask();
-        return '0;
-    endfunction
+  // Downstream STAP TAP attachment (cocotb dtp_base_test.stap_ds_attach
+  // parity): bit i selects the STAP host port in dtp_stap_ds_name() order
+  // (io, smc, sep, extra0) that gets the shared ocah_jtag_vip slave device
+  // spliced behind it for this test. Default: every port keeps its wire
+  // loopback; the STAP-selection scenarios attach all four.
+  virtual function bit [DtpStapCount-1:0] stap_ds_attach_mask();
+    return '0;
+  endfunction
 
-    virtual function string suite_loops_knob();
-        return "DTP_TEST_LOOPS";
-    endfunction
+  virtual function string suite_loops_knob();
+    return "DTP_TEST_LOOPS";
+  endfunction
 
-    virtual function string random_count_knob();
-        return "DTP_RANDOM_COUNT";
-    endfunction
+  virtual function string random_count_knob();
+    return "DTP_RANDOM_COUNT";
+  endfunction
 
-    // ------------------------------------------------------------------
-    // Looped-scenario hooks.
-    // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // Looped-scenario hooks.
+  // ------------------------------------------------------------------
 
-    virtual function uvm_sequencer_base scenario_sequencer();
-        return m_env.m_vseqr;
-    endfunction
+  virtual function uvm_sequencer_base scenario_sequencer();
+    return m_env.m_vseqr;
+  endfunction
 
-    // Standard handle plumbing for every scenario pass; scenario-specific
-    // handles are added by the thin tests, which call super first.
-    virtual function void plumb_scenario_seq(ocah_sequence seq);
-        dtp_base_test_seq dtp_seq;
-        dtp_scan_base_test_seq scan_seq;
-        if (!$cast(dtp_seq, seq))
-            `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_base_test_seq")
-        dtp_seq.tb_vif       = m_env.tb_vif;
-        dtp_seq.jtag_vif     = m_env.m_jtag_cfg.vif;
-        dtp_seq.test_cfg     = test_cfg;
-        dtp_seq.evidence     = m_env.m_jtag_checker;
-        dtp_seq.scan_builder = m_env.m_scan_builder;
-        dtp_seq.scan_window  = m_env.m_scan_window;
-        if ($cast(scan_seq, seq))
-            plumb_stap_ds(scan_seq);
-    endfunction
+  // Standard handle plumbing for every scenario pass; scenario-specific
+  // handles are added by the thin tests, which call super first.
+  virtual function void plumb_scenario_seq(ocah_sequence seq);
+    dtp_base_test_seq dtp_seq;
+    dtp_scan_base_test_seq scan_seq;
+    if (!$cast(dtp_seq, seq))
+      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_base_test_seq")
+    dtp_seq.tb_vif       = m_env.tb_vif;
+    dtp_seq.jtag_vif     = m_env.m_jtag_cfg.vif;
+    dtp_seq.test_cfg     = test_cfg;
+    dtp_seq.evidence     = m_env.m_jtag_checker;
+    dtp_seq.scan_builder = m_env.m_scan_builder;
+    dtp_seq.scan_window  = m_env.m_scan_window;
+    if ($cast(scan_seq, seq)) plumb_stap_ds(scan_seq);
+  endfunction
 
-    // Hand a scan sequence the downstream device configurations the scan
-    // reference model is seeded from and which ports are attached; the
-    // responder sequences come from the virtual sequencer.
-    virtual function void plumb_stap_ds(dtp_scan_base_test_seq seq);
-        for (int unsigned i = 0; i < DtpStapCount; i++) begin
-            seq.stap_ds_cfg[i]      = m_env.m_stap_ds_cfg[i];
-            seq.stap_ds_attached[i] = test_cfg.stap_ds_attach_mask[i];
-        end
-    endfunction
+  // Hand a scan sequence the downstream device configurations the scan
+  // reference model is seeded from and which ports are attached; the
+  // responder sequences come from the virtual sequencer.
+  virtual function void plumb_stap_ds(dtp_scan_base_test_seq seq);
+    for (int unsigned i = 0; i < DtpStapCount; i++) begin
+      seq.stap_ds_cfg[i]      = m_env.m_stap_ds_cfg[i];
+      seq.stap_ds_attached[i] = test_cfg.stap_ds_attach_mask[i];
+    end
+  endfunction
 
-    // Fresh scan-reconstruction window per pass: the builder's bounded
-    // history would otherwise saturate across the 16-pass floor and freeze
-    // the newest-scan-length evidence on a stale item (the cocotb flow
-    // likewise starts a fresh monitor per pass).
-    virtual function void pre_scenario_pass(int unsigned idx);
-        m_env.m_scan_builder.clear_history();
-    endfunction
+  // Fresh scan-reconstruction window per pass: the builder's bounded
+  // history would otherwise saturate across the 16-pass floor and freeze
+  // the newest-scan-length evidence on a stale item (the cocotb flow
+  // likewise starts a fresh monitor per pass).
+  virtual function void pre_scenario_pass(int unsigned idx);
+    m_env.m_scan_builder.clear_history();
+  endfunction
 
-    // Clock/reset bring-up (cocotb _bring_up parity): route the downstream
-    // STAP TAPs, then sequence POR and system reset through dtp_tb_if with
-    // the startup dbg_disable vector cleared while POR is still asserted, so
-    // scenario passes begin with full debug access and assert the disables
-    // they gate explicitly. The reset ladder holds the only wall-clock waits
-    // in test code, derived from the randomized clock period.
-    virtual task bring_up();
-        attach_stap_ds();
-        m_env.tb_vif.dbg_disable <= '0;
-        m_env.tb_vif.por_rst_n   <= 1'b0;
-        m_env.tb_vif.sys_rst_n   <= 1'b0;
-        wait_clk_cycles(dtp_base_test_seq::PorHoldCycles);
-        m_env.tb_vif.por_rst_n <= 1'b1;
-        wait_clk_cycles(dtp_base_test_seq::SysResetHoldCycles);
-        m_env.tb_vif.sys_rst_n <= 1'b1;
-        wait_clk_cycles(dtp_base_test_seq::PostResetCycles);
-    endtask
+  // Clock/reset bring-up (cocotb _bring_up parity): route the downstream
+  // STAP TAPs, then sequence POR and system reset through dtp_tb_if with
+  // the startup dbg_disable vector cleared while POR is still asserted, so
+  // scenario passes begin with full debug access and assert the disables
+  // they gate explicitly. The reset ladder holds the only wall-clock waits
+  // in test code, derived from the randomized clock period.
+  virtual task bring_up();
+    attach_stap_ds();
+    m_env.tb_vif.dbg_disable <= '0;
+    m_env.tb_vif.por_rst_n   <= 1'b0;
+    m_env.tb_vif.sys_rst_n   <= 1'b0;
+    wait_clk_cycles(dtp_base_test_seq::PorHoldCycles);
+    m_env.tb_vif.por_rst_n <= 1'b1;
+    wait_clk_cycles(dtp_base_test_seq::SysResetHoldCycles);
+    m_env.tb_vif.sys_rst_n <= 1'b1;
+    wait_clk_cycles(dtp_base_test_seq::PostResetCycles);
+  endtask
 
-    // Route each selected STAP host port to its downstream device (the
-    // dtp_tb_if enables feed the tb_top host-TDI muxes) before bring-up, so
-    // the attachment is static for the whole run.
-    protected function void attach_stap_ds();
-        bit [DtpStapCount-1:0] mask = test_cfg.stap_ds_attach_mask;
-        m_env.tb_vif.stap_io_ds_en     = mask[0];
-        m_env.tb_vif.stap_smc_ds_en    = mask[1];
-        m_env.tb_vif.stap_sep_ds_en    = mask[2];
-        m_env.tb_vif.stap_extra0_ds_en = mask[3];
-        if (mask != '0)
-            `uvm_info(get_type_name(), $sformatf(
+  // Route each selected STAP host port to its downstream device (the
+  // dtp_tb_if enables feed the tb_top host-TDI muxes) before bring-up, so
+  // the attachment is static for the whole run.
+  protected function void attach_stap_ds();
+    bit [DtpStapCount-1:0] mask = test_cfg.stap_ds_attach_mask;
+    m_env.tb_vif.stap_io_ds_en     = mask[0];
+    m_env.tb_vif.stap_smc_ds_en    = mask[1];
+    m_env.tb_vif.stap_sep_ds_en    = mask[2];
+    m_env.tb_vif.stap_extra0_ds_en = mask[3];
+    if (mask != '0)
+      `uvm_info(get_type_name(), $sformatf(
                 "downstream STAP TAPs attached: mask=0b%04b (io,smc,sep,extra0)", mask), UVM_LOW)
-    endfunction
+  endfunction
 
-    protected task wait_clk_cycles(int unsigned cycles);
-        #(cycles * env_cfg.clk_period_ns * 1ns);
-    endtask
+  protected task wait_clk_cycles(int unsigned cycles);
+    #(cycles * env_cfg.clk_period_ns * 1ns);
+  endtask
 
 endclass : dtp_base_test

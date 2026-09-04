@@ -8,7 +8,7 @@
  * a structured request containing an operation code and operand data.  SMC
  * firmware dispatches on the operation code and returns the computed result.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM command message
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM command message
  * format encodes a function_id[15:8] alongside data, enabling a firmware-
  * defined dispatch table.  This test exercises an analogous dispatch table on
  * the SMC side using scratch registers as the transport.

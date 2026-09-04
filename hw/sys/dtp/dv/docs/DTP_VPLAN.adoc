@@ -33,7 +33,7 @@ resets the primary TAP, and drives stimulus through the OCAH BFMs:
 . *Stimulus*: standard protocols use the unified OCAH VIP wrappers — `ocah_jtag_vip`
 (`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiSlaveAgent`, AXI-Lite wrappers,
 `OcahAxiLiteMasterAgent`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
-protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCH CTP/CTM)
+protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCAH CTP/CTM)
 use OCAH-local models in `env/` (see Open-Source BFM Policy).
 . *Checking*: a scoreboard / reference model compares observed TAP scan data, AXI
 transactions, and cross-trigger routing against expected behavior. Unless a procedure
@@ -74,8 +74,8 @@ selectable in the public testlists.
 |Boundary scan loopback |OCAH-local scan responder in `env/`
 |STAP host ports |`ocah_jtag_vip` reactive slave devices (one downstream TAP per port, test-attached; wire loopback otherwise)
 |IEEE 1687 iJTAG SIB networks |OCAH-local iJTAG SIB model in `env/`
-|OCH CTP protocol |OCAH-local CTP BFM in `env/`
-|OCH CTM routing |OCAH-local CTM BFM and monitors in `env/`
+|OCAH CTP protocol |OCAH-local CTP BFM in `env/`
+|OCAH CTM routing |OCAH-local CTM BFM and monitors in `env/`
 |===
 
 === Scenario-Expanded Test Summary

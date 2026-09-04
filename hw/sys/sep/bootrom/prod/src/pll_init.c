@@ -9,7 +9,7 @@
 // Platform-specific notes:
 // - SMC base is read dynamically from sep_cpu_ctrl (via sep_smc_interface.h)
 // - Fuse sense check uses SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS (sep_cpu_ctrl local reg)
-// - OCH does not distinguish between chiplet types; uses a single
+// - OCAH does not distinguish between chiplet types; uses a single
 //   PLL lock + mux path (to be refined when chiplet ID is available)
 
 #include "pll_init.h"
@@ -67,7 +67,7 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
 
     // Switch clock mux from refclk to PLL.
     // Write the mux select register to choose PLL for sysclk and peripheral clock.
-    // OCH: write mux select register via SMC window.
+    // OCAH: write mux select register via SMC window.
     const uint32_t mux_addr = smc_base + PLL_AG_MUX_SELECT_OFFSET;
     // Value 0x04040101: selects PLL for both sysclk and peripheral clock
     // and may need platform-specific tuning.
