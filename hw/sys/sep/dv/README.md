@@ -83,15 +83,17 @@ The contracts themselves:
 
 ## Code coverage
 
-`--cov` instruments the build, writes one native database per test leaf, and
-merges/reports through the `cov_merge`/`cov_report` stages. Under VCS that is
-`-cm line+cond+tgl+fsm+branch+assert` merged by `urg`; `[coverage.verilator]` in
-`sep_sim_cfg.toml` configures the Verilator form (line/expression/user, no
-toggle).
+`--cov` is VCS-only (`[coverage].tools = ["vcs"]`). It instruments the build,
+writes one native database per test leaf (`coverage/simv.vdb` under each leaf),
+and merges/reports through the `cov_merge`/`cov_report` stages into
+`<run_dir>/cov/merged.vdb`. That is `-cm line+cond+tgl+fsm+branch+assert` at
+both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
+`urg`. `--cov --tool verilator` is refused before compile: `VM_COVERAGE=1`
+re-triggers the PeakRDL nested-struct C++ error that the daily stub hides.
 
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
-  --sim-jobs 32 --build-jobs 32
+  --target default --sim-jobs 32 --build-jobs 32
 ```
 
 `all` is the coverage set: every test the VPLAN grades, which is exactly `no_cpu`
@@ -100,12 +102,9 @@ RTL target, firmware rather than hardware contracts -- so reaching those four
 means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
 drifts from the class groups.
 
-The set spans two build targets (`lsu_stub_all_live` and the full-CPU `default`),
-which merge into one database: `urg` accumulates by design hierarchy name, and
-the merge takes one design database per participating target, so the real
-`sep_cpu` subtree is graded by the full-CPU leaves alone instead of being
-projected onto the stub design. Two builds of the *same* target still cannot be
-merged — a stale database mixed with a fresh one is refused.
+`--target default` compiles the full CPU once. no_cpu leaves force-splice the
+LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
+one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
 
 What the resulting number is not:
 
@@ -115,8 +114,7 @@ What the resulting number is not:
 * **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
   excludes the testbench top, the outbound mailbox, the backdoor SMC memory, the
   AXI SVA module and the CPU subtree at compile time, across both code and
-  assertion coverage (`-cm_hier` with `-cm_common_hier`; the file's hash and the
-  coverage arg list are both part of the build fingerprint). Measured on a merged
+  assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
   database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
   matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
   CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
@@ -184,8 +182,7 @@ hw/sys/sep/dv/
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        #   and cov/sv/. Verilator coverage flags live in
-│                        #   sep_sim_cfg.toml ([coverage.verilator]).
+│                        #   and cov/sv/. `--cov` is VCS-only ([coverage].tools).
 ├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/

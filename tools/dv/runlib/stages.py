@@ -60,14 +60,12 @@ from .config import (
     selected_run_target,
     sim_global_args,
     target_flags,
-    targeted_sim_cfg,
 )
 from .coverage import (
     CANONICAL_METRICS,
     CoverageError,
     artifact_ready,
     coverage_artifact_path,
-    coverage_input_targets,
     discover_coverage_inputs,
     load_manifest,
     new_manifest,
@@ -1578,24 +1576,21 @@ def _cocotb_build_info(
 
     wave_format = _wave_format(args, tool)
     cov = coverage_cfg(sim_cfg)
-    cov_scope_extra: list[str] = []
     if args.cov:
         tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
-        scope_file = _coverage_scope_file(flow, root, tool_cov)
         coverage_build_args = as_str_list(
             tool_cov.get("compile_args" if tool == "vcs" else "build_args"),
             f"coverage.{tool}.{'compile_args' if tool == 'vcs' else 'build_args'}",
         )
-        cov_scope_extra = _coverage_scope_fingerprint_extra(scope_file, coverage_build_args)
         build_args += render_tokens(
             coverage_build_args,
             {
                 "tool": tool,
                 "target": target_name,
+                "repo_root": str(root),
                 "build_dir": str(base_build),
                 "build_cov_dir": str(base_build / "cov_build.vdb"),
                 "cov_dir": str(base_build / "coverage"),
-                "scope_file": str(scope_file or ""),
             },
         )
 
@@ -1630,7 +1625,6 @@ def _cocotb_build_info(
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
             *_bender_sources_fingerprint(root, build),
-            *cov_scope_extra,
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
         ],
@@ -1683,7 +1677,6 @@ def _cocotb_vcs_makefile(
     sim_build = build_info["sim_build"]
     module = catalog.tests[item].module if item else _first_cocotb_module(catalog)
 
-    vcs_cov_cfg = cov.get("vcs", {}) if isinstance(cov.get("vcs", {}), dict) else {}
     ctx = {
         "run_dir": str(item_dir),
         "results_dir": str(results_xml.parent),
@@ -1691,10 +1684,7 @@ def _cocotb_vcs_makefile(
         "cov_dir": str(cov_dir),
         "build_dir": str(sim_build),
         "build_cov_dir": str(sim_build / "cov_build.vdb"),
-        # The classic-make flow renders its own compile args, so the scope token has
-        # to be available here too or `-cm_hier {scope_file}` compiles as an empty
-        # path and the instrumentation silently covers everything.
-        "scope_file": str(_coverage_scope_file(flow, root, vcs_cov_cfg) or ""),
+        "repo_root": str(root),
         "seed": str(seed),
         "tool": "vcs",
         "item": item or "",
@@ -3071,60 +3061,6 @@ def _coverage_supported_metrics(args: argparse.Namespace, tool: str) -> list[str
     return [metric for metric in declared if metric in CANONICAL_METRICS]
 
 
-def _coverage_scope_file(
-    flow: Flow,
-    root: Path,
-    tool_cov: dict[str, Any],
-) -> Path | None:
-    """The instrumentation scope file named by `coverage.<tool>.scope_file`.
-
-    Compile-time scope, not report-time: `urg -hier` prunes the report pages but
-    leaves the headline score computed over the whole database, so a scope that
-    has to hold has to keep the out-of-scope hierarchy out of the database in the
-    first place (VCS `-cm_hier`).
-    """
-
-    configured = tool_cov.get("scope_file")
-    if configured is None:
-        return None
-    if not isinstance(configured, str) or not configured.strip():
-        raise ConfigError("coverage scope_file must be a non-empty string")
-    path = _repo_or_dut_path(root, flow, configured)
-    if not path.is_file():
-        raise ConfigError(f"coverage scope file does not exist: {path}")
-    return path
-
-
-def _coverage_scope_fingerprint_extra(
-    scope_file: Path | None, coverage_build_args: list[str] | None = None
-) -> list[str]:
-    """Fold the coverage scope -- file content and arg list -- into the fingerprint.
-
-    The fingerprint covers sources, target, waves and the `cov` flag -- not the
-    compile args. Without this, editing the scope file leaves the fingerprint
-    unchanged, the cached build is reused, and the run reports coverage under the
-    OLD scope while the file on disk says something else. Coverage scope is the
-    one compile arg whose content changes what the number means, so it has to be
-    in the key.
-
-    The arg list matters for the same reason and was the half left uncovered:
-    what the scope file MEANS depends on the switches that read it. Adding
-    `-cm_common_hier` extends the same file from code coverage to assertions as
-    well, so the identical file yields a different database -- and with only the
-    file hashed, that edit reused the old build and reported the old scope.
-    The unrendered template is hashed, not the rendered args: those embed the
-    build directory, which is named after the fingerprint.
-    """
-
-    extra: list[str] = []
-    if scope_file is not None:
-        extra.append(f"cov_scope={_file_sha256(scope_file)}")
-    if coverage_build_args:
-        digest = hashlib.sha256("\x00".join(coverage_build_args).encode("utf-8")).hexdigest()
-        extra.append(f"cov_args={digest}")
-    return extra
-
-
 def _coverage_design_db(
     flow: Flow,
     root: Path,
@@ -3157,62 +3093,6 @@ def _coverage_design_db(
         },
     )[0]
     return Path(rendered)
-
-
-def _coverage_design_dbs(
-    flow: Flow,
-    root: Path,
-    sim_cfg: dict[str, Any],
-    tool_cov: dict[str, Any],
-    args: argparse.Namespace,
-    targets: list[str],
-    design_db: Path | None,
-) -> list[Path]:
-    """One design coverage database per build target that fed the merge.
-
-    Always resolved from the merge inputs' own targets, for two reasons.
-
-    A single design database would project every leaf onto one elaboration. For
-    SEP that means the full-CPU leaves landing on a design with no real
-    `sep_cpu`, and a denominator of one target's instead of the union's -- an
-    error in the flattering direction.
-
-    And the config this stage receives cannot answer the question at all: an
-    item-less stage runs against the untargeted config, whose `[defaults].target`
-    is `default` no matter which targets the run built. A stub-only SEP run built
-    `lsu_stub_all_live` and the merge then looked for `default`'s database, which
-    no stage had written. So the inputs are the authority, not this config and
-    not the run's item order, which must never move the number.
-    """
-
-    if not targets:
-        # No target provenance at all: a legacy run directory whose leaves predate
-        # recorded targets. Fall back to the config-derived database.
-        return [design_db] if design_db is not None else []
-    target_cfgs = getattr(args, "_coverage_target_cfgs", None) or {}
-    base_sim_cfg = getattr(args, "_coverage_base_sim_cfg", None)
-    resolved: list[Path] = []
-    for target in targets:
-        cfg = target_cfgs.get(target)
-        if cfg is None:
-            if not isinstance(base_sim_cfg, dict):
-                raise CoverageError(
-                    f"coverage inputs name build target `{target}`, which this invocation "
-                    "cannot resolve a design coverage database for"
-                )
-            # A replay (`--run-dir ... --stage cov_merge`) plans only the default
-            # target, so re-resolve the others from the untargeted config. Filelist
-            # scoping has to match what the run compiled under or the build
-            # fingerprint moves and the database path with it: a run whose leaves
-            # span targets scoped per target, a single-target run did not.
-            cfg = targeted_sim_cfg(base_sim_cfg, target, force_target_filelist=len(targets) > 1)
-        db = _coverage_design_db(flow, root, cfg, tool_cov, args)
-        if db is None:
-            raise CoverageError(
-                f"coverage.vcs.design_artifact resolved to nothing for target `{target}`"
-            )
-        resolved.append(db)
-    return resolved
 
 
 def _coverage_auxiliary_files(
@@ -3351,20 +3231,6 @@ def coverage_stage(
 
     if args.dry_run:
         dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
-        # A dry run has no discovered inputs to take the target list from, so use the
-        # targets this invocation planned. Rendering the real per-target design database
-        # list matters here: the printed command is the only place a caller can see
-        # whether the merge anchors on one elaboration or on every participating one.
-        dry_design_dbs: list[str] | None = None
-        if phase == "merge" and "{design_db}" in " ".join(template):
-            planned = sorted(getattr(args, "_coverage_target_cfgs", None) or {})
-            if planned:
-                dry_design_dbs = [
-                    str(candidate)
-                    for candidate in _coverage_design_dbs(
-                        flow, root, sim_cfg, tool_cov, args, planned, design_db
-                    )
-                ]
         policy_args = [
             *native_policy_args(policy, tool=tool, phase=phase),
             *_legacy_coverage_policy_args(
@@ -3375,10 +3241,7 @@ def coverage_stage(
             ),
         ]
         return run_subprocess(
-            [
-                *render_tokens(template, ctx, dry_inputs, design_dbs=dry_design_dbs),
-                *policy_args,
-            ],
+            [*render_tokens(template, ctx, dry_inputs), *policy_args],
             root,
             log_path,
             True,
@@ -3405,26 +3268,11 @@ def coverage_stage(
                 f"coverage was requested but no usable inputs were found under "
                 f"{repo_rel(root, run_dir)}"
             )
-        design_dbs: list[Path] | None = None
         if "{design_db}" in " ".join(template):
-            design_dbs = _coverage_design_dbs(
-                flow,
-                root,
-                sim_cfg,
-                tool_cov,
-                args,
-                coverage_input_targets(discovery.inputs),
-                design_db,
-            )
-            if not design_dbs:
+            if design_db is None or not artifact_ready(design_db):
                 raise CoverageError(
                     f"required design coverage database is missing or empty: {design_db}"
                 )
-            for candidate in design_dbs:
-                if not artifact_ready(candidate):
-                    raise CoverageError(
-                        f"required design coverage database is missing or empty: {candidate}"
-                    )
         manifest = new_manifest(
             flow=flow.name,
             tool=tool,
@@ -3456,22 +3304,12 @@ def coverage_stage(
                 {"path": repo_rel(root, path), "sha256": _file_sha256(path)} for path in waivers
             ],
         }
-        if design_dbs:
-            manifest["artifacts"]["design_db"] = repo_rel(root, design_dbs[0])
-            manifest["artifacts"]["design_dbs"] = [
-                repo_rel(root, candidate) for candidate in design_dbs
-            ]
+        if design_db is not None:
+            manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
         write_json(manifest_path, manifest)
         input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
         argv = [
-            *render_tokens(
-                template,
-                ctx,
-                input_paths,
-                design_dbs=(
-                    None if design_dbs is None else [str(candidate) for candidate in design_dbs]
-                ),
-            ),
+            *render_tokens(template, ctx, input_paths),
             *native_policy_args(policy, tool=tool, phase="merge"),
             *_legacy_coverage_policy_args(
                 tool=tool,

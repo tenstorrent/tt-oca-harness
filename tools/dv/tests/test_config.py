@@ -15,7 +15,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib.cli import expand_items, target_plan, validate_coverage_tool  # noqa: E402
+from runlib.cli import (  # noqa: E402
+    expand_items,
+    target_plan,
+    validate_coverage_tool,
+    validate_target_plan,
+)
 from runlib.config import (  # noqa: E402
     OverlayFrameworkMismatch,
     _merge_framework_config,
@@ -26,7 +31,7 @@ from runlib.config import (  # noqa: E402
     validate_native_config_shape,
     validate_run_mode_request,
 )
-from runlib.models import ConfigError, Dut, TestCatalog  # noqa: E402
+from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
 
 
 def make_dut(raw: dict, path: Path = Path("test_sim_cfg.toml")) -> Dut:
@@ -369,9 +374,39 @@ class RuntimeSelectionDefenses(unittest.TestCase):
             target_plan(catalog, {}, ["missing_test"])
         self.assertIn("missing_test", str(ctx.exception))
 
+    def test_target_override_wins_over_test_target(self):
+        catalog = TestCatalog(
+            None,
+            {
+                "t_stub": TestEntry(name="t_stub", module="m", target="lsu_stub_all_live"),
+                "t_cpu": TestEntry(name="t_cpu", module="m"),
+            },
+            {},
+        )
+        sim_cfg = {
+            "defaults": {"target": "default"},
+            "targets": {
+                "default": {"build_dir": "build/default"},
+                "lsu_stub_all_live": {"build_dir": "build/stub"},
+            },
+        }
+        by_item, ordered = target_plan(
+            catalog, sim_cfg, ["t_stub", "t_cpu"], override="default"
+        )
+        self.assertEqual(by_item, {"t_stub": "default", "t_cpu": "default"})
+        self.assertEqual(ordered, ["default"])
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_unknown_target_override_is_rejected(self):
+        catalog = TestCatalog(
+            None,
+            {"t1": TestEntry(name="t1", module="m", target="default")},
+            {},
+        )
+        sim_cfg = {"targets": {"default": {"build_dir": "build/default"}}}
+        _by_item, ordered = target_plan(catalog, sim_cfg, ["t1"], override="nope")
+        with self.assertRaises(ConfigError) as ctx:
+            validate_target_plan(sim_cfg, ordered)
+        self.assertIn("nope", str(ctx.exception))
 
 
 class CoverageToolAllowlist(unittest.TestCase):
@@ -435,5 +470,9 @@ class SepCoverageIsVcsOnly(unittest.TestCase):
         path = Path(__file__).resolve().parents[3] / "hw/sys/sep/dv/sep_sim_cfg.toml"
         cfg = tomllib.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(cfg["coverage"]["tools"], ["vcs"])
-        # The scope file is what makes VCS the only backend whose number is scoped.
-        self.assertTrue(cfg["coverage"]["vcs"]["scope_file"])
+        hier = "{repo_root}/hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier"
+        self.assertIn(hier, cfg["coverage"]["vcs"]["compile_args"])
+
+
+if __name__ == "__main__":
+    unittest.main()

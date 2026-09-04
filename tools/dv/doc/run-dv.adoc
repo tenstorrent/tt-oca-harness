@@ -583,6 +583,12 @@ instrumentation wiring is a documented follow-up), the runner rejects `--cov`
 before any stage executes instead of failing after a full compile and
 simulation with a missing coverage artifact.
 
+A DUT may also set `[coverage].tools` to the simulators whose coverage number
+it grades. Empty or omitted means every backend with a `[coverage.<tool>]`
+table is legal. A non-empty list refuses `--cov` on any other `--tool` before
+compile, and the error names `--tool <allowed>`. Daily (non-`--cov`) runs on
+those other simulators stay legal.
+
 On the implicit path, `--cov` instruments simulation and appends `cov_merge`
 and `cov_report` when the flow provides them:
 
@@ -623,7 +629,8 @@ original tool or history.
 
 Coverage merge/report accepts at most one known target and one known build
 fingerprint. A multi-target run cannot be merged as one coverage database;
-all-unknown legacy input provenance is accepted as a compatibility fallback.
+pass `--target NAME` to compile every selected test on one elaboration.
+All-unknown legacy input provenance is accepted as a compatibility fallback.
 Coverage-only replay resolves the current/default target rather than restoring
 an original non-default target; use replay only when target and build-affecting
 configuration still match. This is especially important for the VCS design
@@ -769,6 +776,11 @@ warning and records it in the run's wave metadata.
 
 |`--run-mode NAME`
 |Override the test/default run mode.
+
+|`--target NAME`
+|Override every selected test's build target. Omitted, each test keeps its
+own target. With `--cov`, a selection that still plans more than one target
+is refused before compile.
 
 |`--overlay PATH`
 |Apply one adopter overlay config (append-only) on top of the merged DUT

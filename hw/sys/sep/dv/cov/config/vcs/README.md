@@ -5,9 +5,8 @@
 
 `sep_cov_scope.hier` is passed to VCS at compile time as `-cm_hier` plus
 `-cm_common_hier` (`[coverage.vcs]` in `sep_sim_cfg.toml`), so what it drops
-never enters the coverage database. The file's hash and the coverage arg list
-are both folded into the build fingerprint: edit either and the next `--cov` run
-recompiles instead of reusing a build instrumented under the old scope.
+never enters the coverage database. Edit the file then `--rebuild`; the
+contents are not fingerprinted.
 
 ## What it excludes
 
@@ -21,12 +20,9 @@ recompiles instead of reusing a build instrumented under the old scope.
 a `bind key_manager` and lands *inside* the DUT hierarchy; no `-tree` under
 `u_dut` reaches it without dropping real DUT code.
 
-The CPU exclusion does two jobs. It keeps a large, barely-exercised third-party
-denominator out of a SEP number -- only the `cpu` tests reach it. It is also what
-makes the cross-target merge sound: `sep.sv` instantiates `sep_cpu sep_cpu`, and
-the CPU-stub target's `sep_cpu_stub.sv` declares `module sep_cpu` too, so the
-same instance path carries two unrelated bodies. `urg` accumulates by hierarchy
-name and would otherwise sum bins that do not correspond.
+The CPU exclusion keeps a large, barely-exercised third-party denominator out
+of a SEP number -- only the `cpu` tests reach it. Coverage compiles the full
+CPU once (`--target default`); the subtree is not instrumented.
 
 ## What the number is
 

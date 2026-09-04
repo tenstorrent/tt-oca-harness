@@ -128,31 +128,37 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 extra_args = ["-fno-dfg"]
 
 [coverage]
-# SEP grades coverage on VCS only. Not a tool preference: the scope that makes the
-# number mean "SEP minus the CPU subtree" is `[coverage.vcs].scope_file`, applied
-# as `-cm_hier` + `-cm_common_hier` at compile time, and no other backend applies
-# it. A `--cov` run on another
-# simulator would report a real percentage over an unscoped denominator -- a
-# number that looks like this one and is not. `--cov --tool verilator` is a config
-# error here rather than a quietly different measurement.
+# VCS-only. `--cov --tool verilator` re-triggers the PeakRDL nested-struct
+# C++ error (`__PVT__MLKEM_SHARED_KEY`) even with the daily stub: VM_COVERAGE=1
+# emits a different initializer than the functional model. Refuse before compile.
 tools = ["vcs"]
 
 [coverage.vcs]
 # Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
 # the list rather than appending to it, then add the scope file.
 #
+# VCS-only because only this table applies the compile-time scope. A `--cov`
+# run on another simulator grades an unscoped denominator. Coverage runs take
+# `--target default` (one full-CPU elaboration; no_cpu force-splices the LSU
+# VIP). Edit `sep_cov_scope.hier` then `--rebuild` -- the file is not
+# fingerprinted.
+#
 # Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
 # but still computes the headline score over the whole database, so the only way
 # to keep the testbench out of the number is to keep it out of the database:
 # `-cm_hier` limits what gets instrumented. That also shrinks the per-leaf
 # databases and the sim time.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
   "-cm_dir",
   "{build_cov_dir}",
   "-cm_hier",
-  "{scope_file}",
+  "{repo_root}/hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier",
   # Extends the SAME scope file from code coverage to assertion coverage.
   # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
   # excluded hierarchy is gone from the code metrics but still graded for
@@ -164,22 +170,15 @@ compile_args = [
   "-lca",
   "-cm_common_hier",
 ]
-# Hashed into the build fingerprint, so editing the scope forces a rebuild
-# instead of silently reusing a build instrumented under the old scope.
-scope_file = "cov/config/vcs/sep_cov_scope.hier"
 
-# Kept, but unreachable while `[coverage].tools` is VCS-only: it records the
-# measured toggle-instrumentation cost so a future Verilator coverage flow does
-# not rediscover it. Adding "verilator" to `[coverage].tools` re-enables it, and
-# that run needs its own scope story before its number is quotable.
+# Records the measured toggle-instrumentation cost so a future Verilator
+# coverage flow does not rediscover it. That run needs its own scope story
+# before its number is quotable.
 [coverage.verilator]
-# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
-# toggle instrumentation stays off for this DUT. On this model toggle points
-# are ~95% of the coverage database (~0.5 GB per test leaf, tens of GB across
-# a reseeded regression before merge) and the costliest instrumentation at sim
-# time; without toggle the same regression's coverage stays in the low GB
-# range and fits standard CI runner disk. Replaces the simulator-default
-# `--coverage` (which enables all forms including toggle).
+# Unused while [coverage].tools = ["vcs"]. Kept as the Verilator form once the
+# PeakRDL coverage-compile error is gone. Toggle stays off: on this model it
+# is ~95% of the database (~0.5 GB per leaf) and the costliest sim
+# instrumentation. Replaces the simulator-default `--coverage`.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [frameworks.cocotb]
@@ -453,9 +452,9 @@ args = ["+cpu_boot"]
 # no_cpu, and bounds CPU firmware fanout while keeping the Verilator model
 # single-threaded by default.
 #
-# `default` is the FALLBACK target -- unassigned tests + every cpu test land here safely
-# (full CPU supports both run modes). no_cpu tests select lsu_stub_all_live for the sim
-# speedup.
+# `default` is the FALLBACK target. On VCS the full CPU supports both run modes:
+# no_cpu force-splices the LSU VIP. Verilator no_cpu still selects
+# lsu_stub_all_live. Coverage runs pass `--target default`.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
 # [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags;

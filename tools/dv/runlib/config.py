@@ -36,9 +36,7 @@ CANONICAL_STAGES = {
     "clean",
 }
 
-# Keys allowed directly under `[coverage]` rather than naming a `[coverage.<tool>]`
-# backend table. `tools` is the DUT's coverage-backend allowlist: which simulators
-# may be asked for coverage at all.
+# `[coverage].tools` is the DUT's coverage-backend allowlist, not a backend table.
 COVERAGE_RESERVED_KEYS = {"tools"}
 
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -125,7 +123,6 @@ ALL_PLACEHOLDERS = COMMON_PLACEHOLDERS | {
     "build_cov_dir",
     "cov_dir",
     "design_db",
-    "scope_file",
     "merged",
     "report",
     "inputs",
@@ -300,7 +297,6 @@ COVERAGE_TOOL_KEYS = {
     "parser",
     "policy_file",
     "report_cmd",
-    "scope_file",
     "sim_args",
     "test_args",
     "waiver_files",
@@ -561,7 +557,6 @@ def validate_coverage_tool_table(
         "merged_name",
         "parser",
         "policy_file",
-        "scope_file",
     ):
         if key in table and (
             not isinstance(table.get(key), str) or not str(table.get(key)).strip()
@@ -730,8 +725,6 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
         if tools_allow is not None and (
             not isinstance(tools_allow, list)
             or not tools_allow
-            # `.strip()`: an entry that is only whitespace can never match a `--tool`
-            # value, so it would silently make `--cov` unusable rather than fail here.
             or not all(isinstance(entry, str) and entry.strip() for entry in tools_allow)
         ):
             raise ConfigError(
@@ -1378,24 +1371,21 @@ def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return config_section(sim_cfg, "coverage") if "coverage" in sim_cfg else {}
 
 
-def c_build_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
-    return config_section(sim_cfg, "c_build") if "c_build" in sim_cfg else {}
-
-
 def coverage_tools(sim_cfg: dict[str, Any]) -> list[str]:
-    """The `[coverage].tools` allowlist, or an empty list when the DUT declares none.
+    """The `[coverage].tools` allowlist, or empty when the DUT declares none.
 
-    Empty means "unconstrained": every simulator that has a `[coverage.<tool>]`
-    table may collect coverage. A non-empty list is a deliberate narrowing, and
+    Empty means unconstrained. A non-empty list is a deliberate narrowing:
     `validate_coverage_tool` turns a request outside it into a config error.
     """
 
     value = coverage_cfg(sim_cfg).get("tools")
     if not isinstance(value, list):
         return []
-    # Stripped so a stray space in the TOML (`" vcs "`) still matches the `--tool`
-    # value instead of quietly matching nothing and blocking every `--cov` run.
     return [entry.strip() for entry in value if isinstance(entry, str) and entry.strip()]
+
+
+def c_build_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return config_section(sim_cfg, "c_build") if "c_build" in sim_cfg else {}
 
 
 def tool_coverage_cfg(sim_cfg: dict[str, Any], tool: str) -> dict[str, Any]:

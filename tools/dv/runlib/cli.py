@@ -194,6 +194,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
     )
     common.add_argument(
+        "--target",
+        metavar="NAME",
+        help=(
+            "Build target from the DUT sim config [targets.<name>]; "
+            "overrides every selected test's target (default: each test's own target)"
+        ),
+    )
+    common.add_argument(
         "--overlay",
         metavar="PATH",
         help=(
@@ -461,6 +469,7 @@ def validate_mode_options(args: argparse.Namespace) -> None:
         "retry": "--retry",
         "max_failures": "--max-failures",
         "run_mode": "--run-mode",
+        "target": "--target",
         "waves": "--waves",
         "waves_on_fail": "--waves-on-fail",
         "wave_start": "--wave-start",
@@ -1495,13 +1504,10 @@ def validate_coverage_tool(
 ) -> None:
     """Refuse `--cov` on a simulator the DUT does not grade with.
 
-    Every simulator inherits a `[<tool>.coverage_defaults]` table from
-    simulators.toml, so a DUT that means "coverage is a VCS number here" cannot
-    say so by omission -- the merged config always has a plausible-looking
-    backend for verilator and xcelium too. A run on the wrong one does not fail;
-    it produces a real percentage under a different instrumentation and a
-    different scope. `[coverage].tools` states the allowlist, and this turns a
-    request outside it into a config error before the compile starts.
+    Every simulator inherits `[<tool>.coverage_defaults]`, so a DUT that means
+    "coverage is a VCS number here" cannot say so by omission. A run on the
+    wrong backend produces a real percentage under different instrumentation
+    and a different scope. `[coverage].tools` is the allowlist.
     """
 
     if not args.cov:
@@ -1509,9 +1515,6 @@ def validate_coverage_tool(
     allowed = coverage_tools(sim_cfg)
     if not allowed or tool in allowed:
         return
-    # One ordering for both halves of the message: naming a tool in the suggestion
-    # that is not the first one listed sends the reader to a different backend
-    # than the one they just read.
     listed = sorted(allowed)
     raise ConfigError(
         f"{flow.path}: --cov is restricted to {', '.join(listed)} for this DUT, "
@@ -1556,18 +1559,6 @@ def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
         for cov_stage in ("cov_merge", "cov_report"):
             if cov_stage in available and cov_stage not in requested:
                 requested.append(cov_stage)
-
-    # An explicit --stage set suppresses that append, so --cov with a simulation stage
-    # and no coverage stage instruments the build, writes per-leaf databases, and stops:
-    # no merge, no report, exit 0. Say so instead, and name the stages to add. Coverage
-    # stages alone are a legitimate replay (`--run-dir <dir> --stage cov_merge`).
-    if args.cov and args.stage:
-        cov_stages = [stage for stage in ("cov_merge", "cov_report") if stage in available]
-        if cov_stages and not any(stage in requested for stage in cov_stages):
-            raise ConfigError(
-                "--cov collects coverage but the requested stages would never merge or "
-                "report it; add " + " ".join(f"--stage {stage}" for stage in cov_stages)
-            )
 
     missing = [stage for stage in requested if stage not in available]
     if missing:
@@ -1771,10 +1762,17 @@ def target_plan(
     catalog: TestCatalog,
     sim_cfg: dict[str, Any],
     items: list[str],
+    override: str | None = None,
 ) -> tuple[dict[str, str], list[str]]:
-    """Resolve a target per selected test and return first-seen unique target order."""
+    """Resolve a target per selected test and return first-seen unique target order.
+
+    ``override`` (``--target``) maps every selected item onto that name.
+    Omitted, each test keeps its own target. ``validate_target_plan`` rejects
+    an unknown name.
+    """
+    chosen = override.strip() if isinstance(override, str) and override.strip() else None
     if not items:
-        target = default_target_name(sim_cfg)
+        target = chosen or default_target_name(sim_cfg)
         return {}, [target]
 
     target_by_item: dict[str, str] = {}
@@ -1784,7 +1782,7 @@ def target_plan(
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
-        target = resolved_target_name(sim_cfg, test)
+        target = chosen or resolved_target_name(sim_cfg, test)
         target_by_item[item] = target
         if target not in seen:
             seen.add(target)
@@ -1958,7 +1956,9 @@ def run_flow(
     # Regression/group runs nest every test uniformly; a single explicit test stays flat.
     nest = need_items and bool(items) and scheduler
     label = run_label(catalog, requested, items)
-    target_by_item, build_targets = target_plan(catalog, sim_cfg, items if need_items else [])
+    target_by_item, build_targets = target_plan(
+        catalog, sim_cfg, items if need_items else [], override=getattr(args, "target", None)
+    )
     if flow.kind == "fv":
         explicit_targets = [item for item in items if catalog.tests[item].target]
         if explicit_targets:
@@ -1968,19 +1968,18 @@ def run_flow(
             )
     else:
         validate_target_plan(sim_cfg, build_targets)
+    if args.cov and len(build_targets) > 1:
+        raise ConfigError(
+            "coverage merge accepts one build target; this selection plans "
+            + ", ".join(build_targets)
+            + ". Pass --target <name> to run every selected test on one elaboration"
+        )
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
     target_cfgs = {
         target: targeted_sim_cfg(sim_cfg, target, force_target_filelist=multi_target)
         for target in build_targets
     }
-
-    # The coverage merge needs one design database per participating target, and it
-    # runs as an item-less stage that would otherwise only see target_cfgs[build_targets[0]].
-    # Hand it the whole per-target map plus the untargeted config, so a coverage
-    # replay into an existing run dir can resolve targets this invocation did not plan.
-    setattr(args, "_coverage_target_cfgs", target_cfgs)
-    setattr(args, "_coverage_base_sim_cfg", sim_cfg)
 
     def sim_cfg_for_item(item: str | None) -> dict[str, Any]:
         if item is not None:
