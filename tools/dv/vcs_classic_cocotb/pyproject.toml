@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Standalone lockfile for the classic VCS Make/VPI cocotb interpreter
+# (tools/dv/runlib/stages.py::_vcs_cocotb_python looks for it at <repo root>/venv).
+#
+# This cannot be a dependency group of the root project: root's cocotb 2.x comes
+# from the `ocah-dv` workspace member (hw/common/dv), and uv resolves a workspace's
+# member dependencies together regardless of which group requests them, so a
+# `dv-vcs-classic` group pinning cocotb<2 would still conflict with `ocah-dv`'s
+# cocotb>=2.0.0,<2.1 at lock time. Keeping this a separate, non-workspace project
+# gives it its own independent lockfile instead.
+[project]
+name = "ocah-dv-vcs-classic"
+version = "0.1.0"
+description = "cocotb<2 interpreter pin for the classic VCS Make/VPI cocotb flow"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  # cocotb 2.0's load_entry(argv) signature is incompatible with the classic VCS
+  # Make/VPI flow (see tools/dv/runlib/stages.py::_vcs_cocotb_python); this floor
+  # matches the cocotb 1.9.2 the shared cocotb_compat.py teardown shims already
+  # target (hw/sys/smu, hw/sys/dtp), the last released cocotb 1.9.x.
+  "cocotb>=1.9.2,<2",
+  "pyuvm>=4,<6",
+]
+
+[tool.uv]
+package = false

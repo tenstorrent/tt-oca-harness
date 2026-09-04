@@ -1,5 +1,7 @@
 .venv/
-# VCS classic cocotb 1.9.x stack provisioned by hw/sys/sep/dv/sim/run.sh --tool vcs
+# VCS classic cocotb<2 stack, provisioned from tools/dv/vcs_classic_cocotb's own
+# lockfile (see that project's pyproject.toml, and _vcs_cocotb_python in
+# tools/dv/runlib/stages.py for how it's found).
 /venv/
 .bender/
 # Bender knowledge-graph cache emitted next to .bender/ by the flist/graph flows

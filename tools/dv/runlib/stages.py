@@ -1519,7 +1519,9 @@ def _vcs_cocotb_python(root: Path) -> Path:
     raise ConfigError(
         "VCS classic cocotb make requires cocotb < 2.0. Checked: "
         + "; ".join(checked)
-        + ". Install the repo requirements into the selected Python environment."
+        + ". Provision root/venv from tools/dv/vcs_classic_cocotb's own lockfile: "
+        + "(cd tools/dv/vcs_classic_cocotb && "
+        + 'UV_PROJECT_ENVIRONMENT="$(git rev-parse --show-toplevel)/venv" uv sync --locked)'
     )
 
 

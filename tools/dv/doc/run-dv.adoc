@@ -1242,9 +1242,17 @@ exist. Run the missing preparation stages first, or use the implicit path.
 === VCS cannot load cocotb
 
 The classic VCS Make/VPI path currently requires a cocotb version earlier than
-2.0. The runner checks `<repo>/venv/bin/python` before the active interpreter.
-Provision that environment with a compatible cocotb version before selecting
-VCS.
+2.0 — incompatible with the cocotb 2.x the rest of the DV stack (and the `dv`
+dependency group) runs on, so it cannot share `.venv`. The runner checks
+`<repo>/venv/bin/python` (not `.venv/`) before the active interpreter. Provision
+it from `tools/dv/vcs_classic_cocotb`'s own lockfile, which pins the compatible
+cocotb<2 stack:
+
+[source,bash]
+----
+cd tools/dv/vcs_classic_cocotb
+UV_PROJECT_ENVIRONMENT="$(git rev-parse --show-toplevel)/venv" uv sync --locked
+----
 
 === Coverage was collected but no report appeared
 
