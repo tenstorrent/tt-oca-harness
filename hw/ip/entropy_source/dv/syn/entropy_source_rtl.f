@@ -28,7 +28,11 @@
 
 // Generic cells and primitives
 // Note: Ring oscillators use asynchronous logic - requires special synthesis constraints
-../rtl/gcells.sv
+../../../../common/och_prim_generic/rtl/prim_clock_nand2.sv
+../../../../common/och_prim_generic/rtl/prim_dffrxq.sv
+../../../../common/och_prim_generic/rtl/prim_inv.sv
+../../../../common/och_prim_generic/rtl/prim_stdbuf.sv
+../../../../common/och_prim_generic/rtl/prim_stdmux2.sv
 
 // Clock manipulation utilities
 // Note: Ripple dividers use asynchronous ripple chains - requires special synthesis constraints

@@ -13,8 +13,13 @@ SURFER = surfer
 VERILATOR = verilator
 
 # Common source files
-RTL_DIR = ../rtl
-COMMON_RTL = $(RTL_DIR)/gcells.sv
+RTL_DIR = ../../rtl
+PRIM_RTL_DIR = ../../../../common/och_prim_generic/rtl
+COMMON_RTL = $(PRIM_RTL_DIR)/prim_clock_nand2.sv \
+             $(PRIM_RTL_DIR)/prim_dffrxq.sv \
+             $(PRIM_RTL_DIR)/prim_inv.sv \
+             $(PRIM_RTL_DIR)/prim_stdbuf.sv \
+             $(PRIM_RTL_DIR)/prim_stdmux2.sv
 
 # Ring Oscillator test configuration
 RING_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ring_oscillator.sv $(RTL_DIR)/entropy_noise_source.sv
@@ -72,7 +77,7 @@ FIFO_SIM_OUT = tb_entropy_fifo
 FIFO_VCD_FILE = entropy_fifo.vcd
 
 # AXI4-Lite Register Interface Test configuration (Verilator)
-AXI4LITE_INTF = ../../../common/axi/axi4lite_intf.sv
+AXI4LITE_INTF = ../../../../common/axi/axi4lite_intf.sv
 AXI4LITE_SOURCES = $(AXI4LITE_INTF) \
                    $(REG_RTL_DIR)/entropy_source_reg_pkg.sv $(RTL_DIR)/entropy_source_pkg.sv \
                    $(COMMON_RTL) $(RTL_DIR)/entropy_ring_oscillator.sv \
@@ -91,7 +96,7 @@ AXI4LITE_EXECUTABLE = $(AXI4LITE_OBJ_DIR)/Ventropy_source
 AXI4LITE_VCD_FILE = entropy_source_axi4lite.vcd
 
 # Verilator Lint configuration
-REG_RTL_DIR = ../data/registers/rtl
+REG_RTL_DIR = ../../regs/gen/sv
 VERILATOR_BUILD_DIR = verilator_lint
 VERILATOR_FILELIST = $(VERILATOR_BUILD_DIR)/entropy_source_complete.f
 VERILATOR_FLAGS = --lint-only --no-timing -Wall -Wno-fatal --top-module entropy_source
@@ -529,7 +534,7 @@ $(VERILATOR_FILELIST): | $(VERILATOR_BUILD_DIR)
 	@echo "$(RTL_DIR)/entropy_source_pkg.sv" >> $@
 	@echo "" >> $@
 	@echo "// Generic cells (primitives)" >> $@
-	@echo "$(RTL_DIR)/gcells.sv" >> $@
+	@printf "%s\n" $(COMMON_RTL) >> $@
 	@echo "" >> $@
 	@echo "// RTL modules (in dependency order)" >> $@
 	@echo "$(RTL_DIR)/entropy_ring_oscillator.sv" >> $@

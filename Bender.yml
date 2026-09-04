@@ -760,7 +760,6 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
       - hw/ip/entropy_source/rtl/entropy_source.sv
       - hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
-      - hw/ip/entropy_source/rtl/gcells.sv
       - hw/ip/entropy_source/rtl/gf_muladd.sv
   - target: smc
     files:
