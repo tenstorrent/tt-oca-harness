@@ -238,6 +238,29 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: lint_spelling.log, efm: '%f:%l: %m', level: error, name: lint-spelling }
 
+  # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
+  # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
+  lint-vale:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Vale
+        run: |
+          curl -fsSL -o vale.tar.gz https://github.com/vale-cli/vale/releases/download/v3.15.2/vale_3.15.2_Linux_64-bit.tar.gz
+          mkdir -p ./vale-bin && tar xzf vale.tar.gz -C ./vale-bin
+          echo "$GITHUB_WORKSPACE/vale-bin" >> "$GITHUB_PATH"
+      - name: Lint documentation prose (Vale)
+        run: make ocah-lint-vale OCAH_VALE_FLAGS="--output=$GITHUB_WORKSPACE/flows/lint/vale-rdjsonl.tmpl" 2>&1 | tee lint_vale.rdjsonl || true
+      - uses: ./.github/actions/reviewdog-report
+        # Vale's own JSON already carries real per-alert severities (all
+        # `error` right now -- see styles/OCAH/Acronyms.yml), the same
+        # reason lint-sv-slang skips the `level` input for its rdjson.
+        with: { log-file: lint_vale.rdjsonl, format: rdjsonl, name: lint-vale }
+
   lint-yaml:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'

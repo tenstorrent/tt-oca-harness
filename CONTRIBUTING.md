@@ -103,6 +103,7 @@ Scheduled and manually dispatched pipelines always run in full.
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
 | `lint-spelling` | `lint-spelling` | `make ocah-lint-spelling` and `make ocah-lint-spelling-fix` |
+| `lint-vale` | `lint-vale` | `make ocah-lint-vale` |
 | `lint-yaml` | `lint-yaml` | `make ocah-lint-yaml` |
 | `lint-toml` | `lint-toml` | `make ocah-lint-toml` |
 | `lint-markdown` | `lint-markdown` | `make ocah-lint-markdown` and `make ocah-lint-markdown-fix` |
@@ -182,17 +183,33 @@ file before the runner that reads it fails with a less legible error.
 `slang-tidy` parses it with its own `Checks:`/`CheckConfigs:` grammar, not
 TOML.
 
+`lint-vale` (Vale) checks `.adoc`/`.md` prose against `styles/OCAH/Acronyms.yml`,
+a small substitution list of acronym expansions this repo has actually seen
+drift to a wrong one -- most plausibly an AI assistant free-associating a
+plausible-sounding phrase for a three/four-letter acronym it was never told
+the meaning of (an early instance: DFD written out as "Debug Forensics
+Dump" in a couple of places instead of the "Design-for-Debug" that
+`hw/sys/smc/doc/dfd.adoc` actually defines it as). Each entry's correct side
+is a direct quote from somewhere in-tree, not a guess -- see that file's own
+header comment before adding to it. It has no autofix; a substitution
+finding carries its suggested replacement in the CLI output, but applying it
+is a manual edit, same as `lint-toml`. Vale's built-in case-exact vocabulary
+check (`Vale.Terms`) was tried and dropped for now: this repo casually
+lowercases these acronyms inside test/config names and running prose often
+enough that it flagged over a hundred non-issues against ~5 real ones, which
+isn't the low-noise bar the rest of this table holds to.
+
 ### Optional pre-commit checks
 
 The repository provides optional, check-only hooks for staged Python, C/C++,
 Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
 Ruff, clang-format, tclfmt, tclint, codespell, yamllint, tomllint, shellcheck,
 and shfmt from the locked uv environment, plus Git's whitespace/conflict-marker
-check. The hooks do not modify or stage files. `mypy`, `markdownlint`, and
-`checkmake` are deliberately left out of this bundle -- they are slow, need a
-separate Node.js toolchain, or ship as a standalone binary rather than a
-uv-managed package -- and stay CI-only; see the CI job table above for their
-local commands.
+check. The hooks do not modify or stage files. `mypy`, `markdownlint`,
+`checkmake`, and `vale` are deliberately left out of this bundle -- they are
+slow, need a separate Node.js toolchain, or ship as a standalone binary
+rather than a uv-managed package -- and stay CI-only; see the CI job table
+above for their local commands.
 
 ```bash
 make hooks-install    # explicit opt-in for this clone

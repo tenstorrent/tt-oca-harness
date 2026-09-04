@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Each pair here is a wrong expansion of one of this repo's own acronyms
+# that has actually shown up in-tree -- most plausibly from an AI assistant
+# free-associating a plausible-sounding phrase for a three/four-letter
+# acronym it was never told the meaning of, the same way it would misspell
+# an uncommon word. The right-hand side is quoted, not invented: DFD is
+# "Design-for-Debug" per hw/sys/smc/doc/dfd.adoc (the block that owns it);
+# OCA is "Open Chiplet Atlas" per README.md, NOTICE, and every antora.yml
+# title in doc/ -- both confirmed by grep before being added here. Add a
+# pair only once you've grepped the repo for its right-hand side and found
+# it stated somewhere, not from memory: this file is only useful if every
+# entry in it is more trustworthy than the AI it's meant to catch.
+extends: substitution
+message: "Use '%s', not '%s' -- this repo defines the acronym differently."
+ignorecase: true
+level: error
+swap:
+  'Debug Forensics Dump': Design-for-Debug
+  'Design Forensics Dump': Design-for-Debug
+  'debug-for-design': Design-for-Debug
+  'Open Chiplet Architecture': Open Chiplet Atlas
