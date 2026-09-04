@@ -431,7 +431,7 @@ module smu_wrapper
     .l1_dcache_data_intf_req_o (l1_dcache_data_intf_req),
     .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp),
 
-  .i3c_dat_mem_src_i  (i3c_dat_mem_src),
+    .i3c_dat_mem_src_i  (i3c_dat_mem_src),
     .i3c_dat_mem_sink_o (i3c_dat_mem_sink),
     .i3c_dct_mem_src_i  (i3c_dct_mem_src),
     .i3c_dct_mem_sink_o (i3c_dct_mem_sink),
@@ -481,7 +481,7 @@ module smu_wrapper
     .clk_smc_i               (clk_smu_i),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
-  .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
+    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
     .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
 
     .smc_external_req_i  (smc_external_req),
@@ -514,7 +514,7 @@ module smu_wrapper
     .l1_dcache_data_intf_req (l1_dcache_data_intf_req),
     .l1_dcache_data_intf_rsp (l1_dcache_data_intf_rsp),
 
-  .i3c_dat_mem_sink_i (i3c_dat_mem_sink),
+    .i3c_dat_mem_sink_i (i3c_dat_mem_sink),
     .i3c_dat_mem_src_o  (i3c_dat_mem_src),
     .i3c_dct_mem_sink_i (i3c_dct_mem_sink),
     .i3c_dct_mem_src_o  (i3c_dct_mem_src),

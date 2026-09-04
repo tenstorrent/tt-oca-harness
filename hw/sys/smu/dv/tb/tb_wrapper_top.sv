@@ -1306,7 +1306,7 @@ module smu_wrapper_uvm_top (
     .clk_sep_wdt_i,
     .sep_straps_i (sep_straps),
 
-  .ext_debug_bus_i ('0),
+    .ext_debug_bus_i ('0),
     .gpio_interrupt_o (),
     .uart_interrupt_o (),
     .sep_efuse_debug_bus_o (),
