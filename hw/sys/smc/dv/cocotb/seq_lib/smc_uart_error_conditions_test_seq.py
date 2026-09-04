@@ -201,6 +201,23 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
         await self._enable(0)
         await self._program_format(r, "OE", loop=True)
         await self._clear_status(r, "OE")
+
+        # Below-threshold control for the OE claim below. Without it the run
+        # only ever shows OE set, and a bit stuck at 1 -- or an LSR read that
+        # returned a constant -- would satisfy the overflow leg identically.
+        # One byte cannot overflow a FIFO of _FIFO_DEPTH, so DR must set and OE
+        # must stay clear.
+        await self.csr_write("OE_NEG_THR", r["rbr"], 0x5A)
+        if not await self._wait_iir_id(r, "OE_NEG_RDR", _INTR_RDR, 512):
+            raise AssertionError("single byte produced no RDR interrupt")
+        lsr = await self.csr_read("OE_NEG_LSR", r["lsr"])
+        if not lsr & LSR_DR:
+            raise AssertionError(f"single byte left LSR.DR clear LSR=0x{lsr:08x}")
+        if lsr & LSR_OE:
+            raise AssertionError(f"single byte set LSR.OE LSR=0x{lsr:08x}")
+        cocotb.log.info("CHK-UART-ERR-OE-NEG: one byte -> LSR.DR=1 LSR.OE=0 (LSR=0x%08x)", lsr)
+        await self._clear_status(r, "OE")
+
         total = _FIFO_DEPTH + 4
         for i in range(total):
             await self.csr_write(f"OE_THR_{i}", r["rbr"], 0x20 + (i & 0x3F))
