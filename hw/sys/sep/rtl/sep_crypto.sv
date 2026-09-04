@@ -67,7 +67,7 @@ module sep_crypto #(
   // Efuse intermediate reset
   output logic           sep_intermediate_reset_no,
   // Efuse signals
-  input  sep_pkg::sep_straps_t              sep_straps_i,
+  input  logic                              secure_tm_req_i,
   input  logic                               ext_boot_seq_done_i,
   output logic                               security_disable_o,       // To SMC
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
@@ -676,7 +676,7 @@ module sep_crypto #(
     .test_en_i    (test_en_i),
     .scan_rst_ni  (scan_rst_ni),
 
-    .sep_straps_i                          (sep_straps_i),
+    .secure_tm_req_i                       (secure_tm_req_i),
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
 
     .security_disable_o                    (security_disable_o),

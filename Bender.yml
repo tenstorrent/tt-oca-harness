@@ -551,6 +551,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
@@ -753,6 +754,7 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_generator_complex.sv
       - hw/ip/entropy_source/rtl/entropy_health_test.sv
       - hw/ip/entropy_source/rtl/entropy_noise_source.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
       - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
       - hw/ip/entropy_source/rtl/entropy_ripple_divider.sv
       - hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
@@ -1194,6 +1196,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv

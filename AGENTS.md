@@ -1,6 +1,6 @@
 # Agent Guide for tt-oca-harness
 
-This guide helps AI agents navigate and work with the Tenstorrent Open Chiplet Atlas
+This guide helps AI agents navigate and work with the Open Chiplet Atlas
 Harness (OCAH) repository. It covers environment setup, the container-based firmware
 toolchain, running firmware-driven DV, and how to debug failures without chasing the wrong
 layer. Machine- and site-specific values are left as placeholders; substitute your own.

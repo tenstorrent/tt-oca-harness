@@ -577,7 +577,7 @@ idle, reducing IBI response latency by up to milliseconds in active systems.
 8. Software reads IBI descriptor from IBI_PORT and determines appropriate
 response (query target, send CCC, etc.)
 
-====== Common Command Code (CCC) Flow
+====== Common Command Codes (CCC) Flow
 
 Common Command Codes enable the controller to configure targets, query device
 information, and manage bus topology. CCCs are classified as broadcast
@@ -775,9 +775,9 @@ across arbitrary system clock frequencies. Controller FSM generates precise
 SCL/SDA edges by counting system clock cycles derived from configured timing
 values.
 
-====== Recovery Mechanism (TCRI)
+====== Transfer Command Response Interface (TCRI)
 
-The MIPI TCRI v1.0 compliant recovery subsystem enables secure firmware download
+The MIPI TCRI v1.0 recovery subsystem enables secure firmware download
 and device recovery:
 
 *recovery_handler.sv*: Coordinates recovery flow state machine

@@ -1207,7 +1207,7 @@ a. Verify TMP_STATUS[1] = 0 after the escape.
 a. Verify `jtag_ic_reset_ovrd_o[0]` = 1 (= `!reset_enable[0]`) and `jtag_ic_reset_ctrl_n_o[0]` = 0.
 b. Set RESET_ENABLE[0]=1 (disable override); verify `jtag_ic_reset_ovrd_o[0]` = 0 (upstream reset passes through), confirming the active-low `ovrd_o = !reset_enable` mapping.
 . Set RESET_HOLD=0 with a known RESET_ENABLE / RESET_CONTROL pattern; Update-DR.
-. Force Test-Logic-Reset (TLR); re-read IC_RESET.
+. Force TLR (Test-Logic-Reset); re-read IC_RESET.
 a. Verify the programmed pattern is preserved.
 . Repeat reset_hold=0 TLR preservation with seeded random enable/control patterns.
 . Set RESET_HOLD=1 with a non-default pattern; force TLR and verify IC_RESET returns to its default all-ones value and override outputs deassert.

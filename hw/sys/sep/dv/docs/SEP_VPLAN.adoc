@@ -4493,13 +4493,14 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |`smoke` |Short no-CPU bring-up subset (CI)
 |`no_cpu` |All AXI-driver tests
 |`cpu` |Firmware-boot tests
-|`rom_fw` |Boot-ROM image class (separate owner)
-|`all` |Union used for full local regression
+|`rom_fw` |Boot-ROM image class (separate owner); not a member of `all`
+|`all` |`no_cpu` + `cpu`: every test this VPLAN grades, and the coverage set
 |===
 
 Canonical entry point: `python3 tools/dv/run_dv.py --dut sep …`
-(see `README.md`). Prefer class regressions (`no_cpu` / `cpu` /
-`rom_fw`) over a mixed `all` fan-out when closing a change.
+(see `README.md`). Prefer the class regressions (`no_cpu` / `cpu`) over a mixed
+`all` fan-out when closing a change. `rom_fw` is a separate owner's class and is
+not part of `all`.
 
 [[audit]]
 === Anti-Vacuity Failure Classes

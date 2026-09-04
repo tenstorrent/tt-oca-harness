@@ -17,8 +17,10 @@ schema_version = 1
 # `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
 # four names are graded.
 #
-# They run in the `all` and `rom_fw` groups, not `cpu`: a CPU-class run is
-# one RTL target (`default`), and these need `rom_boot`.
+# They run in the `rom_fw` group only -- not `cpu`, and not `all`: a CPU-class run
+# is one RTL target (`default`) and these need `rom_boot`, and `all` is the set
+# the SEP VPLAN grades, which these are outside of. Naming `rom_fw`, or the test,
+# is the only way to reach them.
 
 [[tests]]
 # ROM non-secure boot (the reference suite's sep_rom_non_secure_boot_test): the CPU boots the REAL

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-== OCAH development guidelines
+= OCAH development guidelines
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-=== Standards
+== Standards
 
 The OCAH design will follow industry or FOSS standards where appropriate:
 
@@ -26,13 +26,13 @@ AXI4-lite is used for data interfaces and is generally configured with
 64-bit data and address. Control buses for accessing CSRs and other low
 speed sources are implemented with 32-bit APB.
 
-The system memory map and component CSRs (Configuration and Status
+The system memory map and component CSRs (Control and Status
 Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
 SystemVerilog RTL.
 
-=== Development Tools
+== Development Tools
 
 We aim primarily to use open source tools for the development of OCAH in
 order to eliminate commercial dependencies and enabling open-sourcing
@@ -50,7 +50,7 @@ tapeout. This includes:
 * lint tools for code quality
 * logic synthesis
 
-=== Component Directory Organization
+== Component Directory Organization
 
 All components will have a uniform directory structure which has the
 following elements:
@@ -65,11 +65,57 @@ memmap.adoc, index.adoc)
 * syn : logic synthesis constraints (optional)
 * lint : lint waiver files
 
+== Coding Conventions
+
+=== License headers
+
+Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file's comment syntax.
+
+For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
+
+```systemverilog
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For Python, shell, Makefile, and YAML files:
+
+```makefile
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
+
+```c
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+```
+
+For AsciiDoc (`.adoc`), use line comments:
+
+```asciidoc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
+
+Generated register collateral under `hw/**/regs/gen/` is produced by the
+repository generation flows and carries the same SPDX Apache-2.0 header as
+hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
+
+=== Vendored code
+
+Third-party RTL and tools are vendored under `vendor/` via Bender `vendor_package` entries. Do not hand-edit files under `vendor/*/upstream/`; use `patches/` and local overlays instead. See the README for the full vendor workflow.
+
+When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.
+
 === SystemVerilog Coding Guidelines
 
 The high level goals are:
 
-* avoid SystemVerilog constructs that are error prone or not consistently supported, 
+* avoid SystemVerilog constructs that are error prone or not consistently supported,
 particularly across open source tools
 * ensure that the code is tidy and easy to read
 * keep the code style consistent across the project's code base regardless of who authored it
@@ -113,15 +159,15 @@ computational elements
 
 === RTL Code Comments
 
-Include a description of the purpose and overall function of the module 
-in the header. 
+Include a description of the purpose and overall function of the module
+in the header.
 
 RTL code comments may be redundant or add little value to the code.
 Keep comments in the RTL as minimal as possible and, where possible,
-make the code self explanatory. 
+make the code self explanatory.
 
 Do not add a comment which describes the functionality of the code
 where the code is clear.
 
-If there is a tricky bit of code with some nuance, add a comment describing 
-the overall goal or strategy of the code. 
+If there is a tricky bit of code with some nuance, add a comment describing
+the overall goal or strategy of the code.

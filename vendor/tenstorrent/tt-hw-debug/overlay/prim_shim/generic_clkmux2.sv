@@ -12,9 +12,7 @@ module generic_clkmux2 (
   output logic out
 );
 
-  prim_stdmux2 #(
-    .Width(1)
-  ) u_stdmux2 (
+  prim_stdmux2 u_stdmux2 (
     .i_I0 (in0),
     .i_I1 (in1),
     .i_SEL(select),

@@ -16,7 +16,7 @@ Everything the environment needs lives under this tree.
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | developed against 5.046 |
+| Verilator 5.x | the acceptance backend | CI pin 5.050 |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'`; `source /opt/rh/gcc-toolset-11/enable` |
 | Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
 | RISC-V bare-metal GCC | firmware-boot tests only | not needed for the `smoke` tag |
@@ -81,6 +81,52 @@ The contracts themselves:
 * [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) — verification plan: per-test
   contracts and checkers, naming rules, VIP policy, iconic feature scorecard.
 
+## Code coverage
+
+`--cov` is collected on VCS. Only `[coverage.vcs]` applies the compile-time
+scope, so that is the graded number. It instruments the build, writes one
+native database per test leaf (`coverage/simv.vdb` under each leaf), and
+merges/reports through the `cov_merge`/`cov_report` stages into
+`<run_dir>/cov/merged.vdb`. That is `-cm line+cond+tgl+fsm+branch+assert` at
+both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
+`urg`. `--cov --tool verilator` is not the graded number. Verilator 5.046
+fails that C++ compile (`__PVT__MLKEM_SHARED_KEY` under `VM_COVERAGE=1`);
+5.050 compiles.
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
+  --target default --sim-jobs 32 --build-jobs 32
+```
+
+`all` is the coverage set: every test the VPLAN grades, which is exactly `no_cpu`
++ `cpu`. Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third
+RTL target, firmware rather than hardware contracts -- so reaching those four
+means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
+drifts from the class groups.
+
+`--target default` compiles the full CPU once. no_cpu leaves force-splice the
+LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
+one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
+
+What the resulting number is not:
+
+* **Not functional coverage.** These are code metrics only. No SV covergroups
+  exist in the cocotb env, so "did we exercise the interesting scenarios" stays
+  with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
+* **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
+  excludes the testbench top, the outbound mailbox, the backdoor SMC memory, the
+  AXI SVA module and the CPU subtree at compile time, across both code and
+  assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
+  database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
+  matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
+  CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
+  `cov/config/vcs/README.md` records the scope and the measurements behind it.
+* **Not a read on assertions.** Assertion coverage counts elaborated assertions
+  only, and SEP gates those through the `prim_assert` shim. Confirm assertions
+  are live before reading that column.
+* **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
+  test contributes one sample. Pin seeds for any number that gets cited.
+
 ## Two run modes
 
 The run mode selects who owns the CPU master buses. The entries below are
@@ -138,8 +184,7 @@ hw/sys/sep/dv/
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        #   and cov/sv/. Verilator coverage flags live in
-│                        #   sep_sim_cfg.toml ([coverage.verilator]).
+│                        #   and cov/sv/. `--cov` is graded on VCS ([coverage.vcs]).
 ├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/

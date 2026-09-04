@@ -240,7 +240,6 @@ module smc #(
   input logic scan_rst_ni,
 
   // Captured straps input
-  input logic [smc_pkg::NUM_BONDED_GPIO-1:0] captured_straps_i,
 
   // indicators for DFT status
   input logic mem_repair_done_i,
@@ -651,7 +650,6 @@ module smc #(
 
     .jtag_reset_ctrl_i                     (jtag_reset_ctrl_i),
 
-    .captured_straps_i                     (captured_straps_i),
 
     // interrupts
     .sep_mailbox_interrupts_i              (sep_mailbox_interrupts_i),

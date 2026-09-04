@@ -72,10 +72,10 @@ ifdef::backend-pdf[]
 :imagesdir: ../assets
 == Starting as a user
 
-include::dependencies.adoc[leveloffset=+1]
-include::setup.adoc[leveloffset=+1]
-include::workflows.adoc[leveloffset=+1]
-include::guidelines.adoc[leveloffset=+1]
+include::dependencies.adoc[leveloffset=+2]
+include::setup.adoc[leveloffset=+2]
+include::workflows.adoc[leveloffset=+2]
+include::guidelines.adoc[leveloffset=+2]
 
 == Starting as a contributor
 
