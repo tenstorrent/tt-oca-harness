@@ -9,6 +9,7 @@ OCAH_DATASHEETS_SRC ?= $(OCAH_DATASHEETS_DIR)/src
 OCAH_DATASHEETS_BUILD ?= $(OCAH_DATASHEETS_DIR)/_build
 OCAH_DATASHEETS_DIST ?= $(OCAH_DATASHEETS_DIR)/dist
 OCAH_DATASHEETS_THEME ?= $(OCAH_DATASHEETS_DIR)/datasheet-theme.yml
+OCAH_DATASHEETS_LOGO ?= $(OCAH_DOC_DIR)/ui-supplemental/img/tt_logo_color-yellow-black.png
 OCAH_DATASHEET_PRODUCTS ?= $(notdir $(basename $(wildcard $(OCAH_DATASHEETS_SRC)/*.adoc)))
 OCAH_DATASHEET_PDFS := $(addprefix ocah-,$(addsuffix -datasheet.pdf,$(OCAH_DATASHEET_PRODUCTS)))
 OCAH_DATASHEET_DIST_FILES := $(addprefix $(OCAH_DATASHEETS_DIST)/,$(OCAH_DATASHEET_PDFS))
@@ -21,7 +22,7 @@ ocah-doc-datasheets-setup:
 		$(foreach product,$(OCAH_DATASHEET_PRODUCTS),--source "$(OCAH_DATASHEETS_SRC)/$(product).adoc")
 
 define ocah_datasheet_rule
-$(OCAH_DATASHEETS_DIST)/ocah-$(1)-datasheet.pdf: $(OCAH_DATASHEETS_SRC)/$(1).adoc $(OCAH_DATASHEETS_THEME) $(wildcard $(OCAH_DATASHEETS_DIR)/assets/*) | ocah-doc-datasheets-setup
+$(OCAH_DATASHEETS_DIST)/ocah-$(1)-datasheet.pdf: $(OCAH_DATASHEETS_SRC)/$(1).adoc $(OCAH_DATASHEETS_THEME) $(OCAH_DATASHEETS_LOGO) $(wildcard $(OCAH_DATASHEETS_DIR)/assets/*) | ocah-doc-datasheets-setup
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf datasheets"; exit 1; }
 	@echo "Building $(1) datasheet PDF (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_DATASHEETS_BUILD)" "$(OCAH_DATASHEETS_DIST)"

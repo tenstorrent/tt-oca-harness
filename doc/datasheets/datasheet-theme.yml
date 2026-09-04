@@ -35,15 +35,20 @@ table:
     font_style: bold
 footer:
   height: 0.28in
+  font_size: 6.5
   line_height: 1
   recto:
     left:
-      content: 'Open Chiplet Architecture Harness | {datasheet-status}'
+      content: '© {copyright-year} {copyright-holder} · Apache 2.0'
+    center:
+      content: 'OCAH | {datasheet-status}'
     right:
       content: '{page-number} / {page-count}'
   verso:
     left:
-      content: 'Open Chiplet Architecture Harness | {datasheet-status}'
+      content: '© {copyright-year} {copyright-holder} · Apache 2.0'
+    center:
+      content: 'OCAH | {datasheet-status}'
     right:
       content: '{page-number} / {page-count}'
 role:
