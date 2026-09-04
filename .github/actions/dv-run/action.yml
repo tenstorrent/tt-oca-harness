@@ -122,36 +122,41 @@ runs:
     - name: Check environment
       shell: bash
       env:
-        DUT: ${{ inputs.dut }}
-        TOOL: ${{ inputs.tool }}
+        DV_DUT: ${{ inputs.dut }}
+        DV_TOOL: ${{ inputs.tool }}
       run: |
         verilator --version
         python3 tools/dv/run_dv.py --validate-configs
-        python3 tools/dv/run_dv.py --doctor --dut "$DUT" --tool "$TOOL"
+        python3 tools/dv/run_dv.py --doctor --dut "$DV_DUT" --tool "$DV_TOOL"
 
     # The explicit --run-dir keeps every tier's tree separate and means
     # run_dv.py never creates a `latest` symlink. A group item already runs
     # through the regression scheduler, so --reseed is only added when the
     # caller asks for more than one seed per test.
+    #
+    # The step variables are DV_-prefixed because the simulation inherits
+    # this environment: cocotb reads a bare COVERAGE variable as a request
+    # for Python coverage collection and aborts when the module is absent.
     - name: Run DV tests
       shell: bash
       env:
-        DUT: ${{ inputs.dut }}
-        TOOL: ${{ inputs.tool }}
-        ITEMS: ${{ inputs.items }}
-        RESEED: ${{ inputs.reseed }}
-        COVERAGE: ${{ inputs.coverage }}
-        SIM_JOBS: ${{ inputs.sim-jobs }}
-        RUN_DIR: ${{ inputs.run-dir }}
+        DV_DUT: ${{ inputs.dut }}
+        DV_TOOL: ${{ inputs.tool }}
+        DV_ITEMS: ${{ inputs.items }}
+        DV_RESEED: ${{ inputs.reseed }}
+        DV_COVERAGE: ${{ inputs.coverage }}
+        DV_SIM_JOBS: ${{ inputs.sim-jobs }}
+        DV_RUN_DIR: ${{ inputs.run-dir }}
       run: |
-        if [ "$SIM_JOBS" = "nproc" ]; then
-          SIM_JOBS="$(nproc)"
+        sim_jobs="$DV_SIM_JOBS"
+        if [ "$sim_jobs" = "nproc" ]; then
+          sim_jobs="$(nproc)"
         fi
         tier_args=()
-        if [ "$RESEED" -gt 1 ]; then
-          tier_args+=(--reseed "$RESEED")
+        if [ "$DV_RESEED" -gt 1 ]; then
+          tier_args+=(--reseed "$DV_RESEED")
         fi
-        if [ "$COVERAGE" = "true" ]; then
+        if [ "$DV_COVERAGE" = "true" ]; then
           tier_args+=(--cov)
         fi
         # Build parallelism is independent of sim fan-out, but run_dv.py falls
@@ -161,12 +166,12 @@ runs:
         # build uses the whole machine, and so it scales automatically on a
         # larger runner.
         exec python3 tools/dv/run_dv.py \
-          --dut "$DUT" \
-          --items "$ITEMS" \
-          --tool "$TOOL" \
-          --sim-jobs "$SIM_JOBS" \
+          --dut "$DV_DUT" \
+          --items "$DV_ITEMS" \
+          --tool "$DV_TOOL" \
+          --sim-jobs "$sim_jobs" \
           --build-jobs "$(nproc)" \
-          --run-dir "$RUN_DIR" \
+          --run-dir "$DV_RUN_DIR" \
           "${tier_args[@]}"
 
     # run_dv.py already exits nonzero on FAIL/ERROR/TIMEOUT/UNKNOWN; this
@@ -175,18 +180,18 @@ runs:
     - name: Gate on native result
       shell: bash
       env:
-        DUT: ${{ inputs.dut }}
-        TOOL: ${{ inputs.tool }}
-        COVERAGE: ${{ inputs.coverage }}
-        RUN_DIR: ${{ inputs.run-dir }}
+        DV_DUT: ${{ inputs.dut }}
+        DV_TOOL: ${{ inputs.tool }}
+        DV_COVERAGE: ${{ inputs.coverage }}
+        DV_RUN_DIR: ${{ inputs.run-dir }}
       run: |
         require_coverage=false
-        if [ "$COVERAGE" = "true" ]; then
+        if [ "$DV_COVERAGE" = "true" ]; then
           require_coverage=true
         fi
         jq -e \
-          --arg flow "$DUT" \
-          --arg tool "$TOOL" \
+          --arg flow "$DV_DUT" \
+          --arg tool "$DV_TOOL" \
           --argjson require_coverage "$require_coverage" \
           '.schema_version == 1
            and .flow == $flow
@@ -198,7 +203,7 @@ runs:
              and (.coverage.report | type == "string" and length > 0)
              and (.coverage.summary | type == "string" and length > 0)
            ))' \
-          "$RUN_DIR/result.json"
+          "$DV_RUN_DIR/result.json"
 
     # Logs and result.json for every test in the run; result.json is the
     # schema-v1 record that tools/dv/run_dashboard.py collect consumes. The
