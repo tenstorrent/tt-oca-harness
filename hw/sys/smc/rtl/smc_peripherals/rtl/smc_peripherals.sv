@@ -1135,8 +1135,7 @@ module smc_peripherals #(
     .sync_irq_o                 (sync_irq_o),
 
     .test_en_i                  (test_en_i),
-    .scan_rst_ni                (scan_rst_ni),
-
+    .scan_rst_ni                (scan_rst_ni)
   );
 
   assign powergood_stable_o = powergood_stable;
