@@ -130,6 +130,18 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("implementing IEEE 1149.1-2013", source)
         self.assertIn("implementing IEEE 1687-2014", source)
 
+    def test_dtp_uses_integrator_facing_reset_terminology(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("IC_RESET slice", source)
+        self.assertNotIn("IC_RESET slice", diagram)
+        self.assertIn("reset-control outputs", source)
+        self.assertIn("`IC_RESET` in the RTL", source)
+
     def test_dtp_port_table_matches_current_debug_disable_interface(self) -> None:
         root = Path(__file__).resolve().parents[3]
         port_table = (root / "hw/sys/dtp/doc/port_table.adoc").read_text(encoding="utf-8")
