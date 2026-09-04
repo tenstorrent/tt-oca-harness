@@ -61,6 +61,7 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
         self.logger.info("Releasing cold reset (primary gated by ext_boot_seq_done_i)")
         dut.rst_cold_ni.value = 1
         dut.jtag_trst.value = 1
+        await self.jtag_tap_reset(16)
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         self.cfg.reset_done.set()
         self.logger.info("SMU_006 bring-up: clocks running; boot gate=0; cold released")
