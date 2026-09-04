@@ -5,42 +5,41 @@
 //
 // Wrapper module for DMA and Zeroer with address-based demux/mux
 
-module smc_data_accelerator_wrap
-  #(
-    parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,
-    parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,
-    parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,
-    parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0
-  )(
-    input  logic                                             clk_i,
-    input  logic                                             rst_ni,
-    input  logic                                             test_en_i,
+module smc_data_accelerator_wrap #(
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0
+) (
+  input  logic                                             clk_i,
+  input  logic                                             rst_ni,
+  input  logic                                             test_en_i,
 
-    // Clock gating control
-    input  logic                                             dma_cg_en_i,
-    input  logic                                             zeroer_cg_en_i,
-    input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,
+  // Clock gating control
+  input  logic                                             dma_cg_en_i,
+  input  logic                                             zeroer_cg_en_i,
+  input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,
 
-    // Control interface (from fabric)
-    input  smc_pkg::smc_local_32_64_8_12_axi_req_t           ctrl_axi_req_i,
-    output smc_pkg::smc_local_32_64_8_12_axi_resp_t          ctrl_axi_resp_o,
+  // Control interface (from fabric)
+  input  smc_pkg::smc_local_32_64_8_12_axi_req_t           ctrl_axi_req_i,
+  output smc_pkg::smc_local_32_64_8_12_axi_resp_t          ctrl_axi_resp_o,
 
-    // Master data interface (to fabric)
-    output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t    mst_axi_req_o,
-    input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t   mst_axi_resp_i,
+  // Master data interface (to fabric)
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t    mst_axi_req_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t   mst_axi_resp_i,
 
-    // Status signals
-    output logic                                             dma_busy_o,
-    output logic                                             dma_intp_o,
-    output logic                                             zeroer_busy_o,
-    output logic                                             zeroer_intp_o,
+  // Status signals
+  output logic                                             dma_busy_o,
+  output logic                                             dma_intp_o,
+  output logic                                             zeroer_busy_o,
+  output logic                                             zeroer_intp_o,
 
-    // Clock gater activity indicators
-    output logic                                             dma_frontend_clk_active_o,
-    output logic                                             dma_frontend_bus_active_o,
-    output logic                                             zeroer_clk_active_o,
-    output logic                                             zeroer_bus_active_o
-  );
+  // Clock gater activity indicators
+  output logic                                             dma_frontend_clk_active_o,
+  output logic                                             dma_frontend_bus_active_o,
+  output logic                                             zeroer_clk_active_o,
+  output logic                                             zeroer_bus_active_o
+);
 
   localparam int unsigned NumAccelerators = 2;
 
@@ -112,13 +111,9 @@ module smc_data_accelerator_wrap
   smc_pkg::smc_dma_ctrl_9_64_8_12_axi_req_t  dma_ctrl_axi_req;
   smc_pkg::smc_dma_ctrl_9_64_8_12_axi_resp_t dma_ctrl_axi_resp;
 
-  `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(
-    dma_ctrl_axi_req,
-    dma_ctrl_axi_resp,
-    axi_ctrl_demux_req[smc_pkg::DMA],
-    axi_ctrl_demux_resp[smc_pkg::DMA],
-    smc_pkg::DMA_CTRL_ADDR_W
-  )
+  `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(dma_ctrl_axi_req, dma_ctrl_axi_resp,
+                                     axi_ctrl_demux_req[smc_pkg::DMA],
+                                     axi_ctrl_demux_resp[smc_pkg::DMA], smc_pkg::DMA_CTRL_ADDR_W)
 
   idma_wrapper #(
     .NUM_CTRL_INTERFACES                (1),
@@ -171,12 +166,8 @@ module smc_data_accelerator_wrap
   smc_pkg::smc_zeroer_ctrl_5_64_8_12_axi_resp_t zeroer_ctrl_axi_resp;
 
   `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(
-    zeroer_ctrl_axi_req,
-    zeroer_ctrl_axi_resp,
-    axi_ctrl_demux_req[smc_pkg::ZEROER],
-    axi_ctrl_demux_resp[smc_pkg::ZEROER],
-    smc_pkg::ZEROER_CTRL_ADDR_W
-  )
+      zeroer_ctrl_axi_req, zeroer_ctrl_axi_resp, axi_ctrl_demux_req[smc_pkg::ZEROER],
+      axi_ctrl_demux_resp[smc_pkg::ZEROER], smc_pkg::ZEROER_CTRL_ADDR_W)
 
   zeroer #(
     .zeroer_ctrl_req_t                  (smc_pkg::smc_zeroer_ctrl_5_64_8_12_axi_req_t),

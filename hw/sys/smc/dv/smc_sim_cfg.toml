@@ -6,10 +6,14 @@ schema_version = 1
 # Launch entry: `--dut smc` (discovered by the directory convention).
 # tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration,
 # which carries the CPU memory macros); the bare DUT name selects that
-# wrapper-based TB.
+# wrapper-based TB. Two frameworks share this config and one tb_top:
+# cocotb/PyUVM (default) and SV-UVM (`--framework uvm`, VCS; see the
+# [frameworks.uvm] overlay at the bottom). Shared stage graph + tool list
+# come from profile = "native".
 name = "smc"
 profile = "native"
-description = "SMC OSS cocotb: smc_wrapper under tb_top"
+description = "SMC OSS DV flow (cocotb/PyUVM default, SV-UVM via --framework uvm)"
+default_framework = "cocotb"
 default_tool = "verilator"
 tools = ["vcs", "verilator", "xcelium"]
 
@@ -122,3 +126,95 @@ flags = [
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
+# for both frameworks: +define+UVM (from the profile's [frameworks.uvm] overlay) switches
+# tb/tb_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
+# `include`s uvm/tests/smc_tests.sv.
+[frameworks.uvm]
+description = "SMC SV-UVM smoke flow (VCS)"
+# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on the
+# commercial simulators only (Verilator has no SV-UVM support), so the overlay restates them.
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+# The shared framework library and the AXI VIP SV-UVM layer come from their owned ordered
+# manifests, expanded in listed order AHEAD of this table's own incdirs/sources (dedup-merge)
+# — never hand-copy library or VIP paths here. Compile order stays load-bearing and explicit:
+# the generated filelist emits the expanded `sources` AFTER the bender filelist (DUT packages
+# visible), then `top_file` last:
+#   ocah_lib manifest -> ocah_axi_vip manifest
+#   (each: evidence base -> interface -> collateral -> UVM pkg)
+#   -> library-resolved DUT primitives -> TB collateral -> smc_tb_if -> smc_env_pkg
+#   -> smc_seq_lib_pkg -> tb_top.sv
+# The generated SMC address map (smc_top_addrmap_pkg) the ref model and the CSR sequences
+# read arrives through the bender filelist (Bender.yml target `smc`); listing it here would
+# compile the package twice.
+# smc_env_pkg compiles before smc_seq_lib_pkg: the scenario virtual sequences run on the
+# smc_virtual_sequencer the env package declares.
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_compile.f"
+bender_filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_bender.f"
+work_dir = "hw/sys/smc/dv/build/uvm"
+incdirs = [
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smc/dv/tb",
+  "hw/common/assert",
+  "hw/sys/smc/dv/uvm/env",
+  "hw/sys/smc/dv/uvm/seq_lib",
+  "hw/sys/smc/dv/uvm/tests",
+]
+# This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
+# (the SYS_OUT axi_sim_mem responder and the CPU memory DV binding) is repeated here.
+sources = [
+  # DUT-support primitives the Bender `smc` targets reach only through their exported +incdir
+  # paths: Verilator searches include directories for unresolved modules, VCS compiles only
+  # what a filelist names. This is the set Verilator's dependency file records for the cocotb
+  # build (macro headers excluded: they arrive through +incdir in both flows). prim_cipher_pkg
+  # leads: prim_prince and prim_subst_perm import it, and VCS resolves package scopes at
+  # analysis time (Verilator never elaborates those two, so it never loaded the package).
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subst_perm.sv",
+  "vendor/tenstorrent/tt-hw-debug/upstream/dependencies/common/generic_mem_model.sv",
+  "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem.sv",
+  "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
+  # TB collateral shared with the cocotb flow.
+  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  "hw/sys/smc/dv/tb/smc_tb_if.sv",
+  "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
+  "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+description = "SMC SV-UVM default target"
+build_dir = "hw/sys/smc/dv/build/uvm"
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
+# native profile's [frameworks.uvm] overlay — no per-DUT copy.

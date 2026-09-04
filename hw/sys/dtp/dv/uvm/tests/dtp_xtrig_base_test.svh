@@ -12,20 +12,20 @@
 // dtp_base_test contract with the group knob +DTP_XTRIG_TEST_LOOPS.
 
 class dtp_xtrig_base_test extends dtp_base_test;
-    `uvm_component_utils(dtp_xtrig_base_test)
+  `uvm_component_utils(dtp_xtrig_base_test)
 
-    function new(string name = "dtp_xtrig_base_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "dtp_xtrig_base_test", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    virtual function void configure_test_cfg(dtp_test_cfg cfg);
-        super.configure_test_cfg(cfg);
-        cfg.jtag_activity_required = 1'b0;
-        cfg.set_required_features('{DtpFeatureXtrigCsr});
-    endfunction
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.jtag_activity_required = 1'b0;
+    cfg.set_required_features('{DtpFeatureXtrigCsr});
+  endfunction
 
-    virtual function string group_loops_knob();
-        return "DTP_XTRIG_TEST_LOOPS";
-    endfunction
+  virtual function string group_loops_knob();
+    return "DTP_XTRIG_TEST_LOOPS";
+  endfunction
 
 endclass : dtp_xtrig_base_test

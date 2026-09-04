@@ -17,6 +17,10 @@ asciidoc:
     kroki-fetch-diagram: true
   extensions:
     - asciidoctor-kroki
+runtime:
+  log:
+    # See antora-playbook.yml for why this is raised from the default.
+    failure_level: error
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable

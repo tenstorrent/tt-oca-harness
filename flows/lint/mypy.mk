@@ -14,6 +14,12 @@ ocah_mypy_check_paths = @for path in $(MYPY_PATH); do \
 	[ -e "$(OCAH_ROOT)/$$path" ] || { echo "error: Python path '$$path' does not exist" >&2; exit 1; }; \
 done
 
+ifndef OCAH_MYPY_SKIP_UV
+MYPY := $(OCAH_UV_RUN) mypy
+else
+MYPY := mypy
+endif
+
 ## @section Lint (mypy)
 
 ## Type-check first-party Python sources with mypy. No autofix exists for a
@@ -22,7 +28,7 @@ done
 .PHONY: ocah-lint-python-mypy
 ocah-lint-python-mypy:
 	$(ocah_mypy_check_paths)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked mypy $(MYPY_PATH)
+	$(MYPY) $(MYPY_PATH)
 
 OCAH_PHONY += ocah-lint-python-mypy
 

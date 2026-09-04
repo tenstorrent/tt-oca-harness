@@ -9,27 +9,27 @@
 // dr_scan_wide(). The cocotb twin is seq_lib/dtp_jtag_dr_scan_seq.py.
 
 class dtp_jtag_dr_scan_seq extends dtp_jtag_op_seq;
-    `uvm_object_utils(dtp_jtag_dr_scan_seq)
+  `uvm_object_utils(dtp_jtag_dr_scan_seq)
 
-    bit [63:0]   pattern;
-    int unsigned width = 1;
-    bit          pattern_bits[];
-    // Results.
-    bit [63:0]   observed;
-    bit          observed_bits[];
+  bit [63:0]   pattern;
+  int unsigned width = 1;
+  bit          pattern_bits[];
+  // Results.
+  bit [63:0]   observed;
+  bit          observed_bits[];
 
-    function new(string name = "dtp_jtag_dr_scan_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag_dr_scan_seq");
+    super.new(name);
+  endfunction
 
-    virtual task do_op();
-        if (pattern_bits.size() != 0) begin
-            dr_scan_wide(pattern_bits, observed_bits);
-            return;
-        end
-        if (width == 0 || width > 64)
-            `uvm_fatal(get_type_name(), $sformatf("DR scan width %0d outside 1..64", width))
-        dr_scan(pattern, width, observed);
-    endtask
+  virtual task do_op();
+    if (pattern_bits.size() != 0) begin
+      dr_scan_wide(pattern_bits, observed_bits);
+      return;
+    end
+    if (width == 0 || width > 64)
+      `uvm_fatal(get_type_name(), $sformatf("DR scan width %0d outside 1..64", width))
+    dr_scan(pattern, width, observed);
+  endtask
 
 endclass : dtp_jtag_dr_scan_seq

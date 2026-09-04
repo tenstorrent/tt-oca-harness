@@ -13,6 +13,8 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 ## Lint all (or BLOCK=-selected) hw/sys blocks with verilator --lint-only.
 ## For a single block, prefer `ocah-lint-verilator` from that block's own flow.mk.
 ## @param BLOCK=smu Optional block(s) to lint (space-separated); omit for all
+## @param VERILATOR_LINT_PATH=hw/sys/sep/rtl/efuse Optionally suppress (most) warnings outside
+## a given directory
 .PHONY: ocah-lint-verilator-all
 ocah-lint-verilator-all:
 	$(call ocah_flow_run,ocah-lint-verilator)
@@ -22,7 +24,8 @@ OCAH_PHONY += ocah-lint-verilator-all
 ifdef FLOW_DESIGN
 
 OCAH_LINT_VERILATOR_DIR := build/lint
-OCAH_LINT_VERILATOR_FLIST := $(OCAH_LINT_VERILATOR_DIR)/$(FLOW_DESIGN)_verilator.f
+OCAH_LINT_VERILATOR_FLIST    := $(OCAH_LINT_VERILATOR_DIR)/$(FLOW_DESIGN)_verilator.f
+OCAH_LINT_VERILATOR_FILTER_PATHS  := $(OCAH_LINT_VERILATOR_DIR)/$(FLOW_DESIGN)_verilator_filter_paths.vlt
 
 # Verilator requires +define+FOO=1 syntax; the shared OCAH_FLOW_COMMON_DEFINES
 # uses "-D FOO=1" (space-separated) which slang and bender accept but verilator
@@ -35,6 +38,13 @@ OCAH_LINT_VERILATOR_DEFINES := +define+SYNTHESIS=1
 ocah-lint-verilator-flist:
 	@mkdir -p $(OCAH_LINT_VERILATOR_DIR)
 	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_LINT_VERILATOR_FLIST))
+	@if [ -n '$(VERILATOR_LINT_PATH)' ]; then \
+	    { echo '`verilator_config'; \
+	      grep '^/' $(OCAH_LINT_VERILATOR_FLIST) \
+	      | grep -v '^$(OCAH_ROOT)/$(patsubst %/,%,$(VERILATOR_LINT_PATH))' \
+	      | sed 's|.*|lint_off -file "&"|'; \
+	    } > $(OCAH_LINT_VERILATOR_FILTER_PATHS); \
+	fi
 
 ## Lint this one block with verilator --lint-only.
 .PHONY: ocah-lint-verilator
@@ -48,6 +58,7 @@ ocah-lint-verilator: ocah-lint-verilator-flist
 		-Wno-fatal \
 		+define+VERILATOR \
 		+define+ASSERTS_OFF \
+		$(if $(VERILATOR_LINT_PATH),$(OCAH_LINT_VERILATOR_FILTER_PATHS)) \
 		-f $(OCAH_LINT_VERILATOR_FLIST)
 
 endif
