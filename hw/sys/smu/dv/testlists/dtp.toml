@@ -30,9 +30,9 @@ timeout_sec = 1800
 tags = ["dtp", "boot_stall", "phase1"]
 run_modes = ["dtp"]
 
-# smu_dtp_dtm_local_axi_test → testlists/deferred.toml
+# smu_dtp_dtm_local_axi_test — not ported
 
-# smu_lifecycle_debug_policy_test → testlists/deferred.toml
+# smu_lifecycle_debug_policy_test — not ported
 
 [[tests]]
 name = "smu_clock_stop_coordination_test"
@@ -69,7 +69,7 @@ timeout_sec = 1800
 tags = ["dtp", "reset", "phase1"]
 run_modes = ["dtp"]
 
-# smu_smc_dtp_jtag2axi_security_test → testlists/deferred.toml
+# smu_smc_dtp_jtag2axi_security_test — not ported
 
 # smu_dtp_otp_smc_complete_rw_test → dtp.toml (RESERVED walk; live below)
 
@@ -90,11 +90,11 @@ timeout_sec = 1800
 tags = ["dtp", "reset", "phase2"]
 run_modes = ["dtp"]
 
-# smu_dtp_xtrigger_smc_cla_test → testlists/deferred.toml (needs_real_stimulus)
+# smu_dtp_xtrigger_smc_cla_test — not ported (needs_real_stimulus)
 
-# smu_fabric_smc_dtp_cross_domain_test → testlists/deferred.toml
+# smu_fabric_smc_dtp_cross_domain_test — not ported
 
-# smu_feat_ctrl_partial_bit_corner_test → testlists/deferred.toml
+# smu_feat_ctrl_partial_bit_corner_test — not ported
 
 [[tests]]
 name = "smu_ic_reset_dual_domain_illegal_test"
@@ -122,13 +122,13 @@ timeout_sec = 1800
 tags = ["dtp", "xtrig", "phase3"]
 run_modes = ["dtp"]
 
-# smu_cla_and_xtrig_concurrent_test → testlists/deferred.toml (needs_real_stimulus)
+# smu_cla_and_xtrig_concurrent_test — not ported (needs_real_stimulus)
 
-# smu_clock_stop_jtag_vs_cla_fb_race_test → testlists/deferred.toml (needs_real_stimulus)
+# smu_clock_stop_jtag_vs_cla_fb_race_test — not ported (needs_real_stimulus)
 
 # smu_dtp_jtag2axi_abort_mid_op_test → dtp.toml (OTP +0x80 BUSY abort; fabric recovers)
 
-# smu_feat_ctrl_flip_mid_jtag2axi_test → testlists/deferred.toml
+# smu_feat_ctrl_flip_mid_jtag2axi_test — not ported
 
 # smu_jtag2axi_vs_smn_same_csr_race_test → dtp.toml (J2A||SMN coherent winner)
 # smu_otp_vs_fabric_map_race_test → dtp.toml (OTP||fabric MAP last-writer)

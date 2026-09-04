@@ -7,6 +7,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import cocotb
+
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -116,13 +118,51 @@ LOCAL_FABRIC_READS = [
 ]
 
 
+# Independent floor, written out here rather than computed from the table the
+# body walks. Every entry of LOCAL_FABRIC_READS carries a non-null `expected`, so
+# each read must book one scoreboard VALUE compare -- not merely one access.
+# Other testcases lean on this sweep for their own `covered_by_live` claims,
+# which is exactly why its own gate may not be a self-count.
+LOCAL_FABRIC_MIN_VALUE_CHECKS = 12
+
+
 class smc_local_fabric_csr_depth_test_seq(SmcCsrSeq):
     """Sample representative local-fabric CSR windows with one AXI ingress."""
 
     def __init__(self, name: str = "smc_local_fabric_csr_depth_test_seq") -> None:
         super().__init__(name)
+        self.value_checks: int | None = None
 
     async def body(self) -> None:
+        sb = self.env.scoreboard
+        before = sb.sys_axi_value_checks_seen
         for name, addr, expected, length in LOCAL_FABRIC_READS:
             await self.csr_read(name, addr, expected, length=length)
-        assert self.accesses == len(LOCAL_FABRIC_READS), "local fabric CSR sweep mismatch"
+        # Loop integrity PLUS the scoreboard cross-check: `self.accesses` on its
+        # own is a counter this sequence bumps unconditionally and cannot see a
+        # mis-bound analysis path ([NO-ZERO-ACTIVITY-PASS]).
+        self.assert_all_reachable(len(LOCAL_FABRIC_READS), "local_fabric_csr")
+        # The read-back proof itself lives in SmcScoreboard._check_sys_axi, which
+        # books a value check only after an exact rdata compare has PASSED.
+        # Reconciling that measured tally against the stimulus this sweep issued
+        # is what makes "the twelve registers were read back correctly" a claim
+        # the run can fail: an `expected` that went None, a partial analysis-path
+        # loss, or an item-type change all land here instead of passing silently.
+        self.value_checks = sb.sys_axi_value_checks_seen - before
+        assert self.value_checks >= LOCAL_FABRIC_MIN_VALUE_CHECKS, (
+            f"local_fabric_csr: the scoreboard performed {self.value_checks} "
+            f"exact value compare(s) for this sweep, expected at least "
+            f"{LOCAL_FABRIC_MIN_VALUE_CHECKS} -- one per register in "
+            f"{[entry[0] for entry in LOCAL_FABRIC_READS]}. An access-only sweep "
+            f"proves decode, not register content"
+        )
+        cocotb.log.info(
+            "CHK-LOCAL-FABRIC-CSR-DEPTH: %d local-fabric CSR windows read over "
+            "SEP_IN AXI and %d of them value-compared against their generated "
+            "RDL reset value by the scoreboard (delta measured across this "
+            "sequence, so bring-up traffic cannot be counted toward the floor): "
+            "%s",
+            len(LOCAL_FABRIC_READS),
+            self.value_checks,
+            ", ".join(entry[0] for entry in LOCAL_FABRIC_READS),
+        )

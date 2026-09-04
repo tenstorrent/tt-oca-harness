@@ -90,8 +90,8 @@ python/package:
   cocotbext-axi            OK       0.1.28
   cocotbext-jtag           OK       0.4.0
   cocotbext-i2c            OK       0.1.2
-  namespace bridge         OK       /home/daniel/Repos/TT_nix_wrapper/tt-oca-harness/build/dv/python
-  namespace PYTHONPATH     OK       /home/daniel/Repos/TT_nix_wrapper/tt-oca-harness/build/dv/python
+  namespace bridge         OK       <repo-root>/build/dv/python
+  namespace PYTHONPATH     OK       <repo-root>/build/dv/python
   import ocah_axi_vip      OK       import OK
   import sep               OK       import OK
   import sep.cocotb.env    OK       import OK

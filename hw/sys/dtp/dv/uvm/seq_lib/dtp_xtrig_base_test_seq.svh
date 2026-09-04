@@ -9,7 +9,7 @@
 //
 //   * the XTRIG CSR map (dtp_types: CTM CT_SRC select registers, CTP
 //     config/status/stretch registers) and typed write/read/check accessors,
-//   * the CTM reference model (env dtp_xtrig_ctm_ref_model, the cocotb
+//   * the CTM routing model (env dtp_xtrig_ctm_model, the cocotb
 //     DtpCtmRefModel twin) cross-checked on every programmed route,
 //   * the cross-trigger pin surface over dtp_tb_if (CTM src/dst req-ack
 //     pairs for the internal CTs, CTP pad din/dout/en quartets), with
@@ -82,7 +82,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
 
   // Per-pass evidence and routing model.
   ocah_checker            m_check;
-  dtp_xtrig_ctm_ref_model ctm_model;
+  dtp_xtrig_ctm_model ctm_model;
   protected bit           m_negative;
 
   function new(string name = "dtp_xtrig_base_test_seq");

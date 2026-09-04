@@ -50,7 +50,9 @@ Already in place at the time this plan was written:
 `test_smc_oss_reset_sanity`, `test_smc_oss_i2c_cg_sanity`
 * `tb/tb_top.sv` clocks / reset / powergood + I2C observability outputs
 * `testlists/smoke.toml` groups: `smoke`, `i2c`, `pyuvm`
-* `smc_sim_cfg.toml` `SYNTHESIS` define present
+* `smc_sim_cfg.toml` no longer sets `SYNTHESIS` on any tool (VCS/Xcelium
+run OpenTitan and PeakRDL SVA; PULP stays off via the shared profile,
+same as SEP; Verilator still gates the rest off)
 * `pyuvm 4.0.1` for Python 3.11
 
 Known blocker at that time:

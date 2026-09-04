@@ -131,7 +131,11 @@ int main(void) {
 
     // Poll LOG_CTRL[0] for hwclr (timeout ~200000 polls)
     {
-        uint32_t timeout = 200000u;
+        /* Measured ~4 us per register read in this TB, so 200000 polls is
+         * ~800 ms of sim -- the harness timeout always fired first and this
+         * test_fail() could never be reached. 200 polls (~0.8 ms) is still
+         * far more than a 16-byte entry needs, and it fits the budget. */
+        uint32_t timeout = 200u;
         while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
             timeout--;
         }
@@ -269,7 +273,11 @@ int main(void) {
 
     // Let replica[1] complete naturally
     {
-        uint32_t timeout = 200000u;
+        /* Measured ~4 us per register read in this TB, so 200000 polls is
+         * ~800 ms of sim -- the harness timeout always fired first and this
+         * test_fail() could never be reached. 200 polls (~0.8 ms) is still
+         * far more than a 16-byte entry needs, and it fits the budget. */
+        uint32_t timeout = 200u;
         while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
             timeout--;
         }

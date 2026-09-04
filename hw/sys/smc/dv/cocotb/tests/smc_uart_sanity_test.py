@@ -23,6 +23,11 @@ class smc_uart_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
+            # Conservative stimulus floor: 66 accesses observed in the retained
+            # regression runs; the LSR/RBR polls are a timing-dependent
+            # remainder, so the floor is set below it. Literal here, not read
+            # from `seq.accesses`.
+            min_csr_accesses=52,
             csr_accesses=seq.accesses,
             proxy=False,
             details=f"sanity pairs={seq.pairs_ok}",

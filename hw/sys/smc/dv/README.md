@@ -12,7 +12,7 @@ requirement-to-test matrix (unsigned; #496).
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
-demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
+demos (e.g. hardcoded DFD capture token) are not ported
 — not reportable as feature PASS. `smc_i3c_to_fabric_test` is
 **decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
 in `smoke`, `canonical_top*`, or `project_p0`. Run it via `i3c_depth`
@@ -22,6 +22,30 @@ or by name. Checklist:
 call sites need a one-line rationale comment at the call (what hangs without
 it, and why that is still a real DUT path). Inventory: `smc_*_utils.py` /
 cluster helpers — do not add silently in PRs.
+
+## Present but not enrolled
+
+These modules exist under `cocotb/tests/` and are not in `testlists/all.toml`.
+The old `testlists/deferred.toml` ledger is gone; the blocker tag lives in
+each file's docstring (`# deferred: <reason>`). SMU's matching catalog is
+`hw/sys/smu/dv/cocotb/tests_deferred/`.
+
+| Test | Reason |
+|------|--------|
+| `smc_i3c_ccc_ibi_full_test` | `needs_i3c_dat_dct` — TB DAT/DCT ram removed |
+| `smc_macro_axil_routing_test` | `needs_dtp_csr_sub` / `rtl_placeholder` — DTP CSR idle; pll/pvt OKAY wraps |
+| `smc_pll_pvt_clock_config_test` | `rtl_placeholder` |
+| `smc_pll_dvfs_depth_test` | `rtl_placeholder` |
+| `smc_pll_cgm_awm_config_test` | `rtl_placeholder` |
+| `smc_pll_awm_freq_sweep_test` | `rtl_placeholder` |
+| `smc_pvt_analog_sensor_test` | `rtl_placeholder` |
+| `smc_pvt_droop_test` | `rtl_placeholder` |
+| `smc_sideband_avsbus_octs_bfm_test` | `fake_bfm` — pad BFM retired |
+| `smc_dfd_dbs_fault_inject_test` | `tb_glue` — hardcoded capture token, not `smc_dfd_wrap` |
+
+Two enrolled carve-outs keep their measured reason next to the stimulus:
+`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7; #1235) and the
+`smc_clint_csr_test` docstring (cluster-local fold; #1237 / #1249).
 
 ## Single DUT
 
@@ -37,7 +61,7 @@ so the bare DUT name selects the wrapper-based TB.
 | TB top | `smc_uvm_top` (`tb/tb_top.sv`) |
 | DUT | `smc_wrapper` |
 | cocotb | `cocotb/` (`SmcEnv`) |
-| testlist | `testlists/all.toml` (deferred: `testlists/deferred.toml`, not included) |
+| testlist | `testlists/all.toml` |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
 | still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR / I3C DAT ports **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |

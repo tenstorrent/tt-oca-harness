@@ -6,7 +6,7 @@ Clamp mux exists in smc_4core_cpu (wdt_reset_raw x cluster_boundary_isolate).
 Was: Force those internals via TB pins to contrast clamp vs passthrough on
 WDOGIP0. Force pins removed — no product pre-clamp observe/inject pin.
 Re-enable when RTL exposes a legal port or the scenario is proven via
-frontdoor reset/WDT programming only. See testlists/deferred.toml."""
+frontdoor reset/WDT programming only. Not ported."""
 
 from __future__ import annotations
 

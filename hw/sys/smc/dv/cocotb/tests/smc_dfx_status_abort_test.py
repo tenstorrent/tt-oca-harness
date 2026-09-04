@@ -5,7 +5,10 @@
 from __future__ import annotations
 
 import pyuvm
-from seq_lib.smc_dfx_status_abort_test_seq import smc_dfx_status_abort_test_seq
+from seq_lib.smc_dfx_status_abort_test_seq import (
+    EXPECTED_VALUE_CHECKS,
+    smc_dfx_status_abort_test_seq,
+)
 from smc_base_test import smc_base_test
 
 
@@ -18,6 +21,31 @@ class smc_dfx_status_abort_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_dfx_status_abort_test_seq("dfx_status_abort_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.idle_ok and seq.repair_ok and seq.mbist_ok, (
-            f"DFX abort incomplete idle={seq.idle_ok} repair={seq.repair_ok} mbist={seq.mbist_ok}"
+        # WHERE THE TEETH ARE, and what this gate can and cannot add.
+        #
+        # In the sequence: each stage is an exact STATUS_SMU equality reached
+        # inside a bounded poll loop that RAISES on expiry, and the two sticky
+        # readbacks carry `expected=` so the scoreboard compares them. Those are
+        # the DUT-sensitive checks.
+        #
+        # A gate here that restates the observed words, their ordering or their
+        # accumulation adds nothing: with all three stages pinned by exact
+        # compares upstream, "each stage is a superset of the previous" is
+        # arithmetic on constants, and any count of the recorded stages is a
+        # straight-line postcondition of a body that already raised on every
+        # other path ([NO-ALWAYS-PASS-CHECKER]).
+        #
+        # What is NOT determined upstream is whether those compares ever reached
+        # the scoreboard: `csr_read` does not compare `expected` itself. The
+        # sequence asserts that against `sys_axi_value_checks_seen`, and this
+        # gate re-reads the scoreboard directly so the testcase-level verdict
+        # rests on the analysis path having been bound, not on a value the
+        # sequence copied out of it.
+        sb = self.env.scoreboard
+        assert sb.sys_axi_value_checks_seen >= EXPECTED_VALUE_CHECKS, (
+            f"DFX abort: the scoreboard booked "
+            f"{sb.sys_axi_value_checks_seen} value compare(s), expected at "
+            f"least {EXPECTED_VALUE_CHECKS} for the two sticky readbacks "
+            f"(observed STATUS_SMU words "
+            f"{[hex(v) for v in seq.status_progression]})"
         )

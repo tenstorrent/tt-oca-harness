@@ -22,6 +22,10 @@ class smc_mailbox_inbound_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.MAILBOX,
             type(self).__name__,
+            # Directed stimulus floor: 6 SEP_IN AXI inbound-mailbox
+            # STATUS/ERROR/IRQEN accesses. Literal here, not read from
+            # `seq.accesses`.
+            min_csr_accesses=6,
             csr_accesses=seq.accesses,
             proxy=False,
             details="P1 coverage-gap: inbound mailbox 0 STATUS/ERROR/IRQEN precheck",

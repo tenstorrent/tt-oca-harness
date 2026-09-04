@@ -156,6 +156,55 @@ def _field_mask(path: Path, symbol: str) -> int:
 # --- Absolute addresses used by SMC clock-gating / DMA activity tests ---
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
+# --- smc_local_fabric address fold -----------------------------------------
+# Every request entering the local fabric has its upper 7 address bits replaced
+# by LOCAL_BASE[31:25]:
+#   hw/sys/smc/rtl/smc_fabric/smc_local_fabric/rtl/smc_local_fabric.sv:66-78
+#   sep_in_req_masked.ar.addr = {local_base_addr_i[31:25],
+#                                sep_in_axi_req_i.ar.addr[24:0]};
+# so only addr[24:0] of a SEP_IN address survives to the decoder. `LOCAL_BASE`
+# is `SMC_BASE_CONFIG.LOCAL_BASE` (smc_base.sv:381 -> smc_fabric.sv:141); its
+# reset is taken from the generated RDL header, not hand-copied, so a map change
+# moves the model with the hardware ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+LOCAL_FABRIC_KEEP_MASK = 0x01FF_FFFF  # addr[24:0] survive the fold
+LOCAL_FABRIC_REPLACE_MASK = 0xFE00_0000  # addr[31:25] are overwritten
+LOCAL_BASE_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
+
+
+def local_fabric_masked_addr(addr: int, local_base: int | None = None) -> int:
+    """Address a SEP_IN/system/local request arrives at after the fold above."""
+    base = LOCAL_BASE_RESET if local_base is None else local_base
+    return (base & LOCAL_FABRIC_REPLACE_MASK) | (addr & LOCAL_FABRIC_KEEP_MASK)
+
+
+def reg_reset_word(header: Path, block: str, reg: str) -> int:
+    """Compose a register's reset word from its generated ``_reset``/``_bp`` fields.
+
+    Every field the RDL declares contributes, so the golden tracks the RDL
+    instead of being a hand-transcribed literal that has to be re-checked by a
+    reader ([EXACT-EXPECTATION] / [INDEPENDENT-EXPECTED-MODEL]).
+    """
+    table = _parse_simple_defines(header)
+    prefix = f"{block}__{reg}__"
+    suffix = "_reset"
+    word = 0
+    seen = 0
+    for name, value in table.items():
+        if not (name.startswith(prefix) and name.endswith(suffix)):
+            continue
+        field = name[len(prefix) : -len(suffix)]
+        word |= value << table[f"{prefix}{field}_bp"]
+        seen += 1
+    if not seen:
+        raise KeyError(f"no {prefix}*{suffix} fields in {header}")
+    return word
+
+
+# SMC_BASE_CONFIG reset words used as goldens by the fabric/decode testcases.
+GLOBAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "GLOBAL_BASE")
+REGION_SIZE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "REGION_SIZE")
+CLOCK_GATE_CONTROL_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "CLOCK_GATE_CONTROL")
+
 DMA_CTRL_BASE = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR")
 
 DMA_CTRL_CONFIG = DMA_CTRL_BASE + dma_ctrl_offset("DMA_CTRL_CONFIG_BASE_ADDR")
@@ -389,4 +438,13 @@ DFX_MEM_REPAIR_ABORT = dfx_status_u32("DFX_CTRL_STATUS__STATUS__MEM_REPAIR_ABORT
 DFX_MBIST_DONE = dfx_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_DONE_bm")
 DFX_MBIST_PASS = dfx_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_PASS_bm")
 DFX_MBIST_ABORT = dfx_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm")
+# The STATUS_SMU word an SMC bench shows when neither engine has aborted. The
+# bit POSITIONS are authoritative (generated `dfx_ctrl_status.h`); the choice of
+# which four are set is a property of THIS bench, not of the DFX block:
+# `hw/sys/smc/dv/tb/tb_top.sv:1314-1318` ties `mem_repair_done_i`,
+# `mem_repair_success_i`, `mbist_done_i` and `mbist_pass_i` to `1'b1` (without
+# an external BISR/MBIST agent the boot sequencer would otherwise wait forever),
+# and leaves the two abort inputs to the sequences. Any testcase using this
+# constant as a golden is asserting the tie-off block above, so a change there
+# must move this constant with it.
 DFX_STATUS_IDLE = DFX_MEM_REPAIR_DONE | DFX_MEM_REPAIR_SUCCESS | DFX_MBIST_DONE | DFX_MBIST_PASS

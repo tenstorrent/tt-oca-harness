@@ -20,6 +20,9 @@ class dtp_env_cfg extends ocah_env_cfg;
   // TAP FSM checker: a JTAG-free run is legitimate only for the
   // cross-trigger group.
   bit jtag_activity_required = 1'b1;
+  // Negative validation of the jtag2axi_req reference model: every
+  // predicted address is corrupted, so the scoreboard pairing must fail.
+  bit jtag2axi_ref_model_negative;
   // Evidence policy of the aggregate JTAG recorder and of the passive AXI
   // recorders keyed by bridge name.
   dtp_evidence_policy_t jtag_policy;
@@ -35,6 +38,7 @@ class dtp_env_cfg extends ocah_env_cfg;
     c.tck_half_period_ns     = t.tck_period_ns / 2;
     c.stap_ds_attach_mask    = t.stap_ds_attach_mask;
     c.jtag_activity_required = t.jtag_activity_required;
+    c.jtag2axi_ref_model_negative = t.jtag2axi_ref_model_negative;
     c.jtag_policy            = t.jtag_policy;
     c.axi_policy             = t.axi_policy;
     c.required_features      = t.required_features;
