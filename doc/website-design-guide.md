@@ -276,6 +276,8 @@ on the dashboard mockup and similar status displays — legibility of the pass/f
 - **Missing PDFs degrade gracefully, not fatally.**
 The staging step that copies each component's PDF into the deployed site's downloads area checks for the file's existence first; 
 a missing PDF produces a build-time warning and is skipped, rather than failing the entire site build.
+- **Datasheets are standalone PDF products, not Antora components.**
+The shared source structure and theme live under `doc/datasheets/`; `make ocah-doc-datasheets-pdf` validates and renders the available sheets, and the normal staging step copies them into the site's `downloads/` directory. Datasheet links for products without an authored sheet continue to degrade gracefully as described above.
 - **No CSS `@import` chains** 
 Every stylesheet is linked explicitly, to keep it visible and avoid silent link failures.
 
