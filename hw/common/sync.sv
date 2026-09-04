@@ -19,12 +19,12 @@
 // -------------------------------------------------------------
 
 module sync #(
-    parameter WIDTH = 1,
-    parameter STAGES = 3,
-    parameter ResetValue = 0,
-    parameter RANDOM_DELAY_GRAY_CODE = 0,
-    parameter USE_ASYNC_RST_FF = 1,    // 0: Synchronous reset FF, 1: Asynchronous reset FF
-    parameter USE_NON_RST_FF = 0       // 0: Non Reset FF, 1:Set/Clr FF based on ResetValue 
+    parameter int unsigned WIDTH = 1,
+    parameter int unsigned STAGES = 3,
+    parameter int unsigned ResetValue = 0,
+    parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0,
+    parameter bit USE_ASYNC_RST_FF = 1'b1,  // 0: Synchronous reset FF, 1: Asynchronous reset FF
+    parameter bit USE_NON_RST_FF = 1'b0     // 0: Non Reset FF, 1:Set/Clr FF based on ResetValue
 ) (
     input  logic clk_i,
     input  logic rst_ni,

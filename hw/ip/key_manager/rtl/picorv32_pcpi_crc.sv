@@ -8,16 +8,16 @@
  */
 
 module picorv32_pcpi_crc (
-  input logic        clk_i,
-  input logic        rst_ni,
-  input logic        pcpi_valid_i,
-  input logic [31:0] pcpi_insn_i,
-  input logic [31:0] pcpi_rs1_i,
-  input logic [31:0] pcpi_rs2_i,
-  output logic            pcpi_wr_o,
-  output logic [31:0]     pcpi_rd_o,
-  output logic            pcpi_wait_o,
-  output logic            pcpi_ready_o
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        pcpi_valid_i,
+  input  logic [31:0] pcpi_insn_i,
+  input  logic [31:0] pcpi_rs1_i,
+  input  logic [31:0] pcpi_rs2_i,
+  output logic        pcpi_wr_o,
+  output logic [31:0] pcpi_rd_o,
+  output logic        pcpi_wait_o,
+  output logic        pcpi_ready_o
 );
 
   `include "prim_assert.sv"

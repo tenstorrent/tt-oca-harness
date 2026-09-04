@@ -460,6 +460,8 @@ jobs:
           level: warning
           name: lint-sv-verible
           fail-level: none
+      - name: Check SystemVerilog formatting and declaration spacing
+        run: make ocah-format-sv-check
 
   lint-sv-slang:
     needs: [diff-class, setup-tools]
