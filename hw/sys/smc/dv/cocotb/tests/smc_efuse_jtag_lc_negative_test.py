@@ -126,7 +126,6 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         return _resp_code(event.data)
 
     async def _check_read(self, label: str, cls: str, addr: int, *, expect_block: bool) -> None:
-        self.checks += 1
         rdata, code = await self._read(addr)
         # Timeout on a claimed path is a hard fail ([TIMEOUT-MUST-FAIL]).
         if rdata is None or code is None:
@@ -134,6 +133,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
                 f"[{label}] {cls} read @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
+        # Counted only once the access came back. Incrementing before the
+        # response made the tally count attempts, so a run where every access
+        # timed out still reported the full count to the evidence record.
+        self.checks += 1
         blocked = code == RESP_DECERR
         self.logger.info(
             "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s blocked=%s (exp_block=%s)",
@@ -177,13 +180,13 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             )
 
     async def _check_write(self, label: str, addr: int, *, expect_block: bool) -> None:
-        self.checks += 1
         code = await self._write(addr, 0xA5A5_5A5A)
         if code is None:
             self.errors.append(
                 f"[{label}] write @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
+        self.checks += 1
         blocked = code == RESP_DECERR
         self.logger.info(
             "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
