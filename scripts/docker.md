@@ -16,7 +16,7 @@ docker-run.sh shell
 docker-run.sh shell-here
 docker-run.sh nixos-shell
 docker-run.sh doc-html [trm|integrator|programmer|appnotes|home|starting|all]
-docker-run.sh doc-pdf  [trm|integrator|programmer|appnotes|starting]
+docker-run.sh doc-pdf  [trm|integrator|programmer|appnotes|starting|datasheets]
 docker-run.sh doc-stage
 ```
 

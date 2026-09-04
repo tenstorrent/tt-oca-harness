@@ -1,0 +1,37 @@
+<!--
+SPDX-License-Identifier: Apache-2.0
+SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+-->
+
+# OCAH datasheets
+
+These are short product summaries for SoC and chiplet integrators. They are not
+substitutes for the Integrator Guide or Technical Reference Manual. Each sheet
+uses a common two-page structure derived from the way mature commercial IP
+datasheets expose highlights, architecture, stable specifications, features,
+integration dependencies, verification status, and deliverables.
+
+The OCAH structure deliberately replaces procurement-oriented “Target
+Applications” and process-oriented “Technologies” panels with “Integration fit”
+and “Integration dependencies”. Claims must distinguish:
+
+- an architectural capability evidenced by RTL;
+- a value in the checked-in reference configuration;
+- an implementation result that depends on process and physical design; and
+- a verification or compliance claim that requires explicit evidence.
+
+Copy `template.adoc` when starting a product. Retain its section markers, set
+the status to `Beta`, cite evidence in `content-readiness.md`, and do not put
+unresolved placeholders in a release source. Keep the rendered result to one or
+two US Letter pages.
+
+Build and validate all available sheets from the repository root:
+
+```console
+make ocah-doc-datasheets-pdf
+# or, without a host Ruby installation:
+./scripts/docker-run.sh doc-pdf datasheets
+```
+
+The PDFs are written to `doc/datasheets/dist/` and staged into the website's
+`downloads/` directory by the normal GitHub Pages staging targets.
