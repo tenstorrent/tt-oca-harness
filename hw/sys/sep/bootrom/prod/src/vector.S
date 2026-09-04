@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/* OCH SEP Boot ROM
+/* OCAH SEP Boot ROM
  *
  * Code executes from Boot ROM (0x10040000) via the IFU AXI demux.
  * Data (.rodata/.data/.bss/stack) resides in DCCM (0xC0040000).

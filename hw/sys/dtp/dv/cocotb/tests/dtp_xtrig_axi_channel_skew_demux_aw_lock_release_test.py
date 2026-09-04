@@ -14,6 +14,6 @@ class dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "axi_channel_skew_demux_aw_lock_release",
             scenario="axi_channel_skew_demux_aw_lock_release",
-            specific_env="DTP_XTRIG_AXI_CHANNEL_SKEW_DEMUX_AW_LOCK_RELEASE_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_XTRIG_AXI_CHANNEL_SKEW_DEMUX_AW_LOCK_RELEASE_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

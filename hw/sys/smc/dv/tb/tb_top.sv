@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMC OSS TB top for the native cocotb / PyUVM flow.
+// SMC OSS TB top shared by the native cocotb / PyUVM flow and the
+// SystemVerilog UVM flow. ONE module, two shapes:
+//   * default (cocotb, `--dut smc`): the pin-level ANSI port list cocotb
+//     drives and samples;
+//   * `UVM` (SV-UVM, `--dut smc --framework uvm`): the port list is replaced
+//     by internal TB signals and the harness block at the end of the module
+//     adds the clocks, the shared-VIP interfaces, quiescent tie-offs,
+//     uvm_config_db publication, and run_test(). Test classes are compiled
+//     via `include "smc_tests.sv".
+// Every TB signal is declared once, in tb/smc_tb_signal_list.svh, and
+// expanded into the selected shape by the SMC_TB_* macros below.
 //
 // Instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration). File name is
 // tb_top.sv / module smc_uvm_top so `--dut smc_wrapper` +
@@ -21,480 +31,115 @@
 
 `timescale 1ps/1fs
 
+// Shape selection for smc_tb_signal_list.svh: the same list expands as the
+// ANSI port list (cocotb) or as internal TB signals (`UVM`). The macros live
+// only from here to the `undef block after the module header.
+`ifndef UVM
+    // cocotb shape: every entry is a pin-level ANSI port, published to cocotb
+    // through the Verilator metacomment (smc_public_scope.vlt publishes the
+    // whole module as well).
+    `define SMC_TB_IN_FIRST(dtype, name) input  wire dtype name /*verilator public_flat_rw*/
+    `define SMC_TB_IN(dtype, name)     , input  wire dtype name /*verilator public_flat_rw*/
+    `define SMC_TB_OUT(dtype, name)    , output dtype name /*verilator public_flat_rw*/
+`else
+    // SV-UVM shape: every entry is an internal TB signal for the harness
+    // block at the end of this module.
+    `define SMC_TB_IN_FIRST(dtype, name) dtype name;
+    `define SMC_TB_IN(dtype, name) dtype name;
+    `define SMC_TB_OUT(dtype, name) dtype name;
+`endif
+
 module smc_uvm_top
     import smc_pkg::*;
     import smc_efuse_pkg::*;
     import smc_4core_cpu_pkg::*;
+`ifndef UVM
 (
-    input wire logic clk_smc_i /*verilator public_flat_rw*/,
-    input wire logic clk_ref_i /*verilator public_flat_rw*/,
-    input wire logic clk_periph_i /*verilator public_flat_rw*/,
-
-    input wire logic powergood_i /*verilator public_flat_rw*/,
-    input wire logic rst_cold_ni /*verilator public_flat_rw*/,
-    input wire logic rst_cool_ni /*verilator public_flat_rw*/,
-
-    output logic powergood_stable_o /*verilator public_flat_rw*/,
-    output logic rst_cold_stable_ref_clk_no /*verilator public_flat_rw*/,
-    output logic rst_primary_ref_clk_no /*verilator public_flat_rw*/,
-    output logic rst_primary_smc_clk_no /*verilator public_flat_rw*/,
-    output logic rst_wdt_smc_clk_no /*verilator public_flat_rw*/,
-
-    output logic [3:0] tb_i2c_debug_lo /*verilator public_flat_rw*/,
-    output logic       tb_i2c_cg_en /*verilator public_flat_rw*/,
-    // DMA clock-gating LIVE observability (SMC_DMA_CG_ACTIVITY_TEST).
-    // Lifted to TB top because smc_public_scope.vlt only publishes smc_uvm_top.
-    output logic       tb_dma_cg_en /*verilator public_flat_rw*/,
-    output logic       tb_dma_gated_clk /*verilator public_flat_rw*/,
-    output logic       tb_dma_busy /*verilator public_flat_rw*/,
-    output logic       tb_dma_frontend_busy /*verilator public_flat_rw*/,
-    output logic       tb_dma_backend_busy /*verilator public_flat_rw*/,
-    // Gater busy_i (frontend_wakeup | backend_busy) — T0 for hyst measure.
-    output logic       tb_dma_gater_busy /*verilator public_flat_rw*/,
-    // Zeroer clock-gating LIVE observability + DFT test_en drive.
-    output logic       tb_zeroer_cg_en /*verilator public_flat_rw*/,
-    output logic       tb_zeroer_gated_axi_clk /*verilator public_flat_rw*/,
-    output logic       tb_zeroer_gated_reg_clk /*verilator public_flat_rw*/,
-    output logic       tb_zeroer_busy /*verilator public_flat_rw*/,
-    // Zeroer AXI-Lite snoop bus_active — T0 for reg_clk resume / access window.
-    output logic       tb_zeroer_bus_active /*verilator public_flat_rw*/,
-    input  wire logic  tb_test_en_i /*verilator public_flat_rw*/,
-    input  wire logic  tb_i2c0_scl_ext_low /*verilator public_flat_rw*/,
-    input  wire logic  tb_i2c0_sda_ext_low /*verilator public_flat_rw*/,
-    output logic       tb_i2c0_scl /*verilator public_flat_rw*/,
-    output logic       tb_i2c0_sda /*verilator public_flat_rw*/,
-    output logic       tb_i2c0_scl_dut_low /*verilator public_flat_rw*/,
-    output logic       tb_i2c0_sda_dut_low /*verilator public_flat_rw*/,
-    // I2C0 SMBALERT# (pad 39): active-low; pullup-high when DUT OE released.
-    output logic       tb_i2c0_smbalert /*verilator public_flat_rw*/,
-    // LSIO enable + controller-side sense (CDC'd). Host traffic must wait until
-    // enable=1 and scl_i tracks the OD bus, else FMT sits unconsumed.
-    output logic       tb_i2c0_enable /*verilator public_flat_rw*/,
-    output logic       tb_i2c0_scl_i /*verilator public_flat_rw*/,
-    output logic       tb_i2c0_sda_i /*verilator public_flat_rw*/,
-    input  wire logic  tb_i3c0_scl_ext_low /*verilator public_flat_rw*/,
-    input  wire logic  tb_i3c0_sda_ext_low /*verilator public_flat_rw*/,
-    output logic       tb_i3c0_scl /*verilator public_flat_rw*/,
-    output logic       tb_i3c0_sda /*verilator public_flat_rw*/,
-    output logic       tb_i3c0_scl_dut_low /*verilator public_flat_rw*/,
-    output logic       tb_i3c0_sda_dut_low /*verilator public_flat_rw*/,
-    input  wire logic  tb_cpu_jtag_tck /*verilator public_flat_rw*/,
-    input  wire logic  tb_cpu_jtag_tms /*verilator public_flat_rw*/,
-    input  wire logic  tb_cpu_jtag_tdi /*verilator public_flat_rw*/,
-    input  wire logic  tb_cpu_jtag_reset /*verilator public_flat_rw*/,
-    output logic       tb_cpu_jtag_tdo /*verilator public_flat_rw*/,
-
-    // UART0 pad-level split-port for the P2 Phase A UART loopback:
-    //   pad 11 = UART0 RX (external drive -> DUT input)
-    //   pad 12 = UART0 TX (DUT output -> external observe)
-    input  wire logic tb_uart0_rx_ext_drive /*verilator public_flat_rw*/,
-    output logic      tb_uart0_tx_from_dut /*verilator public_flat_rw*/,
-
-    // Telemetry ATB receiver 0 pad lift (U4-6). Cocotb drives beats into
-    // telemetry_at*_i[0]; receivers 1/2 stay tied off.
-    input  wire logic [7:0] tb_telemetry0_atdata /*verilator public_flat_rw*/,
-    input  wire logic [6:0] tb_telemetry0_atid /*verilator public_flat_rw*/,
-    input  wire logic       tb_telemetry0_atvalid /*verilator public_flat_rw*/,
-    output logic            tb_telemetry0_atready /*verilator public_flat_rw*/,
-    input  wire logic       tb_telemetry0_afready /*verilator public_flat_rw*/,
-    output logic            tb_telemetry0_afvalid /*verilator public_flat_rw*/,
-
-    // SPI octal-flash pad lift (U2-1/U2-2). Cocotb drives tb_spi_* as the
-    // external SPI host into the padring mux; flash MISO returns via
-    // tb_spi_miso_ext -> pad2core[0] -> spi_rxd_o[0].
-    input  wire logic       tb_spi_enable /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_clk /*verilator public_flat_rw*/,
-    input  wire logic [7:0] tb_spi_txd /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_cs_n /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_cs_oe_n /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_cs_ie_n /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_clk_ie_n /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_clk_oe_n /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_dqs_ie_n /*verilator public_flat_rw*/,
-    input  wire logic       tb_spi_dqs_oe_n /*verilator public_flat_rw*/,
-    input  wire logic [7:0] tb_spi_dq_ie_n /*verilator public_flat_rw*/,
-    input  wire logic [7:0] tb_spi_dq_oe_n /*verilator public_flat_rw*/,
-    // Flash-BFM MISO into pad 0 (DQ0). Driven by OcahSepSpiFlash / cocotb.
-    input  wire logic       tb_spi_miso_ext /*verilator public_flat_rw*/,
-    output logic [7:0]      tb_spi_rxd /*verilator public_flat_rw*/,
-    output logic            tb_spi_rxds /*verilator public_flat_rw*/,
-    output logic            tb_spi_mem_rebar_ipad /*verilator public_flat_rw*/,
-
-    output logic tb_sync_irq /*verilator public_flat_rw*/,
-    output logic tb_gpio_irq_any /*verilator public_flat_rw*/,
-    // AXI hang-detector irqs (smc_base combinational OR + per-master).
-    // Lifted so cocotb can observe irq_test / independence without Force.
-    output logic tb_axi_hang_irq /*verilator public_flat_rw*/,
-    output logic tb_axi_hang_irq_sys /*verilator public_flat_rw*/,
-    output logic tb_axi_hang_irq_sep /*verilator public_flat_rw*/,
-    output logic tb_axi_hang_irq_data /*verilator public_flat_rw*/,
-    // Hang IRQ on its way to the PLIC: the peripheral_interrupts[31] slot in
-    // smc_peripherals, and the cpu_interrupts bit that is the PLIC source pin
-    // on u_smc_cpu_wrapper.interrupts_i. PLIC source ID is that bit index + 1.
-    output logic tb_axi_hang_irq_periph31 /*verilator public_flat_rw*/,
-    output logic tb_axi_hang_irq_plic_src /*verilator public_flat_rw*/,
-    // Boot-stall product pins: pad vs JTAG override mux, sticky processed out.
-    output logic tb_boot_stall_combined_o /*verilator public_flat_rw*/,
-    input  wire logic tb_boot_stall_jtag_ovrd_i /*verilator public_flat_rw*/,
-    input  wire logic tb_boot_stall_jtag_val_i /*verilator public_flat_rw*/,
-    // DUT-side pad-57 sample via smc.pad2core_i (post pad-shim), not
-    // gpio_pad_io / tb_pad_drive_* echo. Do not XMR-drive pad2core_i — it is
-    // already driven by smc_ip_integration; this is observe-only.
-    output logic tb_gpio_pad57 /*verilator public_flat_rw*/,
-    // SEP WDT reset into SMC (smc_wrapper.sep_wdt_reset_n_i). Idle 1.
-    input  wire logic tb_sep_wdt_reset_n /*verilator public_flat_rw*/,
-    // PCIe FLR PF-active (smc_wrapper.cfg_flr_pf_active_i). Idle 0.
-    // Unique vs rst_cool_ni / smc_flr_sanity cool-reset proxy.
-    input  wire logic        tb_cfg_flr_pf_active /*verilator public_flat_rw*/,
-    output logic [31:0]      tb_isolate_req_o /*verilator public_flat_rw*/,
-    output logic             tb_skip_mem_repair_o /*verilator public_flat_rw*/,
-    // Cool-reset output generated by the FLR FSM (reset_unit.rst_cool_no).
-    output logic             tb_rst_cool_from_flr /*verilator public_flat_rw*/,
-    // NDM reset handshake (smc_wrapper.ndmreset_*). Width = CPU_CLUSTER_COUNT.
-    input  wire logic [3:0] tb_ndmreset_request /*verilator public_flat_rw*/,
-    output logic [3:0]      tb_ndmreset_process /*verilator public_flat_rw*/,
-    output logic            tb_ndmreset_irq /*verilator public_flat_rw*/,
-    output logic tb_uart_irq_any /*verilator public_flat_rw*/,
-    output logic tb_mailbox_irq_any /*verilator public_flat_rw*/,
-    output logic tb_avsbus_irq /*verilator public_flat_rw*/,
-    output logic tb_telemetry_irq_any /*verilator public_flat_rw*/,
-    // eFuse locked-shadow access (smc_peripherals peripheral_interrupts[28]).
-    output logic tb_efuse_locked_access_irq /*verilator public_flat_rw*/,
-    // PVT temperature interrupt pin (smc_wrapper.temp_interrupt_i).
-    // Routes to peripheral_interrupts[27]. Idle 0.
-    input  wire logic tb_temp_interrupt_i /*verilator public_flat_rw*/,
-    output logic      tb_temp_interrupt_irq /*verilator public_flat_rw*/,
-    // One bit of product ext_interrupts_i (wrapper width 256). Idle 0.
-    // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
-    input  wire logic tb_ext_interrupt_0_i /*verilator public_flat_rw*/,
-    output logic      tb_ext_interrupt_0_sync /*verilator public_flat_rw*/,
-    // Subsystem reset-complete pin (prim_sync3 → SS_RESET_COMPLETE CSR). Idle 1.
-    input  wire logic [31:0] tb_ss_reset_complete /*verilator public_flat_rw*/,
-    // SS0 warm_reset_n from ss_reset_ctrl_o[0] (SW SS_WARM_RESET_N bit 0).
-    output logic             tb_ss0_warm_reset_n /*verilator public_flat_rw*/,
-    // Packed jtag_smc_reset_ctrl_t (ovrd[135:68]|val[67:0]). Idle 0.
-    // Unique vs boot-stall JTAG ovrd and vs rst_cool_ni / cfg_flr_pf_active_i.
-    input  wire logic [$bits(jtag_smc_reset_ctrl_t)-1:0]
-        tb_jtag_reset_ctrl /*verilator public_flat_rw*/,
-    // DFX STATUS_SMU sticky abort pins. done/success/pass stay tied 1 for
-    // boot. Idle 0; unique vs ecc_dfd DEBUG_CTRL/BUS_MUX reset reads.
-    input  wire logic tb_mem_repair_abort /*verilator public_flat_rw*/,
-    input  wire logic tb_mbist_abort /*verilator public_flat_rw*/,
-    output logic [16:0] tb_avsbus_cur_state_debug /*verilator public_flat_rw*/,
-    // Sideband pad observe/drive (U4-4/5): AVS clk/mdata observe, sdata inject,
-    // OCTS sync/credit observe + dual-chiplet secondary inject (U4-5).
-    output logic tb_avs_clk_from_dut /*verilator public_flat_rw*/,
-    output logic tb_avs_mdata_from_dut /*verilator public_flat_rw*/,
-    input  wire logic tb_avs_sdata_ext /*verilator public_flat_rw*/,
-    output logic tb_octs_sync_load_from_dut /*verilator public_flat_rw*/,
-    output logic tb_octs_cnt_credit_from_dut /*verilator public_flat_rw*/,
-    // Runtime primary/secondary strap (smc.chiplet_is_primary_i). Default 1.
-    input  wire logic tb_chiplet_is_primary /*verilator public_flat_rw*/,
-    // Secondary inject into pads 55/56 (smc_padring OCTS; was 58/59 before
-    // the 68->65 GPIO shrink). pad2core enabled only when
-    // chiplet_is_primary_i==0. Idle low when unused.
-    input  wire logic tb_octs_sync_load_ext /*verilator public_flat_rw*/,
-    input  wire logic tb_octs_cnt_credit_ext /*verilator public_flat_rw*/,
-    input  wire logic [7:0] tb_sep_mailbox_interrupts /*verilator public_flat_rw*/,
-    input  wire logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_ext_drive_en /*verilator public_flat_rw*/,
-    input  wire logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_ext_drive_value /*verilator public_flat_rw*/,
-
-    output logic tb_gpio_core2pad_any /*verilator public_flat_rw*/,
-    output logic tb_gpio_core2pad_en_any /*verilator public_flat_rw*/,
-    output logic tb_gpio_pad2core_en_any /*verilator public_flat_rw*/,
-    // Full pad buses from real smc RTL (smc_wrapper.u_smc). Cocotb cannot XMR
-    // into u_dut.u_smc under smc_public_scope.vlt (TB-top public only).
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_core2pad_o /*verilator public_flat_rw*/,
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_core2pad_en_o /*verilator public_flat_rw*/,
-
-    // Flat inbound AXI manager driven by cocotbext-axi (prefix s_axi).
-    // Mirrors the legacy SMC DV inbound AXI path for real CSR/fabric traffic.
-    input  wire logic [5:0]   s_axi_awid /*verilator public_flat_rw*/,
-    input  wire logic [55:0]  s_axi_awaddr /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   s_axi_awlen /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   s_axi_awsize /*verilator public_flat_rw*/,
-    input  wire logic [1:0]   s_axi_awburst /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_awlock /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   s_axi_awcache /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   s_axi_awprot /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   s_axi_awqos /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   s_axi_awregion /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  s_axi_awuser /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_awvalid /*verilator public_flat_rw*/,
-    output logic              s_axi_awready /*verilator public_flat_rw*/,
-
-    input  wire logic [63:0]  s_axi_wdata /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   s_axi_wstrb /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_wlast /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  s_axi_wuser /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_wvalid /*verilator public_flat_rw*/,
-    output logic              s_axi_wready /*verilator public_flat_rw*/,
-
-    output logic [5:0]        s_axi_bid /*verilator public_flat_rw*/,
-    output logic [1:0]        s_axi_bresp /*verilator public_flat_rw*/,
-    output logic [11:0]       s_axi_buser /*verilator public_flat_rw*/,
-    output logic              s_axi_bvalid /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_bready /*verilator public_flat_rw*/,
-
-    input  wire logic [5:0]   s_axi_arid /*verilator public_flat_rw*/,
-    input  wire logic [55:0]  s_axi_araddr /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   s_axi_arlen /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   s_axi_arsize /*verilator public_flat_rw*/,
-    input  wire logic [1:0]   s_axi_arburst /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_arlock /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   s_axi_arcache /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   s_axi_arprot /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   s_axi_arqos /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   s_axi_arregion /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  s_axi_aruser /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_arvalid /*verilator public_flat_rw*/,
-    output logic              s_axi_arready /*verilator public_flat_rw*/,
-
-    output logic [5:0]        s_axi_rid /*verilator public_flat_rw*/,
-    output logic [63:0]       s_axi_rdata /*verilator public_flat_rw*/,
-    output logic [1:0]        s_axi_rresp /*verilator public_flat_rw*/,
-    output logic              s_axi_rlast /*verilator public_flat_rw*/,
-    output logic [11:0]       s_axi_ruser /*verilator public_flat_rw*/,
-    output logic              s_axi_rvalid /*verilator public_flat_rw*/,
-    input  wire logic         s_axi_rready /*verilator public_flat_rw*/,
-    // TB-owned SEP_IN R-channel hold. After AR accept, gates DUT-facing
-    // r_ready and hides r_valid from the VIP so the beat stays outstanding.
-    // Hang detector snoops the gated handshake (not irq_test). Idle 0.
-    input  wire logic         tb_sep_axi_r_hold /*verilator public_flat_rw*/,
-
-    // Flat SYS-input AXI manager. SYS_IN reaches the filtered local-fabric path;
-    // it is kept as a public active bus for SYS_IN/local-fabric VIP promotion.
-    input  wire logic [5:0]   sys_axi_awid /*verilator public_flat_rw*/,
-    input  wire logic [55:0]  sys_axi_awaddr /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   sys_axi_awlen /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   sys_axi_awsize /*verilator public_flat_rw*/,
-    input  wire logic [1:0]   sys_axi_awburst /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_awlock /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   sys_axi_awcache /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   sys_axi_awprot /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   sys_axi_awqos /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   sys_axi_awregion /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  sys_axi_awuser /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_awvalid /*verilator public_flat_rw*/,
-    output logic              sys_axi_awready /*verilator public_flat_rw*/,
-
-    input  wire logic [63:0]  sys_axi_wdata /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   sys_axi_wstrb /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_wlast /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  sys_axi_wuser /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_wvalid /*verilator public_flat_rw*/,
-    output logic              sys_axi_wready /*verilator public_flat_rw*/,
-
-    output logic [5:0]        sys_axi_bid /*verilator public_flat_rw*/,
-    output logic [1:0]        sys_axi_bresp /*verilator public_flat_rw*/,
-    output logic [11:0]       sys_axi_buser /*verilator public_flat_rw*/,
-    output logic              sys_axi_bvalid /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_bready /*verilator public_flat_rw*/,
-
-    input  wire logic [5:0]   sys_axi_arid /*verilator public_flat_rw*/,
-    input  wire logic [55:0]  sys_axi_araddr /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   sys_axi_arlen /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   sys_axi_arsize /*verilator public_flat_rw*/,
-    input  wire logic [1:0]   sys_axi_arburst /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_arlock /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   sys_axi_arcache /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   sys_axi_arprot /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   sys_axi_arqos /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   sys_axi_arregion /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  sys_axi_aruser /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_arvalid /*verilator public_flat_rw*/,
-    output logic              sys_axi_arready /*verilator public_flat_rw*/,
-
-    output logic [5:0]        sys_axi_rid /*verilator public_flat_rw*/,
-    output logic [63:0]       sys_axi_rdata /*verilator public_flat_rw*/,
-    output logic [1:0]        sys_axi_rresp /*verilator public_flat_rw*/,
-    output logic              sys_axi_rlast /*verilator public_flat_rw*/,
-    output logic [11:0]       sys_axi_ruser /*verilator public_flat_rw*/,
-    output logic              sys_axi_rvalid /*verilator public_flat_rw*/,
-    input  wire logic         sys_axi_rready /*verilator public_flat_rw*/,
-    // TB-owned SYS_IN R-channel hold. Same product handshake as
-    // tb_sep_axi_r_hold, on the SYS hang-detector snoop. Idle 0.
-    input  wire logic         tb_sys_axi_r_hold /*verilator public_flat_rw*/,
-
-    // Flat JTAG AXI manager used by output-fabric final VIP tests.
-    input  wire logic [1:0]   jtag_axi_awid /*verilator public_flat_rw*/,
-    input  wire logic [55:0]  jtag_axi_awaddr /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   jtag_axi_awlen /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   jtag_axi_awsize /*verilator public_flat_rw*/,
-    input  wire logic [1:0]   jtag_axi_awburst /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_awlock /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   jtag_axi_awcache /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   jtag_axi_awprot /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   jtag_axi_awqos /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   jtag_axi_awregion /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  jtag_axi_awuser /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_awvalid /*verilator public_flat_rw*/,
-    output logic              jtag_axi_awready /*verilator public_flat_rw*/,
-
-    input  wire logic [63:0]  jtag_axi_wdata /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   jtag_axi_wstrb /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_wlast /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  jtag_axi_wuser /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_wvalid /*verilator public_flat_rw*/,
-    output logic              jtag_axi_wready /*verilator public_flat_rw*/,
-
-    output logic [1:0]        jtag_axi_bid /*verilator public_flat_rw*/,
-    output logic [1:0]        jtag_axi_bresp /*verilator public_flat_rw*/,
-    output logic [11:0]       jtag_axi_buser /*verilator public_flat_rw*/,
-    output logic              jtag_axi_bvalid /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_bready /*verilator public_flat_rw*/,
-
-    input  wire logic [1:0]   jtag_axi_arid /*verilator public_flat_rw*/,
-    input  wire logic [55:0]  jtag_axi_araddr /*verilator public_flat_rw*/,
-    input  wire logic [7:0]   jtag_axi_arlen /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   jtag_axi_arsize /*verilator public_flat_rw*/,
-    input  wire logic [1:0]   jtag_axi_arburst /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_arlock /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   jtag_axi_arcache /*verilator public_flat_rw*/,
-    input  wire logic [2:0]   jtag_axi_arprot /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   jtag_axi_arqos /*verilator public_flat_rw*/,
-    input  wire logic [3:0]   jtag_axi_arregion /*verilator public_flat_rw*/,
-    input  wire logic [11:0]  jtag_axi_aruser /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_arvalid /*verilator public_flat_rw*/,
-    output logic              jtag_axi_arready /*verilator public_flat_rw*/,
-
-    output logic [1:0]        jtag_axi_rid /*verilator public_flat_rw*/,
-    output logic [63:0]       jtag_axi_rdata /*verilator public_flat_rw*/,
-    output logic [1:0]        jtag_axi_rresp /*verilator public_flat_rw*/,
-    output logic              jtag_axi_rlast /*verilator public_flat_rw*/,
-    output logic [11:0]       jtag_axi_ruser /*verilator public_flat_rw*/,
-    output logic              jtag_axi_rvalid /*verilator public_flat_rw*/,
-    input  wire logic         jtag_axi_rready /*verilator public_flat_rw*/,
-
-    // Per-interface AXI-Lite idle observability (OR of aw_valid/w_valid/ar_valid
-    // on each of the SMC downstream AXI-Lite master interfaces).
-    output logic tb_axil_dtp_csr_active /*verilator public_flat_rw*/,
-    output logic tb_axil_external_active /*verilator public_flat_rw*/,
-    output logic tb_axil_efuse_bank_active /*verilator public_flat_rw*/,
-    output logic tb_axil_any_master_active /*verilator public_flat_rw*/,
-
-    // Output-fabric observability (U6-2). SLVERR uses axi_sim_mem werr/rerr
-    // (pulp API), not a DUT Force / starve knob.
-    output logic [31:0] tb_output_axi_write_count /*verilator public_flat_rw*/,
-    output logic [31:0] tb_output_axi_read_count /*verilator public_flat_rw*/,
-    output logic [55:0] tb_output_axi_last_addr /*verilator public_flat_rw*/,
-    output logic [63:0] tb_output_axi_last_wdata /*verilator public_flat_rw*/,
-    // Program TB-owned axi_sim_mem.werr/rerr (byte addr); not a DUT Force.
-    input  wire logic        tb_output_err_we /*verilator public_flat_rw*/,
-    input  wire logic [55:0] tb_output_err_addr /*verilator public_flat_rw*/,
-    input  wire logic [1:0]  tb_output_err_resp /*verilator public_flat_rw*/,
-    // U6-2: SYS_OUT AXI slave response handshake for SmcOutputAxiMonitor.
-    output logic        tb_output_axi_bvalid /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_bready /*verilator public_flat_rw*/,
-    output logic [1:0]  tb_output_axi_bresp /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_rvalid /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_rready /*verilator public_flat_rw*/,
-    output logic [1:0]  tb_output_axi_rresp /*verilator public_flat_rw*/,
-    output logic [55:0] tb_output_axi_awaddr /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_awvalid /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_awready /*verilator public_flat_rw*/,
-    output logic [55:0] tb_output_axi_araddr /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_arvalid /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_arready /*verilator public_flat_rw*/,
-    output logic [63:0] tb_output_axi_wdata /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_wvalid /*verilator public_flat_rw*/,
-    output logic        tb_output_axi_wready /*verilator public_flat_rw*/,
-    // TB-owned SYS_OUT R/B hold. After AW/AR accept, hides r_valid/b_valid
-    // from the DUT and hides r_ready/b_ready from axi_sim_mem so the beat
-    // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
-    // master), which stalls when SYS_OUT never completes. Idle 0.
-    input  wire logic   tb_output_axi_resp_hold /*verilator public_flat_rw*/,
-
-    // CPU memory responder observability for firmware boot tests.
-    output logic [31:0] tb_cpu_rom_read_count /*verilator public_flat_rw*/,
-    output logic [31:0] tb_cpu_scratch_read_count /*verilator public_flat_rw*/,
-    output logic [31:0] tb_cpu_scratch_write_count /*verilator public_flat_rw*/,
-    output logic [31:0] tb_cpu_fw_mailbox /*verilator public_flat_rw*/,
-    output logic        tb_cpu_fw_mailbox_valid /*verilator public_flat_rw*/,
-    output logic [31:0] tb_cpu_dcache_write_count /*verilator public_flat_rw*/,
-    output logic [57:0] tb_cpu_wb_pc0 /*verilator public_flat_rw*/,
-    output logic        tb_cpu_cluster_isolate /*verilator public_flat_rw*/,
-    // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
-    output logic        tb_cpu_debug_dmactive /*verilator public_flat_rw*/,
-    output logic        tb_cpu_debug_dmactive_ack /*verilator public_flat_rw*/,
-
-    // U7-1: ECC SBE/DBE inject into scratch bank0 reads + fire count.
-    // fire_count tracks DUT cpu_scratch0_inject_fire only (real bank0 reads
-    // with inject armed). tb_cpu_ecc_inject_probe is retained for API compat
-    // but is not scored (synthetic probe path removed).
-    input  wire logic   tb_cpu_ecc_inject_sbe /*verilator public_flat_rw*/,
-    input  wire logic   tb_cpu_ecc_inject_dbe /*verilator public_flat_rw*/,
-    input  wire logic   tb_cpu_ecc_inject_probe /*verilator public_flat_rw*/,
-    // Scratch codeword poke: XOR mask into bank0 entry on a rising poke_en.
-    // One bit is a correctable error, two are not.
-    input  wire logic        tb_cpu_ecc_poke_en /*verilator public_flat_rw*/,
-    input  wire logic [31:0] tb_cpu_ecc_poke_entry /*verilator public_flat_rw*/,
-    input  wire logic [1:0]  tb_cpu_ecc_poke_mask /*verilator public_flat_rw*/,
-    // CPU cluster double-error detect (live + sticky).
-    output logic        tb_cluster_ded /*verilator public_flat_rw*/,
-    output logic        tb_cluster_ded_seen /*verilator public_flat_rw*/,
-    output logic [31:0] tb_cpu_ecc_inject_fire_count /*verilator public_flat_rw*/,
-    output logic        tb_cpu_scratch0_inject_fire /*verilator public_flat_rw*/,
-
-    // U7-2: DFD/DBS fault inject + debug-bus capture latch.
-    input  wire logic   tb_dfd_fault_inject /*verilator public_flat_rw*/,
-    output logic        tb_dbs_capture_valid /*verilator public_flat_rw*/,
-    output logic [31:0] tb_dbs_capture_data /*verilator public_flat_rw*/,
-
-    // U7-5: eFuse behavioral responder observability.
-    output logic        tb_fuse_sense_done /*verilator public_flat_rw*/,
-    // Warm-reset domain release (feeds SCRATCH_COLD_WARM etc.). Wait on this —
-    // not only tb_fuse_sense_done — before warm-domain CSR traffic.
-    output logic        tb_fuse_reset_n /*verilator public_flat_rw*/,
-    output logic        tb_rst_warm_smc_clk_n /*verilator public_flat_rw*/,
-    output logic [31:0] tb_efuse_otp_word0 /*verilator public_flat_rw*/,
-    output logic [31:0] tb_efuse_programmed_word0 /*verilator public_flat_rw*/,
-    output logic [smc_efuse_pkg::NumEfuseBits-1:0] efuse_shadow_probe_o /*verilator public_flat_rw*/,
-
-    // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /
-    // no TB encode helper — tests pack complementary or illegal encodings.
-    input  wire logic [2*smc_pkg::LC_STATE_WIDTH-1:0] tb_lc_state /*verilator public_flat_rw*/,
-
-    // JTAG-side eFuse AXI-Lite master (cocotbext-axi AxiLiteMaster, prefix ej_axi)
-    // into smc.axil_smc_otp_jtag_req_i (SMC-OTP JTAG access-control path).
-    input  wire logic [31:0] ej_axi_awaddr /*verilator public_flat_rw*/,
-    input  wire logic [2:0]  ej_axi_awprot /*verilator public_flat_rw*/,
-    input  wire logic        ej_axi_awvalid /*verilator public_flat_rw*/,
-    output logic             ej_axi_awready /*verilator public_flat_rw*/,
-    input  wire logic [31:0] ej_axi_wdata /*verilator public_flat_rw*/,
-    input  wire logic [3:0]  ej_axi_wstrb /*verilator public_flat_rw*/,
-    input  wire logic        ej_axi_wvalid /*verilator public_flat_rw*/,
-    output logic             ej_axi_wready /*verilator public_flat_rw*/,
-    output logic [1:0]       ej_axi_bresp /*verilator public_flat_rw*/,
-    output logic             ej_axi_bvalid /*verilator public_flat_rw*/,
-    input  wire logic        ej_axi_bready /*verilator public_flat_rw*/,
-    input  wire logic [31:0] ej_axi_araddr /*verilator public_flat_rw*/,
-    input  wire logic [2:0]  ej_axi_arprot /*verilator public_flat_rw*/,
-    input  wire logic        ej_axi_arvalid /*verilator public_flat_rw*/,
-    output logic             ej_axi_arready /*verilator public_flat_rw*/,
-    output logic [31:0]      ej_axi_rdata /*verilator public_flat_rw*/,
-    output logic [1:0]       ej_axi_rresp /*verilator public_flat_rw*/,
-    output logic             ej_axi_rvalid /*verilator public_flat_rw*/,
-    input  wire logic        ej_axi_rready /*verilator public_flat_rw*/,
-
-    // ------------------------------------------------------------------
-    // Elaboration aliases (additive; optional observe ports for bring-up)
-    // SmcWrapperElaborationSeq). Bare SmcEnv tests never touch these.
-    // ------------------------------------------------------------------
-    output logic        dut_present_o /*verilator public_flat_rw*/,
-    output logic        powergood_o /*verilator public_flat_rw*/,
-    output logic        rst_cold_n_o /*verilator public_flat_rw*/,
-    output logic        smc_reset_n_o /*verilator public_flat_rw*/,
-    output logic        fuse_sense_done_o /*verilator public_flat_rw*/,
-    output logic        init_mem_done_o /*verilator public_flat_rw*/,
-    output logic [31:0] smc_scratch_0_o /*verilator public_flat_rw*/,
-    output logic        smc_test_pass_o /*verilator public_flat_rw*/,
-    output logic        smc_test_fail_o /*verilator public_flat_rw*/,
-    output logic [31:0] output_axi_write_count_o /*verilator public_flat_rw*/,
-    output logic [31:0] output_axi_read_count_o /*verilator public_flat_rw*/
+    `include "smc_tb_signal_list.svh"
 );
+`else
+;
+    `include "smc_tb_signal_list.svh"
+`endif
+
+`undef SMC_TB_IN_FIRST
+`undef SMC_TB_IN
+`undef SMC_TB_OUT
 
     /* verilator public_module */
+
+    // Cocotb drives rst_cold_ni / rst_cool_ni / powergood_i after time 0.
+    // Until then each input wire is Z, and PeakRDL immediate asserts in an
+    // always_ff else treat `if (~arst_n)` as false when arst_n is X/Z. Hold
+    // the safe idle (resets asserted, powergood low) until the port is a
+    // known 0/1, then follow. An X/Z after cocotb has driven the port is a
+    // testbench defect: latching the last good level would hide it, so it
+    // fails here instead.
+    //
+    // $fatal, not $error: this is the safety net for the whole reset-hold
+    // change, and $error only prints on Xcelium and VCS -- the run would go
+    // green with the DUT on a stale reset level. It is also not a DUT finding
+    // that a scoreboard should weigh; the stimulus is wrong and nothing after
+    // it means anything.
+    //
+    // Each block is sensitive to its input alone rather than @(*). Under @(*)
+    // the *_driven flag it writes is also in its own inferred sensitivity
+    // list, which makes the block self-retriggering and draws UNOPTFLAT and
+    // LATCH from Verilator. The value latch on *_int is deliberate.
+    logic rst_cold_n_int = 1'b0;
+    logic rst_cold_n_driven = 1'b0;
+    always @(rst_cold_ni) begin
+        if ((rst_cold_ni === 1'b0) || (rst_cold_ni === 1'b1)) begin
+            rst_cold_n_int = rst_cold_ni;
+            rst_cold_n_driven = 1'b1;
+        end else if (rst_cold_n_driven) begin
+            $fatal(1, "%0t: rst_cold_ni went %b after being driven; the DUT would run on the last known level",
+                   $time, rst_cold_ni);
+        end
+    end
+
+    logic rst_cool_n_int = 1'b0;
+    logic rst_cool_n_driven = 1'b0;
+    always @(rst_cool_ni) begin
+        if ((rst_cool_ni === 1'b0) || (rst_cool_ni === 1'b1)) begin
+            rst_cool_n_int = rst_cool_ni;
+            rst_cool_n_driven = 1'b1;
+        end else if (rst_cool_n_driven) begin
+            $fatal(1, "%0t: rst_cool_ni went %b after being driven; the DUT would run on the last known level",
+                   $time, rst_cool_ni);
+        end
+    end
+
+    logic powergood_int = 1'b0;
+    logic powergood_driven = 1'b0;
+    always @(powergood_i) begin
+        if ((powergood_i === 1'b0) || (powergood_i === 1'b1)) begin
+            powergood_int = powergood_i;
+            powergood_driven = 1'b1;
+        end else if (powergood_driven) begin
+            $fatal(1, "%0t: powergood_i went %b after being driven; the DUT would run on the last known level",
+                   $time, powergood_i);
+        end
+    end
+
+    // Assertion classes held off, and why each is not a DUT contract here.
+    //
+    // noXOnCsI: prim_rom.sv:40 is `assert property (@(posedge clk_i)
+    // disable iff (('0) !== '0) !$isunknown(req_i))`. The disable is never
+    // true, so the reset hold above cannot gate it, and req_i is X until
+    // the TileLink converter leaves reset. Hold this one assertion off
+    // until cold reset has released and one SMC clock edge has sampled a
+    // known req_i, then re-arm by the assertion's own hierarchical name
+    // so a later X still fails. $assertcontrol is not used: the commercial
+    // compile timescale is 1ns/1ps, and Xcelium rejects $assertcontrol(4, 31).
+`ifndef VERILATOR
+    initial begin
+        $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+        wait (rst_cold_n_int === 1'b1);
+        @(posedge clk_smc_i);
+        $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    end
+`endif
 
     localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
     localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
@@ -531,7 +176,7 @@ module smc_uvm_top
     assign tb_telemetry0_atready = tb_telemetry_atready[0];
     assign tb_telemetry0_afvalid = tb_telemetry_afvalid[0];
     assign tb_telemetry_afready[0] = tb_telemetry0_afready;
-    for (genvar tel_i = 1; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : g_tel_tie
+    for (genvar tel_i = 1; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : gen_tel_tie
         assign tb_telemetry_atdata[tel_i] = '0;
         assign tb_telemetry_atid[tel_i] = '0;
         assign tb_telemetry_atvalid[tel_i] = 1'b0;
@@ -1022,7 +667,7 @@ module smc_uvm_top
         .AcqDelay          (2ns)
     ) u_output_mem (
         .clk_i     (clk_smc_i),
-        .rst_ni    (rst_cold_ni),
+        .rst_ni    (rst_cold_n_int),
         .axi_req_i (output_mem_req),
         .axi_rsp_o (output_mem_resp)
     );
@@ -1053,8 +698,8 @@ module smc_uvm_top
     logic [63:0] output_w_data_q;
     logic [55:0] output_ar_addr_q;
 
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             output_aw_addr_q          <= '0;
             output_w_data_q           <= '0;
             output_ar_addr_q          <= '0;
@@ -1159,8 +804,8 @@ module smc_uvm_top
     // polling test cannot miss it.
     logic cpu_cluster_ded;
     logic cpu_cluster_ded_seen_q;
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             cpu_cluster_ded_seen_q <= 1'b0;
         end else if (cpu_cluster_ded) begin
             cpu_cluster_ded_seen_q <= 1'b1;
@@ -1183,8 +828,8 @@ module smc_uvm_top
     logic unused_ecc_probe;
     assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
 
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             ecc_inject_fire_count_q <= '0;
         end else if (cpu_scratch0_inject_fire) begin
             ecc_inject_fire_count_q <= ecc_inject_fire_count_q + 32'd1;
@@ -1215,9 +860,9 @@ module smc_uvm_top
         .clk_smc_i,
         .clk_ref_i,
         .clk_periph_i,
-        .powergood_i,
+        .powergood_i                (powergood_int),
         .powergood_stable_o,
-        .rst_cold_ni,
+        .rst_cold_ni                (rst_cold_n_int),
         .rst_cold_stable_ref_clk_no,
         .rst_primary_ref_clk_no,
         .rst_primary_smc_clk_no,
@@ -1239,7 +884,7 @@ module smc_uvm_top
         .shadow_regs_o              (),
         .lsio_interface_select_o    (),
         .gpio_pad_io                (gpio_pad_io),
-        .rst_cool_n_from_pin_i      (rst_cool_ni),
+        .rst_cool_n_from_pin_i      (rst_cool_n_int),
         // SPI octal-flash pads (U2-1). Cocotb drives tb_spi_*; idle default is
         // inactive CS/enable (tests that do not touch SPI leave them at 0).
         .spi_enable_i               (tb_spi_enable),
@@ -1263,7 +908,7 @@ module smc_uvm_top
         // Telemetry ATB: clock/reset async write domain; receiver 0 driven by
         // tb_telemetry0_* (U4-6); receivers 1/2 remain quiet.
         .clk_telemetry_i            (clk_smc_i),
-        .rst_telemetry_ni           (rst_cold_ni),
+        .rst_telemetry_ni           (rst_cold_n_int),
         .telemetry_atdata_i         (tb_telemetry_atdata),
         .telemetry_atid_i           (tb_telemetry_atid),
         .telemetry_atready_o       (tb_telemetry_atready),
@@ -1449,8 +1094,8 @@ module smc_uvm_top
     // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             tb_dbs_capture_valid <= 1'b0;
             tb_dbs_capture_data  <= '0;
         end else if (tb_dfd_fault_inject) begin
@@ -1472,5 +1117,378 @@ module smc_uvm_top
     assign smc_test_fail_o = (smc_scratch_0_o == SMC_TEST_FAIL);
     assign output_axi_write_count_o = tb_output_axi_write_count;
     assign output_axi_read_count_o  = tb_output_axi_read_count;
+
+
+`ifdef UVM
+    // ------------------------------------------------------------------
+    // SV-UVM harness (`--dut smc --framework uvm`): clocks, the shared-VIP
+    // interface instances on the SEP_IN AXI4 ingress, quiescent tie-offs
+    // for every other cocotb-driven stimulus pin, uvm_config_db
+    // publication, and run_test(). Compiled only when the native uvm flow
+    // defines UVM; the cocotb flow sees only the ported module above.
+    // ------------------------------------------------------------------
+    import uvm_pkg::*;
+
+    smc_tb_if u_tb_if ();
+
+    // Three free-running clocks with the periods the env publishes on
+    // smc_tb_if from the seeded test cfg (cocotb SmcEnvCfg.randomize_timing
+    // parity: ref/periph 8..12 ns, smc 4..6 ns).
+    initial begin
+        clk_ref_i    = 1'b0;
+        clk_smc_i    = 1'b0;
+        clk_periph_i = 1'b0;
+    end
+    always #(u_tb_if.ref_clk_period_ns * 0.5ns)    clk_ref_i    = ~clk_ref_i;
+    always #(u_tb_if.smc_clk_period_ns * 0.5ns)    clk_smc_i    = ~clk_smc_i;
+    always #(u_tb_if.periph_clk_period_ns * 0.5ns) clk_periph_i = ~clk_periph_i;
+
+    // Power-good and the cold/cool reset pins are test-sequenced through
+    // smc_tb_if; the reset-unit outputs and the fuse-sense / warm-domain
+    // release observables are mirrored back for the sequences and the
+    // scoreboard.
+    assign powergood_i = u_tb_if.powergood;
+    assign rst_cold_ni = u_tb_if.rst_cold_n;
+    assign rst_cool_ni = u_tb_if.rst_cool_n;
+    assign u_tb_if.powergood_stable          = powergood_stable_o;
+    assign u_tb_if.rst_cold_stable_ref_clk_n = rst_cold_stable_ref_clk_no;
+    assign u_tb_if.rst_primary_ref_clk_n     = rst_primary_ref_clk_no;
+    assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
+    assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
+    assign u_tb_if.fuse_sense_done           = tb_fuse_sense_done;
+    assign u_tb_if.fuse_reset_n              = tb_fuse_reset_n;
+    assign u_tb_if.rst_warm_smc_clk_n        = tb_rst_warm_smc_clk_n;
+
+    // Cold-reset assertion counter: the scoreboard predictors re-baseline
+    // their CSR shadows on it.
+    logic [31:0] cold_rst_assert_count = '0;
+    always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
+    assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+
+    // SEP_IN AXI4 initiator: the shared ocah_axi_vip UVM master agent drives
+    // the s_axi_* request side (the agent's driver procedurally drives the
+    // request payloads and valids plus bready/rready on the master
+    // interface, routed out to the DUT here) and the TB wires only the
+    // DUT-driven response signals back in. Geometry (56/64/6) lives in the
+    // master cfg; the interface uses the default maximum widths.
+    ocah_axi_if u_sep_in_master_if (.aclk(clk_smc_i), .aresetn(rst_primary_smc_clk_no));
+    assign s_axi_awid     = u_sep_in_master_if.awid[5:0];
+    assign s_axi_awaddr   = u_sep_in_master_if.awaddr[55:0];
+    assign s_axi_awlen    = u_sep_in_master_if.awlen;
+    assign s_axi_awsize   = u_sep_in_master_if.awsize;
+    assign s_axi_awburst  = u_sep_in_master_if.awburst;
+    assign s_axi_awlock   = u_sep_in_master_if.awlock;
+    assign s_axi_awcache  = u_sep_in_master_if.awcache;
+    assign s_axi_awprot   = u_sep_in_master_if.awprot;
+    assign s_axi_awqos    = u_sep_in_master_if.awqos;
+    assign s_axi_awregion = u_sep_in_master_if.awregion;
+    assign s_axi_awuser   = u_sep_in_master_if.awuser[11:0];
+    assign s_axi_awvalid  = u_sep_in_master_if.awvalid;
+    assign s_axi_wdata    = u_sep_in_master_if.wdata;
+    assign s_axi_wstrb    = u_sep_in_master_if.wstrb;
+    assign s_axi_wlast    = u_sep_in_master_if.wlast;
+    assign s_axi_wuser    = u_sep_in_master_if.wuser[11:0];
+    assign s_axi_wvalid   = u_sep_in_master_if.wvalid;
+    assign s_axi_bready   = u_sep_in_master_if.bready;
+    assign s_axi_arid     = u_sep_in_master_if.arid[5:0];
+    assign s_axi_araddr   = u_sep_in_master_if.araddr[55:0];
+    assign s_axi_arlen    = u_sep_in_master_if.arlen;
+    assign s_axi_arsize   = u_sep_in_master_if.arsize;
+    assign s_axi_arburst  = u_sep_in_master_if.arburst;
+    assign s_axi_arlock   = u_sep_in_master_if.arlock;
+    assign s_axi_arcache  = u_sep_in_master_if.arcache;
+    assign s_axi_arprot   = u_sep_in_master_if.arprot;
+    assign s_axi_arqos    = u_sep_in_master_if.arqos;
+    assign s_axi_arregion = u_sep_in_master_if.arregion;
+    assign s_axi_aruser   = u_sep_in_master_if.aruser[11:0];
+    assign s_axi_arvalid  = u_sep_in_master_if.arvalid;
+    assign s_axi_rready   = u_sep_in_master_if.rready;
+
+    // Response side: DUT subordinate -> agent driver/monitor.
+    assign u_sep_in_master_if.awready = s_axi_awready;
+    assign u_sep_in_master_if.wready  = s_axi_wready;
+    assign u_sep_in_master_if.bid     = 16'(s_axi_bid);
+    assign u_sep_in_master_if.bresp   = s_axi_bresp;
+    assign u_sep_in_master_if.buser   = 16'(s_axi_buser);
+    assign u_sep_in_master_if.bvalid  = s_axi_bvalid;
+    assign u_sep_in_master_if.arready = s_axi_arready;
+    assign u_sep_in_master_if.rid     = 16'(s_axi_rid);
+    assign u_sep_in_master_if.rdata   = s_axi_rdata;
+    assign u_sep_in_master_if.rresp   = s_axi_rresp;
+    assign u_sep_in_master_if.rlast   = s_axi_rlast;
+    assign u_sep_in_master_if.ruser   = 16'(s_axi_ruser);
+    assign u_sep_in_master_if.rvalid  = s_axi_rvalid;
+
+    // The SEP_IN R-channel hold is a cocotb hang-detector control; the UVM
+    // shape keeps the channel transparent.
+    assign tb_sep_axi_r_hold = 1'b0;
+
+    // Passive mirror of the SEP_IN bus for the shared-VIP monitor (the
+    // smc_scoreboard predictors consume its item stream) and the protocol
+    // SVA, wired from the DUT-facing flat nets only.
+    ocah_axi_if u_sep_in_axi_if (.aclk(clk_smc_i), .aresetn(rst_primary_smc_clk_no));
+    assign u_sep_in_axi_if.awid     = 16'(s_axi_awid);
+    assign u_sep_in_axi_if.awaddr   = 64'(s_axi_awaddr);
+    assign u_sep_in_axi_if.awlen    = s_axi_awlen;
+    assign u_sep_in_axi_if.awsize   = s_axi_awsize;
+    assign u_sep_in_axi_if.awburst  = s_axi_awburst;
+    assign u_sep_in_axi_if.awlock   = s_axi_awlock;
+    assign u_sep_in_axi_if.awcache  = s_axi_awcache;
+    assign u_sep_in_axi_if.awprot   = s_axi_awprot;
+    assign u_sep_in_axi_if.awqos    = s_axi_awqos;
+    assign u_sep_in_axi_if.awregion = s_axi_awregion;
+    assign u_sep_in_axi_if.awuser   = 16'(s_axi_awuser);
+    assign u_sep_in_axi_if.awvalid  = s_axi_awvalid;
+    assign u_sep_in_axi_if.awready  = s_axi_awready;
+    assign u_sep_in_axi_if.wdata    = s_axi_wdata;
+    assign u_sep_in_axi_if.wstrb    = s_axi_wstrb;
+    assign u_sep_in_axi_if.wlast    = s_axi_wlast;
+    assign u_sep_in_axi_if.wuser    = 16'(s_axi_wuser);
+    assign u_sep_in_axi_if.wvalid   = s_axi_wvalid;
+    assign u_sep_in_axi_if.wready   = s_axi_wready;
+    assign u_sep_in_axi_if.bid      = 16'(s_axi_bid);
+    assign u_sep_in_axi_if.bresp    = s_axi_bresp;
+    assign u_sep_in_axi_if.buser    = 16'(s_axi_buser);
+    assign u_sep_in_axi_if.bvalid   = s_axi_bvalid;
+    assign u_sep_in_axi_if.bready   = s_axi_bready;
+    assign u_sep_in_axi_if.arid     = 16'(s_axi_arid);
+    assign u_sep_in_axi_if.araddr   = 64'(s_axi_araddr);
+    assign u_sep_in_axi_if.arlen    = s_axi_arlen;
+    assign u_sep_in_axi_if.arsize   = s_axi_arsize;
+    assign u_sep_in_axi_if.arburst  = s_axi_arburst;
+    assign u_sep_in_axi_if.arlock   = s_axi_arlock;
+    assign u_sep_in_axi_if.arcache  = s_axi_arcache;
+    assign u_sep_in_axi_if.arprot   = s_axi_arprot;
+    assign u_sep_in_axi_if.arqos    = s_axi_arqos;
+    assign u_sep_in_axi_if.arregion = s_axi_arregion;
+    assign u_sep_in_axi_if.aruser   = 16'(s_axi_aruser);
+    assign u_sep_in_axi_if.arvalid  = s_axi_arvalid;
+    assign u_sep_in_axi_if.arready  = s_axi_arready;
+    assign u_sep_in_axi_if.rid      = 16'(s_axi_rid);
+    assign u_sep_in_axi_if.rdata    = s_axi_rdata;
+    assign u_sep_in_axi_if.rresp    = s_axi_rresp;
+    assign u_sep_in_axi_if.rlast    = s_axi_rlast;
+    assign u_sep_in_axi_if.ruser    = 16'(s_axi_ruser);
+    assign u_sep_in_axi_if.rvalid   = s_axi_rvalid;
+    assign u_sep_in_axi_if.rready   = s_axi_rready;
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_sep_in_axi_sva (
+        .aclk    (clk_smc_i),
+        .aresetn (rst_primary_smc_clk_no),
+        .en_i    (u_tb_if.axi_sva_en),
+        .awid    (s_axi_awid),
+        .awaddr  (s_axi_awaddr),
+        .awlen   (s_axi_awlen),
+        .awsize  (s_axi_awsize),
+        .awburst (s_axi_awburst),
+        .awlock  (s_axi_awlock),
+        .awprot  (s_axi_awprot),
+        .awvalid (s_axi_awvalid),
+        .awready (s_axi_awready),
+        .wdata   (s_axi_wdata),
+        .wstrb   (s_axi_wstrb),
+        .wlast   (s_axi_wlast),
+        .wvalid  (s_axi_wvalid),
+        .wready  (s_axi_wready),
+        .bid     (s_axi_bid),
+        .bresp   (s_axi_bresp),
+        .bvalid  (s_axi_bvalid),
+        .bready  (s_axi_bready),
+        .arid    (s_axi_arid),
+        .araddr  (s_axi_araddr),
+        .arlen   (s_axi_arlen),
+        .arsize  (s_axi_arsize),
+        .arburst (s_axi_arburst),
+        .arlock  (s_axi_arlock),
+        .arprot  (s_axi_arprot),
+        .arvalid (s_axi_arvalid),
+        .arready (s_axi_arready),
+        .rid     (s_axi_rid),
+        .rdata   (s_axi_rdata),
+        .rresp   (s_axi_rresp),
+        .rlast   (s_axi_rlast),
+        .rvalid  (s_axi_rvalid),
+        .rready  (s_axi_rready)
+    );
+
+    // ------------------------------------------------------------------
+    // Quiescent tie-offs: every other cocotb-driven stimulus pin at the idle
+    // value the cocotb smc_base_test bring-up sets. A scenario that needs
+    // one of these pins promotes it into smc_tb_if; nothing here is driven
+    // from class code.
+    // ------------------------------------------------------------------
+
+    // SYS_IN and JTAG AXI4 ingresses and the JTAG-side eFuse AXI-Lite master:
+    // no initiator attached, request side idle.
+    assign sys_axi_awid     = '0;
+    assign sys_axi_awaddr   = '0;
+    assign sys_axi_awlen    = '0;
+    assign sys_axi_awsize   = '0;
+    assign sys_axi_awburst  = '0;
+    assign sys_axi_awlock   = 1'b0;
+    assign sys_axi_awcache  = '0;
+    assign sys_axi_awprot   = '0;
+    assign sys_axi_awqos    = '0;
+    assign sys_axi_awregion = '0;
+    assign sys_axi_awuser   = '0;
+    assign sys_axi_awvalid  = 1'b0;
+    assign sys_axi_wdata    = '0;
+    assign sys_axi_wstrb    = '0;
+    assign sys_axi_wlast    = 1'b0;
+    assign sys_axi_wuser    = '0;
+    assign sys_axi_wvalid   = 1'b0;
+    assign sys_axi_bready   = 1'b0;
+    assign sys_axi_arid     = '0;
+    assign sys_axi_araddr   = '0;
+    assign sys_axi_arlen    = '0;
+    assign sys_axi_arsize   = '0;
+    assign sys_axi_arburst  = '0;
+    assign sys_axi_arlock   = 1'b0;
+    assign sys_axi_arcache  = '0;
+    assign sys_axi_arprot   = '0;
+    assign sys_axi_arqos    = '0;
+    assign sys_axi_arregion = '0;
+    assign sys_axi_aruser   = '0;
+    assign sys_axi_arvalid  = 1'b0;
+    assign sys_axi_rready   = 1'b0;
+    assign tb_sys_axi_r_hold = 1'b0;
+
+    assign jtag_axi_awid     = '0;
+    assign jtag_axi_awaddr   = '0;
+    assign jtag_axi_awlen    = '0;
+    assign jtag_axi_awsize   = '0;
+    assign jtag_axi_awburst  = '0;
+    assign jtag_axi_awlock   = 1'b0;
+    assign jtag_axi_awcache  = '0;
+    assign jtag_axi_awprot   = '0;
+    assign jtag_axi_awqos    = '0;
+    assign jtag_axi_awregion = '0;
+    assign jtag_axi_awuser   = '0;
+    assign jtag_axi_awvalid  = 1'b0;
+    assign jtag_axi_wdata    = '0;
+    assign jtag_axi_wstrb    = '0;
+    assign jtag_axi_wlast    = 1'b0;
+    assign jtag_axi_wuser    = '0;
+    assign jtag_axi_wvalid   = 1'b0;
+    assign jtag_axi_bready   = 1'b0;
+    assign jtag_axi_arid     = '0;
+    assign jtag_axi_araddr   = '0;
+    assign jtag_axi_arlen    = '0;
+    assign jtag_axi_arsize   = '0;
+    assign jtag_axi_arburst  = '0;
+    assign jtag_axi_arlock   = 1'b0;
+    assign jtag_axi_arcache  = '0;
+    assign jtag_axi_arprot   = '0;
+    assign jtag_axi_arqos    = '0;
+    assign jtag_axi_arregion = '0;
+    assign jtag_axi_aruser   = '0;
+    assign jtag_axi_arvalid  = 1'b0;
+    assign jtag_axi_rready   = 1'b0;
+
+    assign ej_axi_awaddr  = '0;
+    assign ej_axi_awprot  = '0;
+    assign ej_axi_awvalid = 1'b0;
+    assign ej_axi_wdata   = '0;
+    assign ej_axi_wstrb   = '0;
+    assign ej_axi_wvalid  = 1'b0;
+    assign ej_axi_bready  = 1'b0;
+    assign ej_axi_araddr  = '0;
+    assign ej_axi_arprot  = '0;
+    assign ej_axi_arvalid = 1'b0;
+    assign ej_axi_rready  = 1'b0;
+
+    // SYS_OUT responder controls: no error injection, no response hold.
+    assign tb_output_err_we        = 1'b0;
+    assign tb_output_err_addr      = '0;
+    assign tb_output_err_resp      = '0;
+    assign tb_output_axi_resp_hold = 1'b0;
+
+    // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
+    // parked (TMS high, reset asserted); UART0 RX idle-high.
+    assign tb_test_en_i        = 1'b0;
+    assign tb_i2c0_scl_ext_low = 1'b0;
+    assign tb_i2c0_sda_ext_low = 1'b0;
+    assign tb_i3c0_scl_ext_low = 1'b0;
+    assign tb_i3c0_sda_ext_low = 1'b0;
+    assign tb_cpu_jtag_tck     = 1'b0;
+    assign tb_cpu_jtag_tms     = 1'b1;
+    assign tb_cpu_jtag_tdi     = 1'b0;
+    assign tb_cpu_jtag_reset   = 1'b1;
+    assign tb_uart0_rx_ext_drive = 1'b1;
+
+    // Telemetry ATB receiver 0 quiet with AFREADY high.
+    assign tb_telemetry0_atdata  = '0;
+    assign tb_telemetry0_atid    = '0;
+    assign tb_telemetry0_atvalid = 1'b0;
+    assign tb_telemetry0_afready = 1'b1;
+
+    // SPI octal pads idle-safe: mux off, CS deasserted, OE/IE negated high.
+    assign tb_spi_enable   = 1'b0;
+    assign tb_spi_clk      = 1'b0;
+    assign tb_spi_txd      = '0;
+    assign tb_spi_cs_n     = 1'b1;
+    assign tb_spi_cs_oe_n  = 1'b1;
+    assign tb_spi_cs_ie_n  = 1'b1;
+    assign tb_spi_clk_ie_n = 1'b1;
+    assign tb_spi_clk_oe_n = 1'b1;
+    assign tb_spi_dqs_ie_n = 1'b1;
+    assign tb_spi_dqs_oe_n = 1'b1;
+    assign tb_spi_dq_ie_n  = '1;
+    assign tb_spi_dq_oe_n  = '1;
+    assign tb_spi_miso_ext = 1'b0;
+
+    // Boot-stall JTAG override off; SEP WDT reset released; PCIe FLR idle;
+    // NDM reset requests idle; interrupt pins idle; straps zero; every
+    // subsystem reports reset complete; JTAG reset override off; DFX aborts
+    // clear.
+    assign tb_boot_stall_jtag_ovrd_i = 1'b0;
+    assign tb_boot_stall_jtag_val_i  = 1'b0;
+    assign tb_sep_wdt_reset_n        = 1'b1;
+    assign tb_cfg_flr_pf_active      = 1'b0;
+    assign tb_ndmreset_request       = '0;
+    assign tb_temp_interrupt_i       = 1'b0;
+    assign tb_ext_interrupt_0_i      = 1'b0;
+    assign tb_ss_reset_complete      = '1;
+    assign tb_jtag_reset_ctrl        = '0;
+    assign tb_mem_repair_abort       = 1'b0;
+    assign tb_mbist_abort            = 1'b0;
+
+    // Sideband: AVSBus sdata pull-up high, primary chiplet, OCTS secondary
+    // inject idle-low; SEP mailbox interrupts idle; no GPIO external drive.
+    assign tb_avs_sdata_ext          = 1'b1;
+    assign tb_chiplet_is_primary     = 1'b1;
+    assign tb_octs_sync_load_ext     = 1'b0;
+    assign tb_octs_cnt_credit_ext    = 1'b0;
+    assign tb_sep_mailbox_interrupts = '0;
+    assign tb_gpio_ext_drive_en      = '0;
+    assign tb_gpio_ext_drive_value   = '0;
+
+    // CPU memory ECC injection and the DFD fault inject off.
+    assign tb_cpu_ecc_inject_sbe   = 1'b0;
+    assign tb_cpu_ecc_inject_dbe   = 1'b0;
+    assign tb_cpu_ecc_inject_probe = 1'b0;
+    assign tb_cpu_ecc_poke_en      = 1'b0;
+    assign tb_cpu_ecc_poke_entry   = '0;
+    assign tb_cpu_ecc_poke_mask    = '0;
+    assign tb_dfd_fault_inject     = 1'b0;
+
+    // Product lifecycle state idle: complementary TEST_DEV ({~0, 0}).
+    assign tb_lc_state = {{smc_pkg::LC_STATE_WIDTH{1'b1}}, {smc_pkg::LC_STATE_WIDTH{1'b0}}};
+
+    // Non-reusable test classes compile as part of this top (module scope).
+    `include "smc_tests.sv"
+
+    initial begin
+        uvm_config_db#(virtual smc_tb_if)::set(null, "*", "tb_vif", u_tb_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_in_master_vif", u_sep_in_master_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_in_axi_vif", u_sep_in_axi_if);
+        run_test();
+    end
+`endif
 
 endmodule : smc_uvm_top

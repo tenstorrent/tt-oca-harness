@@ -14,6 +14,6 @@ class dtp_ctm_reset_wire_or_mode_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "ctm_reset_wire_or_mode",
             scenario="ctm_reset_wire_or_mode",
-            specific_env="DTP_CTM_RESET_WIRE_OR_MODE_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_CTM_RESET_WIRE_OR_MODE_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

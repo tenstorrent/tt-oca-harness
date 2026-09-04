@@ -76,6 +76,8 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.alert_seen: bool = False
         self.ara_ok: bool = False
+        # Byte the host read back; compared against _ARA_REPLY above.
+        self.ara_reply: int = -1
         self.alert_cleared: bool = False
         self.suspend_ok: bool = False
 
@@ -267,6 +269,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
         if rdata != _ARA_REPLY:
             raise AssertionError(f"ARA reply 0x{rdata:02x} != expected 0x{_ARA_REPLY:02x}")
         self.ara_ok = True
+        self.ara_reply = rdata
         cocotb.log.info("CHK-SMBUS-ALERT-SUS-ARA: reply=0x%02x", rdata)
 
         await self._await_smbus_ctrl_alert("TGT_ALERT_CLR", _TARGET_IDX, want_set=False)

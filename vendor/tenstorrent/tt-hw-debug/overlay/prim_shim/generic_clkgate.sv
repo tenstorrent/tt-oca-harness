@@ -7,17 +7,17 @@
 // och_prim_generic `not(synth)` tech swap instead of synthesising a behavioural
 // latch. generic_ccg and generic_ipx_clk_rst_ctrl pick this up automatically.
 module generic_clkgate (
-    input  logic clk,
-    input  logic en,
-    input  logic te,
-    output logic clk_out
+  input  logic clk,
+  input  logic en,
+  input  logic te,
+  output logic clk_out
 );
 
   prim_clkgater u_clkgater (
-      .i_clk(clk),
-      .i_en (en),
-      .i_te (te),
-      .o_clk(clk_out)
+    .i_clk(clk),
+    .i_en (en),
+    .i_te (te),
+    .o_clk(clk_out)
   );
 
 endmodule

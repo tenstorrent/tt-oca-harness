@@ -1,243 +1,338 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP scoreboard: always on, in every test, fed only by VIP monitor streams
-// and dtp_tb_if observables; one predictor and one comparison counter per
-// feature. Expected values come from the DUT collateral and the stimulus
-// the monitors saw, never from the observation under check.
+// DTP scoreboard: always on, in every test, and comparing only. Every
+// feature is judged on two streams the env wires in connect_phase: the
+// observed VIP monitor stream (<feature>_observed_export) and the expected
+// items its dtp_<feature>_ref_model publishes (<feature>_expected_export).
+// The base pairs the two in order per lane and hands each pair to
+// compare_pair(), which extracts the observed value from the monitor item
+// and records the verdict; an expected item without a contract pairs and
+// drops silently, so a reference model can publish one item per observed
+// item. Expected values never originate here.
 //
-//   ir_decode  every plain 6-bit IR scan: once the instruction becomes
-//              active (the TCK cycle leaving Update-IR), the one-hot
-//              decoded-instruction observable must equal 1 << instruction.
-//   idcode     every DR scan while IDCODE is the active instruction (after
-//              Test-Logic-Reset by TRST or TMS, or an explicit load): the
-//              shifted-out low 32 bits must equal the public DTP device
-//              identification.
-//   bypass     every DR scan of at most 64 bits while a bypass-class
-//              instruction is active: the one-bit bypass returns TDI delayed
-//              by one TCK, INV_BYPASS the inverted delayed image behind a
-//              captured 1, ZERO_LENGTH_BYPASS TDI itself.
-//   xtrig_csr  every OKAY read of a cross-trigger CSR with a readback
-//              contract (CTM selects, CTP CONFIG and STRETCH_MULT): the data
-//              must equal a shadow rebuilt from the writes the passive
-//              monitor observed, cleared on every system or power-on reset
-//              (tb_if reset counters).
-//   xtrig_decode  every access to the unmapped cross-trigger address space
-//              must complete with DECERR.
+//   ir_decode        expected: dtp_ir_decode_ref_model on the JTAG event and
+//                    IR-scan streams. Observed: dtp_tb_if.inst_decoded,
+//                    sampled when the expected item arrives (the cycle the
+//                    instruction becomes active).
+//   idcode, bypass   expected: dtp_idcode_ref_model, dtp_bypass_ref_model.
+//                    Observed: the reconstructed DR scan's TDO bits.
+//   xtrig_csr        expected: dtp_xtrig_csr_ref_model. Observed: the read
+//   xtrig_decode     data, or the response code, of the XTRIG AXI-Lite
+//                    monitor's item.
+//   jtag2axi_req     expected: dtp_jtag2axi_req_ref_model, one AXI item per
+//                    launched bridge transaction on the lane of its port.
+//                    Observed: the passive monitor items of the three bridge
+//                    ports (direction, address, size on AXI4, strobes, and
+//                    the strobed write data must match; every transaction
+//                    must have been predicted and every prediction must
+//                    land). A system or power-on reset cancels the
+//                    predictions still pending.
+//   jtag2axi_status  expected: dtp_jtag2axi_status_ref_model. Observed: the
+//                    status field, and after a completed read the data
+//                    field, of the SINGLE_OP or SERIES_CTRL capture.
 //
-// Composed scans (a wider IR scan spanning the STAP chain, or a DR scan
-// after one) make the PTAP instruction unrecoverable at this level, so the
-// JTAG predictors stand down until the next plain IR load or TAP reset.
-// STATUS reads carry no data contract and are skipped.
-// The cocotb twin is env/dtp_scoreboard.py.
+// A required feature (dtp_test_cfg.required_features through the env cfg)
+// that ends with zero comparisons fails the run. The cocotb DtpScoreboard
+// still checks inline on the driver's completed-item stream (DTP_TB_ARCH,
+// realization table).
 
-`uvm_analysis_imp_decl(_dtp_jtag_event)
-`uvm_analysis_imp_decl(_dtp_jtag_scan)
-`uvm_analysis_imp_decl(_dtp_xtrig_axi)
+`uvm_analysis_imp_decl(_dtp_ir_decode_expected)
+`uvm_analysis_imp_decl(_dtp_idcode_observed)
+`uvm_analysis_imp_decl(_dtp_idcode_expected)
+`uvm_analysis_imp_decl(_dtp_bypass_observed)
+`uvm_analysis_imp_decl(_dtp_bypass_expected)
+`uvm_analysis_imp_decl(_dtp_xtrig_csr_observed)
+`uvm_analysis_imp_decl(_dtp_xtrig_csr_expected)
+`uvm_analysis_imp_decl(_dtp_xtrig_decode_observed)
+`uvm_analysis_imp_decl(_dtp_xtrig_decode_expected)
+`uvm_analysis_imp_decl(_dtp_jtag2axi_req_observed)
+`uvm_analysis_imp_decl(_dtp_jtag2axi_req_expected)
+`uvm_analysis_imp_decl(_dtp_jtag2axi_status_observed)
+`uvm_analysis_imp_decl(_dtp_jtag2axi_status_expected)
 
 class dtp_scoreboard extends ocah_scoreboard;
-    `uvm_component_utils(dtp_scoreboard)
+  `uvm_component_utils(dtp_scoreboard)
 
-    dtp_env_cfg cfg;
-    // Handed by dtp_env: the decoded-instruction observable and the reset
-    // assertion counters the predictors re-baseline on.
-    virtual dtp_tb_if tb_vif;
+  dtp_env_cfg cfg;
+  // Handed by dtp_env: the decoded-instruction observable and the reset
+  // assertion counters.
+  virtual dtp_tb_if tb_vif;
 
-    uvm_analysis_imp_dtp_jtag_event #(ocah_jtag_event, dtp_scoreboard)     jtag_export;
-    uvm_analysis_imp_dtp_jtag_scan  #(ocah_jtag_scan_item, dtp_scoreboard) scan_export;
-    uvm_analysis_imp_dtp_xtrig_axi  #(ocah_axi_item, dtp_scoreboard)       xtrig_export;
+  uvm_analysis_imp_dtp_ir_decode_expected #(dtp_expected_item, dtp_scoreboard)
+        ir_decode_expected_export;
+  uvm_analysis_imp_dtp_idcode_observed #(ocah_jtag_scan_item, dtp_scoreboard)
+        idcode_observed_export;
+  uvm_analysis_imp_dtp_idcode_expected #(dtp_expected_item, dtp_scoreboard)
+        idcode_expected_export;
+  uvm_analysis_imp_dtp_bypass_observed #(ocah_jtag_scan_item, dtp_scoreboard)
+        bypass_observed_export;
+  uvm_analysis_imp_dtp_bypass_expected #(dtp_expected_item, dtp_scoreboard)
+        bypass_expected_export;
+  uvm_analysis_imp_dtp_xtrig_csr_observed #(ocah_axi_item, dtp_scoreboard)
+        xtrig_csr_observed_export;
+  uvm_analysis_imp_dtp_xtrig_csr_expected #(dtp_expected_item, dtp_scoreboard)
+        xtrig_csr_expected_export;
+  uvm_analysis_imp_dtp_xtrig_decode_observed #(ocah_axi_item, dtp_scoreboard)
+        xtrig_decode_observed_export;
+  uvm_analysis_imp_dtp_xtrig_decode_expected #(dtp_expected_item, dtp_scoreboard)
+        xtrig_decode_expected_export;
+  uvm_analysis_imp_dtp_jtag2axi_req_observed #(ocah_axi_item, dtp_scoreboard)
+        jtag2axi_req_observed_export;
+  uvm_analysis_imp_dtp_jtag2axi_req_expected #(ocah_axi_item, dtp_scoreboard)
+        jtag2axi_req_expected_export;
+  uvm_analysis_imp_dtp_jtag2axi_status_observed #(ocah_jtag_scan_item, dtp_scoreboard)
+        jtag2axi_status_observed_export;
+  uvm_analysis_imp_dtp_jtag2axi_status_expected #(dtp_jtag2axi_status_item, dtp_scoreboard)
+        jtag2axi_status_expected_export;
 
-    // JTAG predictor: tracked TAP state, active and pending instruction.
-    protected ocah_jtag_tap_state_e   m_tap = OCAH_JTAG_TEST_LOGIC_RESET;
-    protected bit                     m_ir_known = 1'b1;
-    protected bit [DtpIrWidth-1:0]    m_ir = jtag_inst_reg_pkg::IDCODE_INSTR;
-    protected bit                     m_pending_ir_valid;
-    protected bit [DtpIrWidth-1:0]    m_pending_ir;
-    protected int unsigned            m_pending_ir_scans;
-    protected int unsigned            m_ir_loads;
-    protected bit [31:0]              m_por_seen;
+  protected bit [31:0] m_sys_rst_seen;
+  protected bit [31:0] m_por_seen;
 
-    // XTRIG predictor: CSR shadow keyed by address, cleared on reset.
-    protected bit [31:0] m_csr_shadow[bit [63:0]];
-    protected bit [31:0] m_sys_rst_seen;
+  function new(string name = "dtp_scoreboard", uvm_component parent = null);
+    super.new(name, parent);
+    name_tag = "dtp_scoreboard";
+  endfunction
 
-    function new(string name = "dtp_scoreboard", uvm_component parent = null);
-        super.new(name, parent);
-        name_tag = "dtp_scoreboard";
-    endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if (!uvm_config_db#(dtp_env_cfg)::get(this, "", "env_cfg", cfg) || cfg == null)
+      `uvm_fatal(get_type_name(), "dtp_env_cfg `env_cfg` not found in uvm_config_db")
+    if (tb_vif == null) `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not set by the env")
+    ir_decode_expected_export       = new("ir_decode_expected_export", this);
+    idcode_observed_export          = new("idcode_observed_export", this);
+    idcode_expected_export          = new("idcode_expected_export", this);
+    bypass_observed_export          = new("bypass_observed_export", this);
+    bypass_expected_export          = new("bypass_expected_export", this);
+    xtrig_csr_observed_export       = new("xtrig_csr_observed_export", this);
+    xtrig_csr_expected_export       = new("xtrig_csr_expected_export", this);
+    xtrig_decode_observed_export    = new("xtrig_decode_observed_export", this);
+    xtrig_decode_expected_export    = new("xtrig_decode_expected_export", this);
+    jtag2axi_req_observed_export    = new("jtag2axi_req_observed_export", this);
+    jtag2axi_req_expected_export    = new("jtag2axi_req_expected_export", this);
+    jtag2axi_status_observed_export = new("jtag2axi_status_observed_export", this);
+    jtag2axi_status_expected_export = new("jtag2axi_status_expected_export", this);
+    add_feature(DtpFeatureIrDecode);
+    add_feature(DtpFeatureIdcode);
+    add_feature(DtpFeatureBypass);
+    add_feature(DtpFeatureXtrigCsr);
+    add_feature(DtpFeatureXtrigDecode);
+    add_feature(DtpFeatureJtag2axiReq);
+    add_feature(DtpFeatureJtag2axiStatus);
+    foreach (cfg.required_features[i]) require_feature(cfg.required_features[i]);
+  endfunction
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        if (!uvm_config_db#(dtp_env_cfg)::get(this, "", "env_cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "dtp_env_cfg `env_cfg` not found in uvm_config_db")
-        if (tb_vif == null)
-            `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not set by the env")
-        jtag_export  = new("jtag_export", this);
-        scan_export  = new("scan_export", this);
-        xtrig_export = new("xtrig_export", this);
-        add_feature(DtpFeatureIrDecode);
-        add_feature(DtpFeatureIdcode);
-        add_feature(DtpFeatureBypass);
-        add_feature(DtpFeatureXtrigCsr);
-        add_feature(DtpFeatureXtrigDecode);
-        foreach (cfg.required_features[i])
-            require_feature(cfg.required_features[i]);
-    endfunction
+  // ------------------------------------------------------------------
+  // ir_decode: the observation is a TB-interface observable, sampled in
+  // the time step the instruction became active.
+  // ------------------------------------------------------------------
 
-    // ------------------------------------------------------------------
-    // JTAG streams.
-    // ------------------------------------------------------------------
+  function void write_dtp_ir_decode_expected(dtp_expected_item t);
+    if ($isunknown(tb_vif.inst_decoded)) begin
+      record_compare(DtpFeatureIrDecode, 1'b0, $sformatf("0x%0h", t.expected & t.mask), "X",
+                     t.context_s);
+      return;
+    end
+    void'(compare_equal(
+        DtpFeatureIrDecode, 64'(tb_vif.inst_decoded) & t.mask, t.expected & t.mask, t.context_s
+    ));
+  endfunction
 
-    // Per-TCK events (falling edge, transition settled): track the TAP
-    // state and commit the pending instruction when Update-IR is left.
-    function void write_dtp_jtag_event(ocah_jtag_event t);
-        sync_power_on_reset();
-        if (t.kind == OCAH_JTAG_EV_TRST) begin
-            if (t.trst_asserted)
-                reset_tap_predictor();
-            return;
-        end
-        if (t.trst_n === 1'b0) begin
-            reset_tap_predictor();
-            return;
-        end
-        if (m_tap == OCAH_JTAG_UPDATE_IR)
-            commit_instruction();
-        m_tap = ocah_jtag_next_state(m_tap, t.tms);
-        // Test-Logic-Reset (by TMS as well as by TRST) loads the IR with the
-        // device-identification instruction (IEEE 1149.1 6.1.1).
-        if (m_tap == OCAH_JTAG_TEST_LOGIC_RESET)
-            reset_tap_predictor();
-    endfunction
+  // ------------------------------------------------------------------
+  // Stream features: enqueue on the feature's lane; the base pairs.
+  // ------------------------------------------------------------------
 
-    // Reconstructed scans (published on Shift-x -> Exit1-x).
-    function void write_dtp_jtag_scan(ocah_jtag_scan_item t);
-        sync_power_on_reset();
-        if (t.is_ir) begin
-            m_pending_ir_scans++;
-            m_pending_ir_valid = (t.bit_count == DtpIrWidth);
-            m_pending_ir       = t.tdi_value();
-            return;
-        end
-        predict_dr_scan(t);
-    endfunction
+  function void write_dtp_idcode_observed(ocah_jtag_scan_item t);
+    push_observed(DtpFeatureIdcode, t);
+  endfunction
 
-    // The instruction latched at Update-IR is the last plain 6-bit IR scan;
-    // a composed or re-shifted instruction scan leaves it unknown.
-    protected function void commit_instruction();
-        if (m_pending_ir_scans == 1 && m_pending_ir_valid) begin
-            m_ir       = m_pending_ir;
-            m_ir_known = 1'b1;
-            m_ir_loads++;
-            void'(compare_equal(DtpFeatureIrDecode, 64'(tb_vif.inst_decoded), 64'd1 << m_ir,
-                                $sformatf("ir=0x%02h load=%0d", m_ir, m_ir_loads)));
-        end
-        else if (m_pending_ir_scans != 0)
-            m_ir_known = 1'b0;
-        m_pending_ir_valid = 1'b0;
-        m_pending_ir_scans = 0;
-    endfunction
+  function void write_dtp_idcode_expected(dtp_expected_item t);
+    push_expected(DtpFeatureIdcode, t);
+  endfunction
 
-    protected function void predict_dr_scan(ocah_jtag_scan_item t);
-        bit [63:0] mask, observed, expected;
-        string context_s = $sformatf("ir=0x%02h bits=%0d", m_ir, t.bit_count);
-        if (!m_ir_known || t.bit_count == 0)
-            return;
-        if (m_ir == jtag_inst_reg_pkg::IDCODE_INSTR) begin
-            mask = bit_mask((t.bit_count < 32) ? t.bit_count : 32);
-            void'(compare_equal(DtpFeatureIdcode, t.tdo_value() & mask, DtpDefaultIdcode & mask,
-                                context_s));
-            return;
-        end
-        if (t.bit_count > 64)
-            return;
-        mask     = bit_mask(t.bit_count);
-        observed = t.tdo_value() & mask;
-        if (is_bypass_instruction(m_ir))
-            expected = ocah_jtag_checker::predict_bypass_tdo(t.tdi_value(), t.bit_count);
-        else if (m_ir == jtag_inst_reg_pkg::INV_BYPASS_INSTR)
-            expected = inverted_bypass_tdo(t.tdi_value(), t.bit_count);
-        else if (m_ir == jtag_inst_reg_pkg::ZERO_LENGTH_BYPASS_INSTR)
-            expected = t.tdi_value();
-        else
-            return;
-        void'(compare_equal(DtpFeatureBypass, observed, expected & mask, context_s));
-    endfunction
+  function void write_dtp_bypass_observed(ocah_jtag_scan_item t);
+    push_observed(DtpFeatureBypass, t);
+  endfunction
 
-    // The one-bit bypass register: both IEEE encodings and every undefined
-    // opcode (jtag_inst_reg_pkg UNDEFINED_BYPASS_*).
-    protected function bit is_bypass_instruction(bit [DtpIrWidth-1:0] ir);
-        return (ir == jtag_inst_reg_pkg::BYPASS_ALT_INSTR) ||
-               (ir == jtag_inst_reg_pkg::BYPASS_INSTR) ||
-               (ir == jtag_inst_reg_pkg::UNDEFINED_BYPASS_0F_INSTR) ||
-               (ir >= jtag_inst_reg_pkg::UNDEFINED_BYPASS_2D_INSTR &&
-                ir <= jtag_inst_reg_pkg::UNDEFINED_BYPASS_3C_INSTR);
-    endfunction
+  function void write_dtp_bypass_expected(dtp_expected_item t);
+    push_expected(DtpFeatureBypass, t);
+  endfunction
 
-    // Inverted one-bit bypass: capture bit 1, then the inverted pattern
-    // delayed by one TCK (LSB-first).
-    protected function bit [63:0] inverted_bypass_tdo(bit [63:0] pattern, int unsigned width);
-        bit [63:0] inverted;
-        if (width == 0)
-            return '0;
-        inverted = (~pattern) & bit_mask(width - 1);
-        return 64'h1 | (inverted << 1);
-    endfunction
+  function void write_dtp_xtrig_csr_observed(ocah_axi_item t);
+    push_observed(DtpFeatureXtrigCsr, t);
+  endfunction
 
-    protected function void reset_tap_predictor();
-        m_tap              = OCAH_JTAG_TEST_LOGIC_RESET;
-        m_ir               = jtag_inst_reg_pkg::IDCODE_INSTR;
-        m_ir_known         = 1'b1;
-        m_pending_ir_valid = 1'b0;
-        m_pending_ir_scans = 0;
-    endfunction
+  function void write_dtp_xtrig_csr_expected(dtp_expected_item t);
+    push_expected(DtpFeatureXtrigCsr, t);
+  endfunction
 
-    // Power-on reset resets the TAP (instruction back to IDCODE) and every
-    // CSR; the counter on tb_if is the observable.
-    protected function void sync_power_on_reset();
-        if (tb_vif.por_assert_count === m_por_seen)
-            return;
-        m_por_seen = tb_vif.por_assert_count;
-        reset_tap_predictor();
-        m_csr_shadow.delete();
-    endfunction
+  function void write_dtp_xtrig_decode_observed(ocah_axi_item t);
+    push_observed(DtpFeatureXtrigDecode, t);
+  endfunction
 
-    // ------------------------------------------------------------------
-    // Cross-trigger CSR stream (passive AXI-Lite monitor on the XTRIG port).
-    // ------------------------------------------------------------------
+  function void write_dtp_xtrig_decode_expected(dtp_expected_item t);
+    push_expected(DtpFeatureXtrigDecode, t);
+  endfunction
 
-    function void write_dtp_xtrig_axi(ocah_axi_item t);
-        dtp_xtrig_csr_kind_e kind;
-        bit [31:0] mask, shadow, observed;
-        sync_power_on_reset();
-        if (tb_vif.sys_rst_assert_count !== m_sys_rst_seen) begin
-            m_sys_rst_seen = tb_vif.sys_rst_assert_count;
-            m_csr_shadow.delete();
-        end
-        kind = dtp_xtrig_csr_decode(t.address, mask);
-        if (kind == DTP_XTRIG_CSR_UNMAPPED) begin
-            void'(compare_equal(DtpFeatureXtrigDecode, 64'(t.worst_resp()), 64'(OCAH_AXI_RESP_DECERR),
-                                $sformatf("%s addr=0x%03h", t.direction.name(), t.address)));
-            return;
-        end
-        if (kind == DTP_XTRIG_CSR_CTP_STATUS)
-            return;
-        if (!t.is_ok() || t.data_words.size() == 0)
-            return;
-        shadow = m_csr_shadow.exists(t.address) ? m_csr_shadow[t.address] : '0;
-        if (t.direction == OCAH_AXI_DIR_WRITE) begin
-            bit [7:0] strb = (t.strobes.size() != 0) ? t.strobes[0] : 8'hFF;
-            m_csr_shadow[t.address] =
-                dtp_xtrig_apply_wstrb(shadow, t.data_words[0][31:0], strb[3:0]) & mask;
-            return;
-        end
-        observed = t.data_words[0][31:0] & mask;
-        void'(compare_equal(DtpFeatureXtrigCsr, 64'(observed), 64'(shadow & mask),
-                            $sformatf("%s addr=0x%03h", kind.name(), t.address)));
-    endfunction
+  // Bridge transactions pair per port: the item's source names the
+  // monitor that published it, and the reference model stamps the same
+  // source on its predictions.
+  function void write_dtp_jtag2axi_req_observed(ocah_axi_item t);
+    sync_reset();
+    push_observed(DtpFeatureJtag2axiReq, t, t.source);
+  endfunction
 
-    static function bit [63:0] bit_mask(int unsigned width);
-        return ocah_rng::bit_mask(width);
-    endfunction
+  function void write_dtp_jtag2axi_req_expected(ocah_axi_item t);
+    sync_reset();
+    push_expected(DtpFeatureJtag2axiReq, t, t.source);
+  endfunction
+
+  function void write_dtp_jtag2axi_status_observed(ocah_jtag_scan_item t);
+    push_observed(DtpFeatureJtag2axiStatus, t);
+  endfunction
+
+  function void write_dtp_jtag2axi_status_expected(dtp_jtag2axi_status_item t);
+    push_expected(DtpFeatureJtag2axiStatus, t);
+  endfunction
+
+  // ------------------------------------------------------------------
+  // Pair verdicts.
+  // ------------------------------------------------------------------
+
+  virtual function void compare_pair(string feature, uvm_object observed, uvm_object expected);
+    if (feature == DtpFeatureIdcode || feature == DtpFeatureBypass)
+      compare_scan_value(feature, expected, observed);
+    else if (feature == DtpFeatureXtrigCsr) compare_axi_data(feature, expected, observed);
+    else if (feature == DtpFeatureXtrigDecode) compare_axi_resp(feature, expected, observed);
+    else if (feature == DtpFeatureJtag2axiReq) compare_jtag2axi_req(expected, observed);
+    else if (feature == DtpFeatureJtag2axiStatus) compare_jtag2axi_status(expected, observed);
+    else super.compare_pair(feature, observed, expected);
+  endfunction
+
+  // The scan's shifted-out bits under the expected mask.
+  protected function void compare_scan_value(string feature, uvm_object expected,
+                                             uvm_object observed);
+    dtp_expected_item   exp = cast_expected(expected);
+    ocah_jtag_scan_item obs;
+    if (!$cast(obs, observed))
+      `uvm_fatal(get_type_name(), {feature, ": observed item is not an ocah_jtag_scan_item"})
+    if (!exp.compare) return;
+    void'(compare_equal(
+        feature, obs.tdo_value() & exp.mask, exp.expected & exp.mask, exp.context_s
+    ));
+  endfunction
+
+  // The transaction's first data word under the expected mask.
+  protected function void compare_axi_data(string feature, uvm_object expected,
+                                           uvm_object observed);
+    dtp_expected_item exp = cast_expected(expected);
+    ocah_axi_item     obs = cast_axi(feature, observed);
+    if (!exp.compare) return;
+    void'(compare_equal(
+        feature, obs.first_data() & exp.mask, exp.expected & exp.mask, exp.context_s
+    ));
+  endfunction
+
+  // The transaction's worst response code.
+  protected function void compare_axi_resp(string feature, uvm_object expected,
+                                           uvm_object observed);
+    dtp_expected_item exp = cast_expected(expected);
+    ocah_axi_item     obs = cast_axi(feature, observed);
+    if (!exp.compare) return;
+    void'(compare_equal(
+        feature, 64'(obs.worst_resp()) & exp.mask, exp.expected & exp.mask, exp.context_s
+    ));
+  endfunction
+
+  // One verdict per bridge transaction: direction, address, size (AXI4
+  // only; AXI-Lite carries none), one beat, and for writes the strobes
+  // and the data on the strobed lanes.
+  protected function void compare_jtag2axi_req(uvm_object expected, uvm_object observed);
+    ocah_axi_item exp  = cast_axi(DtpFeatureJtag2axiReq, expected);
+    ocah_axi_item obs  = cast_axi(DtpFeatureJtag2axiReq, observed);
+    string        diff = "";
+    if (exp.direction != obs.direction) diff = {diff, " direction"};
+    if (exp.address !== obs.address) diff = {diff, " address"};
+    if ((exp.protocol == OCAH_AXI_PROTO_AXI4) && (exp.size != obs.size)) diff = {diff, " size"};
+    if (obs.beat_count() != 1) diff = {diff, " beats"};
+    if (exp.direction == OCAH_AXI_DIR_WRITE) begin
+      bit [7:0]  strb_e = (exp.strobes.size() != 0) ? exp.strobes[0] : 8'h00;
+      bit [7:0]  strb_o = (obs.strobes.size() != 0) ? obs.strobes[0] : 8'h00;
+      bit [63:0] lanes  = strobe_lanes(strb_e);
+      if (strb_e !== strb_o) diff = {diff, " strobes"};
+      if ((exp.first_data() & lanes) !== (obs.first_data() & lanes)) diff = {diff, " data"};
+    end
+    record_compare(DtpFeatureJtag2axiReq, diff == "", exp.convert2string(), obs.convert2string(), {
+                   "port=", obs.source, (diff == "") ? "" : {" mismatch:", diff}});
+  endfunction
+
+  // One verdict per bridge capture: the status field, and the data field
+  // after a completed OKAY read.
+  protected function void compare_jtag2axi_status(uvm_object expected, uvm_object observed);
+    dtp_jtag2axi_status_item exp;
+    ocah_jtag_scan_item      obs;
+    dtp_j2a_target_t         t;
+    dtp_j2a_status_e         status_e;
+    bit [63:0]               status_o;
+    bit [63:0]               rdata_o = '0;
+    string                   diff    = "";
+    if (!$cast(exp, expected))
+      `uvm_fatal(get_type_name(), "jtag2axi_status: expected item type mismatch")
+    if (!$cast(obs, observed))
+      `uvm_fatal(get_type_name(), "jtag2axi_status: observed item is not an ocah_jtag_scan_item")
+    if (!exp.compare) return;
+    t        = dtp_j2a_target_by_name(exp.target);
+    status_o = dtp_bits_field(obs.tdo_bits, 0, 2);
+    if (status_o !== 64'(exp.status)) diff = {diff, " status"};
+    if (exp.compare_rdata) begin
+      int unsigned data_off = 2 + t.size_bits + t.wstrb_bits;
+      rdata_o = dtp_bits_field(obs.tdo_bits, data_off, t.data_width) & exp.rdata_mask;
+      if (rdata_o !== (exp.rdata & exp.rdata_mask)) diff = {diff, " rdata"};
+    end
+    status_e = dtp_j2a_status_e'(int'(status_o));
+    record_compare(
+        DtpFeatureJtag2axiStatus, diff == "", exp.convert2string(), $sformatf(
+        "status=%s%s", status_e.name(), exp.compare_rdata ? $sformatf(" rdata=0x%0h", rdata_o) : ""
+        ), {exp.context_s, (diff == "") ? "" : {" mismatch:", diff}});
+  endfunction
+
+  // ------------------------------------------------------------------
+  // Helpers.
+  // ------------------------------------------------------------------
+
+  // A system or power-on reset aborts the bridge transactions in flight,
+  // so the predictions still waiting for them are withdrawn.
+  protected function void sync_reset();
+    int unsigned dropped;
+    if ((tb_vif.sys_rst_assert_count === m_sys_rst_seen) &&
+            (tb_vif.por_assert_count === m_por_seen))
+      return;
+    m_sys_rst_seen = tb_vif.sys_rst_assert_count;
+    m_por_seen     = tb_vif.por_assert_count;
+    dropped        = flush_expected(DtpFeatureJtag2axiReq);
+    if (dropped != 0)
+      `uvm_info(get_type_name(), $sformatf(
+                "reset withdrew %0d predicted bridge transaction(s)", dropped), UVM_MEDIUM)
+  endfunction
+
+  protected function dtp_expected_item cast_expected(uvm_object expected);
+    dtp_expected_item exp;
+    if (!$cast(exp, expected))
+      `uvm_fatal(get_type_name(), "expected item is not a dtp_expected_item")
+    return exp;
+  endfunction
+
+  protected function ocah_axi_item cast_axi(string feature, uvm_object item);
+    ocah_axi_item axi;
+    if (!$cast(axi, item)) `uvm_fatal(get_type_name(), {feature, ": item is not an ocah_axi_item"})
+    return axi;
+  endfunction
+
+  // Data-bit mask of the byte lanes a strobe selects.
+  protected static function bit [63:0] strobe_lanes(bit [7:0] strb);
+    bit [63:0] lanes = '0;
+    for (int unsigned lane = 0; lane < 8; lane++) if (strb[lane]) lanes[8*lane+:8] = 8'hFF;
+    return lanes;
+  endfunction
 
 endclass : dtp_scoreboard

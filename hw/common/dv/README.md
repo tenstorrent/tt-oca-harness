@@ -31,9 +31,11 @@ vip/ocah_<proto>_vip/
 
 `vip/ocah_lib/` is the shared framework library every bench class extends
 (`ocah_test`, `ocah_env`, `ocah_sequence`, `ocah_sequencer`, `ocah_scoreboard`,
-`ocah_subscriber`, the two cfg bases, the knob and seed accessors); its
-`uvm/sources.toml` is listed first in a DUT's `source_lists`. See
-`vip/ocah_lib/README.md`.
+`ocah_ref_model`, `ocah_subscriber`, the two cfg bases, the knob and seed
+accessors), realized twice with identical basenames: the Python package
+`ocah_lib` (`from ocah_lib import OcahTest`) for cocotb benches and
+`ocah_lib_pkg` for SV-UVM, whose `uvm/sources.toml` is listed first in a DUT's
+`source_lists`. See `vip/ocah_lib/README.md`.
 
 Shared VIP imports use the top-level `ocah_<proto>_vip` packages under `vip/`;
 the root `__init__.py` re-exports the cocotb public API, so consumers never

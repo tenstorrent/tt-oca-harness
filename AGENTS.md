@@ -1,6 +1,6 @@
 # Agent Guide for tt-oca-harness
 
-This guide helps AI agents navigate and work with the Tenstorrent Open Chiplet Atlas
+This guide helps AI agents navigate and work with the Open Chiplet Atlas
 Harness (OCAH) repository. It covers environment setup, the container-based firmware
 toolchain, running firmware-driven DV, and how to debug failures without chasing the wrong
 layer. Machine- and site-specific values are left as placeholders; substitute your own.
@@ -471,9 +471,9 @@ Work the pair in this order:
 2. Expect the open-tree PR's CI to fail while the companion PR is unmerged. A local branch
    proves the pair works on your machine, but no pipeline can see it and there is no pin to
    point at it.
-3. Merge the companion PR.
-4. Re-run the open-tree PR's pipeline, and merge only once it is green — not on the strength
-   of a run that predates step 3.
+3. Merge the companion PR, only when the user asks to merge it.
+4. Re-run the open-tree PR's pipeline, and merge it only when the user asks and it is
+   green — not on the strength of a run that predates step 3.
 
 Two further things follow from the same unpinned clone:
 
@@ -504,8 +504,8 @@ open files to compensate.
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
-| SystemVerilog lint (verible) | `make lint-sv-verible` |
-| SystemVerilog formatting | `make format-sv`, `make format-sv-check` |
+| SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
+| SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
@@ -516,6 +516,28 @@ plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs on
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
 `scripts/ci/diff_class.py` is the classifier.
+
+Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
+They share the same base inventory but use separate exclusions, so a formatter limitation does
+not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/**` stay out;
+never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
+after reviewing the diff, but treat types, range direction, assignment semantics, task
+lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
+Parameter naming remains deferred to issue #1051 and is disabled in this pass.
+
+Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
+owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. Central Makefiles only
+discover or pass those files, and each block `flow.mk` declares the Verilator waivers relevant
+to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match and a
+constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
+keep its findings visible rather than substituting whole-file suppression until a release with
+TOML `--waiver-file` support is pinned.
+
+`OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,
+preprocessor or formatter failures. Verible can scope by `LINT_PATH`; Slang and Verilator need
+a complete block filelist, though their top can be overridden within that filelist for
+diagnosis. The full scope and vendor policy are authoritative in `flows/lint/verible.mk` and
+`CONTRIBUTING.md`.
 
 Optional staged-file checks are documented in `CONTRIBUTING.md`. Agents may
 run `make hooks-run` or the underlying lint/format checks without installing a

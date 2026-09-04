@@ -11,23 +11,23 @@
 // to the scenario layer. The cocotb twin is seq_lib/dtp_jtag_op_seq.py.
 
 class dtp_jtag_op_seq extends ocah_jtag_master_sequence;
-    `uvm_object_utils(dtp_jtag_op_seq)
+  `uvm_object_utils(dtp_jtag_op_seq)
 
-    // TAP state the caller tracks before this operation.
-    ocah_jtag_tap_state_e entry_state = OCAH_JTAG_TEST_LOGIC_RESET;
+  // TAP state the caller tracks before this operation.
+  ocah_jtag_tap_state_e entry_state = OCAH_JTAG_TEST_LOGIC_RESET;
 
-    function new(string name = "dtp_jtag_op_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag_op_seq");
+    super.new(name);
+  endfunction
 
-    task body();
-        sync_model(entry_state);
-        do_op();
-    endtask
+  task body();
+    sync_model(entry_state);
+    do_op();
+  endtask
 
-    // The one operation this sequence performs.
-    virtual task do_op();
-        `uvm_fatal(get_type_name(), "do_op() not implemented")
-    endtask
+  // The one operation this sequence performs.
+  virtual task do_op();
+    `uvm_fatal(get_type_name(), "do_op() not implemented")
+  endtask
 
 endclass : dtp_jtag_op_seq

@@ -9,10 +9,11 @@
 // master bus: the core (VeeR EL2) is held off (`mpc_reset_run_req=0`) and an
 // external cocotbext-axi AxiMaster is spliced onto the CPU's LSU AXI master
 // ``SEP_CORE.sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
-// (addr32/data64/id3/user12). For the no_cpu (stub) build the CPU is the
-// sep_cpu stub, which is the SOLE driver of that bus and drives lsu_axi_req
-// directly from the tb's assembled request — no `force` (see
-// shims/cpu/sep_cpu_stub.sv); the tb only reads lsu_axi_resp back by name.
+// (addr32/data64/id3/user12). The stub build (`SEP_CPU_STUB`) is the sole
+// driver of that bus and drives lsu_axi_req from the tb's assembled request
+// (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS
+// build a no_cpu test force-splices the same post-remap `lsu_axi_req` and
+// holds `lsu_axi_resp_raw` idle. The tb reads lsu_axi_resp back by name.
 // Driving the demux slave-side LSU bus reaches the SEP-local fabric through the
 // same ROM/xbar routing point as the core would, so the external SMN inbound
 // filter is NOT in the path. Every other DUT port is tied to a benign idle
@@ -28,9 +29,10 @@
 // the OSS analog of the reference suite's ext_axi_sqr (axi_system[0].master[0]).
 //
 // Two run modes, selected by the `+cpu_boot` plusarg:
-//   * no-CPU (default): runs on the stub build; the core is held off
-//     (mpc_reset_run_req=0) and cocotb drives the SEP fabric over s_axi, which
-//     the sep_cpu stub presents on the LSU master (driven, not forced).
+//   * no-CPU (default): the core is held off (mpc_reset_run_req=0) and cocotb
+//     drives the SEP fabric over s_axi. The stub build presents that request
+//     on the LSU master (`assign`). The full-CPU VCS build force-splices the
+//     same post-remap net. Verilator no_cpu stays on the stub.
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
 //     runs. The boot test backdoor-loads the TCM (tb_backdoor_mem, on tcm_load_i),
@@ -1077,11 +1079,10 @@ module sep_uvm_top
     //
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
-    // reference and drives its lsu_axi_req from it (single driver, plain assign,
-    // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
-    // drive. (the reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
-    // build replaces the core with a stub, so the bus is single-driven and driven
-    // rather than forced.)
+    // reference and drives its lsu_axi_req from it (single driver, plain assign;
+    // see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS build a no_cpu test
+    // force-splices the same post-remap net. Whole-signal only; no per-field
+    // drive.
     // ------------------------------------------------------------------
     sep_32_64_3_12_axi_req_t lsu_req_drive;
 
@@ -1123,23 +1124,27 @@ module sep_uvm_top
         lsu_req_drive.r_ready    = (s_axi_rready === 1'b1);
     end
 
-    // LSU stimulus injection uses NO `force`:
-    //  * no_cpu tests run on the CPU-stub model, where the stub is the SOLE driver
-    //    of the LSU master and drives lsu_axi_req directly from `lsu_req_drive`
-    //    (an upward reference inside the stub, see shims/cpu/sep_cpu_stub.sv).
-    //  * CPU firmware-boot tests run on the full-CPU model, where the real VeeR
-    //    owns all of its master buses (LSU/IFU/DBG) and drives its own traffic.
-    // Either way the LSU request is single-driven, so it is driven, never forced.
-    //
-    // Guard: without the (removed) force, a no_cpu test has an LSU stimulus path
-    // ONLY on the stub build. If a no_cpu test (no +cpu_boot) is ever routed to the
-    // full-CPU build, the real core drives the LSU and cocotb cannot inject -- the
-    // test would silently wedge. Fail loudly instead, naming the fix.
+    // LSU stimulus injection:
+    //  * Stub build: the stub is the sole driver of the LSU master and drives
+    //    lsu_axi_req from `lsu_req_drive` (upward reference; no force).
+    //  * CPU firmware-boot (+cpu_boot): the real VeeR owns LSU/IFU/DBG.
+    //  * no_cpu on the full-CPU VCS build: VeeR is held off
+    //    (mpc_reset_run_req=0), so the VIP owns the post-remap LSU request.
+    //    Same node the stub drives, so VIP addresses do not pass through
+    //    u_lsu_local_alias_remap. The raw response is held idle so the halted
+    //    core sees no beats it did not issue. Verilator cannot force the whole
+    //    request struct; that path stays on the stub.
 `ifndef SEP_CPU_STUB
-    initial begin
-        if (!$test$plusargs("cpu_boot"))
-            $fatal(1, "no_cpu test on the full-CPU build has no LSU stimulus path: select target=lsu_stub_all_live (SEP_CPU_STUB), or add +cpu_boot for a firmware-boot test.");
+    `ifdef VERILATOR
+    initial if (!$test$plusargs("cpu_boot"))
+        $fatal(1, "no_cpu test on the full-CPU Verilator build: select target=lsu_stub_all_live or pass +cpu_boot");
+    `else
+    initial if (!$test$plusargs("cpu_boot")) begin
+        force `SEP_CORE.sep_cpu.lsu_axi_req      = lsu_req_drive;
+        force `SEP_CORE.sep_cpu.lsu_axi_resp_raw = '0;
+        $display("[tb] no_cpu on full-CPU build: LSU VIP force-splice active");
     end
+    `endif
 `endif
 
     // ------------------------------------------------------------------
@@ -1453,7 +1458,7 @@ module sep_uvm_top
     // smoke asserts this matches esrc_noise_o[0] -> proves the force took (not
     // vacuous).
     assign esrc_noise_active_o =
-        `SEP_ESRC.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
     // exact node the SR flop samples -- matching the reference UVM noise injection
@@ -1466,7 +1471,7 @@ module sep_uvm_top
     // rising edge; forcing on that same rising edge creates an ordering race.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
-    force `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
+    force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
     // Plain `always` (NOT always_ff): `force` is a procedural continuous override,
     // not a flop assignment, so always_ff semantics do not apply.
     // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
@@ -1534,7 +1539,7 @@ module sep_uvm_top
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed XMR.
 `define ESRC_DECOR_SR(i) \
     assign esrc_decor_sr_o[29*(i) +: 29] = \
-        `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.ff_stage
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.ff_stage
     `ESRC_DECOR_SR(0);  `ESRC_DECOR_SR(1);  `ESRC_DECOR_SR(2);
     `ESRC_DECOR_SR(3);  `ESRC_DECOR_SR(4);  `ESRC_DECOR_SR(5);
     `ESRC_DECOR_SR(6);  `ESRC_DECOR_SR(7);  `ESRC_DECOR_SR(8);
@@ -1745,7 +1750,7 @@ module sep_uvm_top
         .ADDR_WIDTH (32),
         .DATA_WIDTH (64),
         .ID_WIDTH   (3)
-    ) u_s_axi_sva (                       // CPU LSU master (sep_cpu stub drive)
+    ) u_s_axi_sva (                       // CPU LSU master (TB-driven when !cpu_boot)
         .aclk    (clk_i),
         .aresetn (rst_ni),
         .en_i    (s_axi_sva_en),

@@ -8,69 +8,69 @@
 
 package telemetry_receiver_pkg;
 
-    `include "axi/typedef.svh"
+  `include "axi/typedef.svh"
 
-    ////////////////////////////////////
-    // Register Interface Definitions //
-    ////////////////////////////////////
+  ////////////////////////////////////
+  // Register Interface Definitions //
+  ////////////////////////////////////
 
-    localparam int unsigned REG_ADDR_WIDTH =
+  localparam int unsigned REG_ADDR_WIDTH =
         telemetry_receiver_reg_pkg::TELEMETRY_RECEIVER_REG_MIN_ADDR_WIDTH;
-    localparam int unsigned REG_DATA_WIDTH = 32;
-    localparam int unsigned REG_STRB_WIDTH = REG_DATA_WIDTH / 8;
+  localparam int unsigned REG_DATA_WIDTH = 32;
+  localparam int unsigned REG_STRB_WIDTH = REG_DATA_WIDTH / 8;
 
-    typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
-    typedef logic [REG_DATA_WIDTH-1:0] reg_data_t;
-    typedef logic [REG_STRB_WIDTH-1:0] reg_strb_t;
+  typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
+  typedef logic [REG_DATA_WIDTH-1:0] reg_data_t;
+  typedef logic [REG_STRB_WIDTH-1:0] reg_strb_t;
 
-    `AXI_LITE_TYPEDEF_ALL(axil, reg_addr_t, reg_data_t, reg_strb_t)
-
-
-    /////////////////////////////////////
-    // Telemetry Interface Definitions //
-    /////////////////////////////////////
-
-    localparam int unsigned TELEMETRY_DATA_WIDTH = 8;
-
-    typedef logic [TELEMETRY_DATA_WIDTH-1:0] telemetry_data_t;
-    typedef logic [6:0]                      atb_id_t; // Fixed by ATB Standard
+  `AXI_LITE_TYPEDEF_ALL(axil, reg_addr_t, reg_data_t, reg_strb_t)
 
 
-    ////////////////////////////////////
-    // Telemetry Receiver Definitions //
-    ////////////////////////////////////
+  /////////////////////////////////////
+  // Telemetry Interface Definitions //
+  /////////////////////////////////////
 
-    localparam int unsigned TELEMETRY_PACKET_WIDTH  = 64;
-    localparam int unsigned TELEMETRY_HEADER_WIDTH  = 9;
-    localparam int unsigned TELEMETRY_COUNTER_WIDTH = 32;
-    localparam int unsigned TELEMETRY_BLOCK_WIDTH   = TELEMETRY_DATA_WIDTH + 1;
+  localparam int unsigned TELEMETRY_DATA_WIDTH = 8;
 
-    localparam int unsigned TELEMETRY_PROBE_ID_WIDTH = 5;
-    typedef logic [TELEMETRY_PROBE_ID_WIDTH-1:0] telemetry_probe_id_t;
+  typedef logic [TELEMETRY_DATA_WIDTH-1:0] telemetry_data_t;
+  typedef logic [6:0] atb_id_t;  // Fixed by ATB Standard
 
-    // General
-    localparam int unsigned NUM_BEATS_PER_PACKET  = TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH;
-    localparam int unsigned NUM_BLOCKS_PER_PACKET = TELEMETRY_PACKET_WIDTH / TELEMETRY_BLOCK_WIDTH;
 
-    // Telemetry message decoding
-    typedef struct packed {
-        logic            vld;
-        telemetry_data_t counter_val_partial;
-    } telemetry_block_t;
+  ////////////////////////////////////
+  // Telemetry Receiver Definitions //
+  ////////////////////////////////////
 
-    typedef struct packed {
-        logic                                         last_packet;
-        telemetry_block_t [0:NUM_BLOCKS_PER_PACKET-1] blocks;
-    } telemetry_packet_t;
+  localparam int unsigned TELEMETRY_PACKET_WIDTH = 64;
+  localparam int unsigned TELEMETRY_HEADER_WIDTH = 9;
+  localparam int unsigned TELEMETRY_COUNTER_WIDTH = 32;
+  localparam int unsigned TELEMETRY_BLOCK_WIDTH = TELEMETRY_DATA_WIDTH + 1;
 
-    typedef logic [TELEMETRY_COUNTER_WIDTH-1:0] telemetry_counter_val_t;
+  localparam int unsigned TELEMETRY_PROBE_ID_WIDTH = 5;
+  typedef logic [TELEMETRY_PROBE_ID_WIDTH-1:0] telemetry_probe_id_t;
 
-    typedef struct packed {
-        logic                   vld;
-        telemetry_counter_val_t value;
-    } telemetry_counter_t;
+  // General
+  localparam int unsigned NUM_BEATS_PER_PACKET = TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH;
+  localparam int unsigned NUM_BLOCKS_PER_PACKET = TELEMETRY_PACKET_WIDTH / TELEMETRY_BLOCK_WIDTH;
 
-    // Register block
-    localparam int unsigned NUM_COUNTER_REGS = 32;
+  // Telemetry message decoding
+  typedef struct packed {
+    logic            vld;
+    telemetry_data_t counter_val_partial;
+  } telemetry_block_t;
+
+  typedef struct packed {
+    logic                                         last_packet;
+    telemetry_block_t [NUM_BLOCKS_PER_PACKET-1:0] blocks;
+  } telemetry_packet_t;
+
+  typedef logic [TELEMETRY_COUNTER_WIDTH-1:0] telemetry_counter_val_t;
+
+  typedef struct packed {
+    logic                   vld;
+    telemetry_counter_val_t value;
+  } telemetry_counter_t;
+
+  // Register block
+  localparam int unsigned NUM_COUNTER_REGS = 32;
 
 endpackage

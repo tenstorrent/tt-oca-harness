@@ -57,7 +57,9 @@ sources = [
 # PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
 # aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
 # generated block from every target's bender flist; the stub above replaces it.
-# Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
+# A `--cov` compile (`VM_COVERAGE=1`) hits the same error on 5.046; 5.050
+# compiles. Package files (*_reg_pkg.sv) stay — substring match is on this
+# exact basename.
 exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
@@ -127,14 +129,54 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
+[coverage.vcs]
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
+# the list rather than appending to it, then add the scope file.
+#
+# VCS-only because only this table applies the compile-time scope. A `--cov`
+# run on another simulator grades an unscoped denominator. Coverage runs take
+# `--target default` (one full-CPU elaboration; no_cpu force-splices the LSU
+# VIP). Edit `sep_cov_scope.hier` then `--rebuild` -- the file is not
+# fingerprinted.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only way
+# to keep the testbench out of the number is to keep it out of the database:
+# `-cm_hier` limits what gets instrumented. That also shrinks the per-leaf
+# databases and the sim time.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier",
+  # Extends the SAME scope file from code coverage to assertion coverage.
+  # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
+  # excluded hierarchy is gone from the code metrics but still graded for
+  # assertions -- measured on the merged database: sep_cpu, u_m_axi_sva and
+  # u_s_axi_sva each reported an ASSERT score with every code column `--`.
+  # `-cm_common_hier` is a Limited Customer Availability feature; VCS refuses the
+  # compile without `-lca` ("The '-cm_common_hier' flow requires a special
+  # option"). No extra licence is needed -- only the opt-in switch.
+  "-lca",
+  "-cm_common_hier",
+]
+
+# Records the measured toggle-instrumentation cost so a future Verilator
+# coverage flow does not rediscover it. That run needs its own scope story
+# before its number is quotable.
 [coverage.verilator]
-# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
-# toggle instrumentation stays off for this DUT. On this model toggle points
-# are ~95% of the coverage database (~0.5 GB per test leaf, tens of GB across
-# a reseeded regression before merge) and the costliest instrumentation at sim
-# time; without toggle the same regression's coverage stays in the low GB
-# range and fits standard CI runner disk. Replaces the simulator-default
-# `--coverage` (which enables all forms including toggle).
+# Not the graded number. Only [coverage.vcs] applies the compile-time scope.
+# `--cov --tool verilator` fails C++ compile on 5.046 (`__PVT__MLKEM_SHARED_KEY`
+# under `VM_COVERAGE=1`); 5.050 compiles.
+# Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
+# and the costliest sim instrumentation. Replaces the simulator-default
+# `--coverage`.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [frameworks.cocotb]
@@ -393,7 +435,9 @@ args = ["+cpu_boot"]
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
 #   * lsu_stub_all_live  (CPU stubbed)      : no VeeR; m_axi + j_axi live.
 #
-# Daily commit/push validation is three class regressions, not one mixed `all` run:
+# Daily commit/push validation is the two class regressions, not one mixed `all`
+# run. `rom_fw` is a separate owner's class, not a member of `all`; run it only
+# when Boot ROM firmware is in scope:
 #   python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
 #       --tool verilator --stage flist --stage hdl_compile --stage sim
 #   python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
@@ -406,9 +450,9 @@ args = ["+cpu_boot"]
 # no_cpu, and bounds CPU firmware fanout while keeping the Verilator model
 # single-threaded by default.
 #
-# `default` is the FALLBACK target -- unassigned tests + every cpu test land here safely
-# (full CPU supports both run modes). no_cpu tests select lsu_stub_all_live for the sim
-# speedup.
+# `default` is the FALLBACK target. On VCS the full CPU supports both run modes:
+# no_cpu force-splices the LSU VIP. Verilator no_cpu still selects
+# lsu_stub_all_live. Coverage runs pass `--target default`.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
 # [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags;

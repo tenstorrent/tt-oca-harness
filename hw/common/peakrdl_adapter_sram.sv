@@ -37,7 +37,7 @@ module peakrdl_adapter_sram
   parameter bit RejectPartialWrites = 0,  // 1: Reject partial writes (wr_biten != all ones), 0: Allow all writes
   parameter bit SecFifoPtr        = 0,  // 1: Duplicated fifo pointers
 
-      // Width adaptation calculations
+  // Width adaptation calculations
   // ECC adds bits: 16→22 (adds 6), 32→39 (adds 7)
   localparam int PeakRdlEccDw     = EnableECC ? (PeakRdlDw == 16 ? 22 :
                                                  PeakRdlDw == 32 ? 39 : PeakRdlDw) : PeakRdlDw,
@@ -121,7 +121,7 @@ module peakrdl_adapter_sram
 
   // Simple FIFO to track woffset for read operations
   typedef struct packed {
-    logic [WoffsetDeclWidth-1:0] woffset; // Offset of the PeakRDL word within the SRAM word
+    logic [WoffsetDeclWidth-1:0] woffset;  // Offset of the PeakRDL word within the SRAM word
   } read_req_t;
 
   localparam int ReadReqFifoWidth = $bits(read_req_t);
@@ -137,9 +137,9 @@ module peakrdl_adapter_sram
   if (WidthMult > 1) begin : gen_wordwidthadapt
     // Extract word offset: which PeakRDL word within the SRAM word
     // PeakRDL provides byte addresses, so convert to word address first, then extract word offset
-    localparam int PeakRdlByteOffsetWidth = $clog2(PeakRdlDw/8);
+    localparam int PeakRdlByteOffsetWidth = $clog2(PeakRdlDw / 8);
     // Convert byte address to PeakRDL word address, then take lower WordOffsetWidth bits
-    assign woffset = peakrdl_addr_i[PeakRdlByteOffsetWidth +: WordOffsetWidth];
+    assign woffset = peakrdl_addr_i[PeakRdlByteOffsetWidth+:WordOffsetWidth];
   end else begin : gen_no_wordwidthadapt
     // When WidthMult=1, no width adaptation needed - always select element 0
     assign woffset = 1'b0;
@@ -464,11 +464,13 @@ module peakrdl_adapter_sram
   `OCAH_OT_ASSERT_INIT(EccPipelineRequiresEcc_A, !EnableEccPipeline || EnableECC)
 
   // Partial write rejection parameter validation
-  `OCAH_OT_ASSERT_INIT(PartialWriteRejectWithEccIsConsistent_A, !(EnableECC && !RejectPartialWrites))
+  `OCAH_OT_ASSERT_INIT(PartialWriteRejectWithEccIsConsistent_A,
+                       !(EnableECC && !RejectPartialWrites))
 
   // ECC requires full word writes only for actual SRAM access (partial writes may be filtered out)
-  `OCAH_OT_ASSERT(OnlyWordWritePossibleWithEcc_A, !(EnableECC && ram_req_o && ram_write_o) ||
-          peakrdl_wr_biten_i == {PeakRdlDw{1'b1}})
+  `OCAH_OT_ASSERT(
+      OnlyWordWritePossibleWithEcc_A,
+      !(EnableECC && ram_req_o && ram_write_o) || peakrdl_wr_biten_i == {PeakRdlDw{1'b1}})
 
   // Simple response assertions
   // Write acknowledgment should be asserted for all write requests (not tied to SRAM grant)

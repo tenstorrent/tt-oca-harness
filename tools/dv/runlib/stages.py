@@ -1241,10 +1241,57 @@ def _render_run_test_args(
     ctx = {"seed": str(seed)}
     if repo_root is not None:
         ctx["repo_root"] = str(repo_root)
-    return [
-        *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
-        *_render_list(list(test.args or []), ctx),
-    ]
+    return _last_plusarg_wins(
+        [
+            *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
+            *_render_list(list(test.args or []), ctx),
+        ]
+    )
+
+
+def _plusarg_key(arg: str) -> str | None:
+    if arg.startswith("+") and "=" in arg:
+        return arg.split("=", 1)[0]
+    return None
+
+
+def _last_plusarg_wins(rendered: list[str]) -> list[str]:
+    """Return a new list where a later scalar `+key=value` wins.
+
+    A testlist entry is more specific than the run mode it runs under, so when
+    both set the same plusarg the entry is meant to override. `$value$plusargs`
+    returns the *first* match, so leaving both on the command line hands the win
+    to the run mode and the entry's value never reaches the design -- an
+    override that reads as effective and is not. Whether that is visible depends
+    on the simulator, because nothing reports the discarded one.
+
+    Only scalar `+key=value` forms are collapsed. Bare flags, non-plusarg
+    arguments, and every `+uvm_set_*` occurrence keep their relative order:
+    UVM consumes each `+uvm_set_type_override=` / `+uvm_set_config_*` /
+    `+uvm_set_verbosity=` / `+uvm_set_severity=` independently, so two
+    type overrides share a key and collapsing them would drop one.
+
+    Each drop is printed. Silently discarding an argument the config author
+    wrote is the same class of problem as the one this function exists to fix:
+    the command line stops matching the config and nothing says so.
+    """
+    final_at: dict[str, int] = {}
+    for index, arg in enumerate(rendered):
+        key = _plusarg_key(arg)
+        if key is None or key.startswith("+uvm_set_"):
+            continue
+        final_at[key] = index
+    kept: list[str] = []
+    for index, arg in enumerate(rendered):
+        key = _plusarg_key(arg)
+        if key is not None and key in final_at and final_at[key] != index:
+            print(
+                f"PLUSARG: dropping {arg} -- overridden by {rendered[final_at[key]]}",
+                flush=True,
+            )
+            continue
+        kept.append(arg)
+    return kept
 
 
 def _firmware_target(test: TestEntry | None, item: str | None) -> str:
@@ -1540,6 +1587,7 @@ def _cocotb_build_info(
             {
                 "tool": tool,
                 "target": target_name,
+                "repo_root": str(root),
                 "build_dir": str(base_build),
                 "build_cov_dir": str(base_build / "cov_build.vdb"),
                 "cov_dir": str(base_build / "coverage"),
@@ -1636,6 +1684,7 @@ def _cocotb_vcs_makefile(
         "cov_dir": str(cov_dir),
         "build_dir": str(sim_build),
         "build_cov_dir": str(sim_build / "cov_build.vdb"),
+        "repo_root": str(root),
         "seed": str(seed),
         "tool": "vcs",
         "item": item or "",
@@ -2305,6 +2354,17 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
         )
     else:
         print(f"# cocotb {{payload['tool']}} build skipped: pre-built during elaborate", flush=True)
+        # `runner.build()` is what normally populates the runner's source
+        # lists, and Xcelium's `_test_command` concatenates all three to decide
+        # whether any VHDL source needs `-vhpi`. On the pre-built path build()
+        # never runs, so those attributes are absent and `test()` raises with an
+        # AttributeError before the simulator is ever launched. Only the missing
+        # ones are filled, so a cocotb version that does set them keeps its own
+        # values. Empty is the correct value here: this flow compiles from a
+        # file list rather than from runner sources, and has no VHDL.
+        for _src_attr in ("_sources", "_vhdl_sources", "_verilog_sources"):
+            if not hasattr(runner, _src_attr):
+                setattr(runner, _src_attr, [])
 
     runner.test(
         hdl_toplevel=payload["top_module"],
@@ -2498,6 +2558,7 @@ def _vcs_resolve_build(
         {
             "tool": "vcs",
             "target": target_name,
+            "repo_root": str(root),
             "build_dir": str(build_dir),
             "build_cov_dir": str(build_dir / "cov_build.vdb"),
             "cov_dir": str(build_dir / "coverage"),

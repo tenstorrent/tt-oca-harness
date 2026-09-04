@@ -32,6 +32,14 @@ ocah_shell_check_files = @[ -n "$(strip $(ocah_shell_files))" ] || { echo "error
 # unseen; warning-and-above is where a finding is plausibly a real bug.
 SHELLCHECK_SEVERITY ?= warning
 
+ifndef OCAH_SHELLCHECK_SKIP_UV
+SHELLCHECK := $(OCAH_UV_RUN) shellcheck
+SHFMT := $(OCAH_UV_RUN) shfmt
+else
+SHELLCHECK := shellcheck
+SHFMT := shfmt
+endif
+
 ## @section Lint (shellcheck)
 
 ## Lint shell scripts with shellcheck (no autofix; hand-fix reported issues).
@@ -40,7 +48,7 @@ SHELLCHECK_SEVERITY ?= warning
 .PHONY: ocah-lint-shell
 ocah-lint-shell:
 	$(ocah_shell_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked shellcheck --severity=$(SHELLCHECK_SEVERITY) $(OCAH_LINT_SHELLCHECK_EXTRA_FLAGS) $(ocah_shell_files)
+	$(SHELLCHECK) --severity=$(SHELLCHECK_SEVERITY) $(OCAH_LINT_SHELLCHECK_EXTRA_FLAGS) $(ocah_shell_files)
 
 OCAH_PHONY += ocah-lint-shell
 
@@ -52,14 +60,14 @@ OCAH_PHONY += ocah-lint-shell
 .PHONY: ocah-format-shell
 ocah-format-shell:
 	$(ocah_shell_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked shfmt -i 2 -w $(ocah_shell_files)
+	$(SHFMT) -i 2 -w $(ocah_shell_files)
 
 ## Check shell formatting without modifying files (CI-friendly: exit 0 clean, 1 would-reformat).
 ## @param SHELL_PATH=scripts Optional path to scope the check; default repo root
 .PHONY: ocah-format-shell-check
 ocah-format-shell-check:
 	$(ocah_shell_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked shfmt -i 2 -d $(ocah_shell_files)
+	$(SHFMT) -i 2 -d $(ocah_shell_files)
 
 OCAH_PHONY += ocah-format-shell ocah-format-shell-check
 

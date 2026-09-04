@@ -5,7 +5,8 @@
 Agent / monitor honesty (U6-1):
   * SAMPLE-only agents: i2c / reset / clk / irq / gpio / axil — observability
     sampling, not protocol BFMs.
-  * Protocol / traffic agents: sys_axi / sys_in_axi / jtag_axi / protocol_vip.
+  * Protocol / traffic agents: sep_in_axi (alias: sys_axi) / sys_in_axi /
+    jtag_axi / protocol_vip.
   * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT, U6-2).
 """
 
@@ -37,7 +38,22 @@ class SmcEnv(uvm_env):
         self.gpio_agent = SmcGpioAgent("gpio_agent", self)
         self.axil_agent = SmcAxilAgent("axil_agent", self)
         # --- Protocol / traffic agents ---
-        self.sys_axi_agent = SmcSysAxiAgent("sys_axi_agent", self)
+        # Port identity, stated once here because the historical handle name is
+        # misleading ([ADDRESS-FROM-AUTHORITATIVE-MAP]):
+        #
+        #   sep_in_axi_agent (SmcSysAxiAgent,   bus_prefix "s_axi")
+        #       -> tb_top s_axi_* bridge -> smc.sep_axi_in_req_i   ["SEP_IN AXI"]
+        #   sys_in_axi_agent (SmcSysInAxiAgent, bus_prefix "sys_axi")
+        #       -> smc.sys_axi_in_req_i                            ["SYS_IN AXI"]
+        #
+        # `sep_in_axi_agent` is the correctly-named handle and agrees with its
+        # driver's bus_prefix/bus_name; `sys_axi_agent` is kept as a deprecated
+        # alias for the same instance because ~50 call sites across tests/ and
+        # seq_lib/ still use it. Prefer `sep_in_axi_agent` in new code. The alias
+        # is the same object, so `bus_name` in every kept log line stays the
+        # authority on which port was driven.
+        self.sep_in_axi_agent = SmcSysAxiAgent("sep_in_axi_agent", self)
+        self.sys_axi_agent = self.sep_in_axi_agent
         self.sys_in_axi_agent = SmcSysInAxiAgent("sys_in_axi_agent", self)
         self.jtag_axi_agent = SmcJtagAxiAgent("jtag_axi_agent", self)
         self.protocol_vip_agent = SmcProtocolVipAgent("protocol_vip_agent", self)
@@ -53,7 +69,7 @@ class SmcEnv(uvm_env):
         self.irq_agent.ap.connect(self.scoreboard.analysis_export)
         self.gpio_agent.ap.connect(self.scoreboard.analysis_export)
         self.axil_agent.ap.connect(self.scoreboard.analysis_export)
-        self.sys_axi_agent.ap.connect(self.scoreboard.analysis_export)
+        self.sep_in_axi_agent.ap.connect(self.scoreboard.analysis_export)
         self.sys_in_axi_agent.ap.connect(self.scoreboard.analysis_export)
         self.jtag_axi_agent.ap.connect(self.scoreboard.analysis_export)
         self.protocol_vip_agent.ap.connect(self.scoreboard.analysis_export)

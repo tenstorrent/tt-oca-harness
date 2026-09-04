@@ -1,8 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GitHub Project P0 alias for input/output fabric CSR precheck.
+"""GitHub Project P0 leaf for the input/output fabric CSR precheck sequence.
 
 DV-CARD:          SMC_004   ANCHOR: smc_input_fabric_axi_wr_rd_test
+
+This is not an alias of ``smc_input_output_fabric_wr_rd_test``. That sibling
+programs the filters and then issues JTAG-AXI traffic into the output-fabric
+window. This leaf is the only enrolled owner of
+``smc_input_output_fabric_wr_rd_test_seq`` (SEP_IN CSR precheck of the same
+filter/remap windows).
 """
 
 from __future__ import annotations

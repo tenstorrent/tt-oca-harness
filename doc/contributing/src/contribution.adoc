@@ -142,6 +142,12 @@ Open a pull request against `main`. There is a default template which asks for:
 CI does not require those sections. Project taxonomy lives in issues, not PRs.
 Pull requests are typically reviewed weekly.
 
+==== Pull Request Guidance
+
+* Keep pull requests focused; unrelated changes belong in separate PRs.
+* Write clear commit messages that explain why a change is made.
+* Ensure relevant builds and checks pass before requesting review.
+
 === Continuous Integration
 
 [NOTE]
@@ -195,6 +201,12 @@ Additional labels for pre-release and build metadata are available as
 extensions to the MAJOR.MINOR.PATCH format.
 
 See the documentation on https://semver.org[semver] for more details.
+
+=== Conventions, Linting and CI
+
+For details on Coding Styles and Conventions, see xref:guidelines.adoc[Guidance].
+
+For details on linting and CI, please see xref:workflows.adoc#linting[Workflows].
 
 == Tracking Tasks and Bugs with GitHub
 

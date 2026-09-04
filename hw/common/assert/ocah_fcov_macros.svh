@@ -18,9 +18,9 @@
 `define OCAH_FCOV_MACROS_SVH
 
 `ifdef SYNTHESIS
-  `define OCAH_FCOV_COVER(__name, __prop, __clk, __rst)
+`define OCAH_FCOV_COVER(__name, __prop, __clk, __rst)
 `else
-  `define OCAH_FCOV_COVER(__name, __prop, __clk, __rst) \
+`define OCAH_FCOV_COVER(__name, __prop, __clk, __rst) \
     __name: cover property (@(posedge __clk) disable iff ((__rst) !== '0) (__prop));
 `endif
 

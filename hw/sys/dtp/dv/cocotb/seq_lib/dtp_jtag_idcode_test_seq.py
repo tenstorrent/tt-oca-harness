@@ -120,7 +120,7 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
             await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, pattern, width=32)
 
     async def body(self) -> None:
-        seed = self.scenario_seed if self.scenario_seed is not None else self.random_seed()
+        seed = self.scenario_seed
         self.log.info("Using IDCODE random seed %d", seed)
         rng = random.Random(seed)
 

@@ -10245,7 +10245,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10263,7 +10263,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10281,7 +10281,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10299,7 +10299,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10335,7 +10335,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

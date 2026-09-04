@@ -180,4 +180,4 @@ Error = 6’b111111
 
 A token match does not by itself change the life cycle state. It
 authorizes a change, and the state is then updated by one of two paths
-described in _Fuse Controller (OTP)_ in this chapter.
+described in _OTP fuse controller_ in this chapter.

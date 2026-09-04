@@ -33,7 +33,7 @@ AXI4-lite is used for data interfaces and is generally configured with
 64-bit data and address. Control buses for accessing CSRs and other low
 speed sources are implemented with 32-bit APB.
 
-The system memory map and component CSRs (Configuration and Status
+The system memory map and component CSRs (Control and Status
 Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
@@ -80,7 +80,7 @@ portions of it, attempting to leave the core functionality unmodified.
 This may not always be possible, so the exact method of modification
 will vary.
 
-An example modification would be the CSR (Configuration and Status
+An example modification would be the CSR (Control and Status
 Register) design. As described further below, we intend to use SystemRDL
 for this purpose and generate those implementations. OpenTitan
 components for example, use a different CSR mechanism which will be
@@ -482,7 +482,7 @@ clearly identified and easy to extract and bundle with a component for
 use in other non-OCAH systems. We want to avoid obfuscated, complex
 dependencies within the design that are difficult to unravel.
 
-=== CSRs : Configuration and Status Registers
+=== CSRs : Control and Status Registers
 
 Register and memory map descriptions are written in SystemRDL. Output
 renderings include:
@@ -635,7 +635,7 @@ This section highlights a few of the most important aspects as well as a
 few deviations from the OpenTitan rules. If there is a conflict between
 the two, the specification here takes precedence.
 
-* Use four spaces for indentation, rather than two for new files
+* Use two spaces for indentation, matching the lowRISC style guide.
 * Use all upper case letters to name enums, constants (localparam), and
 parameters instead of UpperCamelCase.
 * As stated in the lowRISC guidelines, SystemVerilog Interfaces can be

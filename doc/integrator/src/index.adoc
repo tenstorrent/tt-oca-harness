@@ -598,7 +598,7 @@ testing (unless disabled), and system health checks. The `init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger
 a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the
@@ -818,6 +818,17 @@ The crypto subsystem requires additional memory interfaces.
 public key accelerator instruction and data memories respectively.
 `km_rom_mem` and `km_sram_mem` connect to the Key Manager's dedicated ROM and
 SRAM macros.
+
+`abr_mem` connects the Adams Bridge working SRAM. On an idle cycle (`re` low),
+ABR expects the channel's read data to return 0 the following cycle.
+`SEP_ABR_SRAM_LATENCY` must equal the macros' native registered-read latency
+(default 1). Word-write channels are full-word `we` / `re` / address / data.
+`sig_z` and `pk` carry one-bit-per-byte `wstrobe`; map those to the macros'
+byte-write enables. `SEP_ABR_MASKING_EN` (default 1) selects 2-share DOM:
+thirteen 1R1W macros versus nine, plus a second NTT. This changes ABR internal
+behavior (sequencing, SCA, memory topology), not merely throughput. Give the
+same value to SEP and to the SRAM instances. When it is 0, do not instantiate
+the four masked coefficient banks; their response fields read as 0.
 
 ==== Cryptographic Subsystem Connections
 
@@ -1061,12 +1072,14 @@ parameter with its default value.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
 |`XTRIG_INT_CT_MODE` |`8'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack)
 |`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
 |`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
 |`SMC_WR_PL_DEPTH` |`2'h3` |SMC fabric write pipeline depth
+|`SEP_ABR_SRAM_LATENCY` |`1` |ABR 1R1W registered-read latency, in clocks
+|`SEP_ABR_MASKING_EN` |`1` |Adams Bridge 2-share DOM masking
 |===
 
 SEP-related DTP configuration is not exposed as an SMU config-struct field.
@@ -1189,7 +1202,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
 |===
 
 ===== Cross Trigger Parameters
@@ -1999,10 +2012,9 @@ The define also zeroes the RMA and security-disable token and digest bits in
 X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
-Three models it enables make simulation deliberately non-deterministic:
-`gdffsync` in the entropy source injects metastability on the second
-synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
-equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
