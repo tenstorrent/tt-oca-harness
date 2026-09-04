@@ -33,18 +33,7 @@ exclude:
 # taken from the svh, which is also what the entry is asserted against.
 # Asserted: still absent from the yaml, and still present in the svh at this
 # offset with these field bounds.
-extra_regs:
-  cla:
-    CrScratchpad:
-      offset: 0x3F0
-      regwidth: 64
-      desc: Scratchpad register for DV
-      fields:
-        Data:
-          bits: "63:0"
-          reset: "0xBFBFBFBFBFBFBFBF"
-          sw: rw
-          hw: r
+extra_regs: {}
 
 # Fields the block rewrites after every software write: live counters, write and
 # read pointers, the timestamp. Their RTL is shaped like ordinary rw config, so
@@ -64,4 +53,4 @@ hw_owned:
     c_dbg_cla_counter1_cfg: [counter, upper_counter, rsvd]
     c_dbg_cla_counter2_cfg: [counter, upper_counter, rsvd]
     c_dbg_cla_counter3_cfg: [counter, upper_counter, rsvd]
-    c_dbg_cla_timestamp: [timestamp]
+    c_dbg_cla_timestamp: [timestamp_upper, timestamp_lower]

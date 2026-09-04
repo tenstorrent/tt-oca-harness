@@ -44991,15 +44991,28 @@ reaches termination value.</ipxact:description>
               <ipxact:addressOffset>'h2f0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
-                <ipxact:name>Timestamp</ipxact:name>
-                <ipxact:description>Current timestamp value</ipxact:description>
+                <ipxact:name>TimestampLower</ipxact:name>
+                <ipxact:description>Current timestamp value (lower 8 bits)</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>64</ipxact:bitWidth>
+                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-only</ipxact:access>
+              </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>TimestampUpper</ipxact:name>
+                <ipxact:description>Current timestamp value (upper 56 bits)</ipxact:description>
+                <ipxact:bitOffset>8</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>56</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
                 <ipxact:access>read-only</ipxact:access>
               </ipxact:field>
@@ -45028,8 +45041,8 @@ reaches termination value.</ipxact:description>
               <ipxact:addressOffset>'h300</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
-                <ipxact:name>TsCapture</ipxact:name>
-                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from the timestamp register to be written into the TimestampSync register</ipxact:description>
+                <ipxact:name>Resync</ipxact:name>
+                <ipxact:description>When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45053,22 +45066,9 @@ reaches termination value.</ipxact:description>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
-                <ipxact:name>TsSyncOffset</ipxact:name>
-                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the offset value from TimestampSync + the current timestamp value to be written into the Timestamp register</ipxact:description>
+                <ipxact:name>TsCapture</ipxact:name>
+                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register</ipxact:description>
                 <ipxact:bitOffset>9</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-              <ipxact:field>
-                <ipxact:name>TsSyncRaw</ipxact:name>
-                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from TimestampSync register to be written into the Timestamp register</ipxact:description>
-                <ipxact:bitOffset>10</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
@@ -45081,30 +45081,43 @@ reaches termination value.</ipxact:description>
               <ipxact:field>
                 <ipxact:name>Rsvd1</ipxact:name>
                 <ipxact:description>Reserved</ipxact:description>
-                <ipxact:bitOffset>11</ipxact:bitOffset>
+                <ipxact:bitOffset>10</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>53</ipxact:bitWidth>
+                <ipxact:bitWidth>54</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
-              <ipxact:name>CrScratchpad</ipxact:name>
-              <ipxact:description>Scratchpad register for DV</ipxact:description>
-              <ipxact:addressOffset>'h3f0</ipxact:addressOffset>
+              <ipxact:name>CDbgClaTimestampOffset</ipxact:name>
+              <ipxact:description>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.</ipxact:description>
+              <ipxact:addressOffset>'h308</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
-                <ipxact:name>Data</ipxact:name>
+                <ipxact:name>Offset</ipxact:name>
+                <ipxact:description>Timestamp offset value</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
-                    <ipxact:value>'hbfbfbfbfbfbfbfbf</ipxact:value>
+                    <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>64</ipxact:bitWidth>
+                <ipxact:bitWidth>56</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>Rsvd0</ipxact:name>
+                <ipxact:description>Reserved</ipxact:description>
+                <ipxact:bitOffset>56</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>8</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -45820,7 +45833,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTimestampCapture</ipxact:name>
-              <ipxact:description>LFSR value.</ipxact:description>
+              <ipxact:description>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.</ipxact:description>
               <ipxact:addressOffset>'h500</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>

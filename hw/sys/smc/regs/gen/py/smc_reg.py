@@ -6020,8 +6020,8 @@ SMC_CLA_CLA_0__CDBGCLATIMESTAMPSYNC_REG_OFFSET = 0x000002F8
 SMC_CLA_CLA_0__CDBGCLATIMESTAMPSYNC_REG_ADDR = 0xC01622F8
 SMC_CLA_CLA_0__CDBGCLATIMESTAMPCONFIG_REG_OFFSET = 0x00000300
 SMC_CLA_CLA_0__CDBGCLATIMESTAMPCONFIG_REG_ADDR = 0xC0162300
-SMC_CLA_CLA_0__CRSCRATCHPAD_REG_OFFSET = 0x000003F0
-SMC_CLA_CLA_0__CRSCRATCHPAD_REG_ADDR = 0xC01623F0
+SMC_CLA_CLA_0__CDBGCLATIMESTAMPOFFSET_REG_OFFSET = 0x00000308
+SMC_CLA_CLA_0__CDBGCLATIMESTAMPOFFSET_REG_ADDR = 0xC0162308
 SMC_CLA_CLA_0__CDBGSIGNALMASK0HI_REG_OFFSET = 0x00000400
 SMC_CLA_CLA_0__CDBGSIGNALMASK0HI_REG_ADDR = 0xC0162400
 SMC_CLA_CLA_0__CDBGSIGNALMATCH0HI_REG_OFFSET = 0x00000408
@@ -20484,7 +20484,8 @@ class DFD_CLA_CDbgClaXtriggerTimestretch_reg_u(Union):
 DFD_CLA_CDbgClaTimestamp_REG_DEFAULT = 0x0000000000000000
 class DFD_CLA_CDbgClaTimestamp_reg_t(Structure):
     _fields_ = [
-        ('timestamp', c_uint64, 64),
+        ('timestamplower', c_uint64, 8),
+        ('timestampupper', c_uint64, 56),
     ]
 
 DFD_CLA_CDbgClaTimestamp_REG_DEFAULT = 0x0000000000000000
@@ -20540,11 +20541,10 @@ class DFD_CLA_CDbgClaTimestampSync_reg_u(Union):
 DFD_CLA_CDbgClaTimestampConfig_REG_DEFAULT = 0x0000000000000000
 class DFD_CLA_CDbgClaTimestampConfig_reg_t(Structure):
     _fields_ = [
-        ('tscapture', c_uint64, 1),
+        ('resync', c_uint64, 1),
         ('debugmarker', c_uint64, 8),
-        ('tssyncoffset', c_uint64, 1),
-        ('tssyncraw', c_uint64, 1),
-        ('rsvd1', c_uint64, 53),
+        ('tscapture', c_uint64, 1),
+        ('rsvd1', c_uint64, 54),
     ]
 
 DFD_CLA_CDbgClaTimestampConfig_REG_DEFAULT = 0x0000000000000000
@@ -20569,23 +20569,24 @@ class DFD_CLA_CDbgClaTimestampConfig_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-DFD_CLA_CrScratchpad_REG_DEFAULT = 0xBFBFBFBFBFBFBFBF
-class DFD_CLA_CrScratchpad_reg_t(Structure):
+DFD_CLA_CDbgClaTimestampOffset_REG_DEFAULT = 0x0000000000000000
+class DFD_CLA_CDbgClaTimestampOffset_reg_t(Structure):
     _fields_ = [
-        ('data', c_uint64, 64),
+        ('offset', c_uint64, 56),
+        ('rsvd0', c_uint64, 8),
     ]
 
-DFD_CLA_CrScratchpad_REG_DEFAULT = 0xBFBFBFBFBFBFBFBF
+DFD_CLA_CDbgClaTimestampOffset_REG_DEFAULT = 0x0000000000000000
 
-class DFD_CLA_CrScratchpad_reg_u(Union):
+class DFD_CLA_CDbgClaTimestampOffset_reg_u(Union):
     _fields_ = [
         ('val', c_uint64),
-        ('f', DFD_CLA_CrScratchpad_reg_t),
+        ('f', DFD_CLA_CDbgClaTimestampOffset_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(DFD_CLA_CrScratchpad_reg_u, self).__init__(*args, **kwargs)
-        self.val = DFD_CLA_CrScratchpad_REG_DEFAULT
+        super(DFD_CLA_CDbgClaTimestampOffset_reg_u, self).__init__(*args, **kwargs)
+        self.val = DFD_CLA_CDbgClaTimestampOffset_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

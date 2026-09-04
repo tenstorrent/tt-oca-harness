@@ -2016,8 +2016,13 @@ addrmap dfd_cla {
         field {
             sw = r;
             hw = w;
-            desc = "Current timestamp value";
-        } Timestamp[63:0] = 0x0;
+            desc = "Current timestamp value (lower 8 bits)";
+        } TimestampLower[7:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current timestamp value (upper 56 bits)";
+        } TimestampUpper[63:8] = 0x0;
     } CDbgClaTimestamp @ 0x2F0;
     reg {
         desc = "Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.";
@@ -2036,8 +2041,8 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = rw;
-            desc = "When this bit is set, a cross trigger 0 event will cause the value from the timestamp register to be written into the TimestampSync register";
-        } TsCapture[0:0] = 0x0;
+            desc = "When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.";
+        } Resync[0:0] = 0x0;
         field {
             sw = rw;
             hw = r;
@@ -2046,28 +2051,29 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = rw;
-            desc = "When this bit is set, a cross trigger 0 event will cause the offset value from TimestampSync + the current timestamp value to be written into the Timestamp register";
-        } TsSyncOffset[9:9] = 0x0;
-        field {
-            sw = rw;
-            hw = rw;
-            desc = "When this bit is set, a cross trigger 0 event will cause the value from TimestampSync register to be written into the Timestamp register";
-        } TsSyncRaw[10:10] = 0x0;
+            desc = "When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register";
+        } TsCapture[9:9] = 0x0;
         field {
             sw = rw;
             hw = r;
             desc = "Reserved";
-        } Rsvd1[63:11] = 0x0;
+        } Rsvd1[63:10] = 0x0;
     } CDbgClaTimestampConfig @ 0x300;
     reg {
-        desc = "Scratchpad register for DV";
+        desc = "Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.";
         regwidth = 64;
 
         field {
             sw = rw;
             hw = r;
-        } Data[63:0] = 0xBFBFBFBFBFBFBFBF;
-    } CrScratchpad @ 0x3F0;
+            desc = "Timestamp offset value";
+        } Offset[55:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Reserved";
+        } Rsvd0[63:56] = 0x0;
+    } CDbgClaTimestampOffset @ 0x308;
     reg {
         desc = "Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.";
         regwidth = 64;
@@ -2422,7 +2428,7 @@ addrmap dfd_cla {
         } Mask[63:1] = 0x0;
     } CDbgLfsrMask @ 0x4F8;
     reg {
-        desc = "LFSR value.";
+        desc = "Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.";
         regwidth = 64;
 
         field {

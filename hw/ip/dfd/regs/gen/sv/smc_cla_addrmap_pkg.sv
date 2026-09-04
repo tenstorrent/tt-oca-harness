@@ -296,10 +296,10 @@ function automatic longint unsigned SMC_CLA_CLA_CDBGCLATIMESTAMPCONFIG_BASE_ADDR
     return 64'h2300 + (cla_idx * 64'h1000);
 endfunction
 localparam longint unsigned SMC_CLA_CLA_CDBGCLATIMESTAMPCONFIG_NUM = 64'h1;
-function automatic longint unsigned SMC_CLA_CLA_CRSCRATCHPAD_BASE_ADDR(input int unsigned cla_idx);
-    return 64'h23F0 + (cla_idx * 64'h1000);
+function automatic longint unsigned SMC_CLA_CLA_CDBGCLATIMESTAMPOFFSET_BASE_ADDR(input int unsigned cla_idx);
+    return 64'h2308 + (cla_idx * 64'h1000);
 endfunction
-localparam longint unsigned SMC_CLA_CLA_CRSCRATCHPAD_NUM = 64'h1;
+localparam longint unsigned SMC_CLA_CLA_CDBGCLATIMESTAMPOFFSET_NUM = 64'h1;
 function automatic longint unsigned SMC_CLA_CLA_CDBGSIGNALMASK0HI_BASE_ADDR(input int unsigned cla_idx);
     return 64'h2400 + (cla_idx * 64'h1000);
 endfunction

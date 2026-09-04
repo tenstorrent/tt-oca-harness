@@ -2561,13 +2561,18 @@ typedef union {
 } dfd_cla__CDbgClaXtriggerTimestretch_t;
 
 // reg - dfd_cla::CDbgClaTimestamp
-#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMP_bm 0xffffffffffffffff
-#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMP_bp 0
-#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMP_bw 64
-#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMP_reset 0x0
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_bm 0xff
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_bp 0
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_bw 8
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_reset 0x0
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_bm 0xffffffffffffff00
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_bp 8
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_bw 56
+#define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t Timestamp :64;
+        uint64_t TimestampLower :8;
+        uint64_t TimestampUpper :56;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaTimestamp_t;
@@ -2585,48 +2590,48 @@ typedef union {
 } dfd_cla__CDbgClaTimestampSync_t;
 
 // reg - dfd_cla::CDbgClaTimestampConfig
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bm 0x1
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bp 0
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bw 1
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_reset 0x0
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_bm 0x1
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_bp 0
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_bw 1
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_reset 0x0
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bm 0x1fe
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bp 1
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bw 8
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_reset 0x0
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_bm 0x200
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_bp 9
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_bw 1
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCOFFSET_reset 0x0
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_bm 0x400
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_bp 10
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_bw 1
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSSYNCRAW_reset 0x0
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bm 0xfffffffffffff800
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bp 11
-#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bw 53
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bm 0x200
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bp 9
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bw 1
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_reset 0x0
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bm 0xfffffffffffffc00
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bp 10
+#define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bw 54
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t TsCapture :1;
+        uint64_t Resync :1;
         uint64_t DebugMarker :8;
-        uint64_t TsSyncOffset :1;
-        uint64_t TsSyncRaw :1;
-        uint64_t Rsvd1 :53;
+        uint64_t TsCapture :1;
+        uint64_t Rsvd1 :54;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaTimestampConfig_t;
 
-// reg - dfd_cla::CrScratchpad
-#define DFD_CLA__CRSCRATCHPAD__DATA_bm 0xffffffffffffffff
-#define DFD_CLA__CRSCRATCHPAD__DATA_bp 0
-#define DFD_CLA__CRSCRATCHPAD__DATA_bw 64
-#define DFD_CLA__CRSCRATCHPAD__DATA_reset 0xbfbfbfbfbfbfbfbf
+// reg - dfd_cla::CDbgClaTimestampOffset
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_bm 0xffffffffffffff
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_bp 0
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_bw 56
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_reset 0x0
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_bm 0xff00000000000000
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_bp 56
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_bw 8
+#define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t Data :64;
+        uint64_t Offset :56;
+        uint64_t Rsvd0 :8;
     } f;
     uint64_t w;
-} dfd_cla__CrScratchpad_t;
+} dfd_cla__CDbgClaTimestampOffset_t;
 
 // reg - dfd_cla::CDbgSignalMask0Hi
 #define DFD_CLA__CDBGSIGNALMASK0HI__VALUE_bm 0xffffffffffffffff
@@ -3355,9 +3360,8 @@ typedef struct __attribute__ ((__packed__)) {
     dfd_cla__CDbgClaTimestamp_t CDbgClaTimestamp;
     dfd_cla__CDbgClaTimestampSync_t CDbgClaTimestampSync;
     dfd_cla__CDbgClaTimestampConfig_t CDbgClaTimestampConfig;
-    uint8_t RESERVED_308_3ef[0xe8];
-    dfd_cla__CrScratchpad_t CrScratchpad;
-    uint8_t RESERVED_3f8_3ff[0x8];
+    dfd_cla__CDbgClaTimestampOffset_t CDbgClaTimestampOffset;
+    uint8_t RESERVED_310_3ff[0xf0];
     dfd_cla__CDbgSignalMask0Hi_t CDbgSignalMask0Hi;
     dfd_cla__CDbgSignalMatch0Hi_t CDbgSignalMatch0Hi;
     dfd_cla__CDbgSignalMask1Hi_t CDbgSignalMask1Hi;

@@ -8828,8 +8828,8 @@ localparam int unsigned SMC_CLA_CLA_0__CDBGCLATIMESTAMPSYNC_REG_OFFSET          
 localparam int unsigned SMC_CLA_CLA_0__CDBGCLATIMESTAMPSYNC_REG_ADDR                                              = 32'hC01622F8;
 localparam int unsigned SMC_CLA_CLA_0__CDBGCLATIMESTAMPCONFIG_REG_OFFSET                                          = 32'h00000300;
 localparam int unsigned SMC_CLA_CLA_0__CDBGCLATIMESTAMPCONFIG_REG_ADDR                                            = 32'hC0162300;
-localparam int unsigned SMC_CLA_CLA_0__CRSCRATCHPAD_REG_OFFSET                                                    = 32'h000003F0;
-localparam int unsigned SMC_CLA_CLA_0__CRSCRATCHPAD_REG_ADDR                                                      = 32'hC01623F0;
+localparam int unsigned SMC_CLA_CLA_0__CDBGCLATIMESTAMPOFFSET_REG_OFFSET                                          = 32'h00000308;
+localparam int unsigned SMC_CLA_CLA_0__CDBGCLATIMESTAMPOFFSET_REG_ADDR                                            = 32'hC0162308;
 localparam int unsigned SMC_CLA_CLA_0__CDBGSIGNALMASK0HI_REG_OFFSET                                               = 32'h00000400;
 localparam int unsigned SMC_CLA_CLA_0__CDBGSIGNALMASK0HI_REG_ADDR                                                 = 32'hC0162400;
 localparam int unsigned SMC_CLA_CLA_0__CDBGSIGNALMATCH0HI_REG_OFFSET                                              = 32'h00000408;
@@ -10480,7 +10480,7 @@ localparam longint unsigned DFD_CLA_CDbgClaXtriggerTimestretch_REG_DEFAULT      
 localparam longint unsigned DFD_CLA_CDbgClaTimestamp_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned DFD_CLA_CDbgClaTimestampSync_REG_DEFAULT                                              = 64'h0000000000000000;
 localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_REG_DEFAULT                                            = 64'h0000000000000000;
-localparam longint unsigned DFD_CLA_CrScratchpad_REG_DEFAULT                                                      = 64'hBFBFBFBFBFBFBFBF;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampOffset_REG_DEFAULT                                            = 64'h0000000000000000;
 localparam longint unsigned DFD_CLA_CDbgSignalMask0Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
 localparam longint unsigned DFD_CLA_CDbgSignalMatch0Hi_REG_DEFAULT                                                = 64'h0000000000000000;
 localparam longint unsigned DFD_CLA_CDbgSignalMask1Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
@@ -14952,29 +14952,32 @@ localparam     int unsigned DFD_CLA_CDbgClaXtriggerTimestretch_XTRIGGER1STRETCH_
 localparam longint unsigned DFD_CLA_CDbgClaXtriggerTimestretch_RSVD_MASK                                          = 64'hFFFFFFFFFFFF0000;
 localparam     int unsigned DFD_CLA_CDbgClaXtriggerTimestretch_RSVD_SHIFT                                         = 16;
 
-localparam longint unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMP_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMP_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPLOWER_MASK                                          = 64'hFF;
+localparam     int unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPLOWER_SHIFT                                         = 0;
+
+localparam longint unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPUPPER_MASK                                          = 64'hFFFFFFFFFFFFFF00;
+localparam     int unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPUPPER_SHIFT                                         = 8;
 
 localparam longint unsigned DFD_CLA_CDbgClaTimestampSync_TIMESTAMPSYNC_MASK                                       = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned DFD_CLA_CDbgClaTimestampSync_TIMESTAMPSYNC_SHIFT                                      = 0;
 
-localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_TSCAPTURE_MASK                                         = 64'h1;
-localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_TSCAPTURE_SHIFT                                        = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_RESYNC_MASK                                            = 64'h1;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_RESYNC_SHIFT                                           = 0;
 
 localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_DEBUGMARKER_MASK                                       = 64'h1FE;
 localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_DEBUGMARKER_SHIFT                                      = 1;
 
-localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_TSSYNCOFFSET_MASK                                      = 64'h200;
-localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_TSSYNCOFFSET_SHIFT                                     = 9;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_TSCAPTURE_MASK                                         = 64'h200;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_TSCAPTURE_SHIFT                                        = 9;
 
-localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_TSSYNCRAW_MASK                                         = 64'h400;
-localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_TSSYNCRAW_SHIFT                                        = 10;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_RSVD1_MASK                                             = 64'hFFFFFFFFFFFFFC00;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_RSVD1_SHIFT                                            = 10;
 
-localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_RSVD1_MASK                                             = 64'hFFFFFFFFFFFFF800;
-localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_RSVD1_SHIFT                                            = 11;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampOffset_OFFSET_MASK                                            = 64'hFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampOffset_OFFSET_SHIFT                                           = 0;
 
-localparam longint unsigned DFD_CLA_CrScratchpad_DATA_MASK                                                        = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned DFD_CLA_CrScratchpad_DATA_SHIFT                                                       = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampOffset_RSVD0_MASK                                             = 64'hFF00000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampOffset_RSVD0_SHIFT                                            = 56;
 
 localparam longint unsigned DFD_CLA_CDbgSignalMask0Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned DFD_CLA_CDbgSignalMask0Hi_VALUE_SHIFT                                                 = 0;
@@ -19982,7 +19985,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [63:0]   timestamp ;
+    logic [55:0]   timestampupper ;
+    logic [7:0]   timestamplower ;
 } dfd_cla_cdbgclatimestamp_reg_t;
 
 
@@ -19994,18 +19998,18 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [52:0]   rsvd1 ;
-    logic [0:0]   tssyncraw ;
-    logic [0:0]   tssyncoffset ;
-    logic [7:0]   debugmarker ;
+    logic [53:0]   rsvd1 ;
     logic [0:0]   tscapture ;
+    logic [7:0]   debugmarker ;
+    logic [0:0]   resync ;
 } dfd_cla_cdbgclatimestampconfig_reg_t;
 
 
 
 typedef struct packed {
-    logic [63:0]   data ;
-} dfd_cla_crscratchpad_reg_t;
+    logic [7:0]   rsvd0 ;
+    logic [55:0]   offset ;
+} dfd_cla_cdbgclatimestampoffset_reg_t;
 
 
 
