@@ -4,8 +4,11 @@
 // Checks that this repo's own acronyms expand to the one phrase each is
 // canonically defined as, wherever the document spells the expansion out:
 // "<Phrase> (ACRONYM)" or "ACRONYM (<Phrase>)". A mismatch is flagged
-// regardless of how the wrong expansion is worded. See styles/OCAH/
-// Acronyms.yml for the canonical map and how each entry is sourced.
+// regardless of how the wrong expansion is worded.
+//
+// This registry is the single source of truth for both canonical and
+// additionally accepted expansions. Add an acronym only after confirming
+// its expansion in-tree, and cite that source beside the entry.
 //
 // Tengo's regex support (Go's RE2) has no lookaround, so the phrase-match
 // pattern below just grabs the run of hyphen/space-joined words immediately
@@ -16,109 +19,100 @@
 text := import("text")
 
 canonical := {
-  DFD:    "design-for-debug",
-  OCA:    "open chiplet atlas",
-  OCAH:   "open chiplet atlas harness",
-  OCCP:   "open chiplet configuration protocol",
-  OCTS:   "open chiplet time synchronization",
-  OCMI:   "open chiplet management interface",
-  OCCT:   "open chiplet cross triggering",
-  SMC:    "system management controller",
-  SEP:    "security processor",
-  DTP:    "debug and test ports",
-  SMU:    "system management unit",
-  SMN:    "system management network",
-  SMO:    "safety monitor",
-  AoU:    "axi-over-ucie bridge",
-  CLA:    "core logic analyzer",
-  PTAP:   "primary tap",
-  STAP:   "secondary tap",
-  SIB:    "segment insertion bit",
-  ATB:    "advanced trace bus",
-  CTM:    "cross trigger matrix",
-  CTP:    "cross trigger port",
-  CTN:    "cross trigger network",
-  KM:     "key manager",
-  KPV:    "key and policy vault",
-  LCC:    "life cycle controller",
-  AGP:    "alarm aggregation processor",
-  ARBC:   "anti-rollback counter",
-  FLR:    "function level reset",
-  CLINT:  "core local interruptor",
-  PLIC:   "platform-level interrupt controller",
-  BIRA:   "built-in redundancy analysis",
-  TMP:    "test mode persistence",
-  TRNG:   "true random number generator",
-  DRBG:   "deterministic random bit generator",
-  DCLS:   "dual core lock step",
-  AVSBus: "adaptive voltage scaling bus",
-  TTI:    "target transaction interface",
-  DAT:    "device address table",
-  DCT:    "device characteristic table",
-  HCI:    "host controller interface",
-  OTP:    "one-time programmable",
-  BIW:    "barak-impagliazzo-wigderson",
-  RAS:    "reliability, availability, and serviceability",
-  MBIST:  "memory built-in self-test",
-  DMA:    "direct memory access",
-  AES:    "advanced encryption standard",
-  SPI:    "serial peripheral interface",
-  CSR:    "control and status register",
-  CSRs:   "control and status registers",
-  RDL:    "register description language",
-  DV:     "design verification",
-  FSM:    "finite state machine",
-  FSMs:   "finite state machines",
-  MMR:    "memory mapped register",
-  PMP:    "physical memory protection",
-  KDF:    "key derivation function",
-  PCR:    "platform configuration register",
-  IBI:    "in-band interrupt",
-  KMCSR:  "key manager control and status registers",
-  ABR:    "adams bridge",
-  CCC:    "common command codes",
-  WDT:    "watchdog timer",
-  RoT:    "root of trust",
-  PCRV:   "pcr vault",
-  PIC:    "programmable interrupt controller",
-  LC:     "life cycle",
-  BEU:    "bus error unit",
-  CTPs:   "cross trigger ports",
-  CLAs:   "core logic analyzers",
-  DFT:    "design for test",
-  VROM:   "virtual rom",
-  PCPI:   "pico co-processor interface",
-  EK:     "endorsement key",
-  AK:     "attestation key",
-  TLR:    "test-logic-reset",
-  TDRs:   "test data registers",
-  DLAB:   "divisor latch access bit",
-  PMBus:  "power management bus",
-  SMBus:  "system management bus",
-  PEC:    "packet error checking",
-  ARA:    "alert response address",
-  MDB:    "mandatory data byte",
-  DLL:    "divisor latch low",
-  DLM:    "divisor latch high",
-  LCR:    "line control register",
-  CVD:    "coordinated vulnerability disclosure",
-  DDR:    "double data rate",
-  TCRI:   "transfer command response interface",
-  RO:     "ring oscillator",
-  PQC:    "post-quantum cryptography",
-  "R/O":  "read only",
-  "R/W":  "read write",
-  "W/O":  "write only",
-  "W1/C": "write-1-clear"
-}
-
-// Extra accepted phrases for an acronym whose paren form does not change
-// when the English is plural (IBI, not IBIs). The primary map entry is
-// still the singular; these are additional matches, not replacements.
-canonical_extra := {
-  IBI: ["in-band interrupts"],
-  BEU: ["bus error units"],
-  PEC: ["smbus packet error checking"]
+  DFD:    ["design-for-debug"], // hw/sys/smc/doc/dfd.adoc
+  OCA:    ["open chiplet atlas"], // README.md, NOTICE, doc/**/antora.yml
+  OCAH:   ["open chiplet atlas harness"], // README.md
+  OCCP:   ["open chiplet configuration protocol"], // hw/sys/smc/bootrom/prod/doc/index.adoc
+  OCTS:   ["open chiplet time synchronization"], // hw/ip/system_timer_octs/regs/system_timer_octs.rdl
+  OCMI:   ["open chiplet management interface"], // doc/home/src/features.adoc
+  OCCT:   ["open chiplet cross triggering"], // hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc
+  SMC:    ["system management controller"], // doc/trm/src/architecture.adoc
+  SEP:    ["security processor"], // doc/programmer/src/index.adoc
+  DTP:    ["debug and test ports"], // hw/sys/dtp/doc/overview.adoc
+  SMU:    ["system management unit"], // doc/trm/src/architecture.adoc
+  SMN:    ["system management network"], // doc/home/src/features.adoc
+  SMO:    ["safety monitor"], // doc/trm/src/architecture.adoc
+  AoU:    ["axi-over-ucie bridge"], // doc/home/src/features.adoc
+  CLA:    ["core logic analyzer"], // hw/sys/smc/doc/dfd.adoc
+  PTAP:   ["primary tap"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
+  STAP:   ["secondary tap"], // hw/ip/jtag/jtag_stap/doc/index.adoc
+  SIB:    ["segment insertion bit"], // hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc
+  ATB:    ["advanced trace bus"], // hw/sys/smc/doc/clk_rst.adoc
+  CTM:    ["cross trigger matrix"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  CTP:    ["cross trigger port"], // hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc
+  CTN:    ["cross trigger network"], // hw/ip/cross_trigger/cross_trigger_network/dv/README.md
+  KM:     ["key manager"], // hw/ip/key_manager/doc/architecture.adoc
+  KPV:    ["key and policy vault"], // hw/ip/key_manager/doc/architecture.adoc
+  LCC:    ["life cycle controller"], // hw/sys/sep/doc/lifecycle_controller.adoc
+  AGP:    ["alarm aggregation processor"], // hw/sys/sep/doc/cpu.adoc
+  ARBC:   ["anti-rollback counter"], // hw/sys/sep/doc/periphs.adoc
+  FLR:    ["function level reset"], // hw/sys/smc/doc/clk_rst.adoc
+  CLINT:  ["core local interruptor"], // hw/sys/smc/doc/interrupts.adoc
+  PLIC:   ["platform-level interrupt controller"], // hw/sys/smc/doc/interrupts.adoc
+  BIRA:   ["built-in redundancy analysis"], // hw/sys/smc/doc/cpu.adoc
+  TMP:    ["test mode persistence"], // hw/ip/jtag/jtag_ptap/doc/architecture.adoc
+  TRNG:   ["true random number generator"], // hw/sys/sep/doc/crypto.adoc
+  DRBG:   ["deterministic random bit generator"], // hw/ip/drbg/doc/architecture.adoc
+  DCLS:   ["dual core lock step"], // hw/sys/sep/doc/cpu.adoc
+  AVSBus: ["adaptive voltage scaling bus"], // hw/ip/avsbus_controller/README.adoc
+  TTI:    ["target transaction interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  DAT:    ["device address table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  DCT:    ["device characteristic table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  HCI:    ["host controller interface"], // hw/ip/i3ccore_wrap/doc/interface.adoc
+  OTP:    ["one-time programmable"], // hw/ip/efuse/doc/architecture.adoc
+  BIW:    ["barak-impagliazzo-wigderson"], // hw/ip/entropy_source/doc/architecture.adoc
+  RAS:    ["reliability, availability, and serviceability"], // hw/sys/sep/doc/overview.adoc
+  MBIST:  ["memory built-in self-test"], // hw/sys/smc/doc/clk_rst.adoc
+  DMA:    ["direct memory access"], // hw/sys/sep/doc/cpu.adoc
+  AES:    ["advanced encryption standard"], // hw/ip/entropy_source/dv/tb_vcs/models/compressor/README.md
+  SPI:    ["serial peripheral interface"], // hw/sys/sep/doc/periphs.adoc
+  CSR:    ["control and status register"], // hw/ip/i2c/doc/architecture.adoc
+  CSRs:   ["control and status registers"], // hw/ip/i2c/doc/architecture.adoc
+  RDL:    ["register description language"], // hw/ip/memory_interface/README.adoc
+  DV:     ["design verification"], // hw/ip/i3ccore_wrap/dv/tb/I3C_DV_GUIDE.md
+  FSM:    ["finite state machine"], // doc/contributing/src/guidelines.adoc
+  FSMs:   ["finite state machines"], // doc/contributing/src/guidelines.adoc
+  MMR:    ["memory mapped register"], // hw/ip/efuse/doc/memmap.adoc
+  PMP:    ["physical memory protection"], // hw/sys/sep/doc/cpu.adoc
+  KDF:    ["key derivation function"], // hw/ip/key_manager/doc/architecture.adoc
+  PCR:    ["platform configuration register"], // hw/ip/key_manager/doc/architecture.adoc
+  IBI:    ["in-band interrupt", "in-band interrupts"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  KMCSR:  ["key manager control and status registers"], // hw/ip/key_manager/doc/architecture.adoc
+  ABR:    ["adams bridge"], // hw/ip/key_manager/doc/architecture.adoc
+  CCC:    ["common command codes"], // hw/ip/i3ccore_wrap/doc/interface.adoc
+  WDT:    ["watchdog timer"], // hw/sys/sep/doc/periphs.adoc
+  RoT:    ["root of trust"], // doc/trm/src/architecture.adoc
+  PCRV:   ["pcr vault"], // hw/ip/key_manager/doc/architecture.adoc
+  PIC:    ["programmable interrupt controller"], // hw/sys/sep/doc/cpu.adoc
+  LC:     ["life cycle"], // hw/ip/key_manager/doc/architecture.adoc
+  BEU:    ["bus error unit", "bus error units"], // hw/sys/smc/doc/interrupts.adoc
+  CTPs:   ["cross trigger ports"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  CLAs:   ["core logic analyzers"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  DFT:    ["design for test"], // hw/ip/gpio/doc/interface.adoc
+  VROM:   ["virtual rom"], // hw/ip/key_manager/dv/tb/README.md
+  PCPI:   ["pico co-processor interface"], // hw/ip/key_manager/doc/architecture.adoc
+  EK:     ["endorsement key"], // hw/ip/key_manager/doc/architecture.adoc
+  AK:     ["attestation key"], // hw/ip/key_manager/doc/architecture.adoc
+  TLR:    ["test-logic-reset"], // hw/sys/dtp/dv/docs/DTP_VPLAN.adoc
+  TDRs:   ["test data registers"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
+  DLAB:   ["divisor latch access bit"], // hw/ip/uart/uart_16550/doc/architecture.adoc
+  PMBus:  ["power management bus"], // hw/ip/i2c/doc/architecture.adoc
+  SMBus:  ["system management bus"], // hw/ip/i2c/doc/architecture.adoc
+  PEC:    ["packet error checking", "smbus packet error checking"], // hw/ip/i2c/doc/architecture.adoc
+  ARA:    ["alert response address"], // hw/ip/i2c/doc/architecture.adoc
+  MDB:    ["mandatory data byte"], // hw/ip/i3ccore_wrap/dv/tb/I3C_DV_GUIDE.md
+  DLL:    ["divisor latch low"], // hw/ip/uart/uart_16550/doc/architecture.adoc
+  DLM:    ["divisor latch high"], // hw/ip/uart/uart_16550/doc/architecture.adoc
+  LCR:    ["line control register"], // hw/ip/uart/uart_16550/doc/memmap.adoc
+  CVD:    ["coordinated vulnerability disclosure"], // doc/contributing/src/defects.adoc
+  DDR:    ["double data rate"], // hw/common/dv/vip/ocah_spi_vip/README.md
+  TCRI:   ["transfer command response interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  RO:     ["ring oscillator"], // hw/ip/entropy_source/dv/tb_vcs/README.md
+  PQC:    ["post-quantum cryptography"], // hw/sys/sep/doc/crypto.adoc
+  "R/O":  ["read only"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
+  "R/W":  ["read write"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
+  "W/O":  ["write only"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
+  "W1/C": ["write-1-clear"] // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
 }
 
 matches := []
@@ -150,15 +144,8 @@ canonicalize := func(phrase) {
 
 accepted := func(acr, phrase) {
   got := canonicalize(phrase)
-  if got == canonicalize(canonical[acr]) {
-    return true
-  }
-  extras := canonical_extra[acr]
-  if is_undefined(extras) {
-    return false
-  }
-  for alt in extras {
-    if got == canonicalize(alt) {
+  for accepted_phrase in canonical[acr] {
+    if got == canonicalize(accepted_phrase) {
       return true
     }
   }
@@ -167,7 +154,7 @@ accepted := func(acr, phrase) {
 
 flag := func(begin, end, acr, phrase) {
   if !accepted(acr, phrase) {
-    expected := canonical[acr]
+    expected := canonical[acr][0]
     display := text.trim_space(text.re_replace("\\s+", phrase, " "))
     matches = append(matches, {
       begin: begin,
@@ -199,7 +186,7 @@ word := "(?:[A-Z][A-Za-z']*|[0-9]+|" + linking_word + ")"
 // "Reliability, Availability, and Serviceability" is one phrase.
 phrase_pattern := "[A-Z][A-Za-z']*(?:[-,\\s]" + word + "){1,6}"
 
-for acr, expected in canonical {
+for acr, accepted_phrases in canonical {
   // "<Phrase> (ACRONYM)"
   forward := text.re_find("(" + phrase_pattern + ")\\s*\\(" + acr + "\\)", scope, -1)
   if !is_undefined(forward) {
