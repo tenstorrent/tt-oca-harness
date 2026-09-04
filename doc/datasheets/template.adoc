@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+// Copy this file to src/<product>.adoc. Replace the example attributes and
+// guidance text, but retain every datasheet-section marker for validation.
+= OCAH Product Datasheet
+:doctype: article
+:notitle:
+:datasheet-status: Beta
+:product-short-name: PRODUCT
+:product-long-name: Product long name
+:revnumber: Initial version
+:revdate: 2026
+:icons: font
+
+[.datasheet-brand]
+OPEN CHIPLET ARCHITECTURE HARNESS
+
+[.datasheet-title]
+{product-short-name}
+
+[.datasheet-subtitle]
+{product-long-name}
+
+[.datasheet-status]
+{datasheet-status} release | Open-source synthesizable RTL
+
+[cols="35,65",frame=none,grid=none,stripes=none]
+|===
+a|
+// datasheet-section: highlights
+[.datasheet-section]
+HIGHLIGHTS
+
+* Lead with six or fewer adopter-relevant, evidenced capabilities.
+
+// datasheet-section: integration-fit
+[.datasheet-section]
+INTEGRATION FIT
+
+State which integrator problems this subsystem solves and where it sits in the
+target design.
+
+a|
+// datasheet-section: overview
+[.datasheet-section]
+OVERVIEW
+
+Describe the subsystem, its value to an integrator, and the boundary of what is
+delivered in approximately 100 to 180 words.
+
+// datasheet-section: architecture
+[.datasheet-section]
+ARCHITECTURE
+
+Include one readable block diagram with adopter-owned connections visible.
+
+// datasheet-section: at-a-glance
+[.datasheet-section]
+AT A GLANCE
+
+Use a compact table for stable architectural capacities and interface widths.
+Label reference-configuration values and do not present uncharacterized
+frequency, area, or power as product specifications.
+|===
+
+<<<
+
+[cols="52,48",frame=none,grid=none,stripes=none]
+|===
+a|
+// datasheet-section: capabilities
+[.datasheet-section]
+CAPABILITIES
+
+Group concise feature bullets by function.
+
+// datasheet-section: interfaces-and-configuration
+[.datasheet-section]
+INTERFACES AND CONFIGURATION
+
+Identify externally meaningful interfaces, widths, compile-time options, and
+reference defaults.
+
+a|
+// datasheet-section: integration-dependencies
+[.datasheet-section]
+INTEGRATION DEPENDENCIES
+
+List adopter-owned clocks, resets, CDC, security policy, interconnect, memory
+macro, pad, and firmware obligations as applicable.
+
+// datasheet-section: verification-and-maturity
+[.datasheet-section]
+VERIFICATION AND MATURITY
+
+State what is exercised, in which environment, and which forms of signoff or
+characterization have not yet been completed.
+
+// datasheet-section: deliverables-and-further-information
+[.datasheet-section]
+DELIVERABLES AND FURTHER INFORMATION
+
+List the supplied RTL, collateral, tests, license, and stable repository paths.
+|===

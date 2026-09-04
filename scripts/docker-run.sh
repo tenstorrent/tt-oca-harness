@@ -4,7 +4,8 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes|contributing|datasheets]|doc-stage|eda-run CMD...|eda-shell>
+#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     (re)build firmware image + publish to shared tarball cache
 #   ensure    make firmware image available (local -> cache -> build); auto-run
@@ -356,8 +357,9 @@ doc_product_paths() {
   appnotes) echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
   contributing) echo "doc/contributing antora-contributing-playbook.yml ocah-doc-contributing-setup ocah-doc-contributing-pdf" ;;
   home) echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
+  datasheets) echo "doc/datasheets - ocah-doc-datasheets-setup ocah-doc-datasheets-pdf" ;;
   *)
-    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or contributing)" >&2
+    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home, contributing or datasheets)" >&2
     exit 1
     ;;
   esac
@@ -390,6 +392,10 @@ doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   local release_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
+  if [[ "$product" == datasheets ]]; then
+    echo "error: datasheets are standalone PDFs; use: ./scripts/docker-run.sh doc-pdf datasheets" >&2
+    exit 1
+  fi
   doc_setup "$product"
   doc_release_enabled && release_args=(--attribute release)
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}" \
@@ -448,6 +454,7 @@ doc_stage() {
   local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
   local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
   local contributing_dist="${OCAH_CONTRIBUTING_DIST:-doc/contributing/dist}" contributing_pdf="${OCAH_CONTRIBUTING_PDF:-ocah-contributing.pdf}"
+  local datasheets_dist="${OCAH_DATASHEETS_DIST:-doc/datasheets/dist}"
 
   if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
     echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -487,6 +494,12 @@ doc_stage() {
   else
     echo "warning: Contributing PDF not found at $contributing_dist/$contributing_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf contributing)"
   fi
+
+  local datasheet_pdf
+  for datasheet_pdf in "$ROOT/$datasheets_dist"/ocah-*-datasheet.pdf; do
+    [[ -f "$datasheet_pdf" ]] || continue
+    cp "$datasheet_pdf" "$ROOT/$ghpages_dir/downloads/"
+  done
 
   doc_stage_dashboard_data "$ROOT/$ghpages_dir"
 

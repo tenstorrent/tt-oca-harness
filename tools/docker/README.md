@@ -33,6 +33,7 @@ firmware image once before `run` / `shell` / `verify`:
 ./scripts/docker-run.sh doc-pdf trm
 ./scripts/docker-run.sh doc-html integrator
 ./scripts/docker-run.sh doc-pdf integrator
+./scripts/docker-run.sh doc-pdf datasheets
 
 # Firmware (build ocah-toolchain once, then run)
 ./scripts/docker-run.sh build
@@ -53,6 +54,7 @@ Build both documentation products:
 ./scripts/docker-run.sh doc-html integrator
 ./scripts/docker-run.sh doc-pdf trm
 ./scripts/docker-run.sh doc-pdf integrator
+./scripts/docker-run.sh doc-pdf datasheets
 ```
 
 Interactive shell for debugging:
