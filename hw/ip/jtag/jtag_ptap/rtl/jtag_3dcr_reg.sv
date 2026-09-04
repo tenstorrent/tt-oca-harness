@@ -31,6 +31,13 @@ module jtag_3dcr_reg
   logic             config_hold;
   logic             config_hold_sticky;
   logic rst_n_or_out, rst_n_gate;
+  logic tck_n;
+
+  prim_clock_inv u_tck_inv (
+    .clk_i      (scan_ctrl_i.tck),
+    .scanmode_i (1'b0),
+    .clk_no     (tck_n)
+  );
 
   // Shadow flop: breaks the combinational loop through u_3dcr_scan_reg's
   // async reset pin.  Resets only on trst_n (hard reset), lags config_hold by
@@ -41,7 +48,7 @@ module jtag_3dcr_reg
     .Width     (1),
     .ResetValue(1'b0)
   ) u_config_hold_sticky_flop (
-    .clk_i  (~scan_ctrl_i.tck),
+    .clk_i  (tck_n),
     .rst_ni (tap_ctrl_i.trst_n),
     .d_i    (config_hold),
     .q_o    (config_hold_sticky)

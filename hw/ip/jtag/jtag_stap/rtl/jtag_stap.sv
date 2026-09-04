@@ -38,6 +38,13 @@ module jtag_stap
   logic stap_sel, tms_hold, config_hold, stap_sel_int;
   logic config_hold_sticky;
   logic rst_n_or_out, rst_n_gate;
+  logic tck_n;
+
+  prim_clock_inv u_tck_inv (
+    .clk_i      (client_scan_ctrl_i.tck),
+    .scanmode_i (1'b0),
+    .clk_no     (tck_n)
+  );
 
   // Optional client interface scan input pipeline stage
   if (SCAN_IN_PIPE) begin : gen_scan_in_pipe
@@ -59,7 +66,7 @@ module jtag_stap
     .Width(1),
     .ResetValue('0)
   ) u_tdo_lockup_flop (
-    .clk_i  (~client_scan_ctrl_i.tck),
+    .clk_i  (tck_n),
     .rst_ni (client_scan_ctrl_i.rst_n),
     .d_i    (stap_scan_in),
     .q_o    (host_tdo_int)
@@ -71,7 +78,7 @@ module jtag_stap
       .Width(1),
       .ResetValue('0)
     ) u_tdi_lockup_flop (
-      .clk_i  (~client_scan_ctrl_i.tck),
+      .clk_i  (tck_n),
       .rst_ni (client_scan_ctrl_i.rst_n),
       .d_i    (host_tdi_i),
       .q_o    (stap_tdi)
@@ -106,7 +113,7 @@ module jtag_stap
     .Width     (1),
     .ResetValue(1'b0)
   ) u_config_hold_sticky_flop (
-    .clk_i  (~client_scan_ctrl_i.tck),
+    .clk_i  (tck_n),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (config_hold),
     .q_o    (config_hold_sticky)

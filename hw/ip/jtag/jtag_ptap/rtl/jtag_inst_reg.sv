@@ -47,12 +47,19 @@ module jtag_inst_reg
   // Instruction Register Sequential Logic
   //--------------------------------------------------------------------------
 
+  logic tck_n;
+  prim_clock_inv u_tck_inv (
+    .clk_i      (scan_ctrl_i.tck),
+    .scanmode_i (1'b0),
+    .clk_no     (tck_n)
+  );
+
   // Instruction register - updated on update_ir (negative edge for parallel output)
   prim_flop #(
     .Width($bits(jtag_instruction_decoded_e)),
     .ResetValue(DEFAULT_INSTRUCTION)
   ) u_instruction_reg_flop (
-    .clk_i  (~scan_ctrl_i.tck),
+    .clk_i  (tck_n),
     .rst_ni (scan_ctrl_i.rst_n),
     .d_i    (scan_ctrl_i.update_en ? jtag_instruction_decoded_e'(2 ** instruction_shift_reg_q) : instruction_reg_q),
     .q_o    (instruction_reg_q_bits)
