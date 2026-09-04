@@ -121,6 +121,44 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(validate_source(root / "doc/datasheets/src/dtp.adoc"), [])
         self.assertEqual(validate_pdf(root / "doc/datasheets/dist/ocah-dtp-datasheet.pdf"), [])
 
+    def test_dtp_highlights_qualify_standards_claims(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+
+        self.assertNotIn("* IEEE 1149.1-2013", source)
+        self.assertNotIn("* IEEE 1687-2014", source)
+        self.assertIn("implementing IEEE 1149.1-2013", source)
+        self.assertIn("implementing IEEE 1687-2014", source)
+
+    def test_dtp_port_table_matches_current_debug_disable_interface(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        port_table = (root / "hw/sys/dtp/doc/port_table.adoc").read_text(encoding="utf-8")
+
+        self.assertNotIn("|`feat_ctrl_i`", port_table)
+        self.assertIn("|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t`", port_table)
+
+    def test_dtp_summary_counts_match_rtl_top_level(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        rtl_package = (root / "hw/sys/dtp/rtl/dtp_pkg.sv").read_text(encoding="utf-8")
+        smu_rtl = (root / "hw/sys/smu/rtl/smu.sv").read_text(encoding="utf-8")
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+
+        expected = {
+            "DEFAULT_NUM_CTP": "16",
+            "DEFAULT_NUM_INT_CT": "10",
+            "DEFAULT_NUM_CLK_STOP_REQ": "9",
+        }
+        for parameter, value in expected.items():
+            self.assertRegex(rtl_package, rf"{parameter}\s*=\s*{value};")
+        self.assertRegex(smu_rtl, r"XTRIG_NUM_INT_CT\s*=\s*dtp_pkg::DEFAULT_NUM_INT_CT\s*-\s*2")
+        self.assertRegex(
+            smu_rtl,
+            r"XTRIG_NUM_CLK_STOP_REQ\s*=\s*dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ\s*-\s*1",
+        )
+        self.assertIn("!External / internal triggers !16 CTPs / 10 internal interfaces", source)
+        self.assertIn("!Clock-stop request inputs !9", source)
+        self.assertIn("exposes eight internal trigger interfaces and eight clock-stop", source)
+
 
 if __name__ == "__main__":
     unittest.main()
