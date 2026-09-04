@@ -21,10 +21,13 @@
 //   * one ocah_jtag_slave_agent per STAP host port as the downstream TAP the
 //     tests may splice behind it (dtp_tb_if.stap_<x>_ds_en; default keeps
 //     the wire loopback), with the device map from dtp_types;
-//   * the always-on dtp_scoreboard on the JTAG event and scan streams and
-//     the XTRIG monitor stream, the dtp_tap_fsm_checker subscriber, the
-//     scan-window monitor, the VIP scan builder, and the env-owned
-//     aggregate ocah_jtag_checker finalized once in check_phase.
+//   * one dtp_<feature>_ref_model per scoreboard feature, each a subscriber
+//     on the monitor stream its feature is judged on (the JTAG event and
+//     scan streams, the XTRIG monitor stream, the three bridge port
+//     streams) publishing expected items, and the always-on dtp_scoreboard
+//     that pairs them with the observed streams; the dtp_tap_fsm_checker
+//     subscriber, the scan-window monitor, the VIP scan builder, and the
+//     env-owned aggregate ocah_jtag_checker finalized once in check_phase.
 //
 // The cocotb twin is env/dtp_env.py.
 
@@ -38,9 +41,17 @@ class dtp_env extends ocah_env;
   ocah_jtag_master_config m_jtag_cfg;
   ocah_jtag_master_env    m_jtag_env;
 
-  // Always-on checking: scoreboard, TAP FSM subscriber, scan-window
-  // monitor, VIP scan reconstruction, aggregate JTAG evidence.
-  dtp_scoreboard          m_scoreboard;
+  // Always-on checking: one reference model per scoreboard feature, the
+  // scoreboard that pairs them, TAP FSM subscriber, scan-window monitor,
+  // VIP scan reconstruction, aggregate JTAG evidence.
+  dtp_ir_decode_ref_model       m_ir_decode_ref_model;
+  dtp_idcode_ref_model          m_idcode_ref_model;
+  dtp_bypass_ref_model          m_bypass_ref_model;
+  dtp_xtrig_csr_ref_model       m_xtrig_csr_ref_model;
+  dtp_xtrig_decode_ref_model    m_xtrig_decode_ref_model;
+  dtp_jtag2axi_req_ref_model    m_jtag2axi_req_ref_model;
+  dtp_jtag2axi_status_ref_model m_jtag2axi_status_ref_model;
+  dtp_scoreboard                m_scoreboard;
   dtp_tap_fsm_checker     m_fsm_checker;
   dtp_scan_window_monitor m_scan_window;
   ocah_jtag_scan_builder  m_scan_builder;
@@ -152,13 +163,11 @@ class dtp_env extends ocah_env;
       m_vseqr.m_stap_ds_seq[i].responder = m_stap_ds_agent[i].m_driver;
       m_vseqr.m_stap_ds_seq[i].evidence  = m_jtag_checker;
     end
-    // Monitor streams into the always-on checkers.
+    // Monitor streams into the always-on subscribers.
     m_jtag_env.event_ap.connect(m_fsm_checker.analysis_export);
     m_jtag_env.event_ap.connect(m_scan_builder.analysis_export);
     m_jtag_env.event_ap.connect(m_scan_window.analysis_export);
-    m_jtag_env.event_ap.connect(m_scoreboard.jtag_export);
-    m_scan_builder.scan_ap.connect(m_scoreboard.scan_export);
-    m_xtrig_axi_env.item_ap.connect(m_scoreboard.xtrig_export);
+    connect_scoreboard();
   endfunction
 
   function void check_phase(uvm_phase phase);
@@ -187,6 +196,7 @@ class dtp_env extends ocah_env;
     m_jtag_checker.name_tag     = "dtp_jtag";
     m_jtag_checker.required_ids = cfg.jtag_policy.required_ids;
 
+    build_reference_models();
     m_scoreboard = dtp_scoreboard::type_id::create("m_scoreboard", this);
     m_scoreboard.tb_vif = tb_vif;
 
@@ -199,6 +209,85 @@ class dtp_env extends ocah_env;
     m_scan_window.tb_vif = tb_vif;
 
     m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
+  endfunction
+
+  // One reference model per scoreboard feature; each reads the TB
+  // interface for the observables and reset counters it re-baselines on.
+  protected function void build_reference_models();
+    m_ir_decode_ref_model =
+        dtp_ir_decode_ref_model::type_id::create("m_ir_decode_ref_model", this);
+    m_ir_decode_ref_model.tb_vif = tb_vif;
+    m_idcode_ref_model = dtp_idcode_ref_model::type_id::create("m_idcode_ref_model", this);
+    m_idcode_ref_model.tb_vif = tb_vif;
+    m_bypass_ref_model = dtp_bypass_ref_model::type_id::create("m_bypass_ref_model", this);
+    m_bypass_ref_model.tb_vif = tb_vif;
+    m_xtrig_csr_ref_model =
+        dtp_xtrig_csr_ref_model::type_id::create("m_xtrig_csr_ref_model", this);
+    m_xtrig_csr_ref_model.tb_vif = tb_vif;
+    m_xtrig_decode_ref_model =
+        dtp_xtrig_decode_ref_model::type_id::create("m_xtrig_decode_ref_model", this);
+    m_jtag2axi_req_ref_model =
+        dtp_jtag2axi_req_ref_model::type_id::create("m_jtag2axi_req_ref_model", this);
+    m_jtag2axi_req_ref_model.tb_vif   = tb_vif;
+    m_jtag2axi_req_ref_model.negative = cfg.jtag2axi_ref_model_negative;
+    if (cfg.jtag2axi_ref_model_negative)
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: jtag2axi_req reference model predicts corrupted addresses",
+                UVM_LOW)
+    m_jtag2axi_status_ref_model =
+        dtp_jtag2axi_status_ref_model::type_id::create("m_jtag2axi_status_ref_model", this);
+    m_jtag2axi_status_ref_model.tb_vif = tb_vif;
+  endfunction
+
+  // Every scoreboard feature: the observed monitor stream into its
+  // reference model and into the scoreboard's observed export, the
+  // reference model's expected items into the scoreboard's expected
+  // export. The bridge models also learn which monitor publishes each
+  // bridge port and consume every completion those monitors publish.
+  protected function void connect_scoreboard();
+    // ir_decode: events commit the instruction; IR scans supply it; the
+    // observation is dtp_tb_if.inst_decoded, sampled by the scoreboard.
+    m_jtag_env.event_ap.connect(m_ir_decode_ref_model.analysis_export);
+    m_scan_builder.scan_ap.connect(m_ir_decode_ref_model.scan_export);
+    m_ir_decode_ref_model.expected_ap.connect(m_scoreboard.ir_decode_expected_export);
+    // idcode, bypass: DR scans judged under the tracked instruction.
+    m_scan_builder.scan_ap.connect(m_idcode_ref_model.analysis_export);
+    m_jtag_env.event_ap.connect(m_idcode_ref_model.event_export);
+    m_idcode_ref_model.expected_ap.connect(m_scoreboard.idcode_expected_export);
+    m_scan_builder.scan_ap.connect(m_scoreboard.idcode_observed_export);
+    m_scan_builder.scan_ap.connect(m_bypass_ref_model.analysis_export);
+    m_jtag_env.event_ap.connect(m_bypass_ref_model.event_export);
+    m_bypass_ref_model.expected_ap.connect(m_scoreboard.bypass_expected_export);
+    m_scan_builder.scan_ap.connect(m_scoreboard.bypass_observed_export);
+    // xtrig_csr, xtrig_decode: the XTRIG CSR port's monitor stream.
+    m_xtrig_axi_env.item_ap.connect(m_xtrig_csr_ref_model.analysis_export);
+    m_xtrig_csr_ref_model.expected_ap.connect(m_scoreboard.xtrig_csr_expected_export);
+    m_xtrig_axi_env.item_ap.connect(m_scoreboard.xtrig_csr_observed_export);
+    m_xtrig_axi_env.item_ap.connect(m_xtrig_decode_ref_model.analysis_export);
+    m_xtrig_decode_ref_model.expected_ap.connect(m_scoreboard.xtrig_decode_expected_export);
+    m_xtrig_axi_env.item_ap.connect(m_scoreboard.xtrig_decode_observed_export);
+    // jtag2axi_req, jtag2axi_status: requests from the scan stream, the
+    // instruction from the event stream, completions from the bridge
+    // ports.
+    m_scan_builder.scan_ap.connect(m_jtag2axi_req_ref_model.analysis_export);
+    m_jtag_env.event_ap.connect(m_jtag2axi_req_ref_model.event_export);
+    m_jtag2axi_req_ref_model.expected_ap.connect(m_scoreboard.jtag2axi_req_expected_export);
+    m_scan_builder.scan_ap.connect(m_jtag2axi_status_ref_model.analysis_export);
+    m_jtag_env.event_ap.connect(m_jtag2axi_status_ref_model.event_export);
+    m_jtag2axi_status_ref_model.expected_ap.connect(m_scoreboard.jtag2axi_status_expected_export);
+    m_scan_builder.scan_ap.connect(m_scoreboard.jtag2axi_status_observed_export);
+    connect_bridge_port("smc_otp", m_smc_otp_axi_env);
+    connect_bridge_port("sep_otp", m_sep_otp_axi_env);
+    connect_bridge_port("smc_axi", m_smc_axi_env);
+  endfunction
+
+  protected function void connect_bridge_port(string target, ocah_axi_env port_env);
+    string source = port_env.m_monitor.get_full_name();
+    m_jtag2axi_req_ref_model.bind_port(target, source);
+    m_jtag2axi_status_ref_model.bind_port(target, source);
+    port_env.item_ap.connect(m_jtag2axi_req_ref_model.axi_export);
+    port_env.item_ap.connect(m_jtag2axi_status_ref_model.axi_export);
+    port_env.item_ap.connect(m_scoreboard.jtag2axi_req_observed_export);
   endfunction
 
   // One passive shared-VIP AXI observer: geometry, identity, evidence
