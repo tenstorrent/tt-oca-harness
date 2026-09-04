@@ -29,7 +29,12 @@ addrmap log_engine #(
         field {
             sw = rw;
             hw = r;
-            desc = "Log Region Size. Specified in bytes. Needs to be a multiple of 16.";
+            desc = "Log region size in bytes. Supported values are at most 512 KiB and aligned
+                    to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+                    larger value, RTL clamps the effective region to 512 KiB. For a value that is
+                    not 128-byte aligned, RTL divides the effective region among the 16 slots and
+                    rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+                    A requested LOG_LEN above that capacity is clamped to the capacity.";
         } LOG_REGION_SIZE[19:0] = 0x0;
     };
 
