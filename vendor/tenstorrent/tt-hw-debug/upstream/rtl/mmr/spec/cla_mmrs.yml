@@ -5064,12 +5064,23 @@ c_dbg_cla_timestamp:
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: ''
-  timestamp:
-    FIELDS_WIDTH: '64'
-    FIELDS_RANGE: '63:0'
+  timestamp_upper:
+    FIELDS_WIDTH: '56'
+    FIELDS_RANGE: '63:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Current timestamp value
+    DESCRIPTION: Current timestamp value (upper 56 bits)
+    RESET_PORT: ''
+    HW_WRITE: CLA
+    SW_WRITE: W
+    SW_READ: R
+    SW_TYPE: ''
+  timestamp_lower:
+    FIELDS_WIDTH: '8'
+    FIELDS_RANGE: '7:0'
+    RESET_VALUE: '0'
+    LEGAL_VALUE: ''
+    DESCRIPTION: Current timestamp value (lower 8 bits)
     RESET_PORT: ''
     HW_WRITE: CLA
     SW_WRITE: W
@@ -5107,8 +5118,8 @@ c_dbg_cla_timestamp_config:
     HW_READ: CLA
     SW_TYPE: ''
   rsvd1:
-    FIELDS_WIDTH: '53'
-    FIELDS_RANGE: '63:11'
+    FIELDS_WIDTH: '54'
+    FIELDS_RANGE: '63:10'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Reserved
@@ -5116,28 +5127,17 @@ c_dbg_cla_timestamp_config:
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''
-  ts_sync_raw:
+  ts_capture:
     FIELDS_WIDTH: '1'
-    FIELDS_RANGE: '10:10'
+    FIELDS_RANGE: '9:9'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: "When this bit is set, a cross trigger 0 event will cause the value from TimestampSync register to be written into the Timestamp register"
+    DESCRIPTION: "When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register"
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
     HW_WRITE: CLA
     SW_TYPE: ''
-  ts_sync_offset:
-    FIELDS_WIDTH: '1'
-    FIELDS_RANGE: '9:9'
-    RESET_VALUE: '0'
-    LEGAL_VALUE: ''
-    DESCRIPTION: "When this bit is set, a cross trigger 0 event will cause the offset value from TimestampSync + the current timestamp value to be written into the Timestamp register"
-    RESET_PORT: ''
-    SW_WRITE: W
-    SW_READ: R
-    HW_WRITE: CLA
-    SW_TYPE: '' 
   debug_marker:
     FIELDS_WIDTH: '8'
     FIELDS_RANGE: '8:1'
@@ -5148,16 +5148,46 @@ c_dbg_cla_timestamp_config:
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''
-  ts_capture:
+  resync:
     FIELDS_WIDTH: '1'
     FIELDS_RANGE: '0:0'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: "When this bit is set, a cross trigger 0 event will cause the value from the timestamp register to be written into the TimestampSync register"
+    DESCRIPTION: "When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
     HW_WRITE: CLA
+    SW_TYPE: ''
+c_dbg_cla_timestamp_offset:
+  common_data:
+    VISIBILITY: Internal
+    TYPE: CLA
+    SUB_CATEGORY: ''
+    ADDRESS: '0x000308'
+    DESCRIPTION: Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.
+    RESET_PORT: reset_n_warm_ovrride
+    HW_READ: CLA
+    SW_TYPE: ''
+  rsvd0:
+    FIELDS_WIDTH: '8'
+    FIELDS_RANGE: '63:56'
+    RESET_VALUE: '0'
+    LEGAL_VALUE: ''
+    DESCRIPTION: Reserved
+    RESET_PORT: ''
+    SW_WRITE: W
+    SW_READ: R
+    SW_TYPE: ''
+  offset:
+    FIELDS_WIDTH: '56'
+    FIELDS_RANGE: '55:0'
+    RESET_VALUE: '0'
+    LEGAL_VALUE: ''
+    DESCRIPTION: Timestamp offset value
+    RESET_PORT: ''
+    SW_WRITE: W
+    SW_READ: R
     SW_TYPE: ''
 scratch:
   common_data:
@@ -5239,7 +5269,9 @@ c_dbg_timestamp_capture:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000500'
-    DESCRIPTION: LFSR value.
+    DESCRIPTION: Captured timestamp upper bits. When ts_capture is set in the timestamp
+      config register, a cross trigger 0 event captures the timestamp upper bits into
+      this register.
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
