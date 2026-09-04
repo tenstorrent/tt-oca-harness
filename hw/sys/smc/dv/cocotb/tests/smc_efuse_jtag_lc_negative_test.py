@@ -42,6 +42,8 @@ from smc_base_test import smc_base_test
 
 BLOCK_SIGNATURE = 0xBADCAB1E
 LC_PROD = 0x1
+# Non-restricted lifecycle state, the positive control for the PROD block.
+LC_TEST_DEV = 0x0
 RESP_OKAY = 0
 RESP_DECERR = 3
 
@@ -83,6 +85,38 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         await self._check_read("PROD", "PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID, expect_block=False)
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
 
+        # Positive control for the block above, in this same run and on the
+        # SAME address, with the lifecycle state the only thing that changed.
+        # Without it a DECERR from a wedged JTAG path, or an address that
+        # answers DECERR unconditionally, satisfies the PROD legs identically.
+        #
+        # "Allowed" is "not routed to the access-control error slave", not
+        # "OKAY": on this bench fuse sense has not completed on the JTAG path,
+        # so a permitted non-identity read answers SLVERR rather than returning
+        # map content. That is the same definition
+        # smc_efuse_jtag_lc_access_matrix_test uses.
+        dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
+        await ClockCycles(dut.clk_smc_i, 20)
+        _, dev_code = await self._read(SMC_EFUSE_MAP_LOCKS)
+        if dev_code is None:
+            self.errors.append("[TEST_DEV] NON_ID read TIMEOUT")
+        elif dev_code == RESP_DECERR:
+            self.errors.append(
+                f"[TEST_DEV] NON_ID read @0x{SMC_EFUSE_MAP_LOCKS:08x} still routed to the "
+                f"access-control error slave (resp=DECERR); the PROD block above is then "
+                f"not attributable to the lifecycle state"
+            )
+        else:
+            self.checks += 1
+            self.logger.info(
+                "JTAG eFuse read  [TEST_DEV] NON_ID @0x%08x -> resp=%s (not DECERR): the "
+                "same address that PROD blocked is reachable once the lifecycle state moves",
+                SMC_EFUSE_MAP_LOCKS,
+                dev_code,
+            )
+        dut.tb_lc_state.value = packed
+        await ClockCycles(dut.clk_smc_i, 20)
+
         # Secondary: CHIP_CONFIG mirror must match the driven packed state.
         lc_seq = _LcStateExactSeq("lc_state_exact", expected=packed)
         await self.start_seq(lc_seq, self.env.sys_axi_agent.sequencer)
@@ -93,10 +127,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
-            # Directed stimulus floor: 5 accesses across the PROD JTAG eFuse
-            # block/allow legs plus the LC-state CSR reads. Literal here, not
+            # Directed stimulus floor: the four PROD legs, the TEST_DEV
+            # positive control, and the LC-state CSR read. Literal here, not
             # read from the sequence counters.
-            min_csr_accesses=5,
+            min_csr_accesses=6,
             csr_accesses=self.checks + lc_seq.accesses,
             proxy=False,
             details=(
