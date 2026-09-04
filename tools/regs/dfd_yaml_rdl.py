@@ -29,18 +29,24 @@ OVERRIDES = Path(__file__).with_name("dfd_mmr_overrides.yml")
 # svh_prefix is the localparam namespace; struct_prefix names the packed structs.
 # regwidth defaults are the spec's own documented defaults for the size key.
 BLOCKS = {
-    "dst_sink": dict(size_key="DST_SINK_MMR_SIZE", size_default=32,
-                     svh_prefix="DST_SINK", struct_prefix="DstSink"),
-    "funnel": dict(size_key="FUNNEL_MMR_SIZE", size_default=32,
-                   svh_prefix="FUNNEL", struct_prefix="Funnel"),
-    "cla": dict(size_key="CL_MMR_SIZE", size_default=64,
-                svh_prefix="CLA", struct_prefix="Cla"),
-    "dst": dict(size_key="DST_MMR_SIZE", size_default=32,
-                svh_prefix="DST", struct_prefix="Dst"),
-    "ntr": dict(size_key="NTR_MMR_SIZE", size_default=32,
-                svh_prefix="NTR", struct_prefix="Ntr"),
-    "ntr_sink": dict(size_key="NTR_SINK_MMR_SIZE", size_default=32,
-                     svh_prefix="NTR_SINK", struct_prefix="NtrSink"),
+    "dst_sink": dict(
+        size_key="DST_SINK_MMR_SIZE",
+        size_default=32,
+        svh_prefix="DST_SINK",
+        struct_prefix="DstSink",
+    ),
+    "funnel": dict(
+        size_key="FUNNEL_MMR_SIZE", size_default=32, svh_prefix="FUNNEL", struct_prefix="Funnel"
+    ),
+    "cla": dict(size_key="CL_MMR_SIZE", size_default=64, svh_prefix="CLA", struct_prefix="Cla"),
+    "dst": dict(size_key="DST_MMR_SIZE", size_default=32, svh_prefix="DST", struct_prefix="Dst"),
+    "ntr": dict(size_key="NTR_MMR_SIZE", size_default=32, svh_prefix="NTR", struct_prefix="Ntr"),
+    "ntr_sink": dict(
+        size_key="NTR_SINK_MMR_SIZE",
+        size_default=32,
+        svh_prefix="NTR_SINK",
+        struct_prefix="NtrSink",
+    ),
 }
 
 # Blocks the composite maps, in mmrs.sv block order. NUM_NTRACE_INST is a
@@ -48,8 +54,9 @@ BLOCKS = {
 # instantiated here.
 COMPOSITE_BLOCKS = ["dst_sink", "funnel", "cla", "dst"]
 
-SPDX = ("// SPDX-License-Identifier: Apache-2.0\n"
-        "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.")
+SPDX = (
+    "// SPDX-License-Identifier: Apache-2.0\n// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc."
+)
 
 
 WARNINGS: list[str] = []
@@ -67,6 +74,7 @@ def norm(name: str) -> str:
 # ---------------------------------------------------------------------------
 # Vendor inputs
 # ---------------------------------------------------------------------------
+
 
 def load_spec(blk: str) -> dict:
     # BaseLoader keeps every scalar a string. safe_load would read an unquoted
@@ -88,21 +96,20 @@ def load_svh(blk: str) -> dict:
     regs = {}
     for m in re.finditer(
         rf"^localparam\s+{prefix}_(\w+)_REG_OFFSET\s*=\s*\d+'h([0-9A-Fa-f]+);",
-        text, re.M,
+        text,
+        re.M,
     ):
         regs[m.group(1)] = {"offset": int(m.group(2), 16), "fields": {}}
 
     # <PREFIX>_<REG>_<FIELD>_LOW/_HIGH: both halves are underscore-free once
     # normalised, so split on the longest matching known register name.
     by_len = sorted(regs, key=len, reverse=True)
-    for m in re.finditer(
-        rf"^localparam\s+{prefix}_(\w+)_(LOW|HIGH)\s*=\s*(\d+);", text, re.M
-    ):
+    for m in re.finditer(rf"^localparam\s+{prefix}_(\w+)_(LOW|HIGH)\s*=\s*(\d+);", text, re.M):
         tail, which, val = m.group(1), m.group(2), int(m.group(3))
         reg = next((r for r in by_len if tail.startswith(r + "_")), None)
         if reg is None:
             continue
-        field = tail[len(reg) + 1:]
+        field = tail[len(reg) + 1 :]
         regs[reg]["fields"].setdefault(field, {})[which] = val
 
     for reg in regs.values():
@@ -142,9 +149,7 @@ def load_struct_spellings(blk: str) -> dict:
     sp = BLOCKS[blk]["struct_prefix"]
     text = (MMR_DIR / f"{blk}_mmr_pkg.svh").read_text()
     out = {}
-    for m in re.finditer(
-        rf"typedef struct packed \{{(.*?)\}}\s*{sp}(\w+)Mmr_s;", text, re.S
-    ):
+    for m in re.finditer(rf"typedef struct packed \{{(.*?)\}}\s*{sp}(\w+)Mmr_s;", text, re.S):
         body, reg = m.group(1), m.group(2)
         members = {
             norm(fm.group(1)): fm.group(1)
@@ -169,6 +174,7 @@ def load_wrap_params(rel: str, module: str) -> dict:
 # ---------------------------------------------------------------------------
 # Field decoding
 # ---------------------------------------------------------------------------
+
 
 def eff(common: dict, field: dict, key: str) -> bool:
     """A spec attribute is per-field, falling back to the register's common_data."""
@@ -220,6 +226,7 @@ def parse_range(raw) -> tuple[int, int]:
 # Model building + override assertions
 # ---------------------------------------------------------------------------
 
+
 def build_block(blk: str, ov: dict) -> list[dict]:
     cfg = BLOCKS[blk]
     spec = load_spec(blk)
@@ -233,11 +240,15 @@ def build_block(blk: str, ov: dict) -> list[dict]:
     # -- exclude: still specified, still not built -------------------------
     for name in excluded:
         if name not in spec:
-            raise Drift(f"{blk}: exclude '{name}' is no longer in the spec yaml; "
-                        f"drop it from dfd_mmr_overrides.yml")
+            raise Drift(
+                f"{blk}: exclude '{name}' is no longer in the spec yaml; "
+                f"drop it from dfd_mmr_overrides.yml"
+            )
         if norm(name) in svh:
-            raise Drift(f"{blk}: exclude '{name}' is now built by "
-                        f"{blk}_mmr_pkg.svh; it must be mapped, not excluded")
+            raise Drift(
+                f"{blk}: exclude '{name}' is now built by "
+                f"{blk}_mmr_pkg.svh; it must be mapped, not excluded"
+            )
 
     # -- hw_owned: still present, still reported writable ------------------
     for reg, fields in owned.items():
@@ -245,11 +256,12 @@ def build_block(blk: str, ov: dict) -> list[dict]:
             raise Drift(f"{blk}: hw_owned register '{reg}' is not in the spec yaml")
         for field in fields:
             if field not in spec[reg]:
-                raise Drift(f"{blk}: hw_owned field '{reg}.{field}' is not in the "
-                            f"spec yaml")
+                raise Drift(f"{blk}: hw_owned field '{reg}.{field}' is not in the spec yaml")
             if sw_access(spec[reg]["common_data"], spec[reg][field]) != "rw":
-                raise Drift(f"{blk}: hw_owned pin '{reg}.{field}' is redundant -- "
-                            f"the spec no longer reports it sw-writable")
+                raise Drift(
+                    f"{blk}: hw_owned pin '{reg}.{field}' is redundant -- "
+                    f"the spec no longer reports it sw-writable"
+                )
 
     regs = []
     for name, body in spec.items():
@@ -258,13 +270,14 @@ def build_block(blk: str, ov: dict) -> list[dict]:
         common = body["common_data"]
         key = norm(name)
         if key not in svh:
-            raise Drift(f"{blk}: spec register '{name}' is absent from "
-                        f"{blk}_mmr_pkg.svh; exclude it or bump the vendor drop")
+            raise Drift(
+                f"{blk}: spec register '{name}' is absent from "
+                f"{blk}_mmr_pkg.svh; exclude it or bump the vendor drop"
+            )
 
         offset = int(str(common["ADDRESS"]), 16)
         if offset != svh[key]["offset"]:
-            raise Drift(f"{blk}: '{name}' at spec 0x{offset:X} but svh "
-                        f"0x{svh[key]['offset']:X}")
+            raise Drift(f"{blk}: '{name}' at spec 0x{offset:X} but svh 0x{svh[key]['offset']:X}")
 
         fields = []
         for fname, fbody in body.items():
@@ -274,16 +287,20 @@ def build_block(blk: str, ov: dict) -> list[dict]:
             fkey = norm(fname)
             bounds = svh[key]["fields"].get(fkey)
             if bounds and (bounds["HIGH"], bounds["LOW"]) != (hi, lo):
-                raise Drift(f"{blk}: '{name}.{fname}' spec [{hi}:{lo}] but svh "
-                            f"[{bounds['HIGH']}:{bounds['LOW']}]")
+                raise Drift(
+                    f"{blk}: '{name}.{fname}' spec [{hi}:{lo}] but svh "
+                    f"[{bounds['HIGH']}:{bounds['LOW']}]"
+                )
             # FIELDS_WIDTH is redundant with FIELDS_RANGE and not always in step
             # with it. The svh breaks the tie; only an uncorroborated range is
             # fatal, since that is the one that could mis-map a register.
             width = int(fbody["FIELDS_WIDTH"])
             if width != hi - lo + 1:
                 if bounds is None:
-                    raise Drift(f"{blk}: '{name}.{fname}' width {width} contradicts "
-                                f"range [{hi}:{lo}] and the svh does not cover it")
+                    raise Drift(
+                        f"{blk}: '{name}.{fname}' width {width} contradicts "
+                        f"range [{hi}:{lo}] and the svh does not cover it"
+                    )
                 WARNINGS.append(
                     f"{blk}: '{name}.{fname}' spec width {width} contradicts range "
                     f"[{hi}:{lo}]; using the range, which the svh corroborates"
@@ -294,58 +311,72 @@ def build_block(blk: str, ov: dict) -> list[dict]:
                 continue
             if fname in owned.get(name, []):
                 sw = "r"
-            fields.append({
-                "name": field_names.get((key, fkey), fname),
-                "hi": hi, "lo": lo,
-                "sw": sw,
-                "hw": hw_access(common, fbody, sw),
-                "reset": reset_value(fbody.get("RESET_VALUE", 0)),
-                "desc": str(fbody.get("DESCRIPTION", "") or "").strip(),
-            })
+            fields.append(
+                {
+                    "name": field_names.get((key, fkey), fname),
+                    "hi": hi,
+                    "lo": lo,
+                    "sw": sw,
+                    "hw": hw_access(common, fbody, sw),
+                    "reset": reset_value(fbody.get("RESET_VALUE", 0)),
+                    "desc": str(fbody.get("DESCRIPTION", "") or "").strip(),
+                }
+            )
 
-        regs.append({
-            "name": reg_names.get(key, name),
-            "offset": offset,
-            "regwidth": int(common.get(cfg["size_key"], cfg["size_default"])),
-            "desc": str(common.get("DESCRIPTION", "") or "").strip(),
-            "fields": sorted(fields, key=lambda f: f["lo"]),
-        })
+        regs.append(
+            {
+                "name": reg_names.get(key, name),
+                "offset": offset,
+                "regwidth": int(common.get(cfg["size_key"], cfg["size_default"])),
+                "desc": str(common.get("DESCRIPTION", "") or "").strip(),
+                "fields": sorted(fields, key=lambda f: f["lo"]),
+            }
+        )
 
     # -- extra_regs: still unspecified, still built as described ------------
     for name, body in extra.items():
-        if name in {norm(k): k for k in spec}.values() or norm(name) in {
-            norm(k) for k in spec
-        }:
-            raise Drift(f"{blk}: extra_regs '{name}' is now in the spec yaml; "
-                        f"drop it from dfd_mmr_overrides.yml")
+        if name in {norm(k): k for k in spec}.values() or norm(name) in {norm(k) for k in spec}:
+            raise Drift(
+                f"{blk}: extra_regs '{name}' is now in the spec yaml; "
+                f"drop it from dfd_mmr_overrides.yml"
+            )
         key = norm(name)
         if key not in svh:
-            raise Drift(f"{blk}: extra_regs '{name}' is not built by "
-                        f"{blk}_mmr_pkg.svh")
+            raise Drift(f"{blk}: extra_regs '{name}' is not built by {blk}_mmr_pkg.svh")
         if body["offset"] != svh[key]["offset"]:
-            raise Drift(f"{blk}: extra_regs '{name}' at 0x{body['offset']:X} but "
-                        f"svh 0x{svh[key]['offset']:X}")
+            raise Drift(
+                f"{blk}: extra_regs '{name}' at 0x{body['offset']:X} but "
+                f"svh 0x{svh[key]['offset']:X}"
+            )
         fields = []
         for fname, fbody in body["fields"].items():
             hi, lo = parse_range(fbody["bits"])
             bounds = svh[key]["fields"].get(norm(fname))
             if bounds and (bounds["HIGH"], bounds["LOW"]) != (hi, lo):
-                raise Drift(f"{blk}: extra_regs '{name}.{fname}' [{hi}:{lo}] but "
-                            f"svh [{bounds['HIGH']}:{bounds['LOW']}]")
-            fields.append({
-                "name": field_names.get((key, norm(fname)), fname),
-                "hi": hi, "lo": lo,
-                "sw": fbody["sw"], "hw": fbody["hw"],
-                "reset": int(str(fbody["reset"]), 0),
-                "desc": "",
-            })
-        regs.append({
-            "name": reg_names.get(key, name),
-            "offset": body["offset"],
-            "regwidth": body["regwidth"],
-            "desc": str(body.get("desc", "") or "").strip(),
-            "fields": sorted(fields, key=lambda f: f["lo"]),
-        })
+                raise Drift(
+                    f"{blk}: extra_regs '{name}.{fname}' [{hi}:{lo}] but "
+                    f"svh [{bounds['HIGH']}:{bounds['LOW']}]"
+                )
+            fields.append(
+                {
+                    "name": field_names.get((key, norm(fname)), fname),
+                    "hi": hi,
+                    "lo": lo,
+                    "sw": fbody["sw"],
+                    "hw": fbody["hw"],
+                    "reset": int(str(fbody["reset"]), 0),
+                    "desc": "",
+                }
+            )
+        regs.append(
+            {
+                "name": reg_names.get(key, name),
+                "offset": body["offset"],
+                "regwidth": body["regwidth"],
+                "desc": str(body.get("desc", "") or "").strip(),
+                "fields": sorted(fields, key=lambda f: f["lo"]),
+            }
+        )
 
     regs.sort(key=lambda r: r["offset"])
     return regs
@@ -355,22 +386,26 @@ def build_block(blk: str, ov: dict) -> list[dict]:
 # Emit
 # ---------------------------------------------------------------------------
 
+
 def quote(text: str) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def emit_block(blk: str, regs: list[dict]) -> str:
-    out = [SPDX, "",
-           f"// {blk} MMR block, generated by tools/regs/dfd_yaml_rdl.py from",
-           f"// rtl/mmr/spec/{blk}_mmrs.yml. Do not edit; run `make "
-           f"ocah-regen-dfd-rdl`.",
-           "//",
-           "// Addresses are block-relative: the composite that instantiates this",
-           "// block places it at the offset mmrs.sv decodes.",
-           "",
-           f"`ifndef DFD_{blk.upper()}_RDL",
-           f"`define DFD_{blk.upper()}_RDL", "",
-           f"addrmap dfd_{blk} {{"]
+    out = [
+        SPDX,
+        "",
+        f"// {blk} MMR block, generated by tools/regs/dfd_yaml_rdl.py from",
+        f"// rtl/mmr/spec/{blk}_mmrs.yml. Do not edit; run `make ocah-regen-dfd-rdl`.",
+        "//",
+        "// Addresses are block-relative: the composite that instantiates this",
+        "// block places it at the offset mmrs.sv decodes.",
+        "",
+        f"`ifndef DFD_{blk.upper()}_RDL",
+        f"`define DFD_{blk.upper()}_RDL",
+        "",
+        f"addrmap dfd_{blk} {{",
+    ]
     for reg in regs:
         out.append("    reg {")
         if reg["desc"]:
@@ -392,51 +427,53 @@ def emit_block(blk: str, regs: list[dict]) -> str:
 
 def emit_composite(params: dict) -> str:
     """The composite aperture: an OCAH integration fact, not a vendor one."""
-    return "\n".join([
-        SPDX,
-        "",
-        "// DFD MMR aperture as smc_dfd_wrap builds it. Generated by",
-        "// tools/regs/dfd_yaml_rdl.py; do not edit.",
-        "//",
-        "// mmrs.sv assigns one 4 KiB block per present unit and decodes it from",
-        "// paddr[22:12]. The block order below is that decode order, and the DST",
-        "// base slides with NUM_CLA_INST exactly as DST_START_IDX does.",
-        "//",
-        "// The parameter defaults track the smc_dfd_wrap instantiation and are",
-        "// asserted against it on every regen. NUM_NTRACE_INST is a localparam 0",
-        "// in dfd_top_cla_dst_apb, so no ntrace block is mapped -- and it must not",
-        "// be: this map is the model of what the RTL implements, and every register",
-        "// in it reaches DV, the C headers and the docs as a register firmware may",
-        "// use. A block the build does not instantiate answers nothing.",
-        "",
-        '`include "dfd_dst_sink.rdl"',
-        '`include "dfd_funnel.rdl"',
-        '`include "dfd_cla.rdl"',
-        '`include "dfd_dst.rdl"',
-        "",
-        "addrmap smc_cla #(",
-        f"    longint unsigned NUM_CLA_INST = {params['NUM_CLA_INST']},",
-        f"    longint unsigned NUM_DST_INST = {params['NUM_DST_INST']}",
-        ") {",
-        "    dfd_dst_sink dst_sink @ 0x0;",
-        "    dfd_funnel   funnel   @ 0x1000;",
-        "    dfd_cla      cla[NUM_CLA_INST] @ 0x2000 += 0x1000;",
-        "    dfd_dst      dst[NUM_DST_INST] @ 0x2000 + 0x1000 * NUM_CLA_INST "
-        "+= 0x1000;",
-        "};",
-        "",
-    ])
+    return "\n".join(
+        [
+            SPDX,
+            "",
+            "// DFD MMR aperture as smc_dfd_wrap builds it. Generated by",
+            "// tools/regs/dfd_yaml_rdl.py; do not edit.",
+            "//",
+            "// mmrs.sv assigns one 4 KiB block per present unit and decodes it from",
+            "// paddr[22:12]. The block order below is that decode order, and the DST",
+            "// base slides with NUM_CLA_INST exactly as DST_START_IDX does.",
+            "//",
+            "// The parameter defaults track the smc_dfd_wrap instantiation and are",
+            "// asserted against it on every regen. NUM_NTRACE_INST is a localparam 0",
+            "// in dfd_top_cla_dst_apb, so no ntrace block is mapped -- and it must not",
+            "// be: this map is the model of what the RTL implements, and every register",
+            "// in it reaches DV, the C headers and the docs as a register firmware may",
+            "// use. A block the build does not instantiate answers nothing.",
+            "",
+            '`include "dfd_dst_sink.rdl"',
+            '`include "dfd_funnel.rdl"',
+            '`include "dfd_cla.rdl"',
+            '`include "dfd_dst.rdl"',
+            "",
+            "addrmap smc_cla #(",
+            f"    longint unsigned NUM_CLA_INST = {params['NUM_CLA_INST']},",
+            f"    longint unsigned NUM_DST_INST = {params['NUM_DST_INST']}",
+            ") {",
+            "    dfd_dst_sink dst_sink @ 0x0;",
+            "    dfd_funnel   funnel   @ 0x1000;",
+            "    dfd_cla      cla[NUM_CLA_INST] @ 0x2000 += 0x1000;",
+            "    dfd_dst      dst[NUM_DST_INST] @ 0x2000 + 0x1000 * NUM_CLA_INST += 0x1000;",
+            "};",
+            "",
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     mode = ap.add_mutually_exclusive_group()
-    mode.add_argument("--check", action="store_true", default=True,
-                      help="report drift and exit 1 (default)")
-    mode.add_argument("--write", action="store_true",
-                      help="regenerate the RDL in place")
+    mode.add_argument(
+        "--check", action="store_true", default=True, help="report drift and exit 1 (default)"
+    )
+    mode.add_argument("--write", action="store_true", help="regenerate the RDL in place")
     args = ap.parse_args()
 
     with open(OVERRIDES) as f:
@@ -448,15 +485,17 @@ def main() -> int:
     for key, want in params.items():
         got = wrap.get(key)
         if got is None:
-            raise Drift(f"{bm['assert_from']}: {key} is no longer overridden on "
-                        f"{bm['assert_module']}")
+            raise Drift(
+                f"{bm['assert_from']}: {key} is no longer overridden on {bm['assert_module']}"
+            )
         if got != want:
-            raise Drift(f"block map stale: {bm['assert_from']} says {key}={got}, "
-                        f"dfd_mmr_overrides.yml says {want}")
+            raise Drift(
+                f"block map stale: {bm['assert_from']} says {key}={got}, "
+                f"dfd_mmr_overrides.yml says {want}"
+            )
 
     outputs = {
-        BLOCK_RDL_DIR / f"dfd_{blk}.rdl": emit_block(blk, build_block(blk, ov))
-        for blk in BLOCKS
+        BLOCK_RDL_DIR / f"dfd_{blk}.rdl": emit_block(blk, build_block(blk, ov)) for blk in BLOCKS
     }
     outputs[COMPOSITE_RDL] = emit_composite(params)
 
