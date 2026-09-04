@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns / 1ps
-
 module tb_ring_smoke;
   logic enable_i = 1'b0;
   logic detune_i = 1'b0;

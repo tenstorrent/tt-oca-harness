@@ -19,7 +19,8 @@ COMMON_RTL = $(PRIM_RTL_DIR)/prim_clock_nand2.sv \
              $(PRIM_RTL_DIR)/prim_dffrxq.sv \
              $(PRIM_RTL_DIR)/prim_inv.sv \
              $(PRIM_RTL_DIR)/prim_stdbuf.sv \
-             $(PRIM_RTL_DIR)/prim_stdmux2.sv
+             $(PRIM_RTL_DIR)/prim_stdmux2.sv \
+             $(RTL_DIR)/entropy_ring_delay_cells.sv
 
 # Ring Oscillator test configuration
 RING_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ring_oscillator.sv $(RTL_DIR)/entropy_noise_source.sv
