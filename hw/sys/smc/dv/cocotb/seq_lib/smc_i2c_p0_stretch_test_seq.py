@@ -73,6 +73,8 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.stretch_ok: bool = False
         self.read_ok: bool = False
+        # Byte the host actually received; compared against _READ0 below.
+        self.rx_byte: int = -1
 
     def _idx_addr(self, symbol: str, idx: int) -> int:
         return smc_indexed_addr(symbol, idx)
@@ -238,6 +240,7 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
         await self.csr_write("I2C0_TXDATA", txdata, _READ0)
         await self.csr_write("I2C0_CLR_TX_PENDING", ev_addr, I2C_TARGET_EVENTS_TX_PENDING)
         got = await self._wait_rx_byte()
+        self.rx_byte = got
         if got != _READ0:
             raise AssertionError(f"RX got 0x{got:02x} expect 0x{_READ0:02x}")
         await self._wait_hostidle()

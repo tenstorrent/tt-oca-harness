@@ -96,7 +96,7 @@ WRITE_READBACK = [
 
 # Directed, non-polling access count of `body()`: the callers' protocol-VIP
 # stimulus floors (19) are minima, so this stays >= that.
-EXPECTED_ACCESSES = 20
+EXPECTED_ACCESSES = 24
 
 
 class smc_mailbox_irq_test_seq(smc_base_test_seq):
@@ -168,6 +168,23 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
             ", ".join(f"{n} (wrote 0x{w:x}, expected 0x{e:x})" for n, w, e in clamped),
         )
 
+        # In-range leg. Every threshold write above is >= depth, so all of them
+        # clamp, and a register that returned depth-1 for any write -- or
+        # ignored writes entirely -- satisfied them all. Writing depth-1, the
+        # largest value the SPEC does NOT clamp, must read back unchanged.
+        in_range = depth - 1
+        for name, addr, _pattern, readback in WRITE_READBACK:
+            if readback != CLAMPED_THRESHOLD:
+                continue
+            await self._write(f"{name}_IN_RANGE", addr, in_range)
+            await self._read(f"{name}_IN_RANGE", addr, expected=in_range)
+        cocotb.log.info(
+            "CHK-MAILBOX-IRQT-IN-RANGE: WIRQT/RIRQT took 0x%x (depth-1, the "
+            "largest unclamped value) back exactly, so the clamp above is a "
+            "clamp and not a register stuck at depth-1",
+            in_range,
+        )
+
         for name, addr, _pattern, _readback in reversed(WRITE_READBACK):
             await self._write(f"{name}_RESTORE", addr, 0)
             await self._read(f"{name}_RESTORE", addr, expected=0)
@@ -176,8 +193,9 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
         await self._read(
             "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, expected=self.clock_gate_value
         )
-        # 19 mailbox/clock-gate accesses + the SMC_ATTRIBUTES read that sources
-        # the threshold-clamp expectation.
+        # 19 mailbox/clock-gate accesses, the SMC_ATTRIBUTES read that sources
+        # the threshold-clamp expectation, and the two in-range
+        # write/readback pairs.
         assert self.accesses == EXPECTED_ACCESSES, (
             f"mailbox CSR access sequence issued {self.accesses} accesses, "
             f"expected {EXPECTED_ACCESSES}"
