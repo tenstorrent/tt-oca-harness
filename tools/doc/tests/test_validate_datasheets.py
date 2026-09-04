@@ -9,9 +9,9 @@ from tools.doc.validate_datasheets import validate_pdf, validate_source
 
 SECTIONS = (
     "highlights",
-    "integration-fit",
+    "system-role",
     "overview",
-    "architecture",
+    "system-context",
     "at-a-glance",
     "capabilities",
     "interfaces-and-configuration",
@@ -44,11 +44,11 @@ class SourceValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "dtp.adoc"
             source.write_text(
-                valid_source().replace("// datasheet-section: architecture\n", ""),
+                valid_source().replace("// datasheet-section: system-context\n", ""),
                 encoding="utf-8",
             )
 
-            self.assertTrue(any("architecture" in error for error in validate_source(source)))
+            self.assertTrue(any("system-context" in error for error in validate_source(source)))
 
     def test_rejects_unresolved_placeholder(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -180,6 +180,54 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("!External / internal triggers !16 CTPs / 10 internal interfaces", source)
         self.assertIn("!Clock-stop request inputs !9", source)
         self.assertIn("exposes eight internal trigger interfaces and eight clock-stop", source)
+
+    def test_template_and_dtp_use_integrator_facing_section_names(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        template = (root / "doc/datasheets/template.adoc").read_text(encoding="utf-8")
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+
+        for document in (template, source):
+            self.assertIn("SYSTEM ROLE", document)
+            self.assertIn("SYSTEM CONTEXT", document)
+            self.assertIn("RESOURCES", document)
+            self.assertIn("Documentation:", document)
+            self.assertNotIn("INTEGRATION FIT", document)
+            self.assertNotIn("Technical detail:", document)
+
+    def test_dtp_context_diagram_relates_external_chiplet_and_internal_blocks(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(
+            encoding="utf-8"
+        )
+
+        for label in (
+            "External debug / test",
+            "OCAH chiplet",
+            "Peer OCAH chiplet",
+            "JTAG Interface Unit",
+            "Cross Trigger Network",
+            "SMC",
+            "SEP",
+            "Adopter IP",
+        ):
+            self.assertIn(label, diagram)
+
+    def test_dtp_abstracts_lifecycle_controls_in_interface_summary(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+
+        self.assertNotIn("!Debug security !`dbg_disable_i`", source)
+        self.assertIn("!Lifecycle policy !Active-high, per-path debug and test disable controls", source)
+
+    def test_dtp_points_to_current_status_and_uses_full_size_resources(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+
+        self.assertIn("current verification and maturity status", source.lower())
+        self.assertIn("OCAH documentation website", source)
+        self.assertNotIn("OCAH DTP is beta RTL.", source)
+        resources = source.split("RESOURCES", maxsplit=1)[1]
+        self.assertNotIn("[.datasheet-small]", resources)
 
 
 if __name__ == "__main__":

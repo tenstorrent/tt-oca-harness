@@ -41,12 +41,12 @@ HIGHLIGHTS
 
 * Lead with six or fewer adopter-relevant, evidenced capabilities.
 
-// datasheet-section: integration-fit
+// datasheet-section: system-role
 [.datasheet-section]
-INTEGRATION FIT
+SYSTEM ROLE
 
-State which integrator problems this subsystem solves and where it sits in the
-target design.
+State where the subsystem sits relative to external equipment, the OCAH
+chiplet, other OCAH subsystems, adopter IP, and peer chiplets.
 
 a|
 // datasheet-section: overview
@@ -56,11 +56,13 @@ OVERVIEW
 Describe the subsystem, its value to an integrator, and the boundary of what is
 delivered in approximately 100 to 180 words.
 
-// datasheet-section: architecture
+// datasheet-section: system-context
 [.datasheet-section]
-ARCHITECTURE
+SYSTEM CONTEXT
 
-Include one readable block diagram with adopter-owned connections visible.
+Include one readable context diagram using the shared visual pattern: external
+equipment on the left, the OCAH chiplet and subsystem internals in the center,
+and peer chiplets on the right. Show adopter-owned connections explicitly.
 
 // datasheet-section: at-a-glance
 [.datasheet-section]
@@ -106,7 +108,14 @@ characterization have not yet been completed.
 
 // datasheet-section: deliverables-and-further-information
 [.datasheet-section]
-DELIVERABLES AND FURTHER INFORMATION
+DELIVERABLES
 
-List the supplied RTL, collateral, tests, license, and stable repository paths.
+List the supplied RTL, collateral, tests, and license.
+
+[.datasheet-section]
+RESOURCES
+
+Documentation: link to the current OCAH documentation website. List stable
+repository paths for detailed documentation, RTL, verification, and synthesis
+collateral.
 |===
