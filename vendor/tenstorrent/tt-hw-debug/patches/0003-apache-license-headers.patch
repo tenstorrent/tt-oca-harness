@@ -1,0 +1,884 @@
+tt-hw-debug: apply public Apache-2.0 headers
+
+These DFD sources are approved for open-source distribution. Replace the
+obsolete confidentiality legends with the repository's canonical Apache-2.0
+SPDX header without changing RTL behavior.
+
+diff --git a/rtl/apb2mmr.sv b/rtl/apb2mmr.sv
+index b6947a79c..d11a7864c 100644
+--- a/rtl/apb2mmr.sv
++++ b/rtl/apb2mmr.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module apb2mmr
+ import ntr_sink_mmr_pkg::*;
+diff --git a/rtl/cla/cla_action_gen.sv b/rtl/cla/cla_action_gen.sv
+index 72cd9d89a..cae03e29c 100644
+--- a/rtl/cla/cla_action_gen.sv
++++ b/rtl/cla/cla_action_gen.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_action_gen
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_arithmetic_compare.sv b/rtl/cla/cla_arithmetic_compare.sv
+index e73978168..411a274a5 100644
+--- a/rtl/cla/cla_arithmetic_compare.sv
++++ b/rtl/cla/cla_arithmetic_compare.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_arithmetic_compare #(
+     parameter DEBUG_SIGNAL_WIDTH = 64
+diff --git a/rtl/cla/cla_counter.sv b/rtl/cla/cla_counter.sv
+index f125d7479..505ee7bcc 100644
+--- a/rtl/cla/cla_counter.sv
++++ b/rtl/cla/cla_counter.sv
+@@ -1,21 +1,5 @@
+-
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ //Note:for now, we will override the counter width as 31...
+ module cla_counter
+diff --git a/rtl/cla/cla_debug_signals_change.sv b/rtl/cla/cla_debug_signals_change.sv
+index eef470e85..59452836e 100644
+--- a/rtl/cla/cla_debug_signals_change.sv
++++ b/rtl/cla/cla_debug_signals_change.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_debug_signals_change
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_debug_signals_match.sv b/rtl/cla/cla_debug_signals_match.sv
+index 2b07302f5..0e00e392d 100644
+--- a/rtl/cla/cla_debug_signals_match.sv
++++ b/rtl/cla/cla_debug_signals_match.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_debug_signals_match
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_debug_signals_ones_count.sv b/rtl/cla/cla_debug_signals_ones_count.sv
+index 0be074f64..f5752198c 100644
+--- a/rtl/cla/cla_debug_signals_ones_count.sv
++++ b/rtl/cla/cla_debug_signals_ones_count.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_debug_signals_ones_count
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_debug_signals_transition.sv b/rtl/cla/cla_debug_signals_transition.sv
+index fe7a49951..543cfde5e 100644
+--- a/rtl/cla/cla_debug_signals_transition.sv
++++ b/rtl/cla/cla_debug_signals_transition.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_debug_signals_transition
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_edge_detect.sv b/rtl/cla/cla_edge_detect.sv
+index bd36b728f..a22fb90d8 100644
+--- a/rtl/cla/cla_edge_detect.sv
++++ b/rtl/cla/cla_edge_detect.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_edge_detect
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_event_gen.sv b/rtl/cla/cla_event_gen.sv
+index d6954d6ca..f9762cbc5 100644
+--- a/rtl/cla/cla_event_gen.sv
++++ b/rtl/cla/cla_event_gen.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ //Module to instantiate all event generators.
+ module cla_event_gen
+diff --git a/rtl/cla/cla_lfsr.sv b/rtl/cla/cla_lfsr.sv
+index e59ce5620..5c70a68d8 100644
+--- a/rtl/cla/cla_lfsr.sv
++++ b/rtl/cla/cla_lfsr.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_lfsr
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_node_eap.sv b/rtl/cla/cla_node_eap.sv
+index 678310737..0ca7cbad3 100644
+--- a/rtl/cla/cla_node_eap.sv
++++ b/rtl/cla/cla_node_eap.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_node_eap
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_node_eap_set.sv b/rtl/cla/cla_node_eap_set.sv
+index cbbf710f8..e0e09d38a 100644
+--- a/rtl/cla/cla_node_eap_set.sv
++++ b/rtl/cla/cla_node_eap_set.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module cla_node_eap_set
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/cla_pkg.svh b/rtl/cla/cla_pkg.svh
+index c53f21060..7ac50aecc 100644
+--- a/rtl/cla/cla_pkg.svh
++++ b/rtl/cla/cla_pkg.svh
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ `ifndef CLA_PKG_SVH
+ `define CLA_PKG_SVH
+diff --git a/rtl/cla/core_logic_analyzer.sv b/rtl/cla/core_logic_analyzer.sv
+index 5e003cd85..3fd6b6ce5 100644
+--- a/rtl/cla/core_logic_analyzer.sv
++++ b/rtl/cla/core_logic_analyzer.sv
+@@ -1,21 +1,5 @@
+-
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module core_logic_analyzer
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/debug_sig_trace_gen.sv b/rtl/cla/debug_sig_trace_gen.sv
+index d8f9b2ad4..568026b6b 100644
+--- a/rtl/cla/debug_sig_trace_gen.sv
++++ b/rtl/cla/debug_sig_trace_gen.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ //Debug Bus --> VLT packets.
+ module debug_sig_trace_gen
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/debug_signal_shift_mux.sv b/rtl/cla/debug_signal_shift_mux.sv
+index 942892b84..95491b906 100644
+--- a/rtl/cla/debug_signal_shift_mux.sv
++++ b/rtl/cla/debug_signal_shift_mux.sv
+@@ -1,21 +1,5 @@
+-
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module debug_signal_shift_mux
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/dst_pkg.svh b/rtl/cla/dst_pkg.svh
+index 5a5803527..89aceae72 100644
+--- a/rtl/cla/dst_pkg.svh
++++ b/rtl/cla/dst_pkg.svh
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ `ifndef DST_PKG_SVH
+ `define DST_PKG_SVH
+diff --git a/rtl/cla/dst_priority_mux.sv b/rtl/cla/dst_priority_mux.sv
+index eb8a50d83..2e35728c3 100644
+--- a/rtl/cla/dst_priority_mux.sv
++++ b/rtl/cla/dst_priority_mux.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ module dst_priority_mux #(parameter WIDTH = 8, parameter LEVELS = 4) (
+   input logic [WIDTH-1:0] inputs [0:LEVELS-1], // Input signals
+   input logic [LEVELS-1:0] select, // Select signal
+diff --git a/rtl/cla/tt_dbm_pkg.svh b/rtl/cla/tt_dbm_pkg.svh
+index d26ed5c10..44fd0a71f 100644
+--- a/rtl/cla/tt_dbm_pkg.svh
++++ b/rtl/cla/tt_dbm_pkg.svh
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ `ifndef TT_DBM_PKG_SVH
+ `define TT_DBM_PKG_SVH
+diff --git a/rtl/cla/tt_debug_bus_mux.sv b/rtl/cla/tt_debug_bus_mux.sv
+index 666e2d201..50ac15c08 100644
+--- a/rtl/cla/tt_debug_bus_mux.sv
++++ b/rtl/cla/tt_debug_bus_mux.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module tt_debug_bus_mux
+ import tt_dbm_pkg::*;
+diff --git a/rtl/cla/vlt_packet_compression.sv b/rtl/cla/vlt_packet_compression.sv
+index 506957f84..838a1751b 100644
+--- a/rtl/cla/vlt_packet_compression.sv
++++ b/rtl/cla/vlt_packet_compression.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ //Generate VLT packets.
+ module vlt_packet_compression
+ import cla_mmr_pkg::*;
+diff --git a/rtl/cla/xor_compression.sv b/rtl/cla/xor_compression.sv
+index 4300ed828..d01b9e1af 100644
+--- a/rtl/cla/xor_compression.sv
++++ b/rtl/cla/xor_compression.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module xor_compression
+ import dst_pkg::*;
+diff --git a/rtl/cla/xtrigger_stretch_circuit.sv b/rtl/cla/xtrigger_stretch_circuit.sv
+index da4e3c451..d86f189a0 100644
+--- a/rtl/cla/xtrigger_stretch_circuit.sv
++++ b/rtl/cla/xtrigger_stretch_circuit.sv
+@@ -1,21 +1,5 @@
+-
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module xtrigger_stretch_circuit
+ import cla_mmr_pkg::*;
+diff --git a/rtl/clk_rst_wrapper.sv b/rtl/clk_rst_wrapper.sv
+index a32de3662..49e8cd185 100644
+--- a/rtl/clk_rst_wrapper.sv
++++ b/rtl/clk_rst_wrapper.sv
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ // clk_rst_wrapper:
+ //
+diff --git a/rtl/mmrs.sv b/rtl/mmrs.sv
+index 3c6d3c34c..f890557fb 100644
+--- a/rtl/mmrs.sv
++++ b/rtl/mmrs.sv
+@@ -1,21 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
+-
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ /*
+     The register memory map is in the following order:
+diff --git a/rtl/trace/accumulator.sv b/rtl/trace/accumulator.sv
+index eb8c5d6db..ece86ee3f 100644
+--- a/rtl/trace/accumulator.sv
++++ b/rtl/trace/accumulator.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ // Accumulator Control and Banks instantiation
+ 
+ module accumulator
+diff --git a/rtl/trace/accumulator_bank.sv b/rtl/trace/accumulator_bank.sv
+index 3314b12a1..63f90b3ad 100644
+--- a/rtl/trace/accumulator_bank.sv
++++ b/rtl/trace/accumulator_bank.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ // Accumulator Banks
+ module accumulator_bank
+ import packetizer_pkg::*;
+diff --git a/rtl/trace/cross_connect.sv b/rtl/trace/cross_connect.sv
+index f026eb1ca..508dfcacf 100644
+--- a/rtl/trace/cross_connect.sv
++++ b/rtl/trace/cross_connect.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ //Align inocming packets as per current write boundary for accumulator.
+ module cross_connect #(
+     parameter ACCUMULATOR_DATA_WIDTH_IN_BYTES = 64,
+diff --git a/rtl/trace/frame_filler.sv b/rtl/trace/frame_filler.sv
+index 6e75ec1be..a522aee96 100644
+--- a/rtl/trace/frame_filler.sv
++++ b/rtl/trace/frame_filler.sv
+@@ -1,21 +1,7 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ `include "generic_macro_assertion.vh"
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
+ // Frmae Filler : Generate Request adjusted to frame support, generate frame_fill data/byte-enables.
+ module frame_filler
+ import cla_mmr_pkg::*;
+diff --git a/rtl/trace/packetizer.sv b/rtl/trace/packetizer.sv
+index 8726e4e92..11652586e 100644
+--- a/rtl/trace/packetizer.sv
++++ b/rtl/trace/packetizer.sv
+@@ -1,20 +1,6 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
++
+ // Packetizer : Cross Connect + Accumlator (+ Banks) + FIFO
+ module packetizer
+ import cla_mmr_pkg::*;
+diff --git a/rtl/trace/packetizer_pkg.svh b/rtl/trace/packetizer_pkg.svh
+index 1a1ff48ab..2c3bcf0d3 100644
+--- a/rtl/trace/packetizer_pkg.svh
++++ b/rtl/trace/packetizer_pkg.svh
+@@ -1,20 +1,5 @@
+-// *************************************************************************
+-// *
+-// * Tenstorrent CONFIDENTIAL
+-// * __________________
+-// *
+-// *  Tenstorrent Inc.
+-// *  All Rights Reserved.
+-// *
+-// * NOTICE:  All information contained herein is, and remains the property
+-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
+-// * Canadian and Foreign Patents, patents in process, and are protected by
+-// * trade secret or copyright law.  Dissemination of this information or
+-// * reproduction of this material is strictly forbidden unless prior
+-// * written permission is obtained from Tenstorrent Inc.
+-// *
+-// *************************************************************************
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ `ifndef PACKETIZER_PKG_SVH
+ `define PACKETIZER_PKG_SVH
