@@ -1535,11 +1535,11 @@ def _cocotb_build_info(
     if args.cov:
         tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
         scope_file = _coverage_scope_file(flow, root, tool_cov)
-        cov_scope_extra = _coverage_scope_fingerprint_extra(scope_file)
         coverage_build_args = as_str_list(
             tool_cov.get("compile_args" if tool == "vcs" else "build_args"),
             f"coverage.{tool}.{'compile_args' if tool == 'vcs' else 'build_args'}",
         )
+        cov_scope_extra = _coverage_scope_fingerprint_extra(scope_file, coverage_build_args)
         build_args += render_tokens(
             coverage_build_args,
             {
@@ -3037,8 +3037,10 @@ def _coverage_scope_file(
     return path
 
 
-def _coverage_scope_fingerprint_extra(scope_file: Path | None) -> list[str]:
-    """Fold the scope file's content into the build fingerprint.
+def _coverage_scope_fingerprint_extra(
+    scope_file: Path | None, coverage_build_args: list[str] | None = None
+) -> list[str]:
+    """Fold the coverage scope -- file content and arg list -- into the fingerprint.
 
     The fingerprint covers sources, target, waves and the `cov` flag -- not the
     compile args. Without this, editing the scope file leaves the fingerprint
@@ -3046,11 +3048,23 @@ def _coverage_scope_fingerprint_extra(scope_file: Path | None) -> list[str]:
     OLD scope while the file on disk says something else. Coverage scope is the
     one compile arg whose content changes what the number means, so it has to be
     in the key.
+
+    The arg list matters for the same reason and was the half left uncovered:
+    what the scope file MEANS depends on the switches that read it. Adding
+    `-cm_common_hier` extends the same file from code coverage to assertions as
+    well, so the identical file yields a different database -- and with only the
+    file hashed, that edit reused the old build and reported the old scope.
+    The unrendered template is hashed, not the rendered args: those embed the
+    build directory, which is named after the fingerprint.
     """
 
-    if scope_file is None:
-        return []
-    return [f"cov_scope={_file_sha256(scope_file)}"]
+    extra: list[str] = []
+    if scope_file is not None:
+        extra.append(f"cov_scope={_file_sha256(scope_file)}")
+    if coverage_build_args:
+        digest = hashlib.sha256("\x00".join(coverage_build_args).encode("utf-8")).hexdigest()
+        extra.append(f"cov_args={digest}")
+    return extra
 
 
 def _coverage_design_db(

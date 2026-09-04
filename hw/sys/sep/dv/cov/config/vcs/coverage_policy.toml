@@ -23,4 +23,7 @@ tool = "vcs"
 role = "scope"
 path = "sep_cov_scope.hier"
 apply_phase = "report"
-args = ["-hier", "{path}"]
+# `-cm_common_hier` is the report-time half of the compile-time pairing: it makes
+# `-hier` prune assertion pages as well as code pages, so the report matches the
+# instrumented scope instead of showing assertion rows for excluded hierarchy.
+args = ["-hier", "{path}", "-cm_common_hier"]

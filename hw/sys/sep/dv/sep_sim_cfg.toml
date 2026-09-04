@@ -127,6 +127,13 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
+[coverage.vcs].scope_file`, applied as `-cm_hier` at
+# compile time, and no other backend applies it. A `--cov` run on another
+# simulator would report a real percentage over an unscoped denominator -- a
+# number that looks like this one and is not. `--cov --tool verilator` is a config
+# error here rather than a quietly different measurement.
+tools = ["vcs"]
+
 [coverage.vcs]
 # Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
 # the list rather than appending to it, then add the scope file.
@@ -143,11 +150,25 @@ compile_args = [
   "{build_cov_dir}",
   "-cm_hier",
   "{scope_file}",
+  # Extends the SAME scope file from code coverage to assertion coverage.
+  # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
+  # excluded hierarchy is gone from the code metrics but still graded for
+  # assertions -- measured on the merged database: sep_cpu, u_m_axi_sva and
+  # u_s_axi_sva each reported an ASSERT score with every code column `--`.
+  # `-cm_common_hier` is a Limited Customer Availability feature; VCS refuses the
+  # compile without `-lca` ("The '-cm_common_hier' flow requires a special
+  # option"). No extra licence is needed -- only the opt-in switch.
+  "-lca",
+  "-cm_common_hier",
 ]
 # Hashed into the build fingerprint, so editing the scope forces a rebuild
 # instead of silently reusing a build instrumented under the old scope.
 scope_file = "cov/config/vcs/sep_cov_scope.hier"
 
+# Kept, but unreachable while `[coverage].tools` is VCS-only: it records the
+# measured toggle-instrumentation cost so a future Verilator coverage flow does
+# not rediscover it. Adding "verilator" to `[coverage].tools` re-enables it, and
+# that run needs its own scope story before its number is quotable.
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage;
 # toggle instrumentation stays off for this DUT. On this model toggle points
