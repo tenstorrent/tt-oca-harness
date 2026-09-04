@@ -49,7 +49,7 @@ tags = [
 ]
 run_modes = ["smoke"]
 
-# smc_i3c_ccc_ibi_full_test → testlists/deferred.toml (needs_i3c_dat_dct)
+# smc_i3c_ccc_ibi_full_test — not ported (needs_i3c_dat_dct)
 
 [[tests]]
 name = "smc_smbus_pmbus_test"

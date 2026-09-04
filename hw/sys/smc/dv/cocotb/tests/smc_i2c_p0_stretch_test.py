@@ -25,6 +25,11 @@ class smc_i2c_p0_stretch_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Conservative stimulus floor: 34-35 accesses observed across the
+            # retained regression runs (TX_PENDING stretch polls vary with
+            # timing), so the floor is set below the minimum observed. Literal
+            # here, not read from `seq.accesses`.
+            min_csr_accesses=27,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(f"TX_PENDING stretch={seq.stretch_ok} read={seq.read_ok}"),

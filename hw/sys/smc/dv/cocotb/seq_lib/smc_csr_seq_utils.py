@@ -24,6 +24,13 @@ class SmcCsrSeq(smc_base_test_seq):
         super().__init__(name)
         self.accesses = 0
         self.timeouts = 0
+        # Accesses issued through a helper that TOLERATES a no-response
+        # (`csr_read_bounded` / `csr_short_timeout`). Only these can ever make
+        # `self.timeouts` non-zero: every other helper leaves `allow_timeout`
+        # False, and the driver raises on a no-response before the sequence
+        # regains control. Tracking them is what lets `assert_all_reachable`
+        # tell a real reachability leg from one that cannot fail.
+        self.bounded_accesses = 0
 
     async def csr_read(
         self, name: str, addr: int, expected: int | None = None, length: int = 4, prot: int = 0
@@ -184,6 +191,7 @@ class SmcCsrSeq(smc_base_test_seq):
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
+        self.bounded_accesses += 1
         if item.timed_out:
             self.timeouts += 1
         return item.rdata
@@ -207,6 +215,7 @@ class SmcCsrSeq(smc_base_test_seq):
         await self.finish_item(item)
         assert item.timed_out, f"{name} completed before the short timeout"
         self.accesses += 1
+        self.bounded_accesses += 1
         self.timeouts += 1
 
     async def drain_axi(self, cycles: int = 200) -> None:
@@ -226,14 +235,64 @@ class SmcCsrSeq(smc_base_test_seq):
     _I2C0_OVRD_SDA_LOW = 0x3
     _I2C0_OVRD_BOTH_LOW = 0x1
 
+    # Bound for the OVRD-write -> open-drain pad settle. The path is
+    # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
+    # open-drain resolver (tb_top.sv:635-638), i.e. a handful of clk_smc cycles
+    # plus the AXI-Lite write completion the caller already awaited. The bound is
+    # generous (~30x the observed settle) purely so a slow build cannot flake;
+    # expiry is a FAILURE, never a pass ([TIMEOUT-MUST-FAIL]).
+    _I2C0_PAD_SETTLE_TIMEOUT_CYCLES = 400
+    _I2C0_PAD_POLL_CYCLES = 2
+    # After the expected level is first seen, require it to still hold this many
+    # cycles later, so a one-cycle glitch that happens to match cannot be
+    # accepted as the settled register->pin state.
+    _I2C0_PAD_STABLE_CYCLES = 8
+
     async def _i2c0_check_line(self, name: str, exp_scl: int, exp_sda: int) -> None:
+        """Bounded poll of the real I2C0 open-drain pad nets after an OVRD write.
+
+        Replaces a blind ``ClockCycles(clk_smc_i, 100)`` + single sample
+        ([NO-BLIND-DELAY-SYNC]): poll ``tb_i2c0_scl`` / ``tb_i2c0_sda`` (the
+        tb_top open-drain resolution of the DUT-driven pads) until they match the
+        level the just-written OVRD value demands, then re-sample to confirm the
+        level is stable. Expiry raises with the last observed state, so a pad
+        that never reaches the commanded level FAILS the testcase instead of
+        being masked by a longer delay.
+        """
         dut = cocotb.top
-        await ClockCycles(dut.clk_smc_i, 100)
+        deadline = self._I2C0_PAD_SETTLE_TIMEOUT_CYCLES
+        waited = 0
         scl = int(dut.tb_i2c0_scl.value)
         sda = int(dut.tb_i2c0_sda.value)
-        cocotb.log.info("%s: DUT-driven scl=%d sda=%d", name, scl, sda)
-        assert scl == exp_scl, f"{name}: DUT-driven SCL={scl}, expected {exp_scl}"
-        assert sda == exp_sda, f"{name}: DUT-driven SDA={sda}, expected {exp_sda}"
+        while (scl, sda) != (exp_scl, exp_sda) and waited < deadline:
+            await ClockCycles(dut.clk_smc_i, self._I2C0_PAD_POLL_CYCLES)
+            waited += self._I2C0_PAD_POLL_CYCLES
+            scl = int(dut.tb_i2c0_scl.value)
+            sda = int(dut.tb_i2c0_sda.value)
+        assert (scl, sda) == (exp_scl, exp_sda), (
+            f"{name}: DUT-driven I2C0 pads never reached scl={exp_scl} "
+            f"sda={exp_sda} within {deadline} clk_smc_i cycles after the OVRD "
+            f"write (last observed scl={scl} sda={sda}); the I2C0 "
+            f"register->pin path is broken, gated, or the pad mux is not on LSIO"
+        )
+        await ClockCycles(dut.clk_smc_i, self._I2C0_PAD_STABLE_CYCLES)
+        scl_hold = int(dut.tb_i2c0_scl.value)
+        sda_hold = int(dut.tb_i2c0_sda.value)
+        assert (scl_hold, sda_hold) == (exp_scl, exp_sda), (
+            f"{name}: DUT-driven I2C0 pads reached scl={exp_scl} sda={exp_sda} "
+            f"but did not hold it for {self._I2C0_PAD_STABLE_CYCLES} clk_smc_i "
+            f"cycles (now scl={scl_hold} sda={sda_hold}): a transient, not the "
+            f"settled OVRD state"
+        )
+        cocotb.log.info(
+            "%s: DUT-driven scl=%d sda=%d == expected (settled after %d "
+            "clk_smc_i cycle(s), held %d)",
+            name,
+            scl_hold,
+            sda_hold,
+            waited,
+            self._I2C0_PAD_STABLE_CYCLES,
+        )
 
     # I2C0 pads 37..40 (SCL/SDA/ALERT/SUS). DATA_CTRL stride 0x10 from GPIO0.
     _GPIO_INTF0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
@@ -313,26 +372,68 @@ class SmcCsrSeq(smc_base_test_seq):
         await self.csr_write("I2C0_CG_RESTORE", self._I2C0_CLOCK_GATE_CONTROL, cg)
 
     def assert_all_reachable(self, expected_accesses: int, block: str) -> None:
-        """Gate a bounded-read sweep on REAL reachability, not the self-issued
-        access count.
+        """Gate a CSR sweep on MEASURED reachability, never on a self-count.
 
-        `assert self.accesses == N` alone is vacuous: `accesses` is bumped
-        unconditionally by every helper regardless of whether the DUT
-        responded, so it only proves the sequence issued N reads. The real,
-        in-scope SMC invariant (per tb_top's boundary-responder note) is that
-        every windowed read produced an AXI response -- OKAY from an internal
-        register block, or the DECERR boundary-responder signature for an
-        externalised macro window. A no-response (timeout) means the periph
-        route/decode is broken or the shared CSR master would hang, which is
-        exactly what these decode-alive sweeps claim to rule out.
+        Three legs. The first is the weakest and does not carry the claim on
+        its own:
+
+        1. ``accesses == expected`` -- loop integrity only. `accesses` is bumped
+           unconditionally by every helper regardless of what the DUT did, so
+           this can fail only on a short-circuited loop or a source edit; it is
+           NOT reachability evidence and is not presented as such.
+        2. scoreboard cross-check -- ``sys_axi_checks_seen`` is incremented by
+           the *scoreboard* when it checks an item it received, and every such
+           check asserts ``resp_ok``. Comparing it against the accesses this
+           sequence issued therefore fails when the traffic never reached the
+           scoreboard (mis-bound/disconnected analysis path), which the
+           sequence's own counter cannot see ([NO-ZERO-ACTIVITY-PASS]).
+        3. bounded-read reachability -- ``timeouts == 0``. `timeouts` is only
+           ever non-zero for ``csr_read_bounded`` / ``csr_short_timeout``, the
+           two helpers that tolerate a no-response; for a sweep that issued
+           neither, ``timeouts == 0`` is a leg that cannot fail on any RTL. So
+           it is asserted only when such an access actually ran, and otherwise
+           reported as not-applicable rather than logged as a passing
+           reachability check ([NO-DUMMY-DEAD-CODE]): on a strict sweep,
+           reachability is enforced per-access by the driver (a no-response
+           raises there), not here.
         """
         assert self.accesses == expected_accesses, (
-            f"{block}: issued {self.accesses} accesses, expected {expected_accesses}"
+            f"{block}: issued {self.accesses} accesses, expected "
+            f"{expected_accesses} (loop integrity, not reachability)"
         )
-        assert self.timeouts == 0, (
-            f"{block}: {self.timeouts} of {self.accesses} windowed read(s) got NO "
-            f"AXI response (periph route/decode unreachable or CSR master would hang)"
+        sb = getattr(getattr(self, "env", None), "scoreboard", None)
+        assert sb is not None, (
+            f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
+            f"cannot be corroborated independently of the sequence's own counter"
         )
+        assert sb.sys_axi_checks_seen >= self.accesses, (
+            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+            f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
+            f"the traffic never reached the scoreboard, so none of it is checked "
+            f"evidence"
+        )
+        if self.bounded_accesses:
+            assert self.timeouts == 0, (
+                f"{block}: {self.timeouts} of {self.bounded_accesses} bounded "
+                f"read(s) got NO AXI response (periph route/decode unreachable "
+                f"or CSR master would hang)"
+            )
+            cocotb.log.info(
+                "%s: all %d access(es) checked by the scoreboard; %d of them "
+                "tolerated a no-response and all of them answered.",
+                block,
+                expected_accesses,
+                self.bounded_accesses,
+            )
+        else:
+            cocotb.log.info(
+                "%s: all %d access(es) checked by the scoreboard. No bounded "
+                "read ran, so `timeouts == 0` would be a check that cannot "
+                "fail and is NOT asserted here: on this path a no-response "
+                "already raises in the AXI driver.",
+                block,
+                expected_accesses,
+            )
 
     def assert_reachable_or_gated(
         self, expected_accesses: int, block: str, gated_note: str
@@ -357,7 +458,20 @@ class SmcCsrSeq(smc_base_test_seq):
         vacuous ``accesses == N``.
         """
         assert self.accesses == expected_accesses, (
-            f"{block}: issued {self.accesses} accesses, expected {expected_accesses}"
+            f"{block}: issued {self.accesses} accesses, expected "
+            f"{expected_accesses} (loop integrity, not reachability)"
+        )
+        # Same scoreboard cross-check as assert_all_reachable: the sequence's own
+        # counter cannot tell that the traffic reached the checker at all.
+        sb = getattr(getattr(self, "env", None), "scoreboard", None)
+        assert sb is not None, (
+            f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
+            f"cannot be corroborated independently of the sequence's own counter"
+        )
+        assert sb.sys_axi_checks_seen >= self.accesses, (
+            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+            f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
+            f"the traffic never reached the scoreboard"
         )
         reachable = self.accesses - self.timeouts
         if self.timeouts:
