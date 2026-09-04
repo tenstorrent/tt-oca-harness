@@ -122,6 +122,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     for (int unsigned r = 0; r < random_count; r++) begin
       bit [63:0] observed;
       pattern = 32'(random_pattern(BypassWidth));
+      log_iteration(r + 1, random_count, $sformatf("BYPASS random pattern tdi=0x%08h", pattern));
       dr_scan(64'(pattern), BypassWidth, observed);
       check_evidence(ChkPtapS2, $sformatf("BYPASS one-bit latency random%0d", r), observed[31:0],
                      ocah_jtag_checker::predict_bypass_tdo(64'(pattern), BypassWidth),
