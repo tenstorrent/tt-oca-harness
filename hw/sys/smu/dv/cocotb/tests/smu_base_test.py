@@ -180,8 +180,7 @@ class smu_base_test(uvm_test):
         Verilator two-state powers up `jtag_trst` at 0, which is not a falling
         edge. The IC_RESET `reset_hold` flop resets only on TRST (never TLR)
         with RESET_VAL=1; left at 0 it blocks enable/control reset, so
-        override stays on and SMC cold reset never releases. Same arming as
-        the wrapper TB.
+        override stays on and SMC cold reset never releases.
         """
         dut = cocotb.top
         dut.powergood_i.value = 1
