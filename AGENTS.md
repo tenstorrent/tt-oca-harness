@@ -518,18 +518,26 @@ Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
 `scripts/ci/diff_class.py` is the classifier.
 
 Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
-They exclude generated output and `vendor/<org>/<repo>/upstream/**`; never patch upstream code
-for a style-only finding. Fix formatter-safe whitespace and wrapping after reviewing the diff,
-but treat types, range direction, assignment semantics, task lifetime, case completeness and
-hierarchy labels as manual changes requiring owner review. Parameter naming remains deferred to
-issue #1051 and is disabled in this pass.
+They share the same base inventory but use separate exclusions, so a formatter limitation does
+not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/**` stay out;
+never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
+after reviewing the diff, but treat types, range direction, assignment semantics, task
+lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
+Parameter naming remains deferred to issue #1051 and is disabled in this pass.
 
-Fix actionable findings rather than hiding them. If the pinned Verible release has a
-demonstrated tool limitation, use the narrowest rule/path waiver with the exact rule, a stable
-location pattern, a constraint-focused rationale and an upstream bug link.
-`OCAH_VERIBLE_SINGLE_FILE_EXCLUDES` is only for documented parser, preprocessor or formatter
-convergence failures that prevent a reliable single-file result. The full scope and vendor
-policy are authoritative in `flows/lint/verible.mk` and `CONTRIBUTING.md`.
+Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
+owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. Central Makefiles only
+discover or pass those files, and each block `flow.mk` declares the Verilator waivers relevant
+to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match and a
+constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
+keep its findings visible rather than substituting whole-file suppression until a release with
+TOML `--waiver-file` support is pinned.
+
+`OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,
+preprocessor or formatter failures. Verible can scope by `LINT_PATH`; Slang and Verilator need
+a complete block filelist, though their top can be overridden within that filelist for
+diagnosis. The full scope and vendor policy are authoritative in `flows/lint/verible.mk` and
+`CONTRIBUTING.md`.
 
 Optional staged-file checks are documented in `CONTRIBUTING.md`. Agents may
 run `make hooks-run` or the underlying lint/format checks without installing a

@@ -127,13 +127,15 @@ Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the 
 `./scripts/docker-run.sh eda-run make …` command. CI installs slang `v11.0` and verible
 `v0.0-4080-ga0a8d8eb` natively in their jobs.
 
-Verible lint and format share the first-party, hand-maintained SystemVerilog
+Verible lint and format use the first-party, hand-maintained SystemVerilog
 inventory defined in `flows/lint/verible.mk`. That inventory includes `hw/**`
-and hand-authored `vendor/**/overlay/**` files, but excludes generated output,
-materialized `vendor/<org>/<repo>/upstream/**` sources, and files that the
-pinned single-file parser demonstrably cannot process. Do not patch upstream
-vendor code for style findings. A proven integrated correctness defect still
-follows the Bender patch or upstream-revision workflow described above.
+and hand-authored `vendor/**/overlay/**` files, but excludes generated output
+and materialized `vendor/<org>/<repo>/upstream/**` sources. Lint and format
+have separate single-file exclusion sets: lint keeps files that it can parse
+even when the formatter cannot converge or reparse its output. Do not patch
+upstream vendor code for style findings. A proven integrated correctness
+defect still follows the Bender patch or upstream-revision workflow described
+above.
 
 Run `make format-sv` to apply the committed two-space, 100-column formatter
 profile and `make format-sv-check` for a non-modifying check. Formatter-safe
@@ -144,14 +146,32 @@ findings because changing them can change behavior. Parameter-name style is
 deferred to [issue #1051](https://github.com/tenstorrent/tt-oca-harness/issues/1051)
 and is omitted from this lint pass.
 
-Prefer fixing an actionable finding. A demonstrated Verible limitation may be
-handled by the narrowest rule/path waiver, keyed to the exact rule and stable
-location pattern with a constraint-focused rationale and an upstream Verible
-bug link. Reserve `OCAH_VERIBLE_SINGLE_FILE_EXCLUDES` for parser,
-preprocessor, or convergence failures that prevent any reliable single-file
-result; document each excluded file there. `lint-sv-verible` remains
-report-only (`level: warning`, `fail-level: none`) while this classified legacy
-backlog remains.
+Prefer fixing an actionable finding. A demonstrated tool limitation or an
+intentional construct may use the narrowest available diagnostic, path or
+hierarchy, and stable source match, with a constraint-focused rationale.
+Owner-local waivers live under `hw/<common|ip|sys>/<owner>/lint/`: use
+`*.verible.waiver` for Verible and `*.verilator.vlt` for Verilator. The shared
+Makefiles only discover or pass them; a block's `flow.mk` names the Verilator
+files required by that elaborated configuration. Reserve
+`OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` for documented
+preprocessor, parser, or formatter failures that prevent reliable single-file
+processing.
+
+Slang v11.0, the CI-pinned release, predates the upstream `--waiver-file`
+support for native TOML diagnostic waivers. Do not emulate a narrow waiver
+with its whole-file `--suppress-warnings` option. Keep Slang findings visible
+until CI moves to a release with native external waivers; after that upgrade,
+store `*.slang.waiver.toml` beside the same owner and have each `flow.mk` name
+only the files relevant to its top. This avoids both blanket suppression and
+unused elaboration-dependent waivers.
+
+Verible accepts file or directory scopes through `LINT_PATH` and
+`FORMAT_PATH`. Slang and Verilator are authoritative at block/top scope:
+select the block with `BLOCK=<block>`, or override
+`OCAH_LINT_SLANG_TOP` / `OCAH_LINT_VERILATOR_TOP` within that block's complete
+filelist for diagnosis. An isolated semantic-lint file is not an authoritative
+configuration. `lint-sv-verible` remains report-only (`level: warning`,
+`fail-level: none`) while the explicitly disabled style policies remain.
 
 Ruff checks first-party Python under `tools/`, `scripts/`, `hw/`, and
 `.github/`. Generated register models, vendored sources, submodules,
