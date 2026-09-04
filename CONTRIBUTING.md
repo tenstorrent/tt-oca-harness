@@ -185,7 +185,10 @@ TOML.
 
 `lint-vale` (Vale) checks `.adoc`/`.md` prose against
 `styles/OCAH/Acronyms.yml`, which tracks a small set of this repo's own
-acronyms and the one phrase each is canonically defined as. The check is a
+acronyms and the one phrase each is canonically defined as. Vale's own
+AsciiDoc support shells out to a real `asciidoctor` for every `.adoc` file
+(`gem install asciidoctor`); without one on `PATH` it's a hard runtime
+error partway through the file list, not a skipped file. The check is a
 `script` rule (`styles/config/scripts/AcronymDefinitions.tengo`): it finds
 a spelled-out expansion of a tracked acronym anywhere in the document and
 flags a mismatch regardless of how it's worded, rather than matching

@@ -10,6 +10,11 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 # same way lint-make (checkmake) does. Locally: a release binary from
 # https://github.com/vale-cli/vale/releases, or `go install
 # github.com/vale-cli/vale/cmd/vale@v3.15.2`.
+#
+# Vale's own AsciiDoc support shells out to a real `asciidoctor` for every
+# .adoc file; without one on PATH, that's a hard runtime error partway
+# through the file list, not a skipped file (`gem install asciidoctor`,
+# same as doc.mk's PDF/HTML builds).
 OCAH_VALE ?= vale
 
 # Extra CLI flags, e.g. `--output=<template>` to switch report shape for
@@ -53,7 +58,12 @@ ocah_vale_check_files = @[ -n "$(strip $(ocah_vale_files))" ] || { echo "error: 
 ocah-lint-vale:
 	$(ocah_vale_check_files)
 	$(call ocah_require_host_tool,$(OCAH_VALE),curl -fsSL -o vale.tar.gz https://github.com/vale-cli/vale/releases/download/v3.15.2/vale_3.15.2_Linux_64-bit.tar.gz && tar xzf vale.tar.gz vale)
-	$(OCAH_VALE) $(OCAH_VALE_FLAGS) --config "$(OCAH_ROOT)/.vale.ini" $(ocah_vale_files)
+	@# Silenced (@): Make's own recipe-echo goes to stdout, same stream as
+	@# Vale's --output=<template> findings. CI's OCAH_VALE_FLAGS picks the
+	@# rdjsonl template for reviewdog, which requires every stdout line to
+	@# be a JSON object; an unsilenced echo of this command line would be
+	@# the first line of that file and break the parse.
+	@$(OCAH_VALE) $(OCAH_VALE_FLAGS) --config "$(OCAH_ROOT)/.vale.ini" $(ocah_vale_files)
 
 OCAH_PHONY += ocah-lint-vale
 

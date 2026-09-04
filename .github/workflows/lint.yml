@@ -253,8 +253,24 @@ jobs:
           curl -fsSL -o vale.tar.gz https://github.com/vale-cli/vale/releases/download/v3.15.2/vale_3.15.2_Linux_64-bit.tar.gz
           mkdir -p ./vale-bin && tar xzf vale.tar.gz -C ./vale-bin
           echo "$GITHUB_WORKSPACE/vale-bin" >> "$GITHUB_PATH"
+      - name: Setup Ruby
+        # Vale's native AsciiDoc parsing (styles/OCAH/Acronyms.yml applies
+        # to .adoc files) shells out to a real asciidoctor; without one on
+        # PATH it's a hard runtime error, not a skipped file. Same
+        # gem/version pin as doc.yml's build-and-deploy job.
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler-cache: false
+          rubygems: '3.3.26'
+      - name: Install Asciidoctor
+        run: gem install --no-document asciidoctor:2.0.26
       - name: Lint documentation prose (Vale)
-        run: make ocah-lint-vale OCAH_VALE_FLAGS="--output=$GITHUB_WORKSPACE/flows/lint/vale-rdjsonl.tmpl" 2>&1 | tee lint_vale.rdjsonl || true
+        # stdout only: with OCAH_VALE_FLAGS picking the rdjsonl template,
+        # every stdout line must be a JSON object. 2>&1 would fold in any
+        # runtime-error text on stderr and break reviewdog's parse the
+        # same way an unsilenced Make recipe-echo would (see vale.mk).
+        run: make ocah-lint-vale OCAH_VALE_FLAGS="--output=$GITHUB_WORKSPACE/flows/lint/vale-rdjsonl.tmpl" > lint_vale.rdjsonl || true
       - uses: ./.github/actions/reviewdog-report
         # Vale's own JSON already carries real per-alert severities (all
         # `error` right now -- see styles/OCAH/Acronyms.yml), the same
