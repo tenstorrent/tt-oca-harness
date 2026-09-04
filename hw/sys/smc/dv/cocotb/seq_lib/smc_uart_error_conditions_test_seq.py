@@ -202,11 +202,10 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
         await self._program_format(r, "OE", loop=True)
         await self._clear_status(r, "OE")
 
-        # Below-threshold control for the OE claim below. Without it the run
-        # only ever shows OE set, and a bit stuck at 1 -- or an LSR read that
-        # returned a constant -- would satisfy the overflow leg identically.
-        # One byte cannot overflow a FIFO of _FIFO_DEPTH, so DR must set and OE
-        # must stay clear.
+        # Below-threshold control for the OE claim below: one byte cannot
+        # overflow a FIFO of _FIFO_DEPTH, so DR must set and OE must stay clear.
+        # It puts OE=0 in the run alongside the OE=1 the overflow leg produces,
+        # which a bit stuck at 1 or a constant LSR read cannot do.
         await self.csr_write("OE_NEG_THR", r["rbr"], 0x5A)
         if not await self._wait_iir_id(r, "OE_NEG_RDR", _INTR_RDR, 512):
             raise AssertionError("single byte produced no RDR interrupt")

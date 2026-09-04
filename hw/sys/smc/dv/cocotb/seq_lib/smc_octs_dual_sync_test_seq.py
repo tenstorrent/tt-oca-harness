@@ -148,10 +148,10 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         assert credit_edges >= 2, f"OCTS primary pad56 cnt_credit edges={credit_edges}, need >= 2"
 
         count_pri = await self._read_count()
-        # `count_pri > _OCTS_PRESET_VAL` stood here and could not fail: COUNT
-        # entered this phase at 0x1096, already above the 0x1000 this sequence
-        # programmed, so deleting the TIMER_START write left the comparison
-        # true. These three are anchored to values the run measured.
+        # Anchored to values this run measured, not to the PRESET this sequence
+        # programmed: COUNT enters the phase already above PRESET (0x1096 in the
+        # retained run), so an absolute comparison against it holds with or
+        # without the TIMER_START write.
         assert count_reloaded < count_before_start, (
             f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
             f"0x{count_reloaded:x} (a free-running counter only increases)"

@@ -31,10 +31,9 @@ class smc_spm_mem_boundary_test(smc_base_test):
         # What is NOT implied, and is what this gate checks: that all three
         # readbacks happened at all. A body that returned early, or a future
         # refactor that dropped an edge, fails here.
-        # `is not None` only asked whether the attribute had been assigned; a
-        # scoreboard that performed no compare at all would still satisfy it.
-        # The number of value compares the scoreboard actually completed is the
-        # quantity that goes to zero when the readbacks stop happening.
+        # The number of value compares the scoreboard completed. It goes to
+        # zero when the readbacks stop happening, which a check that the
+        # attributes were merely assigned cannot detect.
         assert self.env.scoreboard.sys_axi_value_checks_seen == _EDGE_COUNT, (
             f"scoreboard completed {self.env.scoreboard.sys_axi_value_checks_seen} "
             f"SYS_AXI value compares, expected one per SPM edge ({_EDGE_COUNT})"

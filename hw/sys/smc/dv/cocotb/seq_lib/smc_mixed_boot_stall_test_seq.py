@@ -85,10 +85,10 @@ class smc_mixed_boot_stall_test_seq(SmcCsrSeq):
         #
         # There is no state on this bench where `val=1` can be shown to CAUSE
         # combined to rise: before the release the GPIO already holds it, and
-        # after the release the sticky lockout keeps it at 0 permanently. So
-        # this leg is a lockout claim -- once released, nothing re-stalls --
-        # and it is deliberately not worded as a claim about val's polarity,
-        # which a val input that is ignored entirely would satisfy identically.
+        # after the release the sticky lockout keeps it at 0 permanently. This
+        # leg is therefore a lockout claim -- once released, nothing re-stalls
+        # -- and not a claim about val's polarity, which a val input that is
+        # ignored entirely would satisfy identically.
         dut.tb_boot_stall_jtag_val_i.value = 1
         await self._stay(dut, combined_expect=0, label="VAL1")
         self.val1_lockout_ok = True

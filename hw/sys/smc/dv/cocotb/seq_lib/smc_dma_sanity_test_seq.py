@@ -147,10 +147,9 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
             == DMA_DST_POISON
         )
 
-        # Responder-beat baselines are taken HERE, after every preload and
-        # golden-verify access, so the deltas below are the DMA's own traffic
-        # plus the one post-copy read this sequence issues. Sampling them before
-        # that traffic made the read floor satisfiable by the testbench alone.
+        # Baselined here, after every preload and golden-verify access, so the
+        # deltas below are the DMA's own traffic plus the one post-copy read
+        # this sequence issues.
         start_writes = int(cocotb.top.tb_output_axi_write_count.value)
         start_reads = int(cocotb.top.tb_output_axi_read_count.value)
 
@@ -162,10 +161,9 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         # -- a second read would start a second, unprogrammed transfer.
         self.start_id = await self.csr_read("DMA_NEXT_ID_0_START", DMA_CTRL_NEXT_ID_0)
         self.done_id = await self._wait_done(baseline_done)
-        # The id that completed is the id this launch was given. `start_id != 0`
-        # stood here before and could not fail: `next_id_i` is a free-running
-        # allocation counter, so the value returned by the launching read is
-        # never 0 once the engine has run at all.
+        # The id that completed is the id this launch was given. A test that the
+        # id is merely non-zero would hold on any run: `next_id_i` is a
+        # free-running allocation counter.
         assert self.done_id == self.start_id, (
             f"DMA completed id {self.done_id}, but this sequence launched id "
             f"{self.start_id}; DONE advanced for some other transfer"
