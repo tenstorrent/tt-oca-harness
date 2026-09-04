@@ -1073,7 +1073,7 @@ parameter with its default value.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
 |`XTRIG_INT_CT_MODE` |`8'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack)
 |`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
@@ -1203,7 +1203,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
 |===
 
 ===== Cross Trigger Parameters

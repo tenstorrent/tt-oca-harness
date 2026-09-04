@@ -1,4 +1,4 @@
-# System Timer (OCTS)
+# System Timer OCTS (Open Chiplet Time Synchronization)
 
 64-bit multi-chiplet time-synchronization timer.
 

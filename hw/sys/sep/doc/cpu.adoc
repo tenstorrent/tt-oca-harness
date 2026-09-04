@@ -221,7 +221,7 @@ SPI
 available to DMA for automatic flow control
 
 [[och-modifications]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * 64-bit AXI4-lite slave interface (replaces or translates the 32-bit
 TL-UL bus protocol)
