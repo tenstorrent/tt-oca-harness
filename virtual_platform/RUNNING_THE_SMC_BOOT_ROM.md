@@ -170,6 +170,10 @@ The VP now decodes this and prints whole lines:
 It is on by default and can be turned off with `dut.cluster.vconsole_enable :
 false` in the `[bool]` section. See "Model changes this needed" below.
 
+A line with no trailing newline still appears — it is flushed when the cluster
+is destroyed. (Not from `end_of_simulation()`: SystemC only calls that from
+`sc_stop()`, which the ordinary time-limited run never reaches.)
+
 ### Prints are compiled out by default
 
 `simputs` is a no-op unless `DEBUG` is defined. For a release ROM build, ask
@@ -189,12 +193,20 @@ With all of the above in place — image preloaded, reset vector at
 `0xC0040000`, prints enabled, decoder working — the production ROM **runs to
 completion with exit 0, no trap and no output**, out to a 200 ms window.
 
-The decoder itself is known-good: ROM-resident code that writes the protocol
-by hand produces `[SMC_VCONSOLE]` lines, and a ROM-resident program that
-initialises UART0 and writes to it prints normally. So the silence means the
-ROM is not reaching its first `simputs()`, rather than that its output is
-being missed. Somewhere in early ROM init it stops making progress. That is
-the open question; the console decoder is the tool for chasing it.
+The decoder itself is known-good. Driven from ROM-resident code over the real
+bus, each path behaves: ASCII-with-newline, HEX16, an unterminated line
+appearing at flush, a *read* of `SCRATCH[2]` correctly not re-emitting, and
+`vconsole_enable : false` emitting nothing. Separately, a ROM-resident program
+that initialises UART0 and writes to it prints normally.
+
+So the silence means the ROM is not reaching its first `simputs()`, rather than
+that its output is being missed. Somewhere in early ROM init it stops making
+progress. That is the open question; the console decoder is the tool for
+chasing it.
+
+If you want to reproduce the decoder check, the shape is: assemble a few `sw`
+instructions to `0xC0039090` with the word encodings above, `objcopy -O binary`
+it, and point `dut.bootrom.init_file` at the result.
 
 ---
 
