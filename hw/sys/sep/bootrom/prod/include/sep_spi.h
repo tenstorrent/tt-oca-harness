@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// OCH SEP ROM SPI init API.
+// OCAH SEP ROM SPI init API.
 
 #pragma once
 

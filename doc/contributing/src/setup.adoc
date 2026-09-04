@@ -9,9 +9,7 @@
 This document is currently under development.
 
 - Can we add an installation script to the repo?
-- Need to check the correct RISCV Toolchain is listed here?
-  - May need 32b toolchain
-  - Makefile references `riscv64-unknown-elf-*`, but it's a 32b Simulator?
+- Need to add requirements for tt-oca-manifest and tt-oca-harness-model
 ====
 
 === Python
@@ -58,6 +56,8 @@ To clone the repository, ensure that you have `git` installed (`sudo apt install
 git clone git@github.com:tenstorrent/tt-oca-harness.git
 
 cd tt-oca-harness
+
+git submodule update --init --recursive
 ```
 
 === Package Dependencies
@@ -65,8 +65,8 @@ cd tt-oca-harness
 Once the repository is cloned, install the required open source tools:
 
 ```bash
-sudo apt install asciidoctor asciidoctor-pdf verilator gcc clang \
-fuse-overlayfs ccache picolibc-riscv64-unknown-elf
+sudo apt install asciidoctor asciidoctor-pdf verilator gcc \
+ccache picolibc-riscv64-unknown-elf
 ```
 
 Follow the instructions on the following pages for tools not packaged within Ubuntu:
@@ -74,6 +74,7 @@ Follow the instructions on the following pages for tools not packaged within Ubu
 - https://docs.antora.org/antora/latest/install-and-run-quickstart/[*Antora*]
 - https://github.com/pulp-platform/bender[*Bender*]
 - https://github.com/chipsalliance/verible[*Verible*]
+- https://github.com/MikePopoloski/slang[*Slang*]
 - https://surfer-project.org/[*Surfer*] (optional, alternatives available, used for wave trace debugging)
 - https://www.drawio.com/[*Drawio*] (optional, used for creating new diagrams for documentation)
 - https://github.com/wavedrom/wavedrom.github.io/releases[*Wavedrom*] (optional, used for creating new diagrams for documentation)
@@ -91,9 +92,11 @@ Certain workflows within the repository currently use a container, so a docker-c
 - https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
 - https://docs.docker.com/engine/install/ubuntu/[*Docker*]
 
-If you installed podman, you'll need to add the docker hub as a container registry to be able to pull the container:
+If you installed podman, you'll need to add the docker hub as a container registry to be able to pull the container, and have `fuse-overlayfs` installed:
 
 ```bash
+sudo apt install -y fuse-overlayfs
+
 sudo mkdir -p /etc/containers/registries.conf.d
 cat <<'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
 unqualified-search-registries = ["docker.io"]

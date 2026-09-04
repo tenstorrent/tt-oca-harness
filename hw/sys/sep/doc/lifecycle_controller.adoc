@@ -800,7 +800,7 @@ Reserved-bit ranges available for adopter-defined scan chains (see
 ====== Debug and Test Port Path Gating
 
 This section is *authoritative* for which feature control bits gate which Debug
-and Test Port (DTP) path. It formalizes the layered model of
+and Test Ports (DTP) path. It formalizes the layered model of
 <<multiple-security-domains>> as a three-case ladder built only from debug bits.
 
 [width="100%",cols="^10%,<35%,<55%",options="header",]

@@ -7,10 +7,10 @@
 // or a reference model. The cocotb twin is ocah_lib.OcahMonitor.
 
 class ocah_monitor extends uvm_monitor;
-    `uvm_component_utils(ocah_monitor)
+  `uvm_component_utils(ocah_monitor)
 
-    function new(string name = "ocah_monitor", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "ocah_monitor", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
 endclass : ocah_monitor

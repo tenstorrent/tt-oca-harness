@@ -8,9 +8,9 @@
 
 package axi_filter_pkg;
 
-    typedef struct packed {
-        logic [3:0] write_filter_hit_debug;
-        logic [3:0] read_filter_hit_debug;
-    } filter_debug_t;
+  typedef struct packed {
+    logic [3:0] write_filter_hit_debug;
+    logic [3:0] read_filter_hit_debug;
+  } filter_debug_t;
 
 endpackage

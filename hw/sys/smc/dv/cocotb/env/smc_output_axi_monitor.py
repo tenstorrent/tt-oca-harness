@@ -44,7 +44,20 @@ class SmcOutputAxiMonitor(uvm_component):
         self.r_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         self.b_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         # SYS_OUT slave may inject SLVERR (U1-2); DECERR is never expected.
-        self.allow_slverr = True
+        #
+        # DEFAULT CORRECTED False. It was True, which disabled the SLVERR check
+        # on EVERY SMC testcase -- no test could fail on an unexpected SYS_OUT
+        # SLVERR, while DECERR (code 3) has always been a failure two lines
+        # below. The evidence that True was not the intent is
+        # `smc_output_fabric_slverr_inject_test.py:55`, which sets
+        # `mon.allow_slverr = True` explicitly: that opt-in only means something
+        # if the default refuses SLVERR. A testcase that legitimately expects
+        # SYS_OUT SLVERR should opt in the same way. The enrolled opt-in is
+        # `smc_output_fabric_slverr_inject_test`; the `balanced_ip` 98/100
+        # Verilator figure in this branch's test plan was taken with this
+        # default, so no other enrolled test in that group produced a SYS_OUT
+        # SLVERR.
+        self.allow_slverr = False
 
     def snapshot(self) -> dict[str, int]:
         return {

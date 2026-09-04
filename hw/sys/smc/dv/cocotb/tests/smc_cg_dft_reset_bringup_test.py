@@ -28,6 +28,9 @@ class smc_cg_dft_reset_bringup_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Directed stimulus floor: 2 SEP_IN AXI CLOCK_GATE_CONTROL
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=2,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

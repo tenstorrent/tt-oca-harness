@@ -14,6 +14,25 @@ from smc_base_test import smc_base_test
 class smc_canonical_smoke_test(smc_base_test):
     """Run six-agent observability across the reset recovery matrix."""
 
+    # Seven of this testcase's compares were idle-zero reads with no positive
+    # control anywhere in the enrolled testlist: the four AXIL activity bits,
+    # the sync/uart IRQ aggregates and I2C `cg_en`. These controls drive the
+    # producers of five of them (the efuse-bank and any-master AXIL probes are
+    # covered as a side effect of the external-window read), require each probe
+    # observed at 1 inside a bounded window and back at 0, and credit the
+    # run-scoped liveness ledger the scoreboard consults
+    # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). `tb_axil_dtp_csr_active` remains
+    # unbackable in this TB (tb_top.sv:1151 ties `axil_dtp_csr_resp = '0'`) and
+    # the scoreboard books it OBSERVED-ONLY, never as checked evidence.
+    probe_positive_controls = (
+        "sync_irq",
+        "uart_irq_any",
+        "gpio_irq_any",
+        "i2c_cg_en",
+        "axil_external_active",
+        "axil_efuse_bank_active",
+    )
+
     async def run_scenario(self) -> None:
         seq = smc_canonical_smoke_test_seq("canonical_smoke_seq")
 

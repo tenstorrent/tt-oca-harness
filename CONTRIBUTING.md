@@ -81,11 +81,11 @@ Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
-`lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`, and
-`regen-regs` on pull requests and pushes to `main` (`lint-sv-verible` is
-temporarily disabled). Setup jobs share `bender`, Verilator, and reviewdog
-artifacts; jobs report through `.github/actions/reviewdog-report`.
+`lint-sv-verible`, `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`,
+`lint-spelling`, `lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`,
+`lint-shell`, and `regen-regs` on pull requests and pushes to `main`. Setup
+jobs share `bender`, Verilator, and reviewdog artifacts; jobs report through
+`.github/actions/reviewdog-report`.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -97,12 +97,13 @@ Scheduled and manually dispatched pipelines always run in full.
 |---|---|---|
 | `lint-sv-slang` | `lint-sv-slang/smu`, `lint-sv-slang/aou` | `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl` |
 | `lint-sv-verilator` | `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu` | `make lint-verilator-all [BLOCK=<block>]` |
-| `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
+| `lint-sv-verible` | `lint-sv-verible` (report-only) | `make lint-sv-verible` and `make format-sv-check` |
 | `lint-python` | `lint-python` | `make lint-python` and `make format-python-check` |
 | `lint-python-mypy` | `lint-python-mypy` (report-only) | `make ocah-lint-python-mypy` |
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
 | `lint-spelling` | `lint-spelling` | `make ocah-lint-spelling` and `make ocah-lint-spelling-fix` |
+| `lint-vale` | `lint-vale` | `make ocah-lint-vale` |
 | `lint-yaml` | `lint-yaml` | `make ocah-lint-yaml` |
 | `lint-toml` | `lint-toml` | `make ocah-lint-toml` |
 | `lint-markdown` | `lint-markdown` | `make ocah-lint-markdown` and `make ocah-lint-markdown-fix` |
@@ -125,7 +126,53 @@ git status --porcelain   # expect no output
 Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the tools on
 `PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
 `./scripts/docker-run.sh eda-run make …` command. CI installs slang `v11.0` and verible
-`v0.0-4080-ga0a8d8eb` natively via `setup-tools`.
+`v0.0-4080-ga0a8d8eb` natively in their jobs.
+
+Verible lint and format use the first-party, hand-maintained SystemVerilog
+inventory defined in `flows/lint/verible.mk`. That inventory includes `hw/**`
+and hand-authored `vendor/**/overlay/**` files, but excludes generated output
+and materialized `vendor/<org>/<repo>/upstream/**` sources. Lint and format
+have separate single-file exclusion sets: lint keeps files that it can parse
+even when the formatter cannot converge or reparse its output. Do not patch
+upstream vendor code for style findings. A proven integrated correctness
+defect still follows the Bender patch or upstream-revision workflow described
+above.
+
+Run `make format-sv` to apply the committed two-space, 100-column formatter
+profile and `make format-sv-check` for a non-modifying check. Formatter-safe
+whitespace and wrapping findings may be fixed mechanically after reviewing the
+diff. Treat storage types, range direction, procedural assignments, task
+lifetime, case completeness, and hierarchy-affecting labels as manual lint
+findings because changing them can change behavior. Parameter-name style is
+deferred to [issue #1051](https://github.com/tenstorrent/tt-oca-harness/issues/1051)
+and is omitted from this lint pass.
+
+Prefer fixing an actionable finding. A demonstrated tool limitation or an
+intentional construct may use the narrowest available diagnostic, path or
+hierarchy, and stable source match, with a constraint-focused rationale.
+Owner-local waivers live under `hw/<common|ip|sys>/<owner>/lint/`: use
+`*.verible.waiver` for Verible and `*.verilator.vlt` for Verilator. The shared
+Makefiles only discover or pass them; a block's `flow.mk` names the Verilator
+files required by that elaborated configuration. Reserve
+`OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` for documented
+preprocessor, parser, or formatter failures that prevent reliable single-file
+processing.
+
+Slang v11.0, the CI-pinned release, predates the upstream `--waiver-file`
+support for native TOML diagnostic waivers. Do not emulate a narrow waiver
+with its whole-file `--suppress-warnings` option. Keep Slang findings visible
+until CI moves to a release with native external waivers; after that upgrade,
+store `*.slang.waiver.toml` beside the same owner and have each `flow.mk` name
+only the files relevant to its top. This avoids both blanket suppression and
+unused elaboration-dependent waivers.
+
+Verible accepts file or directory scopes through `LINT_PATH` and
+`FORMAT_PATH`. Slang and Verilator are authoritative at block/top scope:
+select the block with `BLOCK=<block>`, or override
+`OCAH_LINT_SLANG_TOP` / `OCAH_LINT_VERILATOR_TOP` within that block's complete
+filelist for diagnosis. An isolated semantic-lint file is not an authoritative
+configuration. `lint-sv-verible` remains report-only (`level: warning`,
+`fail-level: none`) while the explicitly disabled style policies remain.
 
 Ruff checks first-party Python under `tools/`, `scripts/`, `hw/`, and
 `.github/`. Generated register models, vendored sources, submodules,
@@ -156,17 +203,37 @@ file before the runner that reads it fails with a less legible error.
 `slang-tidy` parses it with its own `Checks:`/`CheckConfigs:` grammar, not
 TOML.
 
+`lint-vale` (Vale) checks `.adoc`/`.md` prose against
+`styles/OCAH/Acronyms.yml`, which tracks a small set of this repo's own
+acronyms and the one phrase each is canonically defined as. Vale's own
+AsciiDoc support shells out to a real `asciidoctor` for every `.adoc` file
+(`gem install asciidoctor`); without one on `PATH` it's a hard runtime
+error partway through the file list, not a skipped file. The check is a
+`script` rule (`styles/config/scripts/AcronymDefinitions.tengo`): it finds
+a spelled-out expansion of a tracked acronym anywhere in the document and
+flags a mismatch regardless of how it's worded, rather than matching
+against a fixed list of known-wrong strings. Adding an acronym means
+editing the Tengo script's `canonical` map, not just adding a YAML line.
+Each entry's correct expansion is a direct quote from somewhere in-tree,
+not a guess -- see that script's header comment and
+`styles/OCAH/Acronyms.yml` before adding to it. It has no autofix; a
+finding names the acronym's correct expansion, but applying it is a manual
+edit, same as `lint-toml`. Vale's built-in case-exact vocabulary check
+(`Vale.Terms`) is not in use: this repo's casual acronym lowercasing in
+code and prose produces too much noise relative to genuine findings to
+meet the low-noise bar the rest of this table holds to.
+
 ### Optional pre-commit checks
 
 The repository provides optional, check-only hooks for staged Python, C/C++,
 Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
 Ruff, clang-format, tclfmt, tclint, codespell, yamllint, tomllint, shellcheck,
 and shfmt from the locked uv environment, plus Git's whitespace/conflict-marker
-check. The hooks do not modify or stage files. `mypy`, `markdownlint`, and
-`checkmake` are deliberately left out of this bundle -- they are slow, need a
-separate Node.js toolchain, or ship as a standalone binary rather than a
-uv-managed package -- and stay CI-only; see the CI job table above for their
-local commands.
+check. The hooks do not modify or stage files. `mypy`, `markdownlint`,
+`checkmake`, and `vale` are deliberately left out of this bundle -- they are
+slow, need a separate Node.js toolchain, or ship as a standalone binary
+rather than a uv-managed package -- and stay CI-only; see the CI job table
+above for their local commands.
 
 ```bash
 make hooks-install    # explicit opt-in for this clone

@@ -24,6 +24,11 @@ class smc_octs_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI AVS status/config CSR
+            # accesses. Written out here, not read from `seq.accesses`: a floor
+            # that shrinks with the sequence cannot catch a sequence that
+            # silently stops short.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=True,
             details=(

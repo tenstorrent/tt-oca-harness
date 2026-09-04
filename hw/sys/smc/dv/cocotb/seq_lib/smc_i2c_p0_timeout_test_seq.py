@@ -18,8 +18,15 @@ from .smc_i2c_field_masks import (
     I2C_FDATA_STOP,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_HOST_FIFO_CONFIG_FMT_THRESH,
+    I2C_HOST_FIFO_CONFIG_RX_THRESH,
+    I2C_HOST_TIMEOUT_CTRL_VAL,
     I2C_INTR_ENABLE_STRETCH_TIMEOUT,
     I2C_INTR_STATE_STRETCH_TIMEOUT,
+    I2C_NACK_HANDLER_TIMEOUT_EN,
+    I2C_NACK_HANDLER_TIMEOUT_VAL,
+    I2C_TARGET_TIMEOUT_CTRL_EN,
+    I2C_TARGET_TIMEOUT_CTRL_VAL,
     I2C_TIMEOUT_CTRL_EN,
     I2C_TIMEOUT_CTRL_VAL,
     I2C_WRAP_CTRL_HOST,
@@ -191,4 +198,83 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
             "I2C1_CTRL_OFF",
             self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 1),
             0,
+        )
+        await self._timeout_fifo_csr_sweep()
+
+    async def _timeout_fifo_csr_sweep(self) -> None:
+        """Masked write/readback over the timeout + FIFO-config CSRs.
+
+        Run last, with both controllers already disabled by the clean-release
+        writes above, so programming timeout values perturbs nothing.
+
+        Every register here is `sw = rw; hw = r` with no side-effect property in
+        hw/ip/i2c/regs/i2c.rdl, and each write is masked to the generated field
+        masks so reserved bits are never driven.
+
+        DELIBERATELY EXCLUDED -- `INTR_TEST`. It is declared `singlepulse` in
+        i2c.rdl, so a written 1 does NOT stick and a write/readback expectation
+        is not derivable for it; on top of that its 20 fields force real
+        interrupt sources, which is not something to leave behind in a shared
+        regression for one register of coverage.
+        """
+        idx = 1
+        # (symbol, writable mask, bits that MUST be exercised as 1).
+        #
+        # `must_set` exists because a plain `0x5A5A_A5A5 & mask` probe never
+        # drives either `EN` bit: both are 0x8000_0000 and
+        # `0x5A5A_A5A5 & 0x8000_0000` is 0, so such a sweep would read and write
+        # the VAL fields around them while leaving the one bit with a
+        # behavioural meaning untouched. OR-ing `must_set` in takes each EN
+        # 0 -> 1 -> 0 across the reset read / probe readback / restore readback.
+        sweep = (
+            ("HOST_TIMEOUT_CTRL", I2C_HOST_TIMEOUT_CTRL_VAL, 0),
+            (
+                "TARGET_TIMEOUT_CTRL",
+                I2C_TARGET_TIMEOUT_CTRL_VAL | I2C_TARGET_TIMEOUT_CTRL_EN,
+                I2C_TARGET_TIMEOUT_CTRL_EN,
+            ),
+            (
+                "HOST_NACK_HANDLER_TIMEOUT",
+                I2C_NACK_HANDLER_TIMEOUT_VAL | I2C_NACK_HANDLER_TIMEOUT_EN,
+                I2C_NACK_HANDLER_TIMEOUT_EN,
+            ),
+            (
+                "HOST_FIFO_CONFIG",
+                I2C_HOST_FIFO_CONFIG_RX_THRESH | I2C_HOST_FIFO_CONFIG_FMT_THRESH,
+                0,
+            ),
+        )
+        for name, mask, must_set in sweep:
+            addr = self._idx_addr(f"SMC_TOP_SMC_I2C_WRAP_I2C_{name}_BASE_ADDR", idx)
+            probe = (0x5A5A_A5A5 & mask) | must_set
+            assert probe & must_set == must_set, (
+                f"{name}: the probe 0x{probe:08x} does not set the bits this "
+                f"row exists to exercise (0x{must_set:08x})"
+            )
+            await self.csr_read(f"I2C{idx}_{name}_RESET", addr, expected=0)
+            await self.csr_write(f"I2C{idx}_{name}_WR", addr, probe)
+            await self.csr_read(f"I2C{idx}_{name}_RB", addr, expected=probe)
+            await self.csr_write(f"I2C{idx}_{name}_RESTORE", addr, 0)
+            await self.csr_read(f"I2C{idx}_{name}_RESTORE_RB", addr, expected=0)
+
+        # TARGET_NACK_COUNT is `rclr` (i2c.rdl): the first read returns the
+        # value and CLEARS it. That makes a two-sided check of the read-clear
+        # semantic itself, which is stronger than a plain readback -- a register
+        # that merely stored the value would fail the second read.
+        nack = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", idx)
+        nack_probe = 0x5A
+        await self.csr_write(f"I2C{idx}_TARGET_NACK_COUNT_WR", nack, nack_probe)
+        await self.csr_read(f"I2C{idx}_TARGET_NACK_COUNT_RD1", nack, expected=nack_probe)
+        await self.csr_read(f"I2C{idx}_TARGET_NACK_COUNT_RD2", nack, expected=0)
+        cocotb.log.info(
+            "CHK-I2C-TIMEOUT-CSR-SWEEP: %d timeout/FIFO CSRs took a masked "
+            "write/readback/restore on controller %d (both TIMEOUT EN bits "
+            "driven 0->1->0, not just the VAL fields around them), and "
+            "TARGET_NACK_COUNT "
+            "read 0x%x then 0x0 on the second read, which is its rclr semantic "
+            "and not just storage (INTR_TEST excluded -- singlepulse, see "
+            "docstring)",
+            len(sweep),
+            idx,
+            nack_probe,
         )

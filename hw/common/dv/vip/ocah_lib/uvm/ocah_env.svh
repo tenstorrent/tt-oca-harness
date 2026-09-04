@@ -11,10 +11,10 @@
 // ocah_lib.OcahEnv.
 
 class ocah_env extends uvm_env;
-    `uvm_component_utils(ocah_env)
+  `uvm_component_utils(ocah_env)
 
-    function new(string name = "ocah_env", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "ocah_env", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
 endclass : ocah_env

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P2-A #3 sideband AVSBus+OCTS — DEFERRED (no fake BFM / no pad VIP).
+"""# deferred: fake_bfm
+P2-A #3 sideband AVSBus+OCTS — DEFERRED (no fake BFM / no pad VIP).
 
 Policy: do not use Python fake BFMs that never drive DUT pads. Re-enable when
 a real pad-level VIP exists.

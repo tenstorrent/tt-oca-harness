@@ -6,16 +6,16 @@
 //
 //--------------------------------------------------
 module prim_rom_bank_swap (
-    // 5-bit control signal for bank swapping
-    input logic [4:0] rom_bank_swap_i,
+  // 5-bit control signal for bank swapping
+  input logic [4:0] rom_bank_swap_i,
 
-    // Outputs representing the potentially swapped ROM index for each position
-    // Each output indicates which original ROM (0, 1, 2, or 3) should map
-    // to this logical position, using a zero-hot style encoding.
-    output logic [3:0] rom0_index,
-    output logic [3:0] rom1_index,
-    output logic [3:0] rom2_index,
-    output logic [3:0] rom3_index
+  // Outputs representing the potentially swapped ROM index for each position
+  // Each output indicates which original ROM (0, 1, 2, or 3) should map
+  // to this logical position, using a zero-hot style encoding.
+  output logic [3:0] rom0_index,
+  output logic [3:0] rom1_index,
+  output logic [3:0] rom2_index,
+  output logic [3:0] rom3_index
 );
 
   // Define fixed identifiers for the original ROM banks

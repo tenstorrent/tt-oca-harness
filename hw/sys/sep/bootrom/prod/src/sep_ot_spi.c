@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCH SEP ROM - OpenTitan SPI Host driver.
+ * OCAH SEP ROM - OpenTitan SPI Host driver.
  *
  * The OpenTitan SPI host (block "SPI_CONTROLLER") is a command + FIFO controller:
  * it has no memory-mapped flash window. To read flash we push an opcode/address

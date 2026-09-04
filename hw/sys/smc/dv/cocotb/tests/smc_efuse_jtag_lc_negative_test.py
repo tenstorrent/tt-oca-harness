@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
+from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:
@@ -65,6 +66,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         packed = pack_lc_state(LC_PROD)
         dut.tb_lc_state.value = packed
 
+        idle_axil_master_inputs(dut, "ej_axi")
         self.ejm = OcahAxiLiteMasterAgent.from_prefix(
             dut,
             "ej_axi",
@@ -91,6 +93,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
+            # Directed stimulus floor: 5 accesses across the PROD JTAG eFuse
+            # block/allow legs plus the LC-state CSR reads. Literal here, not
+            # read from the sequence counters.
+            min_csr_accesses=5,
             csr_accesses=self.checks + lc_seq.accesses,
             proxy=False,
             details=(

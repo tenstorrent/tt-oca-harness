@@ -5,7 +5,6 @@ schema_version = 1
 
 # SMU Phase-1 (SEP=0) — SMC / no-SEP stream.
 # Executable contract: enrolled groups in this file / testlists/all.toml
-# Universe / deferred names: testlists/deferred.toml
 
 [[tests]]
 name = "smu_smc_smoke_test"
@@ -49,7 +48,7 @@ run_modes = ["smc"]
 
 # smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
 
-# smc_efuse_reg_sanity_test → testlists/deferred.toml
+# smc_efuse_reg_sanity_test — not ported
 
 # smu_smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
 # smu_smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
@@ -62,13 +61,13 @@ timeout_sec = 1800
 tags = ["smc", "security", "phase1"]
 run_modes = ["smc"]
 
-# smc_efuse_secure_tm_force_test → testlists/deferred.toml
+# smc_efuse_secure_tm_force_test — not ported
 
-# smc_wdt_ip0_isolate_clamp_test → testlists/deferred.toml
+# smc_wdt_ip0_isolate_clamp_test — not ported
 
-# smu_macro_axil_pll_pvt_route_test → testlists/deferred.toml
+# smu_macro_axil_pll_pvt_route_test — not ported
 
-# smu_octs_timer_count_csr_test → testlists/deferred.toml (legacy Force path)
+# smu_octs_timer_count_csr_test — not ported (legacy Force path)
 
 # Tier C: OCTS primary free-run (SYS-TIMER-OCTS) via J2A + tb_timer_count.
 [[tests]]

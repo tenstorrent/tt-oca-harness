@@ -295,12 +295,12 @@ static I3C_Status I3C_Start(I3C_Driver *drv, int sys_clk_freq) {
     hci_program_od_timing(id);
 
     /* Thresholds: tx_buf=1, rx_buf=1; cmd_empty=1, resp=1 */
-    /* Buf thresholds as before; START thresholds arm the spec START_THLD gates (OCH RTL fix in
+    /* Buf thresholds as before; START thresholds arm the spec START_THLD gates (OCAH RTL fix in
      * flow_active): a write waits until the TX queue holds the threshold (or the whole message)
      * before starting; a read waits for that much RX ROOM. Kills the cmd-vs-data enqueue race
      * (TX underflow Ovl=0x6) structurally -- fw enqueue order no longer matters.
      *
-     * OCH-fix (THLD encoding, root cause of smc_occp_mem_boundary_access seed 3270494 Ovl):
+     * OCAH-fix (THLD encoding, root cause of smc_occp_mem_boundary_access seed 3270494 Ovl):
      * the PIO DATA queues are instantiated with ThldIsPow(1) in queues.sv, so this field is
      * the HCI Table-42 2^(N+1) encoding, NOT an exact DWORD count. The previous value 7 meant
      * 2^8 = 256 DWORDs -- illegal (> 64-DWORD queue, spec requires <= queue size) -- and

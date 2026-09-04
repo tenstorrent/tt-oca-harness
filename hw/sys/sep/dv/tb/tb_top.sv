@@ -1460,7 +1460,7 @@ module sep_uvm_top
     // smoke asserts this matches esrc_noise_o[0] -> proves the force took (not
     // vacuous).
     assign esrc_noise_active_o =
-        `SEP_ESRC.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
     // exact node the SR flop samples -- matching the reference UVM noise injection
@@ -1473,7 +1473,7 @@ module sep_uvm_top
     // rising edge; forcing on that same rising edge creates an ordering race.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
-    force `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
+    force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
     // Plain `always` (NOT always_ff): `force` is a procedural continuous override,
     // not a flop assignment, so always_ff semantics do not apply.
     // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
@@ -1541,7 +1541,7 @@ module sep_uvm_top
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed XMR.
 `define ESRC_DECOR_SR(i) \
     assign esrc_decor_sr_o[29*(i) +: 29] = \
-        `SEP_ESRC.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.ff_stage
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.ff_stage
     `ESRC_DECOR_SR(0);  `ESRC_DECOR_SR(1);  `ESRC_DECOR_SR(2);
     `ESRC_DECOR_SR(3);  `ESRC_DECOR_SR(4);  `ESRC_DECOR_SR(5);
     `ESRC_DECOR_SR(6);  `ESRC_DECOR_SR(7);  `ESRC_DECOR_SR(8);
