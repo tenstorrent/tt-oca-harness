@@ -285,7 +285,7 @@ vendor_package:
       - "picorv32_wb.sv"
     patch_dir: "vendor/tenstorrent/tt-picorv32/patches"
 
-  # Tenstorrent DFD (debug-for-design) IP: CLA + DST + trace sink.
+  # Tenstorrent DFD (Design-for-Debug) IP: CLA + DST + trace sink.
   # TODO: enable once the tt_hw_debug GitLab remote is reachable from CI. Until
   # then vendor/tenstorrent/tt-hw-debug/upstream/ is a hand-mirrored subset -
   # see that package's Bender.yml. Keep include_from_upstream in sync with it.

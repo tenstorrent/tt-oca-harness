@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// OCH SEP ROM DMA API.
+// OCAH SEP ROM DMA API.
 //
-// Implemented against OCH's `secure_dma` register block.
+// Implemented against OCAH's `secure_dma` register block.
 
 #pragma once
 

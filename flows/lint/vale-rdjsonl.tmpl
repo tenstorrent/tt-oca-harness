@@ -1,0 +1,27 @@
+{{- /* SPDX-License-Identifier: Apache-2.0 */}}
+{{- /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */}}
+{{- /*
+  Vale --output template converting its JSON alerts to RDJSONL, the format
+  the shared .github/actions/reviewdog-report composite action hands
+  straight to reviewdog (see flows/lint/vale.mk and .github/workflows/
+  lint.yml's lint-vale job). Adapted from Vale's own documented example
+  (https://vale.sh/docs/topics/templates -- "Creating a RDJSONL template"):
+  same field mapping, same Span-to-range and column caveats noted there.
+*/}}
+{{- range .Files -}}
+{{- $path := .Path -}}
+{{- range .Alerts -}}
+{{- $severity := "WARNING" -}}
+{{- if eq .Severity "error" -}}
+{{- $severity = "ERROR" -}}
+{{- else if eq .Severity "suggestion" -}}
+{{- $severity = "INFO" -}}
+{{- end -}}
+{{- $line := printf "%d" .Line -}}
+{{- $start := index .Span 0 -}}
+{{- $end := add (index .Span 1) 1 -}}
+{{- $check := printf "%s" .Check -}}
+{{- $message := printf "%s" .Message -}}
+{"message": "{{ $message | jsonEscape }}", "location": {"path": "{{ $path }}", "range": {"start": {"line": {{ $line }}, "column": {{ $start }}}, "end": {"line": {{ $line }}, "column": {{ $end }}}}}, "severity": "{{ $severity }}", "code": {"value": "{{ $check | jsonEscape }}"{{ if .Link }}, "url": "{{ .Link | jsonEscape }}"{{ end }}}}
+{{end -}}
+{{end -}}

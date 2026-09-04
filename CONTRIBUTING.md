@@ -103,6 +103,7 @@ Scheduled and manually dispatched pipelines always run in full.
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
 | `lint-spelling` | `lint-spelling` | `make ocah-lint-spelling` and `make ocah-lint-spelling-fix` |
+| `lint-vale` | `lint-vale` | `make ocah-lint-vale` |
 | `lint-yaml` | `lint-yaml` | `make ocah-lint-yaml` |
 | `lint-toml` | `lint-toml` | `make ocah-lint-toml` |
 | `lint-markdown` | `lint-markdown` | `make ocah-lint-markdown` and `make ocah-lint-markdown-fix` |
@@ -182,17 +183,37 @@ file before the runner that reads it fails with a less legible error.
 `slang-tidy` parses it with its own `Checks:`/`CheckConfigs:` grammar, not
 TOML.
 
+`lint-vale` (Vale) checks `.adoc`/`.md` prose against
+`styles/OCAH/Acronyms.yml`, which tracks a small set of this repo's own
+acronyms and the one phrase each is canonically defined as. Vale's own
+AsciiDoc support shells out to a real `asciidoctor` for every `.adoc` file
+(`gem install asciidoctor`); without one on `PATH` it's a hard runtime
+error partway through the file list, not a skipped file. The check is a
+`script` rule (`styles/config/scripts/AcronymDefinitions.tengo`): it finds
+a spelled-out expansion of a tracked acronym anywhere in the document and
+flags a mismatch regardless of how it's worded, rather than matching
+against a fixed list of known-wrong strings. Adding an acronym means
+editing the Tengo script's `canonical` map, not just adding a YAML line.
+Each entry's correct expansion is a direct quote from somewhere in-tree,
+not a guess -- see that script's header comment and
+`styles/OCAH/Acronyms.yml` before adding to it. It has no autofix; a
+finding names the acronym's correct expansion, but applying it is a manual
+edit, same as `lint-toml`. Vale's built-in case-exact vocabulary check
+(`Vale.Terms`) is not in use: this repo's casual acronym lowercasing in
+code and prose produces too much noise relative to genuine findings to
+meet the low-noise bar the rest of this table holds to.
+
 ### Optional pre-commit checks
 
 The repository provides optional, check-only hooks for staged Python, C/C++,
 Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
 Ruff, clang-format, tclfmt, tclint, codespell, yamllint, tomllint, shellcheck,
 and shfmt from the locked uv environment, plus Git's whitespace/conflict-marker
-check. The hooks do not modify or stage files. `mypy`, `markdownlint`, and
-`checkmake` are deliberately left out of this bundle -- they are slow, need a
-separate Node.js toolchain, or ship as a standalone binary rather than a
-uv-managed package -- and stay CI-only; see the CI job table above for their
-local commands.
+check. The hooks do not modify or stage files. `mypy`, `markdownlint`,
+`checkmake`, and `vale` are deliberately left out of this bundle -- they are
+slow, need a separate Node.js toolchain, or ship as a standalone binary
+rather than a uv-managed package -- and stay CI-only; see the CI job table
+above for their local commands.
 
 ```bash
 make hooks-install    # explicit opt-in for this clone

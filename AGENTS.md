@@ -471,9 +471,9 @@ Work the pair in this order:
 2. Expect the open-tree PR's CI to fail while the companion PR is unmerged. A local branch
    proves the pair works on your machine, but no pipeline can see it and there is no pin to
    point at it.
-3. Merge the companion PR.
-4. Re-run the open-tree PR's pipeline, and merge only once it is green — not on the strength
-   of a run that predates step 3.
+3. Merge the companion PR, only when the user asks to merge it.
+4. Re-run the open-tree PR's pipeline, and merge it only when the user asks and it is
+   green — not on the strength of a run that predates step 3.
 
 Two further things follow from the same unpinned clone:
 
