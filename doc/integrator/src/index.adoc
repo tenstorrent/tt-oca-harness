@@ -598,7 +598,7 @@ testing (unless disabled), and system health checks. The `init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger
 a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the

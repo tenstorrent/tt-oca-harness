@@ -16,21 +16,109 @@
 text := import("text")
 
 canonical := {
-  DFD:  "design-for-debug",
-  OCA:  "open chiplet atlas",
-  OCCP: "open chiplet configuration protocol",
-  OCTS: "open chiplet time synchronization",
-  SMC:  "system management controller",
-  SEP:  "security processor",
-  DTP:  "debug and test ports",
-  SMU:  "system management unit",
-  AoU:  "axi-over-ucie bridge",
-  OCCT: "open chiplet cross triggering",
-  CLA:  "core logic analyzer",
-  PTAP: "primary tap",
-  STAP: "secondary tap",
-  SIB:  "segment insertion bit",
-  ATB:  "advanced trace bus"
+  DFD:    "design-for-debug",
+  OCA:    "open chiplet atlas",
+  OCAH:   "open chiplet atlas harness",
+  OCCP:   "open chiplet configuration protocol",
+  OCTS:   "open chiplet time synchronization",
+  OCMI:   "open chiplet management interface",
+  OCCT:   "open chiplet cross triggering",
+  SMC:    "system management controller",
+  SEP:    "security processor",
+  DTP:    "debug and test ports",
+  SMU:    "system management unit",
+  SMN:    "system management network",
+  SMO:    "safety monitor",
+  AoU:    "axi-over-ucie bridge",
+  CLA:    "core logic analyzer",
+  PTAP:   "primary tap",
+  STAP:   "secondary tap",
+  SIB:    "segment insertion bit",
+  ATB:    "advanced trace bus",
+  CTM:    "cross trigger matrix",
+  CTP:    "cross trigger port",
+  CTN:    "cross trigger network",
+  KM:     "key manager",
+  KPV:    "key and policy vault",
+  LCC:    "life cycle controller",
+  AGP:    "alarm aggregation processor",
+  ARBC:   "anti-rollback counter",
+  FLR:    "function level reset",
+  CLINT:  "core local interruptor",
+  PLIC:   "platform-level interrupt controller",
+  BIRA:   "built-in redundancy analysis",
+  TMP:    "test mode persistence",
+  TRNG:   "true random number generator",
+  DRBG:   "deterministic random bit generator",
+  DCLS:   "dual core lock step",
+  AVSBus: "adaptive voltage scaling bus",
+  TTI:    "target transaction interface",
+  DAT:    "device address table",
+  DCT:    "device characteristic table",
+  HCI:    "host controller interface",
+  OTP:    "one-time programmable",
+  BIW:    "barak-impagliazzo-wigderson",
+  RAS:    "reliability, availability, and serviceability",
+  MBIST:  "memory built-in self-test",
+  DMA:    "direct memory access",
+  AES:    "advanced encryption standard",
+  SPI:    "serial peripheral interface",
+  CSR:    "control and status register",
+  CSRs:   "control and status registers",
+  RDL:    "register description language",
+  DV:     "design verification",
+  FSM:    "finite state machine",
+  FSMs:   "finite state machines",
+  MMR:    "memory mapped register",
+  PMP:    "physical memory protection",
+  KDF:    "key derivation function",
+  PCR:    "platform configuration register",
+  IBI:    "in-band interrupt",
+  KMCSR:  "key manager control and status registers",
+  ABR:    "adams bridge",
+  CCC:    "common command codes",
+  WDT:    "watchdog timer",
+  RoT:    "root of trust",
+  PCRV:   "pcr vault",
+  PIC:    "programmable interrupt controller",
+  LC:     "life cycle",
+  BEU:    "bus error unit",
+  CTPs:   "cross trigger ports",
+  CLAs:   "core logic analyzers",
+  DFT:    "design for test",
+  VROM:   "virtual rom",
+  PCPI:   "pico co-processor interface",
+  EK:     "endorsement key",
+  AK:     "attestation key",
+  TLR:    "test-logic-reset",
+  TDRs:   "test data registers",
+  DLAB:   "divisor latch access bit",
+  PMBus:  "power management bus",
+  SMBus:  "system management bus",
+  PEC:    "packet error checking",
+  ARA:    "alert response address",
+  MDB:    "mandatory data byte",
+  DLL:    "divisor latch low",
+  DLM:    "divisor latch high",
+  LCR:    "line control register",
+  CVD:    "coordinated vulnerability disclosure",
+  DDR:    "double data rate",
+  TCRI:   "transfer command response interface",
+  RO:     "ring oscillator",
+  PQC:    "post-quantum cryptography",
+  "R/O":  "read only",
+  "R/W":  "read write",
+  "W/O":  "write only",
+  "W1/C": "write-1-clear"
+}
+
+// Extra accepted phrases for an acronym whose paren form does not change
+// when the English is plural (IBI, not IBIs). The primary map entry is
+// still the singular; these are additional matches, not replacements.
+canonical_extra := {
+  IBI: ["in-band interrupts"],
+  BEU: ["bus error units"],
+  PEC: ["smbus packet error checking"]
 }
 
 matches := []
@@ -38,20 +126,48 @@ matches := []
 canonicalize := func(phrase) {
   // A phrase that line-wrapped in the source carries the hard newline the
   // capture crossed; collapse any run of whitespace back to one space
-  // before comparing.
+  // before comparing. Hyphens, commas, and apostrophes are folded so
+  // "Memory-Mapped" and "Reliability, Availability" compare equal to the
+  // unpunctuated canonical form. Expected values are run through the same
+  // function, so a hyphen in the map is not a mismatch.
   collapsed := text.trim_space(text.re_replace("\\s+", phrase, " "))
   lower := text.to_lower(collapsed)
+  lower = text.re_replace("'", lower, "")
   lower = text.re_replace("\\s*&\\s*", lower, " and ")
+  lower = text.re_replace("[-,]", lower, " ")
   lower = text.trim_space(text.re_replace("\\s+", lower, " "))
   if text.has_prefix(lower, "the ") {
     lower = text.trim_space(text.trim_prefix(lower, "the "))
   }
+  if text.has_prefix(lower, "a ") {
+    lower = text.trim_space(text.trim_prefix(lower, "a "))
+  }
+  if text.has_prefix(lower, "an ") {
+    lower = text.trim_space(text.trim_prefix(lower, "an "))
+  }
   return lower
 }
 
+accepted := func(acr, phrase) {
+  got := canonicalize(phrase)
+  if got == canonicalize(canonical[acr]) {
+    return true
+  }
+  extras := canonical_extra[acr]
+  if is_undefined(extras) {
+    return false
+  }
+  for alt in extras {
+    if got == canonicalize(alt) {
+      return true
+    }
+  }
+  return false
+}
+
 flag := func(begin, end, acr, phrase) {
-  expected := canonical[acr]
-  if canonicalize(phrase) != expected {
+  if !accepted(acr, phrase) {
+    expected := canonical[acr]
     display := text.trim_space(text.re_replace("\\s+", phrase, " "))
     matches = append(matches, {
       begin: begin,
@@ -72,13 +188,16 @@ flag := func(begin, end, acr, phrase) {
 // routinely split across a line break -- the separator class has to match
 // a hard newline, not just a space or hyphen.
 linking_word := "for|of|the|and|on|in|to|over|&"
-word := "(?:[A-Z][A-Za-z]*|" + linking_word + ")"
+// Digits are allowed mid-phrase so "Write-1-Clear" is one expansion, not a
+// capture that stops at "Write".
+word := "(?:[A-Z][A-Za-z']*|[0-9]+|" + linking_word + ")"
 // At least one repetition: a lone capitalized word next to an unrelated
 // acronym's parenthetical (e.g. an OS license tag like "(FOSS)" landing
 // beside an unrelated "SEP") is far more likely to be coincidence than a
 // genuine one-word acronym expansion -- every canonical entry here is at
-// least two tokens.
-phrase_pattern := "[A-Z][A-Za-z]*(?:[-\\s]" + word + "){1,6}"
+// least two tokens. Commas are separators so a list expansion such as
+// "Reliability, Availability, and Serviceability" is one phrase.
+phrase_pattern := "[A-Z][A-Za-z']*(?:[-,\\s]" + word + "){1,6}"
 
 for acr, expected in canonical {
   // "<Phrase> (ACRONYM)"
