@@ -475,9 +475,12 @@ module log_engine
   // LOG_REGION_SIZE Register
   assign log_region_size = reg_out.LOG_REGION_SIZE.LOG_REGION_SIZE.value;
 
-  // LOG_REGION_ADDR Register
-  assign log_region_addr = {reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value,
-                              reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value};
+  // The fetch fabric carries 56-bit addresses. CSR bits [63:56] are reserved-zero.
+  assign log_region_addr = log_fetch_addr_t'({
+    reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value,
+    reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value
+  });
+  assign reg_in.LOG_REGION_ADDR.RESERVED.next = '0;
 
   // LOG_WRITE_ADDR Register
   assign log_write_addr = reg_out.LOG_WRITE_ADDR.LOG_WRITE_ADDR.value;
@@ -542,6 +545,9 @@ module log_engine
                   log_fetch_mem_resp_valid |-> next_log_bytes_fetched <= max_transfer_len)
   `OCAH_OT_ASSERT(FetchWordCounterWithinMaximum_A,
                   log_words_fetched_cnt < log_words_fetched_cnt_t'(MAX_LOG_LEN / LOG_WORD_SIZE))
+  `OCAH_OT_ASSERT_INIT(LogRegionAddrWidth_A, 32 + $bits
+                       (reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value) == $bits(log_fetch_addr_t
+                                                                                      ))
 
   `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)
