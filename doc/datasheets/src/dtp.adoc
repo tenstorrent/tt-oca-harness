@@ -35,7 +35,7 @@ HIGHLIGHTS
 * JTAG-to-AXI paths for SMC fabric, SMC OTP, and SEP OTP debug access
 * Cross-trigger routing between chiplet-local and external trigger endpoints
 * Lifecycle-controlled disable inputs for scan and memory-mapped debug paths
-* Integrated debug clock-stop, boot-stall, and multi-slice reset controls
+* Integrated debug clock-stop, boot-stall, and multi-target reset controls
 
 // datasheet-section: integration-fit
 [.datasheet-section]
@@ -66,7 +66,7 @@ chiplet-local trigger sources and sinks through a software-controlled matrix.
 It supports pulse and four-phase request/acknowledge signaling and combines
 debug and chiplet-local requests into a registered clock-stop output. Compile-
 time controls let adopters remove selected instructions, TAPs, bridge paths,
-and IC_RESET slices.
+and reset-control outputs for SMC, SEP, and adopter logic.
 
 // datasheet-section: architecture
 [.datasheet-section]
@@ -120,7 +120,7 @@ CAPABILITIES
   fixed-address series operations and target error reporting
 * Independent lifecycle disable fields for three bridge paths and eight
   scan-side paths
-* Independently enabled IC_RESET slices for SMC, SEP, and adopter logic
+* Independently enabled reset-control outputs for SMC, SEP, and adopter logic
 * Debugger-controlled boot-stall and functional clock-stop requests
 
 *Cross trigger*
@@ -146,7 +146,7 @@ scan reset, test enable
 !Cross trigger !External pad controls, internal source/sink interfaces,
 clock-stop requests and output
 !Build-time !Instruction/path enables, extra STAP count, IDCODE/version fields,
-IC_RESET types, trigger protocol modes, AXI type parameters
+reset-control output types, trigger protocol modes, AXI type parameters
 !===
 
 a|
@@ -161,8 +161,9 @@ INTEGRATION DEPENDENCIES
 * Provide safe clock, reset, CDC, pad, and clock-gating integration. Establish
   project-specific TCK constraints; this beta sheet does not specify a
   characterized operating frequency.
-* Configure IC_RESET slice types and enables, and connect or correctly bypass
-  every enabled scan and secondary-TAP chain.
+* Configure the SMC, SEP, and adopter reset-control output types and enables
+  (`IC_RESET` in the RTL), and connect or correctly bypass every enabled scan
+  and secondary-TAP chain.
 * Connect enabled AXI manager ports only to address maps permitted by the
   product security policy. Disabled and unused interfaces require documented
   tie-offs.
