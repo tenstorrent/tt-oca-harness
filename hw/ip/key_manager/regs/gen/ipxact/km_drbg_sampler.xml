@@ -159,7 +159,7 @@
           <ipxact:field>
             <ipxact:name>count_bad</ipxact:name>
             <ipxact:displayName>COUNT_BAD</ipxact:displayName>
-            <ipxact:description>Failed transactions (timeout or error). Saturates at 0xFF.</ipxact:description>
+            <ipxact:description>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -168,12 +168,12 @@
             </ipxact:resets>
             <ipxact:bitWidth>8</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>count_good</ipxact:name>
             <ipxact:displayName>COUNT_GOOD</ipxact:displayName>
-            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF.</ipxact:description>
+            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -182,7 +182,7 @@
             </ipxact:resets>
             <ipxact:bitWidth>16</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>

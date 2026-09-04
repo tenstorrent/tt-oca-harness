@@ -598,7 +598,7 @@ testing (unless disabled), and system health checks. The `init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger
 a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the
@@ -2025,10 +2025,9 @@ The define also zeroes the RMA and security-disable token and digest bits in
 X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
-Three models it enables make simulation deliberately non-deterministic:
-`gdffsync` in the entropy source injects metastability on the second
-synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
-equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the

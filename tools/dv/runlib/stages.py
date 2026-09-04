@@ -1587,6 +1587,7 @@ def _cocotb_build_info(
             {
                 "tool": tool,
                 "target": target_name,
+                "repo_root": str(root),
                 "build_dir": str(base_build),
                 "build_cov_dir": str(base_build / "cov_build.vdb"),
                 "cov_dir": str(base_build / "coverage"),
@@ -1683,6 +1684,7 @@ def _cocotb_vcs_makefile(
         "cov_dir": str(cov_dir),
         "build_dir": str(sim_build),
         "build_cov_dir": str(sim_build / "cov_build.vdb"),
+        "repo_root": str(root),
         "seed": str(seed),
         "tool": "vcs",
         "item": item or "",
@@ -2560,6 +2562,7 @@ def _vcs_resolve_build(
         {
             "tool": "vcs",
             "target": target_name,
+            "repo_root": str(root),
             "build_dir": str(build_dir),
             "build_cov_dir": str(build_dir / "cov_build.vdb"),
             "cov_dir": str(build_dir / "coverage"),

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[dependencies]]
-== Dependencies
+= Dependencies
 
 [WARNING]
 ====
@@ -13,9 +13,9 @@ This document is currently under development.
 ====
 
 This section outlines the system requirements and dependencies for the
-OCAH project. To install the required packages,
+OCAH project. To install the required packages, refer to xref:setup.adoc[Environment Setup].
 
-=== System Requirements
+== System Requirements
 
 * *Linux Distribution*: The guide included in xref:setup.adoc[Environment Setup] is written
 for Ubuntu 26.04 LTS, but most modern distributions should be compatible, though package
@@ -26,7 +26,7 @@ you will need to handle package installation yourself.
 * *Memory*: Minimum 16GB RAM recommended for full builds, 32GB recommended for large designs
 * *Storage*: Minimum 50GB available disk space, SSD recommended for build performance
 
-=== Software Dependencies
+== Software Dependencies
 
 The project uses the following documentation tools, a Python virtual environment for SystemRDL
 and a docker container for synthesis tools:
@@ -58,7 +58,7 @@ to compile firmware and bootcode - containerised alternative available
 ** *OPENSSL*: Version 3.3.2
 ** *SystemC CCI*: Version 1.0.2, built with the above SystemC and C++20
 
-=== License Requirements
+== License Requirements
 
 * *Open Source Tools*: No additional licenses required
 * *Commercial Tools*: Valid licenses for VCS, Design Compiler,

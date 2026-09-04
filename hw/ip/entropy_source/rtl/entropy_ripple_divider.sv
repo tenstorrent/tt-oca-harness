@@ -7,8 +7,9 @@
  *
  * @details This module implements an asynchronous ripple frequency divider
  *          using cascaded toggle flip-flops. Each stage divides the frequency
- *          by 2, creating a chain of division factors. The divider uses gdffqb
- *          flip-flops configured as toggle flip-flops (D connected to QB).
+ *          by 2, creating a chain of division factors. Each stage uses the
+ *          canonical resettable D flip-flop and inverter primitives as a
+ *          toggle flip-flop (D connected to inverted Q).
  *          The first stage is clocked by the input clock, and each subsequent
  *          stage is clocked by the Q output of the previous stage. The output
  *          array provides all division factors simultaneously: div_o[0]=clk_i
@@ -38,23 +39,26 @@ module entropy_ripple_divider #(
     for (genvar i = 0; i < NUM_STAGES; i++) begin : gen_div_stage
       if (i == 0) begin : gen_first_stage
         // First stage: clocked by input clock
-        gdffqb u_div_ff (
-          .d_i   (div_qb[i]),     // Toggle: D = QB
-          .cdn_i (rst_ni),        // Async reset (active low)
-          .cp_i  (clk_i),         // Clock from input
-          .q_o   (div_q[i]),      // Q output
-          .qb_o  (div_qb[i])      // QB output (inverted)
+        prim_dffrxq u_div_ff (
+          .i_CK (clk_i),
+          .i_D  (div_qb[i]),
+          .i_RN (rst_ni),
+          .o_Q  (div_q[i])
         );
       end else begin : gen_ripple_stage
         // Subsequent stages: clocked by previous stage's Q output
-        gdffqb u_div_ff (
-          .d_i   (div_qb[i]),     // Toggle: D = QB
-          .cdn_i (rst_ni),        // Async reset (active low)
-          .cp_i  (div_q[i-1]),    // Clock from previous stage
-          .q_o   (div_q[i]),      // Q output
-          .qb_o  (div_qb[i])      // QB output (inverted)
+        prim_dffrxq u_div_ff (
+          .i_CK (div_q[i-1]),
+          .i_D  (div_qb[i]),
+          .i_RN (rst_ni),
+          .o_Q  (div_q[i])
         );
       end
+
+      prim_inv u_div_inv (
+        .in_i  (div_q[i]),
+        .out_o (div_qb[i])
+      );
     end
   endgenerate
 

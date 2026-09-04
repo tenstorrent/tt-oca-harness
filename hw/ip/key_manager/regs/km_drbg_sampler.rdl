@@ -10,7 +10,8 @@
 // Size: 4KB (0x1000)
 //
 // Bridges KM CPU AXI4-Lite read requests to DRBG AXI-Stream interface.
-// DATA read triggers request; CFG (PREFETCH, TIMEOUT); STATUS (read-only);
+// DATA read triggers request; CFG (PREFETCH, TIMEOUT); STATUS (TIMEOUT_ERR and
+// STREAM_ERR W1C; COUNT_GOOD/COUNT_BAD write-nonzero-to-clear);
 // PREFETCH_DATA read-only for debug.
 
 addrmap km_drbg_sampler {
@@ -149,18 +150,20 @@ addrmap km_drbg_sampler {
 
         field {
             name = "COUNT_BAD";
-            desc = "Failed transactions (timeout or error). Saturates at 0xFF.";
-            sw = r;
-            hw = w;
+            desc = "Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.";
+            sw = rw;
+            hw = rw;
+            wr_swacc = true;
             resetsignal = WARM_RST_N;
             reset = 8'h0;
         } count_bad[15:8];
 
         field {
             name = "COUNT_GOOD";
-            desc = "Successful words transferred to CPU. Saturates at 0xFFFF.";
-            sw = r;
-            hw = w;
+            desc = "Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.";
+            sw = rw;
+            hw = rw;
+            wr_swacc = true;
             resetsignal = WARM_RST_N;
             reset = 16'h0;
         } count_good[31:16];
