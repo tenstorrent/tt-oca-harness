@@ -30,7 +30,7 @@ VERILOG_SOURCES += $(OCH_ROOT)/hw/common/och_prim_generic/rtl/prim_stdmux2.sv
 VERILOG_SOURCES += $(OCH_ROOT)/hw/ip/entropy_source/rtl/gf_muladd.sv
 # Level 1
 VERILOG_SOURCES += $(OCH_ROOT)/hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
-VERILOG_SOURCES += $(OCH_ROOT)/hw/ip/entropy_source/rtl/entropy_ring_delay_cells.sv
+VERILOG_SOURCES += $(OCH_ROOT)/hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
 VERILOG_SOURCES += $(OCH_ROOT)/hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
 # Level 2
 VERILOG_SOURCES += $(OCH_ROOT)/hw/ip/entropy_source/rtl/entropy_decorrelator.sv

@@ -23,7 +23,7 @@ $OCH_ROOT/hw/common/och_prim_generic/rtl/prim_stdbuf.sv
 $OCH_ROOT/hw/common/och_prim_generic/rtl/prim_stdmux2.sv
 
 // RTL modules (in dependency order)
-$OCH_ROOT/hw/ip/entropy_source/rtl/entropy_ring_delay_cells.sv
+$OCH_ROOT/hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
 $OCH_ROOT/hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
 $OCH_ROOT/hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
 $OCH_ROOT/hw/ip/entropy_source/rtl/entropy_noise_source.sv

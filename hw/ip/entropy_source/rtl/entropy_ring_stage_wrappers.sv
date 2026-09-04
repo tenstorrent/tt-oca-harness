@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //--------------------------------------------------
-// Ring oscillator stage delay wrappers
+// Ring oscillator stage wrappers
 //
 // entropy_ring_oscillator is a free-running combinational loop. With no
 // propagation delay anywhere in it, RTL simulation never advances simulated
@@ -21,7 +21,7 @@
 // prim_stdbuf / prim_stdmux2 consumer - sees the ordinary zero-delay cell.
 //--------------------------------------------------
 
-module entropy_ring_nand2_dly (
+module entropy_ring_nand2_wrapper (
   input  i_A1,
   input  i_A2,
   output o_Y
@@ -41,7 +41,7 @@ module entropy_ring_nand2_dly (
 `endif
 endmodule
 
-module entropy_ring_buf_dly (
+module entropy_ring_buf_wrapper (
   input  i_A,
   output o_Y
 );
@@ -59,7 +59,7 @@ module entropy_ring_buf_dly (
 `endif
 endmodule
 
-module entropy_ring_mux2_dly (
+module entropy_ring_mux2_wrapper (
   input  i_I0,
   input  i_I1,
   input  i_SEL,
