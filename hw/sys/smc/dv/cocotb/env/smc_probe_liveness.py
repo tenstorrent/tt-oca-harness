@@ -46,10 +46,14 @@ checked evidence; its value is logged as a diagnostic and declared as such.
   is a recorded TB-policy deferral (``hw/sys/smc/dv/README.md``).
 * ``gpio_core2pad_any`` / ``gpio_core2pad_en_any`` / ``gpio_pad2core_en_any`` --
   unbackable *at 0*.  ``tb_top.sv:1375-1377`` defines all three as OR-reductions
-  over the **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends), which
-  also carries idle-high LSIO pads (UART TX) and default-enabled pad inputs, so
-  every retained run reads all three at 1 from reset onward and no frontdoor
-  stimulus can drive any of them to 0.  A net tied to constant 1 is therefore
+  over the **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends).  Measured
+  at reset, ``core2pad_en_o`` has exactly bits 49 and 50 set and ``core2pad_o``
+  has 28, 30, 32, 34, 36, 49, 50 and 64; bits 49/50 are the AVSBus clock and
+  mdata pads (``tb_top.sv:473-474``).  Writing
+  ``CLOCK_GATE_CONTROL.AVS_CG_EN`` was tried and changed none of them, so every
+  retained run reads all three reductions at 1 from reset onward and this TB has
+  no frontdoor path that drives any of them to 0.  A net tied to constant 1 is
+  therefore
   indistinguishable from the real aggregate, which is exactly what
   ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` forbids presenting as evidence -- so
   they are OBSERVED-ONLY and a stated ``expect_<field>`` on them is refused.
@@ -122,25 +126,31 @@ UNBACKABLE_PROBES: dict[str, str] = {
     ),
     "gpio_core2pad_any": (
         "tb_top.sv:1375 defines tb_gpio_core2pad_any = |u_dut.u_smc.core2pad_o, "
-        "an OR-reduction over the WHOLE pad-output bus which also carries "
-        "idle-high LSIO pads (UART TX); it reads 1 from reset onward in every "
-        "retained run and no frontdoor stimulus can drive it to 0, so a net tied "
-        "to constant 1 is indistinguishable from the real aggregate. Its value is "
-        "OBSERVED-ONLY and NOT closure evidence; the fail-capable pad-bus proof is "
-        "on the raw vector probe gpio_core2pad_vec (tb_core2pad_o)"
+        "an OR-reduction over the WHOLE pad-output bus. Measured at reset, the "
+        "set bits are 28, 30, 32, 34, 36, 49, 50 and 64; 49 and 50 are the "
+        "AVSBus clock and mdata outputs (tb_top.sv:473-474). Writing "
+        "CLOCK_GATE_CONTROL.AVS_CG_EN was tried and left every one of those bits "
+        "unchanged, so this TB has no frontdoor path that drives the reduction to "
+        "0 and a net tied to constant 1 is indistinguishable from the real "
+        "aggregate. Its value is OBSERVED-ONLY and NOT closure evidence; the "
+        "fail-capable pad-bus proof is on the raw vector probe "
+        "gpio_core2pad_vec (tb_core2pad_o)"
     ),
     "gpio_core2pad_en_any": (
         "tb_top.sv:1376 defines tb_gpio_core2pad_en_any = "
         "|u_dut.u_smc.core2pad_en_o, an OR-reduction over the WHOLE pad "
-        "output-enable bus; LSIO pads are output-enabled at reset so it reads 1 "
-        "from reset onward and no frontdoor stimulus can drive it to 0. "
+        "output-enable bus. Measured at reset, exactly two bits are set -- 49 and "
+        "50, the AVSBus clock and mdata pads (tb_top.sv:473-474) -- not a broad "
+        "band of LSIO pads. Writing CLOCK_GATE_CONTROL.AVS_CG_EN was tried and "
+        "left both set, so nothing here drives the reduction to 0. "
         "OBSERVED-ONLY; the fail-capable pad-bus proof is on the raw vector probe "
         "gpio_core2pad_en_vec (tb_core2pad_en_o)"
     ),
     "gpio_pad2core_en_any": (
         "tb_top.sv:1377 defines tb_gpio_pad2core_en_any = "
         "|u_dut.u_smc.pad2core_en_o, an OR-reduction over the WHOLE pad "
-        "input-enable bus, which is 1 from reset onward; tb_top exposes no "
+        "input-enable bus, which is measured at 1 from reset onward; tb_top "
+        "exposes no "
         "pad2core_en_o vector, so there is neither a level control nor an "
         "independent per-pad observable for it in this TB. OBSERVED-ONLY and NOT "
         "closure evidence"
