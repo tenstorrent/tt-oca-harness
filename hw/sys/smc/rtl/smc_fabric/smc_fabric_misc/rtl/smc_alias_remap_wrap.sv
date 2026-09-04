@@ -8,45 +8,45 @@
 
 module smc_alias_remap_wrap (
   // JTAG AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_in_jtag_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_in_jtag_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_jtag_req_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_jtag_resp_o,
 
   // Data Accelerator AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_in_data_accel_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_in_data_accel_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,
 
   // MMIO AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_in_mmio_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_in_mmio_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_mmio_req_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_mmio_resp_o,
 
   // Log AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_in_log_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_in_log_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_log_req_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_log_resp_o,
 
   // Remapped JTAG AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_out_remapped_jtag_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_out_remapped_jtag_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_jtag_req_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_jtag_resp_i,
 
   // Remapped Data Accelerator AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_out_remapped_data_accel_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_out_remapped_data_accel_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_data_accel_req_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_data_accel_resp_i,
 
   // Remapped MMIO AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_out_remapped_mmio_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_out_remapped_mmio_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_mmio_req_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_mmio_resp_i,
 
   // Remapped Log AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t                                 axi_out_remapped_log_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t                                axi_out_remapped_log_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_log_req_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_log_resp_i,
 
   // Config struct from register block -- alias remap
-  input  alias_remap_reg_pkg::alias_remap__out_t                                        aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
 
   // debug structs
-  output smc_pkg::remap_debug_t                                                         o_remap_debug_mmio,
-  output smc_pkg::remap_debug_t                                                         o_remap_debug_jtag,
-  output smc_pkg::remap_debug_t                                                         o_remap_debug_log,
-  output smc_pkg::remap_debug_t                                                         o_remap_debug_dma
+  output smc_pkg::remap_debug_t o_remap_debug_mmio,
+  output smc_pkg::remap_debug_t o_remap_debug_jtag,
+  output smc_pkg::remap_debug_t o_remap_debug_log,
+  output smc_pkg::remap_debug_t o_remap_debug_dma
 );
 
   smc_pkg::remap_region_t remap_table[smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0];

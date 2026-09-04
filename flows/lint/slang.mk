@@ -26,6 +26,8 @@ ifdef FLOW_DESIGN
 OCAH_LINT_SLANG_DIR          := build/lint
 OCAH_LINT_SLANG_FLIST        := $(OCAH_LINT_SLANG_DIR)/$(FLOW_DESIGN).f
 OCAH_LINT_SLANG_FILTER_PATHS := $(OCAH_LINT_SLANG_DIR)/$(FLOW_DESIGN)_filter_paths.f
+OCAH_LINT_SLANG_TOP          ?= $(FLOW_DESIGN)
+OCAH_LINT_SLANG_EXTRA_FLAGS  ?=
 
 ## Generate this block's bender filelist for lint, without running slang.
 ## Reused by the CI lint job.
@@ -41,12 +43,17 @@ ocah-lint-slang-flist:
 	fi
 
 ## Lint this one block with slang.
+## @param OCAH_LINT_SLANG_TOP=<module> Override the top within this block's filelist
 .PHONY: ocah-lint-slang
 ocah-lint-slang: ocah-lint-slang-flist
 	# --single-unit: slang defaults to one compilation unit per file in -f,
 	# so macros `include`d in one file aren't visible when used in another.
 	$(call ocah_require_host_tool,slang,./scripts/docker-run.sh eda-run make lint-slang)
-	slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 --single-unit --compat vcs $(if $(SLANG_LINT_PATH),-f $(OCAH_LINT_SLANG_FILTER_PATHS)) -f $(OCAH_LINT_SLANG_FLIST)
+	slang --lint-only --top $(OCAH_LINT_SLANG_TOP) --timescale=$(OCAH_FLOW_TIMESCALE) \
+		--error-limit=0 --single-unit --compat vcs \
+		$(OCAH_LINT_SLANG_EXTRA_FLAGS) \
+		$(if $(SLANG_LINT_PATH),-f $(OCAH_LINT_SLANG_FILTER_PATHS)) \
+		-f $(OCAH_LINT_SLANG_FLIST)
 
 endif
 
