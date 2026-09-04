@@ -6,8 +6,11 @@
 # no agreed score target for this DUT yet, and a threshold nobody has signed off
 # on would fail runs without saying anything true.
 #
-# Scope is applied at the report stage, so `--run-dir <dir> --stage cov_report`
-# re-renders under a changed scope from the same merged database.
+# Scope is NOT owned here. `-cm_hier` + `-cm_common_hier` at compile time decide
+# what enters the database and therefore what the number means; the entry below
+# is the report-time half, which only keeps the pages aligned with that scope.
+# `--run-dir <dir> --stage cov_report` re-renders the pages from the same merged
+# database, but it cannot widen or narrow the score.
 
 schema_version = 1
 dut = "sep"

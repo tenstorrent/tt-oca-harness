@@ -112,12 +112,15 @@ What the resulting number is not:
 * **Not functional coverage.** These are code metrics only. No SV covergroups
   exist in the cocotb env, so "did we exercise the interesting scenarios" stays
   with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
-* **Not a DUT-only figure.** The CPU subtree is excluded at compile time
-  (`cov/config/vcs/sep_cov_scope.hier`, applied as `-cm_hier`, its hash part of
-  the build fingerprint), but the testbench, the AXI SVA module and the shims
-  are still in the denominator. Do not quote the percentage as "SEP DUT
-  coverage". `cov/config/vcs/README.md` records what was measured and what a
-  full DUT-only scope still needs.
+* **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
+  excludes the testbench top, the outbound mailbox, the backdoor SMC memory, the
+  AXI SVA module and the CPU subtree at compile time, across both code and
+  assertion coverage (`-cm_hier` with `-cm_common_hier`; the file's hash and the
+  coverage arg list are both part of the build fingerprint). Measured on a merged
+  database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
+  matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
+  CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
+  `cov/config/vcs/README.md` records the scope and the measurements behind it.
 * **Not a read on assertions.** Assertion coverage counts elaborated assertions
   only, and SEP gates those through the `prim_assert` shim. Confirm assertions
   are live before reading that column.
