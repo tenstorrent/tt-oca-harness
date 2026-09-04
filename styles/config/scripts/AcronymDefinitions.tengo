@@ -19,7 +19,18 @@ canonical := {
   DFD:  "design-for-debug",
   OCA:  "open chiplet atlas",
   OCCP: "open chiplet communication protocol",
-  OCTS: "open chiplet time synchronization"
+  OCTS: "open chiplet time synchronization",
+  SMC:  "system management controller",
+  SEP:  "security processor",
+  DTP:  "debug and test ports",
+  SMU:  "system management unit",
+  AoU:  "axi-over-ucie bridge",
+  OCCT: "open chiplet cross triggering",
+  CLA:  "core logic analyzer",
+  PTAP: "primary tap",
+  STAP: "secondary tap",
+  SIB:  "segment insertion bit",
+  ATB:  "advanced trace bus"
 }
 
 matches := []
@@ -30,6 +41,8 @@ canonicalize := func(phrase) {
   // before comparing.
   collapsed := text.trim_space(text.re_replace("\\s+", phrase, " "))
   lower := text.to_lower(collapsed)
+  lower = text.re_replace("\\s*&\\s*", lower, " and ")
+  lower = text.trim_space(text.re_replace("\\s+", lower, " "))
   if text.has_prefix(lower, "the ") {
     lower = text.trim_space(text.trim_prefix(lower, "the "))
   }
@@ -58,9 +71,14 @@ flag := func(begin, end, acr, phrase) {
 // AsciiDoc/Markdown prose wraps at ~80 columns, so the words of a phrase
 // routinely split across a line break -- the separator class has to match
 // a hard newline, not just a space or hyphen.
-linking_word := "for|of|the|and|on|in|to"
+linking_word := "for|of|the|and|on|in|to|over|&"
 word := "(?:[A-Z][A-Za-z]*|" + linking_word + ")"
-phrase_pattern := "[A-Z][A-Za-z]*(?:[-\\s]" + word + "){0,6}"
+// At least one repetition: a lone capitalized word next to an unrelated
+// acronym's parenthetical (e.g. an OS license tag like "(FOSS)" landing
+// beside an unrelated "SEP") is far more likely to be coincidence than a
+// genuine one-word acronym expansion -- every canonical entry here is at
+// least two tokens.
+phrase_pattern := "[A-Z][A-Za-z]*(?:[-\\s]" + word + "){1,6}"
 
 for acr, expected in canonical {
   // "<Phrase> (ACRONYM)"

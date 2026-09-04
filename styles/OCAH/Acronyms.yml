@@ -14,10 +14,21 @@
 # recording its source below.
 #
 # Canonical expansions:
-#   DFD  = "Design-for-Debug"                    per hw/sys/smc/doc/dfd.adoc
-#   OCA  = "Open Chiplet Atlas"                   per README.md, NOTICE, doc/**/antora.yml
-#   OCCP = "Open Chiplet Communication Protocol"  per hw/sys/smc/bootrom/prod/doc/index.adoc
-#   OCTS = "Open Chiplet Time Synchronization"    per hw/ip/system_timer_octs/regs/system_timer_octs.rdl
+#   DFD  = "Design-for-Debug"                     per hw/sys/smc/doc/dfd.adoc
+#   OCA  = "Open Chiplet Atlas"                    per README.md, NOTICE, doc/**/antora.yml
+#   OCCP = "Open Chiplet Communication Protocol"   per hw/sys/smc/bootrom/prod/doc/index.adoc
+#   OCTS = "Open Chiplet Time Synchronization"     per hw/ip/system_timer_octs/regs/system_timer_octs.rdl
+#   SMC  = "System Management Controller"          per doc/trm/src/architecture.adoc
+#   SEP  = "Security Processor"                    per doc/programmer/src/index.adoc
+#   DTP  = "Debug and Test Ports"                  per hw/sys/dtp/doc/overview.adoc ("&" and "and" both accepted)
+#   SMU  = "System Management Unit"                per doc/trm/src/architecture.adoc
+#   AoU  = "AXI-over-UCIe Bridge"                  per doc/home/src/features.adoc
+#   OCCT = "Open Chiplet Cross Triggering"         per hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc
+#   CLA  = "Core Logic Analyzer"                   per hw/sys/smc/doc/dfd.adoc
+#   PTAP = "Primary TAP"                           per hw/ip/jtag/jtag_ptap/doc/index.adoc
+#   STAP = "Secondary TAP"                         per hw/ip/jtag/jtag_stap/doc/index.adoc
+#   SIB  = "Segment Insertion Bit"                 per hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc
+#   ATB  = "Advanced Trace Bus"                    per hw/sys/smc/doc/clk_rst.adoc
 extends: script
 message: "%s"
 level: error
