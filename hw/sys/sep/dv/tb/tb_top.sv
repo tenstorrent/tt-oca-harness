@@ -810,8 +810,6 @@ module sep_uvm_top
         .smc_fuse_sense_done_i        (1'b0),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
-        // TEST_EN strap (GPIO 14) drives the DUT's secure test mode request directly.
-        // Real DUT input, not a force. TB pin keeps the pad's name; DUT port is the request.
         .secure_tm_req_i              (test_en_strap_i),
 
         // SMC address configuration tied to 0 (identity remap).
