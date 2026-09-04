@@ -2,14 +2,15 @@
 """Generate the SEP_MSG_* status-code table for rom.adoc from the ROM header.
 
 The header is the single source of truth for status codes: the boot ROM compiles
-against it, and the SEP VP's decoder is pointed at this same file by
-virtual_platform/Makefile (STATUS_VALUES_PATH), so names in VP logs come from it
-too. Generating the document table from it as well keeps a third copy from
-drifting -- the previous flow generated all three from a TSV that did not come
-across with the rest of the tree.
+against it, and the SEP VP's decoder is configured to read this same file
+(STATUS_VALUES_PATH), so names in VP logs come from it too. Generating the
+document table from it as well keeps a third copy from drifting -- the previous
+flow generated all three from a TSV that did not come across with the rest of
+the tree.
 
 Usage:  python3 gen_status_table.py [-o gen/status_values.adoc]
 """
+
 import argparse
 import pathlib
 import re
@@ -67,14 +68,21 @@ def main():
 
     if collisions:
         out.append("NOTE: The following code values are shared by more than one name, so a")
-        out.append("decoded status is ambiguous between them: "
-                   + "; ".join(f"`0x{v:04X}` -- " + ", ".join(f"`{n}`" for n in names)
-                               for v, names in sorted(collisions.items())) + ".")
+        out.append(
+            "decoded status is ambiguous between them: "
+            + "; ".join(
+                f"`0x{v:04X}` -- " + ", ".join(f"`{n}`" for n in names)
+                for v, names in sorted(collisions.items())
+            )
+            + "."
+        )
         out.append("")
 
     pathlib.Path(args.output).write_text("\n".join(out))
-    print(f"wrote {args.output}: {len(rows)} codes"
-          + (f", {len(collisions)} colliding value(s)" if collisions else ""))
+    print(
+        f"wrote {args.output}: {len(rows)} codes"
+        + (f", {len(collisions)} colliding value(s)" if collisions else "")
+    )
 
 
 if __name__ == "__main__":

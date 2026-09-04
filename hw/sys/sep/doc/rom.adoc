@@ -78,9 +78,9 @@ and are re-verified against them at each revision:
   `oca_layout_classic.h` (C view) and `src/oca/constants.py` (producer view; CI keeps the
   two in sync).
 * Status codes: `hw/sys/sep/bootrom/prod/include/status_values.h`. This header is the single
-  source: the ROM compiles against it, the SEP virtual platform's status decoder is pointed
-  at it by `virtual_platform/Makefile` (`STATUS_VALUES_PATH`), and <<sec:status_registry>>
-  is generated from it by `hw/sys/sep/doc/gen_status_table.py`.
+  source: the ROM compiles against it, the SEP virtual platform's status decoder is
+  configured to read the same header (`STATUS_VALUES_PATH`), and <<sec:status_registry>> is
+  generated from it by `hw/sys/sep/doc/gen_status_table.py`.
 * SEP↔SMC interface contract: `hw/sys/sep/bootrom/prod/include/sep_smc_interface.h` and the
   SMC Boot ROM chapter (`hw/sys/smc/doc/rom.adoc`).
 
