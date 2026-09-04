@@ -19,18 +19,18 @@ These are joined by the **SMU AXI crossbar** (`smu_axi_xbar`), a 3×3 fully
 connected AXI4 crossbar that routes SEP, SMC, and one external SMN-facing port
 using CSR-programmed SEP/SMC apertures.
 
-This specification describes the public `tt-oca` implementation and its
+This specification describes the public OCAH implementation and its
 cocotb/Verilator environment in `hw/sys/smu/dv/`. Standard
 protocol interfaces use the unified OCAH BFM packages; custom OCAH protocols are
 modeled by OCAH-local BFMs when no shared wrapper exists.
 
 | Field | Value |
 |-------|-------|
-| Design location | `hw/smu/rtl/` |
-| RTL top module (core) | `smu` (`hw/smu/rtl/smu.sv`) |
-| RTL integration wrapper | `smu_wrapper` (`hw/smu/smu_wrappers/rtl/smu_wrapper.sv`) |
-| Packages | `smu_pkg` (`hw/smu/rtl/smu_pkg.sv`), `smu_axi_xbar_pkg` |
-| Repository | `tt-oca` |
+| Design location | `hw/sys/smu/rtl/` |
+| RTL top module (core) | `smu` (`hw/sys/smu/rtl/smu.sv`) |
+| RTL integration wrapper | `smu_wrapper` (`hw/top/smu_wrapper.sv`) |
+| Packages | `smu_pkg` (`hw/sys/smu/rtl/smu_pkg.sv`), `smu_axi_xbar_pkg` |
+| Repository | `tt-oca-harness` |
 | Open-source DV location | `hw/sys/smu/dv/` |
 | Standards | AMBA AXI4/AXI4-Lite; IEEE 1149.1 (JTAG) via DTP; OCAH Cross Trigger v1.0 (OCCT) via DTP; OCAC/OCS compliance mapping |
 
@@ -258,9 +258,10 @@ not stability-checked against in-flight transactions.
 
 ## Security Considerations
 
-The SEP lifecycle feature-control vector (`sep_feat_ctrl`, type
-`sep_efuse_map_lc_disable_reg_t`) is driven by SEP `feat_ctrl_o` and fed to DTP
-`feat_ctrl_i` to gate debug (STAP selection, iJTAG SIB access, JTAG2AXI bridges).
+The SEP lifecycle debug-disable vector (`sep_dbg_disable`, type
+`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is driven by SEP `dbg_disable_o` and fed
+to DTP `dbg_disable_i` to gate debug paths such as STAP selection, iJTAG SIB
+access, and JTAG-to-AXI bridges.
 SEP also drives `security_disable` into SMC and the lifecycle state (`lc_state_o`,
 8 bits; `SEP=0` → `8'hf0`). The 256-bit `SEP_SEC_DISABLE_TOKEN` is passed to SEP,
 tied `0` at SMU and replaced with the real digest at synthesis. eFuse gating and
@@ -277,8 +278,8 @@ outbound filter (ISSUE-16); SEP eFuse `shadow_regs` tied `0` at the wrapper
 | `smc_pkg`, `sep_pkg`, `dtp_pkg` | Sub-block widths, mailbox counts, cross-trigger defaults |
 | `sep_efuse_pkg` | Lifecycle feature-control struct |
 | `chipyard_4core_mem_pkg` | SMC CPU memory interface types |
-| `hw/smu/rtl/{smu,smu_axi_xbar}.sv` | SMU core and crossbar RTL |
-| `hw/smu/smu_wrappers/rtl/smu_wrapper.sv` | Integration wrapper (IP integration) |
+| `hw/sys/smu/rtl/{smu,smu_axi_xbar}.sv` | SMU core and crossbar RTL |
+| `hw/top/smu_wrapper.sv` | Reference integration wrapper |
 | `axi_iw_converter`, `axi_window_remap`, `prim_axi_lite_err_slv` | Crossbar ID conversion, alias remap, SEP=0 error slave |
 | `ocah_jtag_vip`, `ocah_axi_vip` | Unified OCAH JTAG and AXI/AXI-Lite BFM wrappers |
 

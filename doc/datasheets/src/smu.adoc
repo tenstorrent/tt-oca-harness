@@ -1,0 +1,230 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+= OCAH SMU Datasheet
+:doctype: article
+:notitle:
+:datasheet-status: Beta
+:product-short-name: SMU
+:product-long-name: System Management Unit
+:revnumber: Initial version
+:revdate: 2026
+:copyright-year: 2026
+:copyright-holder: Tenstorrent USA, Inc.
+:icons: font
+
+[cols="60,40",frame=none,grid=none,stripes=none]
+|===
+a|
+[.datasheet-brand]
+OPEN CHIPLET ARCHITECTURE HARNESS
+a|
+image::../../ui-supplemental/img/tt_logo_color-yellow-black.png[Tenstorrent,pdfwidth=1.65in,align=right]
+|===
+
+[.datasheet-title]
+{product-short-name}
+
+[.datasheet-subtitle]
+{product-long-name}
+
+[.datasheet-status]
+{datasheet-status} release | Open-source RTL | Apache 2.0
+
+[cols="35,65",frame=none,grid=none,stripes=none]
+|===
+a|
+// datasheet-section: highlights
+[.datasheet-section]
+HIGHLIGHTS
+
+* Composes OCAH management, debug/test, and optional security subsystems
+* Full reference configuration integrates SMC, SEP, DTP, and a 3-by-3 AXI4 fabric
+* Alternate no-SEP configuration preserves SMC, DTP, and external AXI interfaces
+* Runtime-programmed SMC/SEP apertures with fixed, loop-free connectivity
+* Integrated reset, clock-stop, lifecycle, mailbox, interrupt, and debug handoffs
+* Technology-neutral core plus an open reference wrapper for macro substitution
+
+// datasheet-section: system-role
+[.datasheet-section]
+SYSTEM ROLE
+
+SMU is the composed management boundary between the chiplet system fabric,
+external debug and test equipment, adopter implementation resources, and the
+OCAH SMC, DTP, and optional SEP. It supplies their integration wiring and
+control handoffs; the adopter owns chiplet-level address assignment, clocks,
+power/reset sequencing, pads, technology macros, firmware policy, and product
+security authorization.
+
+a|
+// datasheet-section: overview
+[.datasheet-section]
+OVERVIEW
+
+The System Management Unit (SMU) combines the System Management Controller
+(SMC), Debug and Test Ports (DTP), and, by default, the Security Processor
+(SEP). In the full configuration, a 3-input, 3-output AXI4 crossbar routes SMC,
+SEP, and external-system traffic using runtime-programmed SMC and SEP apertures.
+DTP connects JTAG, scan, reset override, cross-trigger, and debug-access paths;
+SMC coordinates management, resets, clocking, interrupts, and peripheral
+services; SEP supplies lifecycle-derived debug controls and security services.
+
+The `smu` RTL top keeps technology-specific memories, OTP/eFuse, clocking,
+sensors, pads, entropy, and selected I/O behind typed integration interfaces.
+The open `smu_wrapper` attaches generic models and example termination for a
+reference build, but is not a characterized production implementation. Setting
+`SEP=0` removes SEP and the 3-by-3 crossbar, connects SMC directly to the stable
+external AXI boundary through ID converters, and applies defined SEP tie-offs.
+
+// datasheet-section: system-context
+[.datasheet-section]
+SYSTEM CONTEXT
+
+image::../assets/smu-block-diagram.svg[SMU system context,pdfwidth=4.15in,align=center]
+
+// datasheet-section: at-a-glance
+[.datasheet-section]
+AT A GLANCE
+
+[cols="43,57",options="header"]
+!===
+!Item !Checked-in SMU configuration
+!Headline configuration !`DefaultCfg`, `SEP=1`: 4-core SMC + SEP + DTP
+!Alternate configuration !`NoSepCfg`, `SEP=0`: 4-core SMC + DTP
+!Full-config fabric !3 AXI4 inputs by 3 outputs; 2 runtime address rules
+!AXI4 boundary !56-bit address, 64-bit data, 12-bit user
+!AXI IDs !8-bit input; 10-bit crossbar output; 6-bit SMC/SEP target
+!External interrupts to SMC !256
+!Mailbox instances !32 SMC; 8 SEP when present
+!External trigger interfaces !16 CTPs; 8 internal CTs; 8 clock-stop requests
+!===
+
+[.datasheet-small]
+`NoSepCfg` and `DefaultCfg` currently carry the same configuration fields; the
+separate `SEP` parameter selects presence. The adopter must record both values
+to identify a reproducible build.
+
+|===
+
+<<<
+
+[cols="52,48",frame=none,grid=none,stripes=none]
+|===
+a|
+// datasheet-section: capabilities
+[.datasheet-section]
+CAPABILITIES
+
+*Composition and control*
+
+* SMC and DTP always instantiated; SEP selected at elaboration
+* Internal wiring for DTP-to-SMC debug fabric and OTP, DTP-to-SEP debug and OTP,
+  SEP-to-SMC mailbox/reset/security status, and SMC-to-DTP cross-trigger control
+* SMC-owned primary reset sequencing, 32 subsystem reset/isolation slots,
+  external boot/repair gate, watchdog handoffs, and DTP clock-stop output
+* Lifecycle-derived SEP debug-disable controls feed DTP in the full configuration
+
+*Full-configuration fabric*
+
+* SEP can target SMC or the external output; SMC can target SEP or the external
+  output; the external input can target SEP or SMC
+* Runtime SMC and SEP aperture base/size rules; no same-port loops and no
+  external-input-to-external-output path
+* Unmatched SMC/SEP outbound traffic uses the external output; unmatched
+  external inbound traffic receives a decode error
+* AXI ID-width conversion at SMC/SEP targets; atomic operations disabled
+* Fixed 1 GiB SEP-to-SMC local-alias window in the checked-in RTL
+
+*No-SEP behavior*
+
+* Direct external-to-SMC and SMC-to-external AXI paths retain the public widths
+* SEP memory, entropy, I/O, mailbox, lifecycle-error, and status ports are tied
+  to defined inactive values; the SEP aperture reports zero size
+* SEP OTP debug accesses receive DECERR and the SEP secondary TAP has no target
+
+// datasheet-section: interfaces-and-configuration
+[.datasheet-section]
+INTERFACES AND CONFIGURATION
+
+[cols="37,63",options="header"]
+!===
+!Boundary !Integration-visible interface
+!Clocks and resets !SMU, reference, peripheral, telemetry, SEP watchdog, and
+entropy-sample clocks; cold reset, power-good, boot/repair, DFT, and reset outputs
+!System fabric !Inbound and outbound 56-address/64-data AXI4; programmable SMC
+and SEP aperture status; adopter AXI/AXI4-Lite extensions
+!Debug and triggers !Primary JTAG, boundary/iJTAG/secondary scan chains, external
+reset-control slice, 16 CTPs, 8 local trigger paths, and 8 clock-stop requests
+!Management !256 external interrupts, 32 reset/isolation slots, 32 SMC mailbox
+interrupts, GPIO/UART events, telemetry, timer, straps, and RAS status
+!Technology interfaces !SMC/SEP ROM and SRAM, eFuse/OTP, I3C table memory,
+trace memory, GPIO pads, PLL/PVT, entropy, and SEP crypto-memory boundaries
+!Build-time !`SEP`, `Cfg`, security-disable token, external entropy count,
+JTAG functions/identity, SMC CPU selection, and SEP memory/Adams Bridge options
+!===
+
+a|
+// datasheet-section: integration-dependencies
+[.datasheet-section]
+INTEGRATION DEPENDENCIES
+
+* Select `DefaultCfg`/`SEP=1` or `NoSepCfg`/`SEP=0`; preserve the complete
+  parameter manifest with the release.
+* Assign non-overlapping chiplet envelopes and program non-overlapping SMC/SEP
+  apertures. Keep aperture controls stable while transactions are in flight and
+  route unsupported atomic requests according to system policy.
+* In `SEP=0`, DTP receives an all-zero debug-disable vector and the lifecycle
+  output uses a fixed tie-off. Do not treat those values as product security
+  authorization; define an acceptable no-SEP debug and lifecycle policy.
+* Replace zero-valued JTAG identity and SEP security-token fields; supply
+  reviewed firmware, provisioning, recovery, and update policy.
+* Provide production clocks, reset/CDC constraints, power sequencing, pads,
+  memories, OTP/eFuse, sensors, entropy, I/O, and physical implementation.
+  Reference-wrapper models and error-slave terminations are examples only.
+* Connect or terminate every external fabric, scan, trigger, interrupt,
+  mailbox, reset/isolation, macro, and adopter-extension interface.
+
+// datasheet-section: verification-and-maturity
+[.datasheet-section]
+VERIFICATION AND MATURITY
+
+[.beta-note]
+--
+The OCAH documentation website publishes the current verification and maturity status.
+Hosted cocotb/PyUVM smoke and regression use the bare `smu` DUT with `SEP=0`;
+the 53-test `sep0_all` group exercises SMC/DTP composition, direct external AXI,
+filters, ID conversion, atomic rejection, JTAG-to-AXI/OTP, reset, mailbox,
+cross-trigger, and clock-stop scenarios. This does not credit the full 3-by-3
+fabric or live SEP interoperability.
+
+A separate `smu_wrapper` catalog has four smoke entries spanning no-SEP and
+real-SEP profiles, including firmware and SEP boot-readiness observations.
+Additional real-SEP groups are separately enrolled or blocked and are not part
+of hosted SMU signoff. Wrapper results are not combined with bare-SMU results.
+
+There is no agreed functional-coverage closure target or SMU RTL code-coverage
+configuration. No standards certification, silicon characterization, product
+security assessment, or portable frequency, area, power, latency, or throughput
+result is claimed.
+--
+
+// datasheet-section: deliverables-and-further-information
+[.datasheet-section]
+DELIVERABLES
+
+* `smu` RTL, packages, crossbar, and Bender manifests
+* `smu_wrapper` and open IP-integration examples
+* SystemRDL/generated registers and interface documentation
+* Integrator guidance, specification, and synthesis constraints
+* cocotb/PyUVM core/wrapper environments, firmware, and VPLANs
+* Apache License 2.0 repository distribution
+
+[.datasheet-section]
+RESOURCES
+
+Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+SMU specification: `hw/sys/smu/doc/SMU_SPEC.md` +
+Core / reference wrapper: `hw/sys/smu/rtl/`, `hw/top/smu_wrapper.sv` +
+Verification: `hw/sys/smu/dv/` +
+Integrator Guide: `doc/integrator/` +
+Project: https://github.com/tenstorrent/tt-oca-harness[github.com/tenstorrent/tt-oca-harness]
+|===
