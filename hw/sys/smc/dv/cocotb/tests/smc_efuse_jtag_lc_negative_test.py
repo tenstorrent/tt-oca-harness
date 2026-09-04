@@ -167,9 +167,8 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
                 f"[{label}] {cls} read @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
-        # Counted only once the access came back. Incrementing before the
-        # response made the tally count attempts, so a run where every access
-        # timed out still reported the full count to the evidence record.
+        # Counted once the access came back, so the tally is completions rather
+        # than attempts and a run of timeouts cannot report a full count.
         self.checks += 1
         blocked = code == RESP_DECERR
         self.logger.info(

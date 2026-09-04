@@ -169,11 +169,10 @@ class smc_hang_detector_data_timeout_test_seq(SmcCsrSeq):
         dut.tb_sys_axi_r_hold.value = 0
 
         await self._program_output_fabric_pass_all()
-        # Positive control for the sep=0 / sys=0 legs below. Those are negative
-        # checks on two nets this sequence never drives, so a tied-off or
-        # renamed irq satisfies them identically. Pulse the SEP detector's
-        # observation path with irq_test so the run contains sep=1 as well as
-        # sep=0, on the same net, before the DATA legs rely on it reading 0.
+        # Positive control for the sep=0 / sys=0 legs below, which sample two
+        # nets this sequence never drives. Pulsing the SEP detector's
+        # observation path puts sep=1 in the run on the same net, so those
+        # samples are a compare rather than a reading of a tied-off wire.
         await self.csr_write("HANG_SEP_CTRL_POS", HANG_DET_SEP_AXI_CTRL, HANG_DET_FIRE)
         await self._await_irq(dut, "tb_axi_hang_irq_sep", 1, _IRQ_BOUND, "SEP_IRQ_POS")
         cocotb.log.info(

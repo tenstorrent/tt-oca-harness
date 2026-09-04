@@ -30,9 +30,7 @@ class smc_smbus_alert_suspend_test(smc_base_test):
             type(self).__name__,
             # Straight-line accesses plus one mandatory read from each status
             # poll. Measured 43 on seeds 1-3; the remainder above this bound is
-            # poll iterations that vary with timing. A floor of 34 left nine
-            # accesses of slack, enough for a body that stopped part-way to
-            # clear it.
+            # poll iterations that vary with timing.
             #
             # No expected_bytes/observed_bytes: `_host_ara_read`'s result is
             # compared against `_ARA_REPLY` and raises in the sequence, so a
