@@ -293,46 +293,46 @@ DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 # =============================================================================
 help:
 	@echo "OCAH Virtual Platform build (mirrors tt-oca-harness-model CI)"
-	@echo ""
-	@echo "Primary targets:"
-	@echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"
-	@echo "  vp             - build/rebuild sep-vp (incremental; deps assumed built)"
-	@echo "  vp-clean       - wipe vp/build and reconfigure + rebuild sep-vp"
-	@echo "  clean          - remove downloads/, local/, and tt-oca-harness-model/vp/build"
-	@echo "  deps-info      - show where each dependency resolves and why"
-	@echo "  check-cxx      - verify the compiler on PATH can build C++$(CXX_STD)"
-	@echo "  env/enable_vp  - write setup_environment.sh to source for running sep-vp standalone"
-	@echo ""
-	@echo "Phase targets:"
-	@echo "  download       - fetch the dependency source tarballs into downloads/"
-	@echo "  deps           - resolve or build SystemC, Boost, OpenSSL, CCI"
-	@echo "  systemc boost openssl cci - resolve/build a single dependency"
-	@echo "  submodule-init - init the tt-oca-harness-model submodule (recursive)"
-	@echo "  smoke          - (optional) build+run a sw/sep-vp-tests test in sep-vp"
-	@echo ""
-	@echo "Firmware test harness (sepvp/ + tests/):"
-	@echo "  boot-build       - build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf)"
-	@echo "  boot-secure-image- generate the signed SPI image (-> build/secure_boot.spi_preload)"
-	@echo "  boot-run         - build + run boot_rom.elf on sep-vp (BOOT_ARGS=\"--boot primary ...\")"
-	@echo "  fw-run           - build + run a hw/sys/sep/dv/fw test (FW_TEST=<name>, FW_ARGS=...)"
-	@echo "  vp-test          - run the pytest harness suite (PYTEST_ARGS=...)"
-	@echo "  vp-py-deps       - sync harness Python deps into the uv venv (uv sync --group vp)"
-	@echo ""
-	@echo "Key variables (override on the command line):"
-	@echo "  CXX=$(CXX)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
-	@echo "  VP_CONTAINER=1 (build AND run in the ocah-toolchain container — no native"
-	@echo "    toolchain needed; artifacts land in local-ctr/ and vp/build-ctr)"
-	@echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
-	@echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
-	@echo "  SYSTEMC_VERSION=$(SYSTEMC_VERSION)  BOOST_VERSION=$(BOOST_VERSION)  OPENSSL_VERSION=$(OPENSSL_VERSION)  CCI_VERSION=$(CCI_VERSION)"
-	@echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME  (point at an existing install;"
-	@echo "    set one EMPTY, e.g. 'make vp BOOST_ROOT=', to re-enable auto-resolution)"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make scratch-build"
-	@echo "  make vp"
-	@echo "  make env && source setup_environment.sh   # then run sep-vp directly"
-	@echo "  make deps BOOST_ROOT=/path/to/boost OPENSSL_ROOT=/path/to/openssl-3"
+	echo ""
+	echo "Primary targets:"
+	echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"
+	echo "  vp             - build/rebuild sep-vp (incremental; deps assumed built)"
+	echo "  vp-clean       - wipe vp/build and reconfigure + rebuild sep-vp"
+	echo "  clean          - remove downloads/, local/, and tt-oca-harness-model/vp/build"
+	echo "  deps-info      - show where each dependency resolves and why"
+	echo "  check-cxx      - verify the compiler on PATH can build C++$(CXX_STD)"
+	echo "  env/enable_vp  - write setup_environment.sh to source for running sep-vp standalone"
+	echo ""
+	echo "Phase targets:"
+	echo "  download       - fetch the dependency source tarballs into downloads/"
+	echo "  deps           - resolve or build SystemC, Boost, OpenSSL, CCI"
+	echo "  systemc boost openssl cci - resolve/build a single dependency"
+	echo "  submodule-init - init the tt-oca-harness-model submodule (recursive)"
+	echo "  smoke          - (optional) build+run a sw/sep-vp-tests test in sep-vp"
+	echo ""
+	echo "Firmware test harness (sepvp/ + tests/):"
+	echo "  boot-build       - build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf)"
+	echo "  boot-secure-image- generate the signed SPI image (-> build/secure_boot.spi_preload)"
+	echo "  boot-run         - build + run boot_rom.elf on sep-vp (BOOT_ARGS=\"--boot primary ...\")"
+	echo "  fw-run           - build + run a hw/sys/sep/dv/fw test (FW_TEST=<name>, FW_ARGS=...)"
+	echo "  vp-test          - run the pytest harness suite (PYTEST_ARGS=...)"
+	echo "  vp-py-deps       - sync harness Python deps into the uv venv (uv sync --group vp)"
+	echo ""
+	echo "Key variables (override on the command line):"
+	echo "  CXX=$(CXX)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
+	echo "  VP_CONTAINER=1 (build AND run in the ocah-toolchain container — no native"
+	echo "    toolchain needed; artifacts land in local-ctr/ and vp/build-ctr)"
+	echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
+	echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
+	echo "  SYSTEMC_VERSION=$(SYSTEMC_VERSION)  BOOST_VERSION=$(BOOST_VERSION)  OPENSSL_VERSION=$(OPENSSL_VERSION)  CCI_VERSION=$(CCI_VERSION)"
+	echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME  (point at an existing install;"
+	echo "    set one EMPTY, e.g. 'make vp BOOST_ROOT=', to re-enable auto-resolution)"
+	echo ""
+	echo "Examples:"
+	echo "  make scratch-build"
+	echo "  make vp"
+	echo "  make env && source setup_environment.sh   # then run sep-vp directly"
+	echo "  make deps BOOST_ROOT=/path/to/boost OPENSSL_ROOT=/path/to/openssl-3"
 
 # =============================================================================
 # Aggregate phases
@@ -429,7 +429,7 @@ $(SYSTEMC_SENTINEL):
 	@test -e "$@" 2>/dev/null || {\
 		echo "[VP] ERROR: external SystemC at $(SYSTEMC_HOME) has no \`include/systemc.h\`" >&2; \
 		exit 1; }
-	@echo "[VP] Using External SystemC: $(SYSTEMC_HOME)"
+	echo "[VP] Using External SystemC: $(SYSTEMC_HOME)"
 endif
 
 ifeq ($(BOOST_ROOT),$(BOOST_LOCAL))
@@ -451,7 +451,7 @@ $(BOOST_SENTINEL):
 	@test -e "$@" || {\
 	    echo "[VP] ERROR: external Boost at $(BOOST_ROOT) has no \`include/boost/version.hpp\`" >&2; \
 		exit 1; }
-	@echo "[VP] Using External Boost: $(BOOST_ROOT)"
+	echo "[VP] Using External Boost: $(BOOST_ROOT)"
 endif
 
 ifeq ($(OPENSSL_ROOT),$(OPENSSL_LOCAL))
@@ -469,7 +469,7 @@ $(OPENSSL_SENTINEL):
 	@test -e "$@" || {\
 	    echo "[VP] ERROR: external OpenSSL at $(OPENSSL_ROOT) has no \`include/openssl/ssl.h\`" >&2; \
 		exit 1; }
-	@echo "[VP] Using External OpenSSL: $(OPENSSL_ROOT)"
+	echo "[VP] Using External OpenSSL: $(OPENSSL_ROOT)"
 endif
 
 ifeq ($(CCI_HOME),$(CCI_LOCAL))
@@ -495,7 +495,7 @@ $(CCI_SENTINEL): $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL)
 	@test -e "$@" || {\
 	    echo "[VP] ERROR: external CCI at $(CCI_HOME) has no \`lib/libcci.a\`" >&2; \
 		exit 1; }
-	@echo "[VP] Using External CCI: $(CCI_HOME)"
+	echo "[VP] Using External CCI: $(CCI_HOME)"
 endif
 
 # =============================================================================
@@ -621,11 +621,11 @@ endef
 env enable_vp:
 	@echo "[VP] Generating environment script: $(ENV_SCRIPT)"
 	$(file >$(ENV_SCRIPT),$(ENV_SCRIPT_BODY))
-	@if [ ! -x "$(SEP_VP_BIN)" ]; then \
+	if [ ! -x "$(SEP_VP_BIN)" ]; then \
 	  echo "[VP] NOTE: $(SEP_VP_BIN) not built yet — run 'make vp' (paths in the script are still valid)." ; \
 	fi
-	@echo "[VP] Wrote $(ENV_SCRIPT). Use it with:"
-	@echo "        source $(ENV_SCRIPT)"
+	echo "[VP] Wrote $(ENV_SCRIPT). Use it with:"
+	echo "        source $(ENV_SCRIPT)"
 
 # =============================================================================
 # Guards
@@ -689,7 +689,7 @@ boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."
 	$(FW_ENV)
 	$(call fw_make,-C $(BOOTCODE_DIR) ot-toolchain-images)
-	@echo "[VP] Built: $(BOOT_ELF)"
+	echo "[VP] Built: $(BOOT_ELF)"
 
 # Generate the signed SPI image used by the OT-negative pytest suite.
 # Needs uv on PATH and the tt-boot-manifest submodule initialized
@@ -698,7 +698,7 @@ boot-secure-image:
 	@echo "[VP] Generating the signed SPI image (secure_boot.spi_preload)..."
 	$(FW_ENV)
 	$(MAKE) -C $(BOOTCODE_DIR) secure_boot_spi
-	@echo "[VP] Built: $(SECURE_BOOT_PRELOAD)"
+	echo "[VP] Built: $(SECURE_BOOT_PRELOAD)"
 
 # Build + run the boot ROM on sep-vp. Control via BOOT_ARGS, e.g.:
 #   make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"
