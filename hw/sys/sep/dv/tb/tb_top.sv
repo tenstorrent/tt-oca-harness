@@ -456,13 +456,6 @@ module sep_uvm_top
         jtag_sep_reset_ctrl_drive.ovrd.trng_jtag_rst_n_ovrd =
             (jtag_trng_rst_hold_i === 1'b1);
     end
-    // TEST_EN strap is a real DUT input (sep_straps_i.test_straps.test_en). The
-    // rest of the strap struct stays idle-0. Not a force.
-    sep_pkg::sep_straps_t            sep_straps_drive;
-    always_comb begin
-        sep_straps_drive = '0;
-        sep_straps_drive.test_straps.test_en = test_en_strap_i;
-    end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
     // wrapper flow needs.
@@ -819,17 +812,16 @@ module sep_uvm_top
         .smc_fuse_sense_done_i        (1'b0),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
-        // Straps (TEST_EN driven from test_en_strap_i; other fields idle-0)
-        .sep_straps_i                 (sep_straps_drive),
+        .secure_tm_req_i              (test_en_strap_i),
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4001_0100+, straps 0x4000_2090, SMC SRAM
+        // Route the SMC region (scratch 0x4001_0100+, straps 0x4040_5800, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
         // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
         .smc_global_base_addr_i       (56'h4000_0000),
-        .smc_region_size_i            (56'h0020_0000),
+        .smc_region_size_i            (56'h0100_0000),
 `else
         .smc_global_base_addr_i       ('0),
         .smc_region_size_i            ('0),
@@ -916,13 +908,14 @@ module sep_uvm_top
         // so the ROM's DFT/MEM_REPAIR gate passes (models mem-repair completed OK).
         u_smc_mem.mem[56'h4000_F800] = 8'h03;
         // +sep_boot_from_spi flips the ROM to its SPI manifest path by setting
-        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x2090; boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h), and boot_recovery
-        // lives in STRAPS_HI, which stays 0. Bit 25 is byte 3 of the word, bit 1.
+        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x405800; boot_from_spi() is
+        // `primary_chiplet && !boot_recovery` (boot_straps.h). boot_recovery is
+        // STRAPS_LO[19] -- byte 2 of the same word, which this seed leaves at 0.
+        // Bit 25 is byte 3 of the word, bit 1.
         // Default off: without it the ROM keeps taking the SMC-SRAM branch, so
         // sep_rom_non_secure_boot_test is unaffected.
         if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[56'h4000_2093] = 8'h02;
+            u_smc_mem.mem[56'h4040_5803] = 8'h02;
             $display("[tb] STRAPS_LO[25] primary_chiplet=1 -> ROM boots from SPI");
         end
         if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin

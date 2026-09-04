@@ -232,9 +232,6 @@ module smu_wrapper
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
 
-  // Captured Straps
-  input  logic [63:0]  captured_straps_i,
-
   // DFT status indicators
   input  logic mem_repair_done_i,
   input  logic mem_repair_success_i,
@@ -269,7 +266,7 @@ module smu_wrapper
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
   // I3C DAT/DCT/RLT memory interfaces (macro interfaces, passed straight through)
   input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,

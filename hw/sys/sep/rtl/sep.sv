@@ -183,7 +183,7 @@ module sep #(
   // Straps //
   /////////
 
-  input sep_pkg::sep_straps_t sep_straps_i,
+  input logic secure_tm_req_i,
 
   ///////////////////
   // AXI Extension //
@@ -842,7 +842,7 @@ NUM_EXT_DEMUX_PORTS
     .sep_reset_ni                           (sep_reset_n),
     .sep_intermediate_reset_no              (sep_intermediate_reset_n),
 
-    .sep_straps_i                           (sep_straps_i),
+    .secure_tm_req_i                        (secure_tm_req_i),
     .ext_boot_seq_done_i                    (ext_boot_seq_done_i),
     .security_disable_o                     (security_disable),
     .lc_state_o                             (lc_state_o),
@@ -1018,7 +1018,6 @@ NUM_EXT_DEMUX_PORTS
     .smc_fuse_sense_done_i            (smc_fuse_sense_done_i),
     .sep_fuse_sense_done_i            (sep_fuse_sense_done_o),
 
-    .sep_straps_i                     (sep_straps_i),
 
     .nmi_vec_o                        (nmi_vec),
 

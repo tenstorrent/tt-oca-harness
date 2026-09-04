@@ -17445,37 +17445,6 @@ When this is 1, it is safe to send requests to the SMC.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>SEP_STRAPS</ipxact:name>
-            <ipxact:addressOffset>'h160</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>test_en</ipxact:name>
-              <ipxact:description>straps for test_en -&gt; Used to be latched by SEP and generate the secure_tm</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>bypass_mem_repair</ipxact:name>
-              <ipxact:description>straps for bypass_mem_repair -&gt; Used to indicate if the memory repair should be bypassed</ipxact:description>
-              <ipxact:bitOffset>1</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
             <ipxact:name>RAS_BANK_INFO</ipxact:name>
             <ipxact:addressOffset>'h170</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
