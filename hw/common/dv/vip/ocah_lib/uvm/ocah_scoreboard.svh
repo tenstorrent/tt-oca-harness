@@ -6,12 +6,15 @@
 // registers one feature per reference model (add_feature) and declares two
 // analysis imps per feature: the observed VIP monitor stream and the
 // expected_ap of that feature's <dut>_<feature>_ref_model. Its write_*
-// handlers call push_observed()/push_expected(); the base pairs the two
-// queues in observation order and hands each pair to compare_pair(), which
+// handlers call push_observed()/push_expected(), optionally naming a lane
+// when one feature is judged on several independent in-order streams (one
+// per monitored port); the base pairs the two queues of a lane in
+// observation order and hands each pair to compare_pair(), which
 // the bench implements with compare_equal() or record_compare(): a mismatch
 // is a uvm_error at once, carrying feature, expected, observed, and
 // context. Analysis subscriber order is unordered, so either stream may
-// arrive first. check_phase errors on items left unpaired, turns each
+// arrive first. A reset that cancels predicted transactions withdraws them
+// with flush_expected(). check_phase errors on items left unpaired, turns each
 // feature into one CHK-SB-<FEATURE> record through the shared evidence
 // recorder, and finalizes it once; a required feature (require_feature,
 // from the env cfg) that ends with zero comparisons fails the run, so a
@@ -36,9 +39,11 @@ class ocah_scoreboard extends uvm_scoreboard;
   protected feature_t m_features[string];
   protected string    m_feature_order[$];
 
-  // Two-stream pairing per feature, in observation order on both sides.
+  // Two-stream pairing per feature and lane (pair_key), in observation
+  // order on both sides; m_key_feature maps a key back to its feature.
   protected uvm_object m_observed_q[string][$];
   protected uvm_object m_expected_q[string][$];
+  protected string     m_key_feature[string];
 
   function new(string name = "ocah_scoreboard", uvm_component parent = null);
     super.new(name, parent);
@@ -56,18 +61,8 @@ class ocah_scoreboard extends uvm_scoreboard;
     foreach (m_feature_order[i]) begin
       feature_t f = m_features[m_feature_order[i]];
       any_required |= f.required;
-      if (m_observed_q.exists(f.name) && m_observed_q[f.name].size() > 0)
-        `uvm_error({name_tag, "_", f.name, "_chk"}, $sformatf(
-                   "%0d observed item(s) of feature %s never paired with an expectation",
-                   m_observed_q[f.name].size(),
-                   f.name
-                   ))
-      if (m_expected_q.exists(f.name) && m_expected_q[f.name].size() > 0)
-        `uvm_error({name_tag, "_", f.name, "_chk"}, $sformatf(
-                   "%0d expected item(s) of feature %s never paired with an observation",
-                   m_expected_q[f.name].size(),
-                   f.name
-                   ))
+      report_unpaired(f.name, m_observed_q, "observed item(s) never paired with an expectation");
+      report_unpaired(f.name, m_expected_q, "expected item(s) never paired with an observation");
       if (!f.required && f.compares == 0) continue;
       void'(m_evidence.expect_true(
           feature_check_id(
@@ -162,17 +157,33 @@ class ocah_scoreboard extends uvm_scoreboard;
   // ------------------------------------------------------------------
 
   // Enqueue one observed item of a feature and pair whatever is pairable.
-  function void push_observed(string feature, uvm_object item);
+  // A lane separates independent in-order streams of one feature.
+  function void push_observed(string feature, uvm_object item, string lane = "");
+    string key = pair_key(feature, lane);
     check_registered(feature, "push_observed");
-    m_observed_q[feature].push_back(item);
-    try_pair(feature);
+    m_observed_q[key].push_back(item);
+    try_pair(key);
   endfunction
 
   // Enqueue one expected item of a feature (from its reference model).
-  function void push_expected(string feature, uvm_object item);
+  function void push_expected(string feature, uvm_object item, string lane = "");
+    string key = pair_key(feature, lane);
     check_registered(feature, "push_expected");
-    m_expected_q[feature].push_back(item);
-    try_pair(feature);
+    m_expected_q[key].push_back(item);
+    try_pair(key);
+  endfunction
+
+  // Drop every expected item of a feature still waiting for its
+  // observation, on every lane: a reset cancels the transactions they
+  // predicted. Returns how many were dropped.
+  function int unsigned flush_expected(string feature);
+    int unsigned dropped = 0;
+    foreach (m_expected_q[key]) begin
+      if (m_key_feature[key] != feature) continue;
+      dropped += m_expected_q[key].size();
+      m_expected_q[key].delete();
+    end
+    return dropped;
   endfunction
 
   // Bench hook: compare one observed/expected pair of a feature through
@@ -182,12 +193,29 @@ class ocah_scoreboard extends uvm_scoreboard;
                ))
   endfunction
 
-  protected function void try_pair(string feature);
-    if (!m_observed_q.exists(feature) || !m_expected_q.exists(feature)) return;
-    while (m_observed_q[feature].size() > 0 && m_expected_q[feature].size() > 0) begin
-      uvm_object observed = m_observed_q[feature].pop_front();
-      uvm_object expected = m_expected_q[feature].pop_front();
-      compare_pair(feature, observed, expected);
+  protected function void try_pair(string key);
+    if (!m_observed_q.exists(key) || !m_expected_q.exists(key)) return;
+    while (m_observed_q[key].size() > 0 && m_expected_q[key].size() > 0) begin
+      uvm_object observed = m_observed_q[key].pop_front();
+      uvm_object expected = m_expected_q[key].pop_front();
+      compare_pair(m_key_feature[key], observed, expected);
+    end
+  endfunction
+
+  // Queue key of a feature's lane; the bare feature name when unlaned.
+  protected function string pair_key(string feature, string lane);
+    string key = (lane == "") ? feature : {feature, "/", lane};
+    m_key_feature[key] = feature;
+    return key;
+  endfunction
+
+  // One error per lane of a feature that still holds items at check_phase.
+  protected function void report_unpaired(string feature, ref uvm_object q[string][$],
+                                          input string what);
+    foreach (q[key]) begin
+      if (m_key_feature[key] != feature || q[key].size() == 0) continue;
+      `uvm_error({name_tag, "_", feature, "_chk"}, $sformatf(
+                 "%0d %s (feature %s, lane %s)", q[key].size(), what, feature, key))
     end
   endfunction
 
