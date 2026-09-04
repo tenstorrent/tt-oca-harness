@@ -23,8 +23,6 @@ module jtag_3dcr_reg
   // STAP control output (IEEE 1838)
   output logic  stap_sel_o
 );
-  // Tie off unused TAP fields. Do not include `.tck`: the clock is
-  // `scan_ctrl_i.tck` and must not enter a data reduction.
   logic unused_tap_ctrl;
   assign unused_tap_ctrl = tap_ctrl_i.tms;
 
