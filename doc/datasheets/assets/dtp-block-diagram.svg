@@ -46,7 +46,7 @@
   <text class="text" x="775" y="115">AXI4 → SMC fabric</text>
   <text class="text" x="775" y="142">AXI4-Lite → SMC/SEP OTP</text>
   <text class="text" x="775" y="169">scan chains and STAPs</text>
-  <text class="text" x="775" y="196">boot stall and IC_RESET slices</text>
+  <text class="text" x="775" y="196">boot stall and reset-control outputs</text>
   <text class="text" x="775" y="220">lifecycle debug-disable policy</text>
 
   <path class="both" d="M180 112 H225"/>
