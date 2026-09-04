@@ -94,7 +94,11 @@ build_jobs = 8
 # which does not fit standard CI runner disk; toggle is also the costliest
 # instrumentation at sim time. Replaces the simulator-default `--coverage`
 # (which enables all forms including toggle).
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile (measured on SMC).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 [frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"

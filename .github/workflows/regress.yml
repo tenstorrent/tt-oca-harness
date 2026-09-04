@@ -185,14 +185,16 @@ jobs:
         #     coverage-instrumented model builds exceed the standard
         #     runner's memory.
         #   - sim-jobs follows the runner core count (the action's `nproc`).
-        # smc stays without coverage: its coverage-instrumented model is not
-        # buildable within a hosted job today (one generated unit compiled for
-        # more than two hours under clang, still unfinished, with line/user or
-        # line/expr/user instrumentation; the simulator-default set builds in
-        # ~46 minutes on six cores but writes ~0.6 GB of native database per
-        # test leaf). The
-        # cross_trigger benches are small enough to collect coverage on the
-        # standard runner.
+        # Every coverage block sets --output-groups 0: Verilator otherwise
+        # concatenates the generated .cpp files into --build-jobs groups by
+        # file count, and one group of the coverage-instrumented smc model
+        # became a 243 MB translation unit the compiler never finished; the
+        # same shape fits the sep/smu runner deaths. Per-file compilation is
+        # verified on smc (46-minute build on six cores, 12 MB database per
+        # leaf), so smc collects coverage here; sep and smu keep their
+        # larger-runner gate until one weekly run confirms the standard
+        # runner's memory suffices for them too. The cross_trigger benches
+        # are small enough to collect coverage on the standard runner.
         include:
           - dut: dtp
             items: all
@@ -215,9 +217,9 @@ jobs:
           - dut: smc
             items: smoke
             reseed: 3
-            coverage: false
-            runner: ubuntu-latest
-            timeout: 120
+            coverage: true
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 180
           - dut: cross_trigger_port
             items: all
             reseed: 3
