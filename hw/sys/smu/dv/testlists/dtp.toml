@@ -8,7 +8,8 @@ schema_version = 1
 
 [[tests]]
 name = "smu_dtp_jtag_smoke_test"
-module = "smu_dtp_jtag_smoke_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smu_dtp_jtag_smoke_test", uvm = "smu_dtp_jtag_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["dtp", "smoke", "phase1"]

@@ -1101,7 +1101,7 @@ SEP smoke result blocks merge. SMU and SMC smoke run in the same matrix but
 are not required contexts.
 
 |Configured, not CI-qualified
-|`dtp --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu_wrapper` cocotb flow
+|`dtp --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.
@@ -1126,6 +1126,7 @@ job maps a group to its UVM-implemented subset:
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT

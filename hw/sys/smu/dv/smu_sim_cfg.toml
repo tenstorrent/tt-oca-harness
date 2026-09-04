@@ -6,9 +6,13 @@ schema_version = 1
 # Phase-1 track is SEP=0 only (SMC + DTP + external SMN path; no real SEP RTL).
 # Executable plan: enrolled groups in testlists/all.toml
 # DUT parameter SEP=0 is hardcoded in tb/tb_top.sv (smu #(.SEP(0))).
+# Two frameworks share this config and one tb_top: cocotb/PyUVM (default) and
+# SV-UVM (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at the
+# bottom). Shared stage graph + tool list come from profile = "native".
 name = "smu"
 profile = "native"
-description = "SMU OSS Phase-1 SEP=0 (SMC + DTP + external fabric) — VCS first"
+description = "SMU OSS Phase-1 SEP=0 (SMC + DTP + external fabric): cocotb/PyUVM default, SV-UVM via --framework uvm"
+default_framework = "cocotb"
 
 [testlist]
 path = "testlists/all.toml"
@@ -158,3 +162,71 @@ flags = [
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
+# for both frameworks: +define+UVM (from the profile's [frameworks.uvm] overlay) switches
+# tb/tb_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
+# `include`s uvm/tests/smu_tests.sv.
+[frameworks.uvm]
+description = "SMU SV-UVM smoke flow (VCS)"
+
+[frameworks.uvm.build]
+# The shared framework library and the VIP SV-UVM layers come from their owned ordered
+# manifests, expanded in listed order AHEAD of this table's own incdirs/sources (dedup-merge)
+# — never hand-copy library or VIP paths here. Compile order stays load-bearing and explicit:
+# the generated filelist emits the expanded `sources` AFTER the bender filelist (DUT packages
+# visible), then `top_file` last:
+#   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
+#   (each: evidence base -> interface -> collateral -> UVM pkg)
+#   -> TB collateral -> the embedded DTP's bench layer (dtp_tb_if, the generated
+#      cross-trigger address map, dtp_env_pkg) -> smu_tb_if -> smu_env_pkg
+#   -> smu_seq_lib_pkg -> tb_top.sv
+# SMU integrates DTP, so the SMU bench checks the embedded DTP with the DTP bench's own
+# reference models, TAP checker, and scoreboard (dtp_env_pkg); the AXI VIP manifest is
+# there because dtp_env_pkg imports its package. smu_env_pkg compiles before
+# smu_seq_lib_pkg: the scenario virtual sequences run on the smu_virtual_sequencer the env
+# package declares.
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/smu/dv/build/uvm/smu_uvm_compile.f"
+bender_filelist = "hw/sys/smu/dv/build/uvm/smu_uvm_bender.f"
+work_dir = "hw/sys/smu/dv/build/uvm"
+incdirs = [
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smu/dv/tb",
+  "hw/common/assert",
+  "hw/sys/dtp/dv/uvm/env",
+  "hw/sys/smu/dv/uvm/env",
+  "hw/sys/smu/dv/uvm/seq_lib",
+  "hw/sys/smu/dv/uvm/tests",
+]
+# This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
+# (the outbound SMN terminator) is repeated here.
+sources = [
+  # TB collateral shared with the cocotb flow.
+  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # The embedded DTP's bench layer: its TB interface (the reference models and the TAP
+  # checker read the DTP observables through it), the generated cross-trigger port address
+  # map dtp_types reads (the Bender DUT layer carries only the regblock), and the DTP
+  # environment package.
+  "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
+  "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+  # The SMU bench.
+  "hw/sys/smu/dv/tb/smu_tb_if.sv",
+  "hw/sys/smu/dv/uvm/env/smu_env_pkg.sv",
+  "hw/sys/smu/dv/uvm/seq_lib/smu_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+description = "SMU SV-UVM default target"
+build_dir = "hw/sys/smu/dv/build/uvm"
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
+# native profile's [frameworks.uvm] overlay — no per-DUT copy.
