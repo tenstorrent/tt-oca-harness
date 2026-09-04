@@ -121,6 +121,18 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(validate_source(root / "doc/datasheets/src/dtp.adoc"), [])
         self.assertEqual(validate_pdf(root / "doc/datasheets/dist/ocah-dtp-datasheet.pdf"), [])
 
+    def test_template_and_dtp_include_brand_and_copyright_metadata(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        template = (root / "doc/datasheets/template.adoc").read_text(encoding="utf-8")
+        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
+        theme = (root / "doc/datasheets/datasheet-theme.yml").read_text(encoding="utf-8")
+
+        for document in (template, source):
+            self.assertIn("tt_logo_color-yellow-black.png", document)
+            self.assertIn(":copyright-year: 2026", document)
+            self.assertIn(":copyright-holder: Tenstorrent USA, Inc.", document)
+        self.assertIn("© {copyright-year} {copyright-holder}", theme)
+
     def test_dtp_highlights_qualify_standards_claims(self) -> None:
         root = Path(__file__).resolve().parents[3]
         source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
@@ -133,9 +145,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_dtp_uses_integrator_facing_reset_terminology(self) -> None:
         root = Path(__file__).resolve().parents[3]
         source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
-        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(
-            encoding="utf-8"
-        )
+        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(encoding="utf-8")
 
         self.assertNotIn("IC_RESET slice", source)
         self.assertNotIn("IC_RESET slice", diagram)
