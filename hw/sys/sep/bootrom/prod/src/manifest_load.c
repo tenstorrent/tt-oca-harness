@@ -32,7 +32,7 @@
 #include "rom_smc.h"
 #include "bl0_state.h"
 
-// Generated register map for OCH SEP.
+// Generated register map for OCAH SEP.
 #include "sep.h"
 #include "sep_smc_interface.h"
 
