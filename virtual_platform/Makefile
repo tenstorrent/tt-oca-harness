@@ -139,6 +139,9 @@ SIM_TIME_MS     ?=
 # ---- Derived paths ----------------------------------------------------------
 # LOCAL_DIR / VP_BUILD_DIR carry the environment tag (local-ctr, build-ctr in
 # a container); DOWNLOAD_DIR is shared — tarballs are host-independent.
+# Because it IS shared, the trees extracted into it have to be removable from
+# either environment, which is why every `tar` below passes --no-same-owner;
+# see the comment on the extraction step.
 LOCAL_DIR    := $(VP_DIR)/local$(VP_TAG_SUFFIX)
 DOWNLOAD_DIR := $(VP_DIR)/downloads
 SIM_DIR      := $(VP_DIR)/tt-oca-harness-model
@@ -567,6 +570,16 @@ $(CCI_TARBALL): | $(DOWNLOAD_DIR)
 # downloaded tarball and trigger an install into it). Each recipe also refuses
 # to install outside ./local as defense in depth.
 # =============================================================================
+# --no-same-owner on every extraction: in a container make runs as root, and
+# root-run tar RESTORES the uid recorded in the archive. Most of these
+# tarballs record root (uid 0), which rootless podman maps to the calling
+# user, so it goes unnoticed — but CCI's release records `runner` (uid 1000,
+# from Accellera's own CI), which maps into the caller's subuid range instead.
+# The result is a tree in the SHARED downloads/ owned by a uid the host user
+# does not own, so the next native run cannot re-extract it:
+#   rm: cannot remove '.../downloads/cci_v1.0.2/NOTICE': Permission denied
+# --no-same-owner makes tar use the invoking user instead. It is already the
+# default for non-root, so this changes nothing about a native extraction.
 define REFUSE_NON_LOCAL
 case "$(1)" in $(LOCAL_DIR)/*) ;; *) echo "[VP] refusing to build into non-local prefix $(1)" >&2; exit 1;; esac
 endef
@@ -576,7 +589,7 @@ $(SYSTEMC_SENTINEL): | $(SYSTEMC_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building SystemC $(SYSTEMC_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(SYSTEMC_HOME))
 	rm -rf $(DOWNLOAD_DIR)/systemc-$(SYSTEMC_VERSION)
-	tar zxf $(SYSTEMC_TARBALL) -C $(DOWNLOAD_DIR)
+	tar --no-same-owner -zxf $(SYSTEMC_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/systemc-$(SYSTEMC_VERSION)
 	touch docs/DEVELOPMENT.md
 	mkdir -p objdir
@@ -597,7 +610,7 @@ $(BOOST_SENTINEL): | $(BOOST_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building Boost $(BOOST_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(BOOST_ROOT))
 	rm -rf $(DOWNLOAD_DIR)/$(BOOST_USCORE)
-	tar zxf $(BOOST_TARBALL) -C $(DOWNLOAD_DIR)
+	tar --no-same-owner -zxf $(BOOST_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/$(BOOST_USCORE)
 	./bootstrap.sh --prefix=$(BOOST_ROOT)
 	./b2 install \
@@ -619,7 +632,7 @@ $(OPENSSL_SENTINEL): | $(OPENSSL_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building OpenSSL $(OPENSSL_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(OPENSSL_ROOT))
 	rm -rf $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VERSION)
-	tar zxf $(OPENSSL_TARBALL) -C $(DOWNLOAD_DIR)
+	tar --no-same-owner -zxf $(OPENSSL_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VERSION)
 	./Configure --prefix=$(OPENSSL_ROOT) --openssldir=$(OPENSSL_ROOT)/ssl no-shared linux-x86_64
 	make -j$(NPROC)
@@ -639,7 +652,7 @@ $(CCI_SENTINEL): | $(CCI_TARBALL) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(LOCAL_
 	@echo "[VP] Building CCI $(CCI_VERSION)..."
 	$(call REFUSE_NON_LOCAL,$(CCI_HOME))
 	rm -rf $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION)
-	tar zxf $(CCI_TARBALL) -C $(DOWNLOAD_DIR)
+	tar --no-same-owner -zxf $(CCI_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION)
 	export SYSTEMC_HOME=$(SYSTEMC_HOME)
 	cmake -S . -B build \
