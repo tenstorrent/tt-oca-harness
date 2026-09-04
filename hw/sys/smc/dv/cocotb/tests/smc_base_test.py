@@ -122,8 +122,10 @@ _PROTOCOL_VIP_TESTS = {
 
 # ==================================================== build-model identity ====
 # `[BUILD-MODEL-IDENTITY]`. The SMC sim stage runs with `do_build: False` and
-# reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>,
-# so the run's own hdl_compile log records only "Nothing to be done for 'default'"
+# reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>
+# (<tool>/coverage for a `--cov` run; run_dv.py exports the directory it built
+# into as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
+# "Nothing to be done for 'default'"
 # and the kept log cannot say what RTL it simulated. That blind spot is what let
 # eight DUT submodules stay black-boxed unnoticed; and because the build directory
 # is overwritten in place by the next `--rebuild`, an identity recovered by hand
@@ -221,6 +223,19 @@ def _mtime_utc(path: Path) -> str:
     )
 
 
+def _model_build_dir(root: Path, tool: str) -> Path:
+    """Return the build directory the simulated model was elaborated into.
+
+    run_dv.py exports it as OCAH_SIM_BUILD_DIR (a coverage run builds under
+    <tool>/coverage); the shared <tool> path is the fallback for a launch that
+    did not come through run_dv.py.
+    """
+    exported = os.environ.get("OCAH_SIM_BUILD_DIR")
+    if exported:
+        return Path(exported)
+    return root / _MODEL_ROOT_REL / tool
+
+
 def _require(path: Path, what: str) -> Path:
     assert path.exists(), (
         f"[BUILD-MODEL-IDENTITY] {what} not found at {path}: this run cannot "
@@ -242,7 +257,7 @@ def log_build_model_identity() -> str:
     root = _repo_root()
     tool = _sim_tool()
     model_rel, deps_rel = _MODEL_ARTIFACTS[tool]
-    build_dir = _require(root / _MODEL_ROOT_REL / tool, f"{tool} build directory")
+    build_dir = _require(_model_build_dir(root, tool), f"{tool} build directory")
     model = _require(build_dir / model_rel, f"{tool} elaborated model artifact")
     model_sha, model_size = _digest(model)
     flist = _require(root / _COMPILE_FLIST_REL, "resolved compile filelist")
