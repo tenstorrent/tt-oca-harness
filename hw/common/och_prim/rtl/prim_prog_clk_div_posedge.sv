@@ -6,20 +6,20 @@
 //
 //--------------------------------------------------
 module prim_prog_clk_div_posedge #(
-    parameter RESET_WIDTH = 16,  // Reset width in clock cycles
-    parameter bit [7:0] INITIAL_DIVIDER_VAL = 8'd2,
-    parameter bit DIVIDED_CLOCK_ON_RESET = 1'b0
+  parameter int unsigned RESET_WIDTH = 16,  // Reset width in clock cycles
+  parameter bit [7:0] INITIAL_DIVIDER_VAL = 8'd2,
+  parameter bit DIVIDED_CLOCK_ON_RESET = 1'b0
 ) (
-    input logic clk_i,
-    input logic rst_ni,
-    input logic update_settings_i,
-    input logic [7:0] divider_i,
-    input logic [7:0] duty_cycle_i,
-    input logic use_clk_div_i,
-    input logic test_en_i,
-    input logic scan_rst_ni,
+  input logic clk_i,
+  input logic rst_ni,
+  input logic update_settings_i,
+  input logic [7:0] divider_i,
+  input logic [7:0] duty_cycle_i,
+  input logic use_clk_div_i,
+  input logic test_en_i,
+  input logic scan_rst_ni,
 
-    output logic clk_o
+  output logic clk_o
 );
 
   logic div_clk;
@@ -37,13 +37,13 @@ module prim_prog_clk_div_posedge #(
   logic [8:0] div_clk_low_periods_underflow;
 
   prim_sync_reset #(
-      .WIDTH(RESET_WIDTH)
+    .WIDTH(RESET_WIDTH)
   ) reset_sync (
-      .clk(clk_i),
-      .rst_n(rst_ni),
-      .test_mode(test_en_i),
-      .scan_rst_n(scan_rst_ni),
-      .sync_rst_n(reset_n_syncd)
+    .clk(clk_i),
+    .rst_n(rst_ni),
+    .test_mode(test_en_i),
+    .scan_rst_n(scan_rst_ni),
+    .sync_rst_n(reset_n_syncd)
   );
 
   always_ff @(posedge clk_i) begin
@@ -94,13 +94,13 @@ module prim_prog_clk_div_posedge #(
   prim_ag_clk_mux #(
     .SelectOnReset(DIVIDED_CLOCK_ON_RESET)
   ) postdiv_mux (
-      .i_clk0(clk_i),
-      .i_clk1(div_clk),
-      .i_reset_n_clk0(reset_n_syncd),
-      .i_reset_n_clk1(reset_n_syncd),
-      .i_test_en(1'b0),
-      .i_sel(use_clk_div_i),
-      .o_clk(clk_o)
+    .i_clk0(clk_i),
+    .i_clk1(div_clk),
+    .i_reset_n_clk0(reset_n_syncd),
+    .i_reset_n_clk1(reset_n_syncd),
+    .i_test_en(1'b0),
+    .i_sel(use_clk_div_i),
+    .o_clk(clk_o)
   );
 
 endmodule

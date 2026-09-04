@@ -45,7 +45,7 @@ protocol BFMs behind a stable API:
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` over **`ocah_jtag_vip`** slave devices | Composed TAP_3DCR chain model (PTAP 3DCR, per-STAP SIB/3DCR, network-wide IR scans); the STAP host ports loop back by default, and the STAP-selection scenarios splice a shared `ocah_jtag_vip` reactive TAP behind every port (see "Downstream STAP TAPs"). |
-| CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCH routing policy; promote only after parameterization and independent reuse. |
+| CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCAH routing policy; promote only after parameterization and independent reuse. |
 
 The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
@@ -186,8 +186,10 @@ cocotb ported shape to the self-contained SV-UVM shape. The class library
 realizes the same component tree as the cocotb side with identical
 basenames, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 `uvm/env/dtp_env_pkg.sv` (DUT types and codecs, `dtp_test_cfg` and the
-derived `dtp_env_cfg`, `dtp_virtual_sequencer`, the reference models, the
-always-on `dtp_scoreboard`, the `dtp_tap_fsm_checker` and
+derived `dtp_env_cfg`, `dtp_virtual_sequencer`, one `dtp_<feature>_ref_model`
+per scoreboard feature publishing expected items over TLM, the plain models
+they hold, the always-on `dtp_scoreboard` that pairs expected with observed
+and predicts nothing, the `dtp_tap_fsm_checker` and
 `dtp_scan_window_monitor` subscribers, and `dtp_env`, which composes the
 shared `ocah_jtag_vip` and `ocah_axi_vip` SV-UVM environments and agents),
 `uvm/seq_lib/dtp_seq_lib_pkg.sv` (reusable operation sequences
@@ -299,6 +301,13 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_extest_tes
 python3 tools/dv/run_dv.py --dut dtp --framework uvm \
   --items dtp_jtag2axi_smc_axi_error_single_write_test \
   --plusarg +DTP_AXI_SCOREBOARD_NEGATIVE
+
+# Bridge reference-model negative validation: the jtag2axi_req reference
+# model predicts corrupted addresses, so the scoreboard's pairing with the
+# observed bus transactions must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_axi_single_write_read_test \
+  --plusarg +DTP_J2A_REF_MODEL_NEGATIVE
 ```
 
 PASS/FAIL is classified by the global parser registry in

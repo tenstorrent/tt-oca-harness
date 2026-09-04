@@ -196,8 +196,8 @@ _addresses_ inside the PLL / PVT / extension macro windows. PLL/PVT
 windows are *adopter placeholders* (`pll_wrap` / `pvt_wrap`: OKAY + 0);
 extension remains DECERR. Enumerated addresses therefore prove
 bounded handshake only — *not* clock programming, PVT sensing, or
-per-register content. Those PLL/PVT protocol tests live in
-`deferred.toml` (`rtl_placeholder`) and must not be reported as feature
+per-register content. Those PLL/PVT protocol tests are not ported
+(`rtl_placeholder`) and must not be reported as feature
 PASS. Decode/route itself is covered by `smc_macro_axil_routing_test`
 (S13a). Affected (treat as _reachability/bounded_):
 
@@ -978,7 +978,7 @@ CSR clock-gate coverage
 |=======================================================================
 
 The PLL / PVT / extension windows are handshake responders, not functional
-macro models; those rows live in `testlists/deferred.toml` and are not
+macro models; those rows are not ported and are not
 reportable as feature PASS. I3C CCC/IBI stays with the IP-level DV. SAMPLE-only
 bring-up tests stay in the broad `smoke` regression until an active driver
 promotes them.
@@ -1086,7 +1086,7 @@ output responder |`smc_input_output_fabric_wr_rd_test`,
 
 |P1-7 |`i3c_protocol` |CSR+HCI fabric window; CCC/IBI depth deferred
 |`smc_i3c_to_fabric_test` (green); `smc_i3c_ccc_ibi_full_test`
-(`deferred.toml`). Former `smc_i3c_oca_write_read_sanity_test` /
+(not ported). Former `smc_i3c_oca_write_read_sanity_test` /
 `smc_i3c_ibi_ccc_depth_test` names were never enrolled — intents map
 here.
 
@@ -1376,7 +1376,7 @@ The empty `p1_coverage_gap_r5` testlist was removed from
 [width="100%",cols="10%,37%,28%,25%",options="header",]
 |=======================================================================
 |# |P1 Category |Disposition |Notes
-|P1-18+ |`pvt_analog` |`smc_pvt_droop_test` → `deferred.toml`
+|P1-18+ |`pvt_analog` |`smc_pvt_droop_test` — not ported
 (`rtl_placeholder`) |PVT droop-monitor window (0xC000_7400). Kept as
 shelved body until real adopter PVT IP replaces OKAY/DECERR wraps.
 
@@ -1385,8 +1385,7 @@ deleted DV DFX stub / bare-SMC decode path, not `smc_wrapper`
 production RTL. Not re-enrolled.
 |=======================================================================
 
-*Round 5 aggregate*: no green testlist tag. Droop coverage remains in
-`testlists/deferred.toml` only.
+*Round 5 aggregate*: no green testlist tag. Droop coverage is not ported.
 
 [[p1-coverage-gap-test-cases-fabric_testplan-detail]]
 ===== P1 Coverage-Gap Test Cases (fabric_testplan detail)
@@ -1597,7 +1596,7 @@ hooks* *CLEARED* (`tb_cpu_ecc_inject_*` on scratch bank0)
 |P2-8 |`dfd_dbs_fault_inject` |TB token `0xDB5C_AFE1` on
 `tb_dfd_fault_inject` — *not* `smc_dfd_wrap` / `hw/ip/dfd` |*DEFERRED*
 (`tb_glue` / `not_dut_rtl`): `smc_dfd_dbs_fault_inject_test` in
-`deferred.toml`; reopen when real DFD path is exercised |B
+not ported; reopen when real DFD path is exercised |B
 
 |P2-9 |`jtag_dmi_access` |Firmware boot (P2-1) prerequisite
 |*IMPLEMENTED*: `smc_jtag_dmi_smoke_test` (dmstatus.version==2) |B
@@ -1833,7 +1832,7 @@ transaction plus recovery
 
 |I3C |I3C0 pin VIP built; CCC/IBI model still next
 |`smc_i3c_to_fabric_test` (green fabric); depth →
-`smc_i3c_ccc_ibi_full_test` (`deferred.toml`) |Fabric stub signature
+`smc_i3c_ccc_ibi_full_test` (not ported) |Fabric stub signature
 already green; reopen HCI/CCC/IBI after real core + DAT/DCT
 
 |iJTAG / JTAG / DFT |CPU JTAG pins lifted into `tb_top`; TAP access

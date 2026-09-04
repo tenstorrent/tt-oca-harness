@@ -33,7 +33,7 @@
 // Primary JTAG TAP pins (cocotb drives them raw; UVM via ocah_jtag_if)
 `DTP_TB_IN(logic, jtag_tck)
 `DTP_TB_IN(logic, jtag_tms)
-`DTP_TB_IN(logic, jtag_trst)   // active-low TAP reset
+`DTP_TB_IN(logic, jtag_trst)  // active-low TAP reset
 `DTP_TB_IN(logic, jtag_tdi)
 `DTP_TB_OUT(logic, jtag_tdo)
 `DTP_TB_OUT(logic, jtag_tdo_oen)

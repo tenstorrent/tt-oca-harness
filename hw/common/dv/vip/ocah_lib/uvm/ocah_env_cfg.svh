@@ -8,20 +8,19 @@
 // The cocotb twin is ocah_lib.OcahEnvCfg.
 
 class ocah_env_cfg extends uvm_object;
-    `uvm_object_utils(ocah_env_cfg)
+  `uvm_object_utils(ocah_env_cfg)
 
-    // System clock period the harness clock generator reads through tb_if.
-    int unsigned clk_period_ns = 10;
-    // Scoreboard features that must compare (copied from the test cfg).
-    string required_features[$];
+  // System clock period the harness clock generator reads through tb_if.
+  int unsigned clk_period_ns = 10;
+  // Scoreboard features that must compare (copied from the test cfg).
+  string required_features[$];
 
-    function new(string name = "ocah_env_cfg");
-        super.new(name);
-    endfunction
+  function new(string name = "ocah_env_cfg");
+    super.new(name);
+  endfunction
 
-    virtual function string convert2string();
-        return $sformatf("clk_period_ns=%0d required_features=%p",
-                         clk_period_ns, required_features);
-    endfunction
+  virtual function string convert2string();
+    return $sformatf("clk_period_ns=%0d required_features=%p", clk_period_ns, required_features);
+  endfunction
 
 endclass : ocah_env_cfg

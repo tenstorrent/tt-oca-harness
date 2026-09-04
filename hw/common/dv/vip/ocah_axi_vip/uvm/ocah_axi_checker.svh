@@ -9,11 +9,11 @@
 // they report their findings through this checker's inherited API.
 
 class ocah_axi_checker extends ocah_checker;
-    `uvm_object_utils(ocah_axi_checker)
+  `uvm_object_utils(ocah_axi_checker)
 
-    function new(string name = "ocah_axi_checker");
-        super.new(name);
-        name_tag = "ocah_axi";
-    endfunction
+  function new(string name = "ocah_axi_checker");
+    super.new(name);
+    name_tag = "ocah_axi";
+  endfunction
 
 endclass : ocah_axi_checker

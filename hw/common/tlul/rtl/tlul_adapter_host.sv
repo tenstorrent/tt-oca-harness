@@ -58,9 +58,9 @@ module tlul_adapter_host
   logic [top_pkg::TL_DBW-1:0] tl_be;
   tl_h2d_t                    tl_out;
 
-  if (MAX_REQS == 1) begin : g_single_req
+  if (MAX_REQS == 1) begin : gen_single_req
     assign tl_source = '0;
-  end else begin : g_multiple_reqs
+  end else begin : gen_multiple_reqs
     localparam int ReqNumW  = $clog2(MAX_REQS);
     localparam int unsigned MaxSource = MAX_REQS - 1;
     localparam logic [ReqNumW-1:0] ReqNumOne = ReqNumW'(1'b1);

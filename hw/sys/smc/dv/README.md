@@ -12,7 +12,7 @@ requirement-to-test matrix (unsigned; #496).
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
-demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
+demos (e.g. hardcoded DFD capture token) are not ported
 — not reportable as feature PASS. `smc_i3c_to_fabric_test` is
 **decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
 in `smoke`, `canonical_top*`, or `project_p0`. Run it via `i3c_depth`
@@ -22,6 +22,30 @@ or by name. Checklist:
 call sites need a one-line rationale comment at the call (what hangs without
 it, and why that is still a real DUT path). Inventory: `smc_*_utils.py` /
 cluster helpers — do not add silently in PRs.
+
+## Present but not enrolled
+
+These modules exist under `cocotb/tests/` and are not in `testlists/all.toml`.
+The old `testlists/deferred.toml` ledger is gone; the blocker tag lives in
+each file's docstring (`# deferred: <reason>`). SMU's matching catalog is
+`hw/sys/smu/dv/cocotb/tests_deferred/`.
+
+| Test | Reason |
+|------|--------|
+| `smc_i3c_ccc_ibi_full_test` | `needs_i3c_dat_dct` — TB DAT/DCT ram removed |
+| `smc_macro_axil_routing_test` | `needs_dtp_csr_sub` / `rtl_placeholder` — DTP CSR idle; pll/pvt OKAY wraps |
+| `smc_pll_pvt_clock_config_test` | `rtl_placeholder` |
+| `smc_pll_dvfs_depth_test` | `rtl_placeholder` |
+| `smc_pll_cgm_awm_config_test` | `rtl_placeholder` |
+| `smc_pll_awm_freq_sweep_test` | `rtl_placeholder` |
+| `smc_pvt_analog_sensor_test` | `rtl_placeholder` |
+| `smc_pvt_droop_test` | `rtl_placeholder` |
+| `smc_sideband_avsbus_octs_bfm_test` | `fake_bfm` — pad BFM retired |
+| `smc_dfd_dbs_fault_inject_test` | `tb_glue` — hardcoded capture token, not `smc_dfd_wrap` |
+
+Two enrolled carve-outs keep their measured reason next to the stimulus:
+`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7; #1235) and the
+`smc_clint_csr_test` docstring (cluster-local fold; #1237 / #1249).
 
 ## Single DUT
 
@@ -37,7 +61,7 @@ so the bare DUT name selects the wrapper-based TB.
 | TB top | `smc_uvm_top` (`tb/tb_top.sv`) |
 | DUT | `smc_wrapper` |
 | cocotb | `cocotb/` (`SmcEnv`) |
-| testlist | `testlists/all.toml` (deferred: `testlists/deferred.toml`, not included) |
+| testlist | `testlists/all.toml` |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
 | still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR / I3C DAT ports **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |
@@ -58,13 +82,23 @@ so the bare DUT name selects the wrapper-based TB.
 ```
 hw/sys/smc/dv/
 ├── cocotb/                 # PyUVM env, seq_lib, tests
+├── uvm/                    # SV-UVM env, seq_lib, tests (--framework uvm, VCS)
 ├── models/                 # pll/pvt PeakRDL wraps (adopter placeholders)
-├── tb/                     # tb_top.sv, verilator_stubs/
+├── tb/                     # tb_top.sv (cocotb + UVM shapes), smc_tb_signal_list.svh,
+│                           # smc_tb_if.sv, verilator_stubs/
 ├── testlists/
 ├── assets/
 ├── docs/                   # VPLAN, test-development, porting, execution guides
-└── smc_sim_cfg.toml
+└── smc_sim_cfg.toml        # both frameworks: [frameworks.cocotb] + [frameworks.uvm]
 ```
+
+`tb/tb_top.sv` is ONE module with two shapes: the cocotb pin port list by
+default, and under the bare `+define+UVM` (set by the native profile's
+`[frameworks.uvm]` overlay) a self-contained SV-UVM harness that `include`s
+`uvm/tests/smc_tests.sv`. Every TB signal is declared once in
+`tb/smc_tb_signal_list.svh`. The SV-UVM realization is described in
+`docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
 ## Run
 
@@ -75,6 +109,62 @@ python3 $PY --dut smc --items smoke --tool verilator
 python3 $PY --dut smc --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
 python3 $PY --dut smc --items all --stage sim --regress
 ```
+
+### SystemVerilog UVM framework (`--framework uvm`)
+
+The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
+flow: `smc_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
+Bender RTL recipe), and `--dut smc --framework uvm` selects it. A testlist
+scenario carries both implementations in its `module` binding map
+(`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is
+the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
+errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
+VCS only: Verilator has no SV-UVM support. The bench architecture is in
+`docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+
+The first bound scenario is `smc_register_sanity_test` (VPLAN TC_SMC_P0_006):
+SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
+`SCRATCH_COLD_WARM` registers over 16 seeded passes, every scratch read
+predicted by `smc_scratch_csr_ref_model` and paired by the always-on
+`smc_scoreboard`, and every access recorded as named `CHK-*` evidence
+(`CHECKER_SUMMARY name=smc_csr`).
+
+```bash
+# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
+# without it the runner selects the cocotb-only scenarios and stops before compiling.
+python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
+
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut smc --items smc_register_sanity_test --tool verilator
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test --seed 1
+
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+
+# Scoreboard negative validation: a corrupted scratch readback prediction
+# must FAIL the run
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test \
+  --plusarg +SMC_CSR_SCOREBOARD_NEGATIVE
+
+# Loop-count knobs, resolved specific-first (per test, per group, suite-wide);
+# every looped test runs at least 16 seeded passes by default
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test \
+  --plusarg +SMC_REGISTER_SANITY_TEST_LOOPS=4
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented \
+  --plusarg +SMC_TEST_LOOPS=1
+```
+
+To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
+`smc_base_test_seq` (CSR accesses through `csr_write` / `csr_read`, named
+evidence through `attach_evidence` / `check_evidence` / `finalize_evidence`),
+add `uvm/tests/<name>.svh` on `smc_base_test` (override
+`create_scenario_seq()`, the loop-knob hooks, and `configure_test_cfg()` for
+the scoreboard features it requires), add both `include`s to the package and
+the manifest, and change the scenario's testlist entry to the binding map. A
+pin the scenario needs that the harness ties off today is promoted into
+`tb/smc_tb_if.sv` first.
 
 PASS/FAIL is classified by the global parser registry
 (`hw/common/dv/configs/parsers.toml`). The cocotb flow requires positive

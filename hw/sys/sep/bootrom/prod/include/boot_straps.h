@@ -5,7 +5,7 @@
 //
 // Reads latched strap values from SMC reset unit registers (accessed via SEP's
 // outbound window at SMC_LOCAL_BASE_ADDR + offset) and provides structured
-// access for boot path decisions using OCH dynamic addresses from
+// access for boot path decisions using OCAH dynamic addresses from
 // sep_smc_interface.h.
 //
 // Strap bits (SEP↔SMC interface contract, see sep_smc_interface.h):

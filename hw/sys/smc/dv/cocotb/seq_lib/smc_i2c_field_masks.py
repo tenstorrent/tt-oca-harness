@@ -32,6 +32,17 @@ I2C_CTRL_ACQ_START_STOP_EN = _field_mask(_I2C_H, "I2C__CTRL__ACQ_START_STOP_EN_b
 I2C_CTRL_TX_STRETCH_CTRL_EN = _field_mask(_I2C_H, "I2C__CTRL__TX_STRETCH_CTRL_EN_bm")
 
 I2C_STATUS_HOSTIDLE = _field_mask(_I2C_H, "I2C__STATUS__HOSTIDLE_bm")
+
+# Field masks for the timeout / FIFO-config CSR sweep. Additive: no existing
+# symbol changes, so the eight sequences that already import this helper are
+# unaffected.
+I2C_HOST_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__HOST_TIMEOUT_CTRL__VAL_bm")
+I2C_TARGET_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__TARGET_TIMEOUT_CTRL__VAL_bm")
+I2C_TARGET_TIMEOUT_CTRL_EN = _field_mask(_I2C_H, "I2C__TARGET_TIMEOUT_CTRL__EN_bm")
+I2C_NACK_HANDLER_TIMEOUT_VAL = _field_mask(_I2C_H, "I2C__HOST_NACK_HANDLER_TIMEOUT__VAL_bm")
+I2C_NACK_HANDLER_TIMEOUT_EN = _field_mask(_I2C_H, "I2C__HOST_NACK_HANDLER_TIMEOUT__EN_bm")
+I2C_HOST_FIFO_CONFIG_RX_THRESH = _field_mask(_I2C_H, "I2C__HOST_FIFO_CONFIG__RX_THRESH_bm")
+I2C_HOST_FIFO_CONFIG_FMT_THRESH = _field_mask(_I2C_H, "I2C__HOST_FIFO_CONFIG__FMT_THRESH_bm")
 I2C_STATUS_ACQEMPTY = _field_mask(_I2C_H, "I2C__STATUS__ACQEMPTY_bm")
 I2C_STATUS_RXEMPTY = _field_mask(_I2C_H, "I2C__STATUS__RXEMPTY_bm")
 I2C_STATUS_FMTFULL = _field_mask(_I2C_H, "I2C__STATUS__FMTFULL_bm")

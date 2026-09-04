@@ -1073,7 +1073,7 @@ parameter with its default value.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
 |`XTRIG_INT_CT_MODE` |`8'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack)
 |`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
@@ -1203,7 +1203,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
 |===
 
 ===== Cross Trigger Parameters
@@ -2025,10 +2025,9 @@ The define also zeroes the RMA and security-disable token and digest bits in
 X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
-Three models it enables make simulation deliberately non-deterministic:
-`gdffsync` in the entropy source injects metastability on the second
-synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
-equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the

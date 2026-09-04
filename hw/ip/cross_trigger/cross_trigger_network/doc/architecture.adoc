@@ -12,7 +12,7 @@ image::sip_xtrig_diagram.png[SiP Cross Trigger Diagram,scaledwidth=90.0%]
 
 ===== Cross Trigger Port (CTP)
 
-OCH supports a configurable number of CTPs, from 0 to 8, for a total number of
+OCAH supports a configurable number of CTPs, from 0 to 8, for a total number of
 up to 32 required GPIOs. These ports support both point-to-point and wire-OR
 cross trigger signaling modes.
 

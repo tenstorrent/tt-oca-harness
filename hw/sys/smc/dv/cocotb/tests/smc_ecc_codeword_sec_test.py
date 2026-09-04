@@ -27,6 +27,11 @@ class smc_ecc_codeword_sec_test(smc_base_test):
             SmcProtocolVipKind.CPU,
             type(self).__name__,
             csr_accesses=seq.accesses,
+            # No CSR stimulus: the codeword is poked backdoor and the
+            # property is read from tb_cluster_ded_seen, asserted in the
+            # sequence. Booked as an activity stamp so it is not counted
+            # as a protocol VIP check it cannot be.
+            auto_evidence=True,
             proxy=False,
             details="scratch bank0 codeword ^= 1 bit before boot; scratch reads advance with cluster_ded held at 0",
         )

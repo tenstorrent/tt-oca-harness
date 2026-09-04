@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import os
-
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
@@ -22,6 +20,7 @@ from env.dtp_types import (
     unpack_series_data,
     unpack_single_op,
 )
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -272,7 +271,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         # hook: it deliberately arms the WRONG response so the run must FAIL,
         # proving the checker rejects a bad expectation end to end.
         armed_resp = int(resp)
-        if os.environ.get("DTP_AXI_SCOREBOARD_NEGATIVE", "0") not in ("", "0"):
+        if OcahKnobs.is_set("DTP_AXI_SCOREBOARD_NEGATIVE"):
             armed_resp = 2 if armed_resp == 3 else 3
             self.log.warning(
                 "NEGATIVE VALIDATION: arming resp=%d instead of injected resp=%d",

@@ -285,7 +285,7 @@ vendor_package:
       - "picorv32_wb.sv"
     patch_dir: "vendor/tenstorrent/tt-picorv32/patches"
 
-  # Tenstorrent DFD (debug-for-design) IP: CLA + DST + trace sink.
+  # Tenstorrent DFD (Design-for-Debug) IP: CLA + DST + trace sink.
   # TODO: enable once the tt_hw_debug GitLab remote is reachable from CI. Until
   # then vendor/tenstorrent/tt-hw-debug/upstream/ is a hand-mirrored subset -
   # see that package's Bender.yml. Keep include_from_upstream in sync with it.
@@ -760,7 +760,6 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
       - hw/ip/entropy_source/rtl/entropy_source.sv
       - hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
-      - hw/ip/entropy_source/rtl/gcells.sv
       - hw/ip/entropy_source/rtl/gf_muladd.sv
   - target: smc
     files:
@@ -893,7 +892,7 @@ sources:
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
   - target: sep
     files:
-      - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
+      - hw/common/axi/axi_window_remap/rtl/axi_window_remap.sv
   - target: smc
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
@@ -1514,6 +1513,7 @@ sources:
   - target: any(smc_wrapper, smu_wrapper)
     files:
       - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
+      - hw/sys/smc/dv/models/axil_okay_slv.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv
   - target: any(sep_wrapper, smu_wrapper)

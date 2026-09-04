@@ -66,12 +66,40 @@ MCR_RTS = _field_mask(_UART_H, "UART_16550_MAIN__MCR__RTS_bm")
 MCR_DTR = _field_mask(_UART_H, "UART_16550_MAIN__MCR__DTR_bm")
 LSR_DR = _field_mask(_UART_H, "UART_16550_MAIN__LSR__DR_bm")
 
+# IIR.INTERRUPT_ID encodings AND their priority ranking. Both come from the
+# authoritative register description, `hw/ip/uart/uart_16550/regs/
+# uart_16550_main.rdl` reg IIR, field INTERRUPT_ID[3:1], which lists:
+#
+#     * `0x7` - FIFO Error Interrupt                         (priority 0)
+#     * `0x3` - Receiver Line Status Interrupt               (priority 1)
+#     * `0x6` - Reception Timeout Interrupt                  (priority 2)
+#     * `0x2` - Received Data Ready Interrupt                (priority 3)
+#     * `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
+#     * `0x0` - Modem Status Interrupt                       (priority 5)
+#
+# Lower number = higher priority. The priority table below is DERIVED from this
+# ranking rather than written out per pair, so the expected winner of every
+# contest traces to the register description and not to the RTL's encoder.
 _INTR_MODEM = 0x0
 _INTR_THRE = 0x1
 _INTR_RDR = 0x2
 _INTR_LSR = 0x3
 _INTR_TIMEOUT = 0x6
 _INTR_FIFO_ERR = 0x7
+
+_IIR_PRIORITY = {
+    _INTR_FIFO_ERR: 0,
+    _INTR_LSR: 1,
+    _INTR_TIMEOUT: 2,
+    _INTR_RDR: 3,
+    _INTR_THRE: 4,
+    _INTR_MODEM: 5,
+}
+
+
+def _rdl_priority_winner(*ids: int) -> int:
+    """The highest-priority id among ``ids`` per the RDL ranking above."""
+    return min(ids, key=lambda i: _IIR_PRIORITY[i])
 
 
 def _iir_id(iir: int) -> int:
@@ -90,6 +118,11 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         self.gating_ok: bool = False
         self.clear_ok: bool = False
         self.priority_ok: bool = False
+        # Measured results the test module gates on.
+        # name -> (gated id or None, mapped id)
+        self.gate_map_ids: dict[str, tuple[int | None, int]] = {}
+        # name -> (winner id observed, winner id the RDL ranking requires)
+        self.priority_ids: dict[str, tuple[int, int]] = {}
 
     async def _clear_status(self) -> None:
         await self.csr_write("IER_CLR", UART_IER, 0)
@@ -110,7 +143,8 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             await Timer(100, units="ns")
         return iir
 
-    async def _expect_id(self, label: str, expect: int, iters: int = 64) -> None:
+    async def _expect_id(self, label: str, expect: int, iters: int = 64) -> int:
+        """Return the MEASURED IIR id so tokens and gates carry real values."""
         iir = await self._poll_iir(label, iters)
         if not _iir_pending(iir) or _iir_id(iir) != expect:
             raise AssertionError(
@@ -118,18 +152,22 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
                 f"got IIR=0x{iir:08x} pending={_iir_pending(iir)} "
                 f"id=0x{_iir_id(iir):x}"
             )
+        return _iir_id(iir)
 
-    async def _expect_not_id(self, label: str, forbidden: int) -> None:
+    async def _expect_not_id(self, label: str, forbidden: int) -> int | None:
         # Do not early-return on any pending IIR: 16550 reports only the
         # highest-priority source, so a leftover higher ID must not hide a
         # gated forbidden that later becomes visible.
+        last: int | None = None
         for _ in range(8):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir) and _iir_id(iir) == forbidden:
                 raise AssertionError(
                     f"{label}: gated source ID=0x{forbidden:x} still pending IIR=0x{iir:08x}"
                 )
+            last = _iir_id(iir) if _iir_pending(iir) else None
             await Timer(100, units="ns")
+        return last
 
     async def _fail_if_id_still_pending(self, label: str, expect_id: int) -> None:
         iir = await self.csr_read(f"{label}_POST", UART_IIR)
@@ -152,29 +190,57 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             await self.csr_write(f"{name}_IER0", UART_IER, 0)
             await self.csr_write(f"{name}_ITR0", UART_ITR, 0)
             await self.csr_write(f"{name}_ITR_GATE", UART_ITR, itr_bit)
-            await self._expect_not_id(f"{name}_GATED", expect)
+            gated_id = await self._expect_not_id(f"{name}_GATED", expect)
             await self.csr_write(f"{name}_ITR1", UART_ITR, 0)
             await self.csr_write(f"{name}_IER1", UART_IER, ier_bit)
             await self.csr_write(f"{name}_ITR_MAP", UART_ITR, itr_bit)
-            await self._expect_id(f"{name}_MAP", expect)
+            mapped_id = await self._expect_id(f"{name}_MAP", expect)
             await self.csr_write(f"{name}_ITR_CLR", UART_ITR, 0)
-            cocotb.log.info("CHK-UART-IRQ-GATE-%s: IER gate + ITR map ID=0x%x", name, expect)
+            self.gate_map_ids[name] = (gated_id, mapped_id)
+            cocotb.log.info(
+                "CHK-UART-IRQ-GATE-%s: with the IER enable clear the forced "
+                "source did not reach IIR (last pending id=%s); with the enable "
+                "set the same ITR force produced IIR id=0x%x, the encoding "
+                "uart_16550_main.rdl IIR.INTERRUPT_ID gives this source",
+                name,
+                "none" if gated_id is None else f"0x{gated_id:x}",
+                mapped_id,
+            )
 
-        # Timeout maps with ERBFI; RTL bypasses IER for this source.
+        # Reception Timeout. uart_16550_main.rdl's IER declares exactly five
+        # enables (ERBFI/ETBEI/ELSI/EDSSI/EFEI) and NONE of them is a Reception
+        # Timeout enable, so the register description supports no gated-negative
+        # leg for this source and none is claimed. What IS spec-stated is
+        # ITR.TRTI: "Test Reception Timeout Interrupt. Writing a `1` forces the
+        # interrupt and writing `0` releases it." Both directions are checked.
         await self.csr_write("TO_IER", UART_IER, IER_ERBFI)
         await self.csr_write("TO_ITR", UART_ITR, ITR_TRTI)
-        await self._expect_id("TO_MAP", _INTR_TIMEOUT)
+        to_id = await self._expect_id("TO_MAP", _INTR_TIMEOUT)
         await self.csr_write("TO_ITR_CLR", UART_ITR, 0)
-        cocotb.log.info("CHK-UART-IRQ-GATE-TIMEOUT: ITR map ID=0x6")
+        released_id = await self._expect_not_id("TO_RELEASED", _INTR_TIMEOUT)
+        self.gate_map_ids["TIMEOUT"] = (released_id, to_id)
+        cocotb.log.info(
+            "CHK-UART-IRQ-MAP-TIMEOUT: ITR.TRTI=1 forced IIR id=0x%x (the "
+            "Reception Timeout encoding in uart_16550_main.rdl) and writing 0 "
+            "released it (last pending id=%s). Named MAP, not GATE: the RDL's "
+            "IER has no Reception Timeout enable, so this source has no "
+            "IER-gated negative leg to run",
+            to_id,
+            "none" if released_id is None else f"0x{released_id:x}",
+        )
 
     async def _init_loopback_clear(self) -> None:
         await self.csr_write("ITR0", UART_ITR, 0)
         await self.csr_write("LCR_DLAB", UART_LCR, LCR_WLS | LCR_DLAB)
-        await self.csr_write("DLL", UART_RBR, 1)
-        await self.csr_write("DLH", UART_IER, 0)
+        # DLL/DLH/FCR are the write-only aliases of the RBR/IER/IIR addresses in
+        # the 16550 map; the labels name both the register written and the symbol
+        # addressed, so every register name in the kept log resolves to a symbol
+        # in this file.
+        await self.csr_write("DLL_via_UART_RBR", UART_RBR, 1)
+        await self.csr_write("DLH_via_UART_IER", UART_IER, 0)
         await self.csr_write("LCR_8N1", UART_LCR, LCR_WLS)
         await self.csr_write("MCR_LOOP", UART_MCR, MCR_LOOP | MCR_RTS | MCR_DTR)
-        await self.csr_write("FCR_EN", UART_IIR, FCR_FIFO_ENABLE)
+        await self.csr_write("FCR_EN_via_UART_IIR", UART_IIR, FCR_FIFO_ENABLE)
 
     async def _test_clear(self) -> None:
         await self._clear_status()
@@ -219,20 +285,45 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
 
     async def _test_priority(self) -> None:
         await self._clear_status()
+        # (name, IER enables, ITR forces, the two contending IIR ids). The
+        # expected winner is NOT written out per row: it is computed from the
+        # RDL's priority ranking (_IIR_PRIORITY), so the golden traces to
+        # uart_16550_main.rdl IIR.INTERRUPT_ID rather than to the RTL encoder.
         pairs = [
-            ("LSR_vs_RDR", IER_ELSI | IER_ERBFI, ITR_TLSI | ITR_TRBFI, _INTR_LSR),
-            ("RDR_vs_THRE", IER_ERBFI | IER_ETBEI, ITR_TRBFI | ITR_TTBEI, _INTR_RDR),
-            ("THRE_vs_MODEM", IER_ETBEI | IER_EDSSI, ITR_TTBEI | ITR_TDSSI, _INTR_THRE),
-            ("TO_vs_RDR", IER_ERBFI, ITR_TRBFI | ITR_TRTI, _INTR_TIMEOUT),
-            ("FIFO_vs_LSR", IER_ELSI | IER_EFEI, ITR_TLSI | ITR_TFEI, _INTR_FIFO_ERR),
+            ("LSR_vs_RDR", IER_ELSI | IER_ERBFI, ITR_TLSI | ITR_TRBFI, (_INTR_LSR, _INTR_RDR)),
+            ("RDR_vs_THRE", IER_ERBFI | IER_ETBEI, ITR_TRBFI | ITR_TTBEI, (_INTR_RDR, _INTR_THRE)),
+            (
+                "THRE_vs_MODEM",
+                IER_ETBEI | IER_EDSSI,
+                ITR_TTBEI | ITR_TDSSI,
+                (_INTR_THRE, _INTR_MODEM),
+            ),
+            ("TO_vs_RDR", IER_ERBFI, ITR_TRBFI | ITR_TRTI, (_INTR_TIMEOUT, _INTR_RDR)),
+            ("FIFO_vs_LSR", IER_ELSI | IER_EFEI, ITR_TLSI | ITR_TFEI, (_INTR_FIFO_ERR, _INTR_LSR)),
         ]
-        for name, ier, itr, expect in pairs:
+        for name, ier, itr, contenders in pairs:
+            expect = _rdl_priority_winner(*contenders)
             await self.csr_write(f"{name}_IER", UART_IER, ier)
             await self.csr_write(f"{name}_ITR", UART_ITR, itr)
-            await self._expect_id(f"{name}_PRI", expect)
+            got = await self._expect_id(f"{name}_PRI", expect)
             await self.csr_write(f"{name}_ITR0", UART_ITR, 0)
             await self._clear_status()
-            cocotb.log.info("CHK-UART-IRQ-PRI-%s: winner ID=0x%x", name, expect)
+            self.priority_ids[name] = (got, expect)
+            cocotb.log.info(
+                "CHK-UART-IRQ-PRI-%s: stimulus=itr_test_register (both sources "
+                "forced through the 16550 Interrupt Test Register, not raised "
+                "from natural line/FIFO conditions); contenders id=0x%x "
+                "(priority %d) and id=0x%x (priority %d) per "
+                "uart_16550_main.rdl IIR.INTERRUPT_ID; winner observed ID=0x%x, "
+                "ranking requires 0x%x",
+                name,
+                contenders[0],
+                _IIR_PRIORITY[contenders[0]],
+                contenders[1],
+                _IIR_PRIORITY[contenders[1]],
+                got,
+                expect,
+            )
 
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)
@@ -245,9 +336,3 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         self.clear_ok = True
         await self._test_priority()
         self.priority_ok = True
-        cocotb.log.info(
-            "CHK-UART-IRQ-BASIC: gating=%s clear=%s priority=%s",
-            self.gating_ok,
-            self.clear_ok,
-            self.priority_ok,
-        )

@@ -14,6 +14,6 @@ class dtp_xtrig_p2p_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "p2p",
             scenario="p2p",
-            specific_env="DTP_XTRIG_P2P_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_XTRIG_P2P_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

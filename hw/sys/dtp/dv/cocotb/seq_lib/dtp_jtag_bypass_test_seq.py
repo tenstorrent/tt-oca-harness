@@ -30,7 +30,7 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
     """Run BYPASS latency checks for IR=0x00 and IR=0x3f."""
 
     async def body(self) -> None:
-        seed = self.scenario_seed if self.scenario_seed is not None else self.random_seed()
+        seed = self.scenario_seed
         suite = DtpBypassSuiteCfg.from_seed(seed, random_count=self.random_count)
         model = DtpBypassRefModel()
         checker = OcahJtagChecker(

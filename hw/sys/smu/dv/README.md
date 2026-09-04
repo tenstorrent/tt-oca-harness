@@ -16,13 +16,12 @@ for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
 
 **Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
 Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
-`testlists/deferred.toml` — **not** reportable as PASS.
+not ported — **not** reportable as PASS.
 
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
-**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`):
-[`testlists/deferred.toml`](testlists/deferred.toml). Every named entry is
-classified in
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
+Every named entry is classified in
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc).
 None of those names is a v0.5.0 restore; raise stubs are not reportable as PASS.
 
@@ -39,9 +38,8 @@ smu_<scenario>_test
 |------|------|
 | `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
-| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only) |
+| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
 | `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
-| `testlists/deferred.toml` | Non-enrolled inventory (not default-included) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
 | `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
@@ -276,5 +274,8 @@ seeds, and those run paths on the tracking GitHub issue.
 
 The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
 59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
-`cocotb/tests_deferred/`. `sep0_all` (53) is the SMU nightly group in
+`cocotb/tests_deferred/`. One body under `cocotb/tests/` is present but
+not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
+OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs; its
+docstring carries that reason. `sep0_all` (53) is the SMU nightly group in
 `.github/workflows/sim.yml`.

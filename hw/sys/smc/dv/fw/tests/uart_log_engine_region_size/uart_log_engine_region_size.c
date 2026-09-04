@@ -54,6 +54,14 @@
 #define LE_INTR_STATUS_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+
+#define LE_INTR_ENABLE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+
+#define LE_INTR_TEST_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 #define LE_LOG_CTRL0_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
@@ -64,7 +72,10 @@
 #define SLOT_SIZE (LOG_REGION_SIZE / NUM_ENTRIES) // 16 bytes
 
 static int read_byte_with_timeout(uint8_t *out) {
-    for (uint32_t t = 0; t < 1000000u; t++) {
+    /* 1000000 polls is ~4 s of sim here; the harness timeout fired long
+     * before it, making the RX-timeout FAIL path unreachable. 200 polls
+     * (~0.8 ms) still dwarfs a single byte's latency. */
+    for (uint32_t t = 0; t < 200u; t++) {
         if (read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) {
             *out = (uint8_t)(read_reg(WRAP0_UART_BASE + UART_RBR_OFF) & 0xFFu);
             return 0;
@@ -107,6 +118,39 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
     //--------------------------------------------------------------------------
+    // Positive control for the terminal "INTR_STATUS & 0x11 == 0" check.
+    //
+    // On its own that check passes identically on a DUT whose error bits can
+    // never set -- it cannot tell "no error occurred" from "this status can
+    // never report one". INTR_TEST exists precisely to drive the bits from
+    // software, so use it: prove both bits CAN set, clear them, and only then
+    // let the end-of-test zero mean something.
+    //
+    // Bit positions come from the generated map, not literals.
+    {
+        const uint32_t both =
+            LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm;
+        uint32_t s;
+        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, both);
+        write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, both);
+        s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & both;
+        if (s != both) {
+            info_msg_hex32_s(0, "FAIL: INTR_TEST did not set both status bits, got=", s);
+            test_fail(0);
+        }
+        info_msg_hex32_s(0, "  positive control: INTR_TEST set status=", s);
+        /* Mask before W1C: while ENABLE is set the level source re-latches. */
+        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, both);
+        s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & both;
+        if (s != 0u) {
+            info_msg_hex32_s(0, "FAIL: could not clear the positive control, left=", s);
+            test_fail(0);
+        }
+        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, both);
+    }
+
+    //--------------------------------------------------------------------------
     // For each entry, trigger SLOT_SIZE bytes, verify the read-back stream
     // matches (i << 4) | j for j in 0..SLOT_SIZE-1.
     //--------------------------------------------------------------------------
@@ -138,7 +182,7 @@ int main(void) {
 
         // Wait for LOG_CTRL[i] to clear
         {
-            uint32_t t = 200000u;
+            uint32_t t = 200u; /* see note above: keep expiry reachable */
             while (t > 0u &&
                    (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF + (i * 4u)) & 0xFFFFu) != 0u) {
                 t--;

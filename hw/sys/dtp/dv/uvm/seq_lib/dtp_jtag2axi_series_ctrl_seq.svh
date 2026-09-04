@@ -11,27 +11,27 @@
 // seq_lib/dtp_jtag2axi_series_ctrl_seq.py.
 
 class dtp_jtag2axi_series_ctrl_seq extends dtp_jtag_op_seq;
-    `uvm_object_utils(dtp_jtag2axi_series_ctrl_seq)
+  `uvm_object_utils(dtp_jtag2axi_series_ctrl_seq)
 
-    dtp_j2a_target_t target;
-    dtp_j2a_op_e     op = DTP_J2A_OP_NOP;
-    bit [63:0]       addr;
-    int unsigned     size;
-    int unsigned     pipeline_depth;
-    bit              series_reset;
-    // Result: the SERIES_CTRL word captured while shifting.
-    bit [63:0]       captured;
+  dtp_j2a_target_t target;
+  dtp_j2a_op_e     op = DTP_J2A_OP_NOP;
+  bit [63:0]       addr;
+  int unsigned     size;
+  int unsigned     pipeline_depth;
+  bit              series_reset;
+  // Result: the SERIES_CTRL word captured while shifting.
+  bit [63:0]       captured;
 
-    function new(string name = "dtp_jtag2axi_series_ctrl_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag2axi_series_ctrl_seq");
+    super.new(name);
+  endfunction
 
-    virtual task do_op();
-        bit [63:0] value = dtp_j2a_pack_series_ctrl(target, op, addr, pipeline_depth, size,
+  virtual task do_op();
+    bit [63:0] value = dtp_j2a_pack_series_ctrl(target, op, addr, pipeline_depth, size,
                                                     series_reset);
-        bit [63:0] ir_captured;
-        ir_scan(64'(target.series_ctrl_instr), DtpIrWidth, ir_captured);
-        dr_scan(value, dtp_j2a_series_ctrl_len(target), captured);
-    endtask
+    bit [63:0] ir_captured;
+    ir_scan(64'(target.series_ctrl_instr), DtpIrWidth, ir_captured);
+    dr_scan(value, dtp_j2a_series_ctrl_len(target), captured);
+  endtask
 
 endclass : dtp_jtag2axi_series_ctrl_seq

@@ -172,7 +172,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
                 self.fcov.sample_aux("recovery", context=label)
 
         self.fcov.require_cells(tuple(self.target_cfg(t).dbg_disable_bit for t in MATRIX_TARGETS))
-        self.fcov.write_artifact(seed=self.random_seed())
+        self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable JTAG2AXI matrix",
             rows=len(rows),

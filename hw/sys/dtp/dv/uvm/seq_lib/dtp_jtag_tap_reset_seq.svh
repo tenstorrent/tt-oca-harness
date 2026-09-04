@@ -7,14 +7,14 @@
 // evidence. The cocotb twin is seq_lib/dtp_jtag_tap_reset_seq.py.
 
 class dtp_jtag_tap_reset_seq extends dtp_jtag_op_seq;
-    `uvm_object_utils(dtp_jtag_tap_reset_seq)
+  `uvm_object_utils(dtp_jtag_tap_reset_seq)
 
-    function new(string name = "dtp_jtag_tap_reset_seq");
-        super.new(name);
-    endfunction
+  function new(string name = "dtp_jtag_tap_reset_seq");
+    super.new(name);
+  endfunction
 
-    virtual task do_op();
-        tap_reset_op();
-    endtask
+  virtual task do_op();
+    tap_reset_op();
+  endtask
 
 endclass : dtp_jtag_tap_reset_seq

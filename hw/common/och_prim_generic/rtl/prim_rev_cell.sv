@@ -6,23 +6,23 @@
 //
 //--------------------------------------------------
 module prim_rev_cell (
-		output logic [7:0] LO,
-		output logic [7:0] HI,
-		input  logic [7:0] IN,
-		output logic [7:0] OUT,
-		input logic SRC_LOW,
-		input logic SRC_HIGH
-	);
+  output logic [7:0] LO,
+  output logic [7:0] HI,
+  input  logic [7:0] IN,
+  output logic [7:0] OUT,
+  input logic SRC_LOW,
+  input logic SRC_HIGH
+);
 
-	integer i;
+  integer i;
 
-	always_comb begin
-		for (i = 0; i < 8; i++) begin
-			LO[i] = SRC_LOW;
-			HI[i] = SRC_HIGH;
-			OUT[i] = IN[i];
-		end
-	end
+  always_comb begin
+    for (i = 0; i < 8; i++) begin
+      LO[i] = SRC_LOW;
+      HI[i] = SRC_HIGH;
+      OUT[i] = IN[i];
+    end
+  end
 
 endmodule
 /* an example for instantiate this module

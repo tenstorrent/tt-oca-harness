@@ -24,6 +24,9 @@ class smc_avsbus_status_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI AVSBus status CSR reads.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=True,
             details="AVSBus status decode plus bounded IRQ/state observability",
