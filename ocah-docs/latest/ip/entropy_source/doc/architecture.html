@@ -250,7 +250,7 @@ statistical requirements specified by the BSI agency.</p>
 <p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the <code>sample_clk_div</code> CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.</p>
 </div>
 <div class="paragraph">
-<p>The 12 decorrelated byte streams are combined by the Balanced Iterative Whirlpool (BIW) stage, which uses four <code>gf_muladd</code> instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.</p>
+<p>The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four <code>gf_muladd</code> instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.</p>
 </div>
 </div>
 <div class="sect4">

@@ -250,7 +250,7 @@ AXI4-lite is used for data interfaces and is generally configured with
 speed sources are implemented with 32-bit APB.</p>
 </div>
 <div class="paragraph">
-<p>The system memory map and component CSRs (Configuration and Status
+<p>The system memory map and component CSRs (Control and Status
 Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
@@ -321,7 +321,7 @@ This may not always be possible, so the exact method of modification
 will vary.</p>
 </div>
 <div class="paragraph">
-<p>An example modification would be the CSR (Configuration and Status
+<p>An example modification would be the CSR (Control and Status
 Register) design. As described further below, we intend to use SystemRDL
 for this purpose and generate those implementations. OpenTitan
 components for example, use a different CSR mechanism which will be
@@ -1025,7 +1025,7 @@ dependencies within the design that are difficult to unravel.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="csrs-configuration-and-status-registers"><a class="anchor" href="#csrs-configuration-and-status-registers"></a><a class="link" href="#csrs-configuration-and-status-registers">1.20. CSRs : Configuration and Status Registers</a></h3>
+<h3 id="csrs-control-and-status-registers"><a class="anchor" href="#csrs-control-and-status-registers"></a><a class="link" href="#csrs-control-and-status-registers">1.20. CSRs : Control and Status Registers</a></h3>
 <div class="paragraph">
 <p>Register and memory map descriptions are written in SystemRDL. Output
 renderings include:</p>

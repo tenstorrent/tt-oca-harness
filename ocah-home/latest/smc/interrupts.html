@@ -183,7 +183,7 @@
 <h3 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">Interrupts</a></h3>
 <div class="paragraph">
 <p>The SMC can handle interrupt sources across diverse system management
-functions. The architecture centers around the RISC-V Platform-Level
+functions. The architecture centers around the Platform-Level
 Interrupt Controller (PLIC) and Core Local Interruptor (CLINT), with
 interrupt routing and priority handling.</p>
 </div>
@@ -707,7 +707,7 @@ external interrupt bit is defined by the enclosing SoC integration.</p>
 <div class="sect3">
 <h4 id="risc-v-plic"><a class="anchor" href="#risc-v-plic"></a><a class="link" href="#risc-v-plic">RISC-V PLIC</a></h4>
 <div class="paragraph">
-<p>The SMC uses a standards-compliant RISC-V Platform-Level Interrupt
+<p>The SMC uses a standards-compliant Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
 interrupt sources (327 active, 5 reserved) with multi-core delivery in
 the 4-core configuration. The PLIC provides hardware prioritization,
@@ -770,7 +770,7 @@ periodic operations</p></td>
 communication</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer System (WDT)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer (WDT)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000 + (N × 0x400), 4 per-core
 instances with escalation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System reliability monitoring, fault

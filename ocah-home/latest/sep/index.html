@@ -713,8 +713,8 @@ IMEM, OTBN DMEM</p>
 <p>Watchdog Timer (WDT)</p>
 </li>
 <li>
-<p><em>Alarm aggregation processor (AGP) with Reliability and Service (RAS)
-port - deferred to the next generation</em></p>
+<p><em>Alarm aggregation processor (AGP) with Reliability, Availability, and
+Serviceability (RAS) port - deferred to the next generation</em></p>
 </li>
 <li>
 <p>Cryptographic subsystem</p>
@@ -2697,22 +2697,22 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <h3 id="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
 <table>
@@ -2722,7 +2722,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <h3 id="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
 <table>
@@ -4094,7 +4094,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="drbg-csrng-and-edn"><a class="anchor" href="#drbg-csrng-and-edn"></a><a class="link" href="#drbg-csrng-and-edn">DRBG (CSRNG and EDN)</a></h4>
+<h4 id="drbg"><a class="anchor" href="#drbg"></a><a class="link" href="#drbg">DRBG</a></h4>
 <div class="paragraph">
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <a href="#drbg">Architecture</a>). Their register maps are reported here.</p>
@@ -5084,22 +5084,22 @@ SEP aggregate.</p>
 <h3 id="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
 <table>
@@ -5109,7 +5109,7 @@ SEP aggregate.</p>
 <h3 id="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
 <table>
@@ -7901,7 +7901,7 @@ reset by a signal from the Watchdog Timer (WDT).</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">Direct Memory Access Controller (DMA)</a></h4>
+<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">Direct Memory Access (DMA)</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA
@@ -8597,7 +8597,7 @@ distinct buses:</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>Apart from the Adams Bridge post-quantum accelerator, which is vendored
+<p>Apart from the Adams Bridge, a Post-Quantum Cryptography (PQC) accelerator vendored
 from Caliptra, the subsystem’s hardware components are modified versions
 of the OpenTitan components, and the firmware is also based on the
 <a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan
@@ -8928,9 +8928,9 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">Adams Bridge Post-Quantum Accelerator (ABR)</a></h4>
+<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">Adams Bridge (ABR)</a></h4>
 <div class="paragraph">
-<p>The module is based on the
+<p>The module is a post-quantum accelerator based on the
 <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
 </div>
 <div class="paragraph">
@@ -9240,11 +9240,15 @@ integer width</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">Fuse Controller (OTP)</a></h4>
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">OTP Fuse Controller</a></h4>
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
 </div>
+</div>
+<div class="paragraph">
+<p>The One-Time Programmable (OTP) fuse controller stores persistent
+chiplet policy.</p>
 </div>
 <div class="paragraph">
 <p>When SEP is released from reset (chiplet_cold_reset), the sensing FSM
@@ -9681,7 +9685,7 @@ must verify, and any signature from a non-required owner is ignored.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA (PQC)
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.</p></td>
 </tr>
 <tr>
@@ -9690,7 +9694,7 @@ authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.</p></td
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA (PQC)
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.</p></td>
 </tr>
 <tr>
@@ -9700,7 +9704,7 @@ authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.</p></td
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s
-ML-DSA (PQC) root public key for secure boot (slot 0). PQC counterpart of
+ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.</p></td>
 </tr>
 <tr>
@@ -9710,7 +9714,7 @@ SIP_PUBK_HASH0.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the system owner&#8217;s
-ML-DSA (PQC) root public key for secure boot. PQC counterpart of
+ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.</p></td>
 </tr>
 <tr>
@@ -9730,7 +9734,7 @@ usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s ML-DSA
-(PQC) root public key for secure boot, slot 1. PQC counterpart of
+PQC root public key for secure boot, slot 1. PQC counterpart of
 SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].</p></td>
 </tr>
 <tr>
@@ -10400,7 +10404,7 @@ Error = 6’b111111</p>
 <div class="paragraph">
 <p>A token match does not by itself change the life cycle state. It
 authorizes a change, and the state is then updated by one of two paths
-described in <em>Fuse Controller (OTP)</em> in this chapter.</p>
+described in <em>OTP fuse controller</em> in this chapter.</p>
 </div>
 </div>
 </div>
@@ -10604,7 +10608,7 @@ trust; its classical and PQC root digests are embedded in SEP ROM), the SiP
 owner, and the system owner.</p>
 </div>
 <div class="paragraph">
-<p>Two eFuse policy fields govern the model (see the <em>Fuse Controller (OTP)</em>
+<p>Two eFuse policy fields govern the model (see the <em>OTP fuse controller</em>
 fuse-field table for field details):</p>
 </div>
 <div class="ulist">
@@ -10699,7 +10703,7 @@ slots, so the SiP owner retains a usable root after revoking one) and
 eFuse; and <code>CHIPLET_PUBK_HASH0/1</code> / <code>CHIPLET_PUBK_PQC_HASH0/1</code> hold additional
 <strong>chiplet-owner</strong> authentication-key hashes that supplement the chiplet-creator
 digests in SEP ROM. Every such key entry can be revoked individually through
-<code>CHIPLET_PUBK_REVOKE</code> (see the <em>Fuse Controller (OTP)</em> fuse-field table in this
+<code>CHIPLET_PUBK_REVOKE</code> (see the <em>OTP fuse controller</em> fuse-field table in this
 chapter).
 </td>
 </tr>
@@ -10865,7 +10869,7 @@ chiplet owner controls its own chiplet-owner domain.</p>
 register provided by the OTP/Fuse controller. The OTP controller
 initializes the shadow-register <strong>output</strong> to the INVALID encoding
 (4&#8217;b1111) and only drives it to the OTP-stored LC state value once
-fuse sensing is complete (see <em>Fuse Controller (OTP)</em> in this chapter).
+fuse sensing is complete (see <em>OTP fuse controller</em> in this chapter).
 The LCC&#8217;s output therefore tracks fuse sensing automatically: it produces the
 INVALID feature-control profile before fuse sensing completes and the
 per-LC-state profile (TEST_DEV / PROD / PROD_END / RMA_SIP / RMA_CHIPLET)
@@ -11148,7 +11152,7 @@ SiP owner or chiplet owner, and is cleared once SiP-owner access
 there is no third DIS vector restricting it. The system owner&#8217;s
 own fuse fields (<code>SYS_PUBK_HASH</code>, <code>SYS_UID</code>) are provisioned by
 the system owner directly before transitioning the part from
-TEST_DEV to PROD. See the <em>Fuse Controller (OTP)</em> section in this
+TEST_DEV to PROD. See the <em>OTP fuse controller</em> section in this
 chapter for the full multi-owner provisioning sequence.</p>
 </div>
 </div>
@@ -11542,7 +11546,7 @@ bits and the LC state, which decide whether the chain is reachable at all.</p>
 <p><strong>Blocks lifecycle shadow-register updates.</strong> <code>LOCKS</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>,
 and <code>SYS_DIS</code> are locked against updates from every source&#8201;&#8212;&#8201;SEP, OTP, JTAG,
 and TRoot&#8201;&#8212;&#8201;so a disabled feature cannot be enabled while the part is shiftable
-(see <em>Fuse Controller (OTP)</em>).</p>
+(see <em>OTP fuse controller</em>).</p>
 </li>
 <li>
 <p><strong>Ties off the fuse program path.</strong> The OTP fuse-write enable inputs are held

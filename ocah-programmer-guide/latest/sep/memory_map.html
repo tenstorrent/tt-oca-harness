@@ -1404,22 +1404,22 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <h3 id="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
 <table>
@@ -1429,7 +1429,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <h3 id="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
 <table>
@@ -2801,7 +2801,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="drbg-csrng-and-edn"><a class="anchor" href="#drbg-csrng-and-edn"></a><a class="link" href="#drbg-csrng-and-edn">2.7. DRBG (CSRNG and EDN)</a></h4>
+<h4 id="drbg"><a class="anchor" href="#drbg"></a><a class="link" href="#drbg">2.7. DRBG</a></h4>
 <div class="paragraph">
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <a href="#drbg">Architecture</a>). Their register maps are reported here.</p>
@@ -3791,22 +3791,22 @@ SEP aggregate.</p>
 <h3 id="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
 <table>
@@ -3816,7 +3816,7 @@ SEP aggregate.</p>
 <h3 id="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
 <table>

@@ -984,7 +984,7 @@ signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.</p>
 </div>
 <div class="paragraph">
-<p>For Function Level Reset (FLR) support, assert <code>cfg_flr_pf_active_i</code> to trigger
+<p>To support Function Level Reset (FLR), assert <code>cfg_flr_pf_active_i</code> to trigger
 a warm reset sequence. The SMC asserts <code>isolate_req_o</code> bits for the affected
 subsystem indices. The adopter&#8217;s power controller drives <code>ss_reset_complete_i</code>
 high once the subsystem reset is complete; the SMC synchronizes this into the

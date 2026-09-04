@@ -213,7 +213,7 @@ including In-Band Interrupts, Common Command Codes, and device recovery.</p>
 <ul>
 <li>
 <p><strong>MIPI Specification Compliance</strong>: Full compliance with I3C Basic v1.0/v1.1.1,
-I3C HCI v1.2, and TCRI v1.0 (Recovery) specifications</p>
+I3C HCI v1.2, and TCRI v1.0 recovery specifications</p>
 </li>
 <li>
 <p><strong>Dual Operating Modes</strong>: Configurable as active controller, secondary
@@ -242,7 +242,7 @@ configuration (SETMWL, SETMRL), and device queries (GETPID, GETSTATUS)</p>
 and Fast-mode Plus (1 Mbaud) support for legacy I2C devices</p>
 </li>
 <li>
-<p><strong>Device Recovery (TCRI)</strong>: MIPI TCRI v1.0 compliant recovery handler with
+<p><strong>Transfer Command Response Interface (TCRI)</strong>: MIPI TCRI v1.0 recovery handler with
 firmware download and peripheral reset capabilities</p>
 </li>
 <li>
@@ -1108,7 +1108,7 @@ response (query target, send CCC, etc.)</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="common-command-code-ccc-flow"><a class="anchor" href="#common-command-code-ccc-flow"></a><a class="link" href="#common-command-code-ccc-flow">Common Command Code (CCC) Flow</a></h6>
+<h6 id="common-command-codes-ccc-flow"><a class="anchor" href="#common-command-codes-ccc-flow"></a><a class="link" href="#common-command-codes-ccc-flow">Common Command Codes (CCC) Flow</a></h6>
 <div class="paragraph">
 <p>Common Command Codes enable the controller to configure targets, query device
 information, and manage bus topology. CCCs are classified as broadcast
@@ -1401,9 +1401,9 @@ values.</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="recovery-mechanism-tcri"><a class="anchor" href="#recovery-mechanism-tcri"></a><a class="link" href="#recovery-mechanism-tcri">Recovery Mechanism (TCRI)</a></h6>
+<h6 id="transfer-command-response-interface-tcri"><a class="anchor" href="#transfer-command-response-interface-tcri"></a><a class="link" href="#transfer-command-response-interface-tcri">Transfer Command Response Interface (TCRI)</a></h6>
 <div class="paragraph">
-<p>The MIPI TCRI v1.0 compliant recovery subsystem enables secure firmware download
+<p>The MIPI TCRI v1.0 recovery subsystem enables secure firmware download
 and device recovery:</p>
 </div>
 <div class="paragraph">
@@ -3166,7 +3166,7 @@ respond and use static address as dynamic address).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Target Transaction Interface Enable</strong>:
-Enables Target Transaction Interface (TTI) for servicing read/write transactions
+When set, the Target Transaction Interface (TTI) services read/write transactions
 when in target mode. 0 = Disabled (TTI not available), 1 = Enabled (TTI available,
 software can service target transactions via TTI queues).</p></td>
 </tr>

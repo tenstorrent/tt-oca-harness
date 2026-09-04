@@ -292,7 +292,7 @@ trust; its classical and PQC root digests are embedded in SEP ROM), the SiP
 owner, and the system owner.</p>
 </div>
 <div class="paragraph">
-<p>Two eFuse policy fields govern the model (see the <em>Fuse Controller (OTP)</em>
+<p>Two eFuse policy fields govern the model (see the <em>OTP fuse controller</em>
 fuse-field table for field details):</p>
 </div>
 <div class="ulist">
@@ -387,7 +387,7 @@ slots, so the SiP owner retains a usable root after revoking one) and
 eFuse; and <code>CHIPLET_PUBK_HASH0/1</code> / <code>CHIPLET_PUBK_PQC_HASH0/1</code> hold additional
 <strong>chiplet-owner</strong> authentication-key hashes that supplement the chiplet-creator
 digests in SEP ROM. Every such key entry can be revoked individually through
-<code>CHIPLET_PUBK_REVOKE</code> (see the <em>Fuse Controller (OTP)</em> fuse-field table in this
+<code>CHIPLET_PUBK_REVOKE</code> (see the <em>OTP fuse controller</em> fuse-field table in this
 chapter).
 </td>
 </tr>
@@ -553,7 +553,7 @@ chiplet owner controls its own chiplet-owner domain.</p>
 register provided by the OTP/Fuse controller. The OTP controller
 initializes the shadow-register <strong>output</strong> to the INVALID encoding
 (4&#8217;b1111) and only drives it to the OTP-stored LC state value once
-fuse sensing is complete (see <em>Fuse Controller (OTP)</em> in this chapter).
+fuse sensing is complete (see <em>OTP fuse controller</em> in this chapter).
 The LCC&#8217;s output therefore tracks fuse sensing automatically: it produces the
 INVALID feature-control profile before fuse sensing completes and the
 per-LC-state profile (TEST_DEV / PROD / PROD_END / RMA_SIP / RMA_CHIPLET)
@@ -836,7 +836,7 @@ SiP owner or chiplet owner, and is cleared once SiP-owner access
 there is no third DIS vector restricting it. The system owner&#8217;s
 own fuse fields (<code>SYS_PUBK_HASH</code>, <code>SYS_UID</code>) are provisioned by
 the system owner directly before transitioning the part from
-TEST_DEV to PROD. See the <em>Fuse Controller (OTP)</em> section in this
+TEST_DEV to PROD. See the <em>OTP fuse controller</em> section in this
 chapter for the full multi-owner provisioning sequence.</p>
 </div>
 </div>
@@ -1230,7 +1230,7 @@ bits and the LC state, which decide whether the chain is reachable at all.</p>
 <p><strong>Blocks lifecycle shadow-register updates.</strong> <code>LOCKS</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>,
 and <code>SYS_DIS</code> are locked against updates from every source&#8201;&#8212;&#8201;SEP, OTP, JTAG,
 and TRoot&#8201;&#8212;&#8201;so a disabled feature cannot be enabled while the part is shiftable
-(see <em>Fuse Controller (OTP)</em>).</p>
+(see <em>OTP fuse controller</em>).</p>
 </li>
 <li>
 <p><strong>Ties off the fuse program path.</strong> The OTP fuse-write enable inputs are held

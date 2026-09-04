@@ -195,11 +195,15 @@
 </aside>
 <article class="doc">
 <div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1. Fuse Controller (OTP)</a></h4>
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1. OTP Fuse Controller</a></h4>
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
 </div>
+</div>
+<div class="paragraph">
+<p>The One-Time Programmable (OTP) fuse controller stores persistent
+chiplet policy.</p>
 </div>
 <div class="paragraph">
 <p>When SEP is released from reset (chiplet_cold_reset), the sensing FSM
@@ -636,7 +640,7 @@ must verify, and any signature from a non-required owner is ignored.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA (PQC)
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.</p></td>
 </tr>
 <tr>
@@ -645,7 +649,7 @@ authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.</p></td
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA (PQC)
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.</p></td>
 </tr>
 <tr>
@@ -655,7 +659,7 @@ authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.</p></td
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s
-ML-DSA (PQC) root public key for secure boot (slot 0). PQC counterpart of
+ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.</p></td>
 </tr>
 <tr>
@@ -665,7 +669,7 @@ SIP_PUBK_HASH0.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the system owner&#8217;s
-ML-DSA (PQC) root public key for secure boot. PQC counterpart of
+ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.</p></td>
 </tr>
 <tr>
@@ -685,7 +689,7 @@ usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s ML-DSA
-(PQC) root public key for secure boot, slot 1. PQC counterpart of
+PQC root public key for secure boot, slot 1. PQC counterpart of
 SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].</p></td>
 </tr>
 <tr>

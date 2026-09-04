@@ -1310,8 +1310,8 @@ internal device measurements such as PCR quotes.</p>
 <p>The EK and AK are stored in the KPV storage structure described above.</p>
 </div>
 <div class="paragraph">
-<p>Platform Configuration Registers (PCR) are a set of registers which
-store system integrity measurement data. These are stored in a dedicated
+<p>The Platform Configuration Register (PCR) bank stores system integrity
+measurement data. These are stored in a dedicated
 component called the PCR Vault (PCRV). PCRV implementation is deferred to
 a future OCAH version.</p>
 </div>
@@ -1341,7 +1341,7 @@ mailbox path.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">Key Manager Control and Status (KMCSR)</a></h5>
+<h5 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">Key Manager Control and Status Registers (KMCSR)</a></h5>
 <div class="paragraph">
 <p>This block of 32-bit registers is separate from the Key and Policy
 register block. Its purpose is to manage the configuration and operation
@@ -2767,8 +2767,8 @@ designed to protect dynamically loaded KM firmware from unauthorized
 modification.</p>
 </div>
 <div class="paragraph">
-<p>Control of this functionality resides within the KM Control and Status
-Registers (CSRs). Once a memory region is locked, it cannot be unlocked
+<p>Control of this functionality resides within the Key Manager Control and Status
+Registers (KMCSR). Once a memory region is locked, it cannot be unlocked
 within the current boot session. It will remain in the read-only state
 until the next warm or cold reset of the KM. The write-lock state is in
 the warm reset domain and is cleared on every warm or cold reset.</p>
