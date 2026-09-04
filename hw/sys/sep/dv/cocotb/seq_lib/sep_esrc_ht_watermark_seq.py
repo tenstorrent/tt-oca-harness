@@ -7,7 +7,7 @@ One shared register, not a per-mode bank. Arming is health_test_clr
 Changing the selector alone does not re-arm. An unsupported selector maps to
 REPCNT_HI. HEALTH_TEST_CTRL.ENABLE stays 0 on every arming leg so a window wrap
 cannot move the register between the event and the read. The shared TRNG reset
-resets the selector and watermark together and is covered by the recovery test.
+clears the selector and the watermark together; that path is not claimed here.
 
 SepHtWatermarkCfg is the single source of truth for the walk, the unsupported
 selector, and the low-mode fall selector.

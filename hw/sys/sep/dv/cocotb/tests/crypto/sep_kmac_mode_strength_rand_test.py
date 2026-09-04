@@ -7,7 +7,8 @@ firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the Phase-1 KM->KMAC
 sideload KAT (`sep_km_kmac_sideload_kat_test`, KMAC-256 keyed via keymgr,
 cross-check only) does not reach:
 
-    SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256  (8 cells).
+    SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256,
+    KMAC-128/256 across all five key lengths  (13 cells).
 
 reference parity: MERGED_INTO the reference suite kmac mode/strength directed set. The reference SEP
 KMAC coverage is a keyed KMAC cross-check (no standalone SHA3/SHAKE/cSHAKE digest
@@ -49,7 +50,11 @@ from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
 # (mode, sec/strength, output bytes, key_bits[kmac only], customization S)
 CELLS = [
+    # kmac_errchk.sv declares SHA3 legal at all four strengths, and
+    # KMAC_STRENGTH maps every one of them.
+    ("sha3", 224, 28, None, b""),
     ("sha3", 256, 32, None, b""),
+    ("sha3", 384, 48, None, b""),
     ("sha3", 512, 64, None, b""),
     ("shake", 128, 32, None, b""),
     ("shake", 256, 32, None, b""),
@@ -60,6 +65,10 @@ CELLS = [
     ("cshake", 256, 32, None, b"Email Signature"),
     ("kmac", 128, 32, 128, b""),
     ("kmac", 256, 64, 256, b"My Tagged Application"),
+    # KMAC_KEYLEN defines five key lengths; every one is walked.
+    ("kmac", 256, 32, 192, b""),
+    ("kmac", 256, 32, 384, b"Key384"),
+    ("kmac", 256, 32, 512, b"Key512"),
 ]
 
 
@@ -73,6 +82,11 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         # routing is in-order (one live sink). KMAC stays released for the
         # masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"kmac": "golden"})
+        # Sized from an observed run: KMAC draws entropy once per operation
+        # rather than per block, so this walk scores ~6 routed beats where the AES
+        # sweep scores dozens. 4 is above the default floor of 1 and leaves room
+        # for seed variation.
+        self.drbg_sb.set_min_matches(CHK5_kmac=4)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
@@ -88,7 +102,12 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         # configurations.
         results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
-            results[f"{mode}-{sec}-{outb}"] = await self._run_cell(mode, sec, outb, key_bits, s)
+            # Key the cell by every dimension that distinguishes it, key length
+            # and customization included: two cells that differ only in key
+            # length would otherwise overwrite each other and go uncounted.
+            cell_key = f"{mode}-{sec}-{outb}-k{key_bits}-s{len(s)}"
+            assert cell_key not in results, f"duplicate cell key {cell_key} in CELLS"
+            results[cell_key] = await self._run_cell(mode, sec, outb, key_bits, s)
 
         walked = len(results)
         assert walked == len(CELLS), f"walked {walked} cells != {len(CELLS)}"
@@ -101,10 +120,10 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         assert self.drbg_sb.report()
         self.logger.info("CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS")
         self.logger.info(
-            "CHK-RAND-REP PASS: walked all %d discrete cells "
-            "(SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256) in one "
+            "CHK-RAND-REP PASS: walked all %d discrete cells (%s) in one "
             "invocation (seed=%d); message/key randomized per cell; entropy clean",
             walked,
+            ", ".join(sorted(results)),
             seed,
         )
 

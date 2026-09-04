@@ -60,6 +60,9 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         # routing is in-order (one live sink). AES stays released for the
         # masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"aes": "golden"})
+        # The default floor is one scored beat, which is far below what the
+        # per-beat routing claim needs across the whole cell walk.
+        self.drbg_sb.set_min_matches(CHK5_aes=32)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 

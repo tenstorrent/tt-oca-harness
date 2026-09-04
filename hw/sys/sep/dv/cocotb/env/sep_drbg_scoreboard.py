@@ -1270,9 +1270,9 @@ class SepDrbgScoreboard:
                 )
         # Generate segmentation. gen_last IS a per-Generate-command terminator:
         # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
-        # reaches its final beat (csrng_cmd_stage.sv:379, :447), ships it as
+        # reaches its final beat (csrng_cmd_stage.sv:380, :448), ships it as
         # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
-        # acmd_sop (csrng_core.sv:750) to drive ctr_drbg_gen.req_glast_i. So each
+        # acmd_sop (csrng_core.sv:748-751) to drive ctr_drbg_gen.req_glast_i. So each
         # Generate command ends with exactly one glast beat, and that is where its
         # single trailing Update lands.
         self.log.info(

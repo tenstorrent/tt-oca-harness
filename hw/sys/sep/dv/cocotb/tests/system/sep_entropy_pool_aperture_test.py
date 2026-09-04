@@ -158,7 +158,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
 
         await pool.disable_esrc()
-        for off in (*cfg.alias_offs, cfg.unmapped_off):
+        for off in (*cfg.alias_offs, *cfg.unmapped_offs):
             unmapped = POOL_STATUS + off
             um = await pool.access(unmapped, expect_error=True)
             assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
@@ -166,9 +166,9 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 f"expected SLVERR + RDATA=0"
             )
         self.logger.info(
-            "CHK-UNMAPPED PASS: %d alias + extra 0x%x -> SLVERR rdata=0",
+            "CHK-UNMAPPED PASS: %d alias + %d unique-dead offsets -> SLVERR rdata=0",
             len(cfg.alias_offs),
-            cfg.unmapped_off,
+            len(cfg.unmapped_offs),
         )
 
         # ESRC MODULE_ENABLE=0 does not drop AUTO-mode EDN acks. EDN_ENABLE=False
@@ -178,7 +178,14 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # full pool cannot show a refused fill.
         await pool.disable_edn()
         level_room = await self._arm_not_full_no_ack(pool)
-        assert level_room < FIFO_DEPTH, f"write-SLVERR armed on a full pool (level={level_room})"
+        # _arm_not_full_no_ack only returns while level < FIFO_DEPTH, so re-testing
+        # that bound here would restate its exit condition. Assert the DUT-side
+        # precondition the refused-fill check actually needs instead: the pool is
+        # still asking for entropy, which is what keeps req_pending asserted.
+        assert int(cocotb.top.pool_edn_req_o.value) == 1, (
+            f"write-SLVERR arming left no outstanding pool request "
+            f"(level={level_room}, pool_edn_req_o=0)"
+        )
         wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
         assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
             f"status write resp={wr.resp_code} timed_out={wr.timed_out}, expected SLVERR"

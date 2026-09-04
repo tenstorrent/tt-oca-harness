@@ -44,17 +44,24 @@ import pyuvm
 from env.sep_hmac_golden import hmac_or_sha_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from seq_lib.sep_hmac_seq import SepHmac, SepHmacCfg
+from seq_lib.sep_hmac_seq import (
+    HMAC_DIGEST_SIZE,
+    HMAC_ILLEGAL_KEYED,
+    HMAC_KEY_LENGTH,
+    SepHmac,
+    SepHmacCfg,
+)
 
-# Legal keyed cells: sha_bits -> allowed key_bits. SHA-256 excludes Key_1024
-# (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv` invalid_config
-# for SHA-256 Key_1024); SHA-384/512 support all five key lengths.
+# Derived, not hand-kept: the full digest-size x key-length product minus the
+# combinations hmac.sv rejects as invalid_config. HMAC_ILLEGAL_KEYED in the
+# sequence is the single source of truth for legality, so a change there moves
+# both the stimulus and this matrix together.
 KEYED_MATRIX = {
-    256: [128, 256, 384, 512],
-    384: [128, 256, 384, 512, 1024],
-    512: [128, 256, 384, 512, 1024],
+    sha_bits: [k for k in HMAC_KEY_LENGTH if (sha_bits, k) not in HMAC_ILLEGAL_KEYED]
+    for sha_bits in HMAC_DIGEST_SIZE
 }
-SHA_VARIANTS = [256, 384, 512]
+EXCLUDED_KEYED = tuple(sorted(HMAC_ILLEGAL_KEYED))
+SHA_VARIANTS = list(HMAC_DIGEST_SIZE)
 
 # Fixed known key/msg for the one-time SW-key convention resolution (8 distinct
 # words so word-order reversal yields a distinct key).
@@ -105,6 +112,13 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
             "HMAC cells produced duplicate digests, so they did not all run distinct "
             "configurations: " + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results))
         )
+        for sha_bits, key_bits in EXCLUDED_KEYED:
+            self.logger.info(
+                "CHK-SKIP: SHA-%d with a %d-bit key is rejected by the engine as "
+                "invalid_config (hmac.sv invalid_config), so it is not a keyed cell",
+                sha_bits,
+                key_bits,
+            )
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "({SHA256,384,512} x keyed[all legal key-len] + plain-SHA) in one "

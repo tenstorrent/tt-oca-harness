@@ -17,15 +17,23 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_ht_watermark_seq import (
+    APT_HI,
     APT_LO,
     ARM_HIGH,
     ARM_LOW,
+    MARKOV_HI,
+    MARKOV_LO,
     REPCNT_HI,
     SepHtWatermark,
     SepHtWatermarkCfg,
     arm_value,
     sel_name,
 )
+
+# entropy_source.rdl HT_WATERMARK_NUM enum WATERMARK_TEST: the five encodings the
+# register defines. A literal, so the walk tally below cannot move with the
+# generator that drove it.
+_RDL_WATERMARK_MODES = frozenset({REPCNT_HI, APT_HI, APT_LO, MARKOV_HI, MARKOV_LO})
 
 _FALL_TIMEOUT_CYCLES = 80_000
 _FALL_POLL_EVERY = 64
@@ -53,7 +61,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         ht: SepHtWatermark,
         sel: int,
         path: str,
-    ) -> None:
+    ) -> int:
         want = arm_value(sel)
         entry = await self._force_polarity(ht, high=(want == ARM_LOW))
         assert entry != want, (
@@ -80,6 +88,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             f"{tag} FAIL: {sel_name(sel)}/{path} HT_WATERMARK=0x{got:04x} want 0x{want:04x}"
         )
         self.logger.info("%s PASS: %s %s HT_WATERMARK=0x%04x", tag, sel_name(sel), path, got)
+        return got
 
     async def _check_unsupported(self, ht: SepHtWatermark, sel: int) -> None:
         entry = await self._force_polarity(ht, high=False)
@@ -142,11 +151,19 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         self.logger.info("esrc ht watermark arming: %s", cfg.summary())
 
         await ht.hold_health_tests_off()
-        n = 0
+        # Record the value the DUT armed for each selector, then compare the set of
+        # selectors actually proven against the RDL's own five-encoding enum. The
+        # bound is a literal from entropy_source.rdl, not the cardinality of the
+        # generator that drove the loop, so a walk that silently skipped a mode
+        # fails here.
+        armed: dict[int, int] = {}
         for sel, path in cfg.cells():
-            await self._arm_leg(ht, sel, path)
-            n += 1
-        assert n == cfg.n_cells(), f"walked {n} arming cells, expected {cfg.n_cells()}"
+            armed[sel] = await self._arm_leg(ht, sel, path)
+        assert set(armed) == _RDL_WATERMARK_MODES, (
+            f"CHK-RANDCFG FAIL: armed selectors {sorted(armed)} != the five "
+            f"HT_WATERMARK_NUM encodings {sorted(_RDL_WATERMARK_MODES)}"
+        )
+        n = len(armed)
         await self._check_unsupported(ht, cfg.unsupported)
         await self._check_low_fall(ht, cfg.fall_sel)
         self.logger.info(
