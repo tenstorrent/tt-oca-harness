@@ -26,7 +26,7 @@ AXI4-lite is used for data interfaces and is generally configured with
 64-bit data and address. Control buses for accessing CSRs and other low
 speed sources are implemented with 32-bit APB.
 
-The system memory map and component CSRs (Configuration and Status
+The system memory map and component CSRs (Control and Status
 Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and

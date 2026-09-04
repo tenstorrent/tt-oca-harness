@@ -226,10 +226,9 @@ module tb_ring_oscillator ();
       if ($time % int'(277.78) > int'(275.78) || $time % int'(277.78) < int'(2.0)) begin
         potential_metastable_events = potential_metastable_events + 1;
         if (potential_metastable_events <= 10) begin
-          $display(
-              {"Time=%0t: Estimated metastable event #%0d ",
-               "(rosc_async transition in setup/hold window)"},
-              $time, potential_metastable_events);
+          $display({"Time=%0t: Estimated metastable event #%0d ",
+                    "(rosc_async transition in setup/hold window)"}, $time,
+                     potential_metastable_events);
         end
       end
     end

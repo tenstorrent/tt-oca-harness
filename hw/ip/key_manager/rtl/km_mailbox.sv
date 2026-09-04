@@ -737,9 +737,8 @@ module km_mailbox
   `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
   `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
 
-    // Accepted KM FIFO AR implies an R beat the next cycle.
-    `OCAH_OT_ASSERT(KmFifoReadCompletesAfterAccept_A,
-        km_fifo_ar_handshake |=> km_fifo_r_valid_q,
-        clk_i, !cold_rst_ni || !warm_rst_ni)
+  // Accepted KM FIFO AR implies an R beat the next cycle.
+  `OCAH_OT_ASSERT(KmFifoReadCompletesAfterAccept_A, km_fifo_ar_handshake |=> km_fifo_r_valid_q,
+                  clk_i, !cold_rst_ni || !warm_rst_ni)
 
 endmodule : km_mailbox
