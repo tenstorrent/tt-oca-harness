@@ -45,42 +45,41 @@ HIGHLIGHTS
 * Lifecycle-controlled disable inputs for scan and memory-mapped debug paths
 * Integrated debug clock-stop, boot-stall, and multi-target reset controls
 
-// datasheet-section: integration-fit
+// datasheet-section: system-role
 [.datasheet-section]
-INTEGRATION FIT
+SYSTEM ROLE
 
-For SoC and chiplet teams that need a reusable test-access hub, controlled
-memory-mapped debug, and coordinated triggers across die boundaries. DTP is
-integrated in the OCAH SMU reference subsystem and can also serve as a
-subsystem-level integration boundary when its lifecycle, fabric, reset, clock,
-scan, and pad connections are supplied by the adopter.
+DTP sits between external debug and test equipment, OCAH management and
+security functions, adopter IP, and neighboring chiplets. It is integrated in
+the OCAH SMU reference subsystem and can also form a subsystem-level boundary
+when the adopter supplies its lifecycle policy, fabric, reset, clock, scan, and
+pad connections.
 
 a|
 // datasheet-section: overview
 [.datasheet-section]
 OVERVIEW
 
-OCAH DTP brings scan access, debug transactions, cross-trigger routing, and
-debug clock control together at one explicit integration boundary. A primary
-JTAG TAP selects boundary-scan, iJTAG, secondary-TAP, debug-control, capability,
-and JTAG-to-AXI data registers. Optional bridges expose the SMC system fabric
-and the SMC and SEP OTP interfaces to an authorized debugger. Active-high
-lifecycle disable fields are synchronized into the scan domain and gate the
-corresponding paths; the adopter remains responsible for generating the policy
-inputs and for securing downstream address maps.
+The Debug and Test Ports (DTP) subsystem provides the central debug and test
+infrastructure for an OCAH chiplet. Its JTAG Interface Unit implements
+interfaces based on IEEE 1149.1-2013 and IEEE 1687-2014. Its Cross Trigger
+Network coordinates local and inter-chiplet triggers. Together, the two blocks
+provide controlled debug access, boundary scan, cross triggering, boot and
+reset controls, and clock control for multi-chiplet debugging.
 
-The cross-trigger network connects external Cross Trigger Ports (CTPs) and
-chiplet-local trigger sources and sinks through a software-controlled matrix.
-It supports pulse and four-phase request/acknowledge signaling and combines
-debug and chiplet-local requests into a registered clock-stop output. Compile-
-time controls let adopters remove selected instructions, TAPs, bridge paths,
-and reset-control outputs for SMC, SEP, and adopter logic.
+A primary JTAG TAP provides boundary-scan, iJTAG, secondary-TAP, debug-control,
+capability, and JTAG-to-AXI data registers. Optional bridges issue debug
+transactions onto the SMC system fabric and the SMC and SEP OTP AXI4-Lite
+interfaces. Whether any adopter IP is reachable depends on the adopter's
+downstream address map. Lifecycle-derived, active-high disable fields are
+synchronized into the scan domain and gate the corresponding paths; the
+adopter owns the policy source and permitted address ranges.
 
-// datasheet-section: architecture
+// datasheet-section: system-context
 [.datasheet-section]
-ARCHITECTURE
+SYSTEM CONTEXT
 
-image::../assets/dtp-block-diagram.svg[DTP integration boundary,pdfwidth=4.15in,align=center]
+image::../assets/dtp-block-diagram.svg[DTP system context,pdfwidth=4.15in,align=center]
 
 // datasheet-section: at-a-glance
 [.datasheet-section]
@@ -102,6 +101,7 @@ The default SMU uses two of the 10 internal trigger interfaces and one of the
 nine clock-stop request inputs for SMC connections. Its external boundary
 therefore exposes eight internal trigger interfaces and eight clock-stop
 request inputs; all 16 CTPs remain externally visible.
+
 |===
 
 <<<
@@ -148,7 +148,7 @@ INTERFACES AND CONFIGURATION
 !Boundary !Integration-visible controls
 !Clocks and resets !System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
 scan reset, test enable
-!Debug security !`dbg_disable_i` lifecycle disable structure
+!Lifecycle policy !Active-high, per-path debug and test disable controls
 !Scan !PTAP pins; BSR/iJTAG scan controls; I/O, SMC, SEP, and extra STAPs
 !Fabric !One AXI4 manager, two AXI4-Lite managers, one AXI4-Lite subordinate
 !Cross trigger !External pad controls, internal source/sink interfaces,
@@ -184,10 +184,11 @@ VERIFICATION AND MATURITY
 
 [.beta-note]
 --
-OCAH DTP is beta RTL. The repository's open-source PyUVM environment exercises
-TAP operation, standard and optional instructions, JTAG-to-AXI data and error
-paths, backpressure/reset cases, iJTAG and STAP routing, cross-trigger modes,
-clock controls, and lifecycle-disable matrices. Scoreboards, reference models,
+The OCAH documentation website publishes the current verification and maturity status.
+The repository's open-source PyUVM environment exercises TAP operation,
+standard and optional instructions, JTAG-to-AXI data and error paths,
+backpressure/reset cases, iJTAG and STAP routing, cross-trigger modes, clock
+controls, and lifecycle-disable matrices. Scoreboards, reference models,
 coverage intent, and deliberately corrupted-checker tests guard against vacuous
 passes. A smaller SV-UVM scenario set is available for VCS.
 
@@ -199,7 +200,7 @@ target process.
 
 // datasheet-section: deliverables-and-further-information
 [.datasheet-section]
-DELIVERABLES AND FURTHER INFORMATION
+DELIVERABLES
 
 * SystemVerilog RTL and Bender dependency manifests
 * SystemRDL-derived cross-trigger register collateral
@@ -209,8 +210,11 @@ DELIVERABLES AND FURTHER INFORMATION
 * Synthesis and timing-constraint starting points
 * Apache License 2.0 repository distribution
 
-[.datasheet-small]
-Technical detail: `hw/sys/dtp/doc/` +
+[.datasheet-section]
+RESOURCES
+
+Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+DTP source documentation: `hw/sys/dtp/doc/` +
 RTL: `hw/sys/dtp/rtl/` +
 Verification: `hw/sys/dtp/dv/` +
 Synthesis collateral: `hw/sys/dtp/synth/` +
