@@ -36,9 +36,6 @@ CANONICAL_STAGES = {
     "clean",
 }
 
-# `[coverage].tools` is the DUT's coverage-backend allowlist, not a backend table.
-COVERAGE_RESERVED_KEYS = {"tools"}
-
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -721,18 +718,7 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
             validate_placeholders_in_value(section, f"{flow.path} [{section_name}]")
     coverage = data.get("coverage", {})
     if isinstance(coverage, dict):
-        tools_allow = coverage.get("tools")
-        if tools_allow is not None and (
-            not isinstance(tools_allow, list)
-            or not tools_allow
-            or not all(isinstance(entry, str) and entry.strip() for entry in tools_allow)
-        ):
-            raise ConfigError(
-                f"{flow.path}: [coverage].tools must be a non-empty list of simulator names"
-            )
         for tool, table in coverage.items():
-            if tool in COVERAGE_RESERVED_KEYS:
-                continue
             if not isinstance(table, dict):
                 raise ConfigError(f"{flow.path}: [coverage.{tool}] must be a table")
             validate_coverage_tool_table(
@@ -1369,20 +1355,6 @@ def run_modes_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
 
 def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return config_section(sim_cfg, "coverage") if "coverage" in sim_cfg else {}
-
-
-def coverage_tools(sim_cfg: dict[str, Any]) -> list[str]:
-    """The `[coverage].tools` allowlist, or empty when the DUT omits the key.
-
-    An omitted key is unconstrained. A present list must be non-empty and is a
-    deliberate narrowing: `validate_coverage_tool` turns a request outside it
-    into a config error.
-    """
-
-    value = coverage_cfg(sim_cfg).get("tools")
-    if not isinstance(value, list):
-        return []
-    return [entry.strip() for entry in value if isinstance(entry, str) and entry.strip()]
 
 
 def c_build_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:

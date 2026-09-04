@@ -127,12 +127,6 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
-[coverage]
-# VCS-only. `--cov --tool verilator` re-triggers the PeakRDL nested-struct
-# C++ error (`__PVT__MLKEM_SHARED_KEY`) even with the daily stub: VM_COVERAGE=1
-# emits a different initializer than the functional model. Refuse before compile.
-tools = ["vcs"]
-
 [coverage.vcs]
 # Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
 # the list rather than appending to it, then add the scope file.
@@ -175,10 +169,10 @@ compile_args = [
 # coverage flow does not rediscover it. That run needs its own scope story
 # before its number is quotable.
 [coverage.verilator]
-# Unused while [coverage].tools = ["vcs"]. Kept as the Verilator form once the
-# PeakRDL coverage-compile error is gone. Toggle stays off: on this model it
-# is ~95% of the database (~0.5 GB per leaf) and the costliest sim
-# instrumentation. Replaces the simulator-default `--coverage`.
+# Not the graded number. Only [coverage.vcs] applies the compile-time scope.
+# Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
+# and the costliest sim instrumentation. Replaces the simulator-default
+# `--coverage`.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [frameworks.cocotb]

@@ -30,7 +30,6 @@ from .config import (
     OverlayFrameworkMismatch,
     as_str_list,
     cocotb_cfg,
-    coverage_tools,
     default_target_name,
     flow_stages,
     load_executors,
@@ -1499,29 +1498,6 @@ def emit_dry_run_config_summary(
         console.event("config", "effective_defaults=" + ", ".join(inherited))
 
 
-def validate_coverage_tool(
-    sim_cfg: dict[str, Any], tool: str, args: argparse.Namespace, flow: Flow
-) -> None:
-    """Refuse `--cov` on a simulator the DUT does not grade with.
-
-    Every simulator inherits `[<tool>.coverage_defaults]`, so a DUT that means
-    "coverage is a VCS number here" cannot say so by omission. A run on the
-    wrong backend produces a real percentage under different instrumentation
-    and a different scope. `[coverage].tools` is the allowlist.
-    """
-
-    if not args.cov:
-        return
-    allowed = coverage_tools(sim_cfg)
-    if not allowed or tool in allowed:
-        return
-    listed = sorted(allowed)
-    raise ConfigError(
-        f"{flow.path}: --cov is restricted to {', '.join(listed)} for this DUT, "
-        f"but the run selects `{tool}`; re-run with --tool {listed[0]}"
-    )
-
-
 def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
     available = flow_stages(flow)
     # Fail fast: on a flow with no declared coverage stages, --cov would otherwise burn a full
@@ -1913,7 +1889,6 @@ def run_flow(
     catalog = load_test_catalog(flow, root)
     if args.run_mode:
         validate_run_mode_request(sim_cfg, str(args.run_mode), "--run-mode")
-    validate_coverage_tool(sim_cfg, tool, args, flow)
     stages = selected_stages(flow, args)
     need_items = any(stage_needs_item(stage) for stage in stages)
     requested: list[str] = []

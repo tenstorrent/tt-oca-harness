@@ -83,13 +83,13 @@ The contracts themselves:
 
 ## Code coverage
 
-`--cov` is VCS-only (`[coverage].tools = ["vcs"]`). It instruments the build,
-writes one native database per test leaf (`coverage/simv.vdb` under each leaf),
-and merges/reports through the `cov_merge`/`cov_report` stages into
+`--cov` is collected on VCS. Only `[coverage.vcs]` applies the compile-time
+scope, so that is the graded number. It instruments the build, writes one
+native database per test leaf (`coverage/simv.vdb` under each leaf), and
+merges/reports through the `cov_merge`/`cov_report` stages into
 `<run_dir>/cov/merged.vdb`. That is `-cm line+cond+tgl+fsm+branch+assert` at
 both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
-`urg`. `--cov --tool verilator` is refused before compile: `VM_COVERAGE=1`
-re-triggers the PeakRDL nested-struct C++ error that the daily stub hides.
+`urg`.
 
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
@@ -182,7 +182,7 @@ hw/sys/sep/dv/
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        #   and cov/sv/. `--cov` is VCS-only ([coverage].tools).
+│                        #   and cov/sv/. `--cov` is graded on VCS ([coverage.vcs]).
 ├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
