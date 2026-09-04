@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+`timescale 1ns / 1ps
+
 /**
  * @file entropy_ring_oscillator.sv
  * @brief Asynchronous ring oscillator with configurable delay chain length.
@@ -31,7 +33,9 @@ module entropy_ring_oscillator #(
   logic                    feedback;
 
   // first delay cell is inverting and has enable input
-  prim_clock_nand2 u_en (
+  prim_clock_nand2 #(
+    .SIM_DELAY (1'b1)
+  ) u_en (
     .i_A1 (enable_i),
     .i_A2 (feedback),
     .o_Y  (stage_o[0])
@@ -40,7 +44,9 @@ module entropy_ring_oscillator #(
   // remaining buffer delay chain TOTAL_LENGTH-1
   generate
     for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : gen_dly
-      prim_stdbuf u_bf (
+      prim_stdbuf #(
+        .SIM_DELAY (1'b1)
+      ) u_bf (
         .i_A (stage_o[i-1]),
         .o_Y (stage_o[i])
       );
@@ -48,7 +54,9 @@ module entropy_ring_oscillator #(
   endgenerate
 
   // select full length or tapped length for feedback
-  prim_stdmux2 u_tap (
+  prim_stdmux2 #(
+    .SIM_DELAY (1'b1)
+  ) u_tap (
     .i_I0  (stage_o[TAPPED_LENGTH-1]),
     .i_I1  (stage_o[TOTAL_LENGTH-1]),
     .i_SEL (detune_i),
@@ -56,7 +64,9 @@ module entropy_ring_oscillator #(
   );
 
   // buffer ring output to manage load
-  prim_stdbuf u_fbf (
+  prim_stdbuf #(
+    .SIM_DELAY (1'b1)
+  ) u_fbf (
     .i_A (feedback),
     .o_Y (noise_o)
   );

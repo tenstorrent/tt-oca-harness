@@ -5,11 +5,24 @@
 // Standard 2:1 Mux
 //
 //--------------------------------------------------
-module prim_stdmux2 (
+`timescale 1ns / 1ps
+
+module prim_stdmux2 #(
+  parameter bit SIM_DELAY = 0
+) (
   input  i_I0,
   input  i_I1,
   input  i_SEL,
   output o_Y
 );
+
+`ifndef SYNTHESIS
+  if (SIM_DELAY) begin : gen_sim_delay
+    assign #1 o_Y = i_SEL ? i_I1 : i_I0;
+  end else begin : gen_no_delay
+    assign o_Y = i_SEL ? i_I1 : i_I0;
+  end
+`else
   assign o_Y = i_SEL ? i_I1 : i_I0;
+`endif
 endmodule

@@ -5,13 +5,25 @@
 // Clock NAND2 Gate
 //
 //--------------------------------------------------
-module prim_clock_nand2 (
+`timescale 1ns / 1ps
+
+module prim_clock_nand2 #(
+  parameter bit SIM_DELAY = 0
+) (
   input  i_A1,
   input  i_A2,
   output o_Y
 );
 
+`ifndef SYNTHESIS
+  if (SIM_DELAY) begin : gen_sim_delay
+    assign #1 o_Y = ~(i_A2 & i_A1);
+  end else begin : gen_no_delay
+    assign o_Y = ~(i_A2 & i_A1);
+  end
+`else
   assign o_Y = ~(i_A2 & i_A1);
+`endif
 
 endmodule
 
