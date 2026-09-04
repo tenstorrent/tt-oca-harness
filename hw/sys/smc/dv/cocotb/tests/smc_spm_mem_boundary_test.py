@@ -8,6 +8,9 @@ import pyuvm
 from seq_lib.smc_spm_mem_boundary_test_seq import smc_spm_mem_boundary_test_seq
 from smc_base_test import smc_base_test
 
+# lo, lo+1 and hi: one exact readback compare per SPM edge.
+_EDGE_COUNT = 3
+
 
 @pyuvm.test()
 class smc_spm_mem_boundary_test(smc_base_test):
@@ -28,8 +31,11 @@ class smc_spm_mem_boundary_test(smc_base_test):
         # What is NOT implied, and is what this gate checks: that all three
         # readbacks happened at all. A body that returned early, or a future
         # refactor that dropped an edge, fails here.
-        observed = (seq.lo_ok, seq.mid_ok, seq.hi_ok)
-        assert all(v is not None for v in observed), (
-            f"spm boundary did not read back every edge: lo={seq.lo_ok} "
-            f"next={seq.mid_ok} hi={seq.hi_ok}"
+        # `is not None` only asked whether the attribute had been assigned; a
+        # scoreboard that performed no compare at all would still satisfy it.
+        # The number of value compares the scoreboard actually completed is the
+        # quantity that goes to zero when the readbacks stop happening.
+        assert self.env.scoreboard.sys_axi_value_checks_seen == _EDGE_COUNT, (
+            f"scoreboard completed {self.env.scoreboard.sys_axi_value_checks_seen} "
+            f"SYS_AXI value compares, expected one per SPM edge ({_EDGE_COUNT})"
         )
