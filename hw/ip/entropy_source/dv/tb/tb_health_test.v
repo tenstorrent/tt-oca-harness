@@ -114,7 +114,7 @@ module tb_health_test ();
   end
 
   // xoroshiro128+ high-quality PRNG
-  function [63:0] rotl64;
+  function automatic [63:0] rotl64;
     input [63:0] x;
     input [5:0] k;
     begin
@@ -139,7 +139,7 @@ module tb_health_test ();
   end
 
   // Data generation with failure injection
-  always @(*) begin
+  always_comb begin
     prng_data = xoro_result[31:0];
 
     case (test_select)
@@ -157,7 +157,7 @@ module tb_health_test ();
       2'd2: begin  // APT test failure
         if (inject_failure) begin
           // Create high- and low-one-count bias patterns.
-          case (failure_pattern[1:0])
+          unique case (failure_pattern[1:0])
             2'b00: entropy_i = 32'h00000000;
             2'b01: entropy_i = 32'hFFFFFFFF;
             2'b10: entropy_i = 32'hAAAAAAAA;
@@ -179,7 +179,7 @@ module tb_health_test ();
       end
       2'd3: begin  // Markov test failure
         if (inject_failure) begin
-          case (failure_pattern[1:0])
+          unique case (failure_pattern[1:0])
             2'b00: entropy_i = 32'h55555555; // Alternating pattern (01010101...)
             2'b01: entropy_i = 32'hFFFF0000; // Correlated pattern (blocks)
             2'b10: entropy_i = 32'h00000000; // Stuck-at-0
@@ -266,7 +266,7 @@ module tb_health_test ();
   end
 
   // Task: Individual enable/disable test
-  task run_individual_enable_test();
+  task automatic run_individual_enable_test();
     begin
       $display("");
       $display("=== Phase 1: Individual Enable/Disable Test ===");
@@ -312,7 +312,7 @@ module tb_health_test ();
   endtask
 
   // Task: Repetition test integration
-  task run_repetition_integration_test();
+  task automatic run_repetition_integration_test();
     begin
       $display("");
       $display("=== Phase 2: Repetition Test Integration ===");
@@ -357,7 +357,7 @@ module tb_health_test ();
   endtask
 
   // Task: APT integration test
-  task run_apt_integration_test();
+  task automatic run_apt_integration_test();
     begin
       $display("");
       $display("=== Phase 3: APT Integration Test ===");
@@ -433,7 +433,7 @@ module tb_health_test ();
   endtask
 
   // Task: Markov test integration
-  task run_markov_integration_test();
+  task automatic run_markov_integration_test();
     begin
       $display("");
       $display("=== Phase 4: Markov Test Integration ===");
@@ -504,7 +504,7 @@ module tb_health_test ();
   endtask
 
   // Task: Combined operation test
-  task run_combined_operation_test();
+  task automatic run_combined_operation_test();
     begin
       $display("");
       $display("=== Phase 5: Combined Operation Test ===");
@@ -552,7 +552,7 @@ module tb_health_test ();
   endtask
 
   // Task: Status bit mapping test
-  task run_status_mapping_test();
+  task automatic run_status_mapping_test();
     begin
       $display("");
       $display("=== Phase 6: Status Bit Mapping Test ===");

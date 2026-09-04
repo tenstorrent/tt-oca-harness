@@ -89,6 +89,16 @@ module smu_axi_out_sim_slave #(
                             ? store[rd_addr[AddrWidth-1:3]] : '0;
     axi_resp_o.r.resp   = axi_pkg::RESP_OKAY;
     axi_resp_o.r.last   = (rd_beat == ar_q[ar_rd].len);
+
+    // Strobe-masked merge of the pending write beat onto the current memory
+    // word, computed combinationally so the always_ff below only ever reads
+    // wr_merged rather than recomputing the merge itself.
+    wr_merged = store.exists(wr_addr[AddrWidth-1:3]) ? store[wr_addr[AddrWidth-1:3]] : '0;
+    for (int unsigned b = 0; b < 8; b++) begin
+      if (axi_req_i.w.strb[b]) begin
+        wr_merged[b*8+:8] = axi_req_i.w.data[b*8+:8];
+      end
+    end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -131,13 +141,10 @@ module smu_axi_out_sim_slave #(
         wr_addr   <= aw_q[aw_rd].addr;
         wr_active <= 1'b1;
       end else if (wr_active && axi_req_i.w_valid) begin
-        wr_merged = store.exists(wr_addr[AddrWidth-1:3]) ? store[wr_addr[AddrWidth-1:3]] : '0;
-        for (int unsigned b = 0; b < 8; b++) begin
-          if (axi_req_i.w.strb[b]) begin
-            wr_merged[b*8+:8] = axi_req_i.w.data[b*8+:8];
-          end
-        end
-        store[wr_addr[AddrWidth-1:3]] = wr_merged;
+        // store is an associative array, not a fixed-size register: Verilator
+        // rejects a nonblocking assignment into a dynamically-sized variable,
+        // so this one commit stays blocking unlike its sibling state updates.
+        store[wr_addr[AddrWidth-1:3]] = wr_merged;  // verilog_lint: waive always-ff-non-blocking
         if (axi_req_i.w.last) begin
           wr_active <= 1'b0;
           b_pending <= 1'b1;

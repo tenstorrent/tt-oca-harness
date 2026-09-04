@@ -53,12 +53,12 @@ module prim_apb_arb #(
 );
 
 `ifdef SIM_APB_ARB
-  localparam MASTER_SUM_NUM = MASTER_NUM + 1;
+  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM + 1;
 `else
-  localparam MASTER_SUM_NUM = MASTER_NUM;
+  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM;
 `endif
 
-  localparam PTR_WIDTH = $clog2(MASTER_SUM_NUM);
+  localparam int unsigned PTR_WIDTH = $clog2(MASTER_SUM_NUM);
 
   logic [MASTER_SUM_NUM-1:0]                       mst_sel_arb;
 
@@ -214,7 +214,7 @@ module prim_apb_arb #(
     mask_ptr_nxt    = mask_ptr_r;
     update_arb      = 1'b0;
 
-    case (apb_state_r)
+    unique case (apb_state_r)
       IDLE: begin
         for (int i = 0; i < MASTER_SUM_NUM; i++) begin
           if (mst_sel_arb[i] == 1'b1) begin  // one hot array

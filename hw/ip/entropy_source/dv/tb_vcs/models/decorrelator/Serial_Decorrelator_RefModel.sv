@@ -102,40 +102,35 @@ module Serial_Decorrelator_RefModel #(
   // Update logic
   genvar i;
   generate
-    for (i = 0; i < N; i++) begin : g_lane
+    for (i = 0; i < N; i++) begin : gen_lane
       always_ff @(posedge clk_i or negedge rstn_i) begin
         if (!rstn_i) begin
           sr[i] <= '0;
         end else begin
           if (vld_i[i]) begin
-            // Determine effective mode for this lane: bypass_mask overrides mode_i
-            logic [2:0] lane_mode;
-            lane_mode = bypass_mask_i[i] ? 3'd2 : mode_q;  // 1=BYPASS, 0=use mode_q
-
             // Shift direction control (applies to all modes)
             // shift_dir_q == 0: SHIFT_RIGHT - Input at [28], output [7:0], shift right
             // shift_dir_q == 1: SHIFT_LEFT  - Input at [0], output [28:21], shift left
+            //
+            // Effective mode for this lane (bypass_mask overrides mode_i,
+            // 1=BYPASS, 0=use mode_q) is inlined at each case selector below
+            // rather than latched into a local, so this always_ff never
+            // needs a blocking assignment.
             if (shift_dir_q == 1'b0) begin
               // SHIFT_RIGHT: sr[i][DEPTH-1] is newest, sr[i][0] is oldest
-              unique case (lane_mode)
+              unique case (bypass_mask_i[i] ? 3'd2 : mode_q)
                 3'd0,  // DECOR_29: XOR feedback from oldest bit
                 3'd1: begin  // DECOR_7: XOR feedback from tap DEPTH-depth_eff
-                  logic fb;
-                  fb = sr[i][DEPTH-depth_eff];
-                  sr[i] <= {(bit_i[i] ^ fb), sr[i][DEPTH-1:1]};
+                  sr[i] <= {(bit_i[i] ^ sr[i][DEPTH-depth_eff]), sr[i][DEPTH-1:1]};
                 end
                 3'd2: begin  // BYPASS: no feedback, raw shift
                   sr[i] <= {bit_i[i], sr[i][DEPTH-1:1]};
                 end
                 3'd3: begin  // LFSR_29: x^29 + x^2 + 1, feedback from [28] and [1]
-                  logic fb29;
-                  fb29 = sr[i][DEPTH-1] ^ sr[i][1] ^ bit_i[i];
-                  sr[i] <= {fb29, sr[i][DEPTH-1:1]};
+                  sr[i] <= {(sr[i][DEPTH-1] ^ sr[i][1] ^ bit_i[i]), sr[i][DEPTH-1:1]};
                 end
                 3'd4: begin  // LFSR_7: x^7 + x^6 + 1, feedback uses bits [6] and [5]
-                  logic fb7;
-                  fb7 = sr[i][6] ^ sr[i][5] ^ bit_i[i];
-                  sr[i] <= {fb7, sr[i][DEPTH-1:1]};
+                  sr[i] <= {(sr[i][6] ^ sr[i][5] ^ bit_i[i]), sr[i][DEPTH-1:1]};
                 end
                 default: begin
                   // Default to simple shift if mode is invalid
@@ -144,25 +139,19 @@ module Serial_Decorrelator_RefModel #(
               endcase
             end else begin
               // SHIFT_LEFT: sr[i][0] is newest, sr[i][DEPTH-1] is oldest
-              unique case (lane_mode)
+              unique case (bypass_mask_i[i] ? 3'd2 : mode_q)
                 3'd0,  // DECOR_29: XOR feedback from oldest bit
                 3'd1: begin  // DECOR_7: XOR feedback from tap depth_eff-1
-                  logic fb;
-                  fb = sr[i][depth_eff-1];
-                  sr[i] <= {sr[i][DEPTH-2:0], (bit_i[i] ^ fb)};
+                  sr[i] <= {sr[i][DEPTH-2:0], (bit_i[i] ^ sr[i][depth_eff-1])};
                 end
                 3'd2: begin  // BYPASS: no feedback, raw shift
                   sr[i] <= {sr[i][DEPTH-2:0], bit_i[i]};
                 end
                 3'd3: begin  // LFSR_29: x^29 + x^2 + 1, feedback from [0] and [27]
-                  logic fb29;
-                  fb29 = sr[i][0] ^ sr[i][DEPTH-2] ^ bit_i[i];
-                  sr[i] <= {sr[i][DEPTH-2:0], fb29};
+                  sr[i] <= {sr[i][DEPTH-2:0], (sr[i][0] ^ sr[i][DEPTH-2] ^ bit_i[i])};
                 end
                 3'd4: begin  // LFSR_7: x^7 + x^6 + 1, feedback uses bits [0] and [1]
-                  logic fb7;
-                  fb7 = sr[i][0] ^ sr[i][1] ^ bit_i[i];
-                  sr[i] <= {sr[i][DEPTH-2:0], fb7};
+                  sr[i] <= {sr[i][DEPTH-2:0], (sr[i][0] ^ sr[i][1] ^ bit_i[i])};
                 end
                 default: begin
                   // Default to simple shift if mode is invalid

@@ -39,8 +39,8 @@ class ocah_axi_env extends uvm_env;
     if (cfg.en_ref_model) m_ref_model = ocah_axi_ref_model::type_id::create("m_ref_model", this);
     if (cfg.en_scoreboard) begin
       if (!cfg.en_monitor || !cfg.en_ref_model)
-        `uvm_warning(get_type_name(),
-                     "scoreboard enabled without monitor+ref_model; it will see no items")
+        `uvm_fatal(get_type_name(),
+                   "scoreboard enabled without monitor+ref_model; it will see no items")
       m_scoreboard = ocah_axi_scoreboard::type_id::create("m_scoreboard", this);
     end
     if (cfg.en_cov) m_cov = ocah_axi_cov::type_id::create("m_cov", this);

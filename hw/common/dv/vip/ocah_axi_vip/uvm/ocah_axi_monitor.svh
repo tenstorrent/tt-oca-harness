@@ -184,7 +184,7 @@ class ocah_axi_monitor extends uvm_monitor;
   protected function void sample_b();
     addr_info_t info;
     w_beat_t beats[$];
-    ocah_axi_item item;
+    ocah_axi_item wr_item;
     bit [15:0] id;
     if (!(cfg.vif.mon_cb.bvalid === 1'b1 && cfg.vif.mon_cb.bready === 1'b1)) return;
     id = mask_id(cfg.vif.mon_cb.bid);
@@ -195,24 +195,24 @@ class ocah_axi_monitor extends uvm_monitor;
     end
     info  = m_paired_wr[id].pop_front();
     beats = m_paired_beats[id].pop_front();
-    item = ocah_axi_item::type_id::create("wr_item");
-    item.protocol       = cfg.protocol;
-    item.direction      = OCAH_AXI_DIR_WRITE;
-    item.address        = info.address;
+    wr_item = ocah_axi_item::type_id::create("wr_item");
+    wr_item.protocol       = cfg.protocol;
+    wr_item.direction      = OCAH_AXI_DIR_WRITE;
+    wr_item.address        = info.address;
     foreach (beats[i]) begin
-      item.data_words.push_back(beats[i].data);
-      item.strobes.push_back(beats[i].strb);
+      wr_item.data_words.push_back(beats[i].data);
+      wr_item.strobes.push_back(beats[i].strb);
     end
-    item.size           = info.size;
-    item.burst          = ocah_axi_burst_e'(info.burst);
-    item.transaction_id = id;
-    item.prot           = info.prot;
-    item.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.bresp));
-    item.expected_beats = info.length;
-    item.start_time     = info.start_time;
-    item.end_time       = $time;
-    item.source         = get_full_name();
-    publish(item);
+    wr_item.size           = info.size;
+    wr_item.burst          = ocah_axi_burst_e'(info.burst);
+    wr_item.transaction_id = id;
+    wr_item.prot           = info.prot;
+    wr_item.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.bresp));
+    wr_item.expected_beats = info.length;
+    wr_item.start_time     = info.start_time;
+    wr_item.end_time       = $time;
+    wr_item.source         = get_full_name();
+    publish(wr_item);
   endfunction
 
   protected function void sample_ar();
@@ -229,55 +229,57 @@ class ocah_axi_monitor extends uvm_monitor;
   endfunction
 
   protected function void sample_r();
-    ocah_axi_item item;
+    ocah_axi_item rd_item;
     addr_info_t info;
     bit info_valid;
     bit [15:0] id;
     if (!(cfg.vif.mon_cb.rvalid === 1'b1 && cfg.vif.mon_cb.rready === 1'b1)) return;
     id = mask_id(cfg.vif.mon_cb.rid);
     if (!m_cur_rd.exists(id)) begin
-      item = ocah_axi_item::type_id::create("rd_item");
-      item.protocol  = cfg.protocol;
-      item.direction = OCAH_AXI_DIR_READ;
-      item.transaction_id = id;
-      item.source    = get_full_name();
-      m_cur_rd[id] = item;
+      rd_item = ocah_axi_item::type_id::create("rd_item");
+      rd_item.protocol  = cfg.protocol;
+      rd_item.direction = OCAH_AXI_DIR_READ;
+      rd_item.transaction_id = id;
+      rd_item.source    = get_full_name();
+      m_cur_rd[id] = rd_item;
       // Read DATA before any AR for this ID is a protocol violation;
       // the burst stays tainted even if an AR arrives before RLAST.
       if (!(m_ar_q.exists(id) && m_ar_q[id].size() > 0)) m_r_no_ar[id] = 1'b1;
     end
-    item = m_cur_rd[id];
-    item.data_words.push_back(mask_data(cfg.vif.mon_cb.rdata));
-    item.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.rresp));
+    rd_item = m_cur_rd[id];
+    rd_item.data_words.push_back(mask_data(cfg.vif.mon_cb.rdata));
+    rd_item.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.rresp));
     if (cfg.vif.mon_cb.rlast === 1'b1) begin
       if (m_r_no_ar.exists(id)) begin
         m_r_no_ar.delete(id);
         m_cur_rd.delete(id);
         // A late AR (if any) stays pending: the drain check also
         // flags the never-served request.
-        record_orphan(
-            "R", $sformatf(
-            "rid=0x%0h beats=%0d data began before AR time=%0t", id, item.data_words.size(), $time
-            ));
+        record_orphan("R", $sformatf(
+                      "rid=0x%0h beats=%0d data began before AR time=%0t",
+                      id,
+                      rd_item.data_words.size(),
+                      $time
+                      ));
         return;
       end
       info_valid = m_ar_q.exists(id) && (m_ar_q[id].size() > 0);
       if (!info_valid) begin
         m_cur_rd.delete(id);
         record_orphan("R", $sformatf(
-                      "rid=0x%0h beats=%0d time=%0t", id, item.data_words.size(), $time));
+                      "rid=0x%0h beats=%0d time=%0t", id, rd_item.data_words.size(), $time));
         return;
       end
       info = m_ar_q[id].pop_front();
-      item.address        = info.address;
-      item.size           = info.size;
-      item.burst          = ocah_axi_burst_e'(info.burst);
-      item.prot           = info.prot;
-      item.expected_beats = info.length;
-      item.start_time     = info.start_time;
-      item.end_time = $time;
+      rd_item.address        = info.address;
+      rd_item.size           = info.size;
+      rd_item.burst          = ocah_axi_burst_e'(info.burst);
+      rd_item.prot           = info.prot;
+      rd_item.expected_beats = info.length;
+      rd_item.start_time     = info.start_time;
+      rd_item.end_time = $time;
       m_cur_rd.delete(id);
-      publish(item);
+      publish(rd_item);
     end
   endfunction
 

@@ -893,7 +893,7 @@ sources:
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
   - target: sep
     files:
-      - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
+      - hw/common/axi/axi_window_remap/rtl/axi_window_remap.sv
   - target: smc
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv

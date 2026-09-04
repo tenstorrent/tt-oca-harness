@@ -137,7 +137,7 @@ module prim_refclk_count_w_cdc #(
   for (genvar i = 0; i < NUM_CHUNKS; i++) begin : gen_gray_code_counter
     assign chunk_overflow[i] = bin_count_chunk[i][CHUNK_SIZE];
     // first chunk and not last chunk, no previous chunks to check, just assign directly
-    if ((i == 0) && (i != (NUM_CHUNKS - 1))) begin
+    if ((i == 0) && (i != (NUM_CHUNKS - 1))) begin : gen_first_chunk
       always_comb begin
         bin_count_chunk[i] = {1'b0, bin_count[CHUNK_SIZE-1:0]};
         if (cnt_update_value_valid) begin
@@ -153,7 +153,7 @@ module prim_refclk_count_w_cdc #(
         end
       end
       // middle chunks, need to check if prev chunks all overflowed to know what to assign
-    end else if (i != (NUM_CHUNKS - 1)) begin
+    end else if (i != (NUM_CHUNKS - 1)) begin : gen_middle_chunk
       always_comb begin
         bin_count_chunk[i] = {1'b0, bin_count[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)]};
         if (cnt_update_value_valid) begin
@@ -169,7 +169,7 @@ module prim_refclk_count_w_cdc #(
         end
       end
       // last chunk, same as middle chunks but also change assignment width for lint
-    end else begin
+    end else begin : gen_last_chunk
       always_comb begin
         bin_count_chunk[i] = {
           1'b0, {FINAL_CHUNK_WIDTH{1'b0}}, bin_count[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)]

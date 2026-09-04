@@ -339,7 +339,7 @@ module smu_wrapper_uvm_top (
   // without it, it is whatever the RTL leaves there. A test compares the two so
   // "entropy flowed" cannot pass on a force that silently failed to take.
   assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
-        .u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator
+        .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[0].u_generator
         .u_decorrelator.noise_i;
 
   // Force the decorrelator INPUT PORT -- the exact node the SR flop samples.
@@ -348,7 +348,7 @@ module smu_wrapper_uvm_top (
   // indices because a genvar-indexed cross-hierarchy force is not allowed.
   `define SMU_ESRC_NOISE_FORCE(i)                                                \
     force u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng                      \
-        .u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[i]             \
+        .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[i]             \
         .u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
   // Plain `always`: `force` is a procedural continuous override, so always_ff
   // semantics do not apply. No `release` is needed -- the force is plusarg
@@ -822,7 +822,7 @@ module smu_wrapper_uvm_top (
       w  = {sep_itcm_buf[off+3], sep_itcm_buf[off+2],
                   sep_itcm_buf[off+1], sep_itcm_buf[off]};
       fw = (w == 32'h0) ? '0 : {sep_tcm_ecc32(w), w};
-      case (off[3:2])
+      unique case (off[3:2])
         2'd0: `SEP_BD_ICCM(0)[off[17:4]] = fw;
         2'd1: `SEP_BD_ICCM(1)[off[17:4]] = fw;
         2'd2: `SEP_BD_ICCM(2)[off[17:4]] = fw;

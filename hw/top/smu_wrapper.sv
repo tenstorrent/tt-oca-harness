@@ -43,9 +43,10 @@ module smu_wrapper
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
   localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,
-  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT - 2,
-  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - 1,
-  JTAG_NUM_EXTRA_STAP_PORTS = (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
+  localparam int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT - 2,
+  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - 1,
+  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS =
+      (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
 ) (
   // Clock and Reset
   input  logic  clk_smu_i,

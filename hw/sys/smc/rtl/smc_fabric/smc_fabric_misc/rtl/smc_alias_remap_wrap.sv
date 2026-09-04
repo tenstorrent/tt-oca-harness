@@ -52,7 +52,7 @@ module smc_alias_remap_wrap (
   smc_pkg::remap_region_t remap_table[smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0];
 
   // Connect hwif_out to remap_table array
-  for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin
+  for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin : gen_remap_table
     assign remap_table[i].region_start[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]    = aR_ctrl_i[i].REGION.region_start.start_addr.value;
     assign remap_table[i].region_end[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]      = aR_ctrl_i[i].REGION.region_end.end_addr.value;
     assign remap_table[i].offset[smc_pkg::AXI_ADDR_WIDTH-1:smc_pkg::ALIAS_REMAP_IDX_START]          = aR_ctrl_i[i].REGION.region_attrs.offset.value;
@@ -61,7 +61,7 @@ module smc_alias_remap_wrap (
   end
 
   // tie off unused bits of remap addresses to 0
-  for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin
+  for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin : gen_tie_off_remap_bits
     assign remap_table[i].region_start[smc_pkg::ALIAS_REMAP_IDX_START-1:0]  = {smc_pkg::ALIAS_REMAP_IDX_START{1'b0}};
     assign remap_table[i].region_end[smc_pkg::ALIAS_REMAP_IDX_START-1:0]    = {smc_pkg::ALIAS_REMAP_IDX_START{1'b0}};
     assign remap_table[i].offset[smc_pkg::ALIAS_REMAP_IDX_START-1:0]        = {smc_pkg::ALIAS_REMAP_IDX_START{1'b0}};

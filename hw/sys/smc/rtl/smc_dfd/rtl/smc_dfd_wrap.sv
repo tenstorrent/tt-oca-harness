@@ -8,12 +8,12 @@
 
 
 module smc_dfd_wrap #(
-  parameter  BASE_ADDR       = 0,
-  parameter  NUM_INPUT_LANES = 64,
+  parameter  logic [22:0]  BASE_ADDR       = 0,
+  parameter  int unsigned  NUM_INPUT_LANES = 64,
   // Width of the reference tick accounting counters. Bounds how far clk_gated_i may fall behind
   // clk_ref_i before ticks are lost; 2**REF_CNT_W ref cycles of slack.
   parameter  int unsigned REF_CNT_W = 8,
-  localparam LANE_WIDTH      = 16
+  localparam int unsigned LANE_WIDTH      = 16
 ) (
   input  logic                                                                     clk_smc_i,
   input  logic                                                                     clk_ref_i,
@@ -87,9 +87,9 @@ module smc_dfd_wrap #(
   // DBM Level 3 //
   ////////////////
 
-  for (genvar i = 1; i <= 8; i++) begin : DBM_L3
+  for (genvar i = 1; i <= 8; i++) begin : gen_dbm_l3
 
-    localparam MUX_ID = 6 + i;
+    localparam int unsigned MUX_ID = 6 + i;
 
     tt_debug_bus_mux #(
       .DEBUG_MUX_OUTPUT_WIDTH (LANE_WIDTH*4),
@@ -111,9 +111,9 @@ module smc_dfd_wrap #(
   // DBM Level 2 //
   /////////////////
 
-  for (genvar i = 1; i <= 4; i++) begin : DBM_L2
+  for (genvar i = 1; i <= 4; i++) begin : gen_dbm_l2
 
-    localparam MUX_ID = 2 + i;
+    localparam int unsigned MUX_ID = 2 + i;
 
     tt_debug_bus_mux #(
       .DEBUG_MUX_OUTPUT_WIDTH (LANE_WIDTH*4),

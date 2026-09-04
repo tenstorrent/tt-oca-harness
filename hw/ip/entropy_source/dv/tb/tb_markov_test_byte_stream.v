@@ -15,7 +15,7 @@
 module tb_markov_test_byte_stream ();
 
   // Test parameters
-  parameter CLOCK_PERIOD = 10;
+  parameter int unsigned CLOCK_PERIOD = 10;
 
   // Test signals
   reg clk_i;
@@ -78,7 +78,7 @@ module tb_markov_test_byte_stream ();
   end
 
   // xoroshiro128+ high-quality PRNG
-  function [63:0] rotl64;
+  function automatic [63:0] rotl64;
     input [63:0] x;
     input [5:0] k;
     begin
@@ -103,11 +103,11 @@ module tb_markov_test_byte_stream ();
   end
 
   // Data generation with failure injection
-  always @(*) begin
+  always_comb begin
     prng_data = xoro_result[7:0];
 
     if (inject_failure) begin
-      case (failure_type)
+      unique case (failure_type)
         2'b00: entropy_i = 8'h55; // Alternating pattern (01010101)
         2'b01: entropy_i = 8'hF0; // Block pattern (11110000)
         2'b10: entropy_i = 8'h00; // Stuck-at-0

@@ -11,19 +11,19 @@ module jtag_intf_unit
   /* verilator lint_off UNUSEDPARAM */
   // JTAG configuration parameters
   parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory JTAG boundary scan instructions
-  EXTEST_TRAIN_ENABLE = 1,  // Enables optional JTAG EXTEST_TRAIN instruction
-  EXTEST_PULSE_ENABLE = 1,  // Enables optional JTAG EXTEST_PULSE instruction
-  INTEST_ENABLE       = 1,  // Enables optional JTAG INTEST instruction
-  CLAMP_ENABLE        = 1,  // Enables optional JTAG CLAMP instruction
-  HIGHZ_ENABLE        = 1,  // Enables optional JTAG HIGHZ instruction
-  RUNBIST_ENABLE      = 1,  // Enables optional JTAG RUNBIST instruction
-  TMP_ENABLE          = 1,  // Enables TMP controller functionality and instructions
-  IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR
-  IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR
-  IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR
-  SMC_DBG_ENABLE      = 1,  // Enables optional JTAG2AXI ports for the SMC debug interface
-  SEP_DBG_ENABLE      = 1,  // Enables optional STAP for the SEP debug interface
-  STAP_IO_ENABLE      = 1,  // Enables the STAP for chiplet-to-chiplet connectivity
+  parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enables optional JTAG EXTEST_TRAIN instruction
+  parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enables optional JTAG EXTEST_PULSE instruction
+  parameter bit  INTEST_ENABLE       = 1,  // Enables optional JTAG INTEST instruction
+  parameter bit  CLAMP_ENABLE        = 1,  // Enables optional JTAG CLAMP instruction
+  parameter bit  HIGHZ_ENABLE        = 1,  // Enables optional JTAG HIGHZ instruction
+  parameter bit  RUNBIST_ENABLE      = 1,  // Enables optional JTAG RUNBIST instruction
+  parameter bit  TMP_ENABLE          = 1,  // Enables TMP controller functionality and instructions
+  parameter bit  IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR
+  parameter bit  IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR
+  parameter bit  IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR
+  parameter bit  SMC_DBG_ENABLE      = 1,  // Enables optional JTAG2AXI ports for the SMC debug interface
+  parameter bit  SEP_DBG_ENABLE      = 1,  // Enables optional STAP for the SEP debug interface
+  parameter bit  STAP_IO_ENABLE      = 1,  // Enables the STAP for chiplet-to-chiplet connectivity
 
   parameter int unsigned  NUM_EXTRA_STAPS = 0,  // The number of additional STAPs included in the DTP for local connectivity
 

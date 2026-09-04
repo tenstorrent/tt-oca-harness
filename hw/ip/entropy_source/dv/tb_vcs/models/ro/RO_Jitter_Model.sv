@@ -56,6 +56,17 @@ module RO_Jitter_Model #(
     end
   end
 
+  // Sanitize potentially unknown config inputs; provide safe defaults. Kept
+  // combinational (rather than blocking-assigned inside the always_ff below)
+  // so the sequential block only ever reads them.
+  always_comb begin
+    _enable_d    = (cfg_enable_i      === 1'b1);
+    _stuck_en_d  = (cfg_stuck_en_i    === 1'b1);
+    _stuck_val_d = (cfg_stuck_value_i === 1'b1);
+    _p_bias_d    = (cfg_p_bias_i > PROB_SCALE) ? PROB_SCALE : cfg_p_bias_i;
+    _p_corr_d    = (cfg_p_corr_i > PROB_SCALE) ? PROB_SCALE : cfg_p_corr_i;
+  end
+
   // Main generation
   always_ff @(posedge clk_i or negedge rstn_i) begin
     if (!rstn_i) begin
@@ -74,12 +85,6 @@ module RO_Jitter_Model #(
         _enable_q  <= 1'b0;
       end
       vld_o <= 1'b0;
-      // Sanitize potentially unknown config inputs; provide safe defaults
-      _enable_d    = (cfg_enable_i      === 1'b1);
-      _stuck_en_d  = (cfg_stuck_en_i    === 1'b1);
-      _stuck_val_d = (cfg_stuck_value_i === 1'b1);
-      _p_bias_d    = (cfg_p_bias_i > PROB_SCALE) ? PROB_SCALE : cfg_p_bias_i;
-      _p_corr_d    = (cfg_p_corr_i > PROB_SCALE) ? PROB_SCALE : cfg_p_corr_i;
 
       // Generate valid one clock after enable is observed
       // IMPORTANT: bit_o and vld_o must be synchronized!
@@ -91,14 +96,10 @@ module RO_Jitter_Model #(
         if (_stuck_en_d) begin
           bit_o <= _stuck_val_d;
         end else begin
-          int unsigned r_corr;
-          int unsigned r_ind;
-          r_corr = $urandom_range(0, PROB_SCALE - 1);
-          if (r_corr < _p_corr_d) begin
+          if ($urandom_range(0, PROB_SCALE - 1) < _p_corr_d) begin
             bit_o <= prev_bit_q;
           end else begin
-            r_ind = $urandom_range(0, PROB_SCALE - 1);
-            bit_o <= (r_ind < _p_bias_d);
+            bit_o <= ($urandom_range(0, PROB_SCALE - 1) < _p_bias_d);
           end
         end
         prev_bit_q <= bit_o;

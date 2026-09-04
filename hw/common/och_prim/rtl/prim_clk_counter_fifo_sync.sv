@@ -6,7 +6,7 @@
 //
 //--------------------------------------------------
 module prim_clk_counter_fifo_sync #(
-  parameter CLOCK_COUNTER_WIDTH = 64
+  parameter int unsigned CLOCK_COUNTER_WIDTH = 64
 ) (
   input  logic                            i_ref_clk,
   input  logic                            i_ref_clk_reset_n,

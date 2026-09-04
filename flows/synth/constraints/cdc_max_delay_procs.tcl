@@ -304,7 +304,7 @@ proc set_cdc_max_delay_prim_sync_data_autohs { inst src_clk dst_clk { delay {} }
     # are GTECH `next_state` pins, so any /D pattern resolves empty here.
     cdc_emit "$t data" [cdc_data_delay $dst_clk $delay] from \
         [get_pins "$inst/clk1_val_reg*/Q*" -quiet] [get_clocks [cdc_clk $dst_clk]]
-    if { [sizeof_collection [get_cells "$inst/g_depth_2*" -quiet]] > 0 } {
+    if { [sizeof_collection [get_cells "$inst/gen_depth_2*" -quiet]] > 0 } {
         cdc_warn "$t uses a 2-stage synchronizer (DEPTH=2); 3 is recommended"
     }
 }

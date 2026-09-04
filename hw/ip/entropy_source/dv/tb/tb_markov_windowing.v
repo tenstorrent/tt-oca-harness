@@ -123,7 +123,7 @@ module tb_markov_windowing;
   // Simple LFSR for pseudo-random entropy generation
   reg [31:0] lfsr;
 
-  task generate_random_entropy;
+  task automatic generate_random_entropy;
     begin
       // 32-bit Galois LFSR with feedback polynomial
       lfsr = {lfsr[30:0], lfsr[31] ^ lfsr[21] ^ lfsr[1] ^ lfsr[0]};
@@ -132,35 +132,35 @@ module tb_markov_windowing;
   endtask
 
   // Generate biased pattern (more 0->1 transitions)
-  task generate_biased_01_pattern;
+  task automatic generate_biased_01_pattern;
     begin
       entropy = 32'h55555555;  // Alternating 01 pattern
     end
   endtask
 
   // Generate biased pattern (more 1->0 transitions)
-  task generate_biased_10_pattern;
+  task automatic generate_biased_10_pattern;
     begin
       entropy = 32'hAAAAAAAA;  // Alternating 10 pattern
     end
   endtask
 
   // Generate biased pattern (more 0->0 transitions)
-  task generate_biased_00_pattern;
+  task automatic generate_biased_00_pattern;
     begin
       entropy = 32'h00000000;  // All zeros
     end
   endtask
 
   // Generate biased pattern (more 1->1 transitions)
-  task generate_biased_11_pattern;
+  task automatic generate_biased_11_pattern;
     begin
       entropy = 32'hFFFFFFFF;  // All ones
     end
   endtask
 
   // Check task
-  task check_probabilities;
+  task automatic check_probabilities;
     input string description;
     input integer expected_01_min;
     input integer expected_01_max;

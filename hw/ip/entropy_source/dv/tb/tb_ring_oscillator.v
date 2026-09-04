@@ -12,7 +12,7 @@
 
 `timescale 1ns / 1ps
 
-module tb_ring_osc_iverilog ();
+module tb_ring_oscillator ();
 
   // Test signals
   reg clk_i;
@@ -237,7 +237,7 @@ module tb_ring_osc_iverilog ();
   // VCD dump for waveform analysis
   initial begin
     $dumpfile("ring_oscillator.vcd");
-    $dumpvars(0, tb_ring_osc_iverilog);
+    $dumpvars(0, tb_ring_oscillator);
     $dumpvars(1, u_entropy_noise_src.ro.stage_o);
     $dumpvars(1, u_entropy_noise_src.noise_sample);
     $dumpvars(1, u_entropy_noise_src.noise_sync);
