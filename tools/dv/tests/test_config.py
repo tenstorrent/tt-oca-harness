@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib.cli import expand_items, target_plan  # noqa: E402
+from runlib.cli import expand_items, target_plan, validate_coverage_tool  # noqa: E402
 from runlib.config import (  # noqa: E402
     OverlayFrameworkMismatch,
     _merge_framework_config,
@@ -23,6 +23,7 @@ from runlib.config import (  # noqa: E402
     load_dut,
     load_test_catalog,
     selected_run_mode,
+    validate_native_config_shape,
     validate_run_mode_request,
 )
 from runlib.models import ConfigError, Dut, TestCatalog  # noqa: E402
@@ -371,3 +372,62 @@ class RuntimeSelectionDefenses(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CoverageToolAllowlist(unittest.TestCase):
+    """`[coverage].tools` narrows which simulators `--cov` may be requested on."""
+
+    # `Flow` is an alias of `Dut`; the guard only reads `.path` for the message.
+    flow = make_dut({})
+
+    @staticmethod
+    def args(cov: bool = True) -> Namespace:
+        return Namespace(cov=cov)
+
+    def test_disallowed_tool_is_a_config_error(self):
+        cfg = {"coverage": {"tools": ["vcs"], "vcs": {}, "verilator": {}}}
+        with self.assertRaises(ConfigError) as ctx:
+            validate_coverage_tool(cfg, "verilator", self.args(), self.flow)
+        # The message has to name the fix, not just the refusal: the whole point is
+        # that the verilator run would otherwise have produced a plausible number.
+        self.assertIn("--tool vcs", str(ctx.exception))
+
+    def test_allowed_tool_passes(self):
+        cfg = {"coverage": {"tools": ["vcs"], "vcs": {}}}
+        validate_coverage_tool(cfg, "vcs", self.args(), self.flow)
+
+    def test_no_allowlist_leaves_every_backend_open(self):
+        cfg = {"coverage": {"vcs": {}, "verilator": {}}}
+        validate_coverage_tool(cfg, "verilator", self.args(), self.flow)
+
+    def test_guard_is_inert_without_cov(self):
+        # A non-coverage run on verilator stays legal under a VCS-only allowlist;
+        # the allowlist constrains coverage, not simulation.
+        cfg = {"coverage": {"tools": ["vcs"]}}
+        validate_coverage_tool(cfg, "verilator", self.args(cov=False), self.flow)
+
+    def test_malformed_allowlist_is_rejected(self):
+        for bad in ([], "vcs", [""], [1]):
+            with self.subTest(bad=bad):
+                dut = make_dut({"coverage": {"tools": bad}})
+                with self.assertRaises(ConfigError):
+                    validate_native_config_shape(dut, Path("."))
+
+    def test_reserved_key_is_not_read_as_a_backend_table(self):
+        # Before `tools` was reserved, a non-table key under [coverage] tripped the
+        # "[coverage.<tool>] must be a table" check.
+        dut = make_dut({"coverage": {"tools": ["vcs"], "vcs": {}}})
+        validate_native_config_shape(dut, Path("."))
+
+
+class SepCoverageIsVcsOnly(unittest.TestCase):
+    """The shipped SEP config declares the VCS-only coverage policy."""
+
+    def test_sep_cfg_allows_vcs_only(self):
+        import tomllib
+
+        path = Path(__file__).resolve().parents[3] / "hw/sys/sep/dv/sep_sim_cfg.toml"
+        cfg = tomllib.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(cfg["coverage"]["tools"], ["vcs"])
+        # The scope file is what makes VCS the only backend whose number is scoped.
+        self.assertTrue(cfg["coverage"]["vcs"]["scope_file"])

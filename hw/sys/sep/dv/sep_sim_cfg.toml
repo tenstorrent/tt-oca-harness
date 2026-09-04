@@ -127,7 +127,9 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
-[coverage.vcs].scope_file`, applied as `-cm_hier` at
+[coverage]
+# SEP grades coverage on VCS only. Not a tool preference: the scope that makes the
+# number mean "SEP DUT" is `[coverage.vcs].scope_file`, applied as `-cm_hier` at
 # compile time, and no other backend applies it. A `--cov` run on another
 # simulator would report a real percentage over an unscoped denominator -- a
 # number that looks like this one and is not. `--cov --tool verilator` is a config
