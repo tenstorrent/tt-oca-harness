@@ -20,7 +20,7 @@
 The OCAH open-source DTP testbench follows the canonical `hw/sys/<system>/dv/` layout under
 `hw/sys/dtp/dv/`. One testbench top (`tb/tb_top.sv`) serves both realizations,
 and both compose the shared OCAH VIPs (`hw/common/dv/vip/`) for the standard
-interfaces; the SV-UVM classes extend the shared framework library
+interfaces; both extend the shared framework library
 `hw/common/dv/vip/ocah_lib/`. Scenario names, testlist bindings, knob names,
 the evidence grammar, and the functional-coverage modules are common to both.
 
@@ -146,7 +146,7 @@ tb/tb_top.sv                  one module, two shapes; dtp_tb_signal_list.svh
 [cols=",,",options="header",]
 |===
 |Element |cocotb (PyUVM), `cocotb/` |SV-UVM, `uvm/`
-|Framework bases |`pyuvm` classes |`ocah_lib_pkg` bases (`ocah_test`, `ocah_env`, `ocah_sequence`, `ocah_sequencer`, `ocah_scoreboard`, `ocah_ref_model`, `ocah_subscriber`)
+|Framework bases |`ocah_lib` bases for the test and the base sequence (`OcahTest`, `OcahSequence`, with `OcahKnobs` and `OcahRng` behind them); the env, agents, and scoreboard on bare `pyuvm` classes |`ocah_lib_pkg` bases (`ocah_test`, `ocah_env`, `ocah_sequence`, `ocah_sequencer`, `ocah_scoreboard`, `ocah_ref_model`, `ocah_subscriber`)
 |Primary TAP stimulus |`DtpJtagAgent`: sequencer plus `DtpJtagDriver` over the shared `ocah_jtag_vip` engine |`ocah_jtag_master_env` composed by `dtp_env`; operations are `dtp_jtag_<op>_seq` on its sequencer
 |Scenario coordination |Scenario sequences run on the JTAG agent's sequencer; the XTRIG AXI-Lite master is reached through the env cfg |`dtp_virtual_sequencer` with typed handles; every scenario is a virtual sequence on `dtp_base_test_seq`
 |Configuration |`DtpEnvCfg` with `randomize_timing(seed)` |`dtp_test_cfg` (randomized from the seed) and the derived `dtp_env_cfg`
