@@ -5,8 +5,8 @@ How to load the SMC production boot ROM
 virtual platform — and, just as importantly, what you will and will not be
 able to see once it runs.
 
-Everything below was verified against `tt-oca-harness-model` at
-`a9639401` on 2026-09-04.
+Everything below was verified against `tt-oca-harness-model` at `416200e9`
+on 2026-09-04.
 
 ---
 
@@ -269,20 +269,24 @@ part of the harness repo.
    initiator — that model is not on the bus in `smc-vp` at all, and keeps
    only its WDT sideband.
 
-2. **`cpu_ctrl`'s `OFF_SCRATCH`**, corrected from `0x100` to `0x80`. The
-   authoritative `cpu_ctrl.rdl` places `SCRATCH[16] @ 0x80` (with `WB_PC` at
-   `0x100`), and the production ROM agrees; the peripheral model had SCRATCH
-   sitting where the rdl puts `WB_PC_CORE0`. This does not affect the ROM
-   path — see above, that model is not on the bus — but it is wrong, and it
-   is what the model's own header calls the "authoritative SMC↔SEP
-   inter-stage handoff mailbox".
+2. **`cpu_ctrl`'s whole offset table**, aligned to `cpu_ctrl.rdl`. Nine
+   registers were in the wrong place — `SCRATCH` at `0x100` (where the rdl
+   puts `WB_PC_CORE0`), `TEST_CTRL` at `0x200` (`SMC_ATTRIBUTES`), the entire
+   generic space at `0x1000` — and `RESET_TIMEOUT` was missing. None of it
+   affects the ROM path, since that model is not on the bus, but the rdl, the
+   production ROM and the cluster's own ctrl block all agree against it.
 
-   **Still divergent, deliberately not touched:** several other offsets in
-   that same model disagree with the rdl (`TEST_CTRL`, `WB_PC_*`,
-   `SMC_ATTRIBUTES`, `MUTEX`, `DUMMY_ROM_*`), and it carries registers the rdl
-   does not. It reads like it was written against a different revision of the
-   map. The cluster's own ctrl block, by contrast, matches the rdl exactly.
-   Worth a deliberate pass rather than a drive-by.
+   Six registers have no rdl counterpart at all (`GLOBAL_BASE`, `LOCAL_BASE`,
+   `REGION_SIZE`, `DEBUG_CTRL`, `DEBUG_BUS_MUX`, `CLOCK_GATE_CONTROL`); they
+   were interleaved with the real ones, which is what displaced the map. They
+   are preserved but moved into one block above the rdl's highest register, so
+   the list says plainly which half is RTL-backed. Whether they belong there
+   at all is for the block owner to decide.
+
+   The reason this drifted unnoticed is worth knowing if you touch that model:
+   every case in its testbench addresses registers through the `OFF_*` symbols,
+   so the suite passes for *any* self-consistent map. It now also has an "rdl
+   offset conformance" case that restates every offset as a literal.
 
 There is also one harness-side fix (`virtual_platform/Makefile`): the SMC/SMU
 build recipes now export `WHISPER_HOME`/`BOOST_DIR`, not just the configure
