@@ -16,7 +16,7 @@ same defect" replaces that trigger through :meth:`corrupt_primary` and
 because the defect marker no longer identifies a slot on its own.
 
 This ROM runs the manifest loop and the crypto chain as two separate stages
-(``rom_main.c:324-346``): ``rom_manifest_boot`` checks each slot's structure, hash
+(``rom_main.c`` then ``manifest_load.c``): ``rom_manifest_boot`` checks each slot's structure, hash
 and usage constraints, and only after a slot passes does
 ``manifest_crypto_validate`` check security_version, key selection and the
 signature. So a backup with a cryptographic defect legitimately prints
@@ -41,13 +41,14 @@ from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from env import sep_manifest_mutate as mm
 from env.sep_rom_console import rom_console_task, log_scratch_cold
+from env.sep_verdict import decode_verdict
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
 _SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h:294-320
+# manifest.h
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 MANIFEST_ERR_SIG_FAILED = 0x0003_000C
 MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
@@ -56,7 +57,7 @@ MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
 
 # Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
 # MANIFEST_BACKUP label: the ROM derives the label from the retry counter but the
-# offset from the (possibly rotated) slot index (manifest_load.c:541-544,567),
+# offset from the (possibly rotated) slot index (manifest_load.c),
 # so under rotate_update the label and the slot disagree. The offset cannot lie.
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -70,7 +71,7 @@ _SBOOT_OFF = "SBOOT_OFF"
 
 _MAX_RUN_CYCLES = 24_000_000
 _PROGRESS_EVERY = 200_000
-# How long to watch after the mailbox FAIL before believing the ROM halted. The
+# How long to watch after the terminal verdict before believing the ROM halted. The
 # same order of magnitude as sep_firmware_mbist_fail_test's quiescence window,
 # and ~30x the longest gap between consecutive console lines in a passing run of
 # these testcases, so a ROM that merely paused would still be caught.
@@ -180,7 +181,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         # `MANIFEST_SRC=` only says which address the ROM intended to read; the
         # BFM's transaction record says which address the device actually served
         # and in what order, and the successful half of boot_flash_reinit()
-        # (manifest_load.c:777) prints nothing at all. Two attribute stores, read
+        # (manifest_load.c) prints nothing at all. Two attribute stores, read
         # by nobody else -- no existing subclass references either name, so this
         # cannot change any established behaviour.
         self._flash = flash
@@ -200,16 +201,23 @@ class sep_backup_manifest_fail_base(sep_base_test):
             )
             for cycle in range(_MAX_RUN_CYCLES):
                 await RisingEdge(dut.clk_i)
-                status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
+                probe = self.rd(dut.scratch_cold_probe_o)
+                status = (probe >> 32) & 0xFFFF_FFFF
                 if status != last_status:
                     last_status = status
                     status_seq.append(status)
                 if self.rd(dut.cpu_trace_valid_o):
                     retired += 1
-                if self.rd(dut.fw_done_o):
+                # Completion comes from the verdict word in cold_scratch[0]
+                # (dv/docs/rom_verdict_scratch0_migration.md).
+                verdict = decode_verdict(probe)
+                if verdict is not None:
                     fw_done = True
-                    fw_pass = self.rd(dut.fw_pass_o)
-                    self.logger.info("ROM signalled completion at cycle %d", cycle)
+                    fw_pass = verdict[1]
+                    self.logger.info(
+                        "CHK-VERDICT: ROM signalled completion at cycle %d via "
+                        "cold_scratch[0], pass=%d", cycle, fw_pass,
+                    )
                     break
                 if cycle - last_log >= _PROGRESS_EVERY:
                     last_log = cycle
@@ -217,13 +225,13 @@ class sep_backup_manifest_fail_base(sep_base_test):
                                      cycle, status, retired, len(console))
 
             # Did it actually STOP? The procedures for these testcases say the ROM
-            # hangs after the terminal error, and `fw_done` alone does not say
-            # that: rom_err_fail() writes cold_scratch, then the mailbox FAIL pair,
-            # and only THEN enters `for(;;) wfi` (rom_main.c:164-176 ->
-            # rom_mbx.h:51-57). A ROM that reported the failure and carried on
-            # booting would raise fw_done at exactly the same instant, so without
-            # this window "terminal" rests on the ROM's noreturn attribute rather
-            # than on an observation.
+            # hangs after the terminal error, and the verdict alone does not say
+            # that: rom_err_fail() writes cold_scratch[1] (the code) and
+            # cold_scratch[0] (the FAIL verdict), and only THEN enters
+            # `for(;;) wfi`. A ROM that reported the failure and carried on booting
+            # would write that verdict at exactly the same instant, so without this
+            # window "terminal" rests on the ROM's noreturn attribute rather than
+            # on an observation.
             #
             # Three things must hold in the window, and none of them depends on
             # where the spin loop happens to sit: the status word must not move on,
@@ -235,8 +243,8 @@ class sep_backup_manifest_fail_base(sep_base_test):
                 console_len_at_done = len(console)
                 for _ in range(_QUIESCE_CYCLES):
                     await RisingEdge(dut.clk_i)
-                    if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) \
-                            != last_status:
+                    probe = self.rd(dut.scratch_cold_probe_o)
+                    if ((probe >> 32) & 0xFFFF_FFFF) != last_status:
                         post_status_moved = True
                         break
                 post_console = console[console_len_at_done:]
@@ -251,18 +259,22 @@ class sep_backup_manifest_fail_base(sep_base_test):
     # --- checks ------------------------------------------------------------
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:
         """CHK-HANG: the ROM stopped, rather than reporting and continuing."""
+        # The window now opens at the cold_scratch[0] verdict write rather than at
+        # the mailbox FAIL that follows it, so it starts a few cycles EARLIER and
+        # covers strictly more of the post-error interval. Same check, slightly
+        # wider reach.
         assert not post_status_moved, (
             f"cold_scratch[1] moved on from 0x{terminal_status:08x} within "
-            f"{_QUIESCE_CYCLES} cycles of the mailbox FAIL: the ROM reported the "
-            f"terminal error and then kept running"
+            f"{_QUIESCE_CYCLES} cycles of the terminal verdict: the ROM reported "
+            f"the terminal error and then kept running"
         )
         assert not post_console, (
-            f"ROM printed {post_console} after the mailbox FAIL; a terminal error "
-            f"path ends in `for(;;) wfi` and produces no further output"
+            f"ROM printed {post_console} after the terminal verdict; a terminal "
+            f"error path ends in `for(;;) wfi` and produces no further output"
         )
         self.logger.info(
             "CHK-HANG: cold_scratch[1] held 0x%08x and the console stayed silent "
-            "for %d cycles after the mailbox FAIL",
+            "for %d cycles after the terminal verdict",
             terminal_status, _QUIESCE_CYCLES,
         )
 

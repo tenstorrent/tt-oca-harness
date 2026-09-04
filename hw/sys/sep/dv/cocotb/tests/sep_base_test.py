@@ -42,6 +42,7 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_verdict import decode_verdict
 
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
@@ -57,10 +58,26 @@ _DEFAULT_EFUSE_PRELOAD = (
 _STALL_CSR_TIMEOUT_NS = 50_000
 
 
+
 class sep_base_test(uvm_test):
     """Shared SEP test: env build, clock/reset bring-up, scenario hook."""
 
     build_env = True
+
+    # Which channel poll_boot() gates completion on.
+    #
+    #   "mailbox"  -- fw_done_o/fw_pass_o from the outbound mailbox decoder
+    #                 (dv/tb/sep_outbound_mbx.sv).  The default, and what every
+    #                 non-rom_fw firmware test uses: the spi/km/cpu payloads
+    #                 report through the mailbox and are not being migrated.
+    #   "scratch0" -- the ROM/BL1 verdict word in cold_scratch[0]
+    #                 (env/sep_verdict.py).  Opt-in, set by rom_fw tests only.
+    #
+    # Deliberately opt-in rather than a global switch: this attribute decides how
+    # a test concludes it passed, so flipping it for tests whose firmware never
+    # writes cold_scratch[0] would not fail loudly -- they would simply never
+    # complete.  See dv/docs/rom_verdict_scratch0_migration.md.
+    verdict_source = "mailbox"
 
     @staticmethod
     def random_seed() -> int:
@@ -331,13 +348,24 @@ class sep_base_test(uvm_test):
             self.rd(dut.dbg_iccm_active_o),
             self.rd(dut.dbg_iccm_addr_o),
         )
+        gate_on_scratch = self.verdict_source == "scratch0"
         for cycle in range(max_run_cycles):
             await RisingEdge(dut.clk_i)
             sb.note_trace(self.rd(dut.cpu_trace_valid_o), self.rd(dut.cpu_trace_addr_o))
             sb.note_run_ack(self.rd(dut.o_cpu_run_ack_o))
             if self.rd(dut.fw_char_valid_o):
                 sb.note_char(self.rd(dut.fw_char_o))
-            if self.rd(dut.fw_done_o):
+            if gate_on_scratch:
+                verdict = decode_verdict(self.rd(dut.scratch_cold_probe_o))
+                if verdict is not None:
+                    sb.note_fw(True, verdict[1])
+                    self.logger.info(
+                        "CHK-VERDICT: firmware signaled completion at cycle %d "
+                        "via cold_scratch[0], pass=%d",
+                        cycle, verdict[1],
+                    )
+                    break
+            elif self.rd(dut.fw_done_o):
                 sb.note_fw(True, self.rd(dut.fw_pass_o))
                 self.logger.info("firmware signaled completion at cycle %d", cycle)
                 break

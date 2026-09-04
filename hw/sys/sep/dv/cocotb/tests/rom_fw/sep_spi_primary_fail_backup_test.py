@@ -5,12 +5,12 @@
 STIMULUS. The primary slot's whole flash span is erased to 0xFF and the backup is
 left untouched, so one device answers at both addresses but only the backup holds a
 boot slot. Erasing the SPAN rather than just the 1184-byte header matters: a slot's
-payload is fetched at a manifest-relative offset (``manifest_load.c:484``), so
+payload is fetched at a manifest-relative offset (``manifest_load.c``), so
 leaving the primary payload would leave a half-populated address.
 
 The backup boots standalone because both slots carry ``payload_offset = 0x1000``
 and the ROM resolves it as ``src_addr + payload_offset``
-(``manifest_load.c:484``), so the backup at 0x41000 fetches its payload from
+(``manifest_load.c``), so the backup at 0x41000 fetches its payload from
 0x42000.
 
 This ROM has no SPI detect/retry status -- ``SEP_MSG_SPI_TRY_BACKUP``
@@ -20,7 +20,7 @@ the failover is asserted as the ordered pair ``MANIFEST_ERR=0x00030002`` then
 ``MANIFEST_SRC=0x00041000``, which pins both the reason and the destination.
 
 ``"SPI init failed, using backup manifest"`` is forbidden because that is the
-``spi_status`` skip path (``manifest_load.c:547-550``), which reaches the backup
+``spi_status`` skip path (``manifest_load.c``), which reaches the backup
 because the CONTROLLER died. Without that forbid, a broken-controller run would
 look like a passing address failover -- the most likely false pass here.
 
@@ -28,7 +28,7 @@ Order is asserted on both the console and the device log, not mere presence. Slo
 identity is asserted on ``MANIFEST_SRC=`` and device addresses, never on the
 ``MANIFEST_PRIMARY`` / ``MANIFEST_BACKUP`` label: the ROM derives the label from the
 retry counter but the offset from the possibly-rotated slot index
-(``manifest_load.c:540-544,567``), so under ``rotate_update`` they disagree.
+(``manifest_load.c``), so under ``rotate_update`` they disagree.
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# manifest.h:294-320. An erased slot fails the identifier check in
-# validate_manifest_header (manifest_load.c:130-131), which runs before the hash
+# manifest.h. An erased slot fails the identifier check in
+# validate_manifest_header (manifest_load.c), which runs before the hash
 # check, so the verdict is deterministically BAD_MAGIC.
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 

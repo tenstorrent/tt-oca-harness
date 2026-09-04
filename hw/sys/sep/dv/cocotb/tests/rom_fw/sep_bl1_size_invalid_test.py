@@ -3,7 +3,7 @@
 """TP053-S: BL1 image size out of range, so BL0 must reject before the copy.
 
 The SEP BL1 entry's ``length`` is set to zero in BOTH manifest slots. The ROM
-rejects each slot at ``manifest_load.c:380-383`` -- ``IMAGE_LEN_ZERO idx=0`` then
+rejects each slot at ``manifest_load.c`` -- ``IMAGE_LEN_ZERO idx=0`` then
 ``MANIFEST_ERR_IMAGE_OOB`` -- so the primary fails, the backup is retried, it
 fails the same way, and the boot terminates without BL1 ever being copied into
 SRAM or entered.
@@ -14,15 +14,15 @@ BL1 size. **Only the zero class is exercised here**, and the omission is a
 property of the ROM's check order rather than a choice of convenience:
 
   * *larger than IRAM* would have to reach ``check_bl1_image``'s containment arm
-    (``manifest.h:282-284``, ``BL1_ADDR_RANGE``), which with the shipped
-    ``load_addr`` of 0x10020000 needs ``length > 0x20000``. But
-    ``manifest_load.c:367`` rejects ``offset + length > payload_length`` first, so
+    (``manifest.h``, ``BL1_ADDR_RANGE``), which with the shipped
+    ``load_addr`` of 0xC0000000 needs ``length > 0x40000``. But
+    ``manifest_load.c`` rejects ``offset + length > payload_length`` first, so
     the payload would have to grow past 128 KiB -- roughly 80 ms of extra
     simulated SPI transfer per slot at this testbench's rate, on both slots.
     ``sep_payload_mutate.set_bl1_zero_length``'s docstring records the analysis.
-  * *larger than the spec maximum* is checked at ``rom_handoff.c:110-113``
+  * *larger than the spec maximum* is checked at ``rom_handoff.c``
     (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``), which is downstream of
-    manifest validation. ``manifest_load.c:428-433`` says as much in its own
+    manifest validation. ``manifest_load.c`` says as much in its own
     comment: by the time handoff runs, the slot has already been accepted. Both
     of that gate's arms are therefore already rejected upstream, and it cannot be
     reached from a manifest at all.
@@ -45,7 +45,7 @@ import pyuvm
 from env import sep_payload_mutate as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
-# manifest.h:309
+# manifest.h
 MANIFEST_ERR_IMAGE_OOB = 0x0003_000E
 
 

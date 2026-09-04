@@ -13,3 +13,8 @@
 
 void sep_dma_init(void);
 uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len);
+
+// Fill `len` bytes at `dest` with zero.  Needed for ICCM, which the CPU cannot
+// store to (ICCM shares VeeR region 0xC with DCCM, so the LSU faults any ICCM
+// address); writing it establishes its ECC.
+uint32_t sep_dma_zero(uint32_t dest, size_t len);

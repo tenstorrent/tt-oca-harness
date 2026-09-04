@@ -384,6 +384,27 @@ module sep_uvm_top
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
     output logic              secure_tm_o,
+    // Demotion registers. The boot ROM's [C15] block decides BL1/BL2 demotion and
+    // writes DEMOTE_1 (and, at PROD_END only, DEMOTE_2) -- bootrom/prod/src/rom_main.c:377-436
+    // via lc_write_demotion()/lc_write_demotion_2() (bootrom/prod/src/lifecycle.c:116-128).
+    // Until now nothing observed those writes: `lcc_demote_state_{1,2}_o` were real
+    // `sep_wrapper` outputs left dangling below, and the LOCK bit is on no port at
+    // all. That left the console strings as the only evidence, and the console is
+    // printed from a LOCAL computed one line earlier (rom_main.c),
+    // so a ROM that decided correctly, printed correctly and wrote the wrong
+    // register value passed unchallenged.
+    //
+    // `state` is the DUT output (frontdoor): a 2-bit {~demote, demote} pair from
+    // prim_diff_encode_multi (rtl/sep_lifecycle_ctrl.sv:43-56, encoding at
+    // hw/common/och_prim/rtl/prim_diff_encode_multi.sv:41-49), so bit 0 IS demote,
+    // bit 1 is its complement: 2'b10 means demote=0 and 2'b01 means demote=1. Any
+    // other value is a broken rail rather than a demotion verdict.
+    // `lock` has no port and is a read-only XMR of the register field storage --
+    // same class as sep_internal_interrupts_probe_o above, no force, no deposit.
+    output logic [1:0]        lcc_demote_state_1_probe_o,
+    output logic [1:0]        lcc_demote_state_2_probe_o,
+    output logic              lcc_demote_lock_1_probe_o,
+    output logic              lcc_demote_lock_2_probe_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
     // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
@@ -623,9 +644,10 @@ module sep_uvm_top
         .sep_ext_to_smc_axi_req_o     (ext_to_smc_req_w),
         .sep_ext_to_smc_axi_resp_i    (ext_to_smc_resp_w),
 
-        // LC demote
-        .lcc_demote_state_1_o         (),
-        .lcc_demote_state_2_o         (),
+        // LC demote. Real DUT outputs, brought out so a ROM boot test can observe
+        // what BL0 actually wrote rather than what it said it wrote.
+        .lcc_demote_state_1_o         (lcc_demote_state_1_probe_o),
+        .lcc_demote_state_2_o         (lcc_demote_state_2_probe_o),
 
         // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
@@ -858,7 +880,7 @@ module sep_uvm_top
         // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
         // smc_base+0x2090. Bit 25 is byte 3 of the word, bit 1. It is a strap
         // value, NOT a boot-path selector: boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h:46), so with
+        // `primary_chiplet && !boot_recovery` (boot_straps.h), so with
         // +sep_straps_hi also asserting boot_recovery the ROM takes its RECOVERY
         // branch instead -- which is exactly what sep_boot_recovery_test needs.
         // Default off: without it the ROM keeps taking the SMC-SRAM secondary
@@ -915,7 +937,7 @@ module sep_uvm_top
         //
         // Whole-word, like +sep_dft_status: a per-bit flag would need one plusarg
         // per strap and could not express a combination, and the ROM reads the
-        // word once (boot_straps.c:14-26) so partial writes would be the odd case
+        // word once (boot_straps.c) so partial writes would be the odd case
         // rather than the normal one. Little-endian: byte 0 holds bits [7:0].
         if ($value$plusargs("sep_straps_hi=%h", straps_hi_ovr)) begin
             u_smc_mem.mem[56'h4000_2094] = straps_hi_ovr[7:0];
@@ -1120,7 +1142,7 @@ module sep_uvm_top
         // appended to the loader rather than raced against it.
         //
         // Needed because the ROM's warm-handler range check is ICCM
-        // (sep-boot-flow.puml:45), so proving dispatch means putting a real
+        // (sep-boot-flow.puml), so proving dispatch means putting a real
         // instruction at the seeded address and watching the PC settle there.
         // +sep_sram_hex cannot do it: different memory. The reference testbench
         // has the same need and the same answer -- +preload_iccm_ram_upper /
@@ -1333,8 +1355,23 @@ module sep_uvm_top
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
-    // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
+    // map to bits [21:24], EDN to [25:26] (sep.sv).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
+
+    // DEMOTE_1/DEMOTE_2 lock bits. The demote bit leaves the DUT on a real port
+    // (connected above); the lock bit does not, so it is read here straight out of
+    // the register field storage the RDL declares
+    // (regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:31-36, sw=rw
+    // onwrite=woset) and assigned into demote_reg_{1,2}.lock at
+    // rtl/sep_lifecycle_ctrl.sv:185. Read-only XMR, no force -- same class
+    // as the probes above. Both fields are write-one-to-set and are never cleared
+    // by hardware, so the value read at end of test is exactly what BL0 wrote, and
+    // "never written" is observable as 0 rather than being indistinguishable from
+    // "written with zeros".
+    assign lcc_demote_lock_1_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
+    assign lcc_demote_lock_2_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1385,7 +1422,7 @@ module sep_uvm_top
     // Warm-reset handler seed, SPEC VERSION: +sep_cold_scratch7=<hex32>
     // ------------------------------------------------------------------
     // Seeds the register the ROM reads for its warm-handler slot.
-    // sep-boot-flow.puml:42-56 puts the address in SEP COLD Scratch 7 -- "always
+    // sep-boot-flow.puml puts the address in SEP COLD Scratch 7 -- "always
     // 0 on cold resets, maintains value across warm/watchdog resets" -- and the
     // ROM was re-pointed there from WARM Scratch 0 (vector.S, FINDINGS F28).
     //

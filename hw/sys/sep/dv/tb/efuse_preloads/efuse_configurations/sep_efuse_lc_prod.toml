@@ -1,17 +1,28 @@
 # PROD lifecycle, everything else at zero.
 #
 # The baseline secure-boot preload: PROD is what makes SEP ROM enforce signature
-# verification, and SBOOT_DIS stays 0 so nothing can opt out of it. Used by
-# sep_firmware_enforced_secure_boot_flow_test,
-# sep_firmware_cntl_secure_boot_flow_test,
-# sep_firmware_backup_invalid_signature_test,
-# sep_firmware_backup_invalid_public_key_selection_test,
-# sep_firmware_backup_unpopulated_rom_key_slot_test,
-# sep_firmware_primary_invalid_key_hash_test and
-# sep_firmware_backup_invalid_key_hash_test.
+# verification, and SBOOT_DIS stays 0 so nothing can opt out of it.
 #
-# sep_efuse_lc_prod_pubk_revoke5.toml is this file plus one revocation bit; it is
-# a separate preload, not a user of this one.
+# It is the default preload for every secure-boot testcase that needs no other
+# fuse, which as of 2026-08-31 is 18 entries. The list is NOT enumerated here: it
+# was enumerated once, went stale at seven names, and a comment cannot be kept
+# correct by hand for a file this widely selected. Enumerate it mechanically
+# instead:
+#
+#   awk 'BEGIN{RS="\\[\\[tests\\]\\]"} /efuse_configurations\/sep_efuse_lc_prod\.toml"/ \
+#     {match($0,/name = "[^"]+"/); print substr($0,RSTART+8,RLENGTH-9)}' \
+#     ../../../testlists/rom_fw.toml
+#
+# Splitting on [[tests]] is what makes that correct; a line-window grep spills
+# into the neighbouring entries and over-reports.
+#
+# Anything that changes in this file changes all of them at once, so treat it as
+# shared state and prefer a sibling preload over an edit here.
+#
+# sep_efuse_lc_prod_pubk_revoke{0..5}.toml are this file plus exactly one
+# CHIPLET_PUBK_REVOKE bit each, and sep_efuse_lc_prod_secver1.toml is this file
+# plus a BL1_VERSION rollback floor of 1. They are separate preloads, not users
+# of this one.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

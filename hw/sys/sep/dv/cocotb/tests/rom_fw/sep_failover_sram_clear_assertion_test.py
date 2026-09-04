@@ -29,7 +29,7 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
 
   * **SMC SRAM -- NOT covered. The stimulus exists; the ROM branch that would
     need the clear does not.** The spec does not ask for this clear
-    unconditionally. ``sep-boot-flow.puml:152`` reads "Clear SMC SRAM available for
+    unconditionally. ``sep-boot-flow.puml`` reads "Clear SMC SRAM available for
     payload loading **if SMC SRAM used**", and what decides "used" is the USE_EXT
     bit two partitions later (``puml:384-392``: payload into EXT SRAM if the bit is
     set, into SMC SRAM otherwise).
@@ -38,40 +38,41 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     (``bootrom/prod/tools/tt-boot-manifest/src/pack_images.py:82-83,91``,
     ``.../src/pack_images_constants.py:91``), and every image this DV tree boots is
     built with it CLEAR -- ``bootrom/prod/configs/non_secure_boot_test.yaml:32,101``,
-    ``secure_boot_test.yaml:37,106`` and ``encrypted_boot_test.yaml:38,107`` all set
+    ``secure_boot_test.yaml`` and ``encrypted_boot_test.yaml`` all set
     ``use_ext_sram: 0``. The ROM side is not: ``FLAG_ARGS_BIT_USE_EXT_SRAM``
     (``bootrom/prod/include/manifest.h:88``) is referenced nowhere under
     ``bootrom/prod/src/`` or ``bootrom/prod/include/`` apart from that ``#define``,
-    and the payload load (``manifest_load.c:647-657``) unconditionally targets
+    and the payload load (``manifest_load.c``) unconditionally targets
     ``dest + payload_offset`` with ``dest == SRAM_BASE``.
     THIS RUN OBSERVES THE DEVIATION rather than inferring it. The backup manifest
     it boots logs ``flag_args=0x00000000`` (CHK-STIMULUS-SPI), i.e. USE_EXT clear,
     so ``puml:386-392`` says its payload belongs in SMC SRAM -- and the same run
-    logs ``LOAD=0x10020000``, ``COPY_SRC=0x10002000``, ``COPY_DST=0x10020000``, all
-    EXT SRAM. So ``puml:152``'s condition can be requested but never becomes true
+    logs ``COPY_SRC=0x10002000`` -- the payload staged in EXT SRAM. (``LOAD`` and
+    ``COPY_DST`` are 0xC0000000, BL1's ICCM destination, not the staging area.)
+    So ``puml:152``'s condition can be requested but never becomes true
     in the ROM, and a testcase for the SMC clear has nothing to assert against.
     Consistently with that, no store loop anywhere in ``boot_rom.dis`` targets
     ``sep_get_smc_sram_base()`` (0x4006_0000) -- all six 0x40060 references are
     bounds checks, manifest-source arithmetic, or the status ring. And note the
     spec's wording is partition-limited for a reason: the ROM's own status ring
-    lives at 0x4006_0000 (``status_ring.c:52-61``; this run logs
+    lives at 0x4006_0000 (``status_ring.c``; this run logs
     ``ring buffer address: 0x40060000``), so a wholesale SMC SRAM clear would
     destroy the ROM's own reporting channel.
     Second, independent reason the window does not exist there: the only path whose
     manifest comes from SMC SRAM runs ``num_retries = 0``
-    (``manifest_load.c:727``), so it has no backup retry at all.
+    (``manifest_load.c``), so it has no backup retry at all.
     See FINDINGS F19 and its correction F21. This test asserts nothing about SMC
     SRAM and must not be booked as covering that half of F038.
 
 DO NOT confuse this clear with ``rom_clear_ext_sram()``. That is a DIFFERENT,
-one-time, pre-manifest scrub (``rom_main.c:306`` -> ``rom_mem_clear.c:35``) gated
+one-time, pre-manifest scrub (``rom_main.c`` -> ``rom_mem_clear.c``) gated
 on ``SRAM_SCRUB_BYTES``, which ``bootrom/prod/Makefile:62`` defaults to 0 -- every
 boot log in this tree prints ``SRAM_CLR_SKIP`` for it. It is compiled out, it runs
 before SPI init, and it is outside TP080's window entirely. The failover clear
 asserted here is a separate call site and is NOT gated on that knob.
 
 WHY THE MEMORY IS POISONED FIRST. Under Verilator the SRAM array powers up all
-zero (``tb_top.sv:882-897`` compiles the explicit zero-fill for VCS only because
+zero (``tb_top.sv`` compiles the explicit zero-fill for VCS only because
 Verilator 0-inits). A test that simply asserted "the SRAM reads zero after the
 failure" would therefore pass on a ROM that never cleared anything -- the exact
 vacuity the procedure's step 2 snapshot at "(i) before primary boot" exists to
@@ -97,7 +98,7 @@ OBSERVATION CHANNEL. ``sep_public_scope.vlt:38`` marks ``prim_ram_1p.mem``
 and ``varInsert("mem", ..., VLVT_UINT64, VLVD_NODIR|VLVF_PUB_RW, 1, 1, 0,32767, 63,0)``.
 So the whole array is reachable by VPI from cocotb, and no testbench change is
 needed. The two pre-existing port probes (``sram_word0_probe_o``,
-``sram_payload_probe_o``, ``tb_top.sv:1182-1189``) expose only 7 of the 32768
+``sram_payload_probe_o``, ``tb_top.sv``) expose only 7 of the 32768
 words, which cannot support a claim about a 256 KiB clear.
 
 STIMULUS. Inherited whole from ``sep_spi_primary_fail_backup_test`` -- the primary
@@ -126,7 +127,7 @@ from env.sep_rom_console import rom_console_task
 from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_test
 
 # 0x1000_0000. From the RDL export, not a literal, so the test cannot drift from
-# the address the ROM's SRAM_BASE macro resolves to (manifest_load.c:41).
+# the address the ROM's SRAM_BASE macro resolves to (manifest_load.c).
 _SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 # prim_ram_1p_adv Depth for u_sep_sram: 256 KiB / 8 B (hw/top/sep_ip_integration.sv:148).
 _SRAM_WORDS = 32768
@@ -517,7 +518,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "What is missing is the ROM's consuming branch: FLAG_ARGS_BIT_USE_EXT_SRAM "
             "(manifest.h:88) is referenced nowhere under bootrom/prod/src, and "
             "manifest_load.c:647-657 staged this payload in EXT SRAM regardless "
-            "(LOAD=0x10020000, COPY_SRC=0x10002000). So the SMC clear has nothing to "
+            "(COPY_SRC=0x10002000; LOAD=0xC0000000 is BL1's ICCM destination). So the "
+            "SMC clear has nothing to "
             "assert against. Consistently, boot_rom.dis has no store loop over "
             "sep_get_smc_sram_base() (0x40060000) -- which is also where this ROM's "
             "own status ring lives. See FINDINGS F19 and F21. A green run here does "

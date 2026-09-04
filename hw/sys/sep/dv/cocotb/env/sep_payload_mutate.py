@@ -9,9 +9,9 @@ the RSA step, so the stale signature is never reached and re-signing is
 entry point and post-decrypt TOC content are all validated by
 ``validate_manifest_payload()`` / ``check_bl1_image()``, which run AFTER
 ``manifest_crypto_validate()`` has verified the signature
-(``manifest_load.c:665-680`` then ``:683``). A payload mutation that is not
+(``manifest_load.c`` then). A payload mutation that is not
 re-sealed therefore never reaches the check it is aimed at: it dies at
-``PLD_HASH_MISMATCH`` (``manifest_crypto.c:272-275``), or at ``SIG_FAILED`` once
+``PLD_HASH_MISMATCH`` (``manifest_crypto.c``), or at ``SIG_FAILED`` once
 ``payload_hash`` -- which sits INSIDE the TBS at offset 552 -- is corrected.
 
 So these mutations must re-seal the slot, in this order:
@@ -31,7 +31,7 @@ production uses.
 
 SIGNING USES ONLY THE STANDARD LIBRARY. The DV virtualenv has no ``cryptography``
 module, so :func:`sign_pkcs1v15_sha256` implements EMSA-PKCS1-v1_5 directly (the
-packer's scheme: ``manifest_signing.py:182-186``, ``PKCS1v15()`` + ``SHA256``).
+packer's scheme: ``manifest_signing.py``, ``PKCS1v15()`` + ``SHA256``).
 :func:`verify_signing_key` is what makes that trustworthy: it re-derives the
 signature of the UNMUTATED slot and requires it to equal the shipped bytes
 exactly. A wrong padding, a wrong digest prefix or a wrong TBS boundary cannot
@@ -55,7 +55,7 @@ from pathlib import Path
 
 from env import sep_manifest_mutate as mm
 
-# ── Manifest fields this module touches (manifest.h:207-234) ──────────────────
+# ── Manifest fields this module touches (manifest.h) ──────────────────
 # All are inside the TBS except boot_arguments, so writing any of them obliges a
 # rehash + re-sign. verify_sealed() cross-checks every one against real bytes.
 OFF_PAYLOAD_HASH = 552          # 32 B, SHA-256 over payload[:payload_hashed_length]
@@ -64,7 +64,7 @@ OFF_PAYLOAD_LENGTH = 600        # uint64
 OFF_BOOT_PAYLOAD_OFFSET = 1160  # int64, first field of boot_arguments
 OFF_USAGE_FLAGS = 92            # uint32, usage_constraints.flags (16 + 76)
 
-# ── TOC layout (manifest.h:239-262) ──────────────────────────────────────────
+# ── TOC layout (manifest.h) ──────────────────────────────────────────
 TOC_MAGIC = b"PTOC"             # TOC_HEADER_MAGIC_WORD 0x434f5450
 TOC_HDR_SIZE = 32
 TOC_ENTRY_SIZE = 216
@@ -79,16 +79,16 @@ E_LOAD_ADDR = 32
 E_ENTRY_POINT = 40
 E_HASH = 56
 
-# IMAGE_TYPE_SEP_BL1, manifest.h:136 -- "SEPBL1" packed little-endian into a u64.
+# IMAGE_TYPE_SEP_BL1, manifest.h -- "SEPBL1" packed little-endian into a u64.
 IMAGE_TYPE_SEP_BL1 = 0x0000_314C_4250_4553
 
-# check_bl1_image()'s load window, manifest.h:38-41 and :282-286.
+# check_bl1_image()'s load window, manifest.h.
 SEP_SRAM_BASE = 0x1000_0000
 SEP_SRAM_SIZE = 0x0004_0000
 
-# manifest.h:305 -- both check_bl1_image() arms return this one error code.
+# manifest.h -- both check_bl1_image() arms return this one error code.
 MANIFEST_ERR_BL1_BAD_ADDR = 0x0003_000A
-# manifest.h:300
+# manifest.h
 MANIFEST_ERR_BAD_TOC_ID = 0x0003_0005
 
 # The dev0 signing key, relative to the repo's sep root.
@@ -162,7 +162,7 @@ def _emsa_pkcs1_v15(msg: bytes, k_bytes: int) -> int:
 
 
 def sign_pkcs1v15_sha256(msg: bytes, n: int, d: int) -> bytes:
-    """RSASSA-PKCS1-v1_5 sign, matching ``manifest_signing.py:182-186``."""
+    """RSASSA-PKCS1-v1_5 sign, matching ``manifest_signing.py``."""
     k = (n.bit_length() + 7) // 8
     return pow(_emsa_pkcs1_v15(msg, k), d, n).to_bytes(k, "big")
 
@@ -202,7 +202,7 @@ def payload_hashed_length(buf, slot: str) -> int:
 
 
 def is_encrypted(buf, slot: str) -> bool:
-    """usage_constraints.flags bit 1, manifest.h:83."""
+    """usage_constraints.flags bit 1, manifest.h."""
     base = mm.slot_base(slot)
     flags = int.from_bytes(bytes(buf[base + OFF_USAGE_FLAGS:base + OFF_USAGE_FLAGS + 4]),
                            "little")
@@ -213,7 +213,7 @@ def read_bytes(buf, start: int, length: int) -> bytes:
     """Flash bytes as the ROM will see them, padding past the image with 0xFF.
 
     The SPI BFM's backing store and its out-of-range reads are both 0xFF
-    (``ocah_spi_flash.py:186,494-495``), so a read that runs past the programmed
+    (``ocah_spi_flash.py``), so a read that runs past the programmed
     image returns erased bytes rather than failing. Modelling that here is what
     lets a testcase declare an image size larger than the material actually
     programmed and still know, exactly, which bytes the ROM will hash.
@@ -385,9 +385,9 @@ def reseal(buf: bytearray, slot: str) -> None:
 def set_bl1_entry_point(buf: bytearray, slot: str, value: int | None = None) -> int:
     """Make BL1's ``entry_point`` violate ``entry_point < length``.
 
-    ``check_bl1_image`` returns 2 for this (``manifest.h:286``), which
+    ``check_bl1_image`` returns 2 for this (``manifest.h``), which
     ``validate_manifest_payload`` prints as ``BL1_ENTRY_RANGE`` before returning
-    ``MANIFEST_ERR_BL1_BAD_ADDR`` (``manifest_load.c:434-439``).
+    ``MANIFEST_ERR_BL1_BAD_ADDR`` (``manifest_load.c``).
 
     The default is ``entry_point == length`` exactly: the smallest value the
     condition rejects. A larger value would pass just as well against a ROM that
@@ -422,22 +422,22 @@ def set_bl1_zero_length(buf: bytearray, slot: str) -> int:
     first is reachable at a sane simulation cost. The reason is check ordering
     inside ``validate_manifest_payload``:
 
-      * ``manifest_load.c:367`` rejects ``offset + length > payload_length`` as
+      * ``manifest_load.c`` rejects ``offset + length > payload_length`` as
         ``MANIFEST_ERR_IMAGE_OOB`` before anything BL1-specific runs, so an
         oversized length can only be reached by GROWING the payload to match.
-      * ``check_bl1_image``'s containment arm (``manifest.h:282-284``,
+      * ``check_bl1_image``'s containment arm (``manifest.h``,
         ``BL1_ADDR_RANGE``) only fires once ``load_addr + length`` leaves the
-        256 KiB SRAM window. With the shipped ``load_addr`` of 0x10020000 that
-        needs length > 0x20000, i.e. a >128 KiB payload -- roughly 80 ms of extra
+        256 KiB ICCM window. With the shipped ``load_addr`` of 0xC0000000 that
+        needs length > 0x40000, i.e. a >256 KiB payload -- roughly 160 ms of extra
         simulated SPI time per slot at this TB's ~610 ns/byte, on both slots.
       * The explicit ``length == 0 || length > SEP_SRAM_SIZE`` gate at
-        ``rom_handoff.c:110-113`` (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``)
-        is downstream of manifest validation, and ``manifest_load.c:428-433``
+        ``rom_handoff.c`` (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``)
+        is downstream of manifest validation, and ``manifest_load.c``
         says so in as many words: by the time handoff runs the slot has already
         been accepted. Both of its arms are therefore already rejected upstream.
 
     So zero is the class this ROM demonstrates cheaply and unambiguously, at
-    ``manifest_load.c:380-383``: ``IMAGE_LEN_ZERO idx=<i>`` then
+    ``manifest_load.c``: ``IMAGE_LEN_ZERO idx=<i>`` then
     ``MANIFEST_ERR_IMAGE_OOB``. The index in the marker is what makes the verdict
     attributable -- this payload's TOC holds exactly one image and it is the BL1,
     so ``idx=0`` names the entry that was mutated.
@@ -468,8 +468,8 @@ def corrupt_ciphertext(buf: bytearray, slot: str, *, block: int = 0,
     TP049 variant (b). AES-CBC decryption never reports an error for wrong input --
     it is a permutation, so any ciphertext decrypts to something -- and the ROM's
     own ``aes128cbc_decrypt`` only fails on a bad length or an engine alert
-    (``aes_driver.c:175-176,193-234``). The failure therefore has to surface
-    DOWNSTREAM, at the TOC identifier check (``manifest_load.c:295-297``), which is
+    (``aes_driver.c``). The failure therefore has to surface
+    DOWNSTREAM, at the TOC identifier check (``manifest_load.c``), which is
     exactly what the procedure asks for: "corrupt the encrypted payload so the
     decrypted plaintext does not match the TOC magic".
 
@@ -477,7 +477,7 @@ def corrupt_ciphertext(buf: bytearray, slot: str, *, block: int = 0,
     ``C0`` randomises the whole of plaintext block 0 -- the 16 bytes that begin with
     the ``PTOC`` identifier. The manifest is re-sealed afterwards because
     ``payload_hash`` covers the CIPHERTEXT and is verified before decryption
-    (``manifest_crypto.c:372-378``); without the re-seal the ROM would stop at
+    (``manifest_crypto.c``); without the re-seal the ROM would stop at
     ``PLD_HASH_MISMATCH`` and never call the decrypt path at all.
 
     Returns ``(flash_offset, new_byte)``.

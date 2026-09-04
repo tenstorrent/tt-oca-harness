@@ -55,11 +55,6 @@ from env.sep_rom_console import rom_console_task, log_scratch_cold
 from ocah_spi_vip import OcahSpiFlash
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-_ROM_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod")
-# build_ot/ -- the OpenTitan-transport ROM with the DMA drain. Pointing this at
-# build/ would load the stub ROM, which never touches SPI; the path assertions
-# below would then fail. The PIO sibling overrides it with build_ot_pio/.
-_FW_DIR = os.path.join(_ROM_DIR, "build_ot")
 # Raw packed image for the flash BFM, from the DEFAULT build/ -- the packed
 # manifest+BL1 bytes are transport- and drain-agnostic, so all three ROM variants
 # (stub, OT+DMA, OT+PIO) read the same image and it is built once.
@@ -96,15 +91,14 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     """Boot VeeR EL2 from the real Boot ROM with the manifest fetched over SPI."""
 
     build_env = False
+
+    # Gate on the ROM/BL1 verdict word in cold_scratch[0] rather than the
+    # outbound mailbox. Inherited by every subclass in this directory.
+    # See dv/docs/rom_verdict_scratch0_migration.md.
+    verdict_source = "scratch0"
     # Overridden by the signed sibling (sep_rom_ot_secure_boot_test), which reuses
     # this whole flow and only swaps the image and tightens the assertions.
     flash_image = _FLASH_IMAGE
-    # ROM build directory, as class data so the PIO sibling can point at its own
-    # variant without duplicating the scenario. It must agree with the
-    # +sep_boot_rom_hex the testlist passes: this supplies the TCM images while
-    # that supplies the ROM responder image, and a mismatched pair would run one
-    # variant's .text against another's .rodata.
-    rom_build_dir = _FW_DIR
     # Console lines that must appear / must not appear. The subclass appends the
     # RSA markers; keeping them as class data is what lets the two variants share
     # one scenario without a copy.
@@ -208,11 +202,14 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         flash.preload(loaded)
         await flash.start()
         try:
-            await self.boot_firmware(
+            # No TCM staging: the ROM runs from Boot ROM (+sep_boot_rom_hex) and
+            # pulls BL1 off SPI into ICCM itself, so there is no firmware image for
+            # the tcm_load_i backdoor to place. That backdoor also gave every
+            # ICCM/DCCM row valid ECC; DCCM now gets it from the vector.S scrub and
+            # ICCM from the DMA that loads BL1, within the loaded image only.
+            await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
+            await self.poll_boot(
                 self.sb,
-                os.path.join(self.rom_build_dir, "boot_rom.itcm.hex"),
-                os.path.join(self.rom_build_dir, "boot_rom.dtcm.hex"),
-                rst_vec=_ROM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,

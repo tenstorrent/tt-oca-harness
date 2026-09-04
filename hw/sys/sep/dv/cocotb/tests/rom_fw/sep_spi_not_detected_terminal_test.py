@@ -17,15 +17,15 @@ This ROM has no SPI-detect status to emit -- ``SEP_MSG_SPI_NOT_DETECTED_DEFAULT`
 SPI-detect step (``src/sep_ot_spi.c:166-179``). What it emits on this edge, after
 both slots fail, is ``report_status(STATUS_TYPE_ERROR,
 SEP_MSG_MANIFEST_LOAD_FAILED)`` and ``MANIFEST_ALL_FAILED``
-(``src/manifest_load.c:601-603``), then ``rom_err_fail()`` -> mailbox FAIL ->
-``for(;;) wfi`` (``src/rom_main.c:328-331``, ``include/rom_mbx.h:51-58``). Both
+(``src/manifest_load.c:601-603``), then ``rom_err_fail()`` -> the FAIL verdict in
+cold_scratch[0] -> ``for(;;) wfi`` (``src/rom_main.c``, ``include/errors.h``). Both
 status words are required below: the loop verdict ``0x0f010213`` and the final
 encoded error ``0x0f010002``.
 
 ``SPI_INIT_OK`` is required and ``"SPI init failed, using backup manifest"``
 forbidden, so the controller demonstrably came up and BOTH addresses were really
 read. Without those, a dead controller would skip the primary outright
-(``manifest_load.c:547-550``) and still reach a terminal error.
+(``manifest_load.c``) and still reach a terminal error.
 """
 
 from __future__ import annotations
@@ -45,16 +45,17 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
 from env.sep_rom_console import rom_console_task, log_scratch_cold
+from env.sep_verdict import decode_verdict, TEST_PASS_CODE
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
 _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h:297 -- an erased slot fails the identifier check in
-# validate_manifest_header (manifest_load.c:130-131), before the hash check.
+# manifest.h -- an erased slot fails the identifier check in
+# validate_manifest_header (manifest_load.c), before the hash check.
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-# status_values.h:132, errors.h:29,33-34 -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
+# status_values.h, errors.h -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
 _STATUS_LOOP_FAILED = 0x0F01_0000 | SEP_MSG_MANIFEST_LOAD_FAILED
 _STATUS_TERMINAL = 0x0F01_0000 | (MANIFEST_ERR_BAD_MAGIC & 0xFFFF)
@@ -75,8 +76,8 @@ _BOOT_PROGRESS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
 _MAX_RUN_CYCLES = 24_000_000
 _PROGRESS_EVERY = 200_000
-# Cycles to keep watching after the mailbox FAIL, to establish that the ROM stayed
-# in its terminal state. The ROM's hang is `for(;;) wfi` (include/rom_mbx.h:51-58);
+# Cycles to keep watching after the terminal verdict, to establish that the ROM
+# stayed in its terminal state. The ROM's hang is `for(;;) wfi` in rom_err_fail();
 # 20k cycles is ~15x the longest single ROM step observed in these runs, so a ROM
 # that was going to do anything else would have started doing it.
 _HANG_OBSERVE_CYCLES = 20_000
@@ -158,16 +159,23 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             )
             for cycle in range(_MAX_RUN_CYCLES):
                 await RisingEdge(dut.clk_i)
-                status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
+                probe = self.rd(dut.scratch_cold_probe_o)
+                status = (probe >> 32) & 0xFFFF_FFFF
                 if status != last_status:
                     last_status = status
                     status_seq.append(status)
                 if self.rd(dut.cpu_trace_valid_o):
                     retired += 1
-                if self.rd(dut.fw_done_o):
+                # Completion comes from the verdict word in cold_scratch[0]
+                # (dv/docs/rom_verdict_scratch0_migration.md).
+                verdict = decode_verdict(probe)
+                if verdict is not None:
                     fw_done = True
-                    fw_pass = self.rd(dut.fw_pass_o)
-                    self.logger.info("ROM signalled completion at cycle %d", cycle)
+                    fw_pass = verdict[1]
+                    self.logger.info(
+                        "CHK-VERDICT: ROM signalled completion at cycle %d via "
+                        "cold_scratch[0], pass=%d", cycle, fw_pass,
+                    )
                     break
                 if cycle - last_log >= _PROGRESS_EVERY:
                     last_log = cycle
@@ -183,11 +191,16 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                 lines_at_done = len(console)
                 for _ in range(_HANG_OBSERVE_CYCLES):
                     await RisingEdge(dut.clk_i)
-                    hang_status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
+                    probe = self.rd(dut.scratch_cold_probe_o)
+                    hang_status = (probe >> 32) & 0xFFFF_FFFF
                     if hang_status != last_status:
                         last_status = hang_status
                         status_seq.append(hang_status)
-                    if self.rd(dut.fw_pass_o):
+                    # "Did it claim PASS after the terminal error?" The loop
+                    # above latched the FAIL and stopped, so a later PASS has to
+                    # be looked for directly -- that is the whole point of this
+                    # window.
+                    if (probe & 0xFFFF_FFFF) == TEST_PASS_CODE:
                         fw_pass = 1
                 post_lines = console[lines_at_done:]
                 self.logger.info(
@@ -237,7 +250,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
 
         # A failed controller also reaches a terminal error, by skipping the
-        # primary outright (manifest_load.c:547-550), without reading either
+        # primary outright (manifest_load.c), without reading either
         # address.
         assert any(_SPI_INIT_OK in line for line in console), (
             f"ROM never printed {_SPI_INIT_OK}: the SPI controller did not come "

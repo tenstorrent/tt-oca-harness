@@ -6,7 +6,7 @@ The primary's ``manifest_identifier`` is corrupted to force failover, then the
 backup's ``security_version`` is set to 3 against a ``BL1_VERSION`` fuse whose
 thermometer count is 8, so the backup asks to run an older version than the part
 accepts. The check is a single comparison (``manifest_ver < fuse_ver``,
-``manifest_crypto.c:61-87``), so a fixed pair exercises the same code as a random
+``manifest_crypto.c``), so a fixed pair exercises the same code as a random
 one while letting the test assert the exact ``FUSE_VER=`` and ``MFST_VER=`` the ROM
 read.
 

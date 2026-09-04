@@ -3,25 +3,24 @@
 
 # OCH SEP encrypted-boot test — manifest config for tt-boot-manifest.
 #
-# disable_checks: OCH SEP uses ICCM at 0xC0000000,
-# so we must disable the built-in address range validation.
+# disable_checks: BL1 loads at ICCM 0xC0000000, outside the packer's built-in
+# address range validation.
 meta:
   disable_checks: true
 
-# Produces a signed SPI image for testing C13.10 secure boot validation:
+# BL1 executes from SEP ICCM, so the packer must validate the BL1 entry point
+# against ICCM's window rather than its default.
+platform:
+  sep_iram_base: 0xC0000000
+  sep_iram_size: 0x00040000
+
+# Produces a signed SPI image with an encrypted payload:
 #   - RSA-3072 signature (PKCS#1 v1.5 + SHA-256)
-#   - dev0 test key (slot 0)
-#   - Payload encrypted (encrypted_payload: 1), AES-128-CBC.
-#     The ROM derives its AES key from the CLASS_KEY fuse; that fuse must hold
-#     encryption_key_input below, or the derived key will not match and the
-#     payload will decrypt to garbage. See
-#     hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_class_key.hex.
+#   - dev0 test key, ROM key slot 0; the key digest must match key_digests.c
+#   - Payload AES-128-CBC encrypted.  The ROM derives its AES key from the
+#     CLASS_KEY fuse, which must hold encryption_key_input below or the payload
+#     decrypts to garbage.
 #   - BL1 payload = bl1_pass_test
-#
-# Build with: make -C hw/sys/sep/bootrom/prod encrypted_boot_spi
-#
-# Key: tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem (submodule)
-# Key digest (SHA-256 of modulus) must match key_digests.c slot 0.
 
 primary:
   manifest:
@@ -69,12 +68,12 @@ primary:
     version_major: 1
     version_minor: 0
   payload_images:
-    - load_addr: 0x10020000  # SRAM upper half (IFU + LSU accessible)
+    - load_addr: 0xC0000000  # SEP ICCM base (IFU fetches BL1 here)
       type: 'SEPBL1'
       version: 1
       offset: 0x1000
       description: "OCH SEP BL1 test (bl1_pass_test)"
-      entry_point: 0x01000000  # tt-boot-manifest subtracts SEP_IRAM_BASE (0x01000000), result = 0
+      entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
     description: "SPI TLV for OCH SEP (keep_default_init)"
@@ -138,12 +137,12 @@ backup:
     version_major: 1
     version_minor: 0
   payload_images:
-    - load_addr: 0x10020000  # SRAM upper half
+    - load_addr: 0xC0000000  # SEP ICCM base
       type: 'SEPBL1'
       version: 1
       offset: 0x1000
       description: "OCH SEP BL1 test - backup"
-      entry_point: 0x01000000  # tt-boot-manifest subtracts SEP_IRAM_BASE (0x01000000), result = 0
+      entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
     description: "SPI TLV for OCH SEP backup (keep_default_init)"

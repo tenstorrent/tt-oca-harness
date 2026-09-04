@@ -11,7 +11,8 @@
 // Debug text output uses virtual console (packed writes to SEP cold_scratch[2],
 // decoded by cocotb monitor — same protocol when DEBUG is enabled).
 // Machine-readable status codes are written to cold_scratch[1] using the status encoding.
-// PASS/FAIL magic words use the mailbox (0x8000_0000) for SV testbench detection.
+// The terminal verdict is a single word in cold_scratch[0] (errors.h VERDICT_OUT);
+// the ROM only ever reports FAIL there, since a successful boot ends in BL1.
 //
 // Boot flow for the SEP BL0 sequence
 // (see context/boot_flow/ocah_boot_flow.md for full task mapping):
@@ -36,11 +37,16 @@
 //    —      SMC scratch coordination
 //   [C12–C14] manifest load / validate (retry loop)
 //   [C13.10]  crypto validation (version/revocation/RSA-3072/decrypt/payload hash)
-//   [C15]   demotion decisions + lock fuse secrets (KDF/measurement TODO)
+//   [C15]   demotion decisions + lock fuse secrets + boot measurement
 //   [C17]   confirm fuse secrets locked
 //   [C18]   BL1 handoff (copy → jump)
 //   [C16]   stack canary check
 //   [C19]   unified error convergence (rom_err_fail)
+//
+// TODO(C15): UID key derivation into the key vault. A key must be derived from
+// each of CHIPLET_UID / SIP_UID / SYS_UID and pushed to the key manager before
+// lock_fuse_secrets() closes the only window in which those fuses are readable.
+// Blocked on the KM_MAILBOX_SEP command format.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -49,9 +55,9 @@
 #include "boot_straps.h"
 #include "manifest.h"
 #include "manifest_crypto.h"
+#include "measurement.h"
 #include "pll_init.h"
 #include "errors.h"
-#include "rom_mbx.h"
 #include "rom_smc.h"
 #include "fuse_lock.h"
 #include "hmac_sha256.h"
@@ -73,9 +79,9 @@ __attribute__((noreturn)) void trap_handler_c(uint32_t mcause, uint32_t mepc, ui
     simputshex32("MV=", mtval);
     simputshex32("MS=", mstatus);
 
-    volatile uint32_t *mbx = (volatile uint32_t *)0x80000000;
-    *mbx = 0xA5A55A5Au;
-    *mbx = 0xDEADBEEFu;
+    // Verdict on cold_scratch[0], matching what trap_vector_early in vector.S
+    // already does -- a fault here and a fault there leave the same evidence.
+    rom_test_fail();
 
     for (;;) {
         __asm__ volatile("wfi");
@@ -122,11 +128,17 @@ static volatile uint32_t g_bss_zero;
 
 // ICCM/IRAM clear configuration.
 #ifndef ROM_ICCM_BASE
-#define ROM_ICCM_BASE 0u
+#define ROM_ICCM_BASE ((uint32_t)OCH_SEP_TOP_SEP_ICCM_BASE_ADDR)
 #endif
 
 #ifndef ROM_ICCM_SIZE_BYTES
-#define ROM_ICCM_SIZE_BYTES 0u
+#define ROM_ICCM_SIZE_BYTES ((uint32_t)OCH_SEP_TOP_SEP_ICCM_SIZE)
+#endif
+
+// MUST be 1 for release. Off here only because the clear costs ~1.84M cycles in
+// simulation; the Makefile carries the full reasoning and the residual risk.
+#ifndef ROM_ICCM_CLEAR_ENABLE
+#define ROM_ICCM_CLEAR_ENABLE 0
 #endif
 
 // Stack canary for C16 stack health check.
@@ -134,6 +146,7 @@ static volatile uint32_t g_bss_zero;
 // Verified before PASS to detect stack overflow during boot.
 #define STACK_CANARY_VALUE 0xDEAD5741u // 'STA\xDE' (stack guard)
 extern uint8_t __stack_bottom[];       // defined in linker script
+extern uint8_t __stack_top[];          // defined in linker script
 
 enum {
     ROM_ERR_RUNTIME_INIT_FAILED = 0x0000B001u,
@@ -146,13 +159,15 @@ enum {
     ROM_ERR_STACK_OVERFLOW = 0x0000F001u,
     ROM_ERR_CRYPTO_SELFTEST_FAILED = 0x0000F002u,
     ROM_ERR_FUSE_SECRETS_NOT_LOCKED = 0x0000F003u,
+    ROM_ERR_MEASUREMENT_FAILED = 0x0000F004u,
+    ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F005u,
 };
 
 // ── [C19] Unified error convergence ──
 // All ROM error paths converge here.  Records the error in:
 // - BL0 state (error_code field, for BL1/debugger)
-// - cold_scratch[1] (for debugger/DV visibility)
-// - mailbox (FAIL + code, for DV monitor)
+// - cold_scratch[1] (the code, for debugger/DV visibility)
+// - cold_scratch[0] (the FAIL verdict, which DV gates on)
 // Then hangs (wfi loop).
 __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code);
 
@@ -171,8 +186,16 @@ __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code) {
     // Record in cold_scratch[1] for debugger visibility (STATUS_ENCODE format).
     STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
 
-    // Standard FAIL sequence via mailbox.
-    rom_mbx_fail_and_hang(error_code);
+    // Verdict on cold_scratch[0] -- the channel DV gates on. The error code is
+    // NOT repeated here; it is already on cold_scratch[1] above, which is what
+    // lets the verdict register stay single-valued.
+    rom_test_fail();
+
+    // Terminal: a ROM error is not recoverable, so stop rather than return into
+    // a caller that has no way to handle it.
+    for (;;) {
+        __asm__ volatile("wfi");
+    }
 }
 
 static inline void rom_check_runtime_init_or_fail(void) {
@@ -228,37 +251,35 @@ static void rom_smc_coordination_probe(void) {
     simputshex32("SMC_MANIFEST_ADDR=", manifest_addr);
 }
 
-// Write boot status to SEP cold_scratch[0] for debugger/DV visibility.
-static inline void rom_write_cold_scratch_status(uint32_t value) {
-    mmio_write32(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), value);
-}
-
 static void rom_iccm_clear(void) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_ICCM_CLEAR_START);
     simputshex32("ICCM_BASE=", ROM_ICCM_BASE);
     simputshex32("ICCM_SIZE=", ROM_ICCM_SIZE_BYTES);
 
-    // ROM_ICCM_SIZE_BYTES defaults to 0 and nothing overrides it, so this loop
-    // clears nothing. It used to print ICCM_CLR_OK regardless, which is the one
-    // outcome a reader must not be told: "reported success while doing nothing"
-    // is exactly how the HMAC key_length defect stayed hidden. Report SKIP, the
-    // same way rom_clear_ext_sram() does for its disabled scrub.
+    // The clear is what establishes ICCM's ECC, exactly as the vector.S scrub
+    // does for DCCM: a write carries its ECC, and on silicon ICCM powers up with
+    // random contents and random ECC. BL1 executes from ICCM, and the IFU fetches
+    // 64 bits at a time, so a fetch near the end of BL1's image can reach a word
+    // the BL1 load never wrote. Leaving that to the testbench's backdoor TCM load
+    // would put a testbench in charge of a step the firmware owns.
     //
-    // Enabling this needs two things settled first. The ROM never writes ICCM on
-    // any path -- rom_handoff.c copies BL1 to SRAM and says "system bus, so no
-    // ICCM/DCCM split is needed" -- so there is no boot-path reason for the clear
-    // yet. And a CPU store to OCH_SEP_TOP_SEP_ICCM_BASE_ADDR (0xC0000000) may be
-    // caught by the axi_local_alias_remap that already forces sep_dma.c to
-    // temporarily zero SEP_REGION_SIZE for ICCM writes; whether the CPU LSU path
-    // has the same translation is unverified.
-#if ROM_ICCM_SIZE_BYTES > 0
-    volatile uint32_t *p = (volatile uint32_t *)ROM_ICCM_BASE;
-    uint32_t words = ROM_ICCM_SIZE_BYTES / 4u;
-    for (uint32_t i = 0; i < words; ++i) {
-        p[i] = 0u;
-        if ((i & 0x3FFF) == 0) {
-            simputshex32("ICCM_CLR_PROG=", i * 4u);
-        }
+    // It goes through the DMA because the CPU cannot store to ICCM at all: ICCM
+    // shares VeeR region 0xC with DCCM, so every ICCM address faults as unmapped
+    // and the store never reaches the bus. sep_dma_zero() also handles the
+    // address remap an ICCM destination needs.
+    //
+    // sep_dma_init() runs here rather than relying on [C10c], which comes later.
+    // Programming the enabled-memory-range registers twice is harmless.
+    //
+    // ROM_ICCM_CLEAR_ENABLE is 0 for simulation and MUST be 1 for release; the
+    // Makefile carries the cost and the residual risk. The disabled branch
+    // reports SKIP, never OK.
+#if ROM_ICCM_CLEAR_ENABLE
+    sep_dma_init();
+    uint32_t err = sep_dma_zero(ROM_ICCM_BASE, ROM_ICCM_SIZE_BYTES);
+    if (err) {
+        simputs("ICCM_CLR_FAIL\n");
+        rom_err_fail(err);
     }
     simputs("ICCM_CLR_OK\n");
 #else
@@ -376,6 +397,13 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     // locked; only the decision is taken here. See the [C15] block below.
     bool demotion_reg = false;
     bool lock_demotion = true;
+    // Two more values the boot measurement needs, kept at this scope so they
+    // outlive the decision block below. demotion_decision is NOT demotion_reg:
+    // it is whichever flag actually made the decision -- the BL1 one when the
+    // selector bit is set, the BL2 one otherwise -- and it is what the reference
+    // mixes into both the measurement and the UID key derivation.
+    bool demotion_decision = false;
+    bool bl2_demote_m = false;
     {
         const manifest_t *m =
             (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
@@ -389,6 +417,14 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
             uint64_t sel = m->usage_constraints.selector_bits;
             bool bl2_demote =
                 (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_BL2_DEMOTION)) != 0;
+
+            bl2_demote_m = bl2_demote;
+            // Whichever flag decides is what the measurement records.
+            demotion_decision =
+                (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION))
+                    ? ((m->usage_constraints.flags &
+                        (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0)
+                    : bl2_demote;
 
             if (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION)) {
                 // BL1 manifest decides demotion, and the register is always locked.
@@ -433,6 +469,24 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         simputs("DEMOTE_LOCKED\n");
     } else {
         simputs("DEMOTE_NOT_LOCKED\n");
+    }
+
+    // ── [C15] Boot measurement ──
+    // Records the boot state so a later stage can tell a trusted boot from a
+    // downgraded one. Placed here, after the demotion register write, because
+    // that is the last input to settle -- and because none of the inputs is a
+    // secret, so it does not need to precede the fuse lock.
+    {
+        const manifest_t *m =
+            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
+        uint32_t demotion_bits = (demotion_decision ? 1u : 0u) |
+                                 (lock_demotion ? (1u << 1) : 0u) |
+                                 (bl2_demote_m ? (1u << 2) : 0u);
+        if (rom_record_measurement(m->manifest_hash, demotion_bits,
+                                   get_bl0_state()->secure_boot, lc_state,
+                                   sboot_dis) != 0u) {
+            rom_err_fail(ROM_ERR_MEASUREMENT_FAILED);
+        }
     }
 
     // ── [C18] BL1 handoff ──
@@ -516,8 +570,11 @@ void rom_main(void) {
     // ── Cold boot (warm reset is handled in vector.S) ──
     // If we reach rom_main(), vector.S already determined this is a cold boot
     // (warm_scratch[0] was zero or out-of-range, and has been cleared).
+    // Nothing is written to cold_scratch[0] here: it carries the terminal verdict
+    // only (errors.h VERDICT_OUT), and a second writer with unrelated semantics
+    // would make a single read ambiguous. The console line below reports the cold
+    // boot instead.
     simputs("COLD\n");
-    rom_write_cold_scratch_status(0x434F4C44u); // 'COLD' marker in cold_scratch[0]
 
     // Memory init checkpoint (DCCM scrub + .data/.bss init done in vector.S).
     simputs("MEM_INIT_OK\n");
@@ -537,14 +594,26 @@ void rom_main(void) {
     simputshex32("SYS_CLK_MHZ=", (uint32_t)smu_freq_mhz);
 
     // ── [C9c] BL0 state init ──
-    // MUST precede every bl0_state writer. init_bl0_state() zeroes the whole
-    // struct, so any field recorded before it is destroyed; it used to run after
-    // [C6] and silently wiped lc_state and feat_ctrl_lo/hi. The zeroing cannot be
-    // dropped in favour of relying on a DCCM scrub: bl0_state sits at the top of
-    // DCCM and vector.S clamps its scrub to __stack_top, which link/rom.ld:97
-    // places below the bl0_state reserve, so the scrub can never reach it.
+    // MUST precede every bl0_state writer: init_bl0_state() zeroes the whole
+    // struct, so any field recorded before it is destroyed. The vector.S DCCM
+    // scrub covers the bl0_state reserve as well, which makes the zeroing
+    // redundant on the cold path -- keep it anyway, because the scrub length is a
+    // build-time option and the struct's initial state must not depend on it.
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_BL0_STATE_INIT);
     init_bl0_state();
+
+    // The DCCM reserve exists as TWO numbers -- __bl0_state_reserve in
+    // link/rom.ld and BL0_STATE_RESERVE_BYTES in bl0_state.h -- and nothing at
+    // build time compares them. The header's _Static_assert checks the struct
+    // against the header's own copy, so a pair like "header 192, linker 128,
+    // sizeof 160" passes it and still overlaps the stack. This is the check that
+    // does not: __stack_top comes from the LINKER's number, so if the struct
+    // starts below it the two numbers have drifted apart.
+    if ((uintptr_t)BL0_STATE_ADDR < (uintptr_t)__stack_top) {
+        simputshex32("BL0S_ADDR=", (uint32_t)BL0_STATE_ADDR);
+        simputshex32("STACK_TOP=", (uint32_t)(uintptr_t)__stack_top);
+        rom_err_fail(ROM_ERR_BL0_STATE_OVERLAPS_STACK);
+    }
     simputs("BL0_STATE_OK\n");
 
     // ── [C6] Lifecycle policy ──
@@ -660,10 +729,10 @@ void rom_main(void) {
     rom_manifest_validate_handoff(&straps, spi_status, lc_state, sboot_dis);
 
     // ── Done ──
+    // Unreachable: rom_manifest_validate_handoff() above never returns. The ROM
+    // therefore never reports PASS -- a successful boot ends in BL1, which
+    // reports it.
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_ROM_MAIN_BEFORE_PASS);
-
-    rom_mbx_putw(ROM_FW_MAGIC0);
-    rom_mbx_putw(ROM_FW_PASS);
 
     // If DV doesn't stop CPU immediately on fw_done, park here.
     for (;;) {
