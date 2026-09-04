@@ -748,6 +748,15 @@ layer</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vendor
 I3C controller wrappers (nonfree overlay)</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Captured GPIO Straps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_5800 (<code>STRAPS_LO</code>), BASE + 0x040_5804
+(<code>STRAPS_HI</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Values latched from the bonded GPIO pads at cold
+reset, read-only to software. Strap capture is adopter-owned, so these live in
+the external window rather than the SMC core; the boot ROM reads them from here.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">

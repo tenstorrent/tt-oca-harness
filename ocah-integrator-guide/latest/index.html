@@ -3659,11 +3659,10 @@ from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.</p>
 </div>
 <div class="paragraph">
-<p>The <code>sep_straps_i</code> input provides configuration straps for SEP-specific
-settings. The <code>jtag_id</code> input must be tied to an appropriate constant in the
-top-level integration. A <code>rst_vec_i</code> port exists on <code>tb_top.sv</code> for DV reset
-vector injection; it is not present on <code>sep.sv</code> itself and requires no
-integration tie-off.</p>
+<p>The <code>secure_tm_req_i</code> input is a secure test mode request. The <code>jtag_id</code> input
+must be tied to an appropriate constant in the top-level integration. A
+<code>rst_vec_i</code> port exists on <code>tb_top.sv</code> for DV reset vector injection; it is not
+present on <code>sep.sv</code> itself and requires no integration tie-off.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4426,11 +4425,11 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_straps_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_straps_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP configuration straps.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode request.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring / tie-off</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -7429,37 +7428,6 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="captured-straps"><a class="anchor" href="#captured-straps"></a><a class="link" href="#captured-straps">Captured Straps</a></h5>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 10%;">
-<col style="width: 15%;">
-<col style="width: 45%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Port</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">SMU Connection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>captured_straps_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[63:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>Please refer to the <code>reset_unit</code> STRAPS_LO and STRAPS_HI register descriptions for the decoded
-value of the straps.</p>
-</div>
-</div>
 </div>
 <div class="sect3">
 <h4 id="smc-dtp-interconnection"><a class="anchor" href="#smc-dtp-interconnection"></a><a class="link" href="#smc-dtp-interconnection">2.6.9. SMC-DTP Internal Interconnection</a></h4>
@@ -8893,15 +8861,6 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>captured_straps_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[63:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Captured strap configuration. Please refer to the <code>reset_unit</code> STRAPS_LO and STRAPS_HI register descriptions for the decoded value of the straps.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mem_repair_done_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -9208,11 +9167,11 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_straps_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_straps_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP configuration straps passthrough.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode request, passthrough to SEP.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring / tie-off</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>

@@ -2451,7 +2451,6 @@ corresponds to a unit in the SEP memory map above.</p>
 <tr><td>0x110</td><td><a href="#SMU_REGION_SIZE">SMU_REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x140</td><td><a href="#SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x150</td><td><a href="#SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x160</td><td><a href="#SEP_STRAPS">SEP_STRAPS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x170</td><td><a href="#RAS_BANK_INFO">RAS_BANK_INFO</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x178</td><td><a href="#SEP_SW_DEBUG">SEP_SW_DEBUG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x180</td><td><a href="#SEP_NMI_VEC">SEP_NMI_VEC</a></td><td>RW</td><td>NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI<br>interrupt is used for the WDT Bark interrupt.<br><br>WARNING: the reset value is a placeholder, not a usable handler. Firmware must<br>program this register with the address of its own NMI handler, and then set<br>SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).<br>If a bark arrives while the reset value is still in place, the CPU jumps to<br>0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if<br>the loaded image covers that location, or an uncorrectable ICCM ECC error<br>(which itself re-raises NMI) if it does not.</td></tr>
@@ -2609,13 +2608,6 @@ corresponds to a unit in the SEP memory map above.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>sep_fuse_sense_done</td><td>R</td><td>0x0</td><td>This reg is used to indicate the fuse sense status of SEP.</td></tr>
-</table>
-<h3 id="SEP_STRAPS">SEP_STRAPS</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>bypass_mem_repair</td><td>R</td><td>0x0</td><td>straps for bypass_mem_repair -&gt; Used to indicate if the memory repair should be bypassed</td></tr>
-<tr><td>0</td><td>test_en</td><td>R</td><td>0x0</td><td>straps for test_en -&gt; Used to be latched by SEP and generate the secure_tm</td></tr>
 </table>
 <h3 id="RAS_BANK_INFO">RAS_BANK_INFO</h3>
 <table>
@@ -13118,8 +13110,6 @@ robust operation during complex reset scenarios.</p>
 <tr><td>0x60</td><td><a href="#SS_RESET_COMPLETE">SS_RESET_COMPLETE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x70</td><td><a href="#SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x80</td><td><a href="#SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x90</td><td><a href="#STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x94</td><td><a href="#STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xA8</td><td><a href="#SYNC_REG">SYNC_REG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xB0</td><td><a href="#ISOLATE_REQ_REG">ISOLATE_REQ_REG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xB4</td><td><a href="#ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</a></td><td>RW</td><td>-</td></tr>
@@ -13184,17 +13174,6 @@ robust operation during complex reset scenarios.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>force_ss_to_ref_clk_n</td><td>RW</td><td>0x0</td><td>Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle</td></tr>
-</table>
-<h3 id="STRAPS_LO">STRAPS_LO</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still<br>latch their pad value here, but no strap function consumes it.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
-</table>
-<h3 id="STRAPS_HI">STRAPS_HI</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
 </table>
 <h3 id="SYNC_REG">SYNC_REG</h3>
 <table>
@@ -20071,6 +20050,15 @@ layer</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vendor
 I3C controller wrappers (nonfree overlay)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Captured GPIO Straps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_5800 (<code>STRAPS_LO</code>), BASE + 0x040_5804
+(<code>STRAPS_HI</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Values latched from the bonded GPIO pads at cold
+reset, read-only to software. Strap capture is adopter-owned, so these live in
+the external window rather than the SMC core; the boot ROM reads them from here.</p></td>
 </tr>
 </tbody>
 </table>
