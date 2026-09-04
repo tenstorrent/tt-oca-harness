@@ -9321,10 +9321,9 @@ X, and routes OpenTitan assertion failures in the SEP <code>prim_assert</code> s
 <code>$error</code> on non-UVM runs.</p>
 </div>
 <div class="paragraph">
-<p>Three models it enables make simulation deliberately non-deterministic:
-<code>gdffsync</code> in the entropy source injects metastability on the second
-synchronizer flop, <code>prim_flop_2sync</code> and its Caliptra and Adams Bridge
-equivalents insert <code>prim_cdc_rand_delay</code> ahead of the synchronizer, and
+<p>Two model families it enables make simulation deliberately non-deterministic:
+<code>prim_flop_2sync</code> and its Caliptra and Adams Bridge equivalents insert
+<code>prim_cdc_rand_delay</code> ahead of the synchronizer, and
 <code>prim_lfsr</code> and <code>prim_double_lfsr</code> randomize their default seed on simulators
 other than Verilator (<code>+prim_lfsr_use_default_seed=1</code> pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
