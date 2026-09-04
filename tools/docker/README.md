@@ -271,6 +271,6 @@ the change.
 |------|------|
 | `tools/docker/Dockerfile` | Builds `ocah-toolchain` (firmware **and** virtual platform) |
 | `scripts/docker-run.sh` | Multi-image helper (`build`/`run`/`vp-*`/`doc-*`/`eda-*`) |
-| `.github/workflows/vp.yml` | CI: builds and tests `sep-vp` natively and in this image, and `smc-vp`/`smu-vp` in it |
+| `.github/workflows/vp.yml` | CI: builds and tests all three VPs, each both natively and in this image |
 | `hw/common/dv/fw/compile.mk` | Firmware build engine (native or `run`) |
 | `flows/common.mk` | Lint/synth helpers (`eda-run` for synth; native-or-fail for slang/verible) |

@@ -285,33 +285,47 @@ jobs:
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------
-  # smc-vp + smu-vp. A separate job rather than another leg of the matrix
+  # smc-vp + smu-vp. A separate job rather than more legs of the sep-vp matrix
   # above: it gets its own disk (the model hit ENOSPC twice from Whisper
   # sharing a runner with vp/build_smc), and a Whisper failure here cannot then
   # take out the sep-vp build everyone depends on.
   #
-  # One job builds BOTH targets, because one Whisper serves both and both come
-  # out of one configured tree -- see the WHISPER_LOCAL and SMC_BUILD_DIR
-  # comments in virtual_platform/Makefile. The model splits them across two
-  # jobs and builds Whisper twice, which is an artifact of its job layout.
+  # One job per environment builds BOTH targets, because one Whisper serves
+  # both and both come out of one configured tree -- see the WHISPER_LOCAL and
+  # SMC_BUILD_DIR comments in virtual_platform/Makefile. The model splits them
+  # across two jobs and builds Whisper twice, which is an artifact of its job
+  # layout.
   #
-  # Container leg only, unlike the sep-vp job above. Not because the native
-  # path is unproven -- it has since been run end to end under a gcc-toolset
-  # (both suites green, and it is the leg that actually exercises the
-  # from-source static PIC Boost, since RHEL 8's own Boost and OpenSSL are too
-  # old) -- but to keep this job to one build of the SEP peripheral tree and
-  # one Whisper. Adding a native leg here is cheap on ubuntu-latest, where
-  # Boost and OpenSSL resolve to /usr exactly as they do in the image, and it
-  # would buy coverage of native-only faults; worth doing, but a deliberate
-  # follow-up rather than part of landing this.
+  # Both legs run, for the same reason the sep-vp job runs both: they are
+  # genuinely different paths, not one path twice. The container leg covers
+  # hosts with no usable native toolchain; the native leg covers the path
+  # virtual_platform/README.md leads most users down, and is the only one that
+  # can catch native-only faults (a shared-downloads/ ownership bug went
+  # unnoticed precisely because only the container path was exercised). The
+  # two never share artifacts: VP_ENV_TAG gives the container leg the -ctr
+  # suffix, so local-ctr/ + vp/build_smc-ctr never mix with local/ +
+  # vp/build_smc -- which matters for the Whisper archives and smu-vp's
+  # companion .so as much as for the binaries.
   # ---------------------------------------------------------------------------
   smc-smu-vp:
-    name: smc-vp + smu-vp (container)
+    name: smc-vp + smu-vp (${{ matrix.mode }})
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
     # Cold: SystemC + CCI from source, then Whisper, then the tree twice over
     # (all three VPs link the SEP peripheral tree).
     timeout-minutes: 90
     permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mode: container
+            vp_container: 1
+            local_dir: virtual_platform/local-ctr
+            build_dir: virtual_platform/tt-oca-harness-model/vp/build_smc-ctr
+          - mode: native
+            vp_container: 0
+            local_dir: virtual_platform/local
+            build_dir: virtual_platform/tt-oca-harness-model/vp/build_smc
     env:
       OCAH_ENGINE: docker
       OCAH_DOCKER_CACHE_DIR: ${{ runner.temp }}/ocah-image-cache
@@ -321,7 +335,7 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN != 'true'
         run: |
           {
-            echo "### smc-vp + smu-vp: skipped"
+            echo "### smc-vp + smu-vp (${{ matrix.mode }}): skipped"
             echo
             echo 'The `OCAH_SUBMODULE_TOKEN` secret is not available to this run'
             echo '(fork PR, or the secret is not configured yet).'
@@ -333,6 +347,24 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.OCAH_SUBMODULE_TOKEN }}
+
+      # The same set the sep-vp native leg installs, plus nothing: smc-vp and
+      # smu-vp need no extra packages. gcc-riscv64-unknown-elf is what the two
+      # firmware suites auto-detect (picolibc is not needed for them -- they
+      # build -ffreestanding -nostdlib -- but it comes from the same source and
+      # keeps this list identical to the sep-vp job's).
+      - name: Install VP build dependencies
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
+        run: |
+          # Acquire options: turn a stalled mirror into an error so apt's
+          # retry/failover actually runs instead of hanging to the job timeout.
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            install -y --no-install-recommends \
+            g++ cmake autoconf automake wget zlib1g-dev \
+            libboost-iostreams-dev libboost-program-options-dev libboost-log-dev \
+            libssl-dev \
+            gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
 
       - name: Read the pinned Whisper revision
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
@@ -346,26 +378,42 @@ jobs:
           echo "rev=$rev" >> "$GITHUB_OUTPUT"
           echo "WHISPER_REV=$rev" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Cache toolchain image
+      # local*/ holds SystemC, CCI and the Whisper archives compiled by a
+      # specific g++, and VP_CONFIG_SIG invalidation only wipes build*/, never
+      # local*/. So the compiler identity has to be part of the key: the
+      # Dockerfile hash for the container leg, the runner's own g++ for the
+      # native one.
+      - name: Compute dependency cache key
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        id: depkey
+        run: |
+          if [ "${{ matrix.mode }}" = "container" ]; then
+            cxx_id="dockerfile-${{ hashFiles('tools/docker/Dockerfile') }}"
+          else
+            cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
+          fi
+          echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
+
+      - name: Cache toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
           key: ocah-image-${{ runner.os }}-${{ hashFiles('tools/docker/Dockerfile') }}
 
-      # Its OWN key, not the sep-vp container leg's: local-ctr/ here also holds
-      # the Whisper tree, so sharing a key would mean whichever job saved first
-      # decided whether Whisper was in the cache at all. The key therefore
-      # carries the revision, the PIC-ness, and a recipe version to bump when
-      # the set of built archives changes.
+      # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
+      # tree, so sharing a key would mean whichever job saved first decided
+      # whether Whisper was in the cache at all. The key therefore carries the
+      # revision, the PIC-ness, and a recipe version to bump when the set of
+      # built archives changes.
       - name: Cache VP dependencies (including Whisper)
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/cache@v4
         with:
           path: |
-            virtual_platform/local-ctr
+            ${{ matrix.local_dir }}
             virtual_platform/downloads
-          key: vp-deps-smc-dockerfile-${{ hashFiles('tools/docker/Dockerfile') }}-${{ hashFiles('virtual_platform/Makefile') }}-whisper-${{ steps.whisper.outputs.rev }}-pic-libs4
+          key: vp-deps-smc-${{ matrix.mode }}-${{ steps.depkey.outputs.cxx_id }}-${{ hashFiles('virtual_platform/Makefile') }}-whisper-${{ steps.whisper.outputs.rev }}-pic-libs4
 
       # A cache hit is not proof the tree is usable: actions/cache saves the
       # directory in a post-job step even when the job FAILED, so one bad build
@@ -377,8 +425,8 @@ jobs:
       - name: Invalidate the Whisper stamp unless all four archives are present
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          tree="virtual_platform/local-ctr/whisper-${{ steps.whisper.outputs.rev }}-pic"
-          stamp="virtual_platform/local-ctr/.whisper-${{ steps.whisper.outputs.rev }}-pic-complete"
+          tree="${{ matrix.local_dir }}/whisper-${{ steps.whisper.outputs.rev }}-pic"
+          stamp="${{ matrix.local_dir }}/.whisper-${{ steps.whisper.outputs.rev }}-pic-complete"
           complete=true
           for lib in "build-$(uname -s)/librvcore.a" \
                      virtual_memory/libvirtual_memory.a \
@@ -396,29 +444,49 @@ jobs:
             rm -f "$stamp"
           fi
 
+      # Container leg only. Unlike the sep-vp job, the native leg here never
+      # reaches for the image: the SMC/SMU firmware suites call the model's
+      # runners with plain make, so there is no fw_make picolibc fallback to
+      # cover.
       - name: Provision toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         run: ./scripts/docker-run.sh ensure
 
       - name: Check toolchains
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          ./scripts/docker-run.sh verify
-          ./scripts/docker-run.sh vp-verify
+          if [ "${{ matrix.mode }}" = "container" ]; then
+            ./scripts/docker-run.sh verify
+            ./scripts/docker-run.sh vp-verify
+          else
+            make -C virtual_platform check-cxx
+            # Assert rather than just print: without a cross toolchain the two
+            # suites below fail deep inside the model's runner instead of here.
+            # (A bare `cmd --version | head -1` would not fail the step -- the
+            # pipeline's status is head's.)
+            command -v riscv64-unknown-elf-gcc >/dev/null 2>&1 || {
+              echo "::error::riscv64-unknown-elf-gcc is not on PATH; the SMC/SMU firmware suites need it"
+              exit 1
+            }
+            riscv64-unknown-elf-gcc --version | head -1
+          fi
 
       - name: Build smc-vp and smu-vp
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1 NPROC="$(nproc)"
+          make -C virtual_platform smc-vp smu-vp \
+            VP_CONTAINER=${{ matrix.vp_container }} NPROC="$(nproc)"
 
-      # Same reasoning as the sep-vp job: falling back to a from-source Boost is
-      # a timeout rather than a slow success. Whisper is asserted the other way
-      # round -- it MUST be our managed local build, so a stray WHISPER_HOME in
-      # the environment cannot quietly point CI at some other tree.
+      # Same reasoning as the sep-vp job: falling back to a from-source Boost
+      # is a 1-2 h build, i.e. a timeout rather than a slow success, and both
+      # legs are provisioned so that cannot happen. Whisper is asserted the
+      # other way round -- it MUST be our managed local build, so a stray
+      # WHISPER_HOME in the environment cannot quietly point CI at some other
+      # tree.
       - name: Assert the expected dependency resolution
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          make -C virtual_platform deps-info VP_CONTAINER=1 \
+          make -C virtual_platform deps-info VP_CONTAINER=${{ matrix.vp_container }} \
             | tee "$RUNNER_TEMP/deps-info.txt"
           for dep in BOOST OPENSSL; do
             if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*/usr([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
@@ -426,8 +494,12 @@ jobs:
               exit 1
             fi
           done
-          if ! grep -q "WHISPER_HOME = .*/virtual_platform/local-ctr/whisper-${{ steps.whisper.outputs.rev }}-pic .*local (default); .*built" "$RUNNER_TEMP/deps-info.txt"; then
-            echo "::error::WHISPER_HOME is not our built local prefix at the pinned revision; see deps-info above"
+          # The trailing space keeps local-ctr from matching the native leg's
+          # expected local/ prefix (and vice versa).
+          want="${{ matrix.local_dir }}/whisper-${{ steps.whisper.outputs.rev }}-pic "
+          want="${want#virtual_platform/}"
+          if ! grep -q "WHISPER_HOME = .*/virtual_platform/${want}.*local (default); .*built" "$RUNNER_TEMP/deps-info.txt"; then
+            echo "::error::WHISPER_HOME is not our built local prefix at the pinned revision, for this environment; see deps-info above"
             exit 1
           fi
 
@@ -435,46 +507,56 @@ jobs:
       # smu-vp bakes that absolute build-tree path into its RUNPATH. Assert both
       # artifacts exist and that each binary's loader closure is satisfied with a
       # completely scrubbed environment -- the check that would have caught an
-      # artifact that cannot run.
+      # artifact that cannot run. The binaries have to be inspected in the
+      # environment they were built FOR: a container-built VP links the image's
+      # glibc and would not load on the runner.
       - name: Check both artifacts and that they load with no LD_LIBRARY_PATH
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          tree=virtual_platform/tt-oca-harness-model/vp/build_smc-ctr
+          tree="${{ matrix.build_dir }}"
           for f in "$tree/bin/smc-vp" "$tree/bin/smu-vp" "$tree/platform/smu/libsmc_cluster_smu.so"; do
             [ -f "$f" ] || { echo "::error::missing artifact: $f"; exit 1; }
             ls -l "$f"
           done
-          ./scripts/docker-run.sh vp-run env -i PATH=/usr/bin:/bin HOME=/tmp bash -c "
-            rc=0
-            for b in '$PWD/$tree/bin/smc-vp' '$PWD/$tree/bin/smu-vp'; do
-              n=\$(ldd \"\$b\" | grep -c 'not found' || true)
-              echo \"\$b: \$n unresolved\"
-              [ \"\$n\" = 0 ] || rc=1
-            done
-            exit \$rc"
+          # Paths come in as positional args so nothing needs escaping through
+          # the container invocation.
+          probe='rc=0
+          for b in "$@"; do
+            n=$(ldd "$b" | grep -c "not found" || true)
+            echo "$b: $n unresolved"
+            [ "$n" = 0 ] || rc=1
+          done
+          exit $rc'
+          if [ "${{ matrix.mode }}" = "container" ]; then
+            ./scripts/docker-run.sh vp-run env -i PATH=/usr/bin:/bin HOME=/tmp \
+              bash -c "$probe" probe "$PWD/$tree/bin/smc-vp" "$PWD/$tree/bin/smu-vp"
+          else
+            env -i PATH=/usr/bin:/bin HOME=/tmp \
+              bash -c "$probe" probe "$PWD/$tree/bin/smc-vp" "$PWD/$tree/bin/smu-vp"
+          fi
 
       - name: Run the SMC firmware suite
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          make -C virtual_platform smc-test VP_CONTAINER=1 \
+          make -C virtual_platform smc-test VP_CONTAINER=${{ matrix.vp_container }} \
             2>&1 | tee "$RUNNER_TEMP/smc-test.log"
           # The runner exits non-zero on failure, but gate on tests having
           # actually run too: a suite that collected nothing must not read as a
           # pass. Each SMC test prints "PASS:" or "ALL TESTS PASSED".
           ran=$(grep -cE '(^|[[:space:]])(PASS:|ALL TESTS PASSED)' "$RUNNER_TEMP/smc-test.log" || true)
-          echo "SMC tests reporting a pass line: $ran" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "SMC tests reporting a pass line (${{ matrix.mode }}): $ran" | tee -a "$GITHUB_STEP_SUMMARY"
           [ "$ran" -gt 0 ] || { echo "::error::no SMC test reported a pass line"; exit 1; }
 
       - name: Run the SMU firmware suite
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
-          make -C virtual_platform smu-test VP_CONTAINER=1 \
+          make -C virtual_platform smu-test VP_CONTAINER=${{ matrix.vp_container }} \
             2>&1 | tee "$RUNNER_TEMP/smu-test.log"
           # run_smu_vp_tests.sh prints "All SMU-VP tests PASSED" and exits 0
           # even when its test list is empty, so the pass COUNT is what has to
           # be checked -- a green tick here must mean smu-vp really ran.
           n=$(sed -n 's/^SMU-VP TEST SUMMARY: \([0-9]\+\) passed.*/\1/p' "$RUNNER_TEMP/smu-test.log" | tail -1)
-          echo "SMU tests passed: ${n:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "SMU tests passed (${{ matrix.mode }}): ${n:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$n" ] && [ "$n" -gt 0 ] || { echo "::error::no SMU test actually ran"; exit 1; }
 
       # The DSO travels with the binary. An smu-vp uploaded on its own cannot
@@ -483,13 +565,13 @@ jobs:
         if: always() && env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: vp-smc-smu
+          name: vp-smc-smu-${{ matrix.mode }}
           path: |
-            virtual_platform/tt-oca-harness-model/vp/build_smc-ctr/bin/smc-vp
-            virtual_platform/tt-oca-harness-model/vp/build_smc-ctr/bin/smu-vp
-            virtual_platform/tt-oca-harness-model/vp/build_smc-ctr/platform/smu/libsmc_cluster_smu.so
-            virtual_platform/tt-oca-harness-model/vp/build_smc-ctr/CMakeCache.txt
-            virtual_platform/tt-oca-harness-model/vp/build_smc-ctr/CMakeFiles/CMakeConfigureLog.yaml
+            ${{ matrix.build_dir }}/bin/smc-vp
+            ${{ matrix.build_dir }}/bin/smu-vp
+            ${{ matrix.build_dir }}/platform/smu/libsmc_cluster_smu.so
+            ${{ matrix.build_dir }}/CMakeCache.txt
+            ${{ matrix.build_dir }}/CMakeFiles/CMakeConfigureLog.yaml
             ${{ runner.temp }}/deps-info.txt
             ${{ runner.temp }}/smc-test.log
             ${{ runner.temp }}/smu-test.log

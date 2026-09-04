@@ -147,10 +147,11 @@ image rootfs and set `OCAH_TOOLCHAIN_ROOTFS=<dir>` for the engine-less bubblewra
 backend; on a host with both engines installed, `OCAH_ENGINE=docker` (or `podman`)
 pins which one is used.
 
-`.github/workflows/vp.yml` runs `sep-vp` both ways — a native build on the
-runner and a `VP_CONTAINER=1` build in this image — plus a `smc-vp`/`smu-vp`
-job in the image, on every PR that touches the VP and nightly. It is the
-reference for the exact commands and dependencies each path needs.
+`.github/workflows/vp.yml` runs two jobs, each both ways — a native build on
+the runner and a `VP_CONTAINER=1` build in this image — one for `sep-vp` and
+one for the `smc-vp`/`smu-vp` pair, on every PR that touches the VP and
+nightly. It is the reference for the exact commands and dependencies each path
+needs.
 
 Both paths are supported for all three executables. On a host whose system
 compiler is too old (RHEL 8's g++ 8.5 has no C++20), activate a newer one
