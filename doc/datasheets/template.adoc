@@ -22,7 +22,7 @@ OPEN CHIPLET ARCHITECTURE HARNESS
 {product-long-name}
 
 [.datasheet-status]
-{datasheet-status} release | Open-source synthesizable RTL
+{datasheet-status} release | Open-source RTL | Apache 2.0
 
 [cols="35,65",frame=none,grid=none,stripes=none]
 |===

@@ -20,7 +20,7 @@ OPEN CHIPLET ARCHITECTURE HARNESS
 {product-long-name}
 
 [.datasheet-status]
-{datasheet-status} release | Open-source synthesizable RTL
+{datasheet-status} release | Open-source RTL | Apache 2.0
 
 [cols="35,65",frame=none,grid=none,stripes=none]
 |===
@@ -29,8 +29,8 @@ a|
 [.datasheet-section]
 HIGHLIGHTS
 
-* IEEE 1149.1-2013 JTAG TAP and boundary-scan infrastructure
-* IEEE 1687-2014 iJTAG instrument networks with segment insertion bits
+* JTAG TAP and boundary-scan infrastructure implementing IEEE 1149.1-2013
+* iJTAG instrument networks implementing IEEE 1687-2014
 * Configurable secondary TAP topology for local and downstream chiplet access
 * JTAG-to-AXI paths for SMC fabric, SMC OTP, and SEP OTP debug access
 * Cross-trigger routing between chiplet-local and external trigger endpoints
@@ -80,7 +80,7 @@ AT A GLANCE
 
 [cols="42,58",options="header"]
 !===
-!Item !Checked-in DTP configuration
+!Item !DTP RTL top-level configuration
 !External / internal triggers !16 CTPs / 10 internal interfaces
 !Clock-stop request inputs !9
 !Cross-trigger CSR port !32-bit address, 32-bit data AXI4-Lite
@@ -88,6 +88,12 @@ AT A GLANCE
 !OTP debug managers !32-bit address, 32-bit data AXI4-Lite
 !Primary instruction register !6 bits
 !===
+
+[.datasheet-small]
+The default SMU uses two of the 10 internal trigger interfaces and one of the
+nine clock-stop request inputs for SMC connections. Its external boundary
+therefore exposes eight internal trigger interfaces and eight clock-stop
+request inputs; all 16 CTPs remain externally visible.
 |===
 
 <<<
@@ -114,7 +120,7 @@ CAPABILITIES
   fixed-address series operations and target error reporting
 * Independent lifecycle disable fields for three bridge paths and eight
   scan-side paths
-* Typed IC_RESET slices for SMC, SEP, and adopter logic
+* Independently enabled IC_RESET slices for SMC, SEP, and adopter logic
 * Debugger-controlled boot-stall and functional clock-stop requests
 
 *Cross trigger*
@@ -198,5 +204,7 @@ DELIVERABLES AND FURTHER INFORMATION
 Technical detail: `hw/sys/dtp/doc/` +
 RTL: `hw/sys/dtp/rtl/` +
 Verification: `hw/sys/dtp/dv/` +
-Integrator Guide: `doc/integrator/`
+Synthesis collateral: `hw/sys/dtp/synth/` +
+Integrator Guide: `doc/integrator/` +
+Project: https://github.com/tenstorrent/tt-oca-harness[github.com/tenstorrent/tt-oca-harness]
 |===
