@@ -3879,12 +3879,12 @@ module idma_legalizer_rw_axi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -3898,12 +3898,12 @@ module idma_legalizer_rw_axi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -3981,9 +3981,10 @@ module idma_legalizer_rw_axi #(
     // Read meta channel
     always_comb begin
         r_req_o.ar_req.axi.ar_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
             addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+                (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.src_axi_opt.burst,
             lock: opt_tf_q.src_axi_opt.lock,
@@ -4003,15 +4004,16 @@ module idma_legalizer_rw_axi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
     always_comb begin
         w_req_o.aw_req.axi.aw_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
             addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+                (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.dst_axi_opt.burst,
             lock: opt_tf_q.dst_axi_opt.lock,
@@ -4333,12 +4335,12 @@ module idma_legalizer_r_init_rw_axi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -4352,12 +4354,12 @@ module idma_legalizer_r_init_rw_axi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -4438,9 +4440,10 @@ module idma_legalizer_r_init_rw_axi #(
         case(opt_tf_q.src_protocol)
         idma_pkg::AXI: begin
             r_req_o.ar_req.axi.ar_chan = '{
-                id: opt_tf_q.axi_id,
+                id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
                 addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-                len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+                len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+                (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
                 size: axi_pkg::size_t'(OffsetWidth),
                 burst: opt_tf_q.src_axi_opt.burst,
                 lock: opt_tf_q.src_axi_opt.lock,
@@ -4473,15 +4476,16 @@ module idma_legalizer_r_init_rw_axi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
     always_comb begin
         w_req_o.aw_req.axi.aw_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
             addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+                (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.dst_axi_opt.burst,
             lock: opt_tf_q.dst_axi_opt.lock,
@@ -4798,12 +4802,12 @@ module idma_legalizer_r_obi_w_axi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -4817,12 +4821,12 @@ module idma_legalizer_r_obi_w_axi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -4917,15 +4921,16 @@ module idma_legalizer_r_obi_w_axi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
     always_comb begin
         w_req_o.aw_req.axi.aw_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
             addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+                (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.dst_axi_opt.burst,
             lock: opt_tf_q.dst_axi_opt.lock,
@@ -5242,12 +5247,12 @@ module idma_legalizer_r_axi_w_obi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -5261,12 +5266,12 @@ module idma_legalizer_r_axi_w_obi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -5344,9 +5349,10 @@ module idma_legalizer_r_axi_w_obi #(
     // Read meta channel
     always_comb begin
         r_req_o.ar_req.axi.ar_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
             addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+                (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.src_axi_opt.burst,
             lock: opt_tf_q.src_axi_opt.lock,
@@ -5366,7 +5372,7 @@ module idma_legalizer_r_axi_w_obi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
@@ -5697,12 +5703,12 @@ module idma_legalizer_rw_axi_rw_axis #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -5716,12 +5722,12 @@ module idma_legalizer_rw_axi_rw_axis #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -5802,9 +5808,10 @@ module idma_legalizer_rw_axi_rw_axis #(
         case(opt_tf_q.src_protocol)
         idma_pkg::AXI: begin
             r_req_o.ar_req.axi.ar_chan = '{
-                id: opt_tf_q.axi_id,
+                id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
                 addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-                len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+                len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+                (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
                 size: axi_pkg::size_t'(OffsetWidth),
                 burst: opt_tf_q.src_axi_opt.burst,
                 lock: opt_tf_q.src_axi_opt.lock,
@@ -5832,7 +5839,7 @@ module idma_legalizer_rw_axi_rw_axis #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
@@ -5841,9 +5848,10 @@ module idma_legalizer_rw_axi_rw_axis #(
         case(opt_tf_q.dst_protocol)
         idma_pkg::AXI: begin
             w_req_o.aw_req.axi.aw_chan = '{
-                id: opt_tf_q.axi_id,
+                id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
                 addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-                len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+                len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+                (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
                 size: axi_pkg::size_t'(OffsetWidth),
                 burst: opt_tf_q.dst_axi_opt.burst,
                 lock: opt_tf_q.dst_axi_opt.lock,
@@ -6194,12 +6202,12 @@ module idma_legalizer_r_axi_w_axis #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -6213,12 +6221,12 @@ module idma_legalizer_r_axi_w_axis #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -6296,9 +6304,10 @@ module idma_legalizer_r_axi_w_axis #(
     // Read meta channel
     always_comb begin
         r_req_o.ar_req.axi.ar_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
             addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+                (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.src_axi_opt.burst,
             lock: opt_tf_q.src_axi_opt.lock,
@@ -6318,7 +6327,7 @@ module idma_legalizer_r_axi_w_axis #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
@@ -6637,12 +6646,12 @@ module idma_legalizer_r_axis_w_axi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -6656,12 +6665,12 @@ module idma_legalizer_r_axis_w_axi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -6749,15 +6758,16 @@ module idma_legalizer_r_axis_w_axi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
     always_comb begin
         w_req_o.aw_req.axi.aw_chan = '{
-            id: opt_tf_q.axi_id,
+            id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
             addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-            len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+            len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+                (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
             size: axi_pkg::size_t'(OffsetWidth),
             burst: opt_tf_q.dst_axi_opt.burst,
             lock: opt_tf_q.dst_axi_opt.lock,
@@ -7081,12 +7091,12 @@ module idma_legalizer_r_init_rw_obi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -7100,12 +7110,12 @@ module idma_legalizer_r_init_rw_obi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -7216,7 +7226,7 @@ module idma_legalizer_r_init_rw_obi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
@@ -7548,12 +7558,12 @@ module idma_legalizer_r_obi_rw_init_w_axi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -7567,12 +7577,12 @@ module idma_legalizer_r_obi_rw_init_w_axi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -7683,7 +7693,7 @@ module idma_legalizer_r_obi_rw_init_w_axi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
@@ -7692,9 +7702,10 @@ module idma_legalizer_r_obi_rw_init_w_axi #(
         case(opt_tf_q.dst_protocol)
         idma_pkg::AXI: begin
             w_req_o.aw_req.axi.aw_chan = '{
-                id: opt_tf_q.axi_id,
+                id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
                 addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-                len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+                len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+                (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
                 size: axi_pkg::size_t'(OffsetWidth),
                 burst: opt_tf_q.dst_axi_opt.burst,
                 lock: opt_tf_q.dst_axi_opt.lock,
@@ -8056,12 +8067,12 @@ module idma_legalizer_r_axi_rw_init_rw_obi #(
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -8075,12 +8086,12 @@ module idma_legalizer_r_axi_rw_init_rw_obi #(
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -8161,9 +8172,10 @@ module idma_legalizer_r_axi_rw_init_rw_obi #(
         case(opt_tf_q.src_protocol)
         idma_pkg::AXI: begin
             r_req_o.ar_req.axi.ar_chan = '{
-                id: opt_tf_q.axi_id,
+                id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
                 addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-                len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+                len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+                (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
                 size: axi_pkg::size_t'(OffsetWidth),
                 burst: opt_tf_q.src_axi_opt.burst,
                 lock: opt_tf_q.src_axi_opt.lock,
@@ -8207,7 +8219,7 @@ module idma_legalizer_r_axi_rw_init_rw_obi #(
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path
@@ -8807,7 +8819,7 @@ module idma_backend_rw_axi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -9493,7 +9505,7 @@ module idma_backend_r_init_rw_axi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -10158,7 +10170,7 @@ module idma_backend_r_obi_w_axi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -10816,7 +10828,7 @@ module idma_backend_r_axi_w_obi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -11497,7 +11509,7 @@ module idma_backend_rw_axi_rw_axis #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -12172,7 +12184,7 @@ module idma_backend_r_axi_w_axis #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -12833,7 +12845,7 @@ module idma_backend_r_axis_w_axi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -13501,7 +13513,7 @@ module idma_backend_r_init_rw_obi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -14192,7 +14204,7 @@ module idma_backend_r_obi_rw_init_w_axi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -14894,7 +14906,7 @@ module idma_backend_r_axi_rw_init_rw_obi #(
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;
@@ -27430,7 +27442,7 @@ module idma_reg32_3d #(
       dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
     end
 
-    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
+    logic [MaxNumStreams-1:0] next_id_re_temp;
     assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
     assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
     assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
@@ -27455,7 +27467,7 @@ module idma_reg32_3d #(
         for (int c = 0; c < NumStreams; c++) begin
             read_happens |= next_id_re_temp[c];
             if (next_id_re_temp[c]) begin
-                stream_idx_o = c;
+                stream_idx_o = stream_t'(c);
             end
         end
         arb_valid[i] = read_happens;
@@ -27507,7 +27519,8 @@ module idma_reg32_3d #(
     cnt_width_t [MaxNumStreams-1:0] next_id_temp;
     // observational registers
     for (genvar c = 0; c < NumStreams; c++) begin
-        assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
+        assign dma_hw2reg[i].status[c] =
+            $bits(dma_hw2reg[i].status[c])'({midend_busy_i[c], busy_i[c]});
         assign next_id_temp[c] = next_id_i;
         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
     end
@@ -27652,7 +27665,7 @@ module idma_reg64_2d #(
       dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
     end
 
-    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
+    logic [MaxNumStreams-1:0] next_id_re_temp;
     assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
     assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
     assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
@@ -27677,7 +27690,7 @@ module idma_reg64_2d #(
         for (int c = 0; c < NumStreams; c++) begin
             read_happens |= next_id_re_temp[c];
             if (next_id_re_temp[c]) begin
-                stream_idx_o = c;
+                stream_idx_o = stream_t'(c);
             end
         end
         arb_valid[i] = read_happens;
@@ -27689,9 +27702,12 @@ module idma_reg64_2d #(
       arb_dma_req[i] = '0;
 
       // address and length
-      arb_dma_req[i].burst_req.length   = {dma_reg2hw[i].length_high.q,   dma_reg2hw[i].length_low.q};
-      arb_dma_req[i].burst_req.src_addr = {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q};
-      arb_dma_req[i].burst_req.dst_addr = {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q};
+      arb_dma_req[i].burst_req.length   = $bits(arb_dma_req[i].burst_req.length)'(
+          {dma_reg2hw[i].length_high.q, dma_reg2hw[i].length_low.q});
+      arb_dma_req[i].burst_req.src_addr = $bits(arb_dma_req[i].burst_req.src_addr)'(
+          {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q});
+      arb_dma_req[i].burst_req.dst_addr = $bits(arb_dma_req[i].burst_req.dst_addr)'(
+          {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q});
 
       // Current backend only supports incremental burst
       arb_dma_req[i].burst_req.opt.src.burst = axi_pkg::BURST_INCR;
@@ -27709,12 +27725,15 @@ module idma_reg64_2d #(
       arb_dma_req[i].burst_req.opt.beo.dst_reduce_len = dma_reg2hw[i].conf.dst_reduce_len.q;
 
       // ND connections
-      arb_dma_req[i].d_req[0].reps = {dma_reg2hw[i].reps_2_high.q,
-                                      dma_reg2hw[i].reps_2_low.q };
-      arb_dma_req[i].d_req[0].src_strides = {dma_reg2hw[i].src_stride_2_high.q,
-                                             dma_reg2hw[i].src_stride_2_low.q};
-      arb_dma_req[i].d_req[0].dst_strides = {dma_reg2hw[i].dst_stride_2_high.q,
-                                             dma_reg2hw[i].dst_stride_2_low.q};
+      arb_dma_req[i].d_req[0].reps =
+          $bits(arb_dma_req[i].d_req[0].reps)'(
+              {dma_reg2hw[i].reps_2_high.q, dma_reg2hw[i].reps_2_low.q});
+      arb_dma_req[i].d_req[0].src_strides =
+          $bits(arb_dma_req[i].d_req[0].src_strides)'(
+              {dma_reg2hw[i].src_stride_2_high.q, dma_reg2hw[i].src_stride_2_low.q});
+      arb_dma_req[i].d_req[0].dst_strides =
+          $bits(arb_dma_req[i].d_req[0].dst_strides)'(
+              {dma_reg2hw[i].dst_stride_2_high.q, dma_reg2hw[i].dst_stride_2_low.q});
 
       // Disable higher dimensions
       if ( dma_reg2hw[i].conf.enable_nd.q == 0) begin
@@ -27725,7 +27744,8 @@ module idma_reg64_2d #(
     cnt_width_t [MaxNumStreams-1:0] next_id_temp;
     // observational registers
     for (genvar c = 0; c < NumStreams; c++) begin
-        assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
+        assign dma_hw2reg[i].status[c] =
+            $bits(dma_hw2reg[i].status[c])'({midend_busy_i[c], busy_i[c]});
         assign next_id_temp[c] = next_id_i;
         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
     end
@@ -27870,7 +27890,7 @@ module idma_reg64_1d #(
       dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
     end
 
-    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
+    logic [MaxNumStreams-1:0] next_id_re_temp;
     assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
     assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
     assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
@@ -27895,7 +27915,7 @@ module idma_reg64_1d #(
         for (int c = 0; c < NumStreams; c++) begin
             read_happens |= next_id_re_temp[c];
             if (next_id_re_temp[c]) begin
-                stream_idx_o = c;
+                stream_idx_o = stream_t'(c);
             end
         end
         arb_valid[i] = read_happens;
@@ -27907,9 +27927,12 @@ module idma_reg64_1d #(
       arb_dma_req[i] = '0;
 
       // address and length
-      arb_dma_req[i].length   = {dma_reg2hw[i].length_high.q,   dma_reg2hw[i].length_low.q};
-      arb_dma_req[i].src_addr = {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q};
-      arb_dma_req[i].dst_addr = {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q};
+      arb_dma_req[i].length   = $bits(arb_dma_req[i].length)'(
+          {dma_reg2hw[i].length_high.q, dma_reg2hw[i].length_low.q});
+      arb_dma_req[i].src_addr = $bits(arb_dma_req[i].src_addr)'(
+          {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q});
+      arb_dma_req[i].dst_addr = $bits(arb_dma_req[i].dst_addr)'(
+          {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q});
 
       // Current backend only supports incremental burst
       arb_dma_req[i].opt.src.burst = axi_pkg::BURST_INCR;
@@ -27931,7 +27954,8 @@ module idma_reg64_1d #(
     cnt_width_t [MaxNumStreams-1:0] next_id_temp;
     // observational registers
     for (genvar c = 0; c < NumStreams; c++) begin
-        assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
+        assign dma_hw2reg[i].status[c] =
+            $bits(dma_hw2reg[i].status[c])'({midend_busy_i[c], busy_i[c]});
         assign next_id_temp[c] = next_id_i;
         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
     end
