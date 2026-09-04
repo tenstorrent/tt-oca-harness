@@ -1372,10 +1372,11 @@ def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
 
 
 def coverage_tools(sim_cfg: dict[str, Any]) -> list[str]:
-    """The `[coverage].tools` allowlist, or empty when the DUT declares none.
+    """The `[coverage].tools` allowlist, or empty when the DUT omits the key.
 
-    Empty means unconstrained. A non-empty list is a deliberate narrowing:
-    `validate_coverage_tool` turns a request outside it into a config error.
+    An omitted key is unconstrained. A present list must be non-empty and is a
+    deliberate narrowing: `validate_coverage_tool` turns a request outside it
+    into a config error.
     """
 
     value = coverage_cfg(sim_cfg).get("tools")

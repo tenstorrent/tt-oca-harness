@@ -584,10 +584,11 @@ before any stage executes instead of failing after a full compile and
 simulation with a missing coverage artifact.
 
 A DUT may also set `[coverage].tools` to the simulators whose coverage number
-it grades. Empty or omitted means every backend with a `[coverage.<tool>]`
-table is legal. A non-empty list refuses `--cov` on any other `--tool` before
-compile, and the error names `--tool <allowed>`. Daily (non-`--cov`) runs on
-those other simulators stay legal.
+it grades. Omit the key to leave every backend with a `[coverage.<tool>]`
+table legal. If the key is present it must be a non-empty list; that list
+refuses `--cov` on any other `--tool` before compile, and the error names
+`--tool <allowed>`. Daily (non-`--cov`) runs on those other simulators stay
+legal.
 
 On the implicit path, `--cov` instruments simulation and appends `cov_merge`
 and `cov_report` when the flow provides them:
