@@ -57,7 +57,9 @@ sources = [
 # PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
 # aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
 # generated block from every target's bender flist; the stub above replaces it.
-# Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
+# A `--cov` compile (`VM_COVERAGE=1`) hits the same error on 5.046; 5.050
+# compiles. Package files (*_reg_pkg.sv) stay — substring match is on this
+# exact basename.
 exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
@@ -170,6 +172,8 @@ compile_args = [
 # before its number is quotable.
 [coverage.verilator]
 # Not the graded number. Only [coverage.vcs] applies the compile-time scope.
+# `--cov --tool verilator` fails C++ compile on 5.046 (`__PVT__MLKEM_SHARED_KEY`
+# under `VM_COVERAGE=1`); 5.050 compiles.
 # Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
 # and the costliest sim instrumentation. Replaces the simulator-default
 # `--coverage`.

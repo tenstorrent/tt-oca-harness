@@ -16,7 +16,7 @@ Everything the environment needs lives under this tree.
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | developed against 5.046 |
+| Verilator 5.x | the acceptance backend | CI pin 5.050 |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'`; `source /opt/rh/gcc-toolset-11/enable` |
 | Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
 | RISC-V bare-metal GCC | firmware-boot tests only | not needed for the `smoke` tag |
@@ -89,7 +89,9 @@ native database per test leaf (`coverage/simv.vdb` under each leaf), and
 merges/reports through the `cov_merge`/`cov_report` stages into
 `<run_dir>/cov/merged.vdb`. That is `-cm line+cond+tgl+fsm+branch+assert` at
 both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
-`urg`.
+`urg`. `--cov --tool verilator` is not the graded number. Verilator 5.046
+fails that C++ compile (`__PVT__MLKEM_SHARED_KEY` under `VM_COVERAGE=1`);
+5.050 compiles.
 
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
