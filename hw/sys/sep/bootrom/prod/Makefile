@@ -133,9 +133,9 @@ OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS)
 # shortcut, which is what this replaces.
 SEP_ENTROPY_BRINGUP ?= 1
 
-# One-way entropy lock bypasses, independent of each other. Both locks are 
-# APPLIED BY DEFAULT; set a flag to 1 to leave that lock for SEP BL1 instead. 
-# They are separate knobs because they freeze unrelated things and an adopter 
+# One-way entropy lock bypasses, independent of each other. Both locks are
+# APPLIED BY DEFAULT; set a flag to 1 to leave that lock for SEP BL1 instead.
+# They are separate knobs because they freeze unrelated things and an adopter
 # may well want one and not the other:
 #   DEFER_FIPS_LOCK     leaves ESRC.FIPS_LOCK clear, so BL1 can still change the
 #                       entropy-source configuration (conditioning, health-test

@@ -1,7 +1,7 @@
 # SEP doc consistency checks
 
 Mechanical checks for `hw/sys/sep/doc/`. Each one cross-references the specification against
-a generated or source-of-truth artifact, so it catches the failure the prose reviews miss. 
+a generated or source-of-truth artifact, so it catches the failure the prose reviews miss.
 
 Each script derives the repository root from its own location, so it runs from any checkout
 and from any working directory.

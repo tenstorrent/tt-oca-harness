@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM refuses a tampered OCA manifest, in both slots (PyUVM).
 
 The first manifest-negative test in this environment. Every other ROM test proves

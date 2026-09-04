@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-//
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // SEP platform binding for the OCA boot-manifest validation library.
 //
 // The library ships no hardware access of its own: it takes a table of function

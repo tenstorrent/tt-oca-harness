@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Check register addresses cited in the SEP docs against the register map.
 
 Two stages, because trusting the generated header alone leaves a gap:

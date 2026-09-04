@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM boot from an AES-256-CBC encrypted OCA payload (PyUVM).
 
 The signed sibling (``sep_rom_ot_secure_boot_test``) proves the ROM verifies a

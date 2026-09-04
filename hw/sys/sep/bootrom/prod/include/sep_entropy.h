@@ -3,9 +3,9 @@
 
 // SEP entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) for the boot ROM.
 //
-// Several crypto blocks (OTBN and AES) the ROM drives do not work without it. 
-// OTBN parks in its URND reseed state and never executes; the AES masking 
-// PRNG never reports STATUS.IDLE. Neither is hardware auto-initialisation: 
+// Several crypto blocks (OTBN and AES) the ROM drives do not work without it.
+// OTBN parks in its URND reseed state and never executes; the AES masking
+// PRNG never reports STATUS.IDLE. Neither is hardware auto-initialisation:
 // every stage of the chain is disabled at reset and be initialized by BL0.
 //
 // Scope: the INTERNAL entropy source only. Selecting an external TRNG is a

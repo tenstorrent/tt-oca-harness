@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM secure boot anchored on an OTP public-key hash, not a ROM digest (PyUVM).
 
 ``sep_rom_ot_secure_boot_test`` verifies a signature against a key whose digest is
