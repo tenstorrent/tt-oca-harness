@@ -9,7 +9,7 @@
  * as SEP).  SEP computes the requested operation and writes the result back;
  * SMC verifies the result independently before proceeding.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — KM can initiate
+ * Spec basis: OCAH Specification §Crypto Key Manager — KM can initiate
  * requests upstream for key derivation or crypto primitives.  This test
  * exercises the analogous path where SMC firmware drives the request
  * sequence, reversing the normal TB→FW direction.
