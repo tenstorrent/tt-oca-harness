@@ -59,9 +59,8 @@ module smc_reset_unit (
 
   // Test mode signals
   input  logic                                   test_en_i,
-  input  logic                                   scan_rst_ni,
+  input  logic                                   scan_rst_ni
 
-  // Captured straps input
 );
 
   logic rst_primary_n;
