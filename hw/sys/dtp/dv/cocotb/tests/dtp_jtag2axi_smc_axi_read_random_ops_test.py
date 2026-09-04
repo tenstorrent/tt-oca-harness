@@ -29,9 +29,9 @@ class dtp_jtag2axi_smc_axi_read_random_ops_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_smc_axi_rd_test_seq,
             "read_random_ops",
-            specific_env="DTP_JTAG2AXI_SMC_AXI_READ_RANDOM_OPS_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_AXI_READ_RANDOM_OPS_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="read_random_ops",
         )
         for seq in sequences:
