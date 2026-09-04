@@ -4,14 +4,27 @@
 # Mirrors tt-oca-harness-model/.github/workflows/ci-rhel8.yml: resolves or builds the
 # SystemC, Boost, OpenSSL, and CCI dependencies (system installs are used when
 # adequate; otherwise they are built from source into ./local), then
-# configures the VP via tt-oca-harness-model/vp/configure_vp.sh and builds the sep-vp
-# executable.
+# configures the VP via tt-oca-harness-model/vp/configure_vp.sh and builds the
+# VP executables.
+#
+# The model produces three of those, and all three are available here:
+#   sep-vp  the SEP subsystem            -> vp/build      ('make vp')
+#   smc-vp  the SMC subsystem            -> vp/build_smc   ('make smc-vp')
+#   smu-vp  SMC + SEP, one process       -> vp/build_smc   ('make smu-vp')
+# smc-vp and smu-vp additionally need the Whisper ISS, which is built here as
+# a managed dependency like the other four. They are OPT-IN: 'make vp' neither
+# downloads nor builds Whisper, and its build tree is unaffected by any of
+# this. See the SMC_BUILD_DIR and WHISPER_LOCAL comments for why the SMC/SMU
+# targets need a second, separate build tree.
 #
 # Quick start:
 #   make scratch-build   # clean rebuild of everything (deps + sep-vp)
 #   make vp              # rebuild just sep-vp (deps assumed built; incremental)
+#   make smc-vp smu-vp   # the SMC/SMU pair (builds Whisper on first use)
+#   make smc-test        # run the model's SMC firmware suite on smc-vp
+#   make smu-test        # ... and the SMU suite (both subsystems concurrently)
 #   make deps-info       # show where each dependency resolves and why
-#   make clean           # wipe downloads/, local/, and tt-oca-harness-model/vp/build
+#   make clean           # wipe downloads/, local/, and both vp/build trees
 #
 # A C++20-capable compiler (g++ >= 10) must be on PATH (or set CXX=...);
 # `make check-cxx` verifies it. Run "make help" for the full target/variable
@@ -70,6 +83,14 @@ $(_FWD_FIRST):
 	  $(if $(FW_ARGS),FW_ARGS="$(FW_ARGS)") \
 	  $(if $(FW_TEST),FW_TEST=$(FW_TEST)) \
 	  $(if $(SW_TEST),SW_TEST=$(SW_TEST)) \
+	  $(if $(WHISPER_HOME),WHISPER_HOME="$(WHISPER_HOME)") \
+	  $(if $(WHISPER_REV),WHISPER_REV=$(WHISPER_REV)) \
+	  $(if $(SMC_ARGS),SMC_ARGS="$(SMC_ARGS)") \
+	  $(if $(SMU_ARGS),SMU_ARGS="$(SMU_ARGS)") \
+	  $(if $(SMC_INI),SMC_INI="$(SMC_INI)") \
+	  $(if $(SEP_INI),SEP_INI="$(SEP_INI)") \
+	  $(if $(SIM_TIME_MS),SIM_TIME_MS=$(SIM_TIME_MS)) \
+	  $(if $(RISCV_PREFIX),RISCV_PREFIX=$(RISCV_PREFIX)) \
 	  $(if $(NPROC),NPROC=$(NPROC))
 $(filter-out $(_FWD_FIRST),$(_FWD_GOALS)):
 	@:
@@ -86,6 +107,11 @@ SYSTEMC_VERSION ?= 3.0.2
 BOOST_VERSION   ?= 1.84.0
 OPENSSL_VERSION ?= 3.3.2
 CCI_VERSION     ?= 1.0.2
+# Whisper ISS revision for smc-vp/smu-vp. Pinned deliberately, like the
+# versions above; the reference value is WHISPER_REV in the model's own
+# .github/workflows/ci-rhel8.yml ("the commit the SMC VP was validated
+# against"), so re-read it when uprevving the tt-oca-harness-model submodule.
+WHISPER_REV     ?= a53d0f3e
 NPROC           ?= $(shell nproc)
 # SW_TEST: used by the optional `smoke` target
 SW_TEST         ?= sep-gpio-test
@@ -94,8 +120,21 @@ SW_TEST         ?= sep-gpio-test
 # riscv64-unknown-elf-gcc is already on PATH — ROM/DV builds fall back to the
 # ocah-toolchain container regardless (see fw_make below).
 RISCV_TOOLCHAIN ?=
+# RISCV_PREFIX: optional cross-toolchain prefix for the SMC/SMU firmware
+# suites. Left empty, the model's runners auto-detect, and both find the
+# ocah-toolchain image's riscv64-unknown-elf- (which is first in
+# run_smc_vp_tests.sh's candidate list and run_smu_vp_tests.sh's fallback).
+RISCV_PREFIX    ?=
 # SMOKE_TIMEOUT: seconds to let the VP run (it does not self-terminate)
 SMOKE_TIMEOUT   ?= 20
+# Pass-through args and knobs for the SMC/SMU firmware suites (see smc-test /
+# smu-test below): `make smc-test SMC_ARGS=smc-uart-test`, and the SMU
+# runner's own ini/sim-window overrides.
+SMC_ARGS        ?=
+SMU_ARGS        ?=
+SMC_INI         ?=
+SEP_INI         ?=
+SIM_TIME_MS     ?=
 
 # ---- Derived paths ----------------------------------------------------------
 # LOCAL_DIR / VP_BUILD_DIR carry the environment tag (local-ctr, build-ctr in
@@ -106,6 +145,22 @@ SIM_DIR      := $(VP_DIR)/tt-oca-harness-model
 VP_SRC_DIR   := $(SIM_DIR)/vp
 VP_BUILD_DIR := $(VP_SRC_DIR)/build$(VP_TAG_SUFFIX)
 SEP_VP_BIN   := $(VP_BUILD_DIR)/bin/sep-vp
+# smc-vp and smu-vp share ONE tree, separate from the SEP one. Two reasons:
+# WHISPER_HOME is read at configure time and decides whether the smc/smu
+# targets are generated at all (vp/platform/CMakeLists.txt), so a single tree
+# cannot be both "SEP-only, no Whisper needed" and "SMC/SMU included"; and the
+# model gates both platforms on that one switch, so they always come together
+# (its own CI configures both from vp/build_smc). The cost is compiling the
+# shared SEP peripheral tree twice, which is the tradeoff the model made too.
+SMC_BUILD_DIR := $(VP_SRC_DIR)/build_smc$(VP_TAG_SUFFIX)
+SMC_VP_BIN    := $(SMC_BUILD_DIR)/bin/smc-vp
+SMU_VP_BIN    := $(SMC_BUILD_DIR)/bin/smu-vp
+# smu-vp repackages the SMC CPU cluster as a shared library so Whisper's
+# WdRiscv symbols stay local to it and the SEP side can statically link its
+# own VeeR-ISS fork (vp/platform/smu/CMakeLists.txt:40-66). CMake builds it
+# beside the target, NOT in bin/, and it is a companion artifact: anything
+# that copies, uploads or caches smu-vp must carry this too.
+SMU_CLUSTER_LIB := $(SMC_BUILD_DIR)/platform/smu/libsmc_cluster_smu.so
 
 # ---- Firmware test harness (sepvp/ + tests/) --------------------------------
 # Python from the repo's uv-managed venv (`make vp-py-deps` creates/populates it
@@ -178,6 +233,32 @@ CCI_HOME     ?= $(CCI_LOCAL)
 SYSTEMC_WHY  := $(if $(filter $(SYSTEMC_HOME),$(SYSTEMC_LOCAL)),local (default),explicit ($(origin SYSTEMC_HOME)))
 CCI_WHY      := $(if $(filter $(CCI_HOME),$(CCI_LOCAL)),local (default),explicit ($(origin CCI_HOME)))
 
+# --- Whisper (smc-vp / smu-vp only; never resolved or built for sep-vp) ---
+# ONE Whisper, built -fPIC, serves both targets. The model builds it twice --
+# non-PIC for smc-vp, PIC for smu-vp, at the same path with only the cache key
+# to tell them apart -- but that is an artifact of two independent CI jobs:
+# smu/CMakeLists.txt:60-61 states smc-vp is unaffected by the repackaging, and
+# PIC archives link into an executable perfectly well (verified: smc-vp links
+# against these and its whole suite passes). The -pic suffix is kept in the
+# prefix name so a non-PIC variant stays expressible without a path clash --
+# two indistinguishable trees at one path is the footgun not to import.
+WHISPER_LOCAL := $(LOCAL_DIR)/whisper-$(WHISPER_REV)-pic
+WHISPER_HOME  ?= $(WHISPER_LOCAL)
+WHISPER_WHY   := $(if $(filter $(WHISPER_HOME),$(WHISPER_LOCAL)),local (default),explicit ($(origin WHISPER_HOME)))
+# Whisper's GNUmakefile names its build dir after `uname -s`; the model's
+# import shim resolves the same value from CMAKE_HOST_SYSTEM_NAME.
+WHISPER_BUILD_SUBDIR := build-$(shell uname -s)
+# FOUR archives are needed, not one: smc/cpu_cluster/external/whisper-cmake
+# imports librvcore.a plus the softfloat/pci/virtual_memory sub-libs, and
+# Whisper's makefile wires those three as prerequisites of the `whisper`
+# executable only -- so asking for librvcore.a alone silently skips them and
+# the configure step later fails with "Whisper artifact not found".
+WHISPER_ARCHIVES := \
+  $(WHISPER_HOME)/$(WHISPER_BUILD_SUBDIR)/librvcore.a \
+  $(WHISPER_HOME)/virtual_memory/libvirtual_memory.a \
+  $(WHISPER_HOME)/pci/libpci.a \
+  $(WHISPER_HOME)/third_party/softfloat/build/RISCV-GCC/softfloat.a
+
 # --- Boost ---
 ifeq ($(strip $(BOOST_ROOT)),)
   # "Complete" local install = headers AND the static libs sep-vp links.
@@ -247,6 +328,41 @@ ifeq ($(OPENSSL_ROOT),$(OPENSSL_LOCAL))
 else
   OPENSSL_SENTINEL := $(OPENSSL_ROOT)/include/openssl/ssl.h
 endif
+# Whisper is the one dependency whose usability cannot be represented by a
+# single file: four archives must all be present. For our own tree the
+# sentinel is therefore a stamp written only AFTER all four are verified --
+# the lesson the model's CI learned the hard way (ci-rhel8.yml:620-644: a
+# restored cache is not proof the tree is usable, so gate on the artifacts
+# actually being there). The stamp lives outside WHISPER_HOME so an external
+# prefix is never written to; for that case the sentinel is librvcore.a and
+# the recipe only verifies and reports.
+ifeq ($(WHISPER_HOME),$(WHISPER_LOCAL))
+  WHISPER_SENTINEL := $(LOCAL_DIR)/.whisper-$(WHISPER_REV)-pic-complete
+else
+  WHISPER_SENTINEL := $(firstword $(WHISPER_ARCHIVES))
+endif
+
+# Verify all four archives; on failure name the missing ones and say what to
+# do, rather than leaving it to a cmake backtrace much later.
+define WHISPER_VERIFY
+missing=
+for lib in $(WHISPER_ARCHIVES); do
+  [ -f "$$lib" ] || missing="$$missing $$lib"
+done
+if [ -n "$$missing" ]; then
+  echo "[VP] ERROR: Whisper tree at $(WHISPER_HOME) is missing archives:" >&2
+  for lib in $$missing; do echo "[VP]   $$lib" >&2; done
+  echo "[VP]   Whisper resolution: $(WHISPER_WHY)" >&2
+  if [ "$(WHISPER_HOME)" = "$(WHISPER_LOCAL)" ]; then
+    echo "[VP]   Fix: make whisper   (builds it into local$(VP_TAG_SUFFIX)/)" >&2
+  else
+    echo "[VP]   Fix: build the four archives in that tree with" >&2
+    echo "[VP]        MEM_CALLBACKS=1 CXX_STD=c++$(CXX_STD) EXTRA_CXXFLAGS=-fPIC," >&2
+    echo "[VP]        or unset WHISPER_HOME to use our own managed build." >&2
+  fi
+  exit 1
+fi
+endef
 
 define DEPS_INFO
 echo "[VP] Dependency prefixes (VP_SYS_DEPS=$(VP_SYS_DEPS)):"
@@ -254,6 +370,7 @@ echo "[VP]   SYSTEMC_HOME = $(SYSTEMC_HOME)   [$(SYSTEMC_WHY)]"
 echo "[VP]   CCI_HOME     = $(CCI_HOME)   [$(CCI_WHY)]"
 echo "[VP]   BOOST_ROOT   = $(BOOST_ROOT)   [$(BOOST_WHY)]"
 echo "[VP]   OPENSSL_ROOT = $(OPENSSL_ROOT)   [$(OPENSSL_WHY)]"
+echo "[VP]   WHISPER_HOME = $(WHISPER_HOME)   [$(WHISPER_WHY); smc-vp/smu-vp only, $(if $(wildcard $(firstword $(WHISPER_ARCHIVES))),built,not built)]"
 endef
 
 # ---- Runtime env script (generated by `make env`) ---------------------------
@@ -283,9 +400,20 @@ CCI_TARBALL     := $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION).tar.gz
 CXX_ID        := $(shell $(CXX) -dumpmachine 2>/dev/null)-$(shell $(CXX) -dumpversion 2>/dev/null)
 VP_CONFIG_SIG := $(SYSTEMC_HOME)|$(CCI_HOME)|$(BOOST_ROOT)|$(OPENSSL_ROOT)|c++$(CXX_STD)|$(CXX_ID)|$(STATUS_VALUES_PATH)
 DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
+# The SMC/SMU tree needs its own stamp: it has a different signature (Whisper,
+# and BOOST_DIR which the SMC cluster requires) and a different build dir, so
+# one shared stamp would make each tree's reconfigure wipe the other's. The
+# name keeps the .vp-config-stamp* gitignore pattern.
+# WHISPER_HOME is part of the signature because it decides the generated
+# TARGET SET, not just a link path: without it, a developer who sets Whisper
+# up after a first build gets a stale cache with no smc/smu targets and a
+# baffling "No rule to make target" instead of a reconfigure.
+SMC_CONFIG_SIG := $(VP_CONFIG_SIG)|$(WHISPER_HOME)|pic
+SMC_DEP_STAMP  := $(VP_DIR)/.vp-config-stamp-smc$(VP_TAG_SUFFIX)
 
-.PHONY: help scratch-build download deps deps-info vp vp-clean clean env enable_vp \
-        systemc boost openssl cci submodule-init check-tt-oca-harness-model check-cxx smoke \
+.PHONY: help scratch-build scratch-build-smc download deps deps-info vp vp-clean clean env enable_vp \
+        systemc boost openssl cci whisper submodule-init check-tt-oca-harness-model check-cxx smoke \
+        smc-vp smu-vp smc-test smu-test smc-clean \
         boot-build boot-secure-image boot-run fw-run vp-test vp-py-deps FORCE
 
 # =============================================================================
@@ -294,14 +422,24 @@ DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 help:
 	@echo "OCAH Virtual Platform build (mirrors tt-oca-harness-model CI)"
 	echo ""
-	echo "Primary targets:"
+	echo "Primary targets (sep-vp):"
 	echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"
 	echo "  vp             - build/rebuild sep-vp (incremental; deps assumed built)"
 	echo "  vp-clean       - wipe vp/build and reconfigure + rebuild sep-vp"
-	echo "  clean          - remove downloads/, local/, and tt-oca-harness-model/vp/build"
+	echo "  clean          - remove downloads/, local/, and tt-oca-harness-model/vp/build{,_smc}"
 	echo "  deps-info      - show where each dependency resolves and why"
 	echo "  check-cxx      - verify the compiler on PATH can build C++$(CXX_STD)"
-	echo "  env/enable_vp  - write setup_environment.sh to source for running sep-vp standalone"
+	echo "  env/enable_vp  - write setup_environment.sh to source for running a VP standalone"
+	echo ""
+	echo "SMC / SMU targets (opt-in — these build the Whisper ISS first;"
+	echo "  'make vp' never does, and needs no Whisper):"
+	echo "  smc-vp         - build/rebuild smc-vp        (-> vp/build_smc$(VP_TAG_SUFFIX))"
+	echo "  smu-vp         - build/rebuild smu-vp + libsmc_cluster_smu.so (same tree)"
+	echo "  smc-test       - run the model's SMC firmware suite  (SMC_ARGS=\"smc-uart-test\")"
+	echo "  smu-test       - run the model's SMU firmware suite  (SMU_ARGS=smu-link-test)"
+	echo "  whisper        - resolve/build the Whisper ISS only"
+	echo "  smc-clean      - wipe vp/build_smc and rebuild both"
+	echo "  scratch-build-smc - clean, then build deps + Whisper + smc-vp + smu-vp"
 	echo ""
 	echo "Phase targets:"
 	echo "  download       - fetch the dependency source tarballs into downloads/"
@@ -325,14 +463,19 @@ help:
 	echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
 	echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
 	echo "  SYSTEMC_VERSION=$(SYSTEMC_VERSION)  BOOST_VERSION=$(BOOST_VERSION)  OPENSSL_VERSION=$(OPENSSL_VERSION)  CCI_VERSION=$(CCI_VERSION)"
-	echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME  (point at an existing install;"
-	echo "    set one EMPTY, e.g. 'make vp BOOST_ROOT=', to re-enable auto-resolution)"
+	echo "  WHISPER_REV=$(WHISPER_REV) (Whisper ISS revision for smc-vp/smu-vp)"
+	echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME / WHISPER_HOME  (point at an"
+	echo "    existing install; set one EMPTY, e.g. 'make vp BOOST_ROOT=', to re-enable"
+	echo "    auto-resolution)"
+	echo "  RISCV_PREFIX= (SMC/SMU firmware toolchain prefix; auto-detected when unset)"
 	echo ""
 	echo "Examples:"
 	echo "  make scratch-build"
 	echo "  make vp"
-	echo "  make env && source setup_environment.sh   # then run sep-vp directly"
+	echo "  make env && source setup_environment.sh   # then run a VP directly"
 	echo "  make deps BOOST_ROOT=/path/to/boost OPENSSL_ROOT=/path/to/openssl-3"
+	echo "  make smc-vp smu-vp VP_CONTAINER=1"
+	echo "  make smu-test VP_CONTAINER=1 SMU_ARGS=smu-link-test"
 
 # =============================================================================
 # Aggregate phases
@@ -358,8 +501,25 @@ systemc: $(SYSTEMC_SENTINEL)
 boost:   $(BOOST_SENTINEL)
 openssl: $(OPENSSL_SENTINEL)
 cci:     $(CCI_SENTINEL)
+whisper: $(WHISPER_SENTINEL)
 
 vp: vp-build
+
+# SMC/SMU are opt-in. `make vp` stays exactly as it was: SEP-only, no Whisper,
+# no new download. Whisper is a large source dependency and the majority of VP
+# developers work on SEP, so making the default target pay for it would be a
+# regression for them.
+scratch-build-smc:
+	@echo "[VP] === Scratch build (SMC/SMU): clean -> deps -> whisper -> smc-vp + smu-vp ==="
+	$(MAKE) clean
+	$(MAKE) deps
+	$(MAKE) whisper
+	$(MAKE) smc-vp
+	$(MAKE) smu-vp
+	$(MAKE) env
+	echo "[VP] === Scratch build complete: $(SMC_VP_BIN)"
+	echo "[VP]                             $(SMU_VP_BIN)"
+	echo "[VP]                             $(SMU_CLUSTER_LIB)"
 
 # =============================================================================
 # Compiler capability check (order-only prereq of every compile step)
@@ -498,6 +658,60 @@ $(CCI_SENTINEL): $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL)
 	echo "[VP] Using External CCI: $(CCI_HOME)"
 endif
 
+# ---- Whisper ISS (smc-vp / smu-vp) -----------------------------------------
+# Cloned rather than downloaded as a tarball, so DOWNLOAD_DIR does not grow a
+# special case for a git-only dependency.
+ifeq ($(WHISPER_HOME),$(WHISPER_LOCAL))
+# Boost must be resolved first: Whisper's makefile compiles against its
+# headers (order-only -- existence is the contract, not timestamps).
+$(WHISPER_SENTINEL): | $(BOOST_SENTINEL) $(LOCAL_DIR) check-cxx
+	@echo "[VP] Building Whisper $(WHISPER_REV) (PIC, four archives)..."
+	$(call REFUSE_NON_LOCAL,$(WHISPER_HOME))
+	# Reuse an existing checkout rather than failing on "destination path
+	# already exists": this recipe also runs when a previous attempt left a
+	# tree with only some archives built. No fetch is needed -- the path
+	# pins WHISPER_REV, so an existing checkout is already at that rev.
+	if [ -d "$(WHISPER_HOME)/.git" ]; then
+	  echo "[VP] Reusing the existing Whisper checkout; building missing archives."
+	else
+	  rm -rf "$(WHISPER_HOME)"
+	  git clone --quiet https://github.com/tenstorrent/whisper.git "$(WHISPER_HOME)"
+	  git -C "$(WHISPER_HOME)" checkout --quiet $(WHISPER_REV)
+	fi
+	# Headers-only Boost root: Whisper's makefile would otherwise -isystem
+	# the whole prefix, which can shadow libc headers when that prefix is
+	# /usr (our common case, unlike a private Boost install).
+	rm -rf "$(LOCAL_DIR)/whisper-boost-headers"
+	mkdir -p "$(LOCAL_DIR)/whisper-boost-headers/include"
+	ln -s "$(BOOST_ROOT)/include/boost" "$(LOCAL_DIR)/whisper-boost-headers/include/boost"
+	# One aggregate goal, expressed in the makefile's OWN variables. The
+	# three sub-libs cannot be named as relative goals ("No rule to make
+	# target"): the makefile defines them by absolute path, one of which
+	# even carries a double slash ($$PWD/virtual_memory//libvirtual_memory.a).
+	printf 'smc_vp_whisper_libs: $$(BUILD_DIR)/librvcore.a $$(soft_float_lib) $$(pci_lib) $$(virtual_memory_lib)\n' \
+	  > "$(LOCAL_DIR)/whisper-smc-libs.mk"
+	# -fPIC unconditionally: smu-vp's cluster DSO requires it, and smc-vp
+	# links these archives into an executable just as happily (see the
+	# WHISPER_LOCAL comment above).
+	# Deliberately NOT $(MAKE): our own command-line overrides travel to a
+	# sub-make through MAKEFLAGS/MAKEOVERRIDES, and Whisper reuses two of
+	# those names with different meanings -- CXX_STD is "c++20" here but "20"
+	# for us, and BOOST_ROOT must be the headers-only shim, not the prefix a
+	# developer passed us. Clearing them keeps the two namespaces apart.
+	env -u MAKEFLAGS -u MAKEOVERRIDES -u MFLAGS -u MAKELEVEL \
+	  make -C "$(WHISPER_HOME)" -f GNUmakefile -f "$(LOCAL_DIR)/whisper-smc-libs.mk" \
+	  MEM_CALLBACKS=1 CXX_STD=c++$(CXX_STD) EXTRA_CXXFLAGS=-fPIC \
+	  BOOST_ROOT="$(LOCAL_DIR)/whisper-boost-headers" \
+	  smc_vp_whisper_libs -j$(NPROC)
+	$(WHISPER_VERIFY)
+	printf '%s' '$(WHISPER_REV)' > "$@"
+	echo "[VP] Built Whisper: $(WHISPER_HOME)"
+else
+$(WHISPER_SENTINEL):
+	@$(WHISPER_VERIFY)
+	echo "[VP] Using External Whisper: $(WHISPER_HOME)"
+endif
+
 # =============================================================================
 # Source preparation (submodules)
 #
@@ -540,8 +754,14 @@ $(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(O
 	echo "[VP] Configuring sep-vp via configure_vp.sh..."
 	$(DEPS_INFO)
 	cd $(VP_SRC_DIR)
+	# WHISPER_HOME is forced EMPTY, not just left unset: vp/platform's gate is
+	# `if(DEFINED ENV{WHISPER_HOME} AND NOT "..." STREQUAL "")`, so an
+	# exported WHISPER_HOME in the developer's shell would otherwise silently
+	# add the smc and smu platforms to this SEP-only tree -- a much slower
+	# build that then needs Whisper. Empty keeps this tree SEP-only always.
 	SYSTEMC_HOME=$(SYSTEMC_HOME) CCI_HOME=$(CCI_HOME) \
 	BOOST_ROOT=$(BOOST_ROOT) OPENSSL_ROOT=$(OPENSSL_ROOT) \
+	WHISPER_HOME= \
 	VP_BOOST_MIN=$(BOOST_MIN) BUILD_DIR=$(VP_BUILD_DIR) \
 	CMAKE_BUILD_TYPE=Release CMAKE_CXX_STANDARD=$(CXX_STD) \
 	  ./configure_vp.sh -- -DSEP_SCRATCH_COLD_STATUS_VALUES_PATH=$(STATUS_VALUES_PATH)
@@ -567,11 +787,87 @@ vp-clean:
 	$(MAKE) vp
 
 # =============================================================================
+# SMC / SMU configure + build (opt-in; the Whisper-enabled tree)
+# =============================================================================
+$(SMC_DEP_STAMP): FORCE
+	@if [ "$$(cat '$@' 2>/dev/null)" != '$(SMC_CONFIG_SIG)' ]; then
+	  printf '%s' '$(SMC_CONFIG_SIG)' > '$@'
+	fi
+
+# Same contract as the SEP configure above, with three additions:
+#   WHISPER_HOME   -- read at CONFIGURE time; it is what makes the smc and smu
+#                     targets exist at all (vp/platform/CMakeLists.txt:9).
+#   BOOST_DIR      -- smc/cpu_cluster/CMakeLists.txt:63-68 requires it and
+#                     configure_vp.sh sets only BOOST_ROOT/Boost_ROOT, so
+#                     without this the configure dies at the SMC cluster even
+#                     though every other prefix is correct. The model's own CI
+#                     sets both for the same reason (ci-rhel8.yml:688-694).
+#   SMC_CXX_STANDARD -- the cluster's own standard knob, matching the model's
+#                     direct cmake invocation.
+$(SMC_BUILD_DIR)/Makefile: $(SMC_DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL) $(WHISPER_SENTINEL) | check-tt-oca-harness-model check-cxx
+	@echo "[VP] Preparing source (submodules)..."
+	if [ -f "$(SMC_BUILD_DIR)/CMakeCache.txt" ]; then
+	  echo "[VP] Build configuration changed — wiping $(SMC_BUILD_DIR) for a clean reconfigure."
+	  rm -rf "$(SMC_BUILD_DIR)"
+	fi
+	# A sentinel that exists is not proof the tree is usable, so re-check all
+	# four archives here as well: an interrupted build or a restored cache can
+	# leave the stamp beside an incomplete tree.
+	$(WHISPER_VERIFY)
+	cd $(SIM_DIR)
+	git submodule update --init --recursive
+	echo "[VP] Configuring smc-vp/smu-vp via configure_vp.sh..."
+	$(DEPS_INFO)
+	cd $(VP_SRC_DIR)
+	SYSTEMC_HOME=$(SYSTEMC_HOME) CCI_HOME=$(CCI_HOME) \
+	BOOST_ROOT=$(BOOST_ROOT) BOOST_DIR=$(BOOST_ROOT) OPENSSL_ROOT=$(OPENSSL_ROOT) \
+	WHISPER_HOME=$(WHISPER_HOME) \
+	VP_BOOST_MIN=$(BOOST_MIN) BUILD_DIR=$(SMC_BUILD_DIR) \
+	CMAKE_BUILD_TYPE=Release CMAKE_CXX_STANDARD=$(CXX_STD) \
+	  ./configure_vp.sh -- -DSMC_CXX_STANDARD=$(CXX_STD) -DBOOST_DIR=$(BOOST_ROOT) \
+	                       -DSEP_SCRATCH_COLD_STATUS_VALUES_PATH=$(STATUS_VALUES_PATH)
+	# The gate is silent when it declines, so assert rather than trust: a tree
+	# without these targets fails much later with "No rule to make target".
+	for t in smc-vp smu-vp; do
+	  if ! $(MAKE) -C $(SMC_BUILD_DIR) help 2>/dev/null | grep -qx "\.\.\. $$t"; then
+	    echo "[VP] ERROR: configure produced no '$$t' target in $(SMC_BUILD_DIR)." >&2
+	    echo "[VP]   WHISPER_HOME=$(WHISPER_HOME) was not accepted by vp/platform/CMakeLists.txt." >&2
+	    exit 1
+	  fi
+	done
+
+# PHONY for the same reason vp-build is: CMake owns the source/header
+# dependency graph, and keying on the binary would shadow its finer-grained
+# tracking (a pulled model change would be silently skipped).
+smc-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
+	@echo "[VP] Building smc-vp (incremental, via CMake)..."
+	$(MAKE) -C $(SMC_BUILD_DIR) -j$(NPROC) smc-vp
+	echo "[VP] Built: $(SMC_VP_BIN)"
+
+# This target produces TWO artifacts: the executable and the cluster DSO it
+# loads at run time. They must travel together (see SMU_CLUSTER_LIB above).
+smu-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
+	@echo "[VP] Building smu-vp + libsmc_cluster_smu.so (incremental, via CMake)..."
+	$(MAKE) -C $(SMC_BUILD_DIR) -j$(NPROC) smu-vp
+	echo "[VP] Built: $(SMU_VP_BIN)"
+	echo "[VP]        $(SMU_CLUSTER_LIB)   (companion; copy/upload it alongside)"
+
+# File-target aliases, matching $(SEP_VP_BIN)'s role.
+$(SMC_VP_BIN): | smc-vp
+$(SMU_VP_BIN) $(SMU_CLUSTER_LIB): | smu-vp
+
+smc-clean:
+	@echo "[VP] Clean reconfigure of vp/build_smc..."
+	rm -rf $(SMC_BUILD_DIR)
+	$(MAKE) smc-vp smu-vp
+
+# =============================================================================
 # Clean (build artifacts only; tt-oca-harness-model source is left intact)
 # =============================================================================
 clean:
-	@echo "[VP] Removing downloads/, local/, and tt-oca-harness-model/vp/build..."
-	rm -rf $(DOWNLOAD_DIR) $(LOCAL_DIR) $(VP_BUILD_DIR) $(DEP_STAMP)
+	@echo "[VP] Removing downloads/, local/, and tt-oca-harness-model/vp/build{,_smc}..."
+	rm -rf $(DOWNLOAD_DIR) $(LOCAL_DIR) $(VP_BUILD_DIR) $(SMC_BUILD_DIR) \
+	       $(DEP_STAMP) $(SMC_DEP_STAMP)
 	echo "[VP] Clean complete (tt-oca-harness-model source untouched)."
 
 # =============================================================================
@@ -603,18 +899,31 @@ export CMAKE_PREFIX_PATH="$$SYSTEMC_HOME:$$CCI_HOME:$$BOOST_ROOT:$$OPENSSL_ROOT$
 # Runtime library search path. sep-vp loads libsystemc as a shared lib (resolved
 # via RPATH too); Boost/CCI/OpenSSL are static, included here for robustness and
 # for re-running cmake/configure_vp.sh against these prefixes.
-export LD_LIBRARY_PATH="$(SYSTEMC_LIBDIR):$(CCI_LIBDIR):$(BOOST_LIBDIR):$(OPENSSL_LIBDIR)$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"
+# The last entry is smu-vp's companion DSO, libsmc_cluster_smu.so. smu-vp does
+# bake its build-tree location into RUNPATH, so it runs from the tree without
+# help -- but that path is absolute into the build dir, so this entry is what
+# keeps a moved or copied smu-vp working.
+export LD_LIBRARY_PATH="$(SYSTEMC_LIBDIR):$(CCI_LIBDIR):$(BOOST_LIBDIR):$(OPENSSL_LIBDIR):$(dir $(SMU_CLUSTER_LIB))$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"
 
-# Put sep-vp on PATH.
+# Put sep-vp on PATH, and smc-vp/smu-vp too when their tree has been built.
 export PATH="$(VP_BUILD_DIR)/bin:$$PATH"
+if [ -d "$(SMC_BUILD_DIR)/bin" ]; then
+    export PATH="$(SMC_BUILD_DIR)/bin:$$PATH"
+fi
+# WHISPER_HOME is exported for re-running configure_vp.sh against the SMC/SMU
+# tree. NOTE: with it set, a configure of the SEP tree would also pull in the
+# smc and smu platforms -- `make vp` forces it empty for exactly that reason.
+export WHISPER_HOME="$(WHISPER_HOME)"
 
 # RISC-V cross toolchain for building/running SEP firmware (added if set).
 if [ -n "$(RISCV_TOOLCHAIN)" ] && [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then
     export PATH="$(RISCV_TOOLCHAIN)/bin:$$PATH"
 fi
 
-echo "SEP VP environment ready:"
+echo "OCAH VP environment ready:"
 echo "  sep-vp      : $$(command -v sep-vp 2>/dev/null || echo '$(SEP_VP_BIN)')"
+echo "  smc-vp      : $$(command -v smc-vp 2>/dev/null || echo '(not built; make smc-vp)')"
+echo "  smu-vp      : $$(command -v smu-vp 2>/dev/null || echo '(not built; make smu-vp)')"
 echo "  SYSTEMC_HOME: $$SYSTEMC_HOME"
 endef
 
@@ -730,5 +1039,54 @@ vp-test: $(SEP_VP_BIN)
 	$(FW_ENV)
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
 	cd $(VP_DIR) && $(PYTHON) -m pytest tests $(PYTEST_ARGS)
+
+# =============================================================================
+# SMC / SMU firmware suites
+#
+# Thin wrappers: they export our resolved prefixes and delegate to the model's
+# own runners, which is what the model's CI does. They are deliberately NOT
+# reimplemented, and sepvp/ is deliberately NOT extended -- that package is
+# built around the SEP VP's CLI, ini file, fuse model and boot flow, and
+# teaching it three platforms is a separate project.
+#
+# VP and VP_BUILD_DIR are always passed explicitly. Both runners will
+# otherwise configure a tree of their own behind our back, and
+# run_smc_vp_tests.sh's find_vp_binary() probes vp/build/bin/smc-vp -- the SEP
+# tree -- BEFORE VP_BUILD_DIR, so leaving it to auto-detection is a real risk,
+# not just untidiness.
+# =============================================================================
+# Shared environment for both runners. RISCV_TOOLCHAIN is our knob; the
+# runners take RISCV_TOOLCHAIN_PATH (a base dir containing bin/<prefix>gcc).
+# RISCV_PREFIX is passed only when set -- unset, both runners auto-detect and
+# find the image's riscv64-unknown-elf-.
+define SMC_TEST_ENV
+export SYSTEMC_HOME="$(SYSTEMC_HOME)" CCI_HOME="$(CCI_HOME)" WHISPER_HOME="$(WHISPER_HOME)"
+export BOOST_DIR="$(BOOST_ROOT)" BOOST_ROOT="$(BOOST_ROOT)"
+export OPENSSL_ROOT="$(OPENSSL_ROOT)" OPENSSL_ROOT_DIR="$(OPENSSL_ROOT)"
+if [ -n "$(RISCV_TOOLCHAIN)" ] && [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then
+  export RISCV_TOOLCHAIN_PATH="$(RISCV_TOOLCHAIN)"
+fi
+if [ -n "$(RISCV_PREFIX)" ]; then export RISCV_PREFIX="$(RISCV_PREFIX)"; fi
+endef
+
+# Run the SMC firmware suite:  make smc-test [SMC_ARGS="smc-uart-test"]
+smc-test: $(SMC_VP_BIN)
+	@echo "[VP] Running the SMC VP firmware suite ($(if $(SMC_ARGS),$(SMC_ARGS),all tests))..."
+	$(SMC_TEST_ENV)
+	export VP="$(SMC_VP_BIN)" VP_BUILD_DIR="$(SMC_BUILD_DIR)"
+	cd $(SIM_DIR)/sw/smc-vp-tests && ./run_smc_vp_tests.sh $(SMC_ARGS)
+
+# Run the SMU firmware suite:  make smu-test [SMU_ARGS=smu-link-test]
+# A test passes only when BOTH the SMC and SEP halves print PASS -- this is the
+# only configuration that runs the two subsystems concurrently in one process,
+# so it is where cross-subsystem regressions show up.
+smu-test: $(SMU_VP_BIN)
+	@echo "[VP] Running the SMU VP firmware suite ($(if $(SMU_ARGS),$(SMU_ARGS),all tests))..."
+	$(SMC_TEST_ENV)
+	export VP="$(SMU_VP_BIN)"
+	if [ -n "$(SMC_INI)" ]; then export SMC_INI="$(SMC_INI)"; fi
+	if [ -n "$(SEP_INI)" ]; then export SEP_INI="$(SEP_INI)"; fi
+	if [ -n "$(SIM_TIME_MS)" ]; then export SIM_TIME_MS="$(SIM_TIME_MS)"; fi
+	cd $(SIM_DIR)/sw/smu-vp-tests && ./run_smu_vp_tests.sh $(SMU_ARGS)
 
 endif  # VP_FORWARD
