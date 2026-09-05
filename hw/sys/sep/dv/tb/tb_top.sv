@@ -397,6 +397,15 @@ module sep_uvm_top
     // can read them without a packed-struct field walk.
     output logic              dbg_disable_smc_otp_jtag2axi_o,
     output logic              dbg_disable_sep_otp_jtag2axi_o,
+    // The whole dbg_disable_o struct, flattened to one vector. The two bits
+    // above are exactly the pair LCC ties to zero, so on their own they cannot
+    // tell a correct gating formula from a broken one. The other nine are
+    // derived from feat_ctrl -- sip_debug as the mandatory outer gate,
+    // chiplet_dbg per scope, sep_debug additionally for the SEP S-TAP -- and had
+    // no observability here at all before this port. Exported whole rather than
+    // bit by bit so a field added to the struct widens the vector and shows up,
+    // instead of silently going unchecked.
+    output logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0] dbg_disable_all_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
     // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
@@ -591,6 +600,7 @@ module sep_uvm_top
     sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
     assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
     assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
+    assign dbg_disable_all_o              = dbg_disable_w;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.

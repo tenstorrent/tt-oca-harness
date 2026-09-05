@@ -27,7 +27,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SepEfuseImage
-from env.sep_lcc_golden import LC_PROD, lc_state_name
+from env.sep_lcc_golden import LC_PROD, LC_RMA_CHIP_1, lc_state_name
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
@@ -259,6 +259,53 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert jtag_data == fault, f"JTAG TOKEN_MATCH_FAULT 0x{jtag_data:x} != AXI 0x{fault:x}"
         self.logger.info("CHK-JTAG-FAULT PASS: JTAG read 0x%08x == AXI after RMA_CHIP", jtag_data)
 
+    async def _fault_clears_on_reset(self, cfg: SepRmaTokenCfg) -> None:
+        """The sticky fault bits clear on cold reset, and only on cold reset.
+
+        The phases above prove the bits survive a retry with a valid token,
+        which is the tamper-evidence property. They cannot tell that apart from
+        a latch that never clears at all: a fault bit wired to a non-resettable
+        flop passes every one of them. Re-sensing the part and re-reading is
+        what separates the two.
+        """
+        fault = await self._rd_fault()
+        assert fault != 0, (
+            "reset-clear check needs a latched fault to start from, but "
+            "TOKEN_MATCH_FAULT is already 0 -- the phases above left nothing set"
+        )
+        assert self._irq38() == 1, (
+            "reset-clear check: a fault is latched but the interrupt is low, so "
+            "the release below would prove nothing about the interrupt"
+        )
+
+        # Drop the injection first: a fault still being driven would re-latch on
+        # the next comparison and the clear would be indistinguishable from a
+        # failure to re-fault.
+        await self._set_inject(TOKEN_CMP_INJECT_OFF)
+
+        # Re-sense at the state the part has actually reached. The walks above
+        # advanced LC_STATE to RMA_CHIPLET_1, and the LC_STATE shadow is not
+        # rolled back by a re-sense -- staging a PROD image here would make the
+        # backdoor shadow check compare the sensed 0x7 against an expected 0x1
+        # and fail on the image, never reaching the fault-latch question.
+        image = self.select_efuse_image(lc_raw=LC_RMA_CHIP_1, fixed=cfg.image_fixed())
+        self.write_efuse_image(image)
+        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+
+        fault = await self._rd_fault()
+        irq = self._irq38()
+        assert fault == 0, (
+            f"CHK-FAULT-RESET: TOKEN_MATCH_FAULT=0x{fault:08x} after cold reset, "
+            "expected 0 -- the sticky latch is not reset-clearable"
+        )
+        assert irq == 0, (
+            "CHK-FAULT-RESET: token-match-fault interrupt still asserted after "
+            "cold reset, so the PIC source does not follow the latch"
+        )
+        self.logger.info(
+            "CHK-FAULT-RESET PASS: cold reset cleared TOKEN_MATCH_FAULT and released the interrupt"
+        )
+
     async def run_scenario(self) -> None:
         cfg = SepRmaTokenCfg(self.random_seed())
         self.logger.info("rma token RANDCFG: %s", cfg.summary())
@@ -277,3 +324,4 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         )
 
         await self._token_fault_path(cfg)
+        await self._fault_clears_on_reset(cfg)
