@@ -117,7 +117,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             lc_state_name(after),
         )
 
-    def _irq38(self) -> int:
+    def _irq39(self) -> int:
         return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
@@ -152,24 +152,24 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
 
     async def _token_fault_path(self, cfg: SepRmaTokenCfg) -> None:
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert fault == 0 and irq == 0, (
-            f"fault path baseline: TOKEN_MATCH_FAULT=0x{fault:x} irq38={irq}"
+            f"fault path baseline: TOKEN_MATCH_FAULT=0x{fault:x} irq39={irq}"
         )
 
         sip_token = cfg.sip_token
         await self._set_inject(TOKEN_CMP_INJECT_COMMON)
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert code == TOKEN_MISMATCH, (
             f"common-mode invert of a match must read 6'b101010, got 0x{code:02x}"
         )
         assert fault == 0 and irq == 0, (
-            f"common-mode must not set a sticky bit: FAULT=0x{fault:x} irq38={irq}"
+            f"common-mode must not set a sticky bit: FAULT=0x{fault:x} irq39={irq}"
         )
         self.logger.info(
-            "CHK-COMMON-MODE PASS: all-three invert of match -> code=0x%02x, no sticky, irq38=0",
+            "CHK-COMMON-MODE PASS: all-three invert of match -> code=0x%02x, no sticky, irq39=0",
             code,
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
@@ -177,16 +177,16 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._set_inject(TOKEN_CMP_INJECT_COMMON_MATCH)
         code = await self._present_sip(sip_token ^ 1)
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert code == TOKEN_MATCH, (
             f"common-mode invert of a mismatch must read 6'b010101, got 0x{code:02x}"
         )
         assert fault == 0 and irq == 0, (
-            f"common-mode fake match must not set a sticky bit: FAULT=0x{fault:x} irq38={irq}"
+            f"common-mode fake match must not set a sticky bit: FAULT=0x{fault:x} irq39={irq}"
         )
         self.logger.info(
             "CHK-COMMON-MODE-MATCH PASS: all-three invert of mismatch -> "
-            "code=0x%02x, no sticky, irq38=0",
+            "code=0x%02x, no sticky, irq39=0",
             code,
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
@@ -194,12 +194,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE)
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert code == TOKEN_ERROR, f"collapsed pair must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"collapse did not set SIP fault: 0x{fault:x}"
         assert irq == 1, "collapse did not raise sep_internal_interrupts[39]"
         self.logger.info(
-            "CHK-COLLAPSE PASS: pair collapse -> code=0x%02x FAULT=0x%08x irq38=1", code, fault
+            "CHK-COLLAPSE PASS: pair collapse -> code=0x%02x FAULT=0x%08x irq39=1", code, fault
         )
         self.logger.info("CHK-ERROR-CODE PASS: every match-status bit is 1 (0x%02x)", code)
         self.logger.info("CHK-IRQ-39 PASS: sep_internal_interrupts[39] (PIC source 40) asserted")
@@ -207,15 +207,15 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
 
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert code == TOKEN_MATCH, f"valid retry after release must match, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"sticky SIP fault cleared on retry: 0x{fault:x}"
-        assert irq == 1, "irq38 dropped on a valid-token retry"
+        assert irq == 1, "irq39 dropped on a valid-token retry"
         await self._wr_fault(0)
         still = await self._rd_fault()
         assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write 0 left 0x{still:x}"
         self.logger.info(
-            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq38=1, write-0 ignored",
+            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, write-0 ignored",
             code,
             still,
         )
@@ -223,12 +223,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._set_inject(TOKEN_CMP_INJECT_DISAGREE)
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert code == TOKEN_ERROR, f"two-instance disagree must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"disagree lost the SIP sticky bit: 0x{fault:x}"
-        assert irq == 1, "disagree did not keep irq38 asserted"
+        assert irq == 1, "disagree did not keep irq39 asserted"
         self.logger.info(
-            "CHK-DISAGREE PASS: instance disagree -> code=0x%02x FAULT=0x%08x irq38=1", code, fault
+            "CHK-DISAGREE PASS: instance disagree -> code=0x%02x FAULT=0x%08x irq39=1", code, fault
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
