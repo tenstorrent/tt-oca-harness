@@ -184,8 +184,7 @@ module log_engine
     if (log_engine_en) begin
       unique case (log_fetch_fsm_state)
         ST_LOG_FETCH_IDLE: begin
-          if (log_pending && effective_log_len != log_len_t'(0) &&
-              !log_fetch_done_status) begin
+          if (log_pending && effective_log_len != log_len_t'(0) && !log_fetch_done_status) begin
             log_fetch_fsm_state_next = ST_LOG_FETCH_REQ;
           end else begin
             if (log_write_done) begin
@@ -393,8 +392,7 @@ module log_engine
         end
         ST_LOG_WRITE_WAIT: begin
           if (log_write_mem_resp_valid) begin
-            if (log_bytes_written_cnt ==
-                effective_log_len - log_len_t'(1)) begin  // Write done
+            if (log_bytes_written_cnt == effective_log_len - log_len_t'(1)) begin  // Write done
               rdata_fifo_rd_ready = 1'b1; // Read the last byte
               log_write_done      = 1'b1;
 
@@ -512,50 +510,38 @@ module log_engine
   ////////////////
 
   `OCAH_OT_ASSERT_INIT(paramCheckNumLogEntries, NUM_LOG_ENTRIES > 0)
-  `OCAH_OT_ASSERT_INIT(LogLenMaximumRepresentable_A,
-                       $bits(log_len_t) == 16 &&
-                       log_len_t'(MAX_LOG_LEN) == 16'h8000)
-  `OCAH_OT_ASSERT_INIT(NonAlignedSlotRoundsDown_A,
-                       log_word_floor(log_len_t'(LOG_WORD_SIZE + 7)) ==
-                       log_len_t'(LOG_WORD_SIZE))
-  `OCAH_OT_ASSERT_INIT(LogRegionAlignmentValid_A,
-                       LOG_REGION_ALIGNMENT == 128)
+  `OCAH_OT_ASSERT_INIT(LogLenMaximumRepresentable_A, $bits(log_len_t)
+                       == 16 && log_len_t'(MAX_LOG_LEN) == 16'h8000)
+  `OCAH_OT_ASSERT_INIT(NonAlignedSlotRoundsDown_A, log_word_floor(log_len_t'(LOG_WORD_SIZE + 7)
+                       ) == log_len_t'(LOG_WORD_SIZE))
+  `OCAH_OT_ASSERT_INIT(LogRegionAlignmentValid_A, LOG_REGION_ALIGNMENT == 128)
 
   `OCAH_OT_ASSERT(SupportedLogRegionWithinMaximum_A,
                   supported_log_region_size <= log_region_size_t'(MAX_LOG_REGION_SIZE))
-  `OCAH_OT_ASSERT(SupportedLogRegionExactMin_A,
-                  supported_log_region_size ==
-                  (log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) ?
-                   log_region_size_t'(MAX_LOG_REGION_SIZE) : log_region_size))
-  `OCAH_OT_ASSERT(OversizeLogRegionClamped_A,
-                  log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) |->
-                  supported_log_region_size == log_region_size_t'(MAX_LOG_REGION_SIZE))
-  `OCAH_OT_ASSERT(MaxLogLenExactFloor_A,
-                  max_log_len ==
-                  log_len_t'(supported_log_region_size /
-                             log_region_size_t'(NUM_LOG_ENTRIES)))
-  `OCAH_OT_ASSERT(MaxTransferLenExactFloor_A,
-                  max_transfer_len == log_word_floor(max_log_len))
+  `OCAH_OT_ASSERT(
+      SupportedLogRegionExactMin_A,
+      supported_log_region_size == (log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) ? log_region_size_t'(MAX_LOG_REGION_SIZE) : log_region_size))
+  `OCAH_OT_ASSERT(
+      OversizeLogRegionClamped_A,
+      log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) |-> supported_log_region_size == log_region_size_t'(MAX_LOG_REGION_SIZE))
+  `OCAH_OT_ASSERT(
+      MaxLogLenExactFloor_A,
+      max_log_len == log_len_t'(supported_log_region_size / log_region_size_t'(NUM_LOG_ENTRIES)))
+  `OCAH_OT_ASSERT(MaxTransferLenExactFloor_A, max_transfer_len == log_word_floor(max_log_len))
   `OCAH_OT_ASSERT(MaxTransferRemainderBelowBeat_A,
                   max_log_len - max_transfer_len < log_len_t'(LOG_WORD_SIZE))
-  `OCAH_OT_ASSERT(MisalignedLogRegionRounded_A,
-                  log_region_size % log_region_size_t'(LOG_REGION_ALIGNMENT) !=
-                  log_region_size_t'(0) |->
-                  max_transfer_len <= max_log_len)
+  `OCAH_OT_ASSERT(
+      MisalignedLogRegionRounded_A,
+      log_region_size % log_region_size_t'(LOG_REGION_ALIGNMENT) != log_region_size_t'(0) |-> max_transfer_len <= max_log_len)
   `OCAH_OT_ASSERT(TransferCapacityBeatAligned_A,
-                  max_transfer_len % log_len_t'(LOG_WORD_SIZE) ==
-                  log_len_t'(0))
-  `OCAH_OT_ASSERT(EffectiveLogLenWithinSlot_A,
-                  effective_log_len <= max_transfer_len)
+                  max_transfer_len % log_len_t'(LOG_WORD_SIZE) == log_len_t'(0))
+  `OCAH_OT_ASSERT(EffectiveLogLenWithinSlot_A, effective_log_len <= max_transfer_len)
   `OCAH_OT_ASSERT(EffectiveLogLenExactMin_A,
-                  effective_log_len ==
-                  (log_len > max_transfer_len ? max_transfer_len : log_len))
+                  effective_log_len == (log_len > max_transfer_len ? max_transfer_len : log_len))
   `OCAH_OT_ASSERT(FetchResponseWithinSlot_A,
-                  log_fetch_mem_resp_valid |->
-                  next_log_bytes_fetched <= max_transfer_len)
+                  log_fetch_mem_resp_valid |-> next_log_bytes_fetched <= max_transfer_len)
   `OCAH_OT_ASSERT(FetchWordCounterWithinMaximum_A,
-                  log_words_fetched_cnt <
-                  log_words_fetched_cnt_t'(MAX_LOG_LEN / LOG_WORD_SIZE))
+                  log_words_fetched_cnt < log_words_fetched_cnt_t'(MAX_LOG_LEN / LOG_WORD_SIZE))
 
   `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)

@@ -1152,9 +1152,8 @@ module i2c_core
                        TARGET_TX_FIFO_DEPTH > 0 && TARGET_TX_FIFO_DEPTH_W <= MaxFifoDepthW)
   `OCAH_OT_ASSERT_INIT(TargetRxFifoDepthValid_A,
                        TARGET_RX_FIFO_DEPTH > 0 && TARGET_RX_FIFO_DEPTH_W <= MaxFifoDepthW)
-  `OCAH_OT_ASSERT_INIT(HostTimeoutWidthValid_A,
-                       $bits(host_timeout) ==
-                       $bits(reg_out_i.HOST_TIMEOUT_CTRL.VAL.value))
+  `OCAH_OT_ASSERT_INIT(HostTimeoutWidthValid_A, $bits(host_timeout) == $bits
+                       (reg_out_i.HOST_TIMEOUT_CTRL.VAL.value))
 
   `OCAH_OT_ASSERT(HostTimeoutValuePreserved_A,
                   host_timeout == reg_out_i.HOST_TIMEOUT_CTRL.VAL.value)

@@ -310,16 +310,15 @@ module i2c_bus_monitor
   assign event_bus_active_timeout_o = bus_active_timeout_det_d && !bus_active_timeout_det_q;
   assign event_host_timeout_o = !target_idle_i && bus_inactive_timeout_det;
 
-  `OCAH_OT_ASSERT_INIT(BusInactiveTimeoutWidthValid_A,
-                       $bits(bus_inactive_timeout_i) == 31 &&
-                       $bits(bus_release_cnt) == 31)
-  `OCAH_OT_ASSERT(MonitorEnableLoadsHostTimeout_A,
-                  monitor_enable && !monitor_enable_q &&
-                  multi_controller_enable_i |=>
-                  bus_release_cnt == $past(bus_inactive_timeout_i))
-  `OCAH_OT_ASSERT(BusReleaseCounterLoadPreserves_A,
-                  bus_release_cnt_load &&
-                  !(monitor_enable && !monitor_enable_q) |=>
-                  bus_release_cnt == $past(bus_release_cnt_sel))
+  `OCAH_OT_ASSERT_INIT(BusInactiveTimeoutWidthValid_A, $bits(bus_inactive_timeout_i) == 31 && $bits
+                       (bus_release_cnt) == 31)
+  `OCAH_OT_ASSERT(
+      MonitorEnableLoadsHostTimeout_A,
+      monitor_enable && !monitor_enable_q && multi_controller_enable_i |=> bus_release_cnt == $past
+      (bus_inactive_timeout_i))
+  `OCAH_OT_ASSERT(
+      BusReleaseCounterLoadPreserves_A,
+      bus_release_cnt_load && !(monitor_enable && !monitor_enable_q) |=> bus_release_cnt == $past
+      (bus_release_cnt_sel))
 
 endmodule

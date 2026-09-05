@@ -92,8 +92,7 @@ package log_engine_pkg;
   localparam int unsigned LOG_WORD_BYTE_PTR_WIDTH = $clog2(LOG_WORD_SIZE);
   typedef logic [LOG_WORD_BYTE_PTR_WIDTH-1:0] log_word_byte_ptr_t;
 
-  localparam int unsigned LOG_WORDS_FETCHED_CNT_WIDTH =
-      $clog2((MAX_LOG_LEN / LOG_WORD_SIZE) + 1);
+  localparam int unsigned LOG_WORDS_FETCHED_CNT_WIDTH = $clog2((MAX_LOG_LEN / LOG_WORD_SIZE) + 1);
   typedef logic [LOG_WORDS_FETCHED_CNT_WIDTH-1:0] log_words_fetched_cnt_t;
 
   // Log write parameters
