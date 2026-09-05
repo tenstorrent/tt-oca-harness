@@ -1,8 +1,8 @@
 # OCA-classic non-secure boot image for the SEP boot ROM.
 #
 # Paths are relative to hw/sys/sep/bootrom/prod (the packer's cwd -- the Makefile
-# recipe runs under `make -C`). Unlike the Grendel configs, OCA does NOT expand
-# $OCH_ROOT/$ROOT in paths: src/oca/payload.py opens `path` verbatim.
+# recipe runs under `make -C`) and are used verbatim: src/oca/payload.py opens
+# `path` as given, with no $OCH_ROOT/$ROOT expansion.
 #
 # timestamp is pinned so repeated packs are byte-identical; an absent timestamp
 # defaults to "now", which would make every build produce a different image and

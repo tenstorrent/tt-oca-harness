@@ -132,7 +132,7 @@ args = [
 # key revocation, RSA-3072 modexp on OTBN, PKCS#1 unpad, payload hash -- which the
 # non-secure test never reaches (it prints SBOOT_OFF and skips straight past).
 #
-# No special eFuse image is needed: secure_boot_enabled() enforces on the manifest
+# No special eFuse image is needed: enforcement follows the manifest's secure-boot
 # flag when the lifecycle is TEST_DEV, and a zero OTP already gives TEST_DEV with
 # sboot_dis=0. (The internal flow ships a PROD preload instead; either works.)
 #

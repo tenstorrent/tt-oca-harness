@@ -370,11 +370,9 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
             lc_write_demotion_2(false, true);
             simputs("DEMOTE: PROD_END lock\n");
         } else {
-            // OCA folds both halves of this decision into one 16-bit
-            // demotion_control field, where the old format split them across
-            // usage_constraints.selector_bits (is it specified) and
-            // boot_arguments.flag_args (what is the value). The VALID bit is
-            // the "specified" half; the ENABLE bit is the value.
+            // Both halves of this decision live in one 16-bit
+            // demotion_control field: the VALID bit says whether demotion is
+            // specified at all, the ENABLE bit says what the value is.
             uint32_t dc = rom_oca_demotion_control();
             bool bl2_demote = (dc & OCA_DEMOTE_BL2_ENABLE) != 0u;
 

@@ -2661,8 +2661,7 @@ embedded hash) (<<sec:attestation>>).
 (<<sec:attestation>>).
 |===
 
-Manifest-path failures use the `MANIFEST_ERR_*` namespace (`0x0003_0001`–`0x0003_0018` in
-the legacy implementation); under the OCA migration these map from `oca_result_t` — the
+Manifest-path failures use the `MANIFEST_ERR_*` namespace and map from `oca_result_t`; the
 authoritative mapping is <<sec:security_inventory>>.
 
 [appendix]
