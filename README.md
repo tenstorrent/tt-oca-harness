@@ -24,7 +24,7 @@ The Getting Started Guide, in particular, can be found [here](https://tenstorren
 Contributions are welcome under the Apache License 2.0. Read
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the pull-request process,
 SPDX header form, and local lint/format commands. This project follows the
-[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+[`CODE_OF_CONDUCT.adoc`](CODE_OF_CONDUCT.adoc).
 
 ## License
 

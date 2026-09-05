@@ -52,8 +52,14 @@ addrmap log_engine #(
         field {
             sw = rw;
             hw = r;
-            desc = "Log Region Start Address High.";
-        } LOG_REGION_ADDR_HI[63:32] = 0x0;
+            desc = "Log Region Start Address High. Contains fabric address bits [55:32].";
+        } LOG_REGION_ADDR_HI[55:32] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Reserved. Reads as zero; writes are ignored.";
+        } RESERVED[63:56] = 0x0;
     };
 
     reg LOG_WRITE_ADDR {
