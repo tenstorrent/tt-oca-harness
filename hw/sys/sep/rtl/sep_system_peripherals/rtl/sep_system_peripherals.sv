@@ -49,7 +49,6 @@ module sep_system_peripherals (
   input  logic smc_fuse_sense_done_i,
   input  logic sep_fuse_sense_done_i,
 
-  input  sep_pkg::sep_straps_t sep_straps_i,
 
   output logic [31:1] nmi_vec_o,
 
@@ -530,7 +529,6 @@ module sep_system_peripherals (
     .smc_fuse_sense_done_i                     (smc_fuse_sense_done_i),
     .sep_fuse_sense_done_i                     (sep_fuse_sense_done_i),
 
-    .sep_straps_i                              (sep_straps_i),
 
     .nmi_vec_o                                 (nmi_vec_o),
 

@@ -512,4 +512,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Verify regenerated register collateral
-        run: bash scripts/ci/check-regen-regs.sh .
+        run: bash scripts/ci/check-regen-regs.sh --skip-if-unrelated .

@@ -117,6 +117,20 @@ ccache = true
 [build.options]
 build_jobs = 8
 
+[coverage.verilator]
+# Instrument line/branch (--coverage-line) and SVL user coverage; toggle
+# stays off because with the simulator default `--coverage` one SMC test
+# leaf's native database is ~0.6 GB, which does not fit a reseeded
+# regression on standard CI runner disk before merge.
+#
+# --output-groups 0 disables Verilator's default concatenation of the
+# generated .cpp files into --build-jobs groups. Grouping is by file count,
+# so on the coverage-instrumented model one group collected ~240 MB of
+# C++ into a single translation unit that the compiler did not finish in
+# two hours; per-file compilation keeps every unit and every compiler
+# process bounded (46-minute build on six cores, ~12 MB database per leaf).
+build_args = ["--coverage-line", "--coverage-user", "--output-groups", "0"]
+
 [frameworks.cocotb]
 python_root = "hw/sys/smc/dv/cocotb"
 test_dir = "hw/sys/smc/dv/cocotb/tests"

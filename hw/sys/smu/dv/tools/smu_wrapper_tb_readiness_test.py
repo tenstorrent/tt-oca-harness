@@ -34,10 +34,12 @@ SMOKE_TESTS = {
     "smu_smc_smoke_test": TARGET_NO_SEP,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Green merge-gate smoke (no SEP=1 / no TCM shim).
+# Merge-gate smoke covers both wrapper profiles.
 EXPECTED_SMOKE_GROUP = {
     "smu_wrapper_elaboration_no_sep_test",
+    "smu_wrapper_elaboration_sep_rtl_test",
     "smu_smc_smoke_test",
+    "smu_sep_smoke_test",
 }
 
 REQUIRED_SOURCES = (

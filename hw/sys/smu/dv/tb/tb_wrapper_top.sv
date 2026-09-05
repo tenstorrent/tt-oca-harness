@@ -459,9 +459,9 @@ module smu_wrapper_uvm_top (
   logic        rst_primary_smc_clk_n;
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
-  sep_pkg::sep_straps_t    sep_straps;
+  logic                    secure_tm_req;
 
-  assign sep_straps = '0;
+  assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
   // ext_in AXI master surface.
   //
@@ -1286,7 +1286,6 @@ module smu_wrapper_uvm_top (
 
     .test_en_i (1'b0),
     .scan_rst_ni (1'b1),
-    .captured_straps_i ('0),
 
     // Without an external BISR/MBIST agent the boot sequencer waits forever
     // if these stay low (CPU never fetches ROM).
@@ -1304,7 +1303,7 @@ module smu_wrapper_uvm_top (
     .lcc_demote_state_2_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
-    .sep_straps_i (sep_straps),
+    .secure_tm_req_i (secure_tm_req),
 
     .ext_debug_bus_i ('0),
     .gpio_interrupt_o (),

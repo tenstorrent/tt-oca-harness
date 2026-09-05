@@ -172,7 +172,6 @@
 
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
-|`captured_straps_i` |`logic` |Input |`[63:0]` |Captured strap configuration. Please refer to the `reset_unit` STRAPS_LO and STRAPS_HI register descriptions for the decoded value of the straps. |GPIO padring |N/A
 
 |`mem_repair_done_i` |`logic` |Input |1 |Memory repair done indicator. |DFT controller |1'b0
 |`mem_repair_success_i` |`logic` |Input |1 |Memory repair success indicator. |DFT controller |1'b0
@@ -215,5 +214,5 @@
 |`lcc_demote_state_2_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 2. |External lifecycle logic |N/A
 |`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A
 |`clk_sep_wdt_i` |`logic` |Input |1 |SEP watchdog timer clock passthrough. |Low-frequency clock source |N/A
-|`sep_straps_i` |`sep_pkg::sep_straps_t` |Input |- |SEP configuration straps passthrough. |GPIO padring / tie-off |N/A
+|`secure_tm_req_i` |`logic` |Input |- |Secure test mode request, passthrough to SEP. |GPIO padring / tie-off |N/A
 |===

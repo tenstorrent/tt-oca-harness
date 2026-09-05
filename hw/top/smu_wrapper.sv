@@ -233,9 +233,6 @@ module smu_wrapper
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
 
-  // Captured Straps
-  input  logic [63:0]  captured_straps_i,
-
   // DFT status indicators
   input  logic mem_repair_done_i,
   input  logic mem_repair_success_i,
@@ -270,7 +267,7 @@ module smu_wrapper
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
   // Gated I3C peripheral clock. The table memories it drives are absorbed by
   // smc_ip_integration, so this leaves the wrapper for observation only.

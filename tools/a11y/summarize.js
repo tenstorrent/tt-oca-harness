@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // Reads report/a11y-results.jsonl (written incrementally during the
 // Playwright run) and prints a readable summary: violation counts by
 // page and by impact level, the actual failing selector/HTML for each

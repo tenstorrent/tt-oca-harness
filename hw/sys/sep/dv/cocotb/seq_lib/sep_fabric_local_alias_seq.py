@@ -34,8 +34,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     OUTFILT_BASE,
 )
 
-# `local_master_alias_remap_ctrl[16]`; the count comes from the export so a
-# seed can select any region the bank actually has.
+# `local_master_alias_remap_ctrl[16]`; the count comes from the export. The
+# datapath test selects the upper half so the remap debug index's MSB is exercised.
 N_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
 IDX_START = 12
 PAGE = 1 << IDX_START
@@ -58,7 +58,8 @@ class SepLocalAliasCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        self.region = rng.randrange(N_REGIONS)
+        upper_half = N_REGIONS // 2
+        self.region = upper_half + rng.randrange(N_REGIONS - upper_half)
         self.src_page = rng.choice(SRC_PAGES)
         self.intra = DEST_ADDR & (PAGE - 1)
         self.access_addr = self.src_page + self.intra

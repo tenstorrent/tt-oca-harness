@@ -20,11 +20,13 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
 
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
+PULSE_DEST_PATS = (0x01, 0x20, 0x25, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)
+CFG_INT_CT_MODE = 0x80
 
 
 class smu_sep_smoke_test_seq:
-    """SMU_ALL_007: primary-reset export + CTM pulse-sync / reserved [1:0]."""
+    """SMU_ALL_007: primary-reset export + CTM mode packing / reserved [1:0]."""
 
     BOUND_CYCLES = 2000
     BOUND_REF = 2000
@@ -274,7 +276,7 @@ class smu_sep_smoke_test_seq:
         )
 
         # ------------------------------------------------------------------
-        # S4 DTP-XTRIG-CTM.S2 — pulse-sync leaves ack unused
+        # S4 DTP-XTRIG-CTM.S2 — configured mode packing; pulse-sync ack unused
         # ------------------------------------------------------------------
         self._mark_step(
             "S4",
@@ -290,12 +292,20 @@ class smu_sep_smoke_test_seq:
         # No DefaultCfg inference / skip-to-pass on the proof path.
         mode_sig = dut.u_dut.DTP_XTRIG_INT_CT_MODE
         mode_val = self._sample(mode_sig, "DTP_XTRIG_INT_CT_MODE")
+        expected_mode = CFG_INT_CT_MODE << 2
+        if mode_val != expected_mode:
+            raise AssertionError(
+                f"CTM.S2 mode=0x{mode_val:x} expect 0x{expected_mode:x} "
+                "(configured [9:2] plus SMC-reserved [1:0])"
+            )
         mode_lo = mode_val & 0x3
         if mode_lo != 0:
             raise AssertionError(f"CTM.S2 mode[1:0]={mode_lo} expect 0 (pulse-sync)")
 
         ack_samples: list[int] = []
-        for pat in DEST_PATS:
+        # Bit 7 is configured for handshake mode to prove the upper configured
+        # mode bit survives packing. Exercise ack-unused only on pulse-sync lanes.
+        for pat in PULSE_DEST_PATS:
             dut.xtrig_ctm_dst_req.value = pat
             await RisingEdge(dut.clk_smu_i)
             await RisingEdge(dut.clk_smu_i)
@@ -311,15 +321,16 @@ class smu_sep_smoke_test_seq:
         if idle_ack != 0:
             raise AssertionError(f"CTM.S2 idle dst_ack={idle_ack}")
         detail_ctm2 = (
-            f"mode=pulse_sync mode_lo={mode_lo} ack_unused=1 "
+            f"mode=0x{mode_val:x} configured_hi=0x{CFG_INT_CT_MODE:x} "
+            f"mode_lo={mode_lo} pulse_sync_ack_unused=1 "
             f"dst_ack_samples={[hex(a) for a in ack_samples]} "
             f"cells=mode=pulse_sync,ack_unused=1"
         )
         self._log(f"CHK-DTP-XTRIG-CTM-S2: PASS ({detail_ctm2})")
         sb.expect_eq(
             "CHK-DTP-XTRIG-CTM-S2 ack unused",
-            (mode_lo, idle_ack, max(ack_samples) if ack_samples else 0),
-            (0, 0, 0),
+            (mode_val, mode_lo, idle_ack, max(ack_samples) if ack_samples else 0),
+            (expected_mode, 0, 0, 0),
             evidence="CHK-DTP-XTRIG-CTM-S2",
         )
 

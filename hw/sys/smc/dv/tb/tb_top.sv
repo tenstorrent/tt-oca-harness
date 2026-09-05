@@ -1215,7 +1215,6 @@ module smc_uvm_top
         // scan reset deasserted -- matches smc.sv port names (test_en_i / scan_rst_ni).
         .test_en_i                  (tb_test_en_i),
         .scan_rst_ni                (1'b1),
-        .captured_straps_i          (tb_captured_straps),
         // Without an external BISR/MBIST agent the boot sequencer would wait
         // forever if these stayed low (CPU never fetches ROM) -- same fix as
         // hw/sys/smu/dv/tb/tb_wrapper_top.sv's smu_wrapper instance.
@@ -2319,7 +2318,6 @@ module smc_uvm_top
     assign tb_ndmreset_request       = '0;
     assign tb_temp_interrupt_i       = 1'b0;
     assign tb_ext_interrupt_0_i      = 1'b0;
-    assign tb_captured_straps        = '0;
     assign tb_ss_reset_complete      = '1;
     assign tb_jtag_reset_ctrl        = '0;
     assign tb_mem_repair_abort       = 1'b0;

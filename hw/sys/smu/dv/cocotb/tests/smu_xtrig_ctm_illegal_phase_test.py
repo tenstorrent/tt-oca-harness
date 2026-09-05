@@ -20,7 +20,7 @@ from smu_base_test import smu_base_test
 
 _cocotb_compat.apply()
 
-PAT_A = 0xA5
+PAT_A = 0x25
 PAT_B = 0x5A
 
 

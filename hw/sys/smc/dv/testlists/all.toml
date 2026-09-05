@@ -346,8 +346,8 @@ tests = [
     "smc_output_fabric_slverr_inject_test",
     "smc_output_filter_remap_security_test",
     "smc_zeroer_dma_timeout_test",
-    # --- reset (7) ---
-    "smc_captured_straps_test",
+    # --- reset (6) ---
+    # smc_captured_straps_test → deferred (needs_adopter_straps); covered in nonfree
     "smc_cold_reset_test",
     "smc_cool_reset_x_cold_reset_test",
     "smc_jtag_reset_ctrl_test",
