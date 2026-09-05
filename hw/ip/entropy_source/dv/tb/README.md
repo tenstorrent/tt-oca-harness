@@ -10,6 +10,9 @@ This directory contains comprehensive testbenches for verifying the entropy comp
 # Run the simulation
 make
 
+# Check that enabling the ring advances simulated time
+make ring-smoke
+
 # View help
 make help
 

@@ -46,8 +46,6 @@ timeout_sec = 1800
 tags = ["smc", "mailbox", "phase1", "smu_all_004"]
 run_modes = ["smc"]
 
-# smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
-
 # smc_efuse_reg_sanity_test — not ported
 
 # smu_smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
@@ -105,14 +103,10 @@ timeout_sec = 1800
 tags = ["smc", "wdt", "tier_c", "depth"]
 run_modes = ["smc"]
 
-# Depth: reset-unit STRAPS_* track captured_straps_i (SEP=0; no Force).
-[[tests]]
-name = "smu_smc_gpio_strap_sanity_test"
-module = "smu_smc_gpio_strap_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["smc", "gpio", "tier_c", "depth"]
-run_modes = ["smc"]
+# smu_smc_gpio_strap_sanity_test — deferred (needs_adopter_straps): strap capture is
+# adopter-owned, so the reset_unit STRAPS_* CSRs and the strap bus this test drove no
+# longer exist here. Covered in nonfree by
+# hw/sys/smc/dv/tb/tb_uvm/cocotb_tests/smc_captured_straps_test.py.
 
 # Depth: mailbox outbound-0 STATUS/IRQEN via fabric J2A (SEP=0; no Force).
 [[tests]]

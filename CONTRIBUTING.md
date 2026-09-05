@@ -2,7 +2,10 @@
 
 Thank you for your interest in contributing to [tt-oca-harness](https://github.com/tenstorrent/tt-oca-harness) (Open Chiplet Atlas Harness, OCAH). This document describes how to get set up, the conventions we follow, and the process for submitting changes.
 
-By contributing to this project, you agree that your contributions will be licensed under the [Apache License, Version 2.0](LICENSE).
+By contributing to this project, you agree that code contributions are licensed
+under the [Apache License, Version 2.0](LICENSE), while documentation and image
+contributions are licensed under
+[Creative Commons Attribution 4.0 International](LICENSE-DOCS).
 
 ## Code of Conduct
 

@@ -28,11 +28,12 @@ SPDX header form, and local lint/format commands. This project follows the
 
 ## License
 
-- Hardware, software, and scripts: [`LICENSE`](LICENSE) (Apache License 2.0).
-  [`LICENSE_understanding.txt`](LICENSE_understanding.txt) is a short reading
-  note for that license.
-- Documentation: [`LICENSE-DOCS`](LICENSE-DOCS) (CC-BY-4.0) where that file
-  applies.
+- [`LICENSE`](LICENSE) (Apache License 2.0): overall license for this project,
+  except where specified.
+- [`LICENSE-DOCS`](LICENSE-DOCS) (CC-BY-4.0): license for all documentation and
+  images only.
+- [`LICENSE_understanding.txt`](LICENSE_understanding.txt): Tenstorrent's
+  clarification of how the Apache License 2.0 applies to this repository.
 - Third-party notices: [`NOTICE`](NOTICE).
 
 By contributing you agree that your contributions are licensed as described
