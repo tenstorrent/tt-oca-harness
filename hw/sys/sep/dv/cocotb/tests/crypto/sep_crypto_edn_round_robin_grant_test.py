@@ -39,6 +39,11 @@ _AES_BIT = 0
 _URND_BIT = 3
 _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
 _DUAL_REQ_CYCLES = 50_000
+# Enough consecutive grants to see the arbiter alternate, and the floor below
+# which the sample says nothing. Literals, so the asserts do not move with the
+# collection loop.
+_GRANT_SAMPLE_TARGET = 16
+_GRANT_MIN_SAMPLES = 4
 _GRANT_WAIT_CYCLES = 200_000
 
 
@@ -142,19 +147,18 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cocotb.start_soon(_monitor())
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
+        # Collect grants for a fixed budget and let the asserts below decide.
+        # Breaking out on the same condition the asserts test would make them
+        # restatements of the loop guard, unable to fail at their own sites.
         for _ in range(_GRANT_WAIT_CYCLES):
-            if (
-                _AES_BIT in grants
-                and _URND_BIT in grants
-                and any(a != b for a, b in zip(grants, grants[1:]))
-            ):
+            if len(grants) >= _GRANT_SAMPLE_TARGET:
                 break
             await ClockCycles(dut.clk_i, 20)
-        else:
-            raise AssertionError(
-                "crypto-EDN grants did not alternate "
-                f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
-            )
+        assert len(grants) >= _GRANT_MIN_SAMPLES, (
+            f"CHK-NO-STARVE FAIL: only {len(grants)} post-adapter grants observed in "
+            f"{_GRANT_WAIT_CYCLES} polls, need {_GRANT_MIN_SAMPLES} to judge sharing "
+            f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
+        )
 
         assert _AES_BIT in grants and _URND_BIT in grants, (
             f"CHK-NO-STARVE FAIL: a requesting client got no edn_ack (grants={grants})"

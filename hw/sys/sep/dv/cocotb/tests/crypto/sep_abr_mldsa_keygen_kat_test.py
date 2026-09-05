@@ -150,17 +150,26 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         st_z = await self._wait_status(abr, ST_VALID, 0, what="post-zeroize VALID clear")
         assert (st_z & ST_ERROR) == 0, f"post-zeroize STATUS=0x{st_z:08x}, expected VALID=0 ERROR=0"
-        pk_z = await abr.read_words(ABR_PUBKEY, 4)
-        assert all(w == 0 for w in pk_z), (
-            f"post-zeroize pubkey still live: {[hex(w) for w in pk_z]}"
+        # Read the whole window, not a prefix: ZEROIZE must clear all of it, and
+        # the KAT already pays for a full-window read.
+        pk_z = await abr.read_words(ABR_PUBKEY, PK_WORDS)
+        live = [(i, w) for i, w in enumerate(pk_z) if w != 0]
+        assert not live, (
+            f"post-zeroize pubkey still live in {len(live)} of {PK_WORDS} words, "
+            f"first at index {live[0][0]}=0x{live[0][1]:08x}"
         )
-        self.logger.info("CHK-ZEROIZE PASS: VALID=0, first 4 pubkey words read 0")
+        self.logger.info("CHK-ZEROIZE PASS: VALID=0 and all %d pubkey words read 0", PK_WORDS)
 
         flipped = cfg.flipped_seed(list(NIST_KG_SEED))
         pk2 = await self._keygen(abr, flipped, cfg.entropy, what="sensitivity-keygen")
         assert pk2 != pk, (
             "sensitivity keyGen returned the same pk as the NIST vector "
             f"(flip word {cfg.flip_word} bit {cfg.flip_bit} did not land)"
+        )
+        # A zeroed window differs from pk too, so require real key material.
+        assert any(w != 0 for w in pk2), (
+            "sensitivity keyGen returned an all-zero pubkey window; the inequality "
+            "against the NIST vector is satisfied by a cleared window, not a new key"
         )
         self.logger.info(
             "CHK-SENSITIVITY PASS: flipped seed word %d bit %d produced a different public key",

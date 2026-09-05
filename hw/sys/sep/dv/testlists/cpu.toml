@@ -171,10 +171,10 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# PIC source 39 claim + mask for the token-comparator redundancy fault.
+# PIC source 40 claim + mask for the token-comparator redundancy fault.
 # Firmware arms the source and presents a SEC_DISABLE token; the host injects
-# a collapse on that comparator (tb port). Proves claim id 39, the
-# SEC_DISABLE sticky bit, and that masking meie[39] stops re-entry.
+# a collapse on that comparator (tb port). Proves claim id 40, the
+# SEC_DISABLE sticky bit, and that masking meie[40] stops re-entry.
 # +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
 name = "sep_efuse_token_match_fault_pic_test"
 module = "efuse.sep_efuse_token_match_fault_pic_test"
