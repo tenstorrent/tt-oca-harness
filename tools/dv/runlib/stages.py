@@ -824,18 +824,18 @@ def cocotb_make_jobs(jobs: int):
     patched: list[tuple[Any, int]] = []
     if jobs > 1:
         try:
-            module = importlib.import_module("cocotb_tools.runner")
+            from cocotb_tools import runner as cocotb_runner
         except ImportError:
-            module = None
-        if module is not None and hasattr(module, "MAX_PARALLEL_BUILD_JOBS"):
-            old_value = int(getattr(module, "MAX_PARALLEL_BUILD_JOBS"))
-            setattr(module, "MAX_PARALLEL_BUILD_JOBS", jobs)
-            patched.append((module, old_value))
+            pass
+        else:
+            if hasattr(cocotb_runner, "MAX_PARALLEL_BUILD_JOBS"):
+                patched.append((cocotb_runner, int(cocotb_runner.MAX_PARALLEL_BUILD_JOBS)))
+                cocotb_runner.MAX_PARALLEL_BUILD_JOBS = jobs
     try:
         yield
     finally:
         for module, old_value in patched:
-            setattr(module, "MAX_PARALLEL_BUILD_JOBS", old_value)
+            module.MAX_PARALLEL_BUILD_JOBS = old_value
 
 
 @contextmanager
