@@ -64,6 +64,7 @@ package log_engine_pkg;
   // Independent Parameters
   localparam int unsigned NUM_LOG_ENTRIES = 16;  // Must be a power of 2
   localparam int unsigned MAX_LOG_REGION_SIZE = 524288;  // 512 KB
+  localparam int unsigned LOG_REGION_ALIGNMENT = NUM_LOG_ENTRIES * (LOG_FETCH_DATA_WIDTH / 8);
 
   // Dependent Parameters
   // General parameters
@@ -73,7 +74,7 @@ package log_engine_pkg;
   typedef logic [LOG_REGION_SIZE_W-1:0] log_region_size_t;
 
   localparam int unsigned MAX_LOG_LEN = MAX_LOG_REGION_SIZE / NUM_LOG_ENTRIES;
-  localparam int unsigned LOG_LEN_WIDTH = $clog2(MAX_LOG_LEN);
+  localparam int unsigned LOG_LEN_WIDTH = $clog2(MAX_LOG_LEN + 1);
   typedef logic [LOG_LEN_WIDTH-1:0] log_len_t;
 
   localparam int unsigned LOG_INDEX_WIDTH = NUM_LOG_ENTRIES > 1 ? $clog2(NUM_LOG_ENTRIES) : 1;
@@ -84,10 +85,14 @@ package log_engine_pkg;
   localparam int unsigned LOG_WORD_SIZE = LOG_FETCH_DATA_WIDTH / 8;
   typedef byte_t [LOG_WORD_SIZE-1:0] log_word_t;
 
+  function automatic log_len_t log_word_floor(input log_len_t byte_count);
+    return (byte_count / log_len_t'(LOG_WORD_SIZE)) * log_len_t'(LOG_WORD_SIZE);
+  endfunction
+
   localparam int unsigned LOG_WORD_BYTE_PTR_WIDTH = $clog2(LOG_WORD_SIZE);
   typedef logic [LOG_WORD_BYTE_PTR_WIDTH-1:0] log_word_byte_ptr_t;
 
-  localparam int unsigned LOG_WORDS_FETCHED_CNT_WIDTH = LOG_LEN_WIDTH - LOG_WORD_BYTE_PTR_WIDTH;
+  localparam int unsigned LOG_WORDS_FETCHED_CNT_WIDTH = $clog2((MAX_LOG_LEN / LOG_WORD_SIZE) + 1);
   typedef logic [LOG_WORDS_FETCHED_CNT_WIDTH-1:0] log_words_fetched_cnt_t;
 
   // Log write parameters

@@ -28,7 +28,7 @@ module sep_efuse_wrapper #(
   input  logic                               test_en_i,
   input  logic                               scan_rst_ni,
 
-  input  sep_pkg::sep_straps_t               sep_straps_i,
+  input  logic                               secure_tm_req_i,
   input  logic                               ext_boot_seq_done_i,
 
   output logic                               security_disable_o,
@@ -193,9 +193,8 @@ module sep_efuse_wrapper #(
   //   - If security_disable is NOT asserted, the test_en strap is latched when SEP fuse sense is done.
   always_ff @(posedge clk_i) begin
     if (!rst_ni) secure_tm_n0_scan <= 1'b0;
-    else if (security_disable && (reset_cycle_cnt == 2'd1))
-      secure_tm_n0_scan <= sep_straps_i.test_straps.test_en;
-    else if (fuse_sense_done_posedge) secure_tm_n0_scan <= sep_straps_i.test_straps.test_en;
+    else if (security_disable && (reset_cycle_cnt == 2'd1)) secure_tm_n0_scan <= secure_tm_req_i;
+    else if (fuse_sense_done_posedge) secure_tm_n0_scan <= secure_tm_req_i;
   end
 
   /////////////////////////////////////////////////////////////

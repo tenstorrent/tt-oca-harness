@@ -164,7 +164,6 @@ module smc_wrapper (
   input  logic test_en_i,
   input  logic scan_rst_ni,
 
-  input  logic [63:0] captured_straps_i,
 
   input  logic mem_repair_done_i,
   input  logic mem_repair_success_i,
@@ -251,7 +250,6 @@ module smc_wrapper (
   smc u_smc (
     .*,
     // The public port keeps the 64-bit strap image; smc consumes the bonded GPIO straps.
-    .captured_straps_i   (captured_straps_i[smc_pkg::NUM_BONDED_GPIO-1:0]),
 
     .smc_external_req_o  (smc_external_req),
     .smc_external_resp_i (smc_external_resp),

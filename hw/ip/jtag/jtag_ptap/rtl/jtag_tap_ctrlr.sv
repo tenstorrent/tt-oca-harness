@@ -211,9 +211,10 @@ module jtag_tap_ctrlr
 
   prim_flop #(
     .Width(1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge(1'b1)
   ) u_capture_dr_flop (
-    .clk_i  (~client_tap_ctrl_i.tck),
+    .clk_i  (client_tap_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (capture_dr_d),
     .q_o    (capture_dr)
@@ -221,9 +222,10 @@ module jtag_tap_ctrlr
 
   prim_flop #(
     .Width(1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge(1'b1)
   ) u_shift_dr_flop (
-    .clk_i  (~client_tap_ctrl_i.tck),
+    .clk_i  (client_tap_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (shift_dr_d),
     .q_o    (shift_dr)
@@ -231,9 +233,10 @@ module jtag_tap_ctrlr
 
   prim_flop #(
     .Width(1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge(1'b1)
   ) u_capture_ir_flop (
-    .clk_i  (~client_tap_ctrl_i.tck),
+    .clk_i  (client_tap_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (capture_ir_d),
     .q_o    (capture_ir)
@@ -241,9 +244,10 @@ module jtag_tap_ctrlr
 
   prim_flop #(
     .Width(1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge(1'b1)
   ) u_shift_ir_flop (
-    .clk_i  (~client_tap_ctrl_i.tck),
+    .clk_i  (client_tap_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (shift_ir_d),
     .q_o    (shift_ir)
@@ -251,9 +255,10 @@ module jtag_tap_ctrlr
 
   prim_flop #(
     .Width(1),
-    .ResetValue(1'b1)
+    .ResetValue(1'b1),
+    .Negedge(1'b1)
   ) u_test_logic_reset_flop (
-    .clk_i  (~client_tap_ctrl_i.tck),
+    .clk_i  (client_tap_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (test_logic_reset_d),
     .q_o    (test_logic_reset)
@@ -261,9 +266,10 @@ module jtag_tap_ctrlr
 
   prim_flop #(
     .Width(1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge(1'b1)
   ) u_tdo_oen_flop (
-    .clk_i  (~client_tap_ctrl_i.tck),
+    .clk_i  (client_tap_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (tdo_oen_d),
     .q_o    (tdo_oen_o)

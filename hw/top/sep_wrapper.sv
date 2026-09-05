@@ -108,7 +108,7 @@ module sep_wrapper
   input  logic smc_fuse_sense_done_i,
   output logic sep_fuse_sense_done_o,
 
-  input sep_pkg::sep_straps_t sep_straps_i,
+  input logic secure_tm_req_i,
 
   input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_global_base_addr_i,
   input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_region_size_i,

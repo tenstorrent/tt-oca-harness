@@ -24,6 +24,9 @@ module uart_core
   localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),
   localparam type         rx_fifo_depth_t = logic [RX_FIFO_DEPTH_WIDTH-1:0],
 
+  localparam int unsigned RX_FIFO_THRESHOLD_WIDTH = $clog2(4096 + 1),
+  localparam type         rx_fifo_threshold_t = logic [RX_FIFO_THRESHOLD_WIDTH-1:0],
+
   localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),
   localparam type         timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],
 
@@ -105,6 +108,8 @@ module uart_core
   logic            event_rx_overflow;
   logic event_rx_frame_err, event_rx_timeout, event_rx_parity_err;
   logic            rx_watermark_d;
+  logic            rx_fifo_threshold_supported;
+  rx_fifo_threshold_t rx_fifo_threshold;
   logic            tx_uart_idle_q;
   logic fifo_thr_rbr_err, rx_fifo_rbr_err, tx_fifo_thr_err;
   logic fifo_error_intr_test, fifo_error_intr_en;
@@ -645,25 +650,27 @@ module uart_core
   end
 
   always_comb begin
-    if (uart_fifo_en) begin
-      unique case (uart_fifo_rxilvl)
-        4'h0:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(1);  // UART 16550
-        4'h1:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(4);  // UART 16550
-        4'h2:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(8);  // UART 16550
-        4'h3:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(14); // UART 16550
-        4'h4:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(32);
-        4'h5:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(64);
-        4'h6:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(128);
-        4'h7:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(256);
-        4'h8:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(512);
-        4'h9:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(1024);
-        4'ha:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(2048);
-        4'hb:    rx_watermark_d = rx_fifo_depth >= rx_fifo_depth_t'(4096);
-        default: rx_watermark_d = 1'b0;
-      endcase
-    end else begin
-      rx_watermark_d = 1'b0;
-    end
+    rx_fifo_threshold = '0;
+    rx_fifo_threshold_supported = 1'b1;
+    unique case (uart_fifo_rxilvl)
+      4'h0:    rx_fifo_threshold = rx_fifo_threshold_t'(1);  // UART 16550
+      4'h1:    rx_fifo_threshold = rx_fifo_threshold_t'(4);  // UART 16550
+      4'h2:    rx_fifo_threshold = rx_fifo_threshold_t'(8);  // UART 16550
+      4'h3:    rx_fifo_threshold = rx_fifo_threshold_t'(14); // UART 16550
+      4'h4:    rx_fifo_threshold = rx_fifo_threshold_t'(32);
+      4'h5:    rx_fifo_threshold = rx_fifo_threshold_t'(64);
+      4'h6:    rx_fifo_threshold = rx_fifo_threshold_t'(128);
+      4'h7:    rx_fifo_threshold = rx_fifo_threshold_t'(256);
+      4'h8:    rx_fifo_threshold = rx_fifo_threshold_t'(512);
+      4'h9:    rx_fifo_threshold = rx_fifo_threshold_t'(1024);
+      4'ha:    rx_fifo_threshold = rx_fifo_threshold_t'(2048);
+      4'hb:    rx_fifo_threshold = rx_fifo_threshold_t'(4096);
+      default: rx_fifo_threshold_supported = 1'b0;
+    endcase
+
+    rx_fifo_threshold_supported &= RX_FIFO_DEPTH >= rx_fifo_threshold;
+    rx_watermark_d = uart_fifo_en && rx_fifo_threshold_supported &&
+                     rx_fifo_threshold_t'(rx_fifo_depth) >= rx_fifo_threshold;
   end
 
   assign intr_reqs.received_data_ready =

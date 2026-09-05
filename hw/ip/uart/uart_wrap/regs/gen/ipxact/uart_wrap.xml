@@ -802,7 +802,12 @@ Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>LOG_REGION_SIZE</ipxact:name>
-                <ipxact:description>Log Region Size. Specified in bytes. Needs to be a multiple of 16.</ipxact:description>
+                <ipxact:description>Log region size in bytes. Supported values are at most 512 KiB and aligned
+to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+larger value, RTL clamps the effective region to 512 KiB. For a value that is
+not 128-byte aligned, RTL divides the effective region among the 16 slots and
+rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+A requested LOG_LEN above that capacity is clamped to the capacity.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>

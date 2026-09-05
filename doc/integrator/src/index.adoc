@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Open Chiplet Atlas Harness (OCAH): Integrator Guide
@@ -884,11 +884,10 @@ non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
-The `sep_straps_i` input provides configuration straps for SEP-specific
-settings. The `jtag_id` input must be tied to an appropriate constant in the
-top-level integration. A `rst_vec_i` port exists on `tb_top.sv` for DV reset
-vector injection; it is not present on `sep.sv` itself and requires no
-integration tie-off.
+The `secure_tm_req_i` input is a secure test mode request. The `jtag_id` input
+must be tied to an appropriate constant in the top-level integration. A
+`rst_vec_i` port exists on `tb_top.sv` for DV reset vector injection; it is not
+present on `sep.sv` itself and requires no integration tie-off.
 
 ==== SEP Port Interface
 
@@ -1878,18 +1877,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`test_en_i` |input |1 |SMU external port
 |`scan_rst_ni` |input |1 |SMU external port
 |===
-
-===== Captured Straps
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`captured_straps_i` |input |[63:0] |SMU external port
-|===
-
-Please refer to the `reset_unit` STRAPS_LO and STRAPS_HI register descriptions for the decoded
-value of the straps.
 
 [[smc-dtp-interconnection]]
 ==== SMC-DTP Internal Interconnection
