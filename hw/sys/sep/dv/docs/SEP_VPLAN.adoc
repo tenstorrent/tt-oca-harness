@@ -691,7 +691,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Debug-disable gating ladder (`dbg_disable`)
 |PARTIAL
-|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`). Nine of the eleven bits are checked against the DTP path gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` and `dfd` are deliberately unclaimed: the path table in the lifecycle chapter and the RTL disagree on both, and in both cases the RTL is the stricter side. See <<known-limitations>>.
+|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`). Nine of the eleven bits are checked against the DTP path gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` and `dfd` are deliberately unclaimed: the path table in the lifecycle chapter and the RTL disagree on both, and they diverge in opposite directions -- `dfd` is stricter in the RTL, `dft_secure` is more permissive. See <<known-limitations>>.
 
 |Local-master alias remap datapath
 |PROVEN
@@ -3539,14 +3539,15 @@ per-IP clock gate.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Program × lock on a legal spare field.
+*Objective*: Program × lock on every legal spare field in one invocation.
 
 *Test Procedure*:
 
 [arabic]
-. Program one seed-selected bit of the spare; OTP readback and resense shadow match the independent image golden.
-. Program that spare's write-lock, then reject a second bit (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
-. Both discrete cells ran in one invocation.
+. Walk `SPARE0` through `SPARE7` in order. For each spare, program one seed-selected bit while unlocked; OTP readback and resense shadow match the independent image golden.
+. Program that spare's own `LOCKS_SPARE` bit, then reject a second bit (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
+. Spare `k+1` is programmed only after spare `k` is locked, so a lock bit wired past its own slot fails the next spare's unlocked-program cell.
+. The seed selects only the bit offsets inside each spare. Slot coverage does not depend on reseed.
 
 *Checkers*:
 
@@ -3554,11 +3555,11 @@ per-IP clock gate.
 |===
 |Checker |Contract
 |CHK-UNLOCK-PROGRAM
-|An unlocked spare bit programs and reads back in OTP and after resense.
+|An unlocked spare bit programs and reads back in OTP and after resense. Logged once per spare.
 |CHK-LOCK-REJECT
-|A write-locked spare rejects a later program; OTP and the post-resense shadow match the independent golden (lock bit set, rejected bit 0).
-|CHK-RAND-REP
-|Unlock-program and lock-reject both ran on the same spare.
+|A write-locked spare rejects a later program; OTP and the post-resense shadow match the independent golden (lock bit set, rejected bit 0). Logged once per spare.
+|CHK-SPARE-LOCK-SLOTS
+|All eight spares ran both cells in one invocation. A lock of spare `k` must not block spare `k+1`.
 |===
 
 '''''
@@ -5071,7 +5072,11 @@ constraint is not an open defect.
 |Topic |Contract
 
 |`dbg_disable` ladder: `dfd` and `dft_secure` (spec-vs-RTL)
-|The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). In both the RTL is the stricter side, so the divergence closes a path the specification would leave open and is fail-safe rather than a hole. `CHK-DBG-DISABLE` therefore checks the other nine bits and leaves these two unclaimed: asserting either side would turn an open architecture question into a DV opinion. Tracked as issues 450 (`dft_secure`) and 1576 (`dfd`). When arch rules, the golden gains the bit and the scorecard row moves from `PARTIAL` to `PROVEN`.
+|The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). The two divergences run in opposite directions and only one of them is safe.
+
+`dfd`: the RTL disables in more states than the table requires, so it closes a path the specification would leave open. Fail-safe.
+
+`dft_secure`: the RTL disables in *fewer* states. `dbg_disable` is active high, so Case 3 means `!SIP_DBG || !CHIPLET_DBG || !SEP_DBG` and the RTL omits the `SEP_DBG` term. At `SIP_DBG=1, CHIPLET_DBG=1, SEP_DBG=0` the specification says the secure DFT scan chain must be closed and the RTL leaves it open. This is the permissive direction on a chain the chapter's Class-2 rule treats as never-dumpable, so it is a security-relevant gap and not a neutral ambiguity. `CHK-DBG-DISABLE` therefore checks the other nine bits and leaves these two unclaimed: asserting either side would turn an open architecture question into a DV opinion. Tracked as issues 450 (`dft_secure`) and 1576 (`dfd`). When arch rules, the golden gains the bit and the scorecard row moves from `PARTIAL` to `PROVEN`.
 
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).

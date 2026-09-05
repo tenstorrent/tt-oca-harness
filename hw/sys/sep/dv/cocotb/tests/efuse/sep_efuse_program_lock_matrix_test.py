@@ -1,14 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse program x write-lock matrix on a legal spare field.
+"""eFuse program x write-lock matrix on every legal spare field.
 
-RAND-REP. Every seed walks both cells on one SPARE0..SPARE7 field (never
-LC_STATE):
+RAND-REP. Every seed walks both cells on SPARE0..SPARE7 (never LC_STATE):
 
   * unlocked: program a seed-selected bit, prove it in OTP and after resense
   * write-locked: program the spare's write-lock, resense, reject a second
     bit, prove OTP and the post-resense shadow match the independent golden
     (lock bit set, rejected bit still 0)
+
+Spares are walked in order, so a lock of spare k that also locks spare k+1
+fails the next unlocked-program cell. The seed selects only the bit offsets
+inside each spare.
 
 Real fuse sense. Clear-after-program on every program completion.
 """
@@ -62,7 +65,7 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
 
         self.logger.info(
             "CHK-SPARE-LOCK-SLOTS PASS: all %d spares programmed while unlocked and "
-            "rejected once locked; each lock held only its own slot",
+            "rejected once locked; a lock of spare k must not block spare k+1",
             len(cfg.cells),
         )
 

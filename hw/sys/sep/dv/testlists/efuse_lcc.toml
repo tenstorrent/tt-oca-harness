@@ -72,9 +72,10 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
-# eFuse program x write-lock on a legal spare field (never LC_STATE). RAND-REP:
-# unlocked program + write-lock reject every seed; spare index and bit offsets
-# from the run seed. Real fuse sense. Clear-after-program.
+# eFuse program x write-lock on every legal spare field (never LC_STATE).
+# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE7 every seed;
+# the seed selects only the bit offsets inside each spare. Real fuse sense.
+# Clear-after-program.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
