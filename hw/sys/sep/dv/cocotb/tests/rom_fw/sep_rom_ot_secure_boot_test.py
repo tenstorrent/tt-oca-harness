@@ -43,9 +43,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import (
     sep_rom_ot_dma_boot_test,
 )
 
-# Emitted only on the signed path. These replace the pre-OCA trio
-# (RSA_VERIFY_START / SIG_VALID / CRYPTO_VALIDATE_OK), which lived in
-# manifest_crypto.c and went away with the Grendel parser.
+# Emitted only on the signed path.
 #
 # PUBK_AUTHORIZED is the one worth having beyond the RSA pair: it says the key was
 # matched against a trust anchor -- a ROM digest or an OTP hash bank -- rather

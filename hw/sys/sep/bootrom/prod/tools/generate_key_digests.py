@@ -43,11 +43,10 @@ def format_digest(name, digest):
     return "\n".join(lines)
 
 
-# Slot names are positional only. The old dev*/prod* naming was an internal
-# security-policy holdover from the Grendel format and implied a trust
-# distinction the ROM does not make: all six are ROM-embedded root keys,
-# resolved the same way by the same bitmap (public_key_select_classic bits
-# [7:0], which also index CHIPLET_PUBK_REVOKE).
+# Slot names are positional only, because the ROM draws no trust distinction
+# between them: all six are ROM-embedded root keys, resolved the same way by the
+# same bitmap (public_key_select_classic bits [7:0], which also index
+# CHIPLET_PUBK_REVOKE).
 SLOT_NAMES = [f"rom_key{n}" for n in range(6)]
 
 

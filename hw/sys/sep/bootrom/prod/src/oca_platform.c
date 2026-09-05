@@ -68,9 +68,8 @@
 // exactly the width get_identity_bytes must fill.
 #define OCA_IDENTITY_BYTES 32u
 
-// Read a little-endian byte image out of a 32-bit-word eFuse shadow bank.
-// Matches the existing manifest_crypto.c fuse readers: word[0] holds bits[31:0]
-// and byte 0 is that word's LSB.
+// Read a little-endian byte image out of a 32-bit-word eFuse shadow bank:
+// word[0] holds bits[31:0], and byte 0 is that word's LSB.
 static void fuse_read_bytes(uint32_t base, uint8_t *out, uint32_t len) {
     for (uint32_t i = 0; i < len; i += 4u) {
         uint32_t val = mmio_read32(base + i);

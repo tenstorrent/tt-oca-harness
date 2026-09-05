@@ -20,9 +20,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Self-contained: these were manifest.h's under the previous format, which the
-// OCA migration removed. The count is the number of ROM key slots the digest
-// table pins; the size is the RSA-3072 modulus that gets hashed.
+// The count is the number of ROM key slots the digest table pins; the size is
+// the RSA-3072 modulus that gets hashed.
 #ifndef PUBK_SEL_NUM_ROM_KEYS
 #define PUBK_SEL_NUM_ROM_KEYS 6
 #endif

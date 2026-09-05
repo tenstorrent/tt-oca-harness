@@ -3,7 +3,6 @@
 
 // OCA boot-manifest load and validation for the SEP boot ROM.
 //
-// Replaces the previous bespoke ("Grendel") manifest_load.c + manifest_crypto.c.
 // Structural parsing, integrity, usage constraints, anti-rollback, signature and
 // payload verification all live in the vendored OCA library; this module owns
 // only what the library deliberately does not: getting bytes out of storage,
@@ -17,8 +16,7 @@
 #include "boot_straps.h"
 
 // Error codes reported through rom_err_fail() and the MANIFEST_ERR= marker.
-// Subsystem nibble 0x0003 is kept from the previous format so existing DV and
-// log tooling keeps parsing these.
+// 0x0003 is the manifest subsystem nibble that DV and log tooling match on.
 //
 // A library verdict is carried through verbatim in the low byte: an
 // oca_result_t is 0..34, so 0x000300xx is always "the library said xx" and
