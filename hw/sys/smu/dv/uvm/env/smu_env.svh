@@ -149,7 +149,9 @@ class smu_env extends ocah_env;
     if (cfg.ptap_idcode_negative)
       `uvm_info(get_type_name(), $sformatf(
                 "NEGATIVE VALIDATION: idcode reference model predicts 0x%08h instead of 0x%08h",
-                m_dtp_idcode_ref_model.expected_idcode, SmuPtapIdcode), UVM_LOW)
+                m_dtp_idcode_ref_model.expected_idcode,
+                SmuPtapIdcode
+                ), UVM_LOW)
     m_dtp_bypass_ref_model = dtp_bypass_ref_model::type_id::create("m_dtp_bypass_ref_model", this);
     m_dtp_bypass_ref_model.tb_vif = dtp_tb_vif;
   endfunction

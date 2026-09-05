@@ -32,7 +32,7 @@
 // Primary JTAG TAP (cocotb OcahJtagMasterDriver / SV-UVM ocah_jtag_if)
 `SMU_TB_IN(logic, jtag_tck)
 `SMU_TB_IN(logic, jtag_tms)
-`SMU_TB_IN(logic, jtag_trst)   // active-low
+`SMU_TB_IN(logic, jtag_trst)  // active-low
 `SMU_TB_IN(logic, jtag_tdi)
 `SMU_TB_OUT(logic, jtag_tdo)
 `SMU_TB_OUT(logic, jtag_tdo_oen)

@@ -21,18 +21,18 @@ class smu_jtag_tms_walk_seq extends smu_jtag_op_seq;
   endfunction
 
   virtual task do_op();
-    ocah_jtag_item it;
+    ocah_jtag_item walk;
     if (tms_bits.size() == 0) `uvm_fatal(get_type_name(), "empty TMS walk")
     if (tdi_bits.size() != tms_bits.size())
       `uvm_fatal(
           get_type_name(), $sformatf(
           "tdi_bits (%0d) and tms_bits (%0d) differ in length", tdi_bits.size(), tms_bits.size()))
-    it          = ocah_jtag_item::type_id::create("tms_walk");
-    it.op       = OCAH_JTAG_RAW_TMS;
-    it.tms_bits = tms_bits;
-    it.tdi_bits = tdi_bits;
-    do_jtag(it);
-    tdo_bits = it.tdo_bits;
+    walk          = ocah_jtag_item::type_id::create("walk");
+    walk.op       = OCAH_JTAG_RAW_TMS;
+    walk.tms_bits = tms_bits;
+    walk.tdi_bits = tdi_bits;
+    do_jtag(walk);
+    tdo_bits = walk.tdo_bits;
     foreach (tms_bits[i]) void'(m_model.step(tms_bits[i]));
   endtask
 

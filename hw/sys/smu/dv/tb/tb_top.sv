@@ -560,8 +560,8 @@ module smu_uvm_top
   // ------------------------------------------------------------------
   import uvm_pkg::*;
 
-  smu_tb_if    u_tb_if ();
-  dtp_tb_if    u_dtp_tb_if ();
+  smu_tb_if u_tb_if ();
+  dtp_tb_if u_dtp_tb_if ();
   ocah_jtag_if u_jtag_if ();
 
   // Three free-running clocks with the periods the env publishes on
@@ -572,8 +572,8 @@ module smu_uvm_top
     clk_ref_i    = 1'b0;
     clk_periph_i = 1'b0;
   end
-  always #(u_tb_if.smu_clk_period_ns * 0.5ns)    clk_smu_i    = ~clk_smu_i;
-  always #(u_tb_if.ref_clk_period_ns * 0.5ns)    clk_ref_i    = ~clk_ref_i;
+  always #(u_tb_if.smu_clk_period_ns * 0.5ns) clk_smu_i = ~clk_smu_i;
+  always #(u_tb_if.ref_clk_period_ns * 0.5ns) clk_ref_i = ~clk_ref_i;
   always #(u_tb_if.periph_clk_period_ns * 0.5ns) clk_periph_i = ~clk_periph_i;
 
   // Power-good, cold reset, and the boot-sequence gate are test-sequenced
@@ -610,8 +610,9 @@ module smu_uvm_top
   // reset unit's powergood_stable; rst_n_i is the primary smc-clock reset).
   logic [31:0] dtp_sys_rst_assert_count = '0;
   logic [31:0] dtp_por_assert_count     = '0;
-  always @(negedge u_dut.u_dtp.rst_n_i)      dtp_sys_rst_assert_count <= dtp_sys_rst_assert_count + 32'd1;
-  always @(negedge u_dut.u_dtp.pwr_on_rst_ni) dtp_por_assert_count    <= dtp_por_assert_count + 32'd1;
+  always @(negedge u_dut.u_dtp.rst_n_i)
+    dtp_sys_rst_assert_count <= dtp_sys_rst_assert_count + 32'd1;
+  always @(negedge u_dut.u_dtp.pwr_on_rst_ni) dtp_por_assert_count <= dtp_por_assert_count + 32'd1;
   assign u_dtp_tb_if.tap_state            = ptap_state;
   assign u_dtp_tb_if.inst_decoded         = ptap_inst;
   assign u_dtp_tb_if.sys_rst_assert_count = dtp_sys_rst_assert_count;
@@ -620,7 +621,7 @@ module smu_uvm_top
   // Clean-room JTAG protocol SVA checker (ocah_jtag_vip/sva) on the primary
   // TAP pins + the exported one-hot TAP state, enabled via smu_tb_if.
   ocah_jtag_sva #(
-    .EN_STATE_RULES (1'b1)
+    .EN_STATE_RULES(1'b1)
   ) u_jtag_ptap_sva (
     .tck         (jtag_tck),
     .tms         (jtag_tms),

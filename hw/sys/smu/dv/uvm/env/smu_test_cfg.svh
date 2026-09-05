@@ -70,8 +70,10 @@ class smu_test_cfg extends ocah_test_cfg;
 
   virtual function string convert2string();
     return $sformatf(
-        {"%s ref_clk_period_ns=%0d smu_clk_period_ns=%0d periph_clk_period_ns=%0d ",
-         "tck_period_ns=%0d settle_cycles=%0d idcode_negative=%0d"},
+        {
+          "%s ref_clk_period_ns=%0d smu_clk_period_ns=%0d periph_clk_period_ns=%0d ",
+          "tck_period_ns=%0d settle_cycles=%0d idcode_negative=%0d"
+        },
         super.convert2string(),
         ref_clk_period_ns,
         smu_clk_period_ns,

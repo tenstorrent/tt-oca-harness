@@ -111,7 +111,7 @@ class smu_base_test_seq extends ocah_sequence;
   function int unsigned ordered_step_deltas();
     int unsigned ordered = 0;
     for (int unsigned i = 1; i < m_step_order.size(); i++)
-      if (m_step_time[m_step_order[i]] >= m_step_time[m_step_order[i-1]]) ordered++;
+    if (m_step_time[m_step_order[i]] >= m_step_time[m_step_order[i-1]]) ordered++;
     return ordered;
   endfunction
 
@@ -125,13 +125,13 @@ class smu_base_test_seq extends ocah_sequence;
 
   function void log_timeout_paths();
     foreach (m_timeout_paths[i])
-    `uvm_info(get_type_name(), {"TIMEOUT-PATH ", m_timeout_paths[i]}, UVM_LOW)
+      `uvm_info(get_type_name(), {"TIMEOUT-PATH ", m_timeout_paths[i]}, UVM_LOW)
   endfunction
 
   protected function void record_timeout_path(string label, int unsigned bound, bit ok,
                                               bit [15:0] last);
-    m_timeout_paths.push_back($sformatf("%s: bound=%0d %s last=0x%04h", label, bound,
-                                        ok ? "ok" : "EXPIRED", last));
+    m_timeout_paths.push_back(
+        $sformatf("%s: bound=%0d %s last=0x%04h", label, bound, ok ? "ok" : "EXPIRED", last));
     if (!ok) begin
       m_timeouts_expired++;
       `uvm_error(get_type_name(), $sformatf("TIMEOUT %s: bound=%0d last_state=0x%04h", label,
@@ -238,7 +238,9 @@ class smu_base_test_seq extends ocah_sequence;
                  "%s: expected TAP state %s (0x%04h), got 0x%04h",
                  what,
                  expected.name(),
-                 onehot(expected),
+                 onehot(
+                     expected
+                 ),
                  tap_state()
                  ))
     else
@@ -251,8 +253,7 @@ class smu_base_test_seq extends ocah_sequence;
   task tap_reset();
     `uvm_info(get_type_name(), "asserting TRST for TAP reset", UVM_MEDIUM)
     tap_reset_op();
-    if (evidence != null)
-      void'(evidence.check_reset_to_tlr(tap_state(), "after TRST release"));
+    if (evidence != null) void'(evidence.check_reset_to_tlr(tap_state(), "after TRST release"));
     check_state(OCAH_JTAG_TEST_LOGIC_RESET, "smu_tap_reset_chk", "after TRST release");
   endtask
 
@@ -327,7 +328,7 @@ class smu_base_test_seq extends ocah_sequence;
   // next pass starts from: the cocotb recovery wait, then the same bounded
   // reset-release polls the base test walks at bring-up.
   task restore_powergood();
-    tb_vif.powergood  <= 1'b1;
+    tb_vif.powergood <= 1'b1;
     wait_ref_cycles(test_cfg.por_recover_ref_cycles);
     tb_vif.rst_cold_n <= 1'b1;
     sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
