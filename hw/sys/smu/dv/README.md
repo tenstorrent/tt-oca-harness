@@ -341,5 +341,6 @@ The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
 `cocotb/tests_deferred/`. One body under `cocotb/tests/` is present but
 not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
 OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs; its
-docstring carries that reason. `sep0_all` (53) is the SMU nightly group in
-`.github/workflows/sim.yml`.
+docstring carries that reason. `sep0_all` (53) is the SMU regression group
+in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
+three).

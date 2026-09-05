@@ -915,7 +915,7 @@ async def private_read(self, target, tx_data, dat_idx=0):
     return err_status == 0, response, rx_data
 ```
 
-### 4.5 CCC (Common Command Code) Commands
+### 4.5 CCC (Common Command Codes) Commands
 
 CCC commands are standardized I3C protocol commands for device configuration and status retrieval.
 
@@ -1036,7 +1036,7 @@ async def getmrl(self, dat_idx=0):
     return None, None
 ```
 
-#### SET CCC (Write to Target)
+#### SET CCC (write to target)
 
 SET CCCs configure target parameters.
 

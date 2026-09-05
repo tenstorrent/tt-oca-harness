@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[environment_setup]]
-== Environment Setup
+= Environment Setup
 
 [WARNING]
 ====
@@ -12,7 +12,7 @@ This document is currently under development.
 - Need to add requirements for tt-oca-manifest and tt-oca-harness-model
 ====
 
-=== Python
+== Python
 
 We recommend the use of pyenv to ensure the correct version of python is in use.
 To install pyenv, visit https://github.com/pyenv/pyenv[their GitHub page],
@@ -48,25 +48,28 @@ pyenv shell 3.11
 pip install uv
 ```
 
-=== Repository
+== Repository
 
 To clone the repository, ensure that you have `git` installed (`sudo apt install git`), and then run the following commands:
 
 ```bash
-git clone git@github.com:tenstorrent/tt-oca-harness.git
+git clone https://github.com/tenstorrent/tt-oca-harness.git
 
 cd tt-oca-harness
-
-git submodule update --init --recursive
 ```
 
-=== Package Dependencies
+The repository's open RTL, documentation, register generation, lint, and
+containerized firmware flows do not require submodules. The production SEP boot
+manifest tooling is an optional submodule that requires separate access; do not
+use `--recursive` for the public setup path.
+
+== Package Dependencies
 
 Once the repository is cloned, install the required open source tools:
 
 ```bash
 sudo apt install asciidoctor asciidoctor-pdf verilator gcc \
-ccache picolibc-riscv64-unknown-elf
+ccache picolibc-riscv64-unknown-elf cmake
 ```
 
 Follow the instructions on the following pages for tools not packaged within Ubuntu:
@@ -85,7 +88,7 @@ Enter the repository and use the following command to set up the Python environm
 uv sync # or `make uv-sync`
 ```
 
-=== Containers
+== Containers
 
 Certain workflows within the repository currently use a container, so a docker-compatible containerisation system is also required. We support docker and podman at this time, follow the installation guides to install either docker or podman below:
 

@@ -71,9 +71,6 @@
 `SMU_TB_OUT(logic, lc_sigint_err_o)
 `SMU_TB_OUT(logic [1:0], lcc_demote_state_1_o)
 `SMU_TB_OUT(logic [1:0], lcc_demote_state_2_o)
-// GPIO strap capture (reset-unit STRAPS_* readback source); the DUT consumes
-// the NUM_BONDED_GPIO low bits (see the sliced connection in tb_top.sv).
-`SMU_TB_IN(logic [63:0], captured_straps_i)
 // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
 `SMU_TB_IN(logic, gpio_boot_stall_drive_i)
 `SMU_TB_OUT(logic [31:0], ext_mailbox_interrupts)

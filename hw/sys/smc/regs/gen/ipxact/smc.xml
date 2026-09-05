@@ -1105,65 +1105,6 @@ cannot be written to again</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>STRAPS_LO</ipxact:name>
-            <ipxact:addressOffset>'h90</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>straps</ipxact:name>
-              <ipxact:description>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.
-Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still
-latch their pad value here, but no strap function consumes it.
-Strap assignments in this range:
-* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
-* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
-* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
-* bit 14: TEST_EN - Enable DFT test mode
-* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
-* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
-* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
-* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
-* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
-* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
-* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
-* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master
-* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>STRAPS_HI</ipxact:name>
-            <ipxact:addressOffset>'h94</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>straps</ipxact:name>
-              <ipxact:description>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.
-All bits other than those listed below have no strap assigned. Those GPIOs
-still latch their pad value here, but no strap function consumes it.
-GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie
-outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).
-Strap assignments in this range:
-* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot
-* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>29</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
             <ipxact:name>SYNC_REG</ipxact:name>
             <ipxact:addressOffset>'ha8</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -5848,7 +5789,12 @@ Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
                   <ipxact:name>LOG_REGION_SIZE</ipxact:name>
-                  <ipxact:description>Log Region Size. Specified in bytes. Needs to be a multiple of 16.</ipxact:description>
+                  <ipxact:description>Log region size in bytes. Supported values are at most 512 KiB and aligned
+to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+larger value, RTL clamps the effective region to 512 KiB. For a value that is
+not 128-byte aligned, RTL divides the effective region among the 16 slots and
+rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+A requested LOG_LEN above that capacity is clamped to the capacity.</ipxact:description>
                   <ipxact:bitOffset>0</ipxact:bitOffset>
                   <ipxact:resets>
                     <ipxact:reset>

@@ -252,8 +252,8 @@ module smu_uvm_top
   assign i3c_dct_src = '0;
 
   // SEP strap / irq idle (SEP=0 paths still exist as ports)
-  sep_pkg::sep_straps_t sep_straps;
-  assign sep_straps = '0;
+  logic secure_tm_req;
+  assign secure_tm_req = 1'b0;
 
   // Observables
   assign sep_global_base_o         = sep_base_w;
@@ -471,8 +471,6 @@ module smu_uvm_top
     .trace_mem_resp_i            (trc_resp),
     .test_en_i                   (1'b0),
     .scan_rst_ni                 (1'b1),
-    // The TB keeps the 64-bit strap image; smu consumes the bonded GPIO straps.
-    .captured_straps_i           (captured_straps_i[smc_pkg::NUM_BONDED_GPIO-1:0]),
     .mem_repair_done_i           (1'b1),
     .mem_repair_success_i        (1'b1),
     .mem_repair_abort_i          (1'b0),
@@ -507,7 +505,7 @@ module smu_uvm_top
     .lcc_demote_state_2_o        (lcc_demote_state_2_o),
     .sep_fuse_sense_done_o       (),
     .clk_sep_wdt_i               (clk_smu_i),
-    .sep_straps_i                (sep_straps),
+    .secure_tm_req_i             (secure_tm_req),
     .i3c_dat_mem_src_i           (i3c_dat_src),
     .i3c_dat_mem_sink_o          (),
     .i3c_dct_mem_src_i           (i3c_dct_src),
@@ -640,11 +638,10 @@ module smu_uvm_top
   // class code.
   // ------------------------------------------------------------------
 
-  // Cross-trigger CTM loopback, clock-stop requests, straps, boot-stall pad.
+  // Cross-trigger CTM loopback, clock-stop requests, boot-stall pad.
   assign xtrig_ctm_dst_req       = '0;
   assign xtrig_ctm_src_ack       = '0;
   assign xtrig_clk_stop_req      = '0;
-  assign captured_straps_i       = '0;
   assign gpio_boot_stall_drive_i = 1'b0;
 
   // Telemetry ATB channel 0 idle.

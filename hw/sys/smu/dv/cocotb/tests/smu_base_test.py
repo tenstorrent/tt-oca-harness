@@ -10,7 +10,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, Timer
 from pyuvm import ConfigDB, uvm_test
 
 _COCOTB_ROOT = Path(__file__).resolve().parents[1]
@@ -75,14 +75,11 @@ class smu_base_test(uvm_test):
             Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
         )
 
-        dut.powergood_i.value = 0
-        dut.rst_cold_ni.value = 0
         # Default ungated boot-seq; SMU_006 overrides to 0 for gate proof.
         if hasattr(dut, "ext_boot_seq_done_i"):
             dut.ext_boot_seq_done_i.value = 1
         dut.jtag_tck.value = 0
-        dut.jtag_tms.value = 0
-        dut.jtag_trst.value = 0
+        dut.jtag_tms.value = 1
         dut.jtag_tdi.value = 0
         # Cross-trigger CTM / clock-stop idle defaults (tests may override)
         if hasattr(dut, "xtrig_ctm_dst_req"):
@@ -144,6 +141,11 @@ class smu_base_test(uvm_test):
         dut.s_axi_arregion.value = 0
         dut.s_axi_aruser.value = 0
 
+        await self.arm_async_resets()
+        dut.powergood_i.value = 0
+        dut.rst_cold_ni.value = 0
+        dut.jtag_trst.value = 0
+
         # Sequence mirrors SMC OSS bring-up against real smc_reset_ctrl:
         # powergood sync -> hold rst_cold asserted ≥32 ref cycles (deglitch) ->
         # release -> wait ≥255 extender (+ sync) until stable/primary rise.
@@ -155,6 +157,7 @@ class smu_base_test(uvm_test):
         self.logger.info("Releasing cold reset")
         dut.rst_cold_ni.value = 1
         dut.jtag_trst.value = 1
+        await self.jtag_tap_reset(16)
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await wait_signal_high(
             dut.rst_cold_stable_ref_clk_no,
@@ -170,6 +173,43 @@ class smu_base_test(uvm_test):
         )
         self.cfg.reset_done.set()
         self.logger.info("SMU bring-up complete (powergood + cold/primary resets released)")
+
+    async def arm_async_resets(self) -> None:
+        """Create a falling TRST edge so IC_RESET TDR reset-values load.
+
+        Verilator two-state powers up `jtag_trst` at 0, which is not a falling
+        edge. The IC_RESET `reset_hold` flop resets only on TRST (never TLR)
+        with RESET_VAL=1; left at 0 it blocks enable/control reset, so
+        override stays on and SMC cold reset never releases.
+        """
+        dut = cocotb.top
+        dut.powergood_i.value = 1
+        dut.rst_cold_ni.value = 1
+        dut.jtag_tck.value = 0
+        dut.jtag_tms.value = 1
+        dut.jtag_trst.value = 1
+        dut.jtag_tdi.value = 0
+        await self.jtag_tap_reset()
+        await ClockCycles(dut.clk_ref_i, 2)
+
+    async def jtag_tap_reset(self, pulses: int = 8) -> None:
+        """Walk the primary TAP into Test-Logic-Reset with TMS high.
+
+        The DTP IC_RESET TDR powers up in a state that can assert SMC cold
+        override. Clearing it needs TCK edges with TMS high, including on
+        tests that never touch JTAG again.
+        """
+        dut = cocotb.top
+        half_ns = max(1, int(self.cfg.jtag_period_ns) // 2)
+        dut.jtag_tms.value = 1
+        dut.jtag_tdi.value = 0
+        for _ in range(pulses):
+            dut.jtag_tck.value = 0
+            await Timer(half_ns, unit="ns")
+            dut.jtag_tck.value = 1
+            await Timer(half_ns, unit="ns")
+        dut.jtag_tck.value = 0
+        await Timer(half_ns, unit="ns")
 
     async def run_scenario(self) -> None:
         raise NotImplementedError("concrete SMU tests must implement run_scenario()")

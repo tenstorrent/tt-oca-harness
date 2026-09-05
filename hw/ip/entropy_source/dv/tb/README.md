@@ -10,6 +10,9 @@ This directory contains comprehensive testbenches for verifying the entropy comp
 # Run the simulation
 make
 
+# Check that enabling the ring advances simulated time
+make ring-smoke
+
 # View help
 make help
 
@@ -195,7 +198,7 @@ Accurate frequency measurement using edge counting:
 
 ### RTL Sources
 
-- `../rtl/gcells.sv` - Generic gate cell library with timing models
+- `../../../../common/och_prim_generic/rtl/` - Shared OCAH primitive behavioral models
 - `../rtl/entropy_ring_oscillator.sv` - Simple ring oscillator module (used internally)
 - `../rtl/entropy_noise_source.sv` - Main noise source with ring oscillator and sampling
 - `../rtl/entropy_debug_monitor.sv` - Debug monitoring and signal selection
@@ -239,7 +242,7 @@ During development, several critical issues were identified and fixed:
 
 1. **Port width mismatch**: Fixed `select_freq_div_i` width calculation
 2. **Signal selection logic**: Corrected multiplexer connections
-3. **Frequency divider reset**: Fixed `gdffqb` reset behavior for proper toggle operation
+3. **Frequency divider reset**: Verify `prim_dffrxq` reset behavior for proper toggle operation
 4. **Output selection**: Corrected final signal multiplexer logic
 
 ### Testbench Enhancements

@@ -495,7 +495,8 @@ blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
 
 Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,
 `sep_rom_ot_{dma,pio,secure}_boot_test`) live in `testlists/rom_fw.toml` and run
-in the `all` and `rom_fw` groups. They belong to the ROM-FW owner; the OSS suite
+in the `rom_fw` group only -- naming that group, or the test, is the only way to
+reach them. They belong to the ROM-FW owner; the OSS suite
 grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
 `sep_rom_sanity_test`, `sep_boot_rom_lsu_read_test`).
 

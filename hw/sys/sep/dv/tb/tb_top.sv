@@ -9,10 +9,11 @@
 // master bus: the core (VeeR EL2) is held off (`mpc_reset_run_req=0`) and an
 // external cocotbext-axi AxiMaster is spliced onto the CPU's LSU AXI master
 // ``SEP_CORE.sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
-// (addr32/data64/id3/user12). For the no_cpu (stub) build the CPU is the
-// sep_cpu stub, which is the SOLE driver of that bus and drives lsu_axi_req
-// directly from the tb's assembled request — no `force` (see
-// shims/cpu/sep_cpu_stub.sv); the tb only reads lsu_axi_resp back by name.
+// (addr32/data64/id3/user12). The stub build (`SEP_CPU_STUB`) is the sole
+// driver of that bus and drives lsu_axi_req from the tb's assembled request
+// (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS
+// build a no_cpu test force-splices the same post-remap `lsu_axi_req` and
+// holds `lsu_axi_resp_raw` idle. The tb reads lsu_axi_resp back by name.
 // Driving the demux slave-side LSU bus reaches the SEP-local fabric through the
 // same ROM/xbar routing point as the core would, so the external SMN inbound
 // filter is NOT in the path. Every other DUT port is tied to a benign idle
@@ -28,9 +29,10 @@
 // the OSS analog of the reference suite's ext_axi_sqr (axi_system[0].master[0]).
 //
 // Two run modes, selected by the `+cpu_boot` plusarg:
-//   * no-CPU (default): runs on the stub build; the core is held off
-//     (mpc_reset_run_req=0) and cocotb drives the SEP fabric over s_axi, which
-//     the sep_cpu stub presents on the LSU master (driven, not forced).
+//   * no-CPU (default): the core is held off (mpc_reset_run_req=0) and cocotb
+//     drives the SEP fabric over s_axi. The stub build presents that request
+//     on the LSU master (`assign`). The full-CPU VCS build force-splices the
+//     same post-remap net. Verilator no_cpu stays on the stub.
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
 //     runs. The boot test backdoor-loads the TCM (tb_backdoor_mem, on tcm_load_i),
@@ -454,13 +456,6 @@ module sep_uvm_top
         jtag_sep_reset_ctrl_drive.ovrd.trng_jtag_rst_n_ovrd =
             (jtag_trng_rst_hold_i === 1'b1);
     end
-    // TEST_EN strap is a real DUT input (sep_straps_i.test_straps.test_en). The
-    // rest of the strap struct stays idle-0. Not a force.
-    sep_pkg::sep_straps_t            sep_straps_drive;
-    always_comb begin
-        sep_straps_drive = '0;
-        sep_straps_drive.test_straps.test_en = test_en_strap_i;
-    end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
     // wrapper flow needs.
@@ -817,17 +812,16 @@ module sep_uvm_top
         .smc_fuse_sense_done_i        (1'b0),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
-        // Straps (TEST_EN driven from test_en_strap_i; other fields idle-0)
-        .sep_straps_i                 (sep_straps_drive),
+        .secure_tm_req_i              (test_en_strap_i),
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4001_0100+, straps 0x4000_2090, SMC SRAM
+        // Route the SMC region (scratch 0x4001_0100+, straps 0x4040_5800, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
         // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
         .smc_global_base_addr_i       (56'h4000_0000),
-        .smc_region_size_i            (56'h0020_0000),
+        .smc_region_size_i            (56'h0100_0000),
 `else
         .smc_global_base_addr_i       ('0),
         .smc_region_size_i            ('0),
@@ -914,13 +908,14 @@ module sep_uvm_top
         // so the ROM's DFT/MEM_REPAIR gate passes (models mem-repair completed OK).
         u_smc_mem.mem[56'h4000_F800] = 8'h03;
         // +sep_boot_from_spi flips the ROM to its SPI manifest path by setting
-        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x2090; boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h), and boot_recovery
-        // lives in STRAPS_HI, which stays 0. Bit 25 is byte 3 of the word, bit 1.
+        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x405800; boot_from_spi() is
+        // `primary_chiplet && !boot_recovery` (boot_straps.h). boot_recovery is
+        // STRAPS_LO[19] -- byte 2 of the same word, which this seed leaves at 0.
+        // Bit 25 is byte 3 of the word, bit 1.
         // Default off: without it the ROM keeps taking the SMC-SRAM branch, so
         // sep_rom_non_secure_boot_test is unaffected.
         if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[56'h4000_2093] = 8'h02;
+            u_smc_mem.mem[56'h4040_5803] = 8'h02;
             $display("[tb] STRAPS_LO[25] primary_chiplet=1 -> ROM boots from SPI");
         end
         if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin
@@ -1084,11 +1079,10 @@ module sep_uvm_top
     //
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
-    // reference and drives its lsu_axi_req from it (single driver, plain assign,
-    // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
-    // drive. (the reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
-    // build replaces the core with a stub, so the bus is single-driven and driven
-    // rather than forced.)
+    // reference and drives its lsu_axi_req from it (single driver, plain assign;
+    // see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS build a no_cpu test
+    // force-splices the same post-remap net. Whole-signal only; no per-field
+    // drive.
     // ------------------------------------------------------------------
     sep_32_64_3_12_axi_req_t lsu_req_drive;
 
@@ -1130,23 +1124,27 @@ module sep_uvm_top
         lsu_req_drive.r_ready    = (s_axi_rready === 1'b1);
     end
 
-    // LSU stimulus injection uses NO `force`:
-    //  * no_cpu tests run on the CPU-stub model, where the stub is the SOLE driver
-    //    of the LSU master and drives lsu_axi_req directly from `lsu_req_drive`
-    //    (an upward reference inside the stub, see shims/cpu/sep_cpu_stub.sv).
-    //  * CPU firmware-boot tests run on the full-CPU model, where the real VeeR
-    //    owns all of its master buses (LSU/IFU/DBG) and drives its own traffic.
-    // Either way the LSU request is single-driven, so it is driven, never forced.
-    //
-    // Guard: without the (removed) force, a no_cpu test has an LSU stimulus path
-    // ONLY on the stub build. If a no_cpu test (no +cpu_boot) is ever routed to the
-    // full-CPU build, the real core drives the LSU and cocotb cannot inject -- the
-    // test would silently wedge. Fail loudly instead, naming the fix.
+    // LSU stimulus injection:
+    //  * Stub build: the stub is the sole driver of the LSU master and drives
+    //    lsu_axi_req from `lsu_req_drive` (upward reference; no force).
+    //  * CPU firmware-boot (+cpu_boot): the real VeeR owns LSU/IFU/DBG.
+    //  * no_cpu on the full-CPU VCS build: VeeR is held off
+    //    (mpc_reset_run_req=0), so the VIP owns the post-remap LSU request.
+    //    Same node the stub drives, so VIP addresses do not pass through
+    //    u_lsu_local_alias_remap. The raw response is held idle so the halted
+    //    core sees no beats it did not issue. Verilator cannot force the whole
+    //    request struct; that path stays on the stub.
 `ifndef SEP_CPU_STUB
-    initial begin
-        if (!$test$plusargs("cpu_boot"))
-            $fatal(1, "no_cpu test on the full-CPU build has no LSU stimulus path: select target=lsu_stub_all_live (SEP_CPU_STUB), or add +cpu_boot for a firmware-boot test.");
+    `ifdef VERILATOR
+    initial if (!$test$plusargs("cpu_boot"))
+        $fatal(1, "no_cpu test on the full-CPU Verilator build: select target=lsu_stub_all_live or pass +cpu_boot");
+    `else
+    initial if (!$test$plusargs("cpu_boot")) begin
+        force `SEP_CORE.sep_cpu.lsu_axi_req      = lsu_req_drive;
+        force `SEP_CORE.sep_cpu.lsu_axi_resp_raw = '0;
+        $display("[tb] no_cpu on full-CPU build: LSU VIP force-splice active");
     end
+    `endif
 `endif
 
     // ------------------------------------------------------------------
@@ -1752,7 +1750,7 @@ module sep_uvm_top
         .ADDR_WIDTH (32),
         .DATA_WIDTH (64),
         .ID_WIDTH   (3)
-    ) u_s_axi_sva (                       // CPU LSU master (sep_cpu stub drive)
+    ) u_s_axi_sva (                       // CPU LSU master (TB-driven when !cpu_boot)
         .aclk    (clk_i),
         .aresetn (rst_ni),
         .en_i    (s_axi_sva_en),

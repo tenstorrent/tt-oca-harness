@@ -6024,14 +6024,14 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>OUTPUT_COUNT</ipxact:name>
-              <ipxact:description>Number of 32-bit digest words remaining for output.</ipxact:description>
+              <ipxact:description>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>3</ipxact:bitWidth>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
@@ -10245,7 +10245,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10263,7 +10263,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10281,7 +10281,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10299,7 +10299,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10335,7 +10335,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -17434,37 +17434,6 @@ When this is 1, it is safe to send requests to the SMC.</ipxact:description>
               <ipxact:name>sep_fuse_sense_done</ipxact:name>
               <ipxact:description>This reg is used to indicate the fuse sense status of SEP.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>SEP_STRAPS</ipxact:name>
-            <ipxact:addressOffset>'h160</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>test_en</ipxact:name>
-              <ipxact:description>straps for test_en -&gt; Used to be latched by SEP and generate the secure_tm</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>bypass_mem_repair</ipxact:name>
-              <ipxact:description>straps for bypass_mem_repair -&gt; Used to indicate if the memory repair should be bypassed</ipxact:description>
-              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
